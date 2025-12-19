@@ -1,0 +1,53 @@
+# Dockerfile simplificado para Exclusiva SaaS
+
+FROM php:8.1-fpm-alpine
+
+# Instalar dependências essenciais
+RUN apk add --no-cache \
+    bash \
+    curl \
+    nginx \
+    supervisor \
+    mysql-client \
+    && docker-php-ext-install pdo_mysql
+
+# Definir diretório de trabalho
+WORKDIR /var/www/exclusiva
+
+# Copiar configuração do Nginx
+COPY nginx.conf /etc/nginx/http.d/default.conf
+
+# Criar diretórios necessários
+RUN mkdir -p /var/www/exclusiva/storage/logs \
+    && mkdir -p /var/www/exclusiva/bootstrap/cache \
+    && mkdir -p /var/log/php-fpm \
+    && mkdir -p /run/nginx \
+    && chown -R www-data:www-data /var/www/exclusiva
+
+# Copiar script de inicialização
+COPY entrypoint-simple.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Configurar supervisor
+RUN echo "[supervisord]" > /etc/supervisord.conf \
+    && echo "nodaemon=true" >> /etc/supervisord.conf \
+    && echo "" >> /etc/supervisord.conf \
+    && echo "[program:php-fpm]" >> /etc/supervisord.conf \
+    && echo "command=php-fpm -F" >> /etc/supervisord.conf \
+    && echo "autostart=true" >> /etc/supervisord.conf \
+    && echo "autorestart=true" >> /etc/supervisord.conf \
+    && echo "" >> /etc/supervisord.conf \
+    && echo "[program:nginx]" >> /etc/supervisord.conf \
+    && echo "command=nginx -g 'daemon off;'" >> /etc/supervisord.conf \
+    && echo "autostart=true" >> /etc/supervisord.conf \
+    && echo "autorestart=true" >> /etc/supervisord.conf
+
+# Expor portas
+EXPOSE 80 9000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost/health || exit 1
+
+# Executar supervisor
+CMD ["/usr/local/bin/entrypoint.sh"]
