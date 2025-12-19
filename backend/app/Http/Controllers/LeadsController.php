@@ -28,6 +28,10 @@ class LeadsController extends Controller
         try {
             $db = app('db');
             $query = $db->table('leads');
+
+            if ($request->attributes->has('tenant_id')) {
+                $query->where('tenant_id', $request->attributes->get('tenant_id'));
+            }
             
             // Filtros
             if ($request->status) {
@@ -182,13 +186,19 @@ class LeadsController extends Controller
     {
         try {
             $db = app('db');
+            $tenantId = request()->attributes->get('tenant_id');
+
+            $builder = fn () => $tenantId
+                ? $db->table('leads')->where('tenant_id', $tenantId)
+                : $db->table('leads');
+
             $stats = [
-                'total' => $db->table('leads')->count(),
-                'novos' => $db->table('leads')->where('status', 'novo')->count(),
-                'em_atendimento' => $db->table('leads')->where('status', 'em_atendimento')->count(),
-                'qualificados' => $db->table('leads')->where('status', 'qualificado')->count(),
-                'fechados' => $db->table('leads')->where('status', 'fechado')->count(),
-                'hoje' => $db->table('leads')->whereDate('created_at', date('Y-m-d'))->count()
+                'total' => $builder()->count(),
+                'novos' => $builder()->where('status', 'novo')->count(),
+                'em_atendimento' => $builder()->where('status', 'em_atendimento')->count(),
+                'qualificados' => $builder()->where('status', 'qualificado')->count(),
+                'fechados' => $builder()->where('status', 'fechado')->count(),
+                'hoje' => $builder()->whereDate('created_at', date('Y-m-d'))->count()
             ];
             
             return response()->json([
