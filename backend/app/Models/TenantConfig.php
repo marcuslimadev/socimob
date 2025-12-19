@@ -13,6 +13,7 @@ class TenantConfig extends Model
         'api_key_pagar_me',
         'api_key_apm_imoveis',
         'api_key_neca',
+        'api_key_openai',
         'primary_color',
         'secondary_color',
         'accent_color',
@@ -55,6 +56,7 @@ class TenantConfig extends Model
         'api_key_pagar_me',
         'api_key_apm_imoveis',
         'api_key_neca',
+        'api_key_openai',
         'smtp_password',
     ];
 
@@ -101,6 +103,7 @@ class TenantConfig extends Model
             'pagar_me' => $this->api_key_pagar_me,
             'apm_imoveis' => $this->api_key_apm_imoveis,
             'neca' => $this->api_key_neca,
+            'openai' => $this->api_key_openai,
         ];
     }
 

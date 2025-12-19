@@ -106,7 +106,7 @@ class PropertySyncService
                         $imovel = $response['resultSet'];
                         
                         // Verificar se já existe
-                        $existing = Property::where('codigo_imovel', $codigo)->first();
+                        $existing = Property::where('codigo', $codigo)->first();
                         
                         $data = $this->mapPropertyData($imovel);
                         
@@ -232,41 +232,42 @@ class PropertySyncService
         $latitude = ($latitude === null || $latitude === '') ? null : (float) $latitude;
         $longitude = ($longitude === null || $longitude === '') ? null : (float) $longitude;
         
+        // Montar título baseado no tipo e localização
+        $tipo = $imovel['descricaoTipoImovel'] ?? 'Imóvel';
+        $bairro = $imovel['endereco']['bairro'] ?? '';
+        $cidade = $imovel['endereco']['cidade'] ?? '';
+        $titulo = "$tipo no $bairro - $cidade";
+        
+        // Montar endereço completo
+        $endereco = $imovel['endereco'] ?? [];
+        $enderecoCompleto = implode(', ', array_filter([
+            $endereco['logradouro'] ?? '',
+            $endereco['numero'] ?? '',
+            $endereco['complemento'] ?? '',
+            $endereco['bairro'] ?? '',
+            $endereco['cidade'] ?? '',
+            $endereco['estado'] ?? ''
+        ])) ?: 'Endereço não informado';
+        
         return [
-            'codigo_imovel' => $imovel['codigoImovel'],
-            'referencia_imovel' => $imovel['referenciaImovel'] ?? null,
-            'finalidade_imovel' => $imovel['finalidadeImovel'] ?? null,
-            'tipo_imovel' => $imovel['descricaoTipoImovel'] ?? null,
+            'codigo' => $imovel['codigoImovel'],
+            'external_id' => strval($imovel['codigoImovel']),
+            'titulo' => $titulo,
+            'finalidade_imovel' => $this->mapearFinalidade($imovel['finalidadeImovel'] ?? 'Venda'),
+            'tipo_imovel' => $this->mapearTipo($imovel['descricaoTipoImovel'] ?? 'Casa'),
             'descricao' => $this->formatDescriptionWithAI($imovel['descricaoImovel'] ?? null),
-            'dormitorios' => intval($imovel['dormitorios'] ?? 0),
-            'suites' => intval($imovel['suites'] ?? 0),
+            'quartos' => intval($imovel['dormitorios'] ?? 0),
             'banheiros' => intval($imovel['banheiros'] ?? 0),
-            'garagem' => intval($imovel['garagem'] ?? 0),
-            'valor_venda' => $imovel['valorEsperado'] ?? 0,
-            'valor_iptu' => $imovel['valorIPTU'] ?? 0,
-            'valor_condominio' => $imovel['valorCondominio'] ?? 0,
+            'vagas' => intval($imovel['garagem'] ?? 0),
+            'preco' => floatval($imovel['valorEsperado'] ?? 0),
+            'endereco' => $enderecoCompleto,
             'cidade' => $imovel['endereco']['cidade'] ?? null,
             'estado' => $imovel['endereco']['estado'] ?? null,
-            'bairro' => $imovel['endereco']['bairro'] ?? null,
-            'logradouro' => $imovel['endereco']['logradouro'] ?? null,
-            'numero' => $imovel['endereco']['numero'] ?? null,
-            'complemento' => $imovel['endereco']['complemento'] ?? null,
-            'cep' => $imovel['endereco']['cep'] ?? null,
-            'latitude' => $latitude,
-            'longitude' => $longitude,
-            'area_privativa' => $areaPrivativa,
             'area_total' => $areaTotal,
-            'area_terreno' => $areaTerreno,
-            'imagem_destaque' => $imagemDestaque,
-            'imagens' => json_encode($imagensData),
-            'caracteristicas' => json_encode($caracteristicas),
-            'em_condominio' => isset($imovel['emCondominio']) ? ($imovel['emCondominio'] ? 1 : 0) : 0,
-            'exclusividade' => isset($imovel['exclusividade']) ? ($imovel['exclusividade'] ? 1 : 0) : 0,
-            'exibir_imovel' => 1, // Se está na API, deve ser exibido
-            'active' => 1, // Se está na API, está ativo
-            'api_data' => json_encode($imovel),
-            'api_created_at' => $this->parseApiDateTime($imovel['dataInsercaoImovel'] ?? null),
-            'api_updated_at' => $this->parseApiDateTime($imovel['ultimaAtualizacaoImovel'] ?? null)
+            'fotos' => $imagensData, // Array será convertido automaticamente pelo cast
+            'exibir_imovel' => true,
+            'active' => true,
+            'last_sync' => now()
         ];
     }
     
@@ -293,6 +294,62 @@ class PropertySyncService
         $timestamp = strtotime($normalized);
 
         return $timestamp ? date('Y-m-d H:i:s', $timestamp) : null;
+    }
+    
+    /**
+     * Mapear tipo de imóvel para formato padronizado
+     */
+    private function mapearTipo($tipo)
+    {
+        $tipo = strtolower($tipo);
+        
+        // Casa e variações
+        if (strpos($tipo, 'casa') !== false) return 'casa';
+        
+        // Apartamento e variações
+        if (strpos($tipo, 'apartamento') !== false || 
+            strpos($tipo, 'apto') !== false ||
+            strpos($tipo, 'flat') !== false ||
+            strpos($tipo, 'studio') !== false ||
+            strpos($tipo, 'kitnet') !== false ||
+            strpos($tipo, 'cobertura') !== false) {
+            return 'apartamento';
+        }
+        
+        // Terreno e variações
+        if (strpos($tipo, 'terreno') !== false ||
+            strpos($tipo, 'lote') !== false ||
+            strpos($tipo, 'área') !== false) {
+            return 'terreno';
+        }
+        
+        // Comercial e variações
+        if (strpos($tipo, 'comercial') !== false ||
+            strpos($tipo, 'sala') !== false ||
+            strpos($tipo, 'loja') !== false ||
+            strpos($tipo, 'galpão') !== false ||
+            strpos($tipo, 'galpao') !== false ||
+            strpos($tipo, 'ponto comercial') !== false ||
+            strpos($tipo, 'prédio') !== false ||
+            strpos($tipo, 'predio') !== false) {
+            return 'comercial';
+        }
+        
+        // Padrão
+        return 'casa';
+    }
+
+    /**
+     * Mapear finalidade do imóvel
+     */
+    private function mapearFinalidade($finalidade)
+    {
+        $finalidade = strtolower($finalidade);
+        
+        if (strpos($finalidade, 'vend') !== false) return 'venda';
+        if (strpos($finalidade, 'alug') !== false) return 'aluguel';
+        
+        return 'venda';
     }
     
     /**

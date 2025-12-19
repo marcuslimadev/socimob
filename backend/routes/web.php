@@ -8,10 +8,10 @@
 |--------------------------------------------------------------------------
 */
 
-// Health check
-$router->get('/', function () use ($router) {
+// Health check - movido para /api/health para não conflitar com index.html
+$router->get('/api/health', function () use ($router) {
     return response()->json([
-        'app' => 'Exclusiva Lar CRM',
+        'app' => 'SOCIMOB',
         'version' => $router->app->version(),
         'status' => 'online'
     ]);
@@ -20,8 +20,15 @@ $router->get('/', function () use ($router) {
 // Auth API routes
 $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('/auth/login', 'AuthController@login');
+    $router->post('/auth/google', 'AuthController@googleLogin');
     $router->post('/auth/logout', 'AuthController@logout');
     $router->get('/auth/me', ['middleware' => 'auth', 'uses' => 'AuthController@me']);
+    
+    // Portal do Cliente (rotas públicas para clientes autenticados)
+    $router->group(['prefix' => 'portal', 'middleware' => 'auth'], function () use ($router) {
+        $router->get('/properties', 'PortalController@properties');
+        $router->post('/interesse', 'PortalController@registrarInteresse');
+    });
     
     // Dashboard routes
     $router->get('/dashboard/stats', 'DashboardController@stats');

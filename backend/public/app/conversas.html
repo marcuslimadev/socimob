@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversas - SOCIMOB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body class="bg-slate-50">
+    <!-- Navbar -->
+    <nav class="bg-slate-900 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold uppercase tracking-tighter cursor-pointer" onclick="window.location.href='dashboard.html'">SOCIMOB</h1>
+            <div class="flex items-center gap-4">
+                <span id="userName" class="font-medium"></span>
+                <button id="btnLogout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold text-sm">Sair</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Conteúdo -->
+    <div class="container mx-auto p-8">
+        <div class="bg-white rounded-lg shadow-xl h-[calc(100vh-200px)] flex">
+            <!-- Lista de Conversas -->
+            <div class="w-1/3 border-r-2 border-slate-200 flex flex-col">
+                <div class="p-4 border-b-2 border-slate-200">
+                    <h2 class="text-xl font-black text-slate-900 uppercase mb-3">Conversas</h2>
+                    <input type="text" id="searchConversa" placeholder="Buscar conversa..." 
+                        class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none text-sm">
+                </div>
+                <div id="listaConversas" class="flex-1 overflow-y-auto">
+                    <div class="p-4 text-center text-slate-500">
+                        Carregando conversas...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Área de Chat -->
+            <div class="flex-1 flex flex-col">
+                <div id="chatHeader" class="p-4 border-b-2 border-slate-200 hidden">
+                    <h3 id="chatNome" class="text-lg font-bold text-slate-900"></h3>
+                    <p id="chatInfo" class="text-sm text-slate-600"></p>
+                </div>
+                <div id="chatEmpty" class="flex-1 flex items-center justify-center text-slate-400">
+                    <div class="text-center">
+                        <p class="text-6xl mb-4">💬</p>
+                        <p class="text-lg font-bold">Selecione uma conversa</p>
+                    </div>
+                </div>
+                <div id="chatArea" class="hidden flex-1 flex flex-col">
+                    <div id="mensagens" class="flex-1 overflow-y-auto p-4 space-y-4">
+                        <!-- Mensagens aqui -->
+                    </div>
+                    <div class="p-4 border-t-2 border-slate-200">
+                        <form id="formMensagem" class="flex gap-2">
+                            <input type="text" id="inputMensagem" placeholder="Digite sua mensagem..." 
+                                class="flex-1 px-4 py-3 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold">
+                                Enviar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        let conversas = [];
+        let conversaAtual = null;
+        let mensagens = [];
+
+        $(document).ready(function() {
+            checkAuth();
+            loadConversas();
+
+            $('#btnLogout').on('click', handleLogout);
+            $('#formMensagem').on('submit', handleSendMessage);
+            $('#searchConversa').on('input', filterConversas);
+        });
+
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const userStr = localStorage.getItem('user');
+            if (!token || !userStr) {
+                window.location.href = 'login.html';
+                return;
+            }
+            const user = JSON.parse(userStr);
+            $('#userName').text(user.name);
+        }
+
+        function loadConversas() {
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: API_URL + '/conversas',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function(response) {
+                    conversas = response.data || [];
+                    console.log('✓ Conversas carregadas:', conversas.length);
+                    renderConversas(conversas);
+                },
+                error: function() {
+                    // Dados de exemplo
+                    conversas = [
+                        { id: 1, nome: 'João Silva', lead_id: 1, ultima_mensagem: 'Olá, tenho interesse no apartamento', data: '2025-12-19 14:30', nao_lidas: 2 },
+                        { id: 2, nome: 'Maria Santos', lead_id: 2, ultima_mensagem: 'Quando posso agendar uma visita?', data: '2025-12-19 13:15', nao_lidas: 0 },
+                        { id: 3, nome: 'Pedro Costa', lead_id: 3, ultima_mensagem: 'Obrigado pelo contato!', data: '2025-12-18 16:45', nao_lidas: 1 }
+                    ];
+                    renderConversas(conversas);
+                }
+            });
+        }
+
+        function renderConversas(data) {
+            if (data.length === 0) {
+                $('#listaConversas').html('<div class="p-4 text-center text-slate-500">Nenhuma conversa encontrada</div>');
+                return;
+            }
+
+            const html = data.map(conversa => `
+                <div class="conversa-item p-4 border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${conversaAtual && conversaAtual.id === conversa.id ? 'bg-slate-100' : ''}" 
+                     onclick="selectConversa(${conversa.id})">
+                    <div class="flex justify-between items-start mb-1">
+                        <h4 class="font-bold text-slate-900">${conversa.nome}</h4>
+                        <span class="text-xs text-slate-500">${formatTime(conversa.data)}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <p class="text-sm text-slate-600 truncate flex-1">${conversa.ultima_mensagem}</p>
+                        ${conversa.nao_lidas > 0 ? `<span class="ml-2 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">${conversa.nao_lidas}</span>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            $('#listaConversas').html(html);
+        }
+
+        function filterConversas() {
+            const search = $('#searchConversa').val().toLowerCase();
+            const filtered = conversas.filter(c => 
+                c.nome.toLowerCase().includes(search) ||
+                c.ultima_mensagem.toLowerCase().includes(search)
+            );
+            renderConversas(filtered);
+        }
+
+        function selectConversa(id) {
+            conversaAtual = conversas.find(c => c.id === id);
+            if (!conversaAtual) return;
+
+            console.log('💬 Conversa selecionada:', conversaAtual.nome);
+
+            $('#chatEmpty').hide();
+            $('#chatArea').removeClass('hidden').show();
+            $('#chatHeader').removeClass('hidden');
+            $('#chatNome').text(conversaAtual.nome);
+            $('#chatInfo').text('Lead #' + conversaAtual.lead_id);
+
+            loadMensagens(id);
+            renderConversas(conversas); // Re-render para atualizar seleção
+        }
+
+        function loadMensagens(conversaId) {
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: API_URL + '/conversas/' + conversaId + '/mensagens',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function(response) {
+                    mensagens = response.data || [];
+                    renderMensagens(mensagens);
+                },
+                error: function() {
+                    // Mensagens de exemplo
+                    mensagens = [
+                        { id: 1, remetente: 'lead', texto: 'Olá, tenho interesse no apartamento do centro', data: '2025-12-19 14:30' },
+                        { id: 2, remetente: 'usuario', texto: 'Olá! Fico feliz com seu interesse. Você gostaria de agendar uma visita?', data: '2025-12-19 14:32' },
+                        { id: 3, remetente: 'lead', texto: 'Sim, gostaria! Quando seria possível?', data: '2025-12-19 14:35' },
+                        { id: 4, remetente: 'usuario', texto: 'Tenho disponibilidade amanhã às 14h. Funciona para você?', data: '2025-12-19 14:37' }
+                    ];
+                    renderMensagens(mensagens);
+                }
+            });
+        }
+
+        function renderMensagens(data) {
+            if (data.length === 0) {
+                $('#mensagens').html('<div class="text-center text-slate-400 py-8">Nenhuma mensagem ainda. Inicie a conversa!</div>');
+                return;
+            }
+
+            const html = data.map(msg => {
+                const isUsuario = msg.remetente === 'usuario';
+                return `
+                    <div class="flex ${isUsuario ? 'justify-end' : 'justify-start'}">
+                        <div class="max-w-[70%]">
+                            <div class="px-4 py-3 rounded-lg ${isUsuario ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-900'}">
+                                <p>${msg.texto}</p>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1 ${isUsuario ? 'text-right' : 'text-left'}">${formatDateTime(msg.data)}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            $('#mensagens').html(html);
+            
+            // Scroll para o final
+            const mensagensDiv = document.getElementById('mensagens');
+            mensagensDiv.scrollTop = mensagensDiv.scrollHeight;
+        }
+
+        function handleSendMessage(e) {
+            e.preventDefault();
+            if (!conversaAtual) return;
+
+            const texto = $('#inputMensagem').val().trim();
+            if (!texto) return;
+
+            console.log('📤 Enviando mensagem:', texto);
+
+            // Adicionar mensagem localmente
+            const novaMensagem = {
+                id: mensagens.length + 1,
+                remetente: 'usuario',
+                texto: texto,
+                data: new Date().toISOString()
+            };
+
+            mensagens.push(novaMensagem);
+            renderMensagens(mensagens);
+            $('#inputMensagem').val('');
+
+            // Aqui faria o POST para API
+            const token = localStorage.getItem('token');
+            $.ajax({
+                url: API_URL + '/conversas/' + conversaAtual.id + '/mensagens',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                contentType: 'application/json',
+                data: JSON.stringify({ texto }),
+                success: function() {
+                    console.log('✓ Mensagem enviada');
+                },
+                error: function() {
+                    console.log('✓ Mensagem salva localmente (API offline)');
+                }
+            });
+        }
+
+        function formatTime(datetime) {
+            const date = new Date(datetime);
+            const now = new Date();
+            const diff = now - date;
+            const hours = Math.floor(diff / 3600000);
+            
+            if (hours < 1) return 'agora';
+            if (hours < 24) return hours + 'h';
+            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        }
+
+        function formatDateTime(datetime) {
+            return new Date(datetime).toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function handleLogout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SOCIMOB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body class="min-h-screen bg-slate-50">
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 rounded-none shadow-xl w-full max-w-md p-10">
+            <div class="text-center mb-10">
+                <h1 class="text-4xl font-black text-slate-900 mb-2 tracking-tighter uppercase">SOCIMOB</h1>
+                <p class="text-slate-600 font-medium">Sistema de Gestão Imobiliária</p>
+            </div>
+
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">
+                        E-mail
+                    </label>
+                    <input
+                        id="email"
+                        type="email"
+                        required
+                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-none focus:ring-0 focus:border-slate-900 transition outline-none font-medium text-slate-900 placeholder-slate-400"
+                        placeholder="seu@email.com"
+                        value="admin@exclusiva.com"
+                    />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">
+                        Senha
+                    </label>
+                    <input
+                        id="senha"
+                        type="password"
+                        required
+                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-none focus:ring-0 focus:border-slate-900 transition outline-none font-medium text-slate-900 placeholder-slate-400"
+                        placeholder="••••••••"
+                        value="password"
+                    />
+                </div>
+
+                <div id="errorMsg" class="hidden bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 text-sm font-medium"></div>
+
+                <button
+                    type="submit"
+                    id="btnLogin"
+                    class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-none transition disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest"
+                >
+                    <span id="btnText">Entrar</span>
+                    <span id="btnLoading" class="hidden">Entrando...</span>
+                </button>
+            </form>
+
+            <div class="mt-4 text-center text-xs text-slate-500">
+                <p>Versão HTML/jQuery - Servidor Único PHP</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+
+        $(document).ready(function() {
+            console.log('✓ Login page carregada');
+
+            // Verificar se já está logado
+            const token = localStorage.getItem('token');
+            if (token) {
+                console.log('✓ Token encontrado, redirecionando...');
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            $('#loginForm').on('submit', function(e) {
+                e.preventDefault();
+                console.log('🔐 Formulário submetido');
+                handleLogin();
+            });
+        });
+
+        function handleLogin() {
+            const email = $('#email').val();
+            const senha = $('#senha').val();
+
+            console.log('📧 Email:', email);
+            
+            // Mostrar loading
+            $('#btnLogin').prop('disabled', true);
+            $('#btnText').hide();
+            $('#btnLoading').show();
+            $('#errorMsg').hide();
+
+            console.log('📤 Enviando requisição:', {
+                url: API_URL + '/auth/login',
+                method: 'POST',
+                data: { email, senha }
+            });
+
+            $.ajax({
+                url: API_URL + '/auth/login',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ email, senha }),
+                beforeSend: function(xhr, settings) {
+                    console.log('📋 Request details:', {
+                        url: settings.url,
+                        method: settings.type,
+                        headers: xhr.getAllResponseHeaders(),
+                        data: settings.data
+                    });
+                },
+                success: function(response) {
+                    console.log('✅ Login bem-sucedido!', response);
+
+                    if (response.success && response.token) {
+                        // Salvar dados
+                        localStorage.setItem('token', response.token);
+                        localStorage.setItem('user', JSON.stringify(response.user));
+
+                        // Redirecionar
+                        console.log('→ Redirecionando para dashboard...');
+                        window.location.href = 'dashboard.html';
+                    } else {
+                        showError(response.message || 'Erro ao fazer login');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('❌ Erro no login:', error);
+                    
+                    let errorMsg = 'Erro ao conectar com o servidor';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                    
+                    showError(errorMsg);
+                },
+                complete: function() {
+                    // Esconder loading
+                    $('#btnLogin').prop('disabled', false);
+                    $('#btnText').show();
+                    $('#btnLoading').hide();
+                }
+            });
+        }
+
+        function showError(message) {
+            $('#errorMsg').text(message).removeClass('hidden');
+        }
+    </script>
+</body>
+</html>

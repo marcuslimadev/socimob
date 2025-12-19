@@ -15,21 +15,21 @@ class TenantSettingsController extends Controller
      */
     public function index(Request $request)
     {
-        $tenantId = $request->attributes->get('tenant_id');
-
-        if (!$tenantId) {
-            return response()->json(['error' => 'No tenant context'], 400);
+        // Obter usuário do token (SimpleTokenAuth middleware já validou)
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 401);
         }
 
-        $tenant = Tenant::find($tenantId);
+        if (!$user->tenant_id) {
+            return response()->json(['error' => 'User has no tenant'], 400);
+        }
+
+        $tenant = Tenant::find($user->tenant_id);
 
         if (!$tenant) {
             return response()->json(['error' => 'Tenant not found'], 404);
-        }
-
-        // Verificar se o usuário é admin do tenant
-        if (!$request->user()->isAdmin() || $request->user()->tenant_id !== $tenantId) {
-            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $config = $tenant->config;
@@ -43,6 +43,10 @@ class TenantSettingsController extends Controller
                 'logo_url' => $tenant->logo_url,
                 'contact_email' => $tenant->contact_email,
                 'contact_phone' => $tenant->contact_phone,
+                'api_key_pagar_me' => $tenant->api_key_pagar_me,
+                'api_key_apm_imoveis' => $tenant->api_key_apm_imoveis,
+                'api_key_neca' => $tenant->api_key_neca,
+                'api_key_openai' => $tenant->api_key_openai,
             ],
             'config' => $config,
         ]);
@@ -54,36 +58,55 @@ class TenantSettingsController extends Controller
      */
     public function updateTenant(Request $request)
     {
-        $tenantId = $request->attributes->get('tenant_id');
-
-        if (!$tenantId) {
-            return response()->json(['error' => 'No tenant context'], 400);
+        // Obter usuário do token
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 401);
         }
 
-        $tenant = Tenant::find($tenantId);
+        if (!$user->tenant_id) {
+            return response()->json(['error' => 'User has no tenant'], 400);
+        }
+
+        $tenant = Tenant::find($user->tenant_id);
 
         if (!$tenant) {
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
-        // Verificar se o usuário é admin do tenant
-        if (!$request->user()->isAdmin() || $request->user()->tenant_id !== $tenantId) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $validated = $request->validate([
+        // Validação no estilo Lumen
+        $this->validate($request, [
             'name' => 'nullable|string|max:255',
             'contact_email' => 'nullable|email|max:255',
             'contact_phone' => 'nullable|string|max:20',
             'description' => 'nullable|string|max:1000',
             'logo_url' => 'nullable|string|max:500',
+            'favicon_url' => 'nullable|string|max:500',
+            'slogan' => 'nullable|string|max:500',
             'primary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
             'secondary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
+            'api_url_externa' => 'nullable|string|max:500',
+            'api_token_externa' => 'nullable|string|max:500',
         ]);
 
-        $tenant->update($validated);
+        // Atualizar apenas campos enviados
+        $tenant->update($request->only([
+            'name', 
+            'contact_email', 
+            'contact_phone', 
+            'description', 
+            'logo_url', 
+            'favicon_url',
+            'slogan',
+            'primary_color', 
+            'secondary_color',
+            'api_url_externa',
+            'api_token_externa'
+        ]));
 
         return response()->json([
+            'success' => true,
             'message' => 'Tenant updated successfully',
             'tenant' => $tenant,
         ]);
@@ -207,6 +230,7 @@ class TenantSettingsController extends Controller
             'api_key_pagar_me' => 'nullable|string',
             'api_key_apm_imoveis' => 'nullable|string',
             'api_key_neca' => 'nullable|string',
+            'api_key_openai' => 'nullable|string',
         ]);
 
         // Atualizar no tenant

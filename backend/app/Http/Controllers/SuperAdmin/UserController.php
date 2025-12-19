@@ -15,46 +15,54 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        if (!$request->user() || !$request->user()->isSuperAdmin()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        try {
+            // Debug: verificar autenticação
+            $user = $request->user();
+            
+            if (!$user) {
+                return response()->json(['success' => false, 'error' => 'User not authenticated'], 401);
+            }
+            
+            if (!$user->isSuperAdmin()) {
+                return response()->json(['success' => false, 'error' => 'User is not super admin'], 403);
+            }
+
+            $perPage = $request->query('per_page', 15);
+            $search = $request->query('search');
+            $role = $request->query('role');
+            $status = $request->query('status');
+
+            $query = User::with('tenant');
+
+            // Filtrar por busca
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            // Filtrar por perfil
+            if ($role) {
+                $query->where('role', $role);
+            }
+
+            // Filtrar por status
+            if ($status !== null) {
+                $query->where('is_active', $status == '1');
+            }
+
+            $allUsers = $query->orderBy('created_at', 'desc')->get();
+
+            return response()->json([
+                'success' => true,
+                'users' => $allUsers,
+                'count' => count($allUsers),
+                'data' => $allUsers
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
-
-        $perPage = $request->query('per_page', 15);
-        $search = $request->query('search');
-        $role = $request->query('role');
-        $status = $request->query('status');
-
-        $query = User::with('tenant');
-
-        // Filtrar por busca
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        // Filtrar por perfil
-        if ($role) {
-            $query->where('role', $role);
-        }
-
-        // Filtrar por status
-        if ($status !== null) {
-            $query->where('is_active', $status == '1');
-        }
-
-        $users = $query->orderBy('created_at', 'desc')->paginate($perPage);
-
-        return response()->json([
-            'users' => $users->items(),
-            'meta' => [
-                'current_page' => $users->currentPage(),
-                'last_page' => $users->lastPage(),
-                'per_page' => $users->perPage(),
-                'total' => $users->total(),
-            ]
-        ]);
     }
 
     /**

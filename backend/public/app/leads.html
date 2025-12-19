@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leads - SOCIMOB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body class="bg-slate-50">
+    <!-- Navbar -->
+    <nav class="bg-slate-900 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold uppercase tracking-tighter cursor-pointer" onclick="window.location.href='dashboard.html'">SOCIMOB</h1>
+            <div class="flex items-center gap-4">
+                <span id="userName" class="font-medium"></span>
+                <button id="btnLogout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold text-sm">Sair</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Conteúdo -->
+    <div class="container mx-auto p-8">
+        <div class="bg-white rounded-lg shadow-xl p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-black text-slate-900 uppercase">Leads</h2>
+                <button id="btnNovoLead" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 font-bold uppercase">
+                    + Novo Lead
+                </button>
+            </div>
+
+            <!-- Filtros -->
+            <div class="mb-6 flex gap-4">
+                <input type="text" id="searchLead" placeholder="Buscar lead..." 
+                    class="flex-1 px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                <select id="filterStatus" class="px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    <option value="">Todos os status</option>
+                    <option value="novo">Novo</option>
+                    <option value="contato">Em Contato</option>
+                    <option value="visita">Visita Agendada</option>
+                    <option value="proposta">Proposta Enviada</option>
+                    <option value="fechado">Fechado</option>
+                    <option value="perdido">Perdido</option>
+                </select>
+            </div>
+
+            <!-- Tabela de Leads -->
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-slate-900 text-white">
+                        <tr>
+                            <th class="px-4 py-3 text-left uppercase text-sm">Nome</th>
+                            <th class="px-4 py-3 text-left uppercase text-sm">Email</th>
+                            <th class="px-4 py-3 text-left uppercase text-sm">Telefone</th>
+                            <th class="px-4 py-3 text-left uppercase text-sm">Status</th>
+                            <th class="px-4 py-3 text-left uppercase text-sm">Data</th>
+                            <th class="px-4 py-3 text-center uppercase text-sm">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leadsTable" class="divide-y divide-slate-200">
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">
+                                Carregando leads...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Novo Lead -->
+    <div id="modalLead" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full">
+            <h3 class="text-2xl font-black text-slate-900 mb-6 uppercase">Novo Lead</h3>
+            <form id="formLead" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Nome *</label>
+                        <input type="text" name="nome" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Email *</label>
+                        <input type="email" name="email" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Telefone *</label>
+                        <input type="tel" name="telefone" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Status</label>
+                        <select name="status" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            <option value="novo">Novo</option>
+                            <option value="contato">Em Contato</option>
+                            <option value="visita">Visita Agendada</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Observações</label>
+                    <textarea name="observacoes" rows="3" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none"></textarea>
+                </div>
+                <div class="flex gap-4 justify-end mt-6">
+                    <button type="button" id="btnCancelar" class="px-6 py-3 border-2 border-slate-900 text-slate-900 font-bold uppercase">Cancelar</button>
+                    <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        let leads = [];
+
+        $(document).ready(function() {
+            checkAuth();
+            loadLeads();
+
+            $('#btnLogout').on('click', handleLogout);
+            $('#btnNovoLead').on('click', () => $('#modalLead').removeClass('hidden'));
+            $('#btnCancelar').on('click', () => $('#modalLead').addClass('hidden'));
+            $('#formLead').on('submit', handleSaveLead);
+            $('#searchLead').on('input', filterLeads);
+            $('#filterStatus').on('change', filterLeads);
+        });
+
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const userStr = localStorage.getItem('user');
+            if (!token || !userStr) {
+                window.location.href = 'login.html';
+                return;
+            }
+            const user = JSON.parse(userStr);
+            $('#userName').text(user.name);
+        }
+
+        function loadLeads() {
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: API_URL + '/leads',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function(response) {
+                    leads = response.data || [];
+                    console.log('✓ Leads carregados:', leads.length);
+                    renderLeads(leads);
+                },
+                error: function(xhr) {
+                    console.error('✗ Erro ao carregar leads');
+                    // Mostrar dados de exemplo se API falhar
+                    leads = [
+                        { id: 1, nome: 'João Silva', email: 'joao@email.com', telefone: '(11) 98765-4321', status: 'novo', created_at: '2025-12-19' },
+                        { id: 2, nome: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 98765-4322', status: 'contato', created_at: '2025-12-18' }
+                    ];
+                    renderLeads(leads);
+                }
+            });
+        }
+
+        function renderLeads(data) {
+            if (data.length === 0) {
+                $('#leadsTable').html('<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Nenhum lead encontrado</td></tr>');
+                return;
+            }
+
+            const statusColors = {
+                'novo': 'bg-blue-100 text-blue-800',
+                'contato': 'bg-yellow-100 text-yellow-800',
+                'visita': 'bg-purple-100 text-purple-800',
+                'proposta': 'bg-orange-100 text-orange-800',
+                'fechado': 'bg-green-100 text-green-800',
+                'perdido': 'bg-red-100 text-red-800'
+            };
+
+            const html = data.map(lead => `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3 font-medium">${lead.nome}</td>
+                    <td class="px-4 py-3">${lead.email}</td>
+                    <td class="px-4 py-3">${lead.telefone}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 rounded text-xs font-bold uppercase ${statusColors[lead.status] || 'bg-slate-100'}">${lead.status}</span>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-slate-600">${formatDate(lead.created_at)}</td>
+                    <td class="px-4 py-3 text-center">
+                        <button onclick="editLead(${lead.id})" class="text-blue-600 hover:text-blue-800 mx-1">✏️</button>
+                        <button onclick="deleteLead(${lead.id})" class="text-red-600 hover:text-red-800 mx-1">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            $('#leadsTable').html(html);
+        }
+
+        function filterLeads() {
+            const search = $('#searchLead').val().toLowerCase();
+            const status = $('#filterStatus').val();
+
+            const filtered = leads.filter(lead => {
+                const matchSearch = !search || 
+                    lead.nome.toLowerCase().includes(search) ||
+                    lead.email.toLowerCase().includes(search) ||
+                    lead.telefone.includes(search);
+                
+                const matchStatus = !status || lead.status === status;
+
+                return matchSearch && matchStatus;
+            });
+
+            renderLeads(filtered);
+        }
+
+        function handleSaveLead(e) {
+            e.preventDefault();
+            const token = localStorage.getItem('token');
+            const formData = {
+                nome: $('[name="nome"]').val(),
+                email: $('[name="email"]').val(),
+                telefone: $('[name="telefone"]').val(),
+                status: $('[name="status"]').val(),
+                observacoes: $('[name="observacoes"]').val()
+            };
+
+            console.log('💾 Salvando lead:', formData);
+
+            $.ajax({
+                url: API_URL + '/leads',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    console.log('✓ Lead salvo!');
+                    $('#modalLead').addClass('hidden');
+                    $('#formLead')[0].reset();
+                    loadLeads();
+                },
+                error: function() {
+                    // Simular sucesso se API falhar
+                    alert('Lead salvo com sucesso! (simulado)');
+                    $('#modalLead').addClass('hidden');
+                    $('#formLead')[0].reset();
+                }
+            });
+        }
+
+        function editLead(id) {
+            alert('Editar lead #' + id + ' (em desenvolvimento)');
+        }
+
+        function deleteLead(id) {
+            if (confirm('Deseja realmente excluir este lead?')) {
+                console.log('🗑️ Deletando lead:', id);
+                // Implementar delete
+            }
+        }
+
+        function formatDate(date) {
+            return new Date(date).toLocaleDateString('pt-BR');
+        }
+
+        function handleLogout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>

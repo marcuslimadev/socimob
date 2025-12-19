@@ -29,10 +29,20 @@ export function useAuth() {
     loading.value = true
     error.value = null
 
-    try {
-      const response = await api.post('/auth/login', { email, senha })
+    console.log('🔑 useAuth.login chamado', { email, senha: '***' })
 
-      if (response.data.token) {
+    try {
+      console.log('📡 Enviando requisição para /auth/login...')
+      const response = await api.post('/auth/login', { email, senha })
+      
+      console.log('📥 Resposta recebida:', {
+        status: response.status,
+        data: response.data,
+        success: response.data.success,
+        hasToken: !!response.data.token
+      })
+
+      if (response.data.success && response.data.token) {
         token.value = response.data.token
         user.value = response.data.user
         tenantId.value = response.data.user?.tenant_id || null
@@ -47,15 +57,26 @@ export function useAuth() {
         // Atualizar header de autenticação
         api.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
 
-        // Redirecionar baseado no role
-        await redirectBasedOnRole()
+        console.log('✅ Login bem-sucedido!', { user: user.value.name, role: user.value.role })
         return true
+      } else {
+        const msg = response.data.message || 'Credenciais inválidas'
+        error.value = msg
+        console.error('❌ Login falhou:', msg)
+        return false
       }
     } catch (err) {
-      error.value = err.response?.data?.message || 'Erro ao fazer login'
+      const msg = err.response?.data?.message || err.message || 'Erro ao fazer login'
+      error.value = msg
+      console.error('💥 Exceção no login:', {
+        message: msg,
+        error: err,
+        response: err.response?.data
+      })
       return false
     } finally {
       loading.value = false
+      console.log('🏁 Login finalizado', { loading: loading.value })
     }
   }
 

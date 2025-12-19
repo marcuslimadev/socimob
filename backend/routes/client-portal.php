@@ -23,12 +23,12 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant']], function
 
         // Notificações
         $router->get('/notifications', 'NotificationController@index');
+        $router->get('/notifications/unread/count', 'NotificationController@unreadCount');
+        $router->get('/notifications/summary', 'NotificationController@summary');
+        $router->post('/notifications/mark-all-as-read', 'NotificationController@markAllAsRead');
         $router->get('/notifications/{id}', 'NotificationController@show');
         $router->post('/notifications/{id}/read', 'NotificationController@markAsRead');
         $router->post('/notifications/{id}/unread', 'NotificationController@markAsUnread');
-        $router->post('/notifications/mark-all-as-read', 'NotificationController@markAllAsRead');
         $router->delete('/notifications/{id}', 'NotificationController@destroy');
-        $router->get('/notifications/unread/count', 'NotificationController@unreadCount');
-        $router->get('/notifications/summary', 'NotificationController@summary');
     });
 });

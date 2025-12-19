@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOCIMOB - Sistema de Gestão Imobiliária</title>
+    <script>
+        // Redirecionar para login ou dashboard
+        const token = localStorage.getItem('token');
+        if (token) {
+            window.location.href = '/app/dashboard.html';
+        } else {
+            window.location.href = '/app/login.html';
+        }
+    </script>
+</head>
+<body>
+    <p>Redirecionando...</p>
+</body>
+</html>

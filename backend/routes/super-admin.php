@@ -24,6 +24,7 @@ $router->group(['prefix' => 'api/super-admin', 'middleware' => ['simple-auth']],
     $router->get('/users/{id}', 'SuperAdmin\UserController@show');
     $router->put('/users/{id}', 'SuperAdmin\UserController@update');
     $router->delete('/users/{id}', 'SuperAdmin\UserController@destroy');
+    $router->post('/users/{id}/reset-password', 'SuperAdmin\UserController@resetPassword');
 
     // Tenant Actions
     $router->post('/tenants/{id}/activate', 'SuperAdmin\TenantController@activate');

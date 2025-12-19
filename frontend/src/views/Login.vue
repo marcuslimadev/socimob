@@ -57,28 +57,56 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
+
+console.log('🚀 Login.vue carregado!')
 
 const router = useRouter()
-const authStore = useAuthStore()
+const route = useRoute()
+const auth = useAuth()
 
 const email = ref('')
 const senha = ref('')
 const loading = ref(false)
 const error = ref('')
 
+onMounted(() => {
+  console.log('✅ Login.vue montado! Componente ativo.')
+  console.log('Auth disponível:', !!auth)
+})
+
 const handleLogin = async () => {
+  console.log('🔐 handleLogin CHAMADO!')
+  console.log('Email:', email.value, 'Senha:', senha.value ? '***' : 'vazio')
+  
   loading.value = true
   error.value = ''
   
-  const success = await authStore.login(email.value, senha.value)
+  console.log('🔐 Iniciando login...', { email: email.value })
   
-  if (success) {
-    router.push('/')
-  } else {
-    error.value = authStore.error
+  try {
+    const success = await auth.login(email.value, senha.value)
+    
+    console.log('📥 Resposta do login:', { success, hasError: !!auth.error.value })
+    
+    if (success) {
+      console.log('✅ Login bem-sucedido! Redirecionando...')
+      const redirectPath = String(route.query.redirect || '/')
+      if (redirectPath.startsWith('/configuracoes')) {
+        router.push({ name: 'Settings' })
+      } else {
+        router.push(redirectPath)
+      }
+    } else {
+      const errorMsg = auth.error.value || 'Erro ao fazer login'
+      console.error('❌ Login falhou:', errorMsg)
+      error.value = errorMsg
+    }
+  } catch (err) {
+    console.error('💥 Exceção no login:', err)
+    error.value = 'Erro ao fazer login. Verifique suas credenciais.'
   }
   
   loading.value = false

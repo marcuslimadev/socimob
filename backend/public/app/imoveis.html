@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imóveis - SOCIMOB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+</head>
+<body class="bg-slate-50">
+    <!-- Navbar -->
+    <nav class="bg-slate-900 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold uppercase tracking-tighter cursor-pointer" onclick="window.location.href='dashboard.html'">SOCIMOB</h1>
+            <div class="flex items-center gap-4">
+                <span id="userName" class="font-medium"></span>
+                <button id="btnLogout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold text-sm">Sair</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Conteúdo -->
+    <div class="container mx-auto p-8">
+        <div class="bg-white rounded-lg shadow-xl p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-black text-slate-900 uppercase">Imóveis</h2>
+                <div class="flex gap-3">
+                    <button id="btnImportarAPI" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 font-bold uppercase">
+                        📥 Importar via API
+                    </button>
+                    <button id="btnNovoImovel" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 font-bold uppercase">
+                        + Novo Imóvel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <input type="text" id="searchImovel" placeholder="Buscar imóvel..." 
+                    class="px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                <select id="filterTipo" class="px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    <option value="">Todos os tipos</option>
+                    <option value="casa">Casa</option>
+                    <option value="apartamento">Apartamento</option>
+                    <option value="terreno">Terreno</option>
+                    <option value="comercial">Comercial</option>
+                </select>
+                <select id="filterStatus" class="px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    <option value="">Todos os status</option>
+                    <option value="disponivel">Disponível</option>
+                    <option value="reservado">Reservado</option>
+                    <option value="vendido">Vendido</option>
+                </select>
+                <select id="filterFinalidade" class="px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    <option value="">Todas finalidades</option>
+                    <option value="venda">Venda</option>
+                    <option value="aluguel">Aluguel</option>
+                </select>
+            </div>
+
+            <!-- Tabela de Imóveis com DataTables -->
+            <div class="overflow-x-auto">
+                <table id="tabelaImoveis" class="display w-full">
+                    <thead>
+                        <tr>
+                            <th>Foto</th>
+                            <th>Título</th>
+                            <th>Tipo</th>
+                            <th>Finalidade</th>
+                            <th>Preço</th>
+                            <th>Área</th>
+                            <th>Local</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dados serão carregados via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Importar via API -->
+    <div id="modalImportarAPI" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full my-8">
+            <h3 class="text-2xl font-black text-slate-900 mb-6 uppercase">📥 Importar Imóveis via API</h3>
+            <form id="formImportarAPI" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Portal/Fonte *</label>
+                    <select name="fonte" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                        <option value="">Selecione o portal</option>
+                        <option value="exclusiva">🏠 Exclusiva Lar Imóveis (API Configurada)</option>
+                        <option value="vivareal">Viva Real</option>
+                        <option value="zapimoveis">Zap Imóveis</option>
+                        <option value="olx">OLX Imóveis</option>
+                        <option value="imovelweb">Imovel Web</option>
+                        <option value="custom">API Customizada</option>
+                    </select>
+                </div>
+                
+                <div id="camposAPI" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-900 mb-2">URL da API *</label>
+                        <input type="url" name="api_url" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none" 
+                            placeholder="https://api.exemplo.com/imoveis">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-900 mb-2">API Key (se necessário)</label>
+                        <input type="text" name="api_key" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none" 
+                            placeholder="sua-chave-api">
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 border-2 border-blue-200 p-4 rounded">
+                    <h4 class="font-bold text-slate-900 mb-2">ℹ️ Informações</h4>
+                    <ul class="text-sm text-slate-700 space-y-1 list-disc list-inside">
+                        <li>Configure suas credenciais de API em <a href="configuracoes.html#integracoes" class="text-blue-600 underline">Configurações → Integrações</a></li>
+                        <li>A importação pode levar alguns minutos dependendo da quantidade de imóveis</li>
+                        <li>Imóveis duplicados serão identificados e pulados</li>
+                    </ul>
+                </div>
+
+                <div id="progressoImportacao" class="hidden">
+                    <div class="bg-slate-100 rounded-full h-4 overflow-hidden">
+                        <div id="barraProgresso" class="bg-blue-600 h-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <p id="textoProgresso" class="text-center text-sm text-slate-600 mt-2">Importando...</p>
+                </div>
+
+                <div class="flex gap-4 justify-end mt-6">
+                    <button type="button" id="btnCancelarImportacao" class="px-6 py-3 border-2 border-slate-900 text-slate-900 font-bold uppercase">Cancelar</button>
+                    <button type="submit" id="btnIniciarImportacao" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase">Iniciar Importação</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Novo Imóvel -->
+    <div id="modalImovel" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-4xl w-full my-8">
+            <h3 class="text-2xl font-black text-slate-900 mb-6 uppercase">Novo Imóvel</h3>
+            <form id="formImovel" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Título *</label>
+                        <input type="text" name="titulo" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Tipo *</label>
+                        <select name="tipo" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            <option value="casa">Casa</option>
+                            <option value="apartamento">Apartamento</option>
+                            <option value="terreno">Terreno</option>
+                            <option value="comercial">Comercial</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Finalidade *</label>
+                        <select name="finalidade" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            <option value="venda">Venda</option>
+                            <option value="aluguel">Aluguel</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Preço (R$) *</label>
+                        <input type="number" name="preco" required step="0.01" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Área (m²)</label>
+                        <input type="number" name="area" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Quartos</label>
+                        <input type="number" name="quartos" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Banheiros</label>
+                        <input type="number" name="banheiros" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Endereço *</label>
+                        <input type="text" name="endereco" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-bold text-slate-900 mb-2">Descrição</label>
+                        <textarea name="descricao" rows="4" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none"></textarea>
+                    </div>
+                </div>
+                <div class="flex gap-4 justify-end mt-6">
+                    <button type="button" id="btnCancelarImovel" class="px-6 py-3 border-2 border-slate-900 text-slate-900 font-bold uppercase">Cancelar</button>
+                    <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        let imoveis = [];
+
+        $(document).ready(function() {
+            checkAuth();
+            loadImoveis();
+
+            $('#btnLogout').on('click', handleLogout);
+            $('#btnNovoImovel').on('click', () => $('#modalImovel').removeClass('hidden'));
+            $('#btnCancelarImovel').on('click', () => $('#modalImovel').addClass('hidden'));
+            $('#formImovel').on('submit', handleSaveImovel);
+            // Filtros agora são nativos do DataTables
+            
+            // Importação via API
+            $('#btnImportarAPI').on('click', abrirModalImportacao);
+            $('#btnCancelarImportacao').on('click', fecharModalImportacao);
+            $('[name="fonte"]').on('change', toggleCamposAPI);
+            $('#formImportarAPI').on('submit', iniciarImportacao);
+        });
+
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const userStr = localStorage.getItem('user');
+            if (!token || !userStr) {
+                window.location.href = 'login.html';
+                return;
+            }
+            const user = JSON.parse(userStr);
+            $('#userName').text(user.name);
+        }
+
+        function loadImoveis() {
+            const token = localStorage.getItem('token');
+            
+            // Dados de exemplo
+            imoveis = [
+                { id: 1, titulo: 'Casa de Luxo', tipo: 'casa', finalidade: 'venda', preco: 850000, area: 250, quartos: 4, banheiros: 3, endereco: 'Rua das Flores, 123', status: 'disponivel', descricao: 'Linda casa com piscina' },
+                { id: 2, titulo: 'Apartamento Centro', tipo: 'apartamento', finalidade: 'aluguel', preco: 3500, area: 80, quartos: 2, banheiros: 1, endereco: 'Av. Principal, 456', status: 'disponivel', descricao: 'Apto bem localizado' },
+                { id: 3, titulo: 'Terreno Comercial', tipo: 'terreno', finalidade: 'venda', preco: 450000, area: 500, quartos: 0, banheiros: 0, endereco: 'Rod. BR-101, km 45', status: 'disponivel', descricao: 'Terreno amplo' },
+                { id: 4, titulo: 'Sala Comercial', tipo: 'comercial', finalidade: 'aluguel', preco: 2800, area: 45, quartos: 0, banheiros: 1, endereco: 'Centro Empresarial, sala 201', status: 'disponivel', descricao: 'Sala moderna' }
+            ];
+            
+            renderDataTable(imoveis);
+            
+            /* Descomente quando backend estiver pronto
+            $.ajax({
+                url: API_URL + '/admin/imoveis',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function(response) {
+                    imoveis = response.data || [];
+                    console.log('✓ Imóveis carregados:', imoveis.length);
+                    renderDataTable(imoveis);
+                },
+                error: function(error) {
+                    console.error('Erro ao carregar imóveis:', error);
+                }
+            });
+            */
+        }
+
+        function renderDataTable(data) {
+            // Destruir DataTable existente se houver
+            if ($.fn.DataTable.isDataTable('#tabelaImoveis')) {
+                $('#tabelaImoveis').DataTable().destroy();
+            }
+
+            // Preparar dados para DataTable
+            const tableData = data.map(imovel => [
+                `<span class="text-4xl">${getTipoIcon(imovel.tipo)}</span>`,
+                imovel.titulo,
+                `<span class="capitalize">${imovel.tipo}</span>`,
+                `<span class="capitalize">${imovel.finalidade}</span>`,
+                `R$ ${formatPrice(imovel.preco)}`,
+                imovel.area ? `${imovel.area}m²` : '-',
+                imovel.endereco,
+                getStatusBadge(imovel.status),
+                `<div class="flex gap-2">
+                    <button onclick="editImovel(${imovel.id})" class="text-blue-600 hover:text-blue-800 text-xl" title="Editar">✏️</button>
+                    <button onclick="deleteImovel(${imovel.id})" class="text-red-600 hover:text-red-800 text-xl" title="Excluir">🗑️</button>
+                </div>`
+            ]);
+
+            // Inicializar DataTable
+            $('#tabelaImoveis').DataTable({
+                data: tableData,
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
+                },
+                pageLength: 10,
+                order: [[1, 'asc']], // Ordenar por título
+                columnDefs: [
+                    { orderable: false, targets: [0, 8] }, // Desabilitar ordenação em Foto e Ações
+                    { className: 'text-center', targets: [0, 3, 7, 8] }
+                ]
+            });
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'disponivel': '<span class="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded uppercase">Disponível</span>',
+                'reservado': '<span class="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-bold rounded uppercase">Reservado</span>',
+                'vendido': '<span class="px-3 py-1 bg-red-100 text-red-800 text-xs font-bold rounded uppercase">Vendido</span>'
+            };
+            return badges[status] || badges['disponivel'];
+        }
+
+        function filterImoveis() {
+            const search = $('#searchImovel').val().toLowerCase();
+            const tipo = $('#filterTipo').val();
+            const status = $('#filterStatus').val();
+            const finalidade = $('#filterFinalidade').val();
+
+            const filtered = imoveis.filter(imovel => {
+                const matchSearch = !search || 
+                    imovel.titulo.toLowerCase().includes(search) ||
+                    imovel.endereco.toLowerCase().includes(search);
+                const matchTipo = !tipo || imovel.tipo === tipo;
+                const matchStatus = !status || imovel.status === status;
+                const matchFinalidade = !finalidade || imovel.finalidade === finalidade;
+
+                return matchSearch && matchTipo && matchStatus && matchFinalidade;
+            });
+
+            renderImoveis(filtered);
+        }
+
+        function handleSaveImovel(e) {
+            e.preventDefault();
+            const token = localStorage.getItem('token');
+            const formData = {
+                titulo: $('[name="titulo"]').val(),
+                tipo: $('[name="tipo"]').val(),
+                finalidade: $('[name="finalidade"]').val(),
+                preco: parseFloat($('[name="preco"]').val()),
+                area: parseFloat($('[name="area"]').val()) || null,
+                quartos: parseInt($('[name="quartos"]').val()) || null,
+                banheiros: parseInt($('[name="banheiros"]').val()) || null,
+                endereco: $('[name="endereco"]').val(),
+                descricao: $('[name="descricao"]').val()
+            };
+
+            console.log('💾 Salvando imóvel:', formData);
+            alert('Imóvel salvo com sucesso! (simulado)');
+            $('#modalImovel').addClass('hidden');
+            $('#formImovel')[0].reset();
+        }
+
+        function editImovel(id) {
+            alert('Editar imóvel #' + id + ' (em desenvolvimento)');
+        }
+
+        function deleteImovel(id) {
+            if (confirm('Deseja realmente excluir este imóvel?')) {
+                console.log('🗑️ Deletando imóvel:', id);
+            }
+        }
+
+        function getTipoIcon(tipo) {
+            const icons = {
+                'casa': '🏠',
+                'apartamento': '🏢',
+                'terreno': '🏞️',
+                'comercial': '🏪'
+            };
+            return icons[tipo] || '🏘️';
+        }
+
+        function formatPrice(price) {
+            return price.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        }
+
+        // === IMPORTAÇÃO VIA API ===
+        function abrirModalImportacao() {
+            $('#modalImportarAPI').removeClass('hidden');
+            $('#formImportarAPI')[0].reset();
+            $('#camposAPI').addClass('hidden');
+            $('#progressoImportacao').addClass('hidden');
+        }
+
+        function fecharModalImportacao() {
+            $('#modalImportarAPI').addClass('hidden');
+        }
+
+        function toggleCamposAPI() {
+            const fonte = $('[name="fonte"]').val();
+            if (fonte === 'custom') {
+                $('#camposAPI').removeClass('hidden');
+                $('[name="api_url"]').attr('required', true);
+            } else {
+                $('#camposAPI').addClass('hidden');
+                $('[name="api_url"]').attr('required', false);
+            }
+        }
+
+        async function iniciarImportacao(e) {
+            e.preventDefault();
+            
+            const fonte = $('[name="fonte"]').val();
+            const api_url = $('[name="api_url"]').val();
+            const api_key = $('[name="api_key"]').val();
+            const token = localStorage.getItem('token');
+
+            if (!fonte) {
+                alert('⚠️ Selecione um portal/fonte para importar');
+                return;
+            }
+
+            console.log('📥 Iniciando importação:', { fonte, api_url });
+
+            // Mostrar progresso
+            $('#btnIniciarImportacao').prop('disabled', true).text('Importando...');
+            $('#progressoImportacao').removeClass('hidden');
+            $('#barraProgresso').css('width', '10%');
+            $('#textoProgresso').text('Conectando à API...');
+            
+            try {
+                // Chamada REAL da API
+                const response = await $.ajax({
+                    url: `${API_URL}/admin/imoveis/importar`,
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    data: JSON.stringify({ fonte, api_url, api_key }),
+                    xhr: function() {
+                        const xhr = new window.XMLHttpRequest();
+                        // Simular progresso durante a requisição
+                        let progress = 10;
+                        const interval = setInterval(() => {
+                            progress = Math.min(progress + 10, 90);
+                            $('#barraProgresso').css('width', progress + '%');
+                            $('#textoProgresso').text(`Importando... ${progress}%`);
+                        }, 1000);
+                        
+                        xhr.addEventListener('load', () => {
+                            clearInterval(interval);
+                            $('#barraProgresso').css('width', '100%');
+                            $('#textoProgresso').text('Concluído!');
+                        });
+                        
+                        return xhr;
+                    }
+                });
+
+                console.log('✅ Resposta da importação:', response);
+
+                const mensagem = `✅ Importação concluída com sucesso!\n\n` + 
+                      `• ${response.importados || 0} imóveis importados\n` + 
+                      `• ${response.duplicados || 0} duplicados (atualizados)\n` + 
+                      `• ${response.erros || 0} erros\n` +
+                      `• Total processado: ${response.total || 0}`;
+
+                alert(mensagem);
+
+                fecharModalImportacao();
+                loadImoveis(); // Recarregar lista
+
+            } catch (error) {
+                console.error('Erro na importação:', error);
+                const errorMsg = error.responseJSON?.error || error.responseJSON?.message || error.message || 'Erro desconhecido';
+                alert('❌ Erro ao importar imóveis:\n\n' + errorMsg);
+            } finally {
+                $('#btnIniciarImportacao').prop('disabled', false).text('Iniciar Importação');
+                $('#progressoImportacao').addClass('hidden');
+                $('#barraProgresso').css('width', '0%');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>

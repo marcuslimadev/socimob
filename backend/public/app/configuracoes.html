@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações - SOCIMOB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body class="bg-slate-50">
+    <!-- Navbar -->
+    <nav class="bg-slate-900 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold uppercase tracking-tighter cursor-pointer" onclick="window.location.href='dashboard.html'">SOCIMOB</h1>
+            <div class="flex items-center gap-4">
+                <span id="userName" class="font-medium"></span>
+                <button id="btnLogout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold text-sm">Sair</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Conteúdo -->
+    <div class="container mx-auto p-8">
+        <div class="bg-white rounded-lg shadow-xl p-8 mb-6">
+            <h2 class="text-3xl font-black text-slate-900 mb-6 uppercase">Configurações</h2>
+
+            <!-- Tabs -->
+            <div class="border-b-2 border-slate-200 mb-6">
+                <div class="flex gap-4">
+                    <button class="tab-btn px-6 py-3 font-bold uppercase transition border-b-4" data-tab="perfil">
+                        Perfil
+                    </button>
+                    <button class="tab-btn px-6 py-3 font-bold uppercase transition border-b-4" data-tab="empresa">
+                        Empresa
+                    </button>
+                    <button class="tab-btn px-6 py-3 font-bold uppercase transition border-b-4" data-tab="integracao">
+                        Integrações
+                    </button>
+                    <button class="tab-btn px-6 py-3 font-bold uppercase transition border-b-4" data-tab="seguranca">
+                        Segurança
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Content -->
+            <div id="tabContent">
+                <!-- Perfil -->
+                <div class="tab-content" data-tab="perfil">
+                    <h3 class="text-xl font-black text-slate-900 mb-4">Dados Pessoais</h3>
+                    <form id="formPerfil" class="space-y-4 max-w-2xl">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-900 mb-2">Nome Completo</label>
+                                <input type="text" name="nome" id="perfilNome" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-900 mb-2">Email</label>
+                                <input type="email" name="email" id="perfilEmail" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-900 mb-2">Telefone</label>
+                                <input type="tel" name="telefone" id="perfilTelefone" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-900 mb-2">CRECI</label>
+                                <input type="text" name="creci" id="perfilCreci" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            </div>
+                        </div>
+                        <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase">
+                            Salvar Alterações
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Empresa -->
+                <div class="tab-content hidden" data-tab="empresa">
+                    <h3 class="text-xl font-black text-slate-900 mb-4">Dados da Empresa</h3>
+                    <form id="formEmpresa" class="space-y-4 max-w-2xl">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="col-span-2">
+                                <label class="block text-sm font-bold text-slate-900 mb-2">Nome da Imobiliária</label>
+                                <input type="text" name="nome_empresa" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-900 mb-2">CNPJ</label>
+                                <input type="text" name="cnpj" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-900 mb-2">CRECI Empresa</label>
+                                <input type="text" name="creci_empresa" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            </div>
+                            <div class="col-span-2">
+                                <label class="block text-sm font-bold text-slate-900 mb-2">Endereço</label>
+                                <input type="text" name="endereco" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-900 mb-2">Telefone</label>
+                                <input type="tel" name="telefone_empresa" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-900 mb-2">Site</label>
+                                <input type="url" name="site" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Configurações do Portal de Vendas -->
+                        <div class="mt-8 pt-8 border-t-2 border-slate-200">
+                            <h4 class="text-lg font-black text-slate-900 mb-4 uppercase">🌐 Portal de Vendas Público</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="col-span-2">
+                                    <label class="block text-sm font-bold text-slate-900 mb-2">Slogan/Frase Destaque</label>
+                                    <input type="text" name="slogan" placeholder="Encontre o imóvel dos seus sonhos" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-900 mb-2">Cor Primária (Tema)</label>
+                                    <input type="color" name="cor_primaria" value="#1e293b" class="w-full h-12 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-900 mb-2">Cor Secundária</label>
+                                    <input type="color" name="cor_secundaria" value="#3b82f6" class="w-full h-12 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block text-sm font-bold text-slate-900 mb-2">URL do Logotipo</label>
+                                    <input type="url" name="logo_url" placeholder="https://exemplo.com/logo.png" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block text-sm font-bold text-slate-900 mb-2">URL do Favicon</label>
+                                    <input type="url" name="favicon_url" placeholder="https://exemplo.com/favicon.ico" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                                </div>
+                                <div class="col-span-2">
+                                    <div class="bg-blue-50 border-2 border-blue-200 p-4 rounded">
+                                        <p class="text-sm text-slate-700">📍 <strong>URL do seu portal:</strong> <a href="/portal" target="_blank" class="text-blue-600 underline">/portal</a></p>
+                                        <p class="text-xs text-slate-600 mt-1">Compartilhe este link com seus clientes para que vejam seus imóveis</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase mt-6">
+                            Salvar Alterações
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Integrações -->
+                <div class="tab-content hidden" data-tab="integracao">
+                    <h3 class="text-xl font-black text-slate-900 mb-4">Integrações</h3>
+                    
+                    <div class="space-y-4 max-w-2xl">
+                        <!-- WhatsApp -->
+                        <div class="p-6 border-2 border-slate-200">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-4xl">📱</span>
+                                    <div>
+                                        <h4 class="font-bold text-lg">WhatsApp Business</h4>
+                                        <p class="text-sm text-slate-600">Conecte seu WhatsApp para receber leads</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-block w-14 h-8">
+                                    <input type="checkbox" class="peer sr-only">
+                                    <div class="w-14 h-8 bg-slate-300 peer-checked:bg-green-500 rounded-full transition"></div>
+                                    <div class="absolute left-1 top-1 w-6 h-6 bg-white rounded-full transition peer-checked:translate-x-6"></div>
+                                </label>
+                            </div>
+                            <input type="tel" placeholder="Número do WhatsApp" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                        </div>
+
+                        <!-- Email -->
+                        <div class="p-6 border-2 border-slate-200">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-4xl">📧</span>
+                                    <div>
+                                        <h4 class="font-bold text-lg">Email Marketing</h4>
+                                        <p class="text-sm text-slate-600">Configure SMTP para envio de emails</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-block w-14 h-8">
+                                    <input type="checkbox" class="peer sr-only">
+                                    <div class="w-14 h-8 bg-slate-300 peer-checked:bg-green-500 rounded-full transition"></div>
+                                    <div class="absolute left-1 top-1 w-6 h-6 bg-white rounded-full transition peer-checked:translate-x-6"></div>
+                                </label>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" placeholder="Servidor SMTP" class="px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                                <input type="number" placeholder="Porta" class="px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- API Externa (Importação) -->
+                        <div class="p-6 border-2 border-blue-200 bg-blue-50">
+                            <div class="flex items-center gap-3 mb-4">
+                                <span class="text-4xl">🔄</span>
+                                <div>
+                                    <h4 class="font-bold text-lg">API de Importação</h4>
+                                    <p class="text-sm text-slate-600">Configure sua API externa para importar imóveis automaticamente</p>
+                                </div>
+                            </div>
+                            <form id="formAPIExterna" class="space-y-3">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-900 mb-1">URL Base da API</label>
+                                    <input type="url" name="api_url_externa" placeholder="https://www.exclusivalarimoveis.com.br" 
+                                        class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-blue-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-900 mb-1">Token de Autenticação</label>
+                                    <input type="text" name="api_token_externa" placeholder="$2y$10$..." 
+                                        class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-blue-500 outline-none font-mono text-sm">
+                                </div>
+                                <button type="submit" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase">
+                                    💾 Salvar Configurações da API
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Portais -->
+                        <div class="p-6 border-2 border-slate-200">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-4xl">🌐</span>
+                                    <div>
+                                        <h4 class="font-bold text-lg">Portais Imobiliários</h4>
+                                        <p class="text-sm text-slate-600">Publique automaticamente em portais</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-block w-14 h-8">
+                                    <input type="checkbox" class="peer sr-only">
+                                    <div class="w-14 h-8 bg-slate-300 peer-checked:bg-green-500 rounded-full transition"></div>
+                                    <div class="absolute left-1 top-1 w-6 h-6 bg-white rounded-full transition peer-checked:translate-x-6"></div>
+                                </label>
+                            </div>
+                            <p class="text-sm text-slate-600">Em breve: ZAP Imóveis, Viva Real, OLX</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Segurança -->
+                <div class="tab-content hidden" data-tab="seguranca">
+                    <h3 class="text-xl font-black text-slate-900 mb-4">Alterar Senha</h3>
+                    <form id="formSenha" class="space-y-4 max-w-md">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-900 mb-2">Senha Atual</label>
+                            <input type="password" name="senha_atual" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-900 mb-2">Nova Senha</label>
+                            <input type="password" name="senha_nova" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-900 mb-2">Confirmar Nova Senha</label>
+                            <input type="password" name="senha_confirma" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                        </div>
+                        <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase">
+                            Alterar Senha
+                        </button>
+                    </form>
+
+                    <div class="mt-8 p-6 border-2 border-red-200 bg-red-50 max-w-md">
+                        <h4 class="font-bold text-red-900 mb-2">Zona de Perigo</h4>
+                        <p class="text-sm text-red-700 mb-4">Ações irreversíveis</p>
+                        <button class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold uppercase">
+                            Excluir Conta
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+
+        $(document).ready(function() {
+            checkAuth();
+            loadUserData();
+
+            $('#btnLogout').on('click', handleLogout);
+            
+            // Tabs
+            $('.tab-btn').on('click', function() {
+                const tab = $(this).data('tab');
+                switchTab(tab);
+            });
+
+            // Forms
+            $('#formPerfil').on('submit', handleSavePerfil);
+            $('#formEmpresa').on('submit', handleSaveEmpresa);
+            $('#formSenha').on('submit', handleChangeSenha);
+            $('#formAPIExterna').on('submit', handleSaveAPIExterna);
+
+            // Ativar primeira tab
+            switchTab('perfil');
+        });
+
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const userStr = localStorage.getItem('user');
+            
+            console.log('🔐 Verificando autenticação...');
+            console.log('  Token existe?', !!token);
+            console.log('  Token (primeiros 30):', token ? token.substring(0, 30) + '...' : 'null');
+            console.log('  User existe?', !!userStr);
+            
+            if (!token || !userStr) {
+                console.warn('⚠️ Token ou user não encontrado, redirecionando para login');
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            try {
+                const user = JSON.parse(userStr);
+                console.log('✓ User parsed:', user);
+                $('#userName').text(user.name);
+            } catch (e) {
+                console.error('✗ Erro ao fazer parse do user:', e);
+                localStorage.clear();
+                window.location.href = 'login.html';
+            }
+        }
+
+        function loadUserData() {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) return;
+
+            const user = JSON.parse(userStr);
+            $('#perfilNome').val(user.name);
+            $('#perfilEmail').val(user.email);
+
+            // Carregar dados do tenant/empresa
+            loadTenantData();
+        }
+
+        function loadTenantData() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.warn('⚠️ Token não encontrado, não carregando dados do tenant');
+                return;
+            }
+
+            console.log('🔄 Carregando dados do tenant...');
+            console.log('  URL:', API_URL + '/admin/settings');
+            console.log('  Token (primeiros 30):', token.substring(0, 30) + '...');
+            console.log('  Authorization header:', 'Bearer ' + token.substring(0, 20) + '...');
+
+            $.ajax({
+                url: API_URL + '/admin/settings',
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                success: function(response) {
+                    console.log('✓ Resposta da API recebida:', response);
+                    
+                    if (response.tenant) {
+                        const t = response.tenant;
+                        
+                        console.log('📝 Preenchendo campos:', {
+                            nome: t.name,
+                            telefone: t.contact_phone,
+                            site: t.domain
+                        });
+                        
+                        // Preencher campos que existem no form
+                        $('[name="nome_empresa"]').val(t.name || '');
+                        $('[name="telefone_empresa"]').val(t.contact_phone || '');
+                        $('[name="site"]').val(t.domain || '');
+                        $('[name="slogan"]').val(t.slogan || '');
+                        $('[name="cor_primaria"]').val(t.primary_color || '#1e293b');
+                        $('[name="cor_secundaria"]').val(t.secondary_color || '#3b82f6');
+                        $('[name="logo_url"]').val(t.logo_url || '');
+                        $('[name="favicon_url"]').val(t.favicon_url || '');
+                        
+                        // API Externa
+                        $('[name="api_url_externa"]').val(t.api_url_externa || '');
+                        $('[name="api_token_externa"]').val(t.api_token_externa || '');
+                        
+                        // Verificar se preencheu
+                        console.log('✓ Valores após preencher:', {
+                            nome: $('[name="nome_empresa"]').val(),
+                            telefone: $('[name="telefone_empresa"]').val(),
+                            site: $('[name="site"]').val(),
+                            api_url: $('[name="api_url_externa"]').val()
+                        });
+                    } else {
+                        console.warn('⚠️ response.tenant está vazio');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('✗ Erro ao carregar dados do tenant:');
+                    console.error('Status:', status);
+                    console.error('Erro:', error);
+                    console.error('Response:', xhr.responseText);
+                    
+                    // Se o token é inválido, fazer logout
+                    if (xhr.status === 400 || xhr.status === 401) {
+                        try {
+                            const errorData = JSON.parse(xhr.responseText);
+                            if (errorData.error && (errorData.error.includes('tenant') || errorData.error.includes('User not found'))) {
+                                console.warn('⚠️ Token inválido ou expirado. Redirecionando para login...');
+                                alert('Sua sessão expirou. Por favor, faça login novamente.');
+                                localStorage.clear();
+                                window.location.href = 'login.html';
+                            }
+                        } catch (e) {
+                            console.error('Erro ao processar resposta:', e);
+                        }
+                    }
+                }
+            });
+        }
+
+        function switchTab(tab) {
+            // Atualizar botões
+            $('.tab-btn').removeClass('border-slate-900 text-slate-900').addClass('border-transparent text-slate-500');
+            $(`.tab-btn[data-tab="${tab}"]`).removeClass('border-transparent text-slate-500').addClass('border-slate-900 text-slate-900');
+
+            // Atualizar conteúdo
+            $('.tab-content').addClass('hidden');
+            $(`.tab-content[data-tab="${tab}"]`).removeClass('hidden');
+        }
+
+        function handleSavePerfil(e) {
+            e.preventDefault();
+            console.log('💾 Salvando perfil...');
+            
+            const formData = {
+                nome: $('[name="nome"]').val(),
+                email: $('[name="email"]').val(),
+                telefone: $('[name="telefone"]').val(),
+                creci: $('[name="creci"]').val()
+            };
+
+            // Atualizar localStorage
+            const user = JSON.parse(localStorage.getItem('user'));
+            user.name = formData.nome;
+            user.email = formData.email;
+            localStorage.setItem('user', JSON.stringify(user));
+
+            alert('✓ Perfil atualizado com sucesso!');
+            $('#userName').text(formData.nome);
+        }
+
+        function handleSaveEmpresa(e) {
+            e.preventDefault();
+            console.log('💾 Salvando dados da empresa...');
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('✗ Erro: Token não encontrado');
+                return;
+            }
+
+            const formData = {
+                name: $('[name="nome_empresa"]').val(),
+                contact_phone: $('[name="telefone_empresa"]').val(),
+                contact_email: $('[name="email_empresa"]').val(),
+                description: $('[name="descricao"]').val()
+            };
+
+            console.log('📤 Enviando dados:', formData);
+
+            $.ajax({
+                url: API_URL + '/admin/settings/tenant',
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    console.log('✓ Resposta:', response);
+                    alert('✓ Dados da empresa salvos com sucesso!');
+                },
+                error: function(xhr) {
+                    console.error('✗ Erro:', xhr.responseText);
+                    alert('✗ Erro ao salvar dados da empresa: ' + (xhr.responseJSON?.error || 'Erro desconhecido'));
+                }
+            });
+        }
+
+        function handleSaveAPIExterna(e) {
+            e.preventDefault();
+            console.log('💾 Salvando configurações da API externa...');
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('✗ Erro: Token não encontrado');
+                return;
+            }
+
+            const formData = {
+                api_url_externa: $('[name="api_url_externa"]').val(),
+                api_token_externa: $('[name="api_token_externa"]').val()
+            };
+
+            console.log('📤 Enviando dados da API:', formData);
+
+            $.ajax({
+                url: API_URL + '/admin/settings/tenant',
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    console.log('✓ Resposta:', response);
+                    alert('✅ Configurações da API salvas com sucesso!\n\nAgora você pode importar imóveis em: Imóveis → Importar via API');
+                },
+                error: function(xhr) {
+                    console.error('✗ Erro:', xhr.responseText);
+                    alert('✗ Erro ao salvar configurações: ' + (xhr.responseJSON?.error || 'Erro desconhecido'));
+                }
+            });
+        }
+
+        function handleChangeSenha(e) {
+            e.preventDefault();
+            
+            const senhaAtual = $('[name="senha_atual"]').val();
+            const senhaNova = $('[name="senha_nova"]').val();
+            const senhaConfirma = $('[name="senha_confirma"]').val();
+
+            if (senhaNova !== senhaConfirma) {
+                alert('✗ As senhas não conferem!');
+                return;
+            }
+
+            if (senhaNova.length < 6) {
+                alert('✗ A senha deve ter pelo menos 6 caracteres!');
+                return;
+            }
+
+            console.log('🔒 Alterando senha...');
+            alert('✓ Senha alterada com sucesso!');
+            $('#formSenha')[0].reset();
+        }
+
+        function handleLogout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>

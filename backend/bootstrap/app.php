@@ -62,6 +62,8 @@ $app->middleware([
 $app->routeMiddleware([
     'auth' => App\Http\Middleware\Authenticate::class,
     'simple-auth' => App\Http\Middleware\SimpleTokenAuth::class,
+    'auth:api' => App\Http\Middleware\SimpleTokenAuth::class,
+    'validate-tenant-auth' => App\Http\Middleware\ValidateTenantAuth::class,
 ]);
 
 /*
@@ -84,7 +86,13 @@ $app->router->group([
     'namespace' => 'App\Http\Controllers',
 ], function ($router) {
     require __DIR__ . '/../routes/web.php';
+    require __DIR__ . '/../routes/admin.php';
     require __DIR__ . '/../routes/super-admin.php';
+    require __DIR__ . '/../routes/client-portal.php';
+    require __DIR__ . '/../routes/subscriptions.php';
+    require __DIR__ . '/../routes/themes.php';
+    require __DIR__ . '/../routes/domains.php';
+    require __DIR__ . '/../routes/portal.php';
 });
 
 return $app;

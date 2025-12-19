@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status da Integração API</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Status da Integração API - Exclusiva Lar Imóveis</h1>
+        
+        <!-- Diagnóstico Atual -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold text-red-600 mb-4">🔍 Diagnóstico Atual</h2>
+            
+            <div class="space-y-4">
+                <div class="flex items-start space-x-3">
+                    <div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">✓</div>
+                    <div>
+                        <strong>Sistema de Importação:</strong> Funcionando corretamente
+                        <p class="text-gray-600 text-sm">Todas as funcionalidades de importação, mapeamento de dados e interface estão implementadas.</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start space-x-3">
+                    <div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">✓</div>
+                    <div>
+                        <strong>API Exclusiva:</strong> Conectividade estabelecida
+                        <p class="text-gray-600 text-sm">O sistema consegue acessar a API da Exclusiva Lar Imóveis em https://www.exclusivalarimoveis.com.br</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start space-x-3">
+                    <div class="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">✗</div>
+                    <div>
+                        <strong>Token de Autenticação:</strong> Inválido
+                        <p class="text-gray-600 text-sm">O token atual (<code class="bg-gray-100 px-1 rounded">\.wEfBonZldcjuVQ.pD5p8gBRNrPlHjVwruaG5HAui2XCG9O</code>) está sendo rejeitado pela API.</p>
+                        <p class="text-red-600 text-sm mt-1"><strong>Erro retornado:</strong> "Token inválido" (HTTP 401)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Configuração Atual -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold text-blue-600 mb-4">⚙️ Configuração Atual</h2>
+            
+            <div class="bg-gray-50 p-4 rounded-md">
+                <p><strong>Tenant:</strong> Exclusiva Lar Imóveis (ID: 1)</p>
+                <p><strong>API URL:</strong> https://www.exclusivalarimoveis.com.br</p>
+                <p><strong>Endpoint:</strong> /api/v1/app/imovel/lista</p>
+                <p><strong>Método:</strong> GET com parâmetros pagina/limite</p>
+                <p><strong>Autenticação:</strong> Header 'token'</p>
+            </div>
+        </div>
+        
+        <!-- Próximos Passos -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold text-green-600 mb-4">🎯 Próximos Passos</h2>
+            
+            <div class="space-y-4">
+                <div class="border-l-4 border-yellow-500 pl-4">
+                    <h3 class="font-semibold text-yellow-700">1. Obter Token Válido</h3>
+                    <p class="text-gray-600">Entre em contato com a equipe técnica da Exclusiva Lar Imóveis para:</p>
+                    <ul class="list-disc ml-6 text-gray-600">
+                        <li>Solicitar token válido para integração</li>
+                        <li>Confirmar documentação da API</li>
+                        <li>Verificar processo de cadastro de desenvolvedores</li>
+                    </ul>
+                </div>
+                
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="font-semibold text-blue-700">2. Testar Token</h3>
+                    <p class="text-gray-600">Assim que obtiver o token válido:</p>
+                    <ul class="list-disc ml-6 text-gray-600">
+                        <li>Acessar <a href="teste-api.html" class="text-blue-600 underline">página de teste</a></li>
+                        <li>Inserir o novo token</li>
+                        <li>Validar conectividade</li>
+                    </ul>
+                </div>
+                
+                <div class="border-l-4 border-green-500 pl-4">
+                    <h3 class="font-semibold text-green-700">3. Atualizar Sistema</h3>
+                    <p class="text-gray-600">Com o token funcionando:</p>
+                    <ul class="list-disc ml-6 text-gray-600">
+                        <li>Atualizar nas configurações do tenant</li>
+                        <li>Testar importação completa</li>
+                        <li>Sistema estará 100% funcional</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Informações de Contato -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-semibold text-purple-600 mb-4">📞 Informações de Contato</h2>
+            
+            <div class="bg-purple-50 p-4 rounded-md">
+                <p class="mb-2"><strong>Site:</strong> <a href="https://www.exclusivalarimoveis.com.br" class="text-purple-600 underline">www.exclusivalarimoveis.com.br</a></p>
+                <p class="mb-2"><strong>Suporte técnico necessário:</strong> Token válido para API de integração</p>
+                <p class="text-sm text-gray-600">Mencione que você está desenvolvendo uma integração com a plataforma deles e precisa de credenciais de API.</p>
+            </div>
+        </div>
+        
+        <!-- Botões de Ação -->
+        <div class="mt-8 flex space-x-4">
+            <a href="teste-api.html" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Página de Teste da API
+            </a>
+            <a href="imoveis.html" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                Voltar para Imóveis
+            </a>
+            <a href="configuracoes.html" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                Configurações do Sistema
+            </a>
+        </div>
+    </div>
+</body>
+</html>

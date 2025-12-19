@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste API Exclusiva</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Teste API Exclusiva</h1>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Configurações da API</h2>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">URL Base:</label>
+                <input type="text" id="urlBase" value="https://www.exclusivalarimoveis.com.br" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Token:</label>
+                <input type="text" id="token" value="" 
+                       placeholder="Cole aqui o token válido fornecido pela Exclusiva Lar Imóveis"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm">
+                <p class="text-sm text-red-600 mt-1">⚠️ Token atual é inválido. Contate a Exclusiva para obter um token válido.</p>
+            </div>
+            
+            <button onclick="testarAPI()" 
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Testar API
+            </button>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Resultado do Teste</h2>
+            <pre id="resultado" class="bg-gray-100 p-4 rounded-md text-sm overflow-auto h-96"></pre>
+        </div>
+    </div>
+
+    <script>
+        function testarAPI() {
+            const urlBase = document.getElementById('urlBase').value;
+            const token = document.getElementById('token').value;
+            const resultado = document.getElementById('resultado');
+            
+            resultado.textContent = 'Testando API...\n';
+            
+            // Testar endpoint direto via CORS (provavelmente vai falhar, mas vamos tentar)
+            fetch(urlBase + '/api/v1/app/imovel/lista?pagina=1&limite=5', {
+                method: 'GET',
+                headers: {
+                    'token': token,
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            })
+            .then(response => {
+                resultado.textContent += `Status direto: ${response.status}\n`;
+                return response.text();
+            })
+            .then(data => {
+                resultado.textContent += `Resposta direta: ${data}\n\n`;
+                testarViaBackend();
+            })
+            .catch(error => {
+                resultado.textContent += `Erro CORS (esperado): ${error.message}\n\n`;
+                testarViaBackend();
+            });
+        }
+        
+        function testarViaBackend() {
+            const urlBase = document.getElementById('urlBase').value;
+            const token = document.getElementById('token').value;
+            const resultado = document.getElementById('resultado');
+            
+            resultado.textContent += 'Testando via backend...\n';
+            
+            // Testar via nosso backend
+            fetch('/admin/importacao/teste-api', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('auth_token')
+                },
+                body: JSON.stringify({
+                    url: urlBase,
+                    token: token
+                })
+            })
+            .then(response => {
+                resultado.textContent += `Status backend: ${response.status}\n`;
+                return response.json();
+            })
+            .then(data => {
+                resultado.textContent += `Resposta backend:\n${JSON.stringify(data, null, 2)}\n`;
+            })
+            .catch(error => {
+                resultado.textContent += `Erro backend: ${error.message}\n`;
+            });
+        }
+    </script>
+</body>
+</html>

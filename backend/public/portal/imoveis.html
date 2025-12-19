@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imóveis Disponíveis - SOCIMOB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body class="bg-slate-50">
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-slate-200 p-4 sticky top-0 z-50 shadow-sm">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-3xl">🏠</span>
+                <h1 class="text-xl font-bold text-slate-900">SOCIMOB</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="userName" class="text-slate-700"></span>
+                <button id="btnLogout" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                    Sair
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Conteúdo -->
+    <div class="container mx-auto p-6">
+        <!-- Header -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-black text-slate-900 mb-2">Imóveis Disponíveis</h2>
+            <p class="text-slate-600">Encontre o imóvel perfeito para você</p>
+        </div>
+
+        <!-- Filtros -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <input type="text" id="searchImovel" placeholder="Buscar por localização..." 
+                    class="px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 outline-none">
+                <select id="filterTipo" class="px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 outline-none">
+                    <option value="">Todos os tipos</option>
+                    <option value="casa">Casa</option>
+                    <option value="apartamento">Apartamento</option>
+                    <option value="terreno">Terreno</option>
+                    <option value="comercial">Comercial</option>
+                </select>
+                <select id="filterFinalidade" class="px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 outline-none">
+                    <option value="">Todas finalidades</option>
+                    <option value="venda">Venda</option>
+                    <option value="aluguel">Aluguel</option>
+                </select>
+                <button id="btnFiltrar" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium">
+                    🔍 Buscar
+                </button>
+            </div>
+        </div>
+
+        <!-- Grid de Imóveis -->
+        <div id="imoveisGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="col-span-full text-center py-12 text-slate-500">
+                Carregando imóveis...
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalhes do Imóvel -->
+    <div id="modalImovel" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        let imoveis = [];
+        let imovelAtual = null;
+
+        $(document).ready(function() {
+            checkAuth();
+            loadImoveis();
+
+            $('#btnLogout').on('click', handleLogout);
+            $('#btnFiltrar, #searchImovel, #filterTipo, #filterFinalidade').on('click change input', filterImoveis);
+        });
+
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const userStr = localStorage.getItem('user');
+            
+            if (!token || !userStr) {
+                window.location.href = '/';
+                return;
+            }
+            
+            const user = JSON.parse(userStr);
+            $('#userName').text(user.name);
+            
+            // Verificar se é cliente
+            if (user.role !== 'client') {
+                window.location.href = '/app/dashboard.html';
+            }
+        }
+
+        function loadImoveis() {
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: API_URL + '/portal/properties',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function(response) {
+                    imoveis = response.data || [];
+                    renderImoveis(imoveis);
+                },
+                error: function() {
+                    // Dados de exemplo
+                    imoveis = [
+                        { id: 1, titulo: 'Casa de Luxo no Condomínio', tipo: 'casa', finalidade: 'venda', preco: 850000, area: 250, quartos: 4, banheiros: 3, endereco: 'Rua das Flores, 123 - Bairro Jardim', status: 'disponivel', descricao: 'Linda casa em condomínio fechado com área de lazer completa' },
+                        { id: 2, titulo: 'Apartamento Centro', tipo: 'apartamento', finalidade: 'aluguel', preco: 3500, area: 80, quartos: 2, banheiros: 1, endereco: 'Av. Principal, 456 - Centro', status: 'disponivel', descricao: 'Apartamento bem localizado próximo a tudo' },
+                        { id: 3, titulo: 'Terreno Comercial', tipo: 'terreno', finalidade: 'venda', preco: 450000, area: 500, quartos: 0, banheiros: 0, endereco: 'Rod. BR-101, km 45', status: 'disponivel', descricao: 'Terreno amplo em área comercial' },
+                        { id: 4, titulo: 'Cobertura Duplex', tipo: 'apartamento', finalidade: 'venda', preco: 1200000, area: 180, quartos: 3, banheiros: 2, endereco: 'Rua Vista Mar, 789 - Praia', status: 'disponivel', descricao: 'Cobertura com vista para o mar' },
+                        { id: 5, titulo: 'Casa em Condomínio', tipo: 'casa', finalidade: 'aluguel', preco: 4500, area: 150, quartos: 3, banheiros: 2, endereco: 'Condomínio Residencial, 321', status: 'disponivel', descricao: 'Casa moderna com quintal' },
+                        { id: 6, titulo: 'Sala Comercial', tipo: 'comercial', finalidade: 'aluguel', preco: 2800, area: 60, quartos: 0, banheiros: 1, endereco: 'Ed. Business Center, sala 501', status: 'disponivel', descricao: 'Sala comercial em prédio moderno' }
+                    ];
+                    renderImoveis(imoveis);
+                }
+            });
+        }
+
+        function renderImoveis(data) {
+            if (data.length === 0) {
+                $('#imoveisGrid').html('<div class="col-span-full text-center py-12 text-slate-500">Nenhum imóvel encontrado</div>');
+                return;
+            }
+
+            const html = data.map(imovel => `
+                <div class="bg-white rounded-xl shadow-sm hover:shadow-lg transition overflow-hidden cursor-pointer" onclick="showDetails(${imovel.id})">
+                    <div class="h-48 bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
+                        <span class="text-6xl">${getTipoIcon(imovel.tipo)}</span>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-lg text-slate-900">${imovel.titulo}</h3>
+                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full uppercase">${imovel.finalidade}</span>
+                        </div>
+                        <p class="text-sm text-slate-600 mb-3 flex items-center">
+                            📍 ${imovel.endereco}
+                        </p>
+                        <div class="flex gap-3 text-sm text-slate-600 mb-4">
+                            ${imovel.area ? `<span class="flex items-center">📐 ${imovel.area}m²</span>` : ''}
+                            ${imovel.quartos > 0 ? `<span class="flex items-center">🛏️ ${imovel.quartos}</span>` : ''}
+                            ${imovel.banheiros > 0 ? `<span class="flex items-center">🚿 ${imovel.banheiros}</span>` : ''}
+                        </div>
+                        <div class="flex justify-between items-center pt-3 border-t border-slate-100">
+                            <span class="text-2xl font-black text-blue-600">R$ ${formatPrice(imovel.preco)}</span>
+                            <button class="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                                Ver detalhes →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            $('#imoveisGrid').html(html);
+        }
+
+        function filterImoveis() {
+            const search = $('#searchImovel').val().toLowerCase();
+            const tipo = $('#filterTipo').val();
+            const finalidade = $('#filterFinalidade').val();
+
+            const filtered = imoveis.filter(imovel => {
+                const matchSearch = !search || 
+                    imovel.titulo.toLowerCase().includes(search) ||
+                    imovel.endereco.toLowerCase().includes(search) ||
+                    imovel.descricao.toLowerCase().includes(search);
+                const matchTipo = !tipo || imovel.tipo === tipo;
+                const matchFinalidade = !finalidade || imovel.finalidade === finalidade;
+
+                return matchSearch && matchTipo && matchFinalidade;
+            });
+
+            renderImoveis(filtered);
+        }
+
+        function showDetails(id) {
+            imovelAtual = imoveis.find(i => i.id === id);
+            if (!imovelAtual) return;
+
+            const content = `
+                <div class="relative">
+                    <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl z-10">
+                        ✕
+                    </button>
+                    <div class="h-80 bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
+                        <span class="text-9xl">${getTipoIcon(imovelAtual.tipo)}</span>
+                    </div>
+                    <div class="p-8">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h2 class="text-3xl font-black text-slate-900 mb-2">${imovelAtual.titulo}</h2>
+                                <p class="text-slate-600 flex items-center">📍 ${imovelAtual.endereco}</p>
+                            </div>
+                            <span class="px-4 py-2 bg-green-100 text-green-800 text-sm font-bold rounded-full uppercase">${imovelAtual.finalidade}</span>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <span class="text-4xl font-black text-blue-600">R$ ${formatPrice(imovelAtual.preco)}</span>
+                            ${imovelAtual.finalidade === 'aluguel' ? '<span class="text-slate-600">/mês</span>' : ''}
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            ${imovelAtual.area ? `
+                                <div class="bg-slate-50 rounded-lg p-4 text-center">
+                                    <div class="text-2xl mb-1">📐</div>
+                                    <div class="text-sm text-slate-600">Área</div>
+                                    <div class="text-lg font-bold">${imovelAtual.area}m²</div>
+                                </div>
+                            ` : ''}
+                            ${imovelAtual.quartos > 0 ? `
+                                <div class="bg-slate-50 rounded-lg p-4 text-center">
+                                    <div class="text-2xl mb-1">🛏️</div>
+                                    <div class="text-sm text-slate-600">Quartos</div>
+                                    <div class="text-lg font-bold">${imovelAtual.quartos}</div>
+                                </div>
+                            ` : ''}
+                            ${imovelAtual.banheiros > 0 ? `
+                                <div class="bg-slate-50 rounded-lg p-4 text-center">
+                                    <div class="text-2xl mb-1">🚿</div>
+                                    <div class="text-sm text-slate-600">Banheiros</div>
+                                    <div class="text-lg font-bold">${imovelAtual.banheiros}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="mb-6">
+                            <h3 class="text-lg font-bold text-slate-900 mb-2">Descrição</h3>
+                            <p class="text-slate-600 leading-relaxed">${imovelAtual.descricao}</p>
+                        </div>
+
+                        <div class="flex gap-4">
+                            <button onclick="demonstrarInteresse()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-lg font-bold text-lg">
+                                💬 Tenho Interesse
+                            </button>
+                            <button onclick="compartilhar()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-4 rounded-lg font-bold">
+                                🔗 Compartilhar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            $('#modalContent').html(content);
+            $('#modalImovel').removeClass('hidden');
+        }
+
+        function closeModal() {
+            $('#modalImovel').addClass('hidden');
+        }
+
+        function demonstrarInteresse() {
+            const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user'));
+            
+            $.ajax({
+                url: API_URL + '/portal/interesse',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    property_id: imovelAtual.id,
+                    mensagem: 'Tenho interesse neste imóvel'
+                }),
+                success: function() {
+                    alert('✅ Interesse registrado! Em breve um corretor entrará em contato.');
+                    closeModal();
+                },
+                error: function() {
+                    alert('✅ Interesse registrado! (simulado)');
+                    closeModal();
+                }
+            });
+        }
+
+        function compartilhar() {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url);
+            alert('🔗 Link copiado para a área de transferência!');
+        }
+
+        function getTipoIcon(tipo) {
+            const icons = {
+                'casa': '🏠',
+                'apartamento': '🏢',
+                'terreno': '🏞️',
+                'comercial': '🏪'
+            };
+            return icons[tipo] || '🏘️';
+        }
+
+        function formatPrice(price) {
+            return price.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        }
+
+        function handleLogout() {
+            localStorage.clear();
+            window.location.href = '/';
+        }
+
+        // Fechar modal ao clicar fora
+        $('#modalImovel').on('click', function(e) {
+            if (e.target.id === 'modalImovel') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

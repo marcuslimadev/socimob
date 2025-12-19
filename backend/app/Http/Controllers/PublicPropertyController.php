@@ -29,11 +29,11 @@ class PublicPropertyController extends Controller
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('bairro', 'ILIKE', '%' . $search . '%')
+                $q->where('endereco', 'ILIKE', '%' . $search . '%')
                   ->orWhere('cidade', 'ILIKE', '%' . $search . '%')
                   ->orWhere('tipo_imovel', 'ILIKE', '%' . $search . '%')
-                  ->orWhere('referencia_imovel', 'ILIKE', '%' . $search . '%')
-                  ->orWhere('logradouro', 'ILIKE', '%' . $search . '%')
+                  ->orWhere('codigo', 'ILIKE', '%' . $search . '%')
+                  ->orWhere('titulo', 'ILIKE', '%' . $search . '%')
                   ->orWhere('descricao', 'ILIKE', '%' . $search . '%');
             });
         }
@@ -46,20 +46,16 @@ class PublicPropertyController extends Controller
             $query->where('cidade', 'ILIKE', '%' . $request->cidade . '%');
         }
         
-        if ($request->has('bairro')) {
-            $query->where('bairro', 'ILIKE', '%' . $request->bairro . '%');
-        }
-        
         if ($request->has('quartos_min')) {
-            $query->where('dormitorios', '>=', $request->quartos_min);
+            $query->where('quartos', '>=', $request->quartos_min);
         }
         
         if ($request->has('preco_min')) {
-            $query->where('valor_venda', '>=', $request->preco_min);
+            $query->where('preco', '>=', $request->preco_min);
         }
         
         if ($request->has('preco_max')) {
-            $query->where('valor_venda', '<=', $request->preco_max);
+            $query->where('preco', '<=', $request->preco_max);
         }
         
         $properties = $query->get();
@@ -78,7 +74,7 @@ class PublicPropertyController extends Controller
      */
     public function show($codigo)
     {
-        $property = Property::where('codigo_imovel', $codigo)
+        $property = Property::where('codigo', $codigo)
             ->where('active', 1)
             ->where('exibir_imovel', 1)
             ->where(function ($q) {
