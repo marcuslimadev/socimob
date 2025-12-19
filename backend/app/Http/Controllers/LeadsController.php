@@ -91,8 +91,9 @@ class LeadsController extends Controller
     public function show($id)
     {
         try {
-            $lead = Lead::with(['corretor', 'conversas.mensagens'])
-                ->findOrFail($id);
+            $lead = $this->resolveLeadForTenant($id, request());
+
+            $lead->load(['corretor', 'conversas.mensagens']);
             
             // Tentar carregar relacionamentos opcionais
             try {
@@ -131,7 +132,8 @@ class LeadsController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $lead = Lead::findOrFail($id);
+        $tenantId = $this->resolveTenantId($request);
+        $lead = $this->resolveLeadForTenant($id, $request);
 
         if ($request->has('cpf')) {
             $request->merge([
@@ -152,7 +154,13 @@ class LeadsController extends Controller
             'quartos' => 'nullable|integer|min:0',
             'suites' => 'nullable|integer|min:0',
             'garagem' => 'nullable|integer|min:0',
-            'cpf' => ['nullable', 'regex:/^\d{11}$/', Rule::unique('leads')->ignore($lead->id)],
+            'cpf' => [
+                'nullable',
+                'regex:/^\d{11}$/',
+                Rule::unique('leads')
+                    ->ignore($lead->id)
+                    ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId)),
+            ],
             'renda_mensal' => 'nullable|numeric|min:0',
             'estado_civil' => 'nullable|string|max:100',
             'composicao_familiar' => 'nullable|string|max:150',
@@ -220,7 +228,7 @@ class LeadsController extends Controller
     public function updateState(Request $request, $id)
     {
         try {
-            $lead = Lead::findOrFail($id);
+            $lead = $this->resolveLeadForTenant($id, $request);
             
             $this->validate($request, [
                 'state' => 'required|string|max:2'
@@ -249,7 +257,7 @@ class LeadsController extends Controller
     public function updateStatus(Request $request, $id)
     {
         try {
-            $lead = Lead::findOrFail($id);
+            $lead = $this->resolveLeadForTenant($id, $request);
 
             $this->validate($request, [
                 'status' => 'required|in:novo,em_atendimento,qualificado,proposta,fechado,perdido'
@@ -278,7 +286,7 @@ class LeadsController extends Controller
      */
     public function destroy($id)
     {
-        $lead = Lead::findOrFail($id);
+        $lead = $this->resolveLeadForTenant($id, request());
 
         DB::beginTransaction();
 
@@ -312,7 +320,12 @@ class LeadsController extends Controller
             'ids.*' => 'integer|distinct'
         ]);
 
-        $leadIds = Lead::whereIn('id', $data['ids'])->pluck('id')->all();
+        $tenantId = $this->resolveTenantId($request);
+
+        $leadIds = Lead::whereIn('id', $data['ids'])
+            ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
+            ->pluck('id')
+            ->all();
 
         if (empty($leadIds)) {
             return response()->json([
@@ -347,10 +360,15 @@ class LeadsController extends Controller
      */
     public function diagnostico(Request $request, $id)
     {
-        $lead = Lead::with(['conversas.mensagens' => function ($query) {
+        $lead = $this->resolveLeadForTenant($id, $request);
+
+        $lead->load([
+            'conversas.mensagens' => function ($query) {
                 $query->orderBy('sent_at');
-            }, 'propertyMatches.property', 'documents'])
-            ->findOrFail($id);
+            },
+            'propertyMatches.property',
+            'documents',
+        ]);
 
         $regenerate = $request->boolean('regenerate', false);
 
@@ -401,6 +419,32 @@ class LeadsController extends Controller
             'success' => true,
             'data' => $lead->fresh(['documents', 'conversas.mensagens', 'propertyMatches.property'])
         ]);
+    }
+
+    private function resolveLeadForTenant($id, Request $request): Lead
+    {
+        $tenantId = $this->resolveTenantId($request);
+
+        $query = Lead::query();
+
+        if ($tenantId) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        return $query->findOrFail($id);
+    }
+
+    private function resolveTenantId(Request $request): ?int
+    {
+        if ($request->attributes->has('tenant_id')) {
+            return (int) $request->attributes->get('tenant_id');
+        }
+
+        if (app()->bound('tenant')) {
+            return (int) app('tenant')->id;
+        }
+
+        return null;
     }
 
     private function formatConversationHistory(Lead $lead): string

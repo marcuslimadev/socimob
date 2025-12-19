@@ -181,8 +181,8 @@ class ConversasController extends Controller
         $this->validate($request, [
             'content' => 'required|string'
         ]);
-        
-        $conversa = Conversa::findOrFail($id);
+
+        $conversa = $this->resolveConversaForTenant($id, $request);
         
         // Enviar via Twilio
         $result = $this->twilio->sendMessage($conversa->telefone, $request->input('content'));
@@ -218,10 +218,13 @@ class ConversasController extends Controller
      */
     public function tempoReal()
     {
+        $tenantId = $this->resolveTenantId(request());
+
         $conversas = Conversa::with(['lead', 'mensagens' => function($q) {
                 $q->orderBy('sent_at', 'desc')->limit(1);
             }])
             ->where('status', 'ativa')
+            ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
             ->orderBy('ultima_atividade', 'desc')
             ->limit(10)
             ->get();
@@ -398,7 +401,7 @@ class ConversasController extends Controller
      */
     public function destroy($id)
     {
-        $conversa = Conversa::findOrFail($id);
+        $conversa = $this->resolveConversaForTenant($id, request());
 
         DB::beginTransaction();
 
@@ -432,7 +435,12 @@ class ConversasController extends Controller
             'lead_ids.*' => 'integer|distinct'
         ]);
 
-        $conversaIds = Conversa::whereIn('lead_id', $data['lead_ids'])->pluck('id')->all();
+        $tenantId = $this->resolveTenantId($request);
+
+        $conversaIds = Conversa::whereIn('lead_id', $data['lead_ids'])
+            ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
+            ->pluck('id')
+            ->all();
 
         if (empty($conversaIds)) {
             return response()->json([
@@ -460,6 +468,32 @@ class ConversasController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    private function resolveConversaForTenant($id, Request $request): Conversa
+    {
+        $tenantId = $this->resolveTenantId($request);
+
+        $query = Conversa::query();
+
+        if ($tenantId) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        return $query->findOrFail($id);
+    }
+
+    private function resolveTenantId(Request $request): ?int
+    {
+        if ($request->attributes->has('tenant_id')) {
+            return (int) $request->attributes->get('tenant_id');
+        }
+
+        if (app()->bound('tenant')) {
+            return (int) app('tenant')->id;
+        }
+
+        return null;
     }
 
     private function deleteConversas(array $conversaIds): array
