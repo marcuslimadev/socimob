@@ -67,7 +67,7 @@ require __DIR__ . '/super-admin.php';
 // Teste de leads (sem autenticação)
 $router->get('/test-leads', function () {
     try {
-        $leads = app('db')->select('SELECT id, nome, telefone, email, origem, created_at FROM leads ORDER BY created_at DESC LIMIT 5');
+        $leads = app('db')->select('SELECT id, nome, telefone, email, status, created_at FROM leads ORDER BY created_at DESC LIMIT 5');
         return response()->json([
             'total' => count($leads),
             'leads' => $leads
@@ -86,7 +86,7 @@ $router->get('/test-stats', function () {
             'leads_total' => app('db')->table('leads')->count(),
             'leads_novos' => app('db')->table('leads')->where('status', 'novo')->count(),
             'conversas_ativas' => app('db')->table('conversas')->where('status', 'ativa')->count(),
-            'corretores_ativos' => app('db')->table('users')->where('tipo', 'corretor')->where('ativo', true)->count()
+            'corretores_ativos' => app('db')->table('users')->where('role', 'user')->where('is_active', true)->count()
         ];
         return response()->json($stats);
     } catch (\Exception $e) {
@@ -114,7 +114,7 @@ $router->get('/api-public/dashboard/stats', function () {
                 'aguardando' => $db->table('conversas')->where('status', 'aguardando_corretor')->count()
             ],
             'corretores' => [
-                'total' => $db->table('users')->where('tipo', 'corretor')->where('ativo', true)->count(),
+                'total' => $db->table('users')->where('role', 'user')->where('is_active', true)->count(),
                 'online' => 0
             ]
         ];
@@ -151,7 +151,7 @@ $router->get('/api-public/dashboard/atividades', function () {
 $router->get('/api-public/leads', function () {
     try {
         $leads = app('db')->table('leads')
-            ->select('id', 'nome', 'telefone', 'email', 'origem', 'status', 'created_at', 'updated_at')
+            ->select('id', 'nome', 'telefone', 'email', 'status', 'created_at', 'updated_at')
             ->orderBy('created_at', 'desc')
             ->get();
         return response()->json(['success' => true, 'data' => $leads]);
@@ -178,7 +178,7 @@ $router->get('/api-public/conversas', function () {
 $router->get('/api-public/test-users', function () {
     try {
         $users = app('db')->table('users')
-            ->select('id', 'nome', 'email', 'tipo', 'ativo', 'created_at')
+            ->select('id', 'name', 'email', 'role', 'is_active', 'created_at')
             ->get();
         return response()->json(['success' => true, 'data' => $users]);
     } catch (\Exception $e) {
