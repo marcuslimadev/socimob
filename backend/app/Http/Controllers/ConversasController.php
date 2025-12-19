@@ -30,9 +30,15 @@ class ConversasController extends Controller
     {
         try {
             $db = app('db');
+            $tenantId = $request->attributes->get('tenant_id');
+
             $query = $db->table('conversas')
                 ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
                 ->select('conversas.*', 'leads.nome as lead_nome', 'leads.email as lead_email');
+
+            if ($tenantId) {
+                $query->where('conversas.tenant_id', $tenantId);
+            }
             
             // Filtrar por status
             if ($request->status) {
@@ -80,6 +86,7 @@ class ConversasController extends Controller
     {
         try {
             $db = app('db');
+            $tenantId = request()->attributes->get('tenant_id');
             
             \Log::info("Buscando conversa ID: {$id}");
             
@@ -95,6 +102,7 @@ class ConversasController extends Controller
                     'users.nome as corretor_nome'
                 )
                 ->where('conversas.id', $id)
+                ->when($tenantId, fn($q) => $q->where('conversas.tenant_id', $tenantId))
                 ->first();
             
             if (!$conversa) {
@@ -110,6 +118,7 @@ class ConversasController extends Controller
             // Buscar mensagens
             $mensagens = $db->table('mensagens')
                 ->where('conversa_id', $id)
+                ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
                 ->orderBy('sent_at', 'asc')
                 ->get();
             
@@ -231,6 +240,7 @@ class ConversasController extends Controller
     {
         try {
             $db = app('db');
+            $tenantId = request()->attributes->get('tenant_id');
             
             // Decodificar URL e normalizar telefone
             $telefone = urldecode($telefone);
@@ -293,6 +303,7 @@ class ConversasController extends Controller
                         $query->orWhere('conversas.telefone', 'LIKE', '%' . $sufixo);
                     }
                 })
+                ->when($tenantId, fn($q) => $q->where('conversas.tenant_id', $tenantId))
                 ->orderBy('conversas.iniciada_em', 'desc')
                 ->get();
             
@@ -302,9 +313,10 @@ class ConversasController extends Controller
             ]);
             
             // Para cada conversa, buscar mensagens
-            $resultado = $conversas->map(function($conversa) use ($db) {
+            $resultado = $conversas->map(function($conversa) use ($db, $tenantId) {
                 $mensagens = $db->table('mensagens')
                     ->where('conversa_id', $conversa->id)
+                    ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
                     ->orderBy('sent_at', 'desc') // Mais recentes primeiro
                     ->get()
                     ->map(function($msg) {
