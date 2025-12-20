@@ -27,6 +27,8 @@ $router->get('/', function () {
     return response('index.html nao encontrado', 404);
 });
 
+$router->post('/github/webhook', 'GitHubWebhookController@handle');
+
 // Auth API routes
 $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('/auth/login', 'AuthController@login');
