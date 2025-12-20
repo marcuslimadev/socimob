@@ -14,10 +14,18 @@ class AddPortalFieldsToTenantsTable extends Migration
     public function up()
     {
         Schema::table('tenants', function (Blueprint $table) {
-            $table->string('slogan', 500)->nullable()->after('description');
-            $table->string('favicon_url', 500)->nullable()->after('logo_url');
-            $table->string('primary_color', 7)->default('#1e293b')->after('favicon_url');
-            $table->string('secondary_color', 7)->default('#3b82f6')->after('primary_color');
+            if (!Schema::hasColumn('tenants', 'slogan')) {
+                $table->string('slogan', 500)->nullable()->after('description');
+            }
+            if (!Schema::hasColumn('tenants', 'favicon_url')) {
+                $table->string('favicon_url', 500)->nullable()->after('logo_url');
+            }
+            if (!Schema::hasColumn('tenants', 'primary_color')) {
+                $table->string('primary_color', 7)->default('#1e293b')->after('favicon_url');
+            }
+            if (!Schema::hasColumn('tenants', 'secondary_color')) {
+                $table->string('secondary_color', 7)->default('#3b82f6')->after('primary_color');
+            }
         });
     }
 
@@ -29,7 +37,22 @@ class AddPortalFieldsToTenantsTable extends Migration
     public function down()
     {
         Schema::table('tenants', function (Blueprint $table) {
-            $table->dropColumn(['slogan', 'favicon_url', 'primary_color', 'secondary_color']);
+            $columns = [];
+            if (Schema::hasColumn('tenants', 'slogan')) {
+                $columns[] = 'slogan';
+            }
+            if (Schema::hasColumn('tenants', 'favicon_url')) {
+                $columns[] = 'favicon_url';
+            }
+            if (Schema::hasColumn('tenants', 'primary_color')) {
+                $columns[] = 'primary_color';
+            }
+            if (Schema::hasColumn('tenants', 'secondary_color')) {
+                $columns[] = 'secondary_color';
+            }
+            if (!empty($columns)) {
+                $table->dropColumn($columns);
+            }
         });
     }
 }

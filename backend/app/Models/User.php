@@ -53,4 +53,9 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
     {
         return in_array($this->role, ['super_admin', 'admin']);
     }
+
+    public function isCliente()
+    {
+        return in_array($this->role, ['client', 'cliente']);
+    }
 }

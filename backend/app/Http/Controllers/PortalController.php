@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PortalController extends Controller
 {
@@ -105,7 +106,7 @@ class PortalController extends Controller
             // Registrar interesse (simulado por enquanto)
             // Em produção, salvar no banco de dados
             
-            \Log::info('Cliente demonstrou interesse', [
+            Log::info('Cliente demonstrou interesse', [
                 'client_id' => $user->id,
                 'client_email' => $user->email,
                 'property_id' => $request->input('property_id'),

@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "public/index.php",
+      "use": "vercel-php@0.6.0"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "public/index.php"
+    }
+  ],
+  "env": {
+    "APP_ENV": "production",
+    "APP_DEBUG": "false",
+    "APP_KEY": "base64:SEU_APP_KEY_AQUI",
+    "DB_CONNECTION": "mysql",
+    "DB_HOST": "@db_host",
+    "DB_PORT": "@db_port",
+    "DB_DATABASE": "@db_database",
+    "DB_USERNAME": "@db_username",
+    "DB_PASSWORD": "@db_password",
+    "TWILIO_ACCOUNT_SID": "@twilio_sid",
+    "TWILIO_AUTH_TOKEN": "@twilio_token",
+    "TWILIO_WHATSAPP_NUMBER": "@twilio_number",
+    "OPENAI_API_KEY": "@openai_key"
+  }
+}

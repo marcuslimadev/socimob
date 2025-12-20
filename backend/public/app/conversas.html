@@ -6,6 +6,56 @@
     <title>Conversas - SOCIMOB</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="js/toast.js"></script>
+    <style>
+        body {
+            background: #f8fafc;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .flex-1 {
+            min-height: 0;
+        }
+        #chatArea {
+            flex: 1;
+            min-height: 0;
+        }
+        #mensagens {
+            max-height: calc(100vh - 220px);
+            min-height: 0;
+        }
+        #listaConversas {
+            max-height: calc(100vh - 280px);
+            min-height: 0;
+        }
+        #listaConversas .conversa-item {
+            transition: background 0.3s ease;
+        }
+        #listaConversas .conversa-item.active {
+            background: #e2e8f0;
+        }
+        #listaConversas::-webkit-scrollbar {
+            width: 6px;
+        }
+        #listaConversas::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #listaConversas::-webkit-scrollbar-thumb {
+            background-color: rgba(30, 41, 59, 0.4);
+            border-radius: 9999px;
+        }
+        #mensagens::-webkit-scrollbar {
+            width: 6px;
+        }
+        #mensagens::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #mensagens::-webkit-scrollbar-thumb {
+            background-color: rgba(30, 41, 59, 0.4);
+            border-radius: 9999px;
+        }
+    </style>
 </head>
 <body class="bg-slate-50">
     <!-- Navbar -->
@@ -39,8 +89,13 @@
             <!-- Área de Chat -->
             <div class="flex-1 flex flex-col">
                 <div id="chatHeader" class="p-4 border-b-2 border-slate-200 hidden">
-                    <h3 id="chatNome" class="text-lg font-bold text-slate-900"></h3>
-                    <p id="chatInfo" class="text-sm text-slate-600"></p>
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div>
+                            <h3 id="chatNome" class="text-lg font-bold text-slate-900"></h3>
+                            <p id="chatInfo" class="text-sm text-slate-600"></p>
+                        </div>
+                        <div id="chatActions" class="flex gap-2"></div>
+                    </div>
                 </div>
                 <div id="chatEmpty" class="flex-1 flex items-center justify-center text-slate-400">
                     <div class="text-center">
@@ -71,6 +126,7 @@
         let conversas = [];
         let conversaAtual = null;
         let mensagens = [];
+        let currentUser = null;
 
         $(document).ready(function() {
             checkAuth();
@@ -88,8 +144,8 @@
                 window.location.href = 'login.html';
                 return;
             }
-            const user = JSON.parse(userStr);
-            $('#userName').text(user.name);
+            currentUser = JSON.parse(userStr);
+            $('#userName').text(currentUser.name);
         }
 
         function loadConversas() {
@@ -100,18 +156,12 @@
                 method: 'GET',
                 headers: { 'Authorization': 'Bearer ' + token },
                 success: function(response) {
-                    conversas = response.data || [];
-                    console.log('✓ Conversas carregadas:', conversas.length);
+                    conversas = (response.data || []).map(normalizeConversa);
+                    console.log('V Conversas carregadas:', conversas.length);
                     renderConversas(conversas);
                 },
                 error: function() {
-                    // Dados de exemplo
-                    conversas = [
-                        { id: 1, nome: 'João Silva', lead_id: 1, ultima_mensagem: 'Olá, tenho interesse no apartamento', data: '2025-12-19 14:30', nao_lidas: 2 },
-                        { id: 2, nome: 'Maria Santos', lead_id: 2, ultima_mensagem: 'Quando posso agendar uma visita?', data: '2025-12-19 13:15', nao_lidas: 0 },
-                        { id: 3, nome: 'Pedro Costa', lead_id: 3, ultima_mensagem: 'Obrigado pelo contato!', data: '2025-12-18 16:45', nao_lidas: 1 }
-                    ];
-                    renderConversas(conversas);
+                    renderConversas([]);
                 }
             });
         }
@@ -131,7 +181,7 @@
                     </div>
                     <div class="flex justify-between items-center">
                         <p class="text-sm text-slate-600 truncate flex-1">${conversa.ultima_mensagem}</p>
-                        ${conversa.nao_lidas > 0 ? `<span class="ml-2 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">${conversa.nao_lidas}</span>` : ''}
+                        ${conversa.canal === 'portal' ? `<span class="ml-2 px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded-full">Portal</span>` : ''}
                     </div>
                 </div>
             `).join('');
@@ -152,38 +202,32 @@
             conversaAtual = conversas.find(c => c.id === id);
             if (!conversaAtual) return;
 
-            console.log('💬 Conversa selecionada:', conversaAtual.nome);
+            console.log('?? Conversa selecionada:', conversaAtual.nome);
 
             $('#chatEmpty').hide();
             $('#chatArea').removeClass('hidden').show();
             $('#chatHeader').removeClass('hidden');
             $('#chatNome').text(conversaAtual.nome);
             $('#chatInfo').text('Lead #' + conversaAtual.lead_id);
+            renderChatActions(conversaAtual);
 
             loadMensagens(id);
-            renderConversas(conversas); // Re-render para atualizar seleção
+            renderConversas(conversas);
         }
 
         function loadMensagens(conversaId) {
             const token = localStorage.getItem('token');
-            
+
             $.ajax({
-                url: API_URL + '/conversas/' + conversaId + '/mensagens',
+                url: API_URL + '/conversas/' + conversaId,
                 method: 'GET',
                 headers: { 'Authorization': 'Bearer ' + token },
                 success: function(response) {
-                    mensagens = response.data || [];
+                    mensagens = response.data?.mensagens || response.data?.data?.mensagens || response.data?.data || response.data?.mensagens || [];
                     renderMensagens(mensagens);
                 },
                 error: function() {
-                    // Mensagens de exemplo
-                    mensagens = [
-                        { id: 1, remetente: 'lead', texto: 'Olá, tenho interesse no apartamento do centro', data: '2025-12-19 14:30' },
-                        { id: 2, remetente: 'usuario', texto: 'Olá! Fico feliz com seu interesse. Você gostaria de agendar uma visita?', data: '2025-12-19 14:32' },
-                        { id: 3, remetente: 'lead', texto: 'Sim, gostaria! Quando seria possível?', data: '2025-12-19 14:35' },
-                        { id: 4, remetente: 'usuario', texto: 'Tenho disponibilidade amanhã às 14h. Funciona para você?', data: '2025-12-19 14:37' }
-                    ];
-                    renderMensagens(mensagens);
+                    renderMensagens([]);
                 }
             });
         }
@@ -195,22 +239,20 @@
             }
 
             const html = data.map(msg => {
-                const isUsuario = msg.remetente === 'usuario';
+                const isUsuario = msg.direction === 'outgoing';
                 return `
                     <div class="flex ${isUsuario ? 'justify-end' : 'justify-start'}">
                         <div class="max-w-[70%]">
                             <div class="px-4 py-3 rounded-lg ${isUsuario ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-900'}">
-                                <p>${msg.texto}</p>
+                                <p>${msg.content || ''}</p>
                             </div>
-                            <p class="text-xs text-slate-400 mt-1 ${isUsuario ? 'text-right' : 'text-left'}">${formatDateTime(msg.data)}</p>
+                            <p class="text-xs text-slate-400 mt-1 ${isUsuario ? 'text-right' : 'text-left'}">${formatDateTime(msg.sent_at)}</p>
                         </div>
                     </div>
                 `;
             }).join('');
 
             $('#mensagens').html(html);
-            
-            // Scroll para o final
             const mensagensDiv = document.getElementById('mensagens');
             mensagensDiv.scrollTop = mensagensDiv.scrollHeight;
         }
@@ -222,35 +264,108 @@
             const texto = $('#inputMensagem').val().trim();
             if (!texto) return;
 
-            console.log('📤 Enviando mensagem:', texto);
+            console.log('?? Enviando mensagem:', texto);
 
-            // Adicionar mensagem localmente
             const novaMensagem = {
                 id: mensagens.length + 1,
-                remetente: 'usuario',
-                texto: texto,
-                data: new Date().toISOString()
+                direction: 'outgoing',
+                content: texto,
+                sent_at: new Date().toISOString()
             };
 
             mensagens.push(novaMensagem);
             renderMensagens(mensagens);
             $('#inputMensagem').val('');
 
-            // Aqui faria o POST para API
             const token = localStorage.getItem('token');
             $.ajax({
                 url: API_URL + '/conversas/' + conversaAtual.id + '/mensagens',
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token },
                 contentType: 'application/json',
-                data: JSON.stringify({ texto }),
+                data: JSON.stringify({ content: texto }),
                 success: function() {
-                    console.log('✓ Mensagem enviada');
+                    console.log('V Mensagem enviada');
                 },
                 error: function() {
-                    console.log('✓ Mensagem salva localmente (API offline)');
+                    console.log('V Mensagem salva localmente (API offline)');
                 }
             });
+        }
+
+        function renderChatActions(conversa) {
+            if (!conversa || conversa.canal !== 'portal') {
+                $('#chatActions').html('');
+                return;
+            }
+
+            const assumida = !!conversa.corretor_id;
+            const isOwner = currentUser && conversa.corretor_id === currentUser.id;
+
+            const takeBtn = `<button class="px-4 py-2 bg-slate-900 text-white font-bold uppercase" onclick="assumirConversa(${conversa.id})">Assumir</button>`;
+            const releaseBtn = `<button class="px-4 py-2 border-2 border-slate-900 text-slate-900 font-bold uppercase" onclick="liberarConversa(${conversa.id})">Liberar IA</button>`;
+
+            if (!assumida) {
+                $('#chatActions').html(takeBtn);
+                return;
+            }
+
+            if (isOwner || (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin'))) {
+                $('#chatActions').html(releaseBtn);
+            } else {
+                $('#chatActions').html('<span class="text-xs text-slate-500">Em atendimento por outro corretor</span>');
+            }
+        }
+
+        function assumirConversa(id) {
+            const token = localStorage.getItem('token');
+
+            $.ajax({
+                url: API_URL + '/admin/portal-chat/' + id + '/take',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function(response) {
+                    showToast('Conversa assumida.', 'success');
+                    loadConversas();
+                    conversaAtual = response.conversa;
+                    renderChatActions(conversaAtual);
+                },
+                error: function(xhr) {
+                    const msg = xhr?.responseJSON?.error || 'Falha ao assumir.';
+                    showToast(msg, 'error');
+                }
+            });
+        }
+
+        function liberarConversa(id) {
+            const token = localStorage.getItem('token');
+
+            $.ajax({
+                url: API_URL + '/admin/portal-chat/' + id + '/release',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function(response) {
+                    showToast('Conversa liberada para IA.', 'success');
+                    loadConversas();
+                    conversaAtual = response.conversa;
+                    renderChatActions(conversaAtual);
+                },
+                error: function(xhr) {
+                    const msg = xhr?.responseJSON?.error || 'Falha ao liberar.';
+                    showToast(msg, 'error');
+                }
+            });
+        }
+
+        function normalizeConversa(conversa) {
+            const nome = conversa.lead_nome || conversa.lead_email || conversa.telefone || 'Cliente';
+            return {
+                ...conversa,
+                nome,
+                data: conversa.ultima_atividade || conversa.iniciada_em || conversa.created_at,
+                ultima_mensagem: conversa.ultima_mensagem || conversa.last_message || conversa.status || 'Sem mensagens',
+                canal: conversa.canal || ''
+            };
         }
 
         function formatTime(datetime) {
@@ -280,3 +395,7 @@
     </script>
 </body>
 </html>
+
+
+
+

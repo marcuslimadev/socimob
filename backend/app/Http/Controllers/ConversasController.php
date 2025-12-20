@@ -30,7 +30,7 @@ class ConversasController extends Controller
     {
         try {
             $db = app('db');
-            $tenantId = $request->attributes->get('tenant_id');
+            $tenantId = $this->resolveTenantId($request);
 
             $query = $db->table('conversas')
                 ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
@@ -47,7 +47,7 @@ class ConversasController extends Controller
             
             // Apenas conversas ativas por padrão
             if (!$request->has('all')) {
-                $query->where('conversas.status', '!=', 'finalizada');
+                $query->where('conversas.status', '!=', 'encerrada');
             }
             
             $conversas = $query->orderBy('conversas.ultima_atividade', 'desc')->get();
@@ -86,7 +86,7 @@ class ConversasController extends Controller
     {
         try {
             $db = app('db');
-            $tenantId = request()->attributes->get('tenant_id');
+            $tenantId = $this->resolveTenantId(request());
             
             \Log::info("Buscando conversa ID: {$id}");
             
@@ -99,7 +99,7 @@ class ConversasController extends Controller
                     'leads.nome as lead_nome',
                     'leads.email as lead_email',
                     'leads.whatsapp_name as lead_whatsapp_name',
-                    'users.nome as corretor_nome'
+                    'users.name as corretor_nome'
                 )
                 ->where('conversas.id', $id)
                 ->when($tenantId, fn($q) => $q->where('conversas.tenant_id', $tenantId))
@@ -183,10 +183,42 @@ class ConversasController extends Controller
         ]);
 
         $conversa = $this->resolveConversaForTenant($id, $request);
-        
+
+        $isPortal = str_starts_with($conversa->telefone, 'portal:')
+            || str_starts_with($conversa->telefone, 'web:')
+            || $conversa->canal === 'portal';
+
+        if ($isPortal) {
+            $user = $request->user();
+            if ($conversa->corretor_id && $user && $conversa->corretor_id !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Conversa em atendimento por outro corretor'
+                ], 403);
+            }
+
+            $mensagem = Mensagem::create([
+                'tenant_id' => $conversa->tenant_id,
+                'conversa_id' => $conversa->id,
+                'direction' => 'outgoing',
+                'message_type' => 'text',
+                'content' => $request->input('content'),
+                'status' => 'sent',
+                'sent_at' => now()
+            ]);
+
+            $conversa->update(['ultima_atividade' => now()]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Mensagem enviada',
+                'data' => $mensagem
+            ]);
+        }
+
         // Enviar via Twilio
         $result = $this->twilio->sendMessage($conversa->telefone, $request->input('content'));
-        
+
         if ($result['success']) {
             // Registrar mensagem
             $mensagem = Mensagem::create([
@@ -198,14 +230,14 @@ class ConversasController extends Controller
                 'status' => 'sent',
                 'sent_at' => now()
             ]);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Mensagem enviada',
                 'data' => $mensagem
             ]);
         }
-        
+
         return response()->json([
             'success' => false,
             'message' => 'Falha ao enviar mensagem'
@@ -243,7 +275,7 @@ class ConversasController extends Controller
     {
         try {
             $db = app('db');
-            $tenantId = request()->attributes->get('tenant_id');
+            $tenantId = $this->resolveTenantId(request());
             
             // Decodificar URL e normalizar telefone
             $telefone = urldecode($telefone);
@@ -485,6 +517,14 @@ class ConversasController extends Controller
 
     private function resolveTenantId(Request $request): ?int
     {
+        $resolver = $request->getUserResolver();
+        if ($resolver) {
+            $user = $resolver();
+            if ($user && !empty($user->tenant_id)) {
+                return (int) $user->tenant_id;
+            }
+        }
+
         if ($request->attributes->has('tenant_id')) {
             return (int) $request->attributes->get('tenant_id');
         }

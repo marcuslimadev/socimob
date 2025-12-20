@@ -41,12 +41,18 @@ class TenantSettingsController extends Controller
                 'domain' => $tenant->domain,
                 'theme' => $tenant->theme,
                 'logo_url' => $tenant->logo_url,
+                'favicon_url' => $tenant->favicon_url,
+                'slogan' => $tenant->slogan,
+                'primary_color' => $tenant->primary_color,
+                'secondary_color' => $tenant->secondary_color,
                 'contact_email' => $tenant->contact_email,
                 'contact_phone' => $tenant->contact_phone,
                 'api_key_pagar_me' => $tenant->api_key_pagar_me,
                 'api_key_apm_imoveis' => $tenant->api_key_apm_imoveis,
                 'api_key_neca' => $tenant->api_key_neca,
                 'api_key_openai' => $tenant->api_key_openai,
+                'api_url_externa' => $tenant->api_url_externa,
+                'api_token_externa' => $tenant->api_token_externa,
             ],
             'config' => $config,
         ]);
@@ -88,6 +94,8 @@ class TenantSettingsController extends Controller
             'secondary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
             'api_url_externa' => 'nullable|string|max:500',
             'api_token_externa' => 'nullable|string|max:500',
+            'portal_finalidades' => 'nullable|array',
+            'portal_finalidades.*' => 'in:venda,aluguel',
         ]);
 
         // Atualizar apenas campos enviados
@@ -105,10 +113,96 @@ class TenantSettingsController extends Controller
             'api_token_externa'
         ]));
 
+        if ($request->has('portal_finalidades')) {
+            $config = $tenant->config;
+            if (!$config) {
+                $config = TenantConfig::create(['tenant_id' => $tenant->id]);
+            }
+            $config->update([
+                'portal_finalidades' => $request->input('portal_finalidades'),
+            ]);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Tenant updated successfully',
             'tenant' => $tenant,
+        ]);
+    }
+
+    /**
+     * Upload de logo e favicon
+     * POST /api/admin/settings/assets
+     */
+    public function uploadAssets(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 401);
+        }
+
+        if (!$user->tenant_id) {
+            return response()->json(['error' => 'User has no tenant'], 400);
+        }
+
+        $tenant = Tenant::find($user->tenant_id);
+
+        if (!$tenant) {
+            return response()->json(['error' => 'Tenant not found'], 404);
+        }
+
+        $this->validate($request, [
+            'logo' => 'nullable|file|mimes:jpg,jpeg,png,webp,svg|max:2048',
+            'favicon' => 'nullable|file|mimes:ico,png,svg|max:512',
+        ]);
+
+        if (!$request->hasFile('logo') && !$request->hasFile('favicon')) {
+            return response()->json(['error' => 'Nenhum arquivo enviado'], 400);
+        }
+
+        $uploadsDir = public_path('uploads/tenants/' . $tenant->id);
+        if (!is_dir($uploadsDir)) {
+            mkdir($uploadsDir, 0755, true);
+        }
+
+        $updates = [];
+
+        if ($request->hasFile('logo')) {
+            $logo = $request->file('logo');
+            if (!$logo->isValid()) {
+                return response()->json(['error' => 'Logo inválido'], 400);
+            }
+
+            $logoExt = strtolower($logo->getClientOriginalExtension()) ?: 'png';
+            $logoName = 'logo_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $logoExt;
+            $logo->move($uploadsDir, $logoName);
+            $updates['logo_url'] = '/uploads/tenants/' . $tenant->id . '/' . $logoName;
+        }
+
+        if ($request->hasFile('favicon')) {
+            $favicon = $request->file('favicon');
+            if (!$favicon->isValid()) {
+                return response()->json(['error' => 'Favicon inválido'], 400);
+            }
+
+            $faviconExt = strtolower($favicon->getClientOriginalExtension()) ?: 'ico';
+            $faviconName = 'favicon_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $faviconExt;
+            $favicon->move($uploadsDir, $faviconName);
+            $updates['favicon_url'] = '/uploads/tenants/' . $tenant->id . '/' . $faviconName;
+        }
+
+        if (!empty($updates)) {
+            $tenant->update($updates);
+            if ($tenant->config) {
+                $tenant->config->update($updates);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Assets atualizados com sucesso',
+            'assets' => $updates,
         ]);
     }
 
@@ -226,21 +320,43 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $validated = $request->validate([
+        $validated = $this->validate($request, [
             'api_key_pagar_me' => 'nullable|string',
             'api_key_apm_imoveis' => 'nullable|string',
             'api_key_neca' => 'nullable|string',
             'api_key_openai' => 'nullable|string',
+            'twilio_account_sid' => 'nullable|string',
+            'twilio_auth_token' => 'nullable|string',
+            'twilio_whatsapp_from' => 'nullable|string',
         ]);
 
-        // Atualizar no tenant
-        $tenant->update($validated);
+                $tenantData = array_filter($validated, function ($value, $key) {
+            return in_array($key, ['api_key_pagar_me', 'api_key_apm_imoveis', 'api_key_neca', 'api_key_openai'], true);
+        }, ARRAY_FILTER_USE_BOTH);
 
-        // Atualizar na config também
-        if ($tenant->config) {
-            $tenant->config->update($validated);
+        if (!empty($tenantData)) {
+            $tenant->update($tenantData);
         }
 
+        $configData = array_filter($validated, function ($value, $key) {
+            return in_array($key, [
+                'api_key_pagar_me',
+                'api_key_apm_imoveis',
+                'api_key_neca',
+                'api_key_openai',
+                'twilio_account_sid',
+                'twilio_auth_token',
+                'twilio_whatsapp_from',
+            ], true);
+        }, ARRAY_FILTER_USE_BOTH);
+
+        if (!empty($configData)) {
+            $config = $tenant->config;
+            if (!$config) {
+                $config = TenantConfig::create(['tenant_id' => $tenant->id]);
+            }
+            $config->update($configData);
+        }
         return response()->json([
             'message' => 'API keys updated successfully',
         ]);
@@ -405,3 +521,5 @@ class TenantSettingsController extends Controller
         ]);
     }
 }
+
+

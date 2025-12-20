@@ -5,12 +5,83 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Property;
 use App\Models\Tenant;
+use App\Services\ImportTablesManager;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class ImportacaoController extends Controller
 {
+    /**
+     * Listar im¢veis do tenant
+     * GET /api/admin/imoveis
+     */
+    public function listar(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User has no tenant'], 400);
+        }
+
+        $tenant = Tenant::find($user->tenant_id);
+        if (!$tenant) {
+            return response()->json(['error' => 'Tenant not found'], 404);
+        }
+
+        $imoveis = Property::where('tenant_id', $tenant->id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $imoveis,
+        ]);
+    }
+
+    /**
+     * Status do job de importa‡Æo
+     * GET /api/admin/imoveis/importar/{jobId}
+     */
+    public function status($jobId, Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User has no tenant'], 400);
+        }
+
+        ImportTablesManager::ensureImportTablesExist();
+
+        $job = DB::table('import_jobs')->where('id', $jobId)->first();
+        if (!$job) {
+            return response()->json(['error' => 'Job not found'], 404);
+        }
+
+        $params = json_decode($job->parametros ?? '[]', true) ?: [];
+        if (!empty($params['tenant_id']) && (int) $params['tenant_id'] !== (int) $user->tenant_id) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'job_id' => $job->id,
+                'status' => $job->status,
+                'total' => (int) ($job->total_itens ?? 0),
+                'processados' => (int) ($job->processados ?? 0),
+                'erros' => (int) ($job->erros ?? 0),
+                'resultado' => $params['resultado'] ?? null,
+                'erro' => $params['erro'] ?? null,
+                'iniciado_em' => $job->iniciado_em,
+                'finalizado_em' => $job->finalizado_em,
+            ],
+        ]);
+    }
+
     /**
      * Testar API externa
      * POST /admin/importacao/teste-api
@@ -34,7 +105,8 @@ class ImportacaoController extends Controller
                 'http_errors' => false
             ]);
             
-            $endpoint = rtrim($url, '/') . '/api/v1/app/imovel/lista';
+            $endpoint = $this->normalizarBaseUrl($url) . '/lista';
+            $token = $this->normalizarToken($token);
             
             $response = $client->get($endpoint, [
                 'headers' => [
@@ -42,8 +114,8 @@ class ImportacaoController extends Controller
                     'Content-Type' => 'application/json'
                 ],
                 'query' => [
-                    'pagina' => 1,
-                    'limite' => 3
+                    'page' => 1,
+                    'per_page' => 3
                 ]
             ]);
             
@@ -93,53 +165,57 @@ class ImportacaoController extends Controller
 
         $fonte = $request->input('fonte');
         
-        try {
-            // Se for API customizada, usar URL fornecida
-            if ($fonte === 'custom') {
-                $apiUrl = $request->input('api_url');
-                $apiKey = $request->input('api_key');
-            } else {
-                // Usar configurações salvas do tenant
-                $apiUrl = $tenant->api_url_externa;
-                $apiKey = $tenant->api_token_externa;
-            }
-
-            if (!$apiUrl || !$apiKey) {
-                return response()->json([
-                    'error' => 'API não configurada. Configure em Configurações → Integrações'
-                ], 400);
-            }
-
-            // Chamar API externa
-            $imoveis = $this->buscarImoveisExternos($apiUrl, $apiKey, $fonte);
-
-            if (empty($imoveis)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Nenhum imóvel encontrado na API externa'
-                ], 200);
-            }
-
-            // Importar imóveis
-            $resultado = $this->processarImportacao($imoveis, $tenant->id);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Importação concluída com sucesso!',
-                'importados' => $resultado['importados'],
-                'duplicados' => $resultado['duplicados'],
-                'erros' => $resultado['erros'],
-                'total' => count($imoveis)
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Erro na importação: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'error' => 'Erro ao importar: ' . $e->getMessage()
-            ], 500);
+        // Se for API customizada, usar URL fornecida
+        if ($fonte === 'custom') {
+            $apiUrl = $request->input('api_url');
+            $apiKey = $request->input('api_key');
+        } else {
+            // Usar configuracoes salvas do tenant
+            $apiUrl = $tenant->api_url_externa;
+            $apiKey = $tenant->api_token_externa;
         }
+
+        $apiUrl = $this->normalizarBaseUrl($apiUrl);
+        $apiKey = $this->normalizarToken($apiKey);
+
+        if (!$apiUrl || !$apiKey) {
+            return response()->json([
+                'error' => 'API nao configurada. Configure em Configuracoes - Integracoes'
+            ], 400);
+        }
+
+        ImportTablesManager::ensureImportTablesExist();
+
+        $agora = Carbon::now();
+        $jobId = DB::table('import_jobs')->insertGetId([
+            'tipo' => 'api_exclusiva',
+            'status' => 'agendado',
+            'origem' => $fonte,
+            'responsavel' => $user->name ?? $user->email ?? 'Sistema',
+            'parametros' => json_encode([
+                'tenant_id' => $tenant->id,
+                'fonte' => $fonte,
+                'api_url' => $apiUrl,
+            ]),
+            'inicio_previsto' => $agora,
+            'created_at' => $agora,
+            'updated_at' => $agora,
+        ]);
+
+        $this->registrarLog('Importacao agendada para processamento.', $jobId);
+
+        app()->terminating(function () use ($jobId, $tenant, $apiUrl, $apiKey, $fonte) {
+            $this->processarJobImportacao($jobId, $tenant->id, $apiUrl, $apiKey, $fonte);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Importacao agendada.',
+            'data' => [
+                'job_id' => $jobId,
+                'status' => 'agendado',
+            ],
+        ]);
     }
 
     /**
@@ -161,6 +237,8 @@ class ImportacaoController extends Controller
      */
     private function buscarExclusiva($baseUrl, $token)
     {
+        $baseUrl = $this->normalizarBaseUrl($baseUrl);
+        $token = $this->normalizarToken($token);
         $imoveis = [];
         $pagina = 1;
         $limite = 20;
@@ -175,7 +253,7 @@ class ImportacaoController extends Controller
 
             do {
                 // Montar URL completa
-                $url = rtrim($baseUrl, '/') . '/api/v1/app/imovel/lista';
+                $url = $baseUrl . '/lista';
                 
                 Log::info("Buscando página $pagina", ['url' => $url]);
                 
@@ -186,8 +264,8 @@ class ImportacaoController extends Controller
                         'Content-Type' => 'application/json'
                     ],
                     'query' => [
-                        'pagina' => $pagina,
-                        'limite' => $limite
+                        'page' => $pagina,
+                        'per_page' => $limite
                     ]
                 ]);
 
@@ -225,11 +303,14 @@ class ImportacaoController extends Controller
                 
                 // Estrutura real: resultSet.data[]
                 if (!isset($data['status']) || !$data['status']) {
+                    $mensagem = $data['message'] ?? 'API retornou status false';
                     Log::warning("API retornou status false na página $pagina", ['response' => $data]);
-                    break;
+                    throw new \Exception($mensagem);
                 }
 
-                $listaImoveis = $data['resultSet']['data'] ?? [];
+                $resultSet = $data['resultSet'] ?? [];
+				$listaImoveis = $resultSet['data'] ?? [];
+				$totalPages = $resultSet['total_pages'] ?? 1;
 
                 if (empty($listaImoveis)) {
                     Log::info("Nenhum imóvel encontrado na página $pagina");
@@ -257,7 +338,7 @@ class ImportacaoController extends Controller
                 $pagina++;
                 
                 // Limitar a 3 páginas (60 imóveis) por importação para não travar
-                if ($pagina > 3) {
+                if ($pagina > 3 || $pagina > $totalPages) {
                     Log::info("Limite de páginas atingido (3 páginas)");
                     break;
                 }
@@ -266,6 +347,7 @@ class ImportacaoController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erro ao buscar da API Exclusiva: ' . $e->getMessage());
+            throw $e;
         }
 
         return $imoveis;
@@ -277,13 +359,15 @@ class ImportacaoController extends Controller
     private function buscarDetalhesExclusiva($baseUrl, $token, $imovelId)
     {
         try {
+            $baseUrl = $this->normalizarBaseUrl($baseUrl);
+            $token = $this->normalizarToken($token);
             $client = new \GuzzleHttp\Client([
                 'verify' => false,
                 'timeout' => 30,
                 'http_errors' => false
             ]);
 
-            $url = rtrim($baseUrl, '/') . '/api/v1/app/imovel/dados/' . $imovelId;
+            $url = $baseUrl . '/dados/' . $imovelId;
             
             $response = $client->get($url, [
                 'headers' => [
@@ -306,6 +390,29 @@ class ImportacaoController extends Controller
         }
 
         return null;
+    }
+
+    private function normalizarBaseUrl($baseUrl)
+    {
+        $baseUrl = trim((string) $baseUrl);
+        $baseUrl = trim($baseUrl, " \t\n\r\0\x0B'\"");
+        $baseUrl = strtok($baseUrl, '?') ?: $baseUrl;
+        $baseUrl = rtrim($baseUrl, '/');
+
+        // Se veio com /lista ou /dados, remover para manter base consistente
+        $baseUrl = preg_replace('#/api/v1/app/imovel/(lista|dados)(/.*)?$#', '/api/v1/app/imovel', $baseUrl);
+
+        if (preg_match('#/api/v1/app/imovel$#', $baseUrl)) {
+            return $baseUrl;
+        }
+
+        return $baseUrl . '/api/v1/app/imovel';
+    }
+
+    private function normalizarToken($token)
+    {
+        $token = trim((string) $token);
+        return trim($token, " \t\n\r\0\x0B'\"");
     }
 
     /**
@@ -349,7 +456,7 @@ class ImportacaoController extends Controller
             'active' => $imovel['exibirImovel'] ?? true,
             'exibir_imovel' => $imovel['exibirImovel'] ?? true,
             'url_ficha' => '', // Pode ser adicionado se disponível na API
-            'last_sync' => now()
+            'last_sync' => date('Y-m-d H:i:s')
         ];
     }
 
@@ -399,14 +506,25 @@ class ImportacaoController extends Controller
     /**
      * Processar e salvar imóveis importados
      */
-    private function processarImportacao($imoveis, $tenantId)
+    private function processarImportacao($imoveis, $tenantId, $jobId = null)
     {
         $importados = 0;
         $duplicados = 0;
         $erros = 0;
+        $logged = 0;
+        $logLimit = 5;
 
         foreach ($imoveis as $imovelData) {
             try {
+                if (empty($imovelData['external_id'])) {
+                    $erros++;
+                    if ($jobId && $logged < $logLimit) {
+                        $this->registrarLog('Imovel sem external_id, ignorado.', $jobId, 'erro', $imovelData['codigo'] ?? null);
+                        $logged++;
+                    }
+                    continue;
+                }
+
                 // Adicionar tenant_id aos dados
                 $imovelData['tenant_id'] = $tenantId;
                 
@@ -429,6 +547,13 @@ class ImportacaoController extends Controller
                     // Atualizar imóvel existente
                     $existente->update($dadosFiltrados);
                     $duplicados++;
+                    if ($jobId && $logged < $logLimit) {
+                        $this->registrarLog('Imovel atualizado (duplicado).', $jobId, 'info', $dadosFiltrados['external_id'], [
+                            'property_id' => $existente->id,
+                            'titulo' => $dadosFiltrados['titulo'] ?? null,
+                        ]);
+                        $logged++;
+                    }
                     continue;
                 }
 
@@ -436,10 +561,20 @@ class ImportacaoController extends Controller
                 Property::create($dadosFiltrados);
 
                 $importados++;
+                if ($jobId && $logged < $logLimit) {
+                    $this->registrarLog('Imovel criado.', $jobId, 'info', $dadosFiltrados['external_id'], [
+                        'titulo' => $dadosFiltrados['titulo'] ?? null,
+                    ]);
+                    $logged++;
+                }
 
             } catch (\Exception $e) {
                 Log::error('Erro ao salvar imóvel: ' . $e->getMessage());
                 $erros++;
+                if ($jobId && $logged < $logLimit) {
+                    $this->registrarLog('Erro ao salvar imovel: ' . $e->getMessage(), $jobId, 'erro', $imovelData['external_id'] ?? null);
+                    $logged++;
+                }
             }
         }
 
@@ -448,6 +583,100 @@ class ImportacaoController extends Controller
             'duplicados' => $duplicados,
             'erros' => $erros
         ];
+    }
+
+    private function processarJobImportacao(int $jobId, int $tenantId, string $apiUrl, string $apiKey, string $fonte): void
+    {
+        $inicio = Carbon::now();
+        $this->atualizarJob($jobId, [
+            'status' => 'processando',
+            'iniciado_em' => $inicio,
+        ]);
+
+        try {
+            $imoveis = $this->buscarImoveisExternos($apiUrl, $apiKey, $fonte);
+            $total = count($imoveis);
+
+            $this->atualizarJob($jobId, [
+                'total_itens' => $total,
+            ]);
+
+            $resultado = [
+                'importados' => 0,
+                'duplicados' => 0,
+                'erros' => 0,
+            ];
+
+            if ($total > 0) {
+                $resultado = $this->processarImportacao($imoveis, $tenantId, $jobId);
+            } else {
+                $this->registrarLog('Nenhum imovel encontrado na API externa.', $jobId, 'info');
+            }
+
+            $params = [
+                'tenant_id' => $tenantId,
+                'fonte' => $fonte,
+                'api_url' => $apiUrl,
+                'resultado' => $resultado,
+            ];
+
+            $this->atualizarJob($jobId, [
+                'status' => 'concluido',
+                'finalizado_em' => Carbon::now(),
+                'tempo_execucao' => $inicio->diffInSeconds(Carbon::now()),
+                'processados' => $resultado['importados'] + $resultado['duplicados'],
+                'erros' => $resultado['erros'],
+                'parametros' => json_encode($params),
+            ]);
+
+            $this->registrarLog('Importacao concluida.', $jobId, 'info', null, $resultado);
+        } catch (\Throwable $e) {
+            $params = [
+                'tenant_id' => $tenantId,
+                'fonte' => $fonte,
+                'api_url' => $apiUrl,
+                'erro' => $e->getMessage(),
+            ];
+
+            $this->atualizarJob($jobId, [
+                'status' => 'falhou',
+                'finalizado_em' => Carbon::now(),
+                'tempo_execucao' => $inicio->diffInSeconds(Carbon::now()),
+                'erros' => 1,
+                'parametros' => json_encode($params),
+            ]);
+
+            $this->registrarLog('Falha na importacao: ' . $e->getMessage(), $jobId, 'erro');
+            Log::error('Erro na importacao (job)', ['job_id' => $jobId, 'error' => $e->getMessage()]);
+        }
+    }
+
+    private function atualizarJob(int $jobId, array $dados): void
+    {
+        if (!Schema::hasTable('import_jobs')) {
+            return;
+        }
+
+        $dados['updated_at'] = Carbon::now();
+        DB::table('import_jobs')->where('id', $jobId)->update($dados);
+    }
+
+    private function registrarLog(string $mensagem, ?int $jobId = null, string $nivel = 'info', ?string $codigo = null, array $detalhes = []): void
+    {
+        if (!Schema::hasTable('import_logs')) {
+            Log::warning('Registro de log ignorado: ' . $mensagem);
+            return;
+        }
+
+        DB::table('import_logs')->insert([
+            'job_id' => $jobId,
+            'nivel' => $nivel,
+            'codigo_imovel' => $codigo,
+            'mensagem' => $mensagem,
+            'detalhes' => $detalhes ? json_encode($detalhes) : null,
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
     }
 
     /**

@@ -6,6 +6,7 @@
     <title>Configurações - SOCIMOB</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="js/toast.js"></script>
 </head>
 <body class="bg-slate-50">
     <!-- Navbar -->
@@ -128,6 +129,30 @@
                                     <input type="url" name="favicon_url" placeholder="https://exemplo.com/favicon.ico" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
                                 </div>
                                 <div class="col-span-2">
+                                    <label class="block text-sm font-bold text-slate-900 mb-2">Finalidades visiveis no portal</label>
+                                    <div class="flex flex-wrap gap-4">
+                                        <label class="flex items-center gap-2 text-sm">
+                                            <input type="checkbox" class="portal-finalidade" value="venda" checked>
+                                            Venda
+                                        </label>
+                                        <label class="flex items-center gap-2 text-sm">
+                                            <input type="checkbox" class="portal-finalidade" value="aluguel" checked>
+                                            Aluguel
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-900 mb-2">Upload do Logotipo</label>
+                                        <input type="file" id="logo_file" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-900 mb-2">Upload do Favicon</label>
+                                        <input type="file" id="favicon_file" accept="image/x-icon,image/png,image/svg+xml" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-600">Ao enviar, a URL será preenchida automaticamente.</p>
+                                <div class="col-span-2">
                                     <div class="bg-blue-50 border-2 border-blue-200 p-4 rounded">
                                         <p class="text-sm text-slate-700">📍 <strong>URL do seu portal:</strong> <a href="/portal" target="_blank" class="text-blue-600 underline">/portal</a></p>
                                         <p class="text-xs text-slate-600 mt-1">Compartilhe este link com seus clientes para que vejam seus imóveis</p>
@@ -146,93 +171,86 @@
                 <div class="tab-content hidden" data-tab="integracao">
                     <h3 class="text-xl font-black text-slate-900 mb-4">Integrações</h3>
                     
-                    <div class="space-y-4 max-w-2xl">
-                        <!-- WhatsApp -->
-                        <div class="p-6 border-2 border-slate-200">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center gap-3">
-                                    <span class="text-4xl">📱</span>
-                                    <div>
-                                        <h4 class="font-bold text-lg">WhatsApp Business</h4>
-                                        <p class="text-sm text-slate-600">Conecte seu WhatsApp para receber leads</p>
-                                    </div>
+                    <form id="formIntegrations" class="space-y-4 max-w-3xl">
+                        <!-- Twilio (WhatsApp) -->
+                        <div class="p-6 border-2 border-green-200 bg-green-50">
+                            <div class="flex items-center gap-3 mb-4">
+                                <span class="text-4xl">📱</span>
+                                <div>
+                                    <h4 class="font-bold text-lg">Twilio WhatsApp Business</h4>
+                                    <p class="text-sm text-slate-600">Configure suas credenciais do Twilio para receber mensagens via WhatsApp</p>
                                 </div>
-                                <label class="relative inline-block w-14 h-8">
-                                    <input type="checkbox" class="peer sr-only">
-                                    <div class="w-14 h-8 bg-slate-300 peer-checked:bg-green-500 rounded-full transition"></div>
-                                    <div class="absolute left-1 top-1 w-6 h-6 bg-white rounded-full transition peer-checked:translate-x-6"></div>
-                                </label>
                             </div>
-                            <input type="tel" placeholder="Número do WhatsApp" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
-                        </div>
-
-                        <!-- Email -->
-                        <div class="p-6 border-2 border-slate-200">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center gap-3">
-                                    <span class="text-4xl">📧</span>
-                                    <div>
-                                        <h4 class="font-bold text-lg">Email Marketing</h4>
-                                        <p class="text-sm text-slate-600">Configure SMTP para envio de emails</p>
-                                    </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-900 mb-1">Account SID</label>
+                                    <input type="password" name="twilio_account_sid" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" 
+                                        class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-green-500 outline-none font-mono text-sm">
                                 </div>
-                                <label class="relative inline-block w-14 h-8">
-                                    <input type="checkbox" class="peer sr-only">
-                                    <div class="w-14 h-8 bg-slate-300 peer-checked:bg-green-500 rounded-full transition"></div>
-                                    <div class="absolute left-1 top-1 w-6 h-6 bg-white rounded-full transition peer-checked:translate-x-6"></div>
-                                </label>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <input type="text" placeholder="Servidor SMTP" class="px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
-                                <input type="number" placeholder="Porta" class="px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-900 mb-1">Auth Token</label>
+                                    <input type="password" name="twilio_auth_token" placeholder="seu_auth_token_aqui" 
+                                        class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-green-500 outline-none font-mono text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-900 mb-1">WhatsApp From (número com código país)</label>
+                                    <input type="tel" name="twilio_whatsapp_from" placeholder="whatsapp:+5531999999999" 
+                                        class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-green-500 outline-none">
+                                    <p class="text-xs text-slate-500 mt-1">Formato: whatsapp:+XXYYYYYYYYYY</p>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- API Externa (Importação) -->
+                        <!-- OpenAI (IA) -->
+                        <div class="p-6 border-2 border-purple-200 bg-purple-50">
+                            <div class="flex items-center gap-3 mb-4">
+                                <span class="text-4xl">🤖</span>
+                                <div>
+                                    <h4 class="font-bold text-lg">OpenAI API</h4>
+                                    <p class="text-sm text-slate-600">Configure sua chave OpenAI para usar inteligência artificial nas respostas automáticas</p>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-900 mb-1">API Key</label>
+                                <input type="password" name="api_key_openai" placeholder="sk-..." 
+                                    class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-purple-500 outline-none font-mono text-sm">
+                                <p class="text-xs text-slate-500 mt-1">Obtenha sua chave em: <a href="https://platform.openai.com/api-keys" target="_blank" class="text-purple-600 underline">platform.openai.com/api-keys</a></p>
+                            </div>
+                        </div>
+
+                        <!-- Salvar -->
+                        <button type="submit" class="w-full px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase">
+                            💾 Salvar Todas as Integrações
+                        </button>
+                    </form>
+
+                    <form id="formAPIExterna" class="space-y-4 max-w-3xl mt-6">
                         <div class="p-6 border-2 border-blue-200 bg-blue-50">
                             <div class="flex items-center gap-3 mb-4">
-                                <span class="text-4xl">🔄</span>
+                                <span class="text-4xl">🔗</span>
                                 <div>
-                                    <h4 class="font-bold text-lg">API de Importação</h4>
-                                    <p class="text-sm text-slate-600">Configure sua API externa para importar imóveis automaticamente</p>
+                                    <h4 class="font-bold text-lg">API Exclusiva</h4>
+                                    <p class="text-sm text-slate-600">Configure a URL e o token da API externa para importar imóveis</p>
                                 </div>
                             </div>
-                            <form id="formAPIExterna" class="space-y-3">
+                            <div class="space-y-3">
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-900 mb-1">URL Base da API</label>
-                                    <input type="url" name="api_url_externa" placeholder="https://www.exclusivalarimoveis.com.br" 
-                                        class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-blue-500 outline-none">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-900 mb-1">Token de Autenticação</label>
-                                    <input type="text" name="api_token_externa" placeholder="$2y$10$..." 
+                                    <label class="block text-sm font-bold text-slate-900 mb-1">URL da API</label>
+                                    <input type="url" name="api_url_externa" placeholder="https://www.exclusivalarimoveis.com.br/api/v1/app/imovel"
                                         class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-blue-500 outline-none font-mono text-sm">
                                 </div>
-                                <button type="submit" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase">
-                                    💾 Salvar Configurações da API
-                                </button>
-                            </form>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-900 mb-1">Token da API</label>
+                                    <input type="password" name="api_token_externa" placeholder="seu_token_api_aqui"
+                                        class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-blue-500 outline-none font-mono text-sm">
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Portais -->
-                        <div class="p-6 border-2 border-slate-200">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center gap-3">
-                                    <span class="text-4xl">🌐</span>
-                                    <div>
-                                        <h4 class="font-bold text-lg">Portais Imobiliários</h4>
-                                        <p class="text-sm text-slate-600">Publique automaticamente em portais</p>
-                                    </div>
-                                </div>
-                                <label class="relative inline-block w-14 h-8">
-                                    <input type="checkbox" class="peer sr-only">
-                                    <div class="w-14 h-8 bg-slate-300 peer-checked:bg-green-500 rounded-full transition"></div>
-                                    <div class="absolute left-1 top-1 w-6 h-6 bg-white rounded-full transition peer-checked:translate-x-6"></div>
-                                </label>
-                            </div>
-                            <p class="text-sm text-slate-600">Em breve: ZAP Imóveis, Viva Real, OLX</p>
-                        </div>
-                    </div>
+                        <button type="submit" class="w-full px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase">
+                            💾 Salvar API Externa
+                        </button>
+                    </form>
                 </div>
 
                 <!-- Segurança -->
@@ -288,6 +306,14 @@
             $('#formEmpresa').on('submit', handleSaveEmpresa);
             $('#formSenha').on('submit', handleChangeSenha);
             $('#formAPIExterna').on('submit', handleSaveAPIExterna);
+            $('#formIntegrations').on('submit', handleSaveIntegrations);
+
+            $('#logo_file').on('change', function() {
+                handleUploadAsset('logo', this.files[0]);
+            });
+            $('#favicon_file').on('change', function() {
+                handleUploadAsset('favicon', this.files[0]);
+            });
 
             // Ativar primeira tab
             switchTab('perfil');
@@ -370,6 +396,26 @@
                         $('[name="cor_secundaria"]').val(t.secondary_color || '#3b82f6');
                         $('[name="logo_url"]').val(t.logo_url || '');
                         $('[name="favicon_url"]').val(t.favicon_url || '');
+                        $('[name="email_empresa"]').val(t.contact_email || '');
+                        $('[name="descricao"]').val(t.description || '');
+
+                        const allowedFinalidades = Array.isArray(response.config?.portal_finalidades)
+                            ? response.config.portal_finalidades
+                            : null;
+                        if (allowedFinalidades) {
+                            $('.portal-finalidade').prop('checked', false);
+                            allowedFinalidades.forEach((item) => {
+                                $(`.portal-finalidade[value="${item}"]`).prop('checked', true);
+                            });
+                        } else {
+                            $('.portal-finalidade').prop('checked', true);
+                        }
+
+                        const config = response.config || {};
+                        $('[name="twilio_account_sid"]').val(config.twilio_account_sid || '');
+                        $('[name="twilio_auth_token"]').val(config.twilio_auth_token || '');
+                        $('[name="twilio_whatsapp_from"]').val(config.twilio_whatsapp_from || '');
+                        $('[name="api_key_openai"]').val(config.api_key_openai || t.api_key_openai || '');
                         
                         // API Externa
                         $('[name="api_url_externa"]').val(t.api_url_externa || '');
@@ -398,9 +444,12 @@
                             const errorData = JSON.parse(xhr.responseText);
                             if (errorData.error && (errorData.error.includes('tenant') || errorData.error.includes('User not found'))) {
                                 console.warn('⚠️ Token inválido ou expirado. Redirecionando para login...');
-                                alert('Sua sessão expirou. Por favor, faça login novamente.');
-                                localStorage.clear();
-                                window.location.href = 'login.html';
+                                showToast('Sua sessão expirou. Por favor, faça login novamente.', 'warning', 3000);
+                                setTimeout(() => {
+                                    localStorage.clear();
+                                    window.location.href = 'login.html';
+                                }, 1200);
+                                return;
                             }
                         } catch (e) {
                             console.error('Erro ao processar resposta:', e);
@@ -437,7 +486,7 @@
             user.email = formData.email;
             localStorage.setItem('user', JSON.stringify(user));
 
-            alert('✓ Perfil atualizado com sucesso!');
+            showToast('Perfil atualizado com sucesso!', 'success');
             $('#userName').text(formData.nome);
         }
 
@@ -447,7 +496,7 @@
             
             const token = localStorage.getItem('token');
             if (!token) {
-                alert('✗ Erro: Token não encontrado');
+                showToast('Erro: Token não encontrado', 'error');
                 return;
             }
 
@@ -455,7 +504,13 @@
                 name: $('[name="nome_empresa"]').val(),
                 contact_phone: $('[name="telefone_empresa"]').val(),
                 contact_email: $('[name="email_empresa"]').val(),
-                description: $('[name="descricao"]').val()
+                description: $('[name="descricao"]').val(),
+                slogan: $('[name="slogan"]').val(),
+                primary_color: $('[name="cor_primaria"]').val(),
+                secondary_color: $('[name="cor_secundaria"]').val(),
+                logo_url: $('[name="logo_url"]').val(),
+                favicon_url: $('[name="favicon_url"]').val(),
+                portal_finalidades: $('.portal-finalidade:checked').map(function() { return this.value; }).get()
             };
 
             console.log('📤 Enviando dados:', formData);
@@ -470,11 +525,51 @@
                 data: JSON.stringify(formData),
                 success: function(response) {
                     console.log('✓ Resposta:', response);
-                    alert('✓ Dados da empresa salvos com sucesso!');
+                    showToast('Dados da empresa salvos com sucesso!', 'success');
                 },
                 error: function(xhr) {
                     console.error('✗ Erro:', xhr.responseText);
-                    alert('✗ Erro ao salvar dados da empresa: ' + (xhr.responseJSON?.error || 'Erro desconhecido'));
+                    showToast('Erro ao salvar dados da empresa: ' + (xhr.responseJSON?.error || 'Erro desconhecido'), 'error');
+                }
+            });
+        }
+
+        function handleUploadAsset(tipo, file) {
+            if (!file) {
+                return;
+            }
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showToast('Erro: Token não encontrado', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append(tipo, file);
+
+            $.ajax({
+                url: API_URL + '/admin/settings/assets',
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    const assets = response.assets || {};
+                    if (assets.logo_url) {
+                        $('[name="logo_url"]').val(assets.logo_url);
+                    }
+                    if (assets.favicon_url) {
+                        $('[name="favicon_url"]').val(assets.favicon_url);
+                    }
+                    showToast('Upload concluído com sucesso!', 'success');
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.error || 'Erro ao enviar arquivo';
+                    showToast('Erro no upload: ' + errorMsg, 'error');
                 }
             });
         }
@@ -485,7 +580,7 @@
             
             const token = localStorage.getItem('token');
             if (!token) {
-                alert('✗ Erro: Token não encontrado');
+                showToast('Erro: Token não encontrado', 'error');
                 return;
             }
 
@@ -506,11 +601,53 @@
                 data: JSON.stringify(formData),
                 success: function(response) {
                     console.log('✓ Resposta:', response);
-                    alert('✅ Configurações da API salvas com sucesso!\n\nAgora você pode importar imóveis em: Imóveis → Importar via API');
+                    showToast('Configurações da API salvas com sucesso!\n\nAgora você pode importar imóveis em: Imóveis → Importar via API', 'success', 6000);
                 },
                 error: function(xhr) {
                     console.error('✗ Erro:', xhr.responseText);
-                    alert('✗ Erro ao salvar configurações: ' + (xhr.responseJSON?.error || 'Erro desconhecido'));
+                    showToast('Erro ao salvar configurações: ' + (xhr.responseJSON?.error || 'Erro desconhecido'), 'error');
+                }
+            });
+        }
+
+        function handleSaveIntegrations(e) {
+            e.preventDefault();
+            console.log('💾 Salvando integrações (Twilio + OpenAI)...');
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showToast('Erro: Token não encontrado', 'error');
+                return;
+            }
+
+            const formData = {
+                twilio_account_sid: $('[name="twilio_account_sid"]').val() || null,
+                twilio_auth_token: $('[name="twilio_auth_token"]').val() || null,
+                twilio_whatsapp_from: $('[name="twilio_whatsapp_from"]').val() || null,
+                api_key_openai: $('[name="api_key_openai"]').val() || null
+            };
+
+            console.log('📤 Enviando dados de integrações:', formData);
+
+            $.ajax({
+                url: API_URL + '/admin/settings/api-keys',
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    console.log('✓ Resposta:', response);
+                    showToast('✅ Integrações salvas com sucesso!\n\nTwilio e OpenAI estão configurados.', 'success', 5000);
+                    
+                    // Limpar campos de senha para segurança
+                    $('[name="twilio_account_sid"]').val('');
+                    $('[name="twilio_auth_token"]').val('');
+                },
+                error: function(xhr) {
+                    console.error('✗ Erro:', xhr.responseText);
+                    showToast('Erro ao salvar integrações: ' + (xhr.responseJSON?.error || 'Erro desconhecido'), 'error');
                 }
             });
         }
@@ -523,17 +660,17 @@
             const senhaConfirma = $('[name="senha_confirma"]').val();
 
             if (senhaNova !== senhaConfirma) {
-                alert('✗ As senhas não conferem!');
+                showToast('As senhas não conferem!', 'warning');
                 return;
             }
 
             if (senhaNova.length < 6) {
-                alert('✗ A senha deve ter pelo menos 6 caracteres!');
+                showToast('A senha deve ter pelo menos 6 caracteres!', 'warning');
                 return;
             }
 
             console.log('🔒 Alterando senha...');
-            alert('✓ Senha alterada com sucesso!');
+            showToast('Senha alterada com sucesso!', 'success');
             $('#formSenha')[0].reset();
         }
 

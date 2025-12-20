@@ -6,7 +6,75 @@
     <title id="pageTitle">Portal de Imóveis</title>
     <link id="pageFavicon" rel="icon" href="/favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="/app/js/toast.js"></script>
+    <style>
+        .magazine-book {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 32px;
+            border-radius: 12px;
+            min-height: 520px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1200px;
+        }
+        .magazine-page {
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.15);
+            width: min(100%, 980px);
+            min-height: 460px;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 24px;
+            padding: 28px;
+            transform-origin: left center;
+            transition: transform 0.6s ease;
+        }
+        .magazine-page.flip {
+            transform: rotateY(-180deg);
+        }
+        .magazine-photo {
+            background: #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            min-height: 360px;
+        }
+        .magazine-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .magazine-details {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .magazine-details h4 {
+            font-size: 28px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .magazine-details .magazine-meta {
+            color: #64748b;
+            font-size: 14px;
+        }
+        .magazine-details .magazine-price {
+            font-size: 26px;
+            font-weight: 800;
+            color: #2563eb;
+        }
+        @media (max-width: 900px) {
+            .magazine-page {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
     <style id="customStyles"></style>
 </head>
 <body class="bg-gray-50">
@@ -18,28 +86,31 @@
                     <img id="logoImg" src="" alt="Logo" class="h-12 hidden">
                     <h1 id="empresaNome" class="text-2xl font-bold uppercase tracking-tight">Carregando...</h1>
                 </div>
-                <div class="hidden md:flex gap-6">
+                <div class="hidden md:flex gap-6 items-center">
                     <a href="#imoveis" class="hover:text-blue-400 transition">Imóveis</a>
                     <a href="#sobre" class="hover:text-blue-400 transition">Sobre</a>
-                    <a href="#contato" class="hover:text-blue-400 transition">Contato</a>
+                    <a href="#contato" class="hover:text-blue-400 transition">WhatsApp</a>
+                    <a id="linkPerfil" href="/portal/perfil.html" class="hidden hover:text-blue-400 transition font-bold">Meu Perfil</a>
+                    <button id="btnLogin" class="border-2 border-white px-4 py-2 font-bold uppercase hover:bg-white hover:text-slate-900 transition">Entrar</button>
+                    <button id="btnLogoutPortal" class="hidden bg-red-600 hover:bg-red-700 px-4 py-2 font-bold uppercase transition">Sair</button>
                 </div>
             </div>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <section class="bg-gradient-to-r from-slate-900 to-slate-700 text-white py-20">
+    <section class="bg-white text-slate-900 py-20">
         <div class="container mx-auto px-4 text-center">
             <h2 id="heroSlogan" class="text-4xl md:text-6xl font-black mb-6">
                 Encontre o Imóvel dos Seus Sonhos
             </h2>
-            <p class="text-xl mb-8 text-gray-300">
+            <p class="text-xl mb-8 text-slate-600">
                 As melhores opções de imóveis para você
             </p>
             
             <!-- Filtros de Busca -->
-            <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-2xl p-6 text-slate-900">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="max-w-5xl mx-auto bg-white rounded-lg shadow-2xl p-6 text-slate-900">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <select id="filterTipo" class="px-4 py-3 border-2 border-gray-300 rounded focus:border-blue-500 outline-none">
                         <option value="">Tipo de Imóvel</option>
                         <option value="casa">Casa</option>
@@ -54,9 +125,19 @@
                     </select>
                     <input type="text" id="filterLocal" placeholder="Bairro, Cidade..." 
                         class="px-4 py-3 border-2 border-gray-300 rounded focus:border-blue-500 outline-none">
+                    <input type="text" id="filterTexto" placeholder="Ex: casa 3 quartos com quintal"
+                        class="px-4 py-3 border-2 border-gray-300 rounded focus:border-blue-500 outline-none">
                     <button id="btnBuscar" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded uppercase transition">
-                        🔍 Buscar
+                        Buscar
                     </button>
+                </div>
+                <div class="mt-4 flex flex-col md:flex-row gap-4">
+                    <select id="sortBy" class="px-4 py-3 border-2 border-gray-300 rounded focus:border-blue-500 outline-none md:w-64">
+                        <option value="">Ordenar por</option>
+                        <option value="preco_asc">Menor preço</option>
+                        <option value="preco_desc">Maior preço</option>
+                        <option value="avaliacao_desc">Melhor avaliada</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -65,50 +146,189 @@
     <!-- Grid de Imóveis -->
     <section id="imoveis" class="py-16">
         <div class="container mx-auto px-4">
-            <h3 class="text-3xl font-black text-slate-900 mb-8 uppercase text-center">Imóveis Disponíveis</h3>
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <h3 class="text-3xl font-black text-slate-900 uppercase text-center md:text-left">Imóveis Disponíveis</h3>
+                <div class="flex gap-3 justify-center md:justify-end">
+                    <button id="btnViewCards" class="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 uppercase">Ver cards</button>
+                    <button id="btnViewTable" class="border-2 border-slate-900 text-slate-900 font-bold px-4 py-2 uppercase hover:bg-slate-900 hover:text-white transition">Ver como tabela</button>
+                    <button id="btnViewMagazine" class="border-2 border-slate-900 text-slate-900 font-bold px-4 py-2 uppercase hover:bg-slate-900 hover:text-white transition">Ver como revista</button>
+                </div>
+            </div>
             
             <div id="imoveisGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <!-- Cards serão inseridos aqui -->
                 <div class="col-span-full text-center py-12 text-gray-500">
-                    <div class="animate-pulse">Carregando imóveis...</div>
+                    <div class="animate-pulse">Carregando Imóveis...</div>
+                </div>
+            </div>
+
+            <div id="imoveisTabelaWrapper" class="hidden">
+                <div class="mb-4 flex flex-wrap gap-3 items-center">
+                    <span class="text-sm text-slate-600 font-semibold uppercase tracking-wide">Filtros por coluna</span>
+                    <button id="btnResetTableFilters" class="text-sm border border-slate-300 px-3 py-1 hover:bg-slate-100">Limpar filtros</button>
+                </div>
+                <table id="imoveisTabela" class="display w-full"></table>
+            </div>
+            <div id="imoveisMagazineWrapper" class="hidden">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div class="text-sm uppercase tracking-wide text-slate-500">Revista de imóveis</div>
+                    <div class="flex items-center gap-2">
+                        <button id="magazinePrev" class="border border-slate-300 px-3 py-1 hover:bg-slate-100">Anterior</button>
+                        <span id="magazineCounter" class="text-sm text-slate-600">1 / 1</span>
+                        <button id="magazineNext" class="border border-slate-300 px-3 py-1 hover:bg-slate-100">Próximo</button>
+                    </div>
+                </div>
+                <div class="magazine-book">
+                    <div id="magazinePage" class="magazine-page"></div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Modal Detalhes do Imóvel -->
-    <div id="modalImovel" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 overflow-y-auto">
-        <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full my-8">
-            <div class="relative">
-                <button onclick="fecharModal()" class="absolute top-4 right-4 bg-white rounded-full w-10 h-10 flex items-center justify-center text-2xl hover:bg-gray-100 z-10">
-                    ✕
-                </button>
-                <div id="modalFoto" class="h-96 bg-gray-300 rounded-t-lg flex items-center justify-center">
-                    <span id="modalIcone" class="text-9xl"></span>
+        <!-- Modal Detalhes do Imovel -->
+    <div id="modalImovel" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50">
+        <div class="relative w-full h-full bg-white">
+            <button onclick="fecharModal()" class="absolute top-4 right-4 bg-white border border-slate-200 rounded-full w-10 h-10 flex items-center justify-center text-lg hover:bg-gray-100 z-20">
+                X
+            </button>
+            <div class="h-full grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr]">
+                <div class="relative bg-gray-300 h-full">
+                    <div id="modalCarousel" class="relative h-full overflow-hidden">
+                        <img id="modalFotoImg" alt="Foto do imovel" class="hidden w-full h-full object-cover">
+                        <div id="modalFotoFallback" class="h-full w-full flex items-center justify-center">
+                            <span id="modalIcone" class="text-9xl"></span>
+                        </div>
+                        <button id="carouselPrev" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-900 w-10 h-10 rounded-full flex items-center justify-center shadow">
+                            &#10094;
+                        </button>
+                        <button id="carouselNext" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-slate-900 w-10 h-10 rounded-full flex items-center justify-center shadow">
+                            &#10095;
+                        </button>
+                        <div id="carouselDots" class="absolute bottom-3 left-0 right-0 flex flex-nowrap items-center justify-center gap-2 px-4 overflow-x-auto"></div>
+                    </div>
+                </div>
+                <div class="p-8 overflow-y-auto">
+                    <div class="flex flex-col gap-3 mb-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <h3 id="modalTitulo" class="text-3xl font-black text-slate-900"></h3>
+                            <button id="modalLikeBtn" class="flex items-center gap-2 px-3 py-2 border-2 border-slate-900 text-slate-900 font-bold uppercase">
+                                <span id="modalLikeIcon">♡</span>
+                                <span id="modalLikeCount">0</span>
+                            </button>
+                        </div>
+                        <span id="modalPreco" class="text-3xl font-black text-blue-600"></span>
+                    </div>
+                    <p id="modalEndereco" class="text-gray-600 mb-4"></p>
+                    <div id="modalDetalhes" class="flex flex-wrap gap-4 text-gray-700 mb-6">
+                        <!-- Detalhes aqui -->
+                    </div>
+                    <div class="border-t pt-6">
+                        <h4 class="font-bold text-lg mb-2">Descricao</h4>
+                        <div id="modalDescricao" class="text-gray-700"></div>
+                    </div>
+                    <div class="mt-8 flex flex-col sm:flex-row gap-4">
+                        <button onclick="entrarEmContato()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg uppercase transition">
+                            Entrar em Contato
+                        </button>
+                        <button onclick="agendarVisita()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg uppercase transition">
+                            Agendar Visita
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div class="p-8">
-                <div class="flex justify-between items-start mb-4">
-                    <h3 id="modalTitulo" class="text-3xl font-black text-slate-900"></h3>
-                    <span id="modalPreco" class="text-3xl font-black text-blue-600"></span>
-                </div>
-                <p id="modalEndereco" class="text-gray-600 mb-4"></p>
-                <div id="modalDetalhes" class="flex gap-6 text-gray-700 mb-6">
-                    <!-- Detalhes aqui -->
-                </div>
-                <div class="border-t pt-6">
-                    <h4 class="font-bold text-lg mb-2">Descrição</h4>
-                    <p id="modalDescricao" class="text-gray-700"></p>
-                </div>
-                <div class="mt-8 flex gap-4">
-                    <button onclick="entrarEmContato()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg uppercase transition">
-                        💬 Entrar em Contato
-                    </button>
-                    <button onclick="agendarVisita()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg uppercase transition">
-                        📅 Agendar Visita
-                    </button>
-                </div>
+        </div>
+    </div>
+<!-- Modal Agendar Visita -->
+    <div id="modalVisita" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-2xl max-w-xl w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-black text-slate-900 uppercase">Agendar Visita</h3>
+                <button onclick="fecharModalVisita()" class="text-2xl text-slate-600 hover:text-slate-900">x</button>
             </div>
+            <p id="visitaImovelTitulo" class="text-sm text-slate-600 mb-4"></p>
+            <form id="formVisita" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Nome *</label>
+                    <input type="text" id="visitaNome" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Telefone *</label>
+                    <input type="tel" id="visitaTelefone" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Email</label>
+                    <input type="email" id="visitaEmail" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Data e hora *</label>
+                    <input type="datetime-local" id="visitaDataHora" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Observações</label>
+                    <textarea id="visitaObservacoes" rows="3" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none"></textarea>
+                </div>
+                <div class="flex gap-3 justify-end pt-2">
+                    <button type="button" onclick="fecharModalVisita()" class="px-6 py-3 border-2 border-slate-900 text-slate-900 font-bold uppercase">Cancelar</button>
+                    <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase">Enviar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Login/Cadastro -->
+    <div id="modalAuth" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="authTitle" class="text-2xl font-black text-slate-900 uppercase">Entrar</h3>
+                <button onclick="fecharModalAuth()" class="text-2xl text-slate-600 hover:text-slate-900">x</button>
+            </div>
+            <form id="formAuth" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Nome</label>
+                    <input type="text" id="authNome" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Email *</label>
+                    <input type="email" id="authEmail" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Telefone</label>
+                    <input type="tel" id="authTelefone" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Senha *</label>
+                    <input type="password" id="authSenha" required class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div class="flex gap-3 justify-end pt-2">
+                    <button type="button" onclick="fecharModalAuth()" class="px-6 py-3 border-2 border-slate-900 text-slate-900 font-bold uppercase">Cancelar</button>
+                    <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase">Continuar</button>
+                </div>
+            </form>
+            <div class="mt-4 text-sm text-center text-slate-600">
+                <button id="btnToggleAuthMode" class="font-bold text-slate-900 underline">Criar conta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat do Portal -->
+    <button id="btnChat" class="hidden fixed bottom-6 right-6 bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 py-3 rounded-full shadow-lg z-40">
+        Chat com IA
+    </button>
+
+    <div id="modalChat" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b">
+                <div>
+                    <h3 class="text-xl font-black text-slate-900 uppercase">Atendimento</h3>
+                    <p id="chatStatus" class="text-xs text-slate-500">IA ativa</p>
+                </div>
+                <button onclick="fecharChat()" class="text-2xl text-slate-600 hover:text-slate-900">x</button>
+            </div>
+            <div id="chatMensagens" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50"></div>
+            <form id="chatForm" class="p-4 border-t flex gap-3">
+                <input type="text" id="chatInput" placeholder="Escreva sua mensagem..." class="flex-1 px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 uppercase">Enviar</button>
+            </form>
         </div>
     </div>
 
@@ -127,10 +347,10 @@
                 </div>
                 <div>
                     <h4 class="text-xl font-bold mb-4">Redes Sociais</h4>
-                    <div class="flex gap-4 text-2xl">
-                        <a href="#" class="hover:text-blue-400 transition">📘</a>
-                        <a href="#" class="hover:text-pink-400 transition">📷</a>
-                        <a href="#" class="hover:text-green-400 transition">💬</a>
+                    <div class="flex gap-4 text-sm">
+                        <a href="#" class="hover:text-blue-400 transition">Facebook</a>
+                        <a href="#" class="hover:text-pink-400 transition">Instagram</a>
+                        <a href="#" class="hover:text-green-400 transition">WhatsApp</a>
                     </div>
                 </div>
             </div>
@@ -142,23 +362,54 @@
     </footer>
 
     <script>
-        const API_URL = '/api';
+                const API_URL = '/api';
         let tenantConfig = {};
         let imoveis = [];
         let imovelSelecionado = null;
+        let carouselImages = [];
+        let carouselIndex = 0;
+        let viewMode = 'cards';
+        let magazineItems = [];
+        let magazineIndex = 0;
+        let dataTableInstance = null;
+        let listaAtual = [];
+        let portalUser = null;
+        let portalToken = null;
+        let likedIds = new Set();
+        let authMode = 'login';
+        let pendingLikeId = null;
+        let chatConversaId = null;
+        let chatTimer = null;
+        let chatLastId = 0;
+        let allowedFinalidades = null;
 
         $(document).ready(function() {
             loadTenantConfig();
             loadImoveis();
-            
+
             $('#btnBuscar').on('click', filtrarImoveis);
-            $('#filterTipo, #filterFinalidade, #filterLocal').on('change input', filtrarImoveis);
+            $('#filterTipo, #filterFinalidade, #filterLocal, #filterTexto, #sortBy').on('change input', filtrarImoveis);
+            $('#btnViewCards').on('click', () => setViewMode('cards'));
+            $('#btnViewTable').on('click', () => setViewMode('table'));
+            $('#btnViewMagazine').on('click', () => setViewMode('magazine'));
+            $('#magazinePrev').on('click', () => changeMagazine(-1));
+            $('#magazineNext').on('click', () => changeMagazine(1));
+            $('#formVisita').on('submit', enviarVisita);
+            $('#carouselPrev').on('click', () => moveCarousel(-1));
+            $('#carouselNext').on('click', () => moveCarousel(1));
+            $('#btnLogin').on('click', abrirModalAuth);
+            $('#btnLogoutPortal').on('click', logoutPortal);
+            $('#formAuth').on('submit', handleAuthSubmit);
+            $('#btnToggleAuthMode').on('click', toggleAuthMode);
+            $('#btnChat').on('click', abrirChat);
+            $('#chatForm').on('submit', enviarMensagemChat);
+            $('#btnResetTableFilters').on('click', resetTableFilters);
+
+            initPortalAuth();
         });
 
-        // Carregar configurações do tenant (cores, logo, slogan)
         async function loadTenantConfig() {
             try {
-                // Obter tenant baseado no domínio/subdomínio
                 const response = await $.ajax({
                     url: `${API_URL}/portal/config`,
                     method: 'GET'
@@ -167,13 +418,12 @@
                 tenantConfig = response.tenant || {};
                 aplicarConfiguracao();
             } catch (error) {
-                console.error('Erro ao carregar configurações:', error);
-                // Usar dados de exemplo
+                console.error('Erro ao carregar configura\u00e7\u00f5es:', error);
                 tenantConfig = {
-                    name: 'Exclusiva Lar Imóveis',
+                    name: 'Exclusiva Lar Im\u00f3veis',
                     contact_phone: '(31) 97559-7278',
                     contact_email: 'contato@exclusivalarimoveis.com.br',
-                    slogan: 'Encontre o Imóvel dos Seus Sonhos',
+                    slogan: 'Encontre o Im\u00f3vel dos Seus Sonhos',
                     primary_color: '#1e293b',
                     secondary_color: '#3b82f6',
                     logo_url: '',
@@ -184,39 +434,54 @@
         }
 
         function aplicarConfiguracao() {
-            // Atualizar título da página
-            $('#pageTitle').text(tenantConfig.name || 'Portal de Imóveis');
-            
-            // Atualizar favicon
+            const tenantName = fixText(tenantConfig.name || 'Portal de Im\u00f3veis');
+            const slogan = fixText(tenantConfig.slogan || 'Encontre o Im\u00f3vel dos Seus Sonhos');
+            const contactPhone = fixText(tenantConfig.contact_phone || '');
+            const contactEmail = fixText(tenantConfig.contact_email || '');
+            allowedFinalidades = Array.isArray(tenantConfig.portal_finalidades)
+                ? tenantConfig.portal_finalidades
+                : null;
+
+            $('#pageTitle').text(tenantName || 'Portal de Im\u00f3veis');
+
             if (tenantConfig.favicon_url) {
                 $('#pageFavicon').attr('href', tenantConfig.favicon_url);
             }
-            
-            // Atualizar logo
+
             if (tenantConfig.logo_url) {
                 $('#logoImg').attr('src', tenantConfig.logo_url).removeClass('hidden');
             }
-            
-            // Atualizar textos
-            $('#empresaNome').text(tenantConfig.name || '');
-            $('#heroSlogan').text(tenantConfig.slogan || 'Encontre o Imóvel dos Seus Sonhos');
-            $('#footerNome').text(tenantConfig.name || '');
-            $('#footerTelefone').text(tenantConfig.contact_phone || '');
-            $('#footerEmail').text(tenantConfig.contact_email || '');
-            $('#footerCopyright').text(tenantConfig.name || '');
-            
-            // Aplicar cores personalizadas
-            if (tenantConfig.primary_color) {
-                const css = `
-                    #mainNav, footer { background-color: ${tenantConfig.primary_color} !important; }
-                    .bg-gradient-to-r { background: linear-gradient(to right, ${tenantConfig.primary_color}, ${tenantConfig.secondary_color || '#3b82f6'}) !important; }
-                    #btnBuscar { background-color: ${tenantConfig.secondary_color || '#3b82f6'} !important; }
-                `;
-                $('#customStyles').text(css);
+
+            $('#empresaNome').text(tenantName);
+            $('#heroSlogan').text(slogan || 'Encontre o Im\u00f3vel dos Seus Sonhos');
+            $('#footerNome').text(tenantName);
+            $('#footerTelefone').text(contactPhone);
+            $('#footerEmail').text(contactEmail);
+            $('#footerCopyright').text(tenantName);
+
+            const $finalidadeOptions = $('#filterFinalidade option[value]');
+            if (allowedFinalidades && allowedFinalidades.length) {
+                $finalidadeOptions.each(function() {
+                    const value = $(this).val();
+                    $(this).toggle(allowedFinalidades.includes(value));
+                });
+                if (!allowedFinalidades.includes($('#filterFinalidade').val())) {
+                    $('#filterFinalidade').val('');
+                }
+            } else {
+                $finalidadeOptions.show();
             }
+
+            const primaryColor = tenantConfig.primary_color || '#1e293b';
+            const secondaryColor = tenantConfig.secondary_color || '#3b82f6';
+            const customStyles = `
+                :root { --primary-color: ${primaryColor}; --secondary-color: ${secondaryColor}; }
+                #mainNav { background-color: ${primaryColor}; }
+                #btnBuscar { background-color: ${secondaryColor} !important; }
+            `;
+            $('#customStyles').text(customStyles);
         }
 
-        // Carregar imóveis do tenant
         async function loadImoveis() {
             try {
                 const response = await $.ajax({
@@ -224,18 +489,22 @@
                     method: 'GET'
                 });
 
-                imoveis = response.data || [];
-                renderImoveis(imoveis);
+                if (response && response.data) {
+                    imoveis = (response.data || []).map(normalizeImovel);
+                } else {
+                    imoveis = (response || []).map(normalizeImovel);
+                }
+
+                atualizarListagem(imoveis);
             } catch (error) {
-                console.error('Erro ao carregar imóveis:', error);
-                // Dados de exemplo
+                console.error('Erro ao carregar im\u00f3veis:', error);
                 imoveis = [
-                    { id: 1, titulo: 'Casa de Luxo', tipo: 'casa', finalidade: 'venda', preco: 850000, area: 250, quartos: 4, banheiros: 3, endereco: 'Rua das Flores, 123 - Centro', status: 'disponivel', descricao: 'Linda casa com piscina, área gourmet e jardim amplo' },
-                    { id: 2, titulo: 'Apartamento Centro', tipo: 'apartamento', finalidade: 'aluguel', preco: 3500, area: 80, quartos: 2, banheiros: 1, endereco: 'Av. Principal, 456 - Centro', status: 'disponivel', descricao: 'Apartamento bem localizado próximo ao comércio' },
-                    { id: 3, titulo: 'Terreno Comercial', tipo: 'terreno', finalidade: 'venda', preco: 450000, area: 500, quartos: 0, banheiros: 0, endereco: 'Rod. BR-101, km 45', status: 'disponivel', descricao: 'Terreno amplo com ótima localização' },
+                    { id: 1, titulo: 'Casa de Luxo', tipo: 'casa', finalidade: 'venda', preco: 850000, area: 250, quartos: 4, banheiros: 3, endereco: 'Rua das Flores, 123 - Centro', status: 'disponivel', descricao: 'Linda casa com piscina, area gourmet e jardim amplo' },
+                    { id: 2, titulo: 'Apartamento Centro', tipo: 'apartamento', finalidade: 'aluguel', preco: 3500, area: 80, quartos: 2, banheiros: 1, endereco: 'Av. Principal, 456 - Centro', status: 'disponivel', descricao: 'Apartamento bem localizado proximo ao comercio' },
+                    { id: 3, titulo: 'Terreno Comercial', tipo: 'terreno', finalidade: 'venda', preco: 450000, area: 500, quartos: 0, banheiros: 0, endereco: 'Rod. BR-101, km 45', status: 'disponivel', descricao: 'Terreno amplo com otima localizacao' },
                     { id: 4, titulo: 'Cobertura Premium', tipo: 'apartamento', finalidade: 'venda', preco: 1200000, area: 180, quartos: 3, banheiros: 3, endereco: 'Av. Beira Mar, 789 - Praia', status: 'disponivel', descricao: 'Cobertura com vista para o mar' }
-                ];
-                renderImoveis(imoveis);
+                ].map(normalizeImovel);
+                atualizarListagem(imoveis);
             }
         }
 
@@ -243,57 +512,655 @@
             if (!lista || lista.length === 0) {
                 $('#imoveisGrid').html(`
                     <div class="col-span-full text-center py-12 text-gray-500">
-                        <p class="text-xl">😔 Nenhum imóvel encontrado</p>
+                        <p class="text-xl">Nenhum im\u00f3vel encontrado</p>
                         <p class="mt-2">Tente ajustar os filtros de busca</p>
                     </div>
                 `);
                 return;
             }
 
-            const html = lista.map(imovel => `
-                <div class="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 cursor-pointer" onclick="abrirModal(${imovel.id})">
-                    <div class="h-64 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                        <span class="text-8xl">${getTipoIcon(imovel.tipo)}</span>
-                    </div>
-                    <div class="p-6">
-                        <div class="flex justify-between items-start mb-3">
-                            <h4 class="text-xl font-bold text-slate-900">${imovel.titulo}</h4>
-                            <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full uppercase">${imovel.finalidade}</span>
+            const html = lista.map(imovel => {
+                const imagem = getImagemPrincipal(imovel);
+                const titulo = escapeHtml(imovel.titulo || 'Im\u00f3vel');
+                const endereco = escapeHtml(imovel.endereco || '');
+                const finalidade = escapeHtml(imovel.finalidade || '');
+                const likeHtml = renderLikeButton(imovel);
+                const imagemHtml = imagem
+                    ? `<img src="${imagem}" alt="Foto do im\u00f3vel" class="w-full h-full object-cover">`
+                    : `<div class="h-64 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center"><span class="text-8xl">${getTipoIcon(imovel.tipo)}</span></div>`;
+
+                return `
+                    <div class="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 cursor-pointer" onclick="abrirModal(${imovel.id})">
+                        <div class="h-64 bg-gray-200">
+                            ${imagemHtml}
                         </div>
-                        <p class="text-gray-600 text-sm mb-4">📍 ${imovel.endereco}</p>
-                        <div class="flex justify-between text-sm text-gray-600 mb-4">
-                            ${imovel.area ? `<span>📐 ${imovel.area}m²</span>` : '<span></span>'}
-                            ${imovel.quartos ? `<span>🛏️ ${imovel.quartos} quartos</span>` : '<span></span>'}
-                            ${imovel.banheiros ? `<span>🚿 ${imovel.banheiros} banheiros</span>` : '<span></span>'}
-                        </div>
-                        <div class="border-t pt-4">
-                            <div class="flex justify-between items-center">
-                                <span class="text-2xl font-black text-blue-600">R$ ${formatPrice(imovel.preco)}</span>
-                                <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                                    Ver Detalhes
-                                </button>
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-3 gap-2">
+                                <h4 class="text-xl font-bold text-slate-900">${titulo}</h4>
+                                <div class="flex flex-col items-end gap-2">
+                                    <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full uppercase">${finalidade}</span>
+                                    ${likeHtml}
+                                </div>
+                            </div>
+                            <p class="text-gray-600 text-sm mb-4">${endereco}</p>
+                            <div class="flex justify-between text-sm text-gray-600 mb-4">
+                                ${imovel.area ? `<span>\u00c1rea: ${imovel.area}m2</span>` : '<span></span>'}
+                                ${imovel.quartos ? `<span>Quartos: ${imovel.quartos}</span>` : '<span></span>'}
+                                ${imovel.banheiros ? `<span>Banheiros: ${imovel.banheiros}</span>` : '<span></span>'}
+                            </div>
+                            <div class="border-t pt-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-2xl font-black text-blue-600">R$ ${formatPrice(imovel.preco)}</span>
+                                    <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                        Ver Detalhes
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             $('#imoveisGrid').html(html);
+        }
+
+                function renderTabela(lista) {
+            if (!$('#imoveisTabela').length) {
+                return;
+            }
+
+            if (!lista || lista.length === 0) {
+                if ($.fn.DataTable && $.fn.DataTable.isDataTable('#imoveisTabela')) {
+                    $('#imoveisTabela').DataTable().clear().destroy();
+                }
+                $('#imoveisTabela').empty();
+                $('#imoveisTabelaWrapper .table-empty').remove();
+                $('#imoveisTabelaWrapper').append('<div class="table-empty text-center py-12 text-gray-500">Nenhum im\u00f3vel encontrado.</div>');
+                return;
+            }
+
+            $('#imoveisTabelaWrapper .table-empty').remove();
+            if ($.fn.DataTable && $.fn.DataTable.isDataTable('#imoveisTabela')) {
+                $('#imoveisTabela').DataTable().clear().destroy();
+            }
+
+            const rows = lista.map(imovel => {
+                const liked = likedIds.has(imovel.id);
+                const icon = liked ? 'Liked' : 'Like';
+                return [
+                    escapeHtml(imovel.titulo || 'Im\u00f3vel'),
+                    escapeHtml(imovel.tipo || ''),
+                    escapeHtml(imovel.finalidade || ''),
+                    escapeHtml(imovel.endereco || ''),
+                    Number(imovel.quartos || 0),
+                    Number(imovel.banheiros || 0),
+                    imovel.area ? `${imovel.area}m2` : '',
+                    Number(imovel.likes_count || 0),
+                    `R$ ${formatPrice(imovel.preco)}`,
+                    `<button class="text-blue-600 hover:text-blue-800 font-bold mr-3" onclick="abrirModal(${imovel.id})">Ver</button>` +
+                    `<button class="text-slate-900 font-bold" onclick="toggleLike(${imovel.id})">${icon}</button>`
+                ];
+            });
+
+            dataTableInstance = $('#imoveisTabela').DataTable({
+                data: rows,
+                autoWidth: false,
+                pageLength: 10,
+                order: [],
+                orderCellsTop: true,
+                columns: [
+                    { title: 'T\u00edtulo' },
+                    { title: 'Tipo' },
+                    { title: 'Finalidade' },
+                    { title: 'Endere\u00e7o' },
+                    { title: 'Quartos' },
+                    { title: 'Banheiros' },
+                    { title: '\u00c1rea' },
+                    { title: 'Likes' },
+                    { title: 'Pre\u00e7o' },
+                    { title: 'A\u00e7\u00f5es', orderable: false }
+                ],
+                language: {
+                    search: 'Buscar:',
+                    lengthMenu: 'Mostrar _MENU_ por p\u00e1gina',
+                    info: 'Mostrando _START_ a _END_ de _TOTAL_',
+                    infoEmpty: 'Nenhum resultado',
+                    zeroRecords: 'Nenhum resultado encontrado',
+                    paginate: {
+                        first: 'Primeiro',
+                        last: '\u00daltimo',
+                        next: 'Pr\u00f3ximo',
+                        previous: 'Anterior'
+                    }
+                },
+                initComplete: function() {
+                    setupTableFilters(this.api());
+                }
+            });
+        }
+
+                                        function setupTableFilters(api) {
+            const $table = $(api.table().node());
+            const $thead = $table.find('thead');
+            $thead.find('tr.table-filter-row').remove();
+
+            const $filterRow = $('<tr class="table-filter-row"></tr>');
+            api.columns().every(function() {
+                const column = this;
+                const headerText = $(column.header()).text().trim();
+                const isActions = headerText === 'Acoes' || headerText === 'A\u00e7\u00f5es';
+                const isSelect = headerText === 'Tipo' || headerText === 'Finalidade';
+                const $cell = $('<th></th>');
+
+                if (isActions) {
+                    $filterRow.append($cell);
+                    return;
+                }
+
+                if (isSelect) {
+                    const $select = $('<select class="w-full text-sm border border-slate-300 px-2 py-1"><option value="">Todos</option></select>');
+                    column.data().unique().sort().each(function(d) {
+                        if (!d) return;
+                        $select.append($('<option></option>').attr('value', d).text(d));
+                    });
+                    $select.on('change', function() {
+                        const val = $.fn.dataTable.util.escapeRegex($(this).val());
+                        column.search(val ? '^' + val + '$' : '', true, false).draw();
+                    });
+                    $cell.append($select);
+                    $filterRow.append($cell);
+                    return;
+                }
+
+                const $input = $('<input type="text" class="w-full text-sm border border-slate-300 px-2 py-1" placeholder="Filtrar">');
+                $input.on('input', function() {
+                    column.search(this.value).draw();
+                });
+                $cell.append($input);
+                $filterRow.append($cell);
+            });
+
+            $thead.append($filterRow);
+        }
+
+        function resetTableFilters() {
+            if (!$.fn.DataTable || !$.fn.DataTable.isDataTable('#imoveisTabela')) {
+                return;
+            }
+            const table = $('#imoveisTabela').DataTable();
+            table.search('');
+            table.columns().search('');
+            $('#imoveisTabela thead .table-filter-row input, #imoveisTabela thead .table-filter-row select').val('');
+            table.draw();
+        }
+
+        function renderMagazine(lista) {
+            magazineItems = Array.isArray(lista) ? lista : [];
+            if (magazineIndex >= magazineItems.length) {
+                magazineIndex = 0;
+            }
+            updateMagazinePage(false);
+        }
+
+        function changeMagazine(delta) {
+            if (!magazineItems.length) {
+                return;
+            }
+            const nextIndex = magazineIndex + delta;
+            if (nextIndex < 0 || nextIndex >= magazineItems.length) {
+                return;
+            }
+            magazineIndex = nextIndex;
+            updateMagazinePage(true);
+        }
+
+        function updateMagazinePage(animate) {
+            const total = magazineItems.length || 1;
+            $('#magazineCounter').text(`${Math.min(magazineIndex + 1, total)} / ${total}`);
+            const $page = $('#magazinePage');
+            const imovel = magazineItems[magazineIndex];
+
+            if (!imovel) {
+                $page.html('<div class="text-center text-gray-500 w-full">Nenhum imovel encontrado.</div>');
+                return;
+            }
+
+            const imagem = getImagemPrincipal(imovel);
+            const finalidade = escapeHtml(imovel.finalidade || '');
+            const endereco = escapeHtml(imovel.endereco || '');
+            const descricao = escapeHtml((imovel.descricao || '').slice(0, 320));
+            const detalhes = [
+                imovel.area ? `Area: ${imovel.area}m2` : null,
+                imovel.quartos ? `Quartos: ${imovel.quartos}` : null,
+                imovel.banheiros ? `Banheiros: ${imovel.banheiros}` : null,
+                imovel.vagas ? `Vagas: ${imovel.vagas}` : null
+            ].filter(Boolean).join(' • ');
+
+            const html = `
+                <div class="magazine-photo">
+                    ${imagem ? `<img src="${imagem}" alt="Foto do imovel">` : `<div class="w-full h-full flex items-center justify-center text-6xl">${getTipoIcon(imovel.tipo)}</div>`}
+                </div>
+                <div class="magazine-details">
+                    <div class="magazine-meta uppercase">${finalidade}</div>
+                    <h4>${escapeHtml(imovel.titulo || 'Imovel')}</h4>
+                    <div class="magazine-meta">${endereco}</div>
+                    <div class="magazine-meta">${detalhes}</div>
+                    <div class="magazine-price">R$ ${formatPrice(imovel.preco)}</div>
+                    <p class="text-sm text-slate-600 leading-relaxed">${descricao}</p>
+                    <div class="mt-auto flex flex-wrap gap-3">
+                        <button class="border-2 border-slate-900 px-4 py-2 font-bold uppercase" onclick="abrirModal(${imovel.id})">Ver detalhes</button>
+                    </div>
+                </div>
+            `;
+
+            if (animate) {
+                $page.addClass('flip');
+                setTimeout(() => {
+                    $page.html(html);
+                    $page.removeClass('flip');
+                }, 300);
+            } else {
+                $page.html(html);
+            }
+        }
+
+        function atualizarListagem(lista) {
+            const items = lista || [];
+            listaAtual = allowedFinalidades && allowedFinalidades.length
+                ? items.filter((imovel) => allowedFinalidades.includes(imovel.finalidade))
+                : items;
+            renderImoveis(listaAtual);
+            renderTabela(listaAtual);
+            aplicarViewMode();
+        }
+
+        function setViewMode(mode) {
+            viewMode = mode;
+            aplicarViewMode();
+        }
+
+        function aplicarViewMode() {
+            const isTable = viewMode === 'table';
+            const isMagazine = viewMode === 'magazine';
+            $('#imoveisGrid').toggleClass('hidden', isTable || isMagazine);
+            $('#imoveisTabelaWrapper').toggleClass('hidden', !isTable);
+            $('#imoveisMagazineWrapper').toggleClass('hidden', !isMagazine);
+            if (isTable) {
+                $('#btnViewCards').removeClass('bg-slate-900 text-white').addClass('border-2 border-slate-900 text-slate-900');
+                $('#btnViewTable').addClass('bg-slate-900 text-white').removeClass('border-2 border-slate-900 text-slate-900');
+                $('#btnViewMagazine').removeClass('bg-slate-900 text-white').addClass('border-2 border-slate-900 text-slate-900');
+            } else if (isMagazine) {
+                $('#btnViewCards').removeClass('bg-slate-900 text-white').addClass('border-2 border-slate-900 text-slate-900');
+                $('#btnViewTable').removeClass('bg-slate-900 text-white').addClass('border-2 border-slate-900 text-slate-900');
+                $('#btnViewMagazine').addClass('bg-slate-900 text-white').removeClass('border-2 border-slate-900 text-slate-900');
+            } else {
+                $('#btnViewCards').addClass('bg-slate-900 text-white').removeClass('border-2 border-slate-900 text-slate-900');
+                $('#btnViewTable').removeClass('bg-slate-900 text-white').addClass('border-2 border-slate-900 text-slate-900');
+                $('#btnViewMagazine').removeClass('bg-slate-900 text-white').addClass('border-2 border-slate-900 text-slate-900');
+            }
+            if (isMagazine) {
+                renderMagazine(listaAtual);
+            }
+        }
+
+        function initPortalAuth() {
+            portalToken = localStorage.getItem('portal_token');
+            if (!portalToken) {
+                updateAuthUI();
+                return;
+            }
+
+            $.ajax({
+                url: `${API_URL}/portal/auth/me`,
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + portalToken },
+                success: function(response) {
+                    if (response && response.user) {
+                        portalUser = response.user;
+                        fetchUserLikes();
+                    } else {
+                        logoutPortal();
+                    }
+                    updateAuthUI();
+                },
+                error: function() {
+                    logoutPortal();
+                }
+            });
+        }
+
+        function updateAuthUI() {
+            const logged = !!portalToken;
+            $('#btnLogin').toggleClass('hidden', logged);
+            $('#btnLogoutPortal').toggleClass('hidden', !logged);
+            $('#linkPerfil').toggleClass('hidden', !logged);
+            $('#btnChat').toggleClass('hidden', !logged);
+        }
+
+        function abrirModalAuth() {
+            authMode = 'login';
+            ajustarAuthMode();
+            $('#modalAuth').removeClass('hidden');
+        }
+
+        function fecharModalAuth() {
+            $('#modalAuth').addClass('hidden');
+            $('#formAuth')[0].reset();
+            pendingLikeId = null;
+        }
+
+        function toggleAuthMode() {
+            authMode = authMode === 'login' ? 'register' : 'login';
+            ajustarAuthMode();
+        }
+
+        function ajustarAuthMode() {
+            const isRegister = authMode === 'register';
+            $('#authTitle').text(isRegister ? 'Criar conta' : 'Entrar');
+            $('#authNome').closest('div').toggleClass('hidden', !isRegister);
+            $('#authTelefone').closest('div').toggleClass('hidden', !isRegister);
+            $('#btnToggleAuthMode').text(isRegister ? 'Ja tenho conta' : 'Criar conta');
+        }
+
+        function handleAuthSubmit(e) {
+            e.preventDefault();
+            const payload = {
+                email: $('#authEmail').val(),
+                password: $('#authSenha').val()
+            };
+
+            if (authMode === 'register') {
+                payload.name = $('#authNome').val();
+                payload.telefone = $('#authTelefone').val();
+            }
+
+            const endpoint = authMode === 'register' ? '/portal/auth/register' : '/portal/auth/login';
+
+            $.ajax({
+                url: `${API_URL}${endpoint}`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function(response) {
+                    if (response && response.token) {
+                        portalToken = response.token;
+                        portalUser = response.user || null;
+                        localStorage.setItem('portal_token', portalToken);
+                        fetchUserLikes();
+                        updateAuthUI();
+                        fecharModalAuth();
+                        if (pendingLikeId) {
+                            toggleLike(pendingLikeId);
+                        }
+                        if (typeof showToast === 'function') {
+                            showToast(response.message || 'Login realizado com sucesso!', 'success');
+                        }
+                    } else {
+                        if (typeof showToast === 'function') {
+                            showToast('Falha ao autenticar.', 'error');
+                        }
+                    }
+                },
+                error: function(xhr) {
+                    const msg = xhr?.responseJSON?.message || 'Erro ao autenticar.';
+                    if (typeof showToast === 'function') {
+                        showToast(msg, 'error');
+                    }
+                }
+            });
+        }
+
+        function logoutPortal() {
+            portalToken = null;
+            portalUser = null;
+            likedIds = new Set();
+            localStorage.removeItem('portal_token');
+            fecharChat();
+            updateAuthUI();
+            renderImoveis(listaAtual);
+            renderTabela(listaAtual);
+        }
+
+        function fetchUserLikes() {
+            if (!portalToken) return;
+
+            $.ajax({
+                url: `${API_URL}/portal/likes`,
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + portalToken },
+                success: function(response) {
+                    const ids = response.data || [];
+                    likedIds = new Set(ids);
+                    renderImoveis(listaAtual);
+                    renderTabela(listaAtual);
+                    atualizarLikeModal();
+                }
+            });
+        }
+
+        function renderLikeButton(imovel) {
+            const liked = likedIds.has(imovel.id);
+            const icon = liked ? '❤' : '♡';
+            const count = Number(imovel.likes_count || 0);
+            return `
+                <button class="like-btn flex items-center gap-2 px-2 py-1 border-2 border-slate-900 text-slate-900 font-bold text-xs" onclick="event.stopPropagation(); toggleLike(${imovel.id});">
+                    <span>${icon}</span>
+                    <span>${count}</span>
+                </button>
+            `;
+        }
+
+        function toggleLike(propertyId) {
+            if (!portalToken) {
+                pendingLikeId = propertyId;
+                abrirModalAuth();
+                return;
+            }
+
+            $.ajax({
+                url: `${API_URL}/portal/likes/${propertyId}`,
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + portalToken },
+                success: function(response) {
+                    if (response && response.liked) {
+                        likedIds.add(propertyId);
+                        atualizarLikeCount(propertyId, response.count);
+                        if (typeof showToast === 'function') {
+                            showToast('Like registrado!', 'success');
+                        }
+                    }
+                },
+                error: function() {
+                    if (typeof showToast === 'function') {
+                        showToast('Erro ao registrar like.', 'error');
+                    }
+                }
+            });
+        }
+
+        function atualizarLikeCount(propertyId, count) {
+            listaAtual = listaAtual.map(item => {
+                if (item.id === propertyId) {
+                    return { ...item, likes_count: Number(count || 0) };
+                }
+                return item;
+            });
+            if (imovelSelecionado && imovelSelecionado.id === propertyId) {
+                imovelSelecionado.likes_count = Number(count || 0);
+            }
+            renderImoveis(listaAtual);
+            renderTabela(listaAtual);
+            atualizarLikeModal();
+        }
+
+        function atualizarLikeModal() {
+            if (!imovelSelecionado) return;
+            const count = Number(imovelSelecionado.likes_count || 0);
+            const liked = likedIds.has(imovelSelecionado.id);
+            $('#modalLikeCount').text(count);
+            $('#modalLikeIcon').text(liked ? '❤' : '♡');
+            $('#modalLikeBtn').off('click').on('click', function(e) {
+                e.preventDefault();
+                toggleLike(imovelSelecionado.id);
+            });
+        }
+
+        function abrirChat() {
+            if (!portalToken) {
+                abrirModalAuth();
+                return;
+            }
+            $('#modalChat').removeClass('hidden');
+            iniciarChat();
+        }
+
+        function fecharChat() {
+            $('#modalChat').addClass('hidden');
+            pararChat();
+        }
+
+        function iniciarChat() {
+            if (!portalToken) return;
+
+            if (chatConversaId) {
+                carregarMensagens();
+                iniciarPolling();
+                return;
+            }
+
+            $.ajax({
+                url: `${API_URL}/portal/chat/start`,
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + portalToken },
+                success: function(response) {
+                    chatConversaId = response.conversa?.id || response.conversa_id || response.id || null;
+                    const mensagens = response.mensagens || [];
+                    renderChatMensagens(mensagens, true);
+                    atualizarChatStatus(response.conversa);
+                    iniciarPolling();
+                },
+                error: function() {
+                    showToast('Erro ao iniciar chat.', 'error');
+                }
+            });
+        }
+
+        function iniciarPolling() {
+            pararChat();
+            chatTimer = setInterval(carregarMensagens, 4000);
+        }
+
+        function pararChat() {
+            if (chatTimer) {
+                clearInterval(chatTimer);
+                chatTimer = null;
+            }
+        }
+
+        function carregarMensagens() {
+            if (!chatConversaId || !portalToken) return;
+
+            $.ajax({
+                url: `${API_URL}/portal/chat/${chatConversaId}/mensagens?since_id=${chatLastId}`,
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + portalToken },
+                success: function(response) {
+                    const mensagens = response.data || [];
+                    if (mensagens.length) {
+                        renderChatMensagens(mensagens, false);
+                    }
+                    atualizarChatStatus(response.conversa || null);
+                }
+            });
+        }
+
+        function renderChatMensagens(lista, replaceAll) {
+            if (replaceAll) {
+                $('#chatMensagens').empty();
+                chatLastId = 0;
+            }
+
+            lista.forEach(msg => {
+                const isIncoming = msg.direction === 'incoming';
+                const bubble = `
+                    <div class="flex ${isIncoming ? 'justify-end' : 'justify-start'}">
+                        <div class="${isIncoming ? 'bg-blue-600 text-white' : 'bg-white border'} px-4 py-2 rounded-lg max-w-[75%]">
+                            <p class="text-sm">${escapeHtml(msg.content || '')}</p>
+                            <span class="text-[10px] opacity-70">${formatChatTime(msg.sent_at)}</span>
+                        </div>
+                    </div>
+                `;
+                $('#chatMensagens').append(bubble);
+                chatLastId = Math.max(chatLastId, msg.id || 0);
+            });
+
+            $('#chatMensagens').scrollTop($('#chatMensagens')[0].scrollHeight);
+        }
+
+        function enviarMensagemChat(e) {
+            e.preventDefault();
+            const content = $('#chatInput').val().trim();
+            if (!content) return;
+            if (!chatConversaId) {
+                iniciarChat();
+                return;
+            }
+
+            $('#chatInput').val('');
+
+            $.ajax({
+                url: `${API_URL}/portal/chat/${chatConversaId}/mensagens`,
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + portalToken },
+                contentType: 'application/json',
+                data: JSON.stringify({ content }),
+                success: function() {
+                    carregarMensagens();
+                },
+                error: function() {
+                    showToast('Erro ao enviar mensagem.', 'error');
+                }
+            });
+        }
+
+        function atualizarChatStatus(conversa) {
+            if (!conversa) return;
+            const taken = !!conversa.corretor_id;
+            const nome = conversa.corretor_nome || conversa.corretor?.name;
+            if (taken) {
+                $('#chatStatus').text(nome ? `Atendimento humano: ${nome}` : 'Atendimento humano');
+            } else {
+                $('#chatStatus').text('IA ativa');
+            }
+        }
+
+        function formatChatTime(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         }
 
         function filtrarImoveis() {
             const tipo = $('#filterTipo').val();
             const finalidade = $('#filterFinalidade').val();
             const local = $('#filterLocal').val().toLowerCase();
+            const texto = $('#filterTexto').val().trim();
+            const sortBy = $('#sortBy').val();
 
             const filtrados = imoveis.filter(imovel => {
                 const matchTipo = !tipo || imovel.tipo === tipo;
                 const matchFinalidade = !finalidade || imovel.finalidade === finalidade;
-                const matchLocal = !local || imovel.endereco.toLowerCase().includes(local);
-                return matchTipo && matchFinalidade && matchLocal;
+                const matchFinalidadePermitida = !allowedFinalidades || allowedFinalidades.includes(imovel.finalidade);
+                const endereco = (imovel.endereco || '').toLowerCase();
+                const titulo = (imovel.titulo || '').toLowerCase();
+                const matchLocal = !local || endereco.includes(local) || titulo.includes(local);
+                const matchTexto = !texto || matchTextoAvancado(imovel, texto);
+                return matchTipo && matchFinalidade && matchFinalidadePermitida && matchLocal && matchTexto;
             });
 
-            renderImoveis(filtrados);
+            const ordenados = ordenarImoveis(filtrados, sortBy);
+            atualizarListagem(ordenados);
         }
 
         function abrirModal(id) {
@@ -301,19 +1168,20 @@
             if (!imovelSelecionado) return;
 
             $('#modalIcone').text(getTipoIcon(imovelSelecionado.tipo));
-            $('#modalTitulo').text(imovelSelecionado.titulo);
+            $('#modalTitulo').text(imovelSelecionado.titulo || 'Imóvel');
             $('#modalPreco').text('R$ ' + formatPrice(imovelSelecionado.preco));
-            $('#modalEndereco').text('📍 ' + imovelSelecionado.endereco);
-            
+            $('#modalEndereco').text(imovelSelecionado.endereco || '');
+            setupCarousel(getImagens(imovelSelecionado));
+            atualizarLikeModal();
+
             const detalhes = `
-                ${imovelSelecionado.area ? `<span class="font-bold">📐 ${imovelSelecionado.area}m²</span>` : ''}
-                ${imovelSelecionado.quartos ? `<span class="font-bold">🛏️ ${imovelSelecionado.quartos} quartos</span>` : ''}
-                ${imovelSelecionado.banheiros ? `<span class="font-bold">🚿 ${imovelSelecionado.banheiros} banheiros</span>` : ''}
-                <span class="font-bold uppercase px-3 py-1 bg-blue-100 text-blue-700 rounded">${imovelSelecionado.finalidade}</span>
+                ${imovelSelecionado.area ? `<span class="font-bold">Área: ${imovelSelecionado.area}m2</span>` : ''}
+                ${imovelSelecionado.quartos ? `<span class="font-bold">Quartos: ${imovelSelecionado.quartos}</span>` : ''}
+                ${imovelSelecionado.banheiros ? `<span class="font-bold">Banheiros: ${imovelSelecionado.banheiros}</span>` : ''}
+                <span class="font-bold uppercase px-3 py-1 bg-blue-100 text-blue-700 rounded">${imovelSelecionado.finalidade || ''}</span>
             `;
             $('#modalDetalhes').html(detalhes);
-            $('#modalDescricao').text(imovelSelecionado.descricao || 'Descrição não disponível');
-
+            $('#modalDescricao').html(formatDescricaoTopicos(imovelSelecionado.descricao));
             $('#modalImovel').removeClass('hidden');
         }
 
@@ -322,14 +1190,417 @@
             imovelSelecionado = null;
         }
 
-        function entrarEmContato() {
-            const mensagem = `Olá! Tenho interesse no imóvel: ${imovelSelecionado.titulo}`;
-            const whatsapp = tenantConfig.contact_phone.replace(/\D/g, '');
+                function entrarEmContato() {
+            if (!imovelSelecionado) {
+                if (typeof showToast === 'function') {
+                    showToast('Selecione um im\u00f3vel primeiro.', 'warning');
+                }
+                return;
+            }
+            if (!tenantConfig.contact_phone) {
+                if (typeof showToast === 'function') {
+                    showToast('Telefone de contato n\u00e3o configurado.', 'error');
+                }
+                return;
+            }
+            const mensagem = `Ol\u00e1! Tenho interesse no im\u00f3vel: ${imovelSelecionado.titulo}`;
+            const whatsapp = String(tenantConfig.contact_phone).replace(/\D/g, '');
             window.open(`https://wa.me/55${whatsapp}?text=${encodeURIComponent(mensagem)}`, '_blank');
         }
-
         function agendarVisita() {
-            alert('🎉 Funcionalidade em desenvolvimento!\n\nEm breve você poderá agendar visitas diretamente pelo portal.');
+            if (!imovelSelecionado) {
+                if (typeof showToast === 'function') {
+                    showToast('Selecione um im\u00f3vel para agendar a visita.', 'warning');
+                }
+                return;
+            }
+            $('#visitaImovelTitulo').text(imovelSelecionado.titulo || '');
+            $('#modalVisita').removeClass('hidden');
+        }
+
+        function fecharModalVisita() {
+            $('#modalVisita').addClass('hidden');
+            const form = document.getElementById('formVisita');
+            if (form) {
+                form.reset();
+            }
+        }
+
+        function enviarVisita(e) {
+            e.preventDefault();
+            if (!imovelSelecionado) {
+                return;
+            }
+
+            const payload = {
+                property_id: imovelSelecionado.id || null,
+                property_titulo: imovelSelecionado.titulo || '',
+                nome: $('#visitaNome').val(),
+                telefone: $('#visitaTelefone').val(),
+                email: $('#visitaEmail').val(),
+                data_hora: $('#visitaDataHora').val(),
+                observacoes: $('#visitaObservacoes').val()
+            };
+
+            $.ajax({
+                url: `${API_URL}/portal/visitas`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function() {
+                    if (typeof showToast === 'function') {
+                        showToast('Visita agendada com sucesso!', 'success');
+                    }
+                    fecharModalVisita();
+                },
+                error: function() {
+                    if (typeof showToast === 'function') {
+                        showToast('Erro ao agendar visita. Tente novamente.', 'error');
+                    }
+                }
+            });
+        }
+                        function fixText(text) {
+            let value = String(text || '');
+            if (!value) return value;
+
+            const replacements = {
+                'Im\u00c3\u00b3veis': 'Im\u00f3veis',
+                'Im\u00c3\u00b3vel': 'Im\u00f3vel',
+                'im\u00c3\u00b3veis': 'im\u00f3veis',
+                'im\u00c3\u00b3vel': 'im\u00f3vel',
+                'op\u00c3\u00a7\u00c3\u00b5es': 'op\u00e7\u00f5es',
+                'voc\u00c3\u00aa': 'voc\u00ea',
+                'Descri\u00c3\u00a7\u00c3\u00a3o': 'Descri\u00e7\u00e3o',
+                'descri\u00c3\u00a7\u00c3\u00a3o': 'descri\u00e7\u00e3o',
+                'Observa\u00c3\u00a7\u00c3\u00b5es': 'Observa\u00e7\u00f5es',
+                'pre\u00c3\u00a7o': 'pre\u00e7o',
+                'Pre\u00c3\u00a7o': 'Pre\u00e7o',
+                'Endere\u00c3\u00a7o': 'Endere\u00e7o',
+                'endere\u00c3\u00a7o': 'endere\u00e7o',
+                'Im\u251c\u2502veis': 'Im\u00f3veis',
+                'Im\u251c\u2502vel': 'Im\u00f3vel'
+            };
+
+            Object.keys(replacements).forEach(key => {
+                value = value.split(key).join(replacements[key]);
+            });
+
+            if (new RegExp('[\\u00c3\\u00c2\\uFFFD]').test(value)) {
+                try {
+                    value = decodeURIComponent(escape(value));
+                } catch (e) {
+                    // Keep original value if decode fails.
+                }
+            }
+
+            return value;
+        }
+
+        function normalizeImovel(item) {
+            if (!item) return {};
+            const tipoRaw = fixText(item.tipo_imovel || item.tipo || item.descricaoTipoImovel || '');
+            const finalidadeRaw = fixText(item.finalidade_imovel || item.finalidade || '');
+            const fotos = Array.isArray(item.fotos) ? item.fotos : (Array.isArray(item.imagens) ? item.imagens : []);
+            const titulo = fixText(item.titulo || item.referenciaImovel || item.referencia_imovel || item.descricaoTipoImovel || 'Imóvel');
+            const descricao = fixText(item.descricao || item.descricao_imovel || item.descricaoImovel || '');
+
+            return {
+                id: item.id || item.codigo || item.codigoImovel || item.external_id,
+                titulo: titulo,
+                tipo: normalizeTipo(tipoRaw),
+                finalidade: normalizeFinalidade(finalidadeRaw),
+                preco: item.preco || item.valor || item.valorEsperado || 0,
+                Área: item.area_total || item.area || null,
+                quartos: item.quartos || item.dormitorios || 0,
+                banheiros: item.banheiros || 0,
+                vagas: item.vagas || item.garagem || 0,
+                endereco: fixText(formatEndereco(item)),
+                descricao: descricao,
+                fotos: fotos,
+                likes_count: Number(item.likes_count || item.likes || 0)
+            };
+        }
+
+        function normalizeTipo(tipo) {
+            const value = fixText(tipo || '').toLowerCase();
+            if (value.includes('casa')) return 'casa';
+            if (value.includes('apart')) return 'apartamento';
+            if (value.includes('terren')) return 'terreno';
+            if (value.includes('comercial')) return 'comercial';
+            return value || 'outro';
+        }
+
+        function normalizeFinalidade(finalidade) {
+            const value = fixText(finalidade || '').toLowerCase();
+            if (value.includes('alugu') || value.includes('loca')) return 'aluguel';
+            if (value.includes('vend')) return 'venda';
+            return value || '';
+        }
+
+        function matchTextoAvancado(imovel, texto) {
+            const query = fixText(texto || '').trim();
+            if (!query) return true;
+
+            const textoBase = [
+                imovel.titulo,
+                imovel.endereco,
+                imovel.descricao,
+                imovel.tipo,
+                imovel.finalidade
+            ].map(value => fixText(value || '')).join(' ').toLowerCase();
+
+            if (isRegexQuery(query)) {
+                const regex = buildRegex(query);
+                return regex ? regex.test(textoBase) : true;
+            }
+
+            const requisitos = extrairRequisitos(query);
+            if (requisitos.tipo && imovel.tipo !== requisitos.tipo) return false;
+            if (requisitos.finalidade && imovel.finalidade !== requisitos.finalidade) return false;
+            if (requisitos.quartos !== null && Number(imovel.quartos || 0) < requisitos.quartos) return false;
+            if (requisitos.banheiros !== null && Number(imovel.banheiros || 0) < requisitos.banheiros) return false;
+            if (requisitos.vagas !== null && Number(imovel.vagas || 0) < requisitos.vagas) return false;
+            if (requisitos.termos.length) {
+                const termosOk = requisitos.termos.every(term => textoBase.includes(term));
+                if (!termosOk) return false;
+            }
+
+            return true;
+        }
+
+        function isRegexQuery(query) {
+            return query.startsWith('/') && query.lastIndexOf('/') > 0;
+        }
+
+        function buildRegex(query) {
+            const lastSlash = query.lastIndexOf('/');
+            const pattern = query.slice(1, lastSlash);
+            const flags = query.slice(lastSlash + 1) || 'i';
+            try {
+                return new RegExp(pattern, flags);
+            } catch (e) {
+                return null;
+            }
+        }
+
+                function extrairRequisitos(query) {
+            const lower = query.toLowerCase();
+            const termos = [];
+            const requisitos = {
+                tipo: null,
+                finalidade: null,
+                quartos: null,
+                banheiros: null,
+                vagas: null,
+                termos
+            };
+
+            const tipoMatch = lower.match(/\b(casa|apartamento|terreno|comercial)\b/);
+            if (tipoMatch) {
+                requisitos.tipo = tipoMatch[1];
+            }
+
+            const finalidadeMatch = lower.match(/\b(venda|aluguel|locacao|loca[\u00e7c][\u00e3a]o)\b/);
+            if (finalidadeMatch) {
+                requisitos.finalidade = finalidadeMatch[1].startsWith('alugu') ? 'aluguel' : 'venda';
+            }
+
+            const quartosMatch = lower.match(/(\d+)\s*(quartos?|dormit[\u00f3o]rios?)/);
+            if (quartosMatch) {
+                requisitos.quartos = Number(quartosMatch[1]);
+            }
+
+            const banheirosMatch = lower.match(/(\d+)\s*(banheiros?|banho)/);
+            if (banheirosMatch) {
+                requisitos.banheiros = Number(banheirosMatch[1]);
+            }
+
+            const vagasMatch = lower.match(/(\d+)\s*(vagas?|garagens?)/);
+            if (vagasMatch) {
+                requisitos.vagas = Number(vagasMatch[1]);
+            }
+
+            const palavrasChave = [
+                'quintal',
+                'piscina',
+                'churrasqueira',
+                'varanda',
+                'area gourmet',
+                '\u00e1rea gourmet',
+                'suite',
+                'su\u00edte',
+                'mobiliado'
+            ];
+
+            palavrasChave.forEach(palavra => {
+                if (lower.includes(palavra)) {
+                    termos.push(palavra);
+                }
+            });
+
+            const extras = lower
+                .replace(/\b(casa|apartamento|terreno|comercial|venda|aluguel|locacao|loca[\u00e7c][\u00e3a]o)\b/g, '')
+                .replace(/(\d+)\s*(quartos?|dormit[\u00f3o]rios?|banheiros?|banho|vagas?|garagens?)/g, '')
+                .replace(/[^\w\s]/g, ' ')
+                .split(/\s+/)
+                .map(term => term.trim())
+                .filter(term => term.length > 2);
+
+            extras.forEach(term => termos.push(term));
+
+            requisitos.termos = Array.from(new Set(requisitos.termos.map(term => term.toLowerCase())));
+            return requisitos;
+        }
+
+        function ordenarImoveis(lista, sortBy) {
+            const items = [...lista];
+            if (sortBy === 'preco_asc') {
+                items.sort((a, b) => Number(a.preco || 0) - Number(b.preco || 0));
+            } else if (sortBy === 'preco_desc') {
+                items.sort((a, b) => Number(b.preco || 0) - Number(a.preco || 0));
+            } else if (sortBy === 'avaliacao_desc') {
+                items.sort((a, b) => getAvaliacao(b) - getAvaliacao(a));
+            }
+            return items;
+        }
+
+        function getAvaliacao(imovel) {
+            const likes = Number(imovel.likes_count || 0);
+            const avaliacao = Number(imovel.avaliacao || imovel.rating || imovel.nota || 0);
+            return avaliacao + likes;
+        }
+
+        function formatEndereco(item) {
+            if (!item) return '';
+            if (item.endereco && typeof item.endereco === 'object') {
+                const endereco = item.endereco;
+                const partes = [
+                    endereco.logradouro,
+                    endereco.numero,
+                    endereco.complemento,
+                    endereco.bairro,
+                    endereco.cidade,
+                    endereco.estado
+                ].filter(Boolean);
+                return partes.join(', ');
+            }
+            if (item.endereco && !item.cidade && !item.estado && !item.bairro) {
+                return item.endereco;
+            }
+            const partes = [];
+            if (item.endereco) partes.push(item.endereco);
+            if (item.bairro) partes.push(item.bairro);
+            if (item.cidade) partes.push(item.cidade);
+            if (item.estado) partes.push(item.estado);
+            return partes.join(', ');
+        }
+
+        function getImagens(imovel) {
+            let fotos = imovel.fotos;
+            if (typeof fotos === 'string') {
+                try {
+                    const parsed = JSON.parse(fotos);
+                    fotos = Array.isArray(parsed) ? parsed : [fotos];
+                } catch (e) {
+                    fotos = [fotos];
+                }
+            }
+            if (!Array.isArray(fotos)) {
+                fotos = [];
+            }
+            const imagens = [];
+
+            fotos.forEach((foto) => {
+                if (typeof foto === 'string') {
+                    imagens.push(foto);
+                } else if (foto && typeof foto === 'object') {
+                    if (foto.url) imagens.push(foto.url);
+                    if (foto.link) imagens.push(foto.link);
+                }
+            });
+
+            return Array.from(new Set(imagens));
+        }
+
+        function getImagemPrincipal(imovel) {
+            const imagens = getImagens(imovel);
+            return imagens.length ? imagens[0] : '';
+        }
+
+        function setupCarousel(imagens) {
+            carouselImages = Array.isArray(imagens) ? imagens : [];
+            carouselIndex = 0;
+            const hasImages = carouselImages.length > 0;
+            const showControls = carouselImages.length > 1;
+
+            $('#modalFotoImg').toggleClass('hidden', !hasImages);
+            $('#modalFotoFallback').toggleClass('hidden', hasImages);
+            $('#carouselPrev').toggleClass('hidden', !showControls);
+            $('#carouselNext').toggleClass('hidden', !showControls);
+            $('#carouselDots').toggleClass('hidden', !showControls);
+
+            if (hasImages) {
+                updateCarousel();
+            } else {
+                $('#modalFotoImg').attr('src', '');
+                $('#carouselDots').html('');
+            }
+        }
+
+        function moveCarousel(delta) {
+            if (!carouselImages.length) return;
+            carouselIndex = (carouselIndex + delta + carouselImages.length) % carouselImages.length;
+            updateCarousel();
+        }
+
+        function setCarouselIndex(index) {
+            if (index < 0 || index >= carouselImages.length) return;
+            carouselIndex = index;
+            updateCarousel();
+        }
+
+        function updateCarousel() {
+            if (!carouselImages.length) return;
+            $('#modalFotoImg').attr('src', carouselImages[carouselIndex]);
+            const dots = carouselImages.map((_, idx) => {
+                const active = idx === carouselIndex ? 'bg-white' : 'bg-white/60';
+                return `<button class="w-2.5 h-2.5 rounded-full ${active}" onclick="setCarouselIndex(${idx})"></button>`;
+            }).join('');
+            $('#carouselDots').html(dots);
+        }
+
+        function formatDescricaoTopicos(text) {
+            const cleaned = String(text || '')
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            if (!cleaned) {
+                return '<p class="text-gray-500">Descrição não disponível.</p>';
+            }
+
+            const partes = cleaned
+                .split(/[.!?;\n]+/)
+                .map(item => item.trim())
+                .filter(Boolean)
+                .slice(0, 12);
+
+            if (!partes.length) {
+                return '<p class="text-gray-500">Descrição não disponível.</p>';
+            }
+
+            const itens = partes.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+            return `<ul class="list-disc pl-5 space-y-1">${itens}</ul>`;
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         function getTipoIcon(tipo) {
@@ -343,8 +1614,15 @@
         }
 
         function formatPrice(price) {
-            return price.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            const value = Number(price || 0);
+            return value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
         }
     </script>
 </body>
 </html>
+
+
+
+
+
+

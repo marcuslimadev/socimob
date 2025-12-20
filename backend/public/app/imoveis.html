@@ -6,6 +6,7 @@
     <title>Imóveis - SOCIMOB</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="js/toast.js"></script>
     <!-- DataTables -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
@@ -233,34 +234,46 @@
 
         function loadImoveis() {
             const token = localStorage.getItem('token');
-            
-            // Dados de exemplo
-            imoveis = [
-                { id: 1, titulo: 'Casa de Luxo', tipo: 'casa', finalidade: 'venda', preco: 850000, area: 250, quartos: 4, banheiros: 3, endereco: 'Rua das Flores, 123', status: 'disponivel', descricao: 'Linda casa com piscina' },
-                { id: 2, titulo: 'Apartamento Centro', tipo: 'apartamento', finalidade: 'aluguel', preco: 3500, area: 80, quartos: 2, banheiros: 1, endereco: 'Av. Principal, 456', status: 'disponivel', descricao: 'Apto bem localizado' },
-                { id: 3, titulo: 'Terreno Comercial', tipo: 'terreno', finalidade: 'venda', preco: 450000, area: 500, quartos: 0, banheiros: 0, endereco: 'Rod. BR-101, km 45', status: 'disponivel', descricao: 'Terreno amplo' },
-                { id: 4, titulo: 'Sala Comercial', tipo: 'comercial', finalidade: 'aluguel', preco: 2800, area: 45, quartos: 0, banheiros: 1, endereco: 'Centro Empresarial, sala 201', status: 'disponivel', descricao: 'Sala moderna' }
-            ];
-            
-            renderDataTable(imoveis);
-            
-            /* Descomente quando backend estiver pronto
+
+            if (!token) {
+                showToast('Erro: Token não encontrado', 'error');
+                renderDataTable([]);
+                return;
+            }
+
             $.ajax({
                 url: API_URL + '/admin/imoveis',
                 method: 'GET',
                 headers: { 'Authorization': 'Bearer ' + token },
                 success: function(response) {
-                    imoveis = response.data || [];
+                    const raw = response.data || [];
+                    imoveis = raw.map(normalizeImovel);
                     console.log('✓ Imóveis carregados:', imoveis.length);
                     renderDataTable(imoveis);
                 },
                 error: function(error) {
                     console.error('Erro ao carregar imóveis:', error);
+                    showToast('Erro ao carregar imóveis', 'error');
+                    renderDataTable([]);
                 }
             });
-            */
         }
 
+        function normalizeImovel(item) {
+            return {
+                id: item.id,
+                titulo: item.titulo || item.codigo || 'Imovel',
+                tipo: item.tipo_imovel || item.tipo || 'casa',
+                finalidade: item.finalidade_imovel || item.finalidade || 'venda',
+                preco: item.preco || 0,
+                area: item.area_total || item.area || null,
+                quartos: item.quartos || 0,
+                banheiros: item.banheiros || 0,
+                endereco: item.endereco || '',
+                status: item.active === false ? 'vendido' : 'disponivel',
+                descricao: item.descricao || ''
+            };
+        }
         function renderDataTable(data) {
             // Destruir DataTable existente se houver
             if ($.fn.DataTable.isDataTable('#tabelaImoveis')) {
@@ -343,13 +356,13 @@
             };
 
             console.log('💾 Salvando imóvel:', formData);
-            alert('Imóvel salvo com sucesso! (simulado)');
+            showToast('Imóvel salvo com sucesso! (simulado)', 'success');
             $('#modalImovel').addClass('hidden');
             $('#formImovel')[0].reset();
         }
 
         function editImovel(id) {
-            alert('Editar imóvel #' + id + ' (em desenvolvimento)');
+            showToast('Editar imóvel #' + id + ' (em desenvolvimento)', 'info');
         }
 
         function deleteImovel(id) {
@@ -395,78 +408,163 @@
             }
         }
 
-        async function iniciarImportacao(e) {
+        let importJobInterval = null;
+
+        function iniciarImportacao(e) {
             e.preventDefault();
-            
+
             const fonte = $('[name="fonte"]').val();
             const api_url = $('[name="api_url"]').val();
             const api_key = $('[name="api_key"]').val();
             const token = localStorage.getItem('token');
 
             if (!fonte) {
-                alert('⚠️ Selecione um portal/fonte para importar');
+                showToast('Selecione um portal/fonte para importar', 'warning');
+                return;
+            }
+
+            if (!token) {
+                showToast('Erro: Token não encontrado', 'error');
                 return;
             }
 
             console.log('📥 Iniciando importação:', { fonte, api_url });
 
-            // Mostrar progresso
             $('#btnIniciarImportacao').prop('disabled', true).text('Importando...');
             $('#progressoImportacao').removeClass('hidden');
             $('#barraProgresso').css('width', '10%');
             $('#textoProgresso').text('Conectando à API...');
-            
-            try {
-                // Chamada REAL da API
-                const response = await $.ajax({
-                    url: `${API_URL}/admin/imoveis/importar`,
-                    method: 'POST',
-                    headers: { 
-                        'Authorization': 'Bearer ' + token,
-                        'Content-Type': 'application/json'
-                    },
-                    data: JSON.stringify({ fonte, api_url, api_key }),
-                    xhr: function() {
-                        const xhr = new window.XMLHttpRequest();
-                        // Simular progresso durante a requisição
+
+            $.ajax({
+                url: `${API_URL}/admin/imoveis/importar`,
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify({ fonte, api_url, api_key }),
+                success: function(response) {
+                    if (!response || response.success === false) {
+                        const errorMsg = response?.error || response?.message || 'Erro ao importar imóveis';
+                        showToast('Erro ao importar imoveis\n\n' + errorMsg, 'error', 6000);
+
+                        resetImportacaoUI();
+                        return;
+                    }
+
+                    const jobId = response?.data?.job_id;
+                    if (!jobId) {
+                        showToast('Erro ao iniciar importação', 'error');
+                        resetImportacaoUI();
+                        return;
+                    }
+
+                    acompanharImportacao(jobId);
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.error || xhr.responseJSON?.message || 'Erro desconhecido';
+                        showToast('Erro ao importar imoveis\n\n' + errorMsg, 'error', 6000);
+
+                    resetImportacaoUI();
+                }
+            });
+        }
+
+        function acompanharImportacao(jobId) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showToast('Erro: Token não encontrado', 'error');
+                resetImportacaoUI();
+                return;
+            }
+
+            if (importJobInterval) {
+                clearInterval(importJobInterval);
+                importJobInterval = null;
+            }
+
+            const atualizar = function() {
+                $.ajax({
+                    url: `${API_URL}/admin/imoveis/importar/${jobId}`,
+                    method: 'GET',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    success: function(response) {
+                        const data = response.data || {};
+                        const total = data.total || 0;
+                        const processados = data.processados || 0;
+
                         let progress = 10;
-                        const interval = setInterval(() => {
-                            progress = Math.min(progress + 10, 90);
-                            $('#barraProgresso').css('width', progress + '%');
-                            $('#textoProgresso').text(`Importando... ${progress}%`);
-                        }, 1000);
-                        
-                        xhr.addEventListener('load', () => {
-                            clearInterval(interval);
+                        if (total > 0) {
+                            progress = Math.min(95, Math.round((processados / total) * 100));
+                        }
+                        if (data.status === 'agendado') {
+                            progress = Math.max(progress, 15);
+                        }
+                        if (data.status === 'processando') {
+                            progress = Math.max(progress, 30);
+                        }
+
+                        $('#barraProgresso').css('width', progress + '%');
+                        $('#textoProgresso').text(`Importando... ${progress}%`);
+
+                        if (data.status === 'concluido') {
+                            clearInterval(importJobInterval);
+                            importJobInterval = null;
                             $('#barraProgresso').css('width', '100%');
                             $('#textoProgresso').text('Concluído!');
-                        });
-                        
-                        return xhr;
+
+                            const resultado = data.resultado || {};
+                            const importados = resultado.importados || 0;
+                            const duplicados = resultado.duplicados || 0;
+                            const erros = resultado.erros || 0;
+                            const totalFinal = data.total || (importados + duplicados);
+
+                            const mensagem = `Importação concluída com sucesso!
+
+` +
+                                  `• ${importados} imóveis importados
+` +
+                                  `• ${duplicados} duplicados (atualizados)
+` +
+                                  `• ${erros} erros
+` +
+                                  `• Total processado: ${totalFinal}`;
+
+                            showToast(mensagem, 'success', 6000);
+                            fecharModalImportacao();
+                            loadImoveis();
+                            resetImportacaoUI(false);
+                        }
+
+                        if (data.status === 'falhou') {
+                            clearInterval(importJobInterval);
+                            importJobInterval = null;
+                            const erro = data.erro || 'Erro ao importar imoveis. Verifique os logs.';
+                            showToast(erro, 'error', 6000);
+                            resetImportacaoUI();
+                        }
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON?.error || 'Erro ao consultar o job';
+                        showToast('Erro ao importar imoveis\n\n' + errorMsg, 'error', 6000);
+
+                        clearInterval(importJobInterval);
+                        importJobInterval = null;
+                        resetImportacaoUI();
                     }
                 });
+            };
 
-                console.log('✅ Resposta da importação:', response);
+            atualizar();
+            importJobInterval = setInterval(atualizar, 2000);
+        }
 
-                const mensagem = `✅ Importação concluída com sucesso!\n\n` + 
-                      `• ${response.importados || 0} imóveis importados\n` + 
-                      `• ${response.duplicados || 0} duplicados (atualizados)\n` + 
-                      `• ${response.erros || 0} erros\n` +
-                      `• Total processado: ${response.total || 0}`;
-
-                alert(mensagem);
-
-                fecharModalImportacao();
-                loadImoveis(); // Recarregar lista
-
-            } catch (error) {
-                console.error('Erro na importação:', error);
-                const errorMsg = error.responseJSON?.error || error.responseJSON?.message || error.message || 'Erro desconhecido';
-                alert('❌ Erro ao importar imóveis:\n\n' + errorMsg);
-            } finally {
-                $('#btnIniciarImportacao').prop('disabled', false).text('Iniciar Importação');
+        function resetImportacaoUI(resetProgress = true) {
+            $('#btnIniciarImportacao').prop('disabled', false).text('Iniciar Importação');
+            if (resetProgress) {
                 $('#progressoImportacao').addClass('hidden');
                 $('#barraProgresso').css('width', '0%');
+                $('#textoProgresso').text('Importando...');
             }
         }
 

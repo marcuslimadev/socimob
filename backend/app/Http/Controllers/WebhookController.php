@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Log;
+use App\Models\Tenant;
+use App\Models\TenantConfig;
 
 /**
  * Controller para receber webhooks do Twilio
@@ -29,36 +31,39 @@ class WebhookController extends Controller
         // Detectar origem do webhook (Twilio ou Evolution API)
         $source = $this->detectWebhookSource($webhookData);
         
-        Log::info('╔════════════════════════════════════════════════════════════════╗');
-        Log::info('║           🔔 WEBHOOK RECEBIDO - ' . strtoupper($source) . '                    ║');
-        Log::info('╚════════════════════════════════════════════════════════════════╝');
+        Log::info('ЙНННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН»');
+        Log::info('є           ?? WEBHOOK RECEBIDO - ' . strtoupper($source) . '                    є');
+        Log::info('ИННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННј');
         
         // Normalizar dados conforme a origem
         $normalizedData = $this->normalizeWebhookData($webhookData, $source);
+        $tenant = $this->resolveTenantForWebhook($request, $normalizedData);
+        if ($tenant) {
+            app()->instance('tenant', $tenant);
+            $request->attributes->set('tenant_id', $tenant->id);
+            $normalizedData['tenant_id'] = $tenant->id;
+        }
         
-        Log::info('📱 De: ' . ($normalizedData['from'] ?? 'N/A'));
-        Log::info('👤 Nome: ' . ($normalizedData['profile_name'] ?? 'N/A'));
-        Log::info('💬 Mensagem: ' . ($normalizedData['message'] ?? '[mídia]'));
-        Log::info('🆔 Message ID: ' . ($normalizedData['message_id'] ?? 'N/A'));
-        Log::info('🔖 Origem: ' . $source);
-        Log::info('─────────────────────────────────────────────────────────────────');
-        Log::info('📦 Payload completo:', $webhookData);
-        Log::info('─────────────────────────────────────────────────────────────────');
+        Log::info('?? De: ' . ($normalizedData['from'] ?? 'N/A'));
+        Log::info('?? Nome: ' . ($normalizedData['profile_name'] ?? 'N/A'));
+        Log::info('?? Mensagem: ' . ($normalizedData['message'] ?? '[mЎdia]'));
+        Log::info('?? Message ID: ' . ($normalizedData['message_id'] ?? 'N/A'));
+        Log::info('?? Origem: ' . $source);
+        Log::info('?? Tenant ID: ' . ($tenant?->id ?? 'N/A'));
+        Log::info('ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД');
+        Log::info('?? Payload completo:', $webhookData);
+        Log::info('ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД');
         
         try {
             $result = $this->whatsappService->processIncomingMessage($normalizedData);
 
-            Log::info('╔════════════════════════════════════════════════════════════════╗');
-            Log::info('║           ✅ WEBHOOK PROCESSADO COM SUCESSO                   ║');
-            Log::info('╚════════════════════════════════════════════════════════════════╝');
-            Log::info('📊 Resultado:', $result);
-            Log::info('═════════════════════════════════════════════════════════════════');
+            Log::info('ЙНННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН»');
+            Log::info('є           ? WEBHOOK PROCESSADO COM SUCESSO                   є');
+            Log::info('ИННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННј');
+            Log::info('?? Resultado:', $result);
+            Log::info('ННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН');
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Processado',
-                'result' => $result
-            ], 200);
+            return response('OK', 200)->header('Content-Type', 'text/plain');
 
         } catch (\Throwable $e) {
             Log::error('ERRO NO WEBHOOK', [
@@ -71,11 +76,7 @@ class WebhookController extends Controller
             ]);
 
             // Retornar 200 para evitar reenvio do Twilio
-            return response()->json([
-                'success' => false,
-                'error' => 'Falha ao processar webhook: ' . $e->getMessage(),
-                'exception' => get_class($e)
-            ], 200);
+            return response('OK', 200)->header('Content-Type', 'text/plain');
         }
     }
     
@@ -84,7 +85,7 @@ class WebhookController extends Controller
      */
     private function detectWebhookSource(array $data): string
     {
-        // Twilio tem campos específicos como MessageSid, AccountSid
+        // Twilio tem campos especЎficos como MessageSid, AccountSid
         if (isset($data['MessageSid']) || isset($data['AccountSid'])) {
             return 'twilio';
         }
@@ -98,13 +99,23 @@ class WebhookController extends Controller
     }
     
     /**
-     * Normalizar dados do webhook para formato padrão
+     * Normalizar dados do webhook para formato padrЖo
      */
     private function normalizeWebhookData(array $data, string $source): array
     {
         if ($source === 'twilio') {
+            $from = $data['From'] ?? null;
+            // Garantir que 'from' come‡a com whatsapp: se vier do Twilio
+            if ($from && strpos($from, 'whatsapp:') === false) {
+                // Se nЖo tem whatsapp:, adicionar
+                if (!str_starts_with($from, '+')) {
+                    $from = '+' . $from;
+                }
+                // NЖo adicionar whatsapp: aqui, o WhatsAppService vai fazer isso
+            }
+            
             return [
-                'from' => $data['From'] ?? null,
+                'from' => $from,
                 'to' => $data['To'] ?? null,
                 'message' => $data['Body'] ?? null,
                 'message_id' => $data['MessageSid'] ?? null,
@@ -139,11 +150,11 @@ class WebhookController extends Controller
             
             return [
                 'from' => 'whatsapp:+' . preg_replace('/[^0-9]/', '', $key['remoteJid'] ?? ''),
-                'to' => null, // Evolution não envia "to" no webhook
+                'to' => null, // Evolution nЖo envia "to" no webhook
                 'message' => $messageText,
                 'message_id' => $key['id'] ?? null,
                 'profile_name' => $pushName,
-                'media_url' => null, // Implementar se necessário
+                'media_url' => null, // Implementar se necess rio
                 'media_type' => null,
                 'location' => null,
                 'source' => 'evolution',
@@ -166,6 +177,49 @@ class WebhookController extends Controller
         ];
     }
     
+    private function resolveTenantForWebhook(Request $request, array $normalizedData): ?Tenant
+    {
+        if (app()->bound('tenant')) {
+            return app('tenant');
+        }
+
+        $host = $request->getHost();
+        $tenant = Tenant::byDomain($host)->first();
+        if ($tenant) {
+            return $tenant;
+        }
+
+        $toDigits = $this->normalizeWhatsappNumber($normalizedData['to'] ?? null);
+        if ($toDigits) {
+            $configs = TenantConfig::whereNotNull('twilio_whatsapp_from')->get();
+            foreach ($configs as $config) {
+                $configDigits = $this->normalizeWhatsappNumber($config->twilio_whatsapp_from);
+                if ($configDigits && $configDigits === $toDigits) {
+                    return $config->tenant;
+                }
+            }
+        }
+
+        $tenantId = env('WEBHOOK_TENANT_ID');
+        if (!empty($tenantId)) {
+            return Tenant::find($tenantId);
+        }
+
+        return null;
+    }
+
+    private function normalizeWhatsappNumber(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        $value = str_replace('whatsapp:', '', $value);
+        $digits = preg_replace('/[^0-9]/', '', $value);
+
+        return $digits ?: null;
+    }
+    
     /**
      * Status callback do Twilio
      * POST /webhook/whatsapp/status
@@ -176,7 +230,7 @@ class WebhookController extends Controller
         
         Log::info('Status callback recebido', $statusData);
         
-        // Atualizar status da mensagem no banco se necessário
+        // Atualizar status da mensagem no banco se necess rio
         
         return response('OK', 200);
     }

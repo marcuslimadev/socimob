@@ -13,41 +13,109 @@ return new class extends Migration
             if (!Schema::hasColumn('leads', 'corretor_id')) {
                 $table->unsignedBigInteger('corretor_id')->nullable()->after('user_id');
             }
-
-            $table->decimal('budget_min', 12, 2)->nullable();
-            $table->decimal('budget_max', 12, 2)->nullable();
-            $table->string('localizacao')->nullable();
-            $table->integer('quartos')->nullable();
-            $table->integer('suites')->nullable();
-            $table->integer('garagem')->nullable();
-            $table->string('cpf', 11)->nullable();
-            $table->decimal('renda_mensal', 12, 2)->nullable();
-            $table->string('estado_civil')->nullable();
-            $table->string('composicao_familiar')->nullable();
-            $table->string('profissao')->nullable();
-            $table->string('fonte_renda')->nullable();
-            $table->string('financiamento_status')->nullable();
-            $table->string('prazo_compra')->nullable();
-            $table->string('objetivo_compra')->nullable();
-            $table->string('preferencia_tipo_imovel')->nullable();
-            $table->string('preferencia_bairro')->nullable();
-            $table->text('preferencia_lazer')->nullable();
-            $table->text('preferencia_seguranca')->nullable();
-            $table->text('observacoes_cliente')->nullable();
-            $table->text('caracteristicas_desejadas')->nullable();
-            $table->string('state', 2)->nullable();
-            $table->dateTime('primeira_interacao')->nullable();
-            $table->dateTime('ultima_interacao')->nullable();
-            $table->longText('diagnostico_ia')->nullable();
-            $table->string('diagnostico_status')->nullable();
-            $table->dateTime('diagnostico_gerado_em')->nullable();
-            $table->string('whatsapp_name')->nullable();
-
-            $table->index('corretor_id');
-            $table->unique(['tenant_id', 'cpf']);
+            if (!Schema::hasColumn('leads', 'budget_min')) {
+                $table->decimal('budget_min', 12, 2)->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'budget_max')) {
+                $table->decimal('budget_max', 12, 2)->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'localizacao')) {
+                $table->string('localizacao')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'quartos')) {
+                $table->integer('quartos')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'suites')) {
+                $table->integer('suites')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'garagem')) {
+                $table->integer('garagem')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'cpf')) {
+                $table->string('cpf', 11)->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'renda_mensal')) {
+                $table->decimal('renda_mensal', 12, 2)->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'estado_civil')) {
+                $table->string('estado_civil')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'composicao_familiar')) {
+                $table->string('composicao_familiar')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'profissao')) {
+                $table->string('profissao')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'fonte_renda')) {
+                $table->string('fonte_renda')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'financiamento_status')) {
+                $table->string('financiamento_status')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'prazo_compra')) {
+                $table->string('prazo_compra')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'objetivo_compra')) {
+                $table->string('objetivo_compra')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'preferencia_tipo_imovel')) {
+                $table->string('preferencia_tipo_imovel')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'preferencia_bairro')) {
+                $table->string('preferencia_bairro')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'preferencia_lazer')) {
+                $table->text('preferencia_lazer')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'preferencia_seguranca')) {
+                $table->text('preferencia_seguranca')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'observacoes_cliente')) {
+                $table->text('observacoes_cliente')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'caracteristicas_desejadas')) {
+                $table->text('caracteristicas_desejadas')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'state')) {
+                $table->string('state', 2)->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'primeira_interacao')) {
+                $table->dateTime('primeira_interacao')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'ultima_interacao')) {
+                $table->dateTime('ultima_interacao')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'diagnostico_ia')) {
+                $table->longText('diagnostico_ia')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'diagnostico_status')) {
+                $table->string('diagnostico_status')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'diagnostico_gerado_em')) {
+                $table->dateTime('diagnostico_gerado_em')->nullable();
+            }
+            if (!Schema::hasColumn('leads', 'whatsapp_name')) {
+                $table->string('whatsapp_name')->nullable();
+            }
         });
 
-        // Garantir que o status não fique preso ao ENUM antigo
+        if (Schema::hasColumn('leads', 'corretor_id')) {
+            $hasIndex = DB::select("SHOW INDEX FROM leads WHERE Key_name = 'leads_corretor_id_index'");
+            if (empty($hasIndex)) {
+                Schema::table('leads', function (Blueprint $table) {
+                    $table->index('corretor_id');
+                });
+            }
+        }
+        if (Schema::hasColumn('leads', 'cpf')) {
+            $hasUnique = DB::select("SHOW INDEX FROM leads WHERE Key_name = 'leads_tenant_id_cpf_unique'");
+            if (empty($hasUnique)) {
+                Schema::table('leads', function (Blueprint $table) {
+                    $table->unique(['tenant_id', 'cpf']);
+                });
+            }
+        }
+
         if (Schema::hasColumn('leads', 'status')) {
             DB::statement("ALTER TABLE leads MODIFY COLUMN status VARCHAR(50) DEFAULT 'novo'");
         }
@@ -59,47 +127,132 @@ return new class extends Migration
             if (!Schema::hasColumn('conversas', 'ultima_atividade')) {
                 $table->dateTime('ultima_atividade')->nullable()->after('status');
             }
-
-            $table->index('corretor_id');
-            $table->index('ultima_atividade');
         });
+
+        if (Schema::hasColumn('conversas', 'corretor_id')) {
+            $hasIndex = DB::select("SHOW INDEX FROM conversas WHERE Key_name = 'conversas_corretor_id_index'");
+            if (empty($hasIndex)) {
+                Schema::table('conversas', function (Blueprint $table) {
+                    $table->index('corretor_id');
+                });
+            }
+        }
+        if (Schema::hasColumn('conversas', 'ultima_atividade')) {
+            $hasIndex = DB::select("SHOW INDEX FROM conversas WHERE Key_name = 'conversas_ultima_atividade_index'");
+            if (empty($hasIndex)) {
+                Schema::table('conversas', function (Blueprint $table) {
+                    $table->index('ultima_atividade');
+                });
+            }
+        }
 
         Schema::table('imo_properties', function (Blueprint $table) {
             if (!Schema::hasColumn('imo_properties', 'tenant_id')) {
                 $table->unsignedBigInteger('tenant_id')->nullable()->after('id');
             }
-            $table->string('codigo_imovel')->nullable()->index();
-            $table->string('referencia_imovel')->nullable();
-            $table->string('finalidade_imovel')->nullable();
-            $table->string('tipo_imovel')->nullable();
-            $table->integer('dormitorios')->default(0);
-            $table->integer('suites')->default(0);
-            $table->integer('banheiros')->default(0);
-            $table->integer('garagem')->default(0);
-            $table->decimal('valor_venda', 15, 2)->default(0);
-            $table->decimal('valor_iptu', 15, 2)->default(0);
-            $table->decimal('valor_condominio', 15, 2)->default(0);
-            $table->string('cidade')->nullable();
-            $table->string('estado')->nullable();
-            $table->string('bairro')->nullable();
-            $table->string('logradouro')->nullable();
-            $table->string('numero')->nullable();
-            $table->string('complemento')->nullable();
-            $table->string('cep')->nullable();
-            $table->decimal('latitude', 10, 7)->nullable();
-            $table->decimal('longitude', 10, 7)->nullable();
-            $table->decimal('area_privativa', 12, 2)->nullable();
-            $table->decimal('area_total', 12, 2)->nullable();
-            $table->decimal('area_terreno', 12, 2)->nullable();
-            $table->string('imagem_destaque')->nullable();
-            $table->longText('imagens')->nullable();
-            $table->longText('caracteristicas')->nullable();
-            $table->boolean('em_condominio')->default(false);
-            $table->boolean('exclusividade')->default(false);
-            $table->json('api_data')->nullable();
-            $table->dateTime('api_created_at')->nullable();
-            $table->dateTime('api_updated_at')->nullable();
+            if (!Schema::hasColumn('imo_properties', 'codigo_imovel')) {
+                $table->string('codigo_imovel')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'referencia_imovel')) {
+                $table->string('referencia_imovel')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'finalidade_imovel')) {
+                $table->string('finalidade_imovel')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'tipo_imovel')) {
+                $table->string('tipo_imovel')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'dormitorios')) {
+                $table->integer('dormitorios')->default(0);
+            }
+            if (!Schema::hasColumn('imo_properties', 'suites')) {
+                $table->integer('suites')->default(0);
+            }
+            if (!Schema::hasColumn('imo_properties', 'banheiros')) {
+                $table->integer('banheiros')->default(0);
+            }
+            if (!Schema::hasColumn('imo_properties', 'garagem')) {
+                $table->integer('garagem')->default(0);
+            }
+            if (!Schema::hasColumn('imo_properties', 'valor_venda')) {
+                $table->decimal('valor_venda', 15, 2)->default(0);
+            }
+            if (!Schema::hasColumn('imo_properties', 'valor_iptu')) {
+                $table->decimal('valor_iptu', 15, 2)->default(0);
+            }
+            if (!Schema::hasColumn('imo_properties', 'valor_condominio')) {
+                $table->decimal('valor_condominio', 15, 2)->default(0);
+            }
+            if (!Schema::hasColumn('imo_properties', 'cidade')) {
+                $table->string('cidade')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'estado')) {
+                $table->string('estado')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'bairro')) {
+                $table->string('bairro')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'logradouro')) {
+                $table->string('logradouro')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'numero')) {
+                $table->string('numero')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'complemento')) {
+                $table->string('complemento')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'cep')) {
+                $table->string('cep')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'latitude')) {
+                $table->decimal('latitude', 10, 7)->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'longitude')) {
+                $table->decimal('longitude', 10, 7)->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'area_privativa')) {
+                $table->decimal('area_privativa', 12, 2)->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'area_total')) {
+                $table->decimal('area_total', 12, 2)->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'area_terreno')) {
+                $table->decimal('area_terreno', 12, 2)->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'imagem_destaque')) {
+                $table->string('imagem_destaque')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'imagens')) {
+                $table->longText('imagens')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'caracteristicas')) {
+                $table->longText('caracteristicas')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'em_condominio')) {
+                $table->boolean('em_condominio')->default(false);
+            }
+            if (!Schema::hasColumn('imo_properties', 'exclusividade')) {
+                $table->boolean('exclusividade')->default(false);
+            }
+            if (!Schema::hasColumn('imo_properties', 'api_data')) {
+                $table->json('api_data')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'api_created_at')) {
+                $table->dateTime('api_created_at')->nullable();
+            }
+            if (!Schema::hasColumn('imo_properties', 'api_updated_at')) {
+                $table->dateTime('api_updated_at')->nullable();
+            }
         });
+
+        if (Schema::hasColumn('imo_properties', 'codigo_imovel')) {
+            $hasIndex = DB::select("SHOW INDEX FROM imo_properties WHERE Key_name = 'imo_properties_codigo_imovel_index'");
+            if (empty($hasIndex)) {
+                Schema::table('imo_properties', function (Blueprint $table) {
+                    $table->index('codigo_imovel');
+                });
+            }
+        }
     }
 
     public function down(): void
@@ -118,7 +271,9 @@ return new class extends Migration
                 $table->dropIndex(['corretor_id']);
                 $table->dropColumn(['corretor_id']);
             }
-            $table->dropUnique('leads_tenant_id_cpf_unique');
+            if (Schema::hasColumn('leads', 'cpf')) {
+                $table->dropUnique('leads_tenant_id_cpf_unique');
+            }
             $table->dropColumn([
                 'budget_min', 'budget_max', 'localizacao', 'quartos', 'suites', 'garagem', 'cpf', 'renda_mensal',
                 'estado_civil', 'composicao_familiar', 'profissao', 'fonte_renda', 'financiamento_status', 'prazo_compra',

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visitas - SOCIMOB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="js/toast.js"></script>
+</head>
+<body class="bg-slate-50">
+    <!-- Navbar -->
+    <nav class="bg-slate-900 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold uppercase tracking-tighter cursor-pointer" onclick="window.location.href='dashboard.html'">SOCIMOB</h1>
+            <div class="flex items-center gap-4">
+                <span id="userName" class="font-medium"></span>
+                <button id="btnLogout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold text-sm">Sair</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Conteudo -->
+    <div class="container mx-auto p-8">
+        <div class="bg-white rounded-lg shadow-xl p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-black text-slate-900 uppercase">Visitas</h2>
+                <select id="filterStatus" class="px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                    <option value="">Todos os status</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="confirmada">Confirmada</option>
+                    <option value="cancelada">Cancelada</option>
+                    <option value="concluida">Concluida</option>
+                </select>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-slate-900 text-white">
+                        <tr>
+                            <th class="px-4 py-3 text-left uppercase text-sm">Cliente</th>
+                            <th class="px-4 py-3 text-left uppercase text-sm">Imovel</th>
+                            <th class="px-4 py-3 text-left uppercase text-sm">Data/Hora</th>
+                            <th class="px-4 py-3 text-left uppercase text-sm">Telefone</th>
+                            <th class="px-4 py-3 text-left uppercase text-sm">Status</th>
+                            <th class="px-4 py-3 text-center uppercase text-sm">Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="visitasTable" class="divide-y divide-slate-200">
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">
+                                Carregando visitas...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        let visitas = [];
+
+        $(document).ready(function() {
+            checkAuth();
+            loadVisitas();
+
+            $('#btnLogout').on('click', handleLogout);
+            $('#filterStatus').on('change', filtrarVisitas);
+        });
+
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const userStr = localStorage.getItem('user');
+            if (!token || !userStr) {
+                window.location.href = 'login.html';
+                return;
+            }
+            const user = JSON.parse(userStr);
+            $('#userName').text(user.name);
+        }
+
+        function loadVisitas() {
+            const token = localStorage.getItem('token');
+
+            $.ajax({
+                url: API_URL + '/admin/visitas',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function(response) {
+                    visitas = response.data || [];
+                    renderVisitas(visitas);
+                },
+                error: function() {
+                    visitas = [];
+                    renderVisitas(visitas);
+                    showToast('Erro ao carregar visitas.', 'error');
+                }
+            });
+        }
+
+        function filtrarVisitas() {
+            const status = $('#filterStatus').val();
+            const filtradas = !status ? visitas : visitas.filter(v => v.status === status);
+            renderVisitas(filtradas);
+        }
+
+        function renderVisitas(data) {
+            if (!data.length) {
+                $('#visitasTable').html('<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Nenhuma visita encontrada</td></tr>');
+                return;
+            }
+
+            const statusLabels = {
+                pendente: 'Pendente',
+                confirmada: 'Confirmada',
+                cancelada: 'Cancelada',
+                concluida: 'Concluida'
+            };
+
+            const statusColors = {
+                pendente: 'bg-yellow-100 text-yellow-800',
+                confirmada: 'bg-green-100 text-green-800',
+                cancelada: 'bg-red-100 text-red-800',
+                concluida: 'bg-blue-100 text-blue-800'
+            };
+
+            const html = data.map(visita => `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3 font-medium">${escapeHtml(visita.nome || '')}</td>
+                    <td class="px-4 py-3">${escapeHtml(visita.property_titulo || 'Imovel')}</td>
+                    <td class="px-4 py-3 text-sm text-slate-600">${formatDateTime(visita.data_hora)}</td>
+                    <td class="px-4 py-3">${escapeHtml(visita.telefone || '')}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 rounded text-xs font-bold uppercase ${statusColors[visita.status] || 'bg-slate-100'}">
+                            ${statusLabels[visita.status] || visita.status}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <select onchange="atualizarStatus(${visita.id}, this.value)" class="px-2 py-1 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                            <option value="">Alterar</option>
+                            <option value="pendente">Pendente</option>
+                            <option value="confirmada">Confirmada</option>
+                            <option value="cancelada">Cancelada</option>
+                            <option value="concluida">Concluida</option>
+                        </select>
+                    </td>
+                </tr>
+            `).join('');
+
+            $('#visitasTable').html(html);
+        }
+
+        function atualizarStatus(id, status) {
+            if (!status) return;
+            const token = localStorage.getItem('token');
+
+            $.ajax({
+                url: API_URL + '/admin/visitas/' + id,
+                method: 'PATCH',
+                headers: { 'Authorization': 'Bearer ' + token },
+                contentType: 'application/json',
+                data: JSON.stringify({ status }),
+                success: function() {
+                    showToast('Status atualizado.', 'success');
+                    loadVisitas();
+                },
+                error: function() {
+                    showToast('Erro ao atualizar status.', 'error');
+                }
+            });
+        }
+
+        function formatDateTime(value) {
+            if (!value) return '';
+            const data = new Date(value);
+            if (Number.isNaN(data.getTime())) return value;
+            return data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function handleLogout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>

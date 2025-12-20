@@ -105,11 +105,11 @@
             const token = localStorage.getItem('token');
             
             $.ajax({
-                url: API_URL + '/portal/properties',
+                url: API_URL + '/portal/imoveis',
                 method: 'GET',
-                headers: { 'Authorization': 'Bearer ' + token },
-                success: function(response) {
-                    imoveis = response.data || [];
+                                success: function(response) {
+                    const raw = response.data || [];
+                    imoveis = raw.map(normalizeImovel);
                     renderImoveis(imoveis);
                 },
                 error: function() {
@@ -127,6 +127,32 @@
             });
         }
 
+
+        function normalizeImovel(item) {
+            return {
+                id: item.id,
+                titulo: item.titulo || item.codigo || 'Imovel',
+                tipo: item.tipo_imovel || item.tipo || 'casa',
+                finalidade: item.finalidade_imovel || item.finalidade || 'venda',
+                preco: item.preco || 0,
+                area: item.area_total || item.area || null,
+                quartos: item.quartos || 0,
+                banheiros: item.banheiros || 0,
+                endereco: item.endereco || '',
+                descricao: item.descricao || '',
+                fotos: item.fotos || [],
+            };
+        }
+
+        function getImagemPrincipal(imovel) {
+            const fotos = Array.isArray(imovel.fotos) ? imovel.fotos : [];
+            if (fotos.length == 0) return null;
+            const first = fotos[0];
+            if (typeof first === 'string') return first;
+            if (first && typeof first === 'object' && first.url) return first.url;
+            return null;
+        }
+
         function renderImoveis(data) {
             if (data.length === 0) {
                 $('#imoveisGrid').html('<div class="col-span-full text-center py-12 text-slate-500">Nenhum imóvel encontrado</div>');
@@ -135,8 +161,8 @@
 
             const html = data.map(imovel => `
                 <div class="bg-white rounded-xl shadow-sm hover:shadow-lg transition overflow-hidden cursor-pointer" onclick="showDetails(${imovel.id})">
-                    <div class="h-48 bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-                        <span class="text-6xl">${getTipoIcon(imovel.tipo)}</span>
+                    <div class="h-48 bg-slate-200 flex items-center justify-center overflow-hidden">
+                        ${getImagemPrincipal(imovel) ? `<img src="${getImagemPrincipal(imovel)}" alt="${imovel.titulo}" class="w-full h-full object-cover">` : `<span class="text-6xl">${getTipoIcon(imovel.tipo)}</span>`}
                     </div>
                     <div class="p-5">
                         <div class="flex justify-between items-start mb-2">
@@ -192,8 +218,8 @@
                     <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl z-10">
                         ✕
                     </button>
-                    <div class="h-80 bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-                        <span class="text-9xl">${getTipoIcon(imovelAtual.tipo)}</span>
+                    <div class="h-80 bg-slate-200 flex items-center justify-center overflow-hidden">
+                        ${getImagemPrincipal(imovelAtual) ? `<img src="${getImagemPrincipal(imovelAtual)}" alt="${imovelAtual.titulo}" class="w-full h-full object-cover">` : `<span class="text-9xl">${getTipoIcon(imovelAtual.tipo)}</span>`}
                     </div>
                     <div class="p-8">
                         <div class="flex justify-between items-start mb-4">
@@ -265,8 +291,7 @@
             $.ajax({
                 url: API_URL + '/portal/interesse',
                 method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token },
-                contentType: 'application/json',
+                                contentType: 'application/json',
                 data: JSON.stringify({
                     property_id: imovelAtual.id,
                     mensagem: 'Tenho interesse neste imóvel'

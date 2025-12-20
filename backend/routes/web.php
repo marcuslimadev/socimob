@@ -17,6 +17,16 @@ $router->get('/api/health', function () use ($router) {
     ]);
 });
 
+// Home - servir index.html do frontend
+$router->get('/', function () {
+    $path = base_path('public/index.html');
+    if (file_exists($path)) {
+        return response(file_get_contents($path))
+            ->header('Content-Type', 'text/html');
+    }
+    return response('index.html nao encontrado', 404);
+});
+
 // Auth API routes
 $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('/auth/login', 'AuthController@login');
@@ -709,7 +719,7 @@ $router->group(['prefix' => 'api/auth'], function () use ($router) {
 // ===========================
 // Rotas protegidas (TEMPORARIAMENTE SEM AUTH - PARA DEBUG)
 // ===========================
-$router->group(['prefix' => 'api'], function () use ($router) {
+$router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () use ($router) {
 
     // Auth
     $router->get('/auth/me', 'AuthController@me');

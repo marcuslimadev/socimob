@@ -85,15 +85,19 @@ class WhatsAppService
             $telefone = $this->cleanPhoneNumber($from);
             
             // 1. Obter ou criar conversa
+            $tenantId = $webhookData['tenant_id']
+                ?? (app()->bound('tenant') ? app('tenant')->id : null)
+                ?? env('WEBHOOK_TENANT_ID');
             $conversaData = [
                 'profile_name' => $profileName,
                 'city' => $city,
                 'state' => $state,
                 'country' => $country,
                 'latitude' => $latitude,
-                'longitude' => $longitude
+                'longitude' => $longitude,
+                'tenant_id' => $tenantId
             ];
-            $conversa = $this->getOrCreateConversa($telefone, ['profile_name' => $profileName]);
+            $conversa = $this->getOrCreateConversa($telefone, $conversaData);
             
             // 2. Registrar mensagem recebida
             $messageType = $this->detectMessageType($mediaUrl, $mediaType);
@@ -214,12 +218,22 @@ class WhatsAppService
      */
     private function getOrCreateConversa($telefone, $dados)
     {
-        $conversa = Conversa::where('telefone', $telefone)
-            ->where('status', '!=', 'finalizada')
-            ->first();
+        $tenantId = $dados['tenant_id'] ?? null;
+        $query = Conversa::where('telefone', $telefone)
+            ->where('status', '!=', 'encerrada');
+
+        if ($tenantId) {
+            $query->where(function ($q) use ($tenantId) {
+                $q->where('tenant_id', $tenantId)
+                    ->orWhereNull('tenant_id');
+            });
+        }
+
+        $conversa = $query->orderBy('updated_at', 'desc')->first();
         
         if (!$conversa) {
             $conversa = Conversa::create([
+                'tenant_id' => $tenantId,
                 'telefone' => $telefone,
                 'whatsapp_name' => $dados['profile_name'],
                 'status' => 'ativa',
@@ -234,19 +248,72 @@ class WhatsAppService
             ]);
         } else {
             // SEMPRE atualizar nome se vier do webhook
-            if ($dados['profile_name']) {
-                $conversa->update([
-                    'whatsapp_name' => $dados['profile_name'],
-                    'ultima_atividade' => Carbon::now()
-                ]);
+            $updates = [];
+            if (!empty($dados['profile_name'])) {
+                $updates['whatsapp_name'] = $dados['profile_name'];
+            }
+            if (empty($conversa->tenant_id) && $tenantId) {
+                $updates['tenant_id'] = $tenantId;
+            }
+            if (empty($conversa->stage)) {
+                $updates['stage'] = 'boas_vindas';
+            }
+            if (!empty($updates)) {
+                $updates['ultima_atividade'] = Carbon::now();
+                $conversa->update($updates);
                 Log::info('Conversa atualizada', [
                     'id' => $conversa->id,
-                    'whatsapp_name' => $dados['profile_name']
+                    'whatsapp_name' => $dados['profile_name'] ?? null
                 ]);
             }
         }
         
         return $conversa;
+    }
+
+    /**
+     * Processar mensagem recebida do portal web (cliente autenticado)
+     */
+    public function processPortalMessage(Conversa $conversa, Lead $lead, string $body): array
+    {
+        $telefone = $conversa->telefone;
+
+        if (!$conversa->lead_id) {
+            $conversa->update(['lead_id' => $lead->id]);
+        }
+
+        $this->saveMensagem($conversa->id, [
+            'direction' => 'incoming',
+            'message_type' => 'text',
+            'content' => $body,
+            'status' => 'received'
+        ]);
+
+        $conversa->update(['ultima_atividade' => Carbon::now()]);
+
+        $totalMensagens = $conversa->mensagens()->count();
+
+        if ($totalMensagens === 1) {
+            $assistantName = $this->getAssistantName();
+            $nomePreferido = $this->extractPreferredName($lead->nome ?? null);
+            $property = $this->findPropertyFromMessage($body);
+
+            if ($property) {
+                $mensagemBoasVindas = $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property);
+            } else {
+                $mensagemBoasVindas = $this->buildGenericWelcomeMessage($assistantName, $nomePreferido);
+            }
+
+            $this->sendMessage($conversa->id, $telefone, $mensagemBoasVindas);
+
+            return [
+                'success' => true,
+                'message' => 'Primeira mensagem processada',
+                'lead_id' => $lead->id
+            ];
+        }
+
+        return $this->handleRegularMessage($conversa, $body, false);
     }
     
     /**
@@ -261,6 +328,7 @@ class WhatsAppService
             'lead_id' => $lead->id,
             'stage' => 'coleta_dados' // Avança para coleta de dados
         ]);
+        $this->updateLeadStatusFromStage($lead, 'coleta_dados');
 
         $assistantName = $this->getAssistantName();
         $nomePreferido = $this->extractPreferredName($lead->nome ?? $dados['profile_name'] ?? null);
@@ -517,6 +585,7 @@ class WhatsAppService
                 'status' => 'aguardando_corretor',
                 'ultima_atividade' => Carbon::now(),
             ]);
+            $this->updateLeadStatusFromStage($conversa->lead, 'atendimento_humano');
 
             $this->sendMessage($conversa->id, $conversa->telefone, $handoffMessage);
 
@@ -532,7 +601,7 @@ class WhatsAppService
         $historico = $this->getConversationHistory($conversa->id);
 
         // BUSCAR IMÓVEIS DISPONÍVEIS para contexto da IA
-        $properties = $this->buildAvailablePropertyQuery()
+        $properties = $this->buildAvailablePropertyQuery($conversa->tenant_id ?? null)
             ->select('codigo_imovel', 'tipo_imovel', 'bairro', 'cidade', 'valor_venda', 'dormitorios', 'suites', 'descricao', 'imagem_destaque', 'imagens')
             ->get()
             ->toArray();
@@ -550,6 +619,7 @@ class WhatsAppService
         if ($newStage !== $conversa->stage) {
             Log::info("📊 Stage atualizado: {$conversa->stage} → {$newStage}");
             $conversa->update(['stage' => $newStage]);
+            $this->updateLeadStatusFromStage($conversa->lead, $newStage);
             
             // Adicionar contexto de transição para IA
             $historico .= "\n\n[SYSTEM: Cliente avançou para stage: {$newStage}]";
@@ -618,11 +688,12 @@ class WhatsAppService
             $this->progressStage($conversa);
             
             // Verificar se já tem dados suficientes para matching
-            if ($conversa->lead && $this->hasEnoughDataForMatching($conversa->lead)) {
-                // Transição automática: coleta_dados → matching → apresentacao
-                $this->performPropertyMatching($conversa->lead, $conversa);
-                $conversa->update(['stage' => 'apresentacao']);
-            }
+                if ($conversa->lead && $this->hasEnoughDataForMatching($conversa->lead)) {
+                    // Transição automática: coleta_dados → matching → apresentacao
+                    $this->performPropertyMatching($conversa->lead, $conversa);
+                    $conversa->update(['stage' => 'apresentacao']);
+                    $this->updateLeadStatusFromStage($conversa->lead, 'apresentacao');
+                }
         } else {
             Log::error('❌ IA falhou ao processar mensagem', [
                 'error' => $aiResponse['error'] ?? 'Erro desconhecido'
@@ -660,6 +731,7 @@ class WhatsAppService
                 } else {
                     // Ainda coletando dados
                     $conversa->update(['stage' => 'aguardando_info']);
+                    $this->updateLeadStatusFromStage($lead, 'aguardando_info');
                 }
                 break;
                 
@@ -671,6 +743,7 @@ class WhatsAppService
                     strpos($contexto, 'visita') !== false ||
                     strpos($contexto, 'ver') !== false) {
                     $conversa->update(['stage' => 'interesse']);
+                    $this->updateLeadStatusFromStage($lead, 'interesse');
                     Log::info('🎯 PROGRESSÃO DE STAGE: apresentacao → interesse');
                     Log::info('   └─ Conversa ID: ' . $conversa->id);
                     Log::info('   └─ Motivo: Cliente demonstrou interesse');
@@ -686,11 +759,10 @@ class WhatsAppService
                     strpos($ultimaMensagem, 'ver o imovel') !== false ||
                     strpos($ultimaMensagem, 'quando posso') !== false) {
                     $conversa->update(['stage' => 'agendamento']);
-                    $lead->update(['status' => 'qualificado']);
+                    $this->updateLeadStatusFromStage($lead, 'agendamento');
                     Log::info('🎯 PROGRESSÃO DE STAGE: interesse → agendamento');
                     Log::info('   └─ Conversa ID: ' . $conversa->id);
                     Log::info('   └─ Motivo: Cliente solicitou agendamento');
-                    Log::info('   └─ Lead Status: qualificado ⭐');
                     Log::info('   └─ Última mensagem: ' . substr($ultimaMensagem, 0, 50) . '...');
                 }
                 break;
@@ -698,15 +770,50 @@ class WhatsAppService
             case 'sem_match':
                 // Se cliente aceita refinar critérios
                 $conversa->update(['stage' => 'refinamento']);
+                $this->updateLeadStatusFromStage($lead, 'refinamento');
                 break;
                 
             case 'refinamento':
                 // Volta para coleta_dados com critérios ajustados
                 $conversa->update(['stage' => 'coleta_dados']);
+                $this->updateLeadStatusFromStage($lead, 'coleta_dados');
                 break;
         }
     }
-    
+
+    private function updateLeadStatusFromStage($lead, ?string $stage): void
+    {
+        if (!$lead || !$stage) {
+            return;
+        }
+
+        $map = [
+            'boas_vindas' => 'novo',
+            'coleta_dados' => 'novo',
+            'aguardando_info' => 'novo',
+            'orcamento' => 'novo',
+            'localizacao' => 'novo',
+            'preferencias' => 'novo',
+            'busca_imoveis' => 'qualificado',
+            'matching' => 'qualificado',
+            'apresentacao' => 'qualificado',
+            'interesse' => 'qualificado',
+            'agendamento' => 'proposta',
+            'atendimento_humano' => 'em_atendimento',
+            'sem_match' => 'perdido',
+            'refinamento' => 'em_atendimento'
+        ];
+
+        if (!isset($map[$stage])) {
+            return;
+        }
+
+        $status = $map[$stage];
+        if ($lead->status !== $status) {
+            $lead->update(['status' => $status]);
+        }
+    }
+
     /**
      * Transcrever áudio
      */
@@ -1191,6 +1298,7 @@ class WhatsAppService
             // ENCONTROU IMÓVEIS!
             foreach ($properties as $property) {
                 LeadPropertyMatch::create([
+                    'tenant_id' => $conversa->tenant_id ?? $lead->tenant_id ?? null,
                     'lead_id' => $lead->id,
                     'property_id' => $property->id,
                     'conversa_id' => $conversa->id,
@@ -1210,6 +1318,7 @@ class WhatsAppService
 
             // Atualizar stage para apresentacao
             $conversa->update(['stage' => 'apresentacao']);
+            $this->updateLeadStatusFromStage($lead, 'apresentacao');
             
             Log::info('╔════════════════════════════════════════════════════════════════╗');
             Log::info('║           🎉 IMÓVEIS ENCONTRADOS!                             ║');
@@ -1232,8 +1341,9 @@ class WhatsAppService
             
             $this->sendMessage($conversa->id, $conversa->telefone, $mensagem);
             
-            // Atualizar stage para sem_match
-            $conversa->update(['stage' => 'sem_match']);
+        // Atualizar stage para sem_match
+        $conversa->update(['stage' => 'sem_match']);
+        $this->updateLeadStatusFromStage($lead, 'sem_match');
             
             Log::info('╔════════════════════════════════════════════════════════════════╗');
             Log::info('║           😔 NENHUM IMÓVEL ENCONTRADO                         ║');
@@ -1323,6 +1433,20 @@ class WhatsAppService
      */
     private function sendMessage($conversaId, $telefone, $body)
     {
+        $conversa = Conversa::find($conversaId);
+        $isPortal = $this->isPortalChannel($telefone, $conversa);
+
+        if ($isPortal) {
+            $this->saveMensagem($conversaId, [
+                'direction' => 'outgoing',
+                'message_type' => 'text',
+                'content' => $body,
+                'status' => 'sent'
+            ]);
+
+            return ['success' => true, 'message_sid' => null];
+        }
+
         $result = $this->twilio->sendMessage($telefone, $body);
 
         // Registrar mensagem enviada
@@ -1339,6 +1463,21 @@ class WhatsAppService
 
     private function sendMediaMessage($conversaId, $telefone, $body, $mediaUrl)
     {
+        $conversa = Conversa::find($conversaId);
+        $isPortal = $this->isPortalChannel($telefone, $conversa);
+
+        if ($isPortal) {
+            $this->saveMensagem($conversaId, [
+                'direction' => 'outgoing',
+                'message_type' => 'image',
+                'content' => $body,
+                'media_url' => $mediaUrl,
+                'status' => 'sent'
+            ]);
+
+            return ['success' => true, 'message_sid' => null];
+        }
+
         $result = $this->twilio->sendMedia($telefone, $body, $mediaUrl);
 
         $this->saveMensagem($conversaId, [
@@ -1358,7 +1497,13 @@ class WhatsAppService
      */
     private function saveMensagem($conversaId, $data)
     {
+        $conversa = Conversa::find($conversaId);
+        $tenantId = $conversa?->tenant_id
+            ?? (app()->bound('tenant') ? app('tenant')->id : null)
+            ?? env('WEBHOOK_TENANT_ID');
+
         return Mensagem::create(array_merge([
+            'tenant_id' => $tenantId,
             'conversa_id' => $conversaId,
             'sent_at' => Carbon::now()
         ], $data));
@@ -1391,9 +1536,15 @@ class WhatsAppService
             'primeira_interacao' => Carbon::now(),
             'ultima_interacao' => Carbon::now()
         ];
+
+        $criteria = ['telefone' => $telefone];
+        if (!empty($dados['tenant_id'])) {
+            $leadData['tenant_id'] = $dados['tenant_id'];
+            $criteria['tenant_id'] = $dados['tenant_id'];
+        }
         
         $lead = Lead::firstOrCreate(
-            ['telefone' => $telefone],
+            $criteria,
             $leadData
         );
         
@@ -1402,6 +1553,7 @@ class WhatsAppService
             $updates = [];
             if (!$lead->nome && isset($dados['profile_name'])) $updates['nome'] = $dados['profile_name'];
             if (!$lead->localizacao && $localizacao) $updates['localizacao'] = $localizacao;
+            if (!$lead->tenant_id && !empty($dados['tenant_id'])) $updates['tenant_id'] = $dados['tenant_id'];
             
             if (!empty($updates)) {
                 $lead->update($updates);
@@ -1428,16 +1580,30 @@ class WhatsAppService
     {
         return str_replace('whatsapp:', '', $phone);
     }
+
+    private function isPortalChannel(string $telefone, ?Conversa $conversa): bool
+    {
+        if (str_starts_with($telefone, 'portal:') || str_starts_with($telefone, 'web:')) {
+            return true;
+        }
+
+        if ($conversa && $conversa->canal === 'portal') {
+            return true;
+        }
+
+        return false;
+    }
     
     /**
      * Construir query base para imóveis disponíveis
      */
-    private function buildAvailablePropertyQuery()
+    private function buildAvailablePropertyQuery($tenantId = null)
     {
         return Property::where('active', true)
             ->where('exibir_imovel', true)
             ->where('finalidade_imovel', 'Venda')
-            ->whereNotNull('valor_venda');
+            ->whereNotNull('valor_venda')
+            ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId));
     }
     
     /**
@@ -1477,3 +1643,8 @@ class WhatsAppService
         return 'document';
     }
 }
+
+
+
+
+

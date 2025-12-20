@@ -6,6 +6,7 @@
     <title>Leads - SOCIMOB</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="js/toast.js"></script>
 </head>
 <body class="bg-slate-50">
     <!-- Navbar -->
@@ -36,8 +37,8 @@
                 <select id="filterStatus" class="px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
                     <option value="">Todos os status</option>
                     <option value="novo">Novo</option>
-                    <option value="contato">Em Contato</option>
-                    <option value="visita">Visita Agendada</option>
+                    <option value="em_atendimento">Em Atendimento</option>
+                    <option value="qualificado">Qualificado</option>
                     <option value="proposta">Proposta Enviada</option>
                     <option value="fechado">Fechado</option>
                     <option value="perdido">Perdido</option>
@@ -91,8 +92,6 @@
                         <label class="block text-sm font-bold text-slate-900 mb-2">Status</label>
                         <select name="status" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
                             <option value="novo">Novo</option>
-                            <option value="contato">Em Contato</option>
-                            <option value="visita">Visita Agendada</option>
                         </select>
                     </div>
                 </div>
@@ -111,6 +110,7 @@
     <script>
         const API_URL = '/api';
         let leads = [];
+        let leadsRefreshTimer = null;
 
         $(document).ready(function() {
             checkAuth();
@@ -122,6 +122,8 @@
             $('#formLead').on('submit', handleSaveLead);
             $('#searchLead').on('input', filterLeads);
             $('#filterStatus').on('change', filterLeads);
+
+            leadsRefreshTimer = setInterval(loadLeads, 10000);
         });
 
         function checkAuth() {
@@ -145,16 +147,16 @@
                 success: function(response) {
                     leads = response.data || [];
                     console.log('✓ Leads carregados:', leads.length);
-                    renderLeads(leads);
+                    filterLeads();
                 },
                 error: function(xhr) {
                     console.error('✗ Erro ao carregar leads');
                     // Mostrar dados de exemplo se API falhar
                     leads = [
                         { id: 1, nome: 'João Silva', email: 'joao@email.com', telefone: '(11) 98765-4321', status: 'novo', created_at: '2025-12-19' },
-                        { id: 2, nome: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 98765-4322', status: 'contato', created_at: '2025-12-18' }
+                        { id: 2, nome: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 98765-4322', status: 'em_atendimento', created_at: '2025-12-18' }
                     ];
-                    renderLeads(leads);
+                    filterLeads();
                 }
             });
         }
@@ -167,8 +169,8 @@
 
             const statusColors = {
                 'novo': 'bg-blue-100 text-blue-800',
-                'contato': 'bg-yellow-100 text-yellow-800',
-                'visita': 'bg-purple-100 text-purple-800',
+                'em_atendimento': 'bg-yellow-100 text-yellow-800',
+                'qualificado': 'bg-purple-100 text-purple-800',
                 'proposta': 'bg-orange-100 text-orange-800',
                 'fechado': 'bg-green-100 text-green-800',
                 'perdido': 'bg-red-100 text-red-800'
@@ -238,7 +240,7 @@
                 },
                 error: function() {
                     // Simular sucesso se API falhar
-                    alert('Lead salvo com sucesso! (simulado)');
+                    showToast('Lead salvo com sucesso! (simulado)', 'success');
                     $('#modalLead').addClass('hidden');
                     $('#formLead')[0].reset();
                 }
@@ -246,7 +248,7 @@
         }
 
         function editLead(id) {
-            alert('Editar lead #' + id + ' (em desenvolvimento)');
+            showToast('Editar lead #' + id + ' (em desenvolvimento)', 'info');
         }
 
         function deleteLead(id) {

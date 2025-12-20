@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Perfil</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="/app/js/toast.js"></script>
+</head>
+<body class="bg-slate-50">
+    <nav class="bg-slate-900 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="/portal" class="text-2xl font-bold uppercase tracking-tighter">SOCIMOB</a>
+            <button id="btnLogout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold text-sm">Sair</button>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-8 space-y-8">
+        <div class="bg-white rounded-lg shadow-xl p-8">
+            <h2 class="text-3xl font-black text-slate-900 uppercase mb-6">Meu Perfil</h2>
+            <form id="formPerfil" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Nome</label>
+                    <input type="text" id="perfilNome" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Email</label>
+                    <input type="email" id="perfilEmail" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Telefone</label>
+                    <input type="text" id="perfilTelefone" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">WhatsApp</label>
+                    <input type="text" id="perfilWhatsapp" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Quartos desejados</label>
+                    <input type="number" id="perfilQuartos" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Garagem</label>
+                    <input type="number" id="perfilGaragem" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Orçamento mínimo</label>
+                    <input type="number" id="perfilBudgetMin" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Orçamento máximo</label>
+                    <input type="number" id="perfilBudgetMax" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Localização desejada</label>
+                    <input type="text" id="perfilLocalizacao" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Características desejadas</label>
+                    <textarea id="perfilCaracteristicas" rows="3" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none"></textarea>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Observações</label>
+                    <textarea id="perfilObservacoes" rows="3" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none"></textarea>
+                </div>
+                <div class="md:col-span-2 flex justify-end">
+                    <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase">Salvar</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-xl p-8">
+            <h3 class="text-2xl font-black text-slate-900 uppercase mb-6">Intenção de Compra</h3>
+            <form id="formIntencao" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Tipo</label>
+                    <select id="intencaoTipo" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                        <option value="venda">Compra</option>
+                        <option value="aluguel">Aluguel</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Min quartos</label>
+                    <input type="number" id="intencaoMinQuartos" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Max quartos</label>
+                    <input type="number" id="intencaoMaxQuartos" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Cidade</label>
+                    <input type="text" id="intencaoCidade" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Bairro</label>
+                    <input type="text" id="intencaoBairro" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-900 mb-2">Max preço</label>
+                    <input type="number" id="intencaoMaxPreco" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+                </div>
+                <div class="md:col-span-3 flex justify-end">
+                    <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase">Registrar intenção</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-xl p-8">
+            <h3 class="text-2xl font-black text-slate-900 uppercase mb-6">Minhas Intenções</h3>
+            <div id="listaIntencoes" class="space-y-4 text-slate-700"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        let portalToken = null;
+
+        $(document).ready(function() {
+            portalToken = localStorage.getItem('portal_token');
+            if (!portalToken) {
+                window.location.href = '/portal';
+                return;
+            }
+
+            $('#btnLogout').on('click', handleLogout);
+            $('#formPerfil').on('submit', salvarPerfil);
+            $('#formIntencao').on('submit', salvarIntencao);
+
+            carregarPerfil();
+            carregarIntencoes();
+        });
+
+        function carregarPerfil() {
+            $.ajax({
+                url: `${API_URL}/portal/profile`,
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + portalToken },
+                success: function(response) {
+                    const user = response.user || {};
+                    const lead = response.lead || {};
+                    $('#perfilNome').val(user.name || '');
+                    $('#perfilEmail').val(user.email || '');
+                    $('#perfilTelefone').val(lead.telefone || '');
+                    $('#perfilWhatsapp').val(lead.whatsapp || '');
+                    $('#perfilQuartos').val(lead.quartos || '');
+                    $('#perfilGaragem').val(lead.garagem || '');
+                    $('#perfilBudgetMin').val(lead.budget_min || '');
+                    $('#perfilBudgetMax').val(lead.budget_max || '');
+                    $('#perfilLocalizacao').val(lead.localizacao || '');
+                    $('#perfilCaracteristicas').val(lead.caracteristicas_desejadas || '');
+                    $('#perfilObservacoes').val(lead.observacoes_cliente || '');
+                },
+                error: function() {
+                    showToast('Erro ao carregar perfil.', 'error');
+                }
+            });
+        }
+
+        function salvarPerfil(e) {
+            e.preventDefault();
+            const payload = {
+                name: $('#perfilNome').val(),
+                email: $('#perfilEmail').val(),
+                telefone: $('#perfilTelefone').val(),
+                whatsapp: $('#perfilWhatsapp').val(),
+                quartos: Number($('#perfilQuartos').val()) || null,
+                garagem: Number($('#perfilGaragem').val()) || null,
+                budget_min: Number($('#perfilBudgetMin').val()) || null,
+                budget_max: Number($('#perfilBudgetMax').val()) || null,
+                localizacao: $('#perfilLocalizacao').val(),
+                caracteristicas_desejadas: $('#perfilCaracteristicas').val(),
+                observacoes_cliente: $('#perfilObservacoes').val()
+            };
+
+            $.ajax({
+                url: `${API_URL}/portal/profile`,
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + portalToken },
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function() {
+                    showToast('Perfil atualizado com sucesso.', 'success');
+                },
+                error: function(xhr) {
+                    const msg = xhr?.responseJSON?.message || 'Erro ao salvar perfil.';
+                    showToast(msg, 'error');
+                }
+            });
+        }
+
+        function salvarIntencao(e) {
+            e.preventDefault();
+            const payload = {
+                type: $('#intencaoTipo').val(),
+                min_bedrooms: Number($('#intencaoMinQuartos').val()) || null,
+                max_bedrooms: Number($('#intencaoMaxQuartos').val()) || null,
+                city: $('#intencaoCidade').val(),
+                neighborhood: $('#intencaoBairro').val(),
+                max_price: Number($('#intencaoMaxPreco').val()) || null
+            };
+
+            $.ajax({
+                url: `${API_URL}/intentions`,
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + portalToken },
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function() {
+                    showToast('Intenção registrada com sucesso.', 'success');
+                    $('#formIntencao')[0].reset();
+                    carregarIntencoes();
+                },
+                error: function() {
+                    showToast('Erro ao registrar intenção.', 'error');
+                }
+            });
+        }
+
+        function carregarIntencoes() {
+            $.ajax({
+                url: `${API_URL}/intentions`,
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + portalToken },
+                success: function(response) {
+                    const data = response.data || response.data?.data || response.data || response;
+                    const items = response.data?.data || response.data || response;
+                    const list = Array.isArray(items) ? items : (items?.data || []);
+                    renderIntencoes(list);
+                },
+                error: function() {
+                    $('#listaIntencoes').html('<p class="text-slate-500">Nenhuma intenção encontrada.</p>');
+                }
+            });
+        }
+
+        function renderIntencoes(lista) {
+            if (!lista || !lista.length) {
+                $('#listaIntencoes').html('<p class="text-slate-500">Nenhuma intenção encontrada.</p>');
+                return;
+            }
+
+            const html = lista.map(item => `
+                <div class="border border-slate-200 rounded p-4">
+                    <div class="font-bold">${item.type || ''} - ${item.city || ''} ${item.neighborhood || ''}</div>
+                    <div class="text-sm text-slate-600">Quartos: ${item.min_bedrooms || '-'} a ${item.max_bedrooms || '-'}</div>
+                    <div class="text-sm text-slate-600">Max preço: ${item.max_price || '-'}</div>
+                    <div class="text-sm text-slate-600">Status: ${item.status || 'ativa'}</div>
+                </div>
+            `).join('');
+
+            $('#listaIntencoes').html(html);
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('portal_token');
+            window.location.href = '/portal';
+        }
+    </script>
+</body>
+</html>

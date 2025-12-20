@@ -26,7 +26,7 @@ class SimpleTokenAuth
 
         [$userId] = explode('|', $decoded, 3);
         $user = User::with('tenant')->find($userId);
-        
+
         if (!$user) {
             Log::warning('SimpleTokenAuth: User not found', ['userId' => $userId]);
             return response()->json(['error' => 'Unauthorized'], 401);
@@ -38,10 +38,15 @@ class SimpleTokenAuth
             'tenant_id' => $user->tenant_id
         ]);
 
-        // Injeta o usuário na request para os controllers
+        // Inject user in request for controllers
         $request->setUserResolver(function () use ($user) {
             return $user;
         });
+
+        if ($user->tenant) {
+            app()->instance('tenant', $user->tenant);
+            $request->attributes->set('tenant_id', $user->tenant_id);
+        }
 
         return $next($request);
     }

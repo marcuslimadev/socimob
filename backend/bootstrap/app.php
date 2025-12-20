@@ -64,6 +64,7 @@ $app->routeMiddleware([
     'simple-auth' => App\Http\Middleware\SimpleTokenAuth::class,
     'auth:api' => App\Http\Middleware\SimpleTokenAuth::class,
     'validate-tenant-auth' => App\Http\Middleware\ValidateTenantAuth::class,
+    'resolve-tenant' => App\Http\Middleware\ResolveTenant::class,
 ]);
 
 /*

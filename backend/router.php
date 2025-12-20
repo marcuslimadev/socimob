@@ -20,6 +20,16 @@ if ($uri === '/' && empty($_SERVER['QUERY_STRING'])) {
     }
 }
 
+// Se for um diretório, servir index.html
+if ($uri !== '/' && is_dir($publicPath . $uri)) {
+    $indexFile = rtrim($publicPath . $uri, DIRECTORY_SEPARATOR) . '/index.html';
+    if (file_exists($indexFile)) {
+        header('Content-Type: text/html; charset=UTF-8');
+        readfile($indexFile);
+        return true;
+    }
+}
+
 // Se for um arquivo estático, serve diretamente
 if ($uri !== '/' && file_exists($publicPath . $uri)) {
     // Detecta o tipo MIME
