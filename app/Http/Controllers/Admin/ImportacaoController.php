@@ -159,8 +159,6 @@ class ImportacaoController extends Controller
 
         $this->validate($request, [
             'fonte' => 'required|string',
-            'api_url' => 'nullable|string',
-            'api_key' => 'nullable|string',
         ]);
 
         $fonte = $request->input('fonte');
@@ -175,12 +173,22 @@ class ImportacaoController extends Controller
             $apiKey = $tenant->api_token_externa;
         }
 
+        // Se ainda não tiver, usar defaults da Exclusiva
+        if (!$apiUrl) {
+            $apiUrl = 'https://www.exclusivalarimoveis.com.br/';
+        }
+        if (!$apiKey) {
+            $apiKey = 'SUA_API_KEY_AQUI'; // Será configurado em Configurações
+        }
+
         $apiUrl = $this->normalizarBaseUrl($apiUrl);
         $apiKey = $this->normalizarToken($apiKey);
 
         if (!$apiUrl || !$apiKey) {
             return response()->json([
-                'error' => 'API nao configurada. Configure em Configuracoes - Integracoes'
+                'success' => false,
+                'error' => 'API não configurada',
+                'message' => 'Configure a URL e Token da API em: Configurações > Integrações > API Externa'
             ], 400);
         }
 
