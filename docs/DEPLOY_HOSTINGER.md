@@ -1,37 +1,164 @@
-# Deploy automático na Hostinger
+# Deploy na Hostinger - Exclusiva SaaS
 
-Este projeto agora roda exclusivamente na Hostinger em produção. Abaixo está o fluxo recomendado para manter o backend atualizado via GitHub Actions.
+Este guia mostra como fazer deploy do sistema na Hostinger usando **scripts manuais** de forma simples e direta.
 
-## 1. Ambiente Hostinger
+## 🚀 Deploy em 3 Passos
 
-1. Garanta um plano Hostinger com PHP 8.1+, MySQL, SSH e Composer.
-2. Anote os dados SSH (host, usuário, porta, senha ou chave) e o caminho onde o backend será publicado (ex.: `/home/u12345678/public_html/exclusiva`).
-3. Prepare o `.env` no servidor com todos os valores sensíveis: banco, e-mail, webhooks, `GITHUB_WEBHOOK_SECRET` etc.
+### 1️⃣ Upload dos Arquivos
+- **Via FTP/SFTP**: Upload de toda a pasta do projeto
+- **Via Git**: `git clone` direto no servidor
+- **Localização**: `public_html/` ou subpasta como `public_html/exclusiva/`
 
-## 2. GitHub Actions
+### 2️⃣ Executar Setup
+```bash
+# No servidor via SSH
+cd /caminho/do/projeto
+chmod +x scripts/*.sh
+./scripts/first-deploy.sh
+```
 
-1. No repositório GitHub, cadastre os seguintes segredos:
-   - `HOSTINGER_SSH_HOST`
-   - `HOSTINGER_SSH_USERNAME`
-   - `HOSTINGER_SSH_PORT` (opcional, padrão `22`)
-   - `HOSTINGER_SSH_PASSWORD` **ou** `HOSTINGER_SSH_KEY` (com `HOSTINGER_SSH_KEY_PASSPHRASE`, se necessário)
-   - `HOSTINGER_DEPLOY_PATH`
-   - `HOSTINGER_ASSET_PATH` (opcional; o local onde as assets públicas devem cair, se for diferente de `HOSTINGER_DEPLOY_PATH`)
-2. A workflow `.github/workflows/hostinger-deploy.yml` dispara em push para `main`/`master`, copia o conteúdo de `backend/` para o servidor e executa:
-   - `composer install --no-dev --prefer-dist`
+### 3️⃣ Acessar Sistema
+- **URL**: `https://seu-dominio.com/app/`
+- **Login**: `contato@exclusiva.com.br` / `Teste@123`
+
+## ⚙️ Configuração Prévia
+
+### Hostinger - Requisitos:
+- ✅ **PHP 8.1+** ativo
+- ✅ **MySQL** configurado  
+- ✅ **SSH** habilitado
+- ✅ **Composer** disponível
+
+### Arquivo .env (criar no servidor):
+```env
+APP_ENV=production
+DB_HOST=localhost
+DB_DATABASE=exclusiva
+DB_USERNAME=seu_user_mysql
+DB_PASSWORD=sua_senha_mysql
+
+# Outras configurações conforme necessário
+MAIL_DRIVER=smtp
+```
+
+## 🌱 O que é Criado Automaticamente
+
+O script **`first-deploy.sh`** cria:
+
+### 🏢 **Imobiliária Exclusiva**
+- Tenant configurado com plano Premium
+- API Token gerado
+- Configurações básicas
+
+### 👥 **Usuários Prontos**
+| Email | Senha | Perfil |
+|-------|--------|--------|
+| admin@exclusiva.com | `password` | Super Admin |
+| contato@exclusiva.com.br | `Teste@123` | Admin |
+| alexsandra@exclusiva.com.br | `Senha@123` | Admin |
+| marcus@exclusiva.com.br | `Dev@123` | Admin |
+| corretor@exclusiva.com.br | `Corretor@123` | Corretor |
+
+## 🔄 Deploy Subsequente
+
+Para atualizações futuras:
+1. **Upload dos novos arquivos** (substitui existentes)
+2. **Executar script novamente**: `./scripts/first-deploy.sh`
+3. **Seeders não são executados** (dados preservados)
+
+## 🔧 Troubleshooting
+
+### ❌ **Script não executa**
+```bash
+chmod +x scripts/*.sh
+```
+
+### ❌ **Erro de banco**  
+1. Verificar credenciais no `.env`
+2. Confirmar que banco `exclusiva` existe
+3. Testar: `mysql -u user -p exclusiva`
+
+### ❌ **Erro de permissões**
+```bash
+chmod -R 775 storage bootstrap/cache
+```
+
+### ❌ **Verificar se deu certo**
+```bash
+./scripts/verify-deploy.sh
+```
+
+## 📋 Dicas Extras
+
+### 🌐 **Configurar Domínio**
+1. Apontar DNS para Hostinger  
+2. Configurar SSL no painel
+3. Ajustar domain do tenant (se necessário)
+
+### 🔄 **Recriar Dados (se necessário)**  
+```bash
+rm .first-deploy-done
+./scripts/first-deploy.sh
+```
+
+### 📞 **Logs de Erro**
+```bash  
+tail -f storage/logs/lumen-*.log
+```
+
+---
+
+✅ **Sistema pronto!** Acesse `https://seu-dominio.com/app/` e faça login com as credenciais criadas.
    - `php artisan migrate --force`
    - `php artisan config:cache`
    - `php artisan route:cache`
    - `php artisan view:clear`
 
-## 3. Webhooks
+## 3. Dados Iniciais (Primeiro Deploy)
 
-Atualize os endpoints externos para apontarem para a instância Hostinger:
+No **primeiro deploy**, o sistema automaticamente executará os seeders que criam:
+
+### 🏢 Tenant Exclusiva
+- **Nome**: Exclusiva Imóveis  
+- **Domain**: exclusiva.localhost (ajustar conforme necessário)
+- **Plano**: Premium ativo por 1 ano
+- **API Token**: Gerado automaticamente
+
+### 👥 Usuários Criados
+| Nome | Email | Senha | Role | 
+|------|--------|-------|------|
+| Super Administrador | admin@exclusiva.com | `password` | super_admin |
+| Contato Exclusiva | contato@exclusiva.com.br | `Teste@123` | admin |
+| Alexsandra Silva | alexsandra@exclusiva.com.br | `Senha@123` | admin |
+| Marcus Lima | marcus@exclusiva.com.br | `Dev@123` | admin |
+| Corretor Demo | corretor@exclusiva.com.br | `Corretor@123` | agent |
+
+### 🔄 Deploys Subsequentes
+- Os seeders **não são executados** novamente
+- Sistema detecta através do arquivo `.first-deploy-done`
+- Apenas migrações e atualizações de código são aplicadas
+
+### 📝 Scripts Alternativos
+Se preferir executar manualmente:
+```bash
+# Linux/Mac
+./scripts/first-deploy.sh
+
+# Windows  
+scripts\first-deploy.bat
+
+# Ou apenas os seeders
+php database/seeders/DatabaseSeeder.php
+```
+
+## 4. Webhooks
+
+Atualize os endpoints externos para apontarem para seu domínio Hostinger:
 - `https://seu-dominio/github/webhook` (GitHub)
 - `https://seu-dominio/webhook/whatsapp` (Twilio/Evolution)
 - `https://seu-dominio/api/webhooks/pagar-me` (Pagar.me)
 
 ## 4. Monitoramento
 
-- Configure o painel Hostinger para manter logs rotacionados (`storage/logs` tem que ser gravável).
-- Use o painel de tarefas cron da Hostinger para rodar `php artisan schedule:run` a cada minuto.
+- Garanta que `storage/logs` e `bootstrap/cache` estejam graváveis no Hostinger; ative rotação de logs se disponível.
+- Use o painel de cron da Hostinger para rodar `php artisan schedule:run` a cada minuto.

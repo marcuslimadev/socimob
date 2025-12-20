@@ -1,4 +1,4 @@
-name: Hostinger Deploy
+name: Simple Deploy
 
 on:
   push:
@@ -11,10 +11,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Sync backend to Hostinger
+      - name: Sync files to server
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
@@ -23,21 +21,18 @@ jobs:
           password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
           passphrase: ${{ secrets.HOSTINGER_SSH_KEY_PASSPHRASE }}
-          source: backend/
+          source: .
           target: ${{ secrets.HOSTINGER_DEPLOY_PATH }}
           recursive: true
-          rsync: true
           exclude: |
             .git
+            .github
             node_modules
             vendor
-            .github
             docs
-            frontend
             *.log
-            tmp-*
 
-      - name: Run remote maintenance
+      - name: Setup environment
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
@@ -48,8 +43,7 @@ jobs:
           passphrase: ${{ secrets.HOSTINGER_SSH_KEY_PASSPHRASE }}
           script: |
             cd ${{ secrets.HOSTINGER_DEPLOY_PATH }}
-            composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
-            php artisan migrate --force
+            ./scripts/first-deploy.sh
             php artisan config:cache
             php artisan route:cache
             php artisan view:clear

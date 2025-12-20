@@ -23,19 +23,12 @@ yarn-debug.log*
 yarn-error.log*
 
 # Backend (Lumen/Laravel)
-backend/vendor/
-backend/node_modules/
-backend/public/storage
-backend/storage/*.key
-backend/storage/framework/cache/*
-backend/storage/framework/sessions/*
-backend/storage/framework/views/*
-backend/storage/logs/*.log
-backend/.phpunit.cache
-
-# Frontend (Vue/Vite)
-frontend/node_modules/
-frontend/dist/
-frontend/coverage/
-frontend/playwright-report/
-frontend/test-results/
+vendor/
+node_modules/
+public/storage
+storage/*.key
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*.log
+.phpunit.cache

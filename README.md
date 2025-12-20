@@ -1,162 +1,71 @@
 # 🏠 SOCIMOB - Sistema de Gestão Imobiliária
 
 ## 🎯 Visão Geral
+SOCIMOB combina um backend Lumen com um frontend HTML/jQuery leve para entregar um SaaS imobiliário pronto para rodar localmente e na Hostinger.
 
-Sistema completo de gestão imobiliária com **servidor único PHP** (Lumen 10) + **HTML/jQuery**.
+## 🚀 Início Rápido (3 passos)
+1. **Iniciar o servidor PHP**
+   ```bash
+   START.bat      # Windows
+   php -S 127.0.0.1:8000 -t public  # alternativo
+   ```
+2. **Acessar**
+   - Homepage: `http://127.0.0.1:8000/`
+   - Área do corretor: `http://127.0.0.1:8000/app/`
+   - Portal do cliente: `http://127.0.0.1:8000/portal/`
+3. **Login**
+   - Admin/corretor: `admin@exclusiva.com` / `password`
+   - Cliente: cadastre via Google OAuth ou use um cadastro existente
 
-## 🚀 Início Rápido (3 Passos)
-
-### 1. Iniciar Servidor
-```bash
-# Windows: Duplo clique ou execute:
-backend\START.bat
-
-# Ou manualmente:
-cd backend
-php -S 127.0.0.1:8000 -t public
-```
-
-### 2. Acessar Sistema
-- **Homepage Pública:** `http://127.0.0.1:8000/`
-- **Área do Corretor:** `http://127.0.0.1:8000/app/`
-- **Portal do Cliente:** `http://127.0.0.1:8000/portal/`
-
-### 3. Login
-**Corretor/Admin:**
-- Email: `admin@exclusiva.com`
-- Senha: `password`
-
-**Cliente:**
-- Criar conta via Google OAuth na homepage
-- Ou usar email/senha (se já tiver cadastro)
-
-## 📁 Estrutura do Projeto
-
-```
-socimob/
-├── backend/                    # Backend Lumen + Frontend HTML
-│   ├── app/                    # Código PHP
-│   │   └── Http/Controllers/
-│   │       ├── AuthController.php       # Login + Google OAuth
-│   │       └── PortalController.php     # API para clientes
-│   ├── public/                 # Frontend público
-│   │   ├── index.html          # 🆕 Homepage com login Google
-│   │   ├── app/                # Área administrativa
-│   │   └── portal/             # 🆕 Portal do cliente
-│   ├── routes/web.php          # Rotas da API
-│   └── START.bat               # Script de inicialização
-├── docker/                     # Configurações Docker
-└── docs/                       # Documentação técnica
-```
+## 📁 Estrutura do projeto
+- `app/`, `routes/`, `database/`, `config/` – Lógica PHP, rotas, migrações e configurações
+- `public/` – Frontend público, assets e ponto de entrada HTTP
+- `bootstrap/`, `artisan` – Bootstrap do Lumen
+- `storage/`, `tests/`, `vendor/` – Logs, testes e dependências
+- `scripts/` – Utilitários auxiliares
+- `.env`, `composer.json`, `composer.lock` – Ambiente e dependências
 
 ## ✨ Funcionalidades
-
-### 🏠 Homepage Pública (`/`)
-- Login com Google OAuth (criar conta automaticamente)
-- Login com Email/Senha para clientes
-- Design moderno com gradiente
-- Redirecionamento automático por role
-
-### 👤 Portal do Cliente (`/portal/`)
-- Catálogo de Imóveis com grid responsivo
-- Filtros avançados (tipo, finalidade, localização)
-- Detalhes completos em modal
-- Botão "Tenho Interesse" para contato
-- Compartilhamento de imóveis
-
-### 💼 Área Administrativa (`/app/`)
-- Dashboard com estatísticas
-- Gestão de Leads e Imóveis
-- Sistema de conversas (chat)
-- Configurações completas
+- Autenticação com Google OAuth + login por e-mail/senha
+- Portal do cliente com catálogo responsivo, filtros e modais detalhados
+- Área administrativa com dashboard, leads, imóveis, chats e configurações
+- Multi-tenancy com domínios personalizados e isolamento por tenant_id
+- Integrações com WhatsApp/Twilio, Pagar.me e OpenAI para automatização
+- Sistema de notificações, relatórios e chat em tempo real
 
 ## 🔐 Autenticação
-
-### Tipos de Usuário
-- **Cliente** → Acessa `/portal/`, vê catálogo, demonstra interesse
-- **Corretor** → Acessa `/app/`, gerencia leads e imóveis
-- **Admin/Super Admin** → Acesso total ao sistema
-
-### Google OAuth - Configuração
-
-1. **Google Cloud Console:**
-   - Criar projeto em [console.cloud.google.com](https://console.cloud.google.com/)
-   - Ativar "Google Sign-In API"
-   - Criar credenciais OAuth 2.0
-
-2. **Configurar Client ID:**
-   ```env
-   # backend/.env
-   GOOGLE_CLIENT_ID=seu-client-id.apps.googleusercontent.com
-   ```
-
-3. **Atualizar HTML:**
-   ```html
-   <!-- backend/public/index.html -->
-   <div id="g_id_onload" data-client_id="seu-client-id...">
-   ```
+- Tipos de usuário: Cliente, Corretor, Admin e Super Admin
+- Guardas `auth` + middleware `ResolveTenant`
+- Configure `GOOGLE_CLIENT_ID` no `.env` e atualize `public/index.html` para habilitar o login com Google
 
 ## 📋 API Endpoints
-
-### Autenticação
-- `POST /api/auth/login` - Login email/senha
-- `POST /api/auth/google` - Login Google OAuth
-- `GET /api/auth/me` - Dados do usuário
-
-### Portal Cliente
-- `GET /api/portal/properties` - Listar imóveis
-- `POST /api/portal/interesse` - Registrar interesse
+- `POST /api/auth/login`, `POST /api/auth/google`, `GET /api/auth/me`
+- `/api/portal/properties`, `/api/portal/interesse`
+- `/webhook/whatsapp`, `/api/webhooks/pagar-me`, `/github/webhook` (webhooks públicos)
 
 ## 🛠️ Tecnologias
-
-- **Backend:** Lumen 10 (PHP 8.1+)
-- **Frontend:** HTML5 + jQuery 3.7.1 + TailwindCSS
-- **Banco:** MySQL
-- **Auth:** Google OAuth + Token Bearer
+- Backend: Lumen 10 (PHP 8.1+)
+- Frontend: HTML5 + jQuery 3.7.1 + TailwindCSS
+- Banco: MySQL
+- Auth: Google OAuth + tokens Bearer
+- Deploy: GitHub Actions → Hostinger
 
 ## 🔒 Segurança (IMPORTANTE)
-
-⚠️ **Antes de produção:**
-1. Implementar verificação REAL do token Google
-2. Configurar HTTPS obrigatório
-3. Adicionar rate limiting
-4. Configurar CORS adequadamente
-
-O código atual tem verificação **simulada** do Google. Ver comentários em `AuthController::googleLogin()` para implementação real.
+1. Valide o token Google em produção
+2. Configure HTTPS obrigatório
+3. Aplique rate limiting e CORS
+4. Garanta permissões de escrita em `storage/` e `bootstrap/cache`
 
 ## 📦 Deploy
-
-### Local
-```bash
-cd backend
-php -S 127.0.0.1:8000 -t public
-```
-
-### Produção
-1. Copiar `backend/` para servidor
-2. Configurar `.env`
-3. Executar `composer install --no-dev`
-4. Apontar domínio para `public/`
-5. Configurar SSL
-
-### Docker
-```bash
-docker-compose -f docker/docker-compose.yml up -d
-```
+- **Local:** `php -S 127.0.0.1:8000 -t public`
+- **Produção:** siga [docs/DEPLOY_HOSTINGER.md](docs/DEPLOY_HOSTINGER.md); o workflow oficial copia o projeto para a Hostinger e roda `composer install --no-dev --prefer-dist`, `php artisan migrate --force` e comandos de cache.
 
 ## 📚 Documentação
-
-- [SERVIDOR_UNICO.md](SERVIDOR_UNICO.md) - Guia do servidor único
-- [CONSOLIDACAO_COMPLETA.md](CONSOLIDACAO_COMPLETA.md) - Histórico de mudanças
-- [TESTE_RAPIDO.md](TESTE_RAPIDO.md) - Checklist de testes
-- [docs/](docs/) - Documentação técnica
+- [docs/DEPLOY_HOSTINGER.md](docs/DEPLOY_HOSTINGER.md) – Deploy automático na Hostinger
+- [SERVIDOR_UNICO.md](SERVIDOR_UNICO.md) – Guia do servidor único
+- [CONSOLIDACAO_COMPLETA.md](CONSOLIDACAO_COMPLETA.md) – Histórico de mudanças
+- [TESTE_RAPIDO.md](TESTE_RAPIDO.md) – Checklist de testes
 
 ## 📞 Suporte
-
-- **GitHub:** [marcuslimadev/socimob](https://github.com/marcuslimadev/socimob)
-- **Issues:** Use GitHub Issues para reportar problemas
-
----
-
-**SOCIMOB v2.0** - Servidor Único + Google OAuth  
-Desenvolvido com ❤️ - Dezembro 2024
+- GitHub: [marcuslimadev/socimob](https://github.com/marcuslimadev/socimob)
+- Issues: use o repositório oficial para reportar problemas
