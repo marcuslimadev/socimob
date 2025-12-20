@@ -77,13 +77,61 @@ else
 fi
 
 # ============================================================================
-# 3. CACHE E PERMISSÕES
+# 3. CORREÇÃO ERRO 403 E PERMISSÕES
 # ============================================================================
 echo ""
-echo "⚙️  Configurações finais..."
-chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+echo "🔐 Corrigindo permissões e configuração web..."
 
-# Lumen não tem todos os comandos artisan do Laravel
+# Permissões corretas
+find . -type d -exec chmod 755 {} \; 2>/dev/null
+find . -type f -exec chmod 644 {} \; 2>/dev/null
+chmod -R 775 storage bootstrap/cache 2>/dev/null
+chmod +x *.sh scripts/*.sh 2>/dev/null
+
+# Criar .htaccess no public se não existir
+if [ ! -f "public/.htaccess" ]; then
+    echo "📝 Criando public/.htaccess..."
+    cat > public/.htaccess << 'EOF'
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews
+    </IfModule>
+
+    RewriteEngine On
+
+    # Handle Angular and Vue history mode
+    RewriteCond %{REQUEST_FILENAME} -d [OR]
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ ^$1 [N]
+
+    RewriteRule ^ index.php [L]
+</IfModule>
+EOF
+fi
+
+# Criar .htaccess na raiz para redirecionar para public
+if [ ! -f ".htaccess" ]; then
+    echo "📝 Criando .htaccess na raiz..."
+    cat > .htaccess << 'EOF'
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+EOF
+fi
+
+# Remover index.html conflitante
+if [ -f "public/index.html" ]; then
+    echo "🗑️  Removendo index.html conflitante..."
+    mv public/index.html public/index.html.bak 2>/dev/null
+fi
+
+echo "✅ Configuração web corrigida"
+
+# ============================================================================
+# 4. CACHE E OTIMIZAÇÕES
+# ============================================================================
+echo ""
 echo "💨 Configurando cache..."
 $PHP_BIN artisan route:cache 2>/dev/null || echo "   Route cache não disponível (normal no Lumen)"
 
@@ -102,7 +150,13 @@ echo "  📧 Admin: contato@exclusiva.com.br / Teste@123"
 echo "  📧 Super: admin@exclusiva.com / password"
 echo "  📧 Alexsandra: alexsandra@exclusiva.com.br / Senha@123"
 echo ""
-echo "🌐 Acesse: https://lojadaesquina.store/app/"
+echo "🌐 URLs para testar:"
+echo "  https://lojadaesquina.store/ (página inicial)"
+echo "  https://lojadaesquina.store/app/ (sistema)"
+echo ""
+echo "⚠️  Se ainda der erro 403:"
+echo "1. Execute: ./fix-403.sh"
+echo "2. Ou configure Document Root para: $(pwd)/public"
 echo ""
 echo "� Opções do script:"
 echo "  ./hostinger-deploy.sh        - Deploy normal"
