@@ -1,0 +1,55 @@
+name: Hostinger Deploy
+
+on:
+  push:
+    branches: [main, master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Sync backend to Hostinger
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USERNAME }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          passphrase: ${{ secrets.HOSTINGER_SSH_KEY_PASSPHRASE }}
+          source: backend/
+          target: ${{ secrets.HOSTINGER_DEPLOY_PATH }}
+          recursive: true
+          rsync: true
+          exclude: |
+            .git
+            node_modules
+            vendor
+            .github
+            docs
+            frontend
+            *.log
+            tmp-*
+
+      - name: Run remote maintenance
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USERNAME }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          passphrase: ${{ secrets.HOSTINGER_SSH_KEY_PASSPHRASE }}
+          script: |
+            cd ${{ secrets.HOSTINGER_DEPLOY_PATH }}
+            composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:clear
