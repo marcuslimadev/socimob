@@ -1,17 +1,26 @@
 #!/bin/bash
 
 # ============================================================================
-# VERIFICAÇÃO PÓS-DEPLOY - Exclusiva SaaS  
+# VERIFICAÇÃO PÓS-DEPLOY - Exclusiva SaaS
 # ============================================================================
 # Script para verificar se o deploy foi executado corretamente
 # Testa banco, seeders, usuários e configurações básicas
 
-echo "🔍 Verificação Pós-Deploy - Exclusiva SaaS"
+set -euo pipefail
+
+PHP_BIN="${PHP_BIN:-/opt/alt/php83/usr/bin/php}"
+
+if [ ! -x "$PHP_BIN" ]; then
+    echo "❌ Binário do PHP não encontrado em $PHP_BIN"
+    exit 1
+fi
+
+echo "🧪 Verificação Pós-Deploy - Exclusiva SaaS"
 echo "========================================="
 
 # Carregar variáveis de ambiente se disponível
 if [ -f ".env" ]; then
-    export $(cat .env | grep -v '^#' | xargs)
+    export $(grep -v '^#' .env | xargs)
 fi
 
 ERRORS=0
@@ -24,7 +33,7 @@ echo "📁 Verificando arquivos essenciais..."
 
 essential_files=(
     "composer.json"
-    "bootstrap/app.php" 
+    "bootstrap/app.php"
     "public/index.php"
     "database/seeders/DatabaseSeeder.php"
     ".env"
@@ -32,9 +41,9 @@ essential_files=(
 
 for file in "${essential_files[@]}"; do
     if [ -f "$file" ]; then
-        echo "  ✅ $file"
+        echo "  ✓ $file"
     else
-        echo "  ❌ $file - FALTANDO"
+        echo "  ✗ $file - FALTANDO"
         ((ERRORS++))
     fi
 done
@@ -43,9 +52,9 @@ done
 # 2. VERIFICAR CONEXÃO COM BANCO
 # ============================================================================
 echo ""
-echo "🗄️  Verificando conexão com banco..."
+echo "🔌 Verificando conexão com banco..."
 
-DB_TEST=$(php -r "
+DB_TEST=$($PHP_BIN -r "
 try {
     \$pdo = new PDO(
         'mysql:host=' . (\$_ENV['DB_HOST'] ?? 'localhost') . ';dbname=' . (\$_ENV['DB_DATABASE'] ?? 'exclusiva'),
@@ -54,146 +63,81 @@ try {
     );
     echo 'OK';
 } catch (Exception \$e) {
-    echo 'ERRO: ' . \$e->getMessage();
+    echo 'ERROR: ' . \$e->getMessage();
 }
 " 2>/dev/null)
 
-if [[ $DB_TEST == "OK" ]]; then
-    echo "  ✅ Conexão com banco estabelecida"
+if [[ "$DB_TEST" == "OK" ]]; then
+    echo "  ✓ Conexão com banco estabelecida"
 else
-    echo "  ❌ Erro na conexão: $DB_TEST"
+    echo "  ✗ Erro na conexão: $DB_TEST"
     ((ERRORS++))
 fi
 
 # ============================================================================
-# 3. VERIFICAR SE SEEDERS FORAM EXECUTADOS
+# 3. VERIFICAR FUNCIONALIDADE DOS SEEDERS
 # ============================================================================
 echo ""
-echo "🌱 Verificando execução dos seeders..."
+echo "🌱 Verificando seeders..."
 
 if [ -f ".first-deploy-done" ]; then
-    echo "  ✅ Marcador de primeiro deploy encontrado"
-    echo "  📅 $(cat .first-deploy-done)"
+    echo "  ✓ Marker de primeiro deploy existente"
+    echo "  ▪ $(cat .first-deploy-done)"
 else
-    echo "  ⚠️  Marcador de primeiro deploy não encontrado"
-    echo "      Seeders podem não ter sido executados"
+    echo "  ✗ Marker de primeiro deploy ausente"
+    ((ERRORS++))
 fi
 
-# Verificar se usuários foram criados
-USER_COUNT=$(php -r "
+for query in \
+"SELECT COUNT(*) FROM users WHERE email LIKE '%@exclusiva.com%';" \
+"SELECT COUNT(*) FROM tenants WHERE slug = 'exclusiva';"; do
+    VALUE=$($PHP_BIN -r "
 try {
     \$pdo = new PDO(
         'mysql:host=' . (\$_ENV['DB_HOST'] ?? 'localhost') . ';dbname=' . (\$_ENV['DB_DATABASE'] ?? 'exclusiva'),
         \$_ENV['DB_USERNAME'] ?? 'root',
         \$_ENV['DB_PASSWORD'] ?? ''
     );
-    \$stmt = \$pdo->query('SELECT COUNT(*) FROM users WHERE email LIKE \"%exclusiva.com%\"');
+    \$stmt = \$pdo->query(\"$query\");
     echo \$stmt->fetchColumn();
 } catch (Exception \$e) {
     echo '0';
 }
 " 2>/dev/null)
 
-if [ "$USER_COUNT" -gt 0 ]; then
-    echo "  ✅ $USER_COUNT usuários Exclusiva encontrados no banco"
-else
-    echo "  ❌ Nenhum usuário Exclusiva encontrado"
-    ((ERRORS++))
-fi
-
-# Verificar tenant
-TENANT_COUNT=$(php -r "
-try {
-    \$pdo = new PDO(
-        'mysql:host=' . (\$_ENV['DB_HOST'] ?? 'localhost') . ';dbname=' . (\$_ENV['DB_DATABASE'] ?? 'exclusiva'),
-        \$_ENV['DB_USERNAME'] ?? 'root',
-        \$_ENV['DB_PASSWORD'] ?? ''
-    );
-    \$stmt = \$pdo->query('SELECT COUNT(*) FROM tenants WHERE slug = \"exclusiva\"');
-    echo \$stmt->fetchColumn();
-} catch (Exception \$e) {
-    echo '0';
-}
-" 2>/dev/null)
-
-if [ "$TENANT_COUNT" -gt 0 ]; then
-    echo "  ✅ Tenant Exclusiva encontrado no banco"
-else
-    echo "  ❌ Tenant Exclusiva não encontrado"
-    ((ERRORS++))
-fi
+    if [[ "$VALUE" -gt 0 ]]; then
+        echo "  ✓ Query '$query' retornou $VALUE registros"
+    else
+        echo "  ✗ Query '$query' não encontrou registros"
+        ((ERRORS++))
+    fi
+done
 
 # ============================================================================
-# 4. VERIFICAR PERMISSÕES
+# 4. PERMISSÕES
 # ============================================================================
 echo ""
 echo "🔐 Verificando permissões..."
 
-if [ -d "storage" ]; then
-    if [ -w "storage" ]; then
-        echo "  ✅ Diretório storage gravável"
+for dir in storage bootstrap/cache; do
+    if [ -d "$dir" ] && [ -w "$dir" ]; then
+        echo "  ✓ Diretório $dir gravável"
     else
-        echo "  ⚠️  Diretório storage não gravável"
-        echo "      Execute: chmod -R 775 storage"
+        echo "  ✗ Diretório $dir sem permissão de escrita"
+        ((ERRORS++))
     fi
-else
-    echo "  ⚠️  Diretório storage não encontrado"
-fi
-
-if [ -d "bootstrap/cache" ]; then
-    if [ -w "bootstrap/cache" ]; then
-        echo "  ✅ Cache do bootstrap gravável"
-    else
-        echo "  ⚠️  Cache do bootstrap não gravável"
-    fi
-fi
+done
 
 # ============================================================================
-# 5. VERIFICAR SERVIDOR WEB (se possível)
+# 5. STATUS FINAL
 # ============================================================================
 echo ""
-echo "🌐 Verificando servidor web..."
-
-# Tentar fazer request HTTP básico
-if command -v curl >/dev/null 2>&1; then
-    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000 2>/dev/null || echo "000")
-    
-    if [ "$HTTP_STATUS" = "200" ]; then
-        echo "  ✅ Servidor respondendo (HTTP $HTTP_STATUS)"
-    else
-        echo "  ⚠️  Servidor não responde ou não está rodando (HTTP $HTTP_STATUS)"
-        echo "      Execute: php -S 127.0.0.1:8000 -t public"
-    fi
-else
-    echo "  ℹ️  Curl não disponível - não foi possível testar servidor"
-fi
-
-# ============================================================================
-# 6. RESUMO FINAL
-# ============================================================================
-echo ""
-echo "📊 RESUMO DA VERIFICAÇÃO"
+echo "📊 Resumo da verificação"
 echo "========================"
 
 if [ $ERRORS -eq 0 ]; then
-    echo "✅ SUCESSO! Deploy verificado com sucesso"
-    echo ""
-    echo "🎯 Sistema pronto para uso:"
-    echo "  🌐 URL: http://localhost:8000/app/"
-    echo "  👤 Super Admin: admin@exclusiva.com / password"
-    echo "  👤 Admin: contato@exclusiva.com.br / Teste@123"
-    echo ""
-    echo "🚀 Próximos passos:"
-    echo "  1. Acessar o sistema via browser"
-    echo "  2. Fazer login com as credenciais"
-    echo "  3. Configurar domínio (se necessário)"
-    echo "  4. Personalizar tema/logo"
+    echo "✅ SUCESSO! Deploy verificado."
 else
-    echo "❌ ATENÇÃO: $ERRORS erro(s) encontrado(s)"
-    echo ""
-    echo "🔧 Ações necessárias:"
-    echo "  1. Corrigir os erros listados acima"
-    echo "  2. Executar novamente este script"
-    echo "  3. Verificar logs em storage/logs/"
+    echo "⚠️  $ERRORS item(ns) localizados."
     exit 1
 fi

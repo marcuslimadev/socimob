@@ -43,7 +43,8 @@ jobs:
           passphrase: ${{ secrets.HOSTINGER_SSH_KEY_PASSPHRASE }}
           script: |
             cd ${{ secrets.HOSTINGER_DEPLOY_PATH }}
+            export PHP_BIN=/opt/alt/php83/usr/bin/php
             ./scripts/first-deploy.sh
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:clear
+            $PHP_BIN artisan config:cache
+            $PHP_BIN artisan route:cache
+            $PHP_BIN artisan view:clear
