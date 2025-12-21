@@ -5,21 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Imóveis Disponíveis - SOCIMOB</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/bauhaus.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
-<body class="bg-slate-50">
+<body class="bauhaus-page">
     <!-- Navbar -->
-    <nav class="bg-white border-b border-slate-200 p-4 sticky top-0 z-50 shadow-sm">
+    <nav class="bauhaus-nav p-4 sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <span class="text-3xl">🏠</span>
-                <h1 class="text-xl font-bold text-slate-900">SOCIMOB</h1>
+            <div class="flex items-center gap-3">
+                <div class="bauhaus-badge">🏠 SOCIMOB</div>
+                <span class="bauhaus-pill">Portal do Cliente</span>
             </div>
             <div class="flex items-center gap-4">
-                <span id="userName" class="text-slate-700"></span>
-                <button id="btnLogout" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                    Sair
-                </button>
+                <span id="userName" class="text-white"></span>
+                <button id="btnLogout" class="bauhaus-button">Sair</button>
             </div>
         </div>
     </nav>
@@ -28,28 +27,29 @@
     <div class="container mx-auto p-6">
         <!-- Header -->
         <div class="mb-8">
-            <h2 class="text-3xl font-black text-slate-900 mb-2">Imóveis Disponíveis</h2>
-            <p class="text-slate-600">Encontre o imóvel perfeito para você</p>
+            <div class="bauhaus-tagline mb-3">Catálogo exclusivo</div>
+            <h2 class="text-3xl font-black text-[var(--bauhaus-black)] mb-2">Imóveis Disponíveis</h2>
+            <p class="text-[var(--bauhaus-ink)]">Encontre o imóvel perfeito para você</p>
         </div>
 
         <!-- Filtros -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div class="bauhaus-panel p-6 mb-6">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input type="text" id="searchImovel" placeholder="Buscar por localização..." 
-                    class="px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 outline-none">
-                <select id="filterTipo" class="px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 outline-none">
+                <input type="text" id="searchImovel" placeholder="Buscar por localização..."
+                    class="bauhaus-input">
+                <select id="filterTipo" class="bauhaus-select">
                     <option value="">Todos os tipos</option>
                     <option value="casa">Casa</option>
                     <option value="apartamento">Apartamento</option>
                     <option value="terreno">Terreno</option>
                     <option value="comercial">Comercial</option>
                 </select>
-                <select id="filterFinalidade" class="px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 outline-none">
+                <select id="filterFinalidade" class="bauhaus-select">
                     <option value="">Todas finalidades</option>
                     <option value="venda">Venda</option>
                     <option value="aluguel">Aluguel</option>
                 </select>
-                <button id="btnFiltrar" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium">
+                <button id="btnFiltrar" class="bauhaus-button w-full justify-center">
                     🔍 Buscar
                 </button>
             </div>
