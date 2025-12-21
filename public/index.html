@@ -5,40 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SOCIMOB - Sistema de Gestão Imobiliária</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/bauhaus.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+<body class="bauhaus-page">
     <!-- Navbar -->
-    <nav class="bg-slate-900/50 backdrop-blur-sm border-b border-slate-700 p-4">
+    <nav class="bauhaus-nav p-5">
         <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <span class="text-4xl">🏠</span>
-                <h1 class="text-2xl font-black text-white uppercase tracking-tighter">SOCIMOB</h1>
+            <div class="flex items-center gap-3">
+                <div class="bauhaus-badge text-lg">🏠 SOCIMOB</div>
+                <span class="hidden md:inline-flex bauhaus-pill">Gestão Imobiliária</span>
             </div>
-            <div class="flex gap-4">
-                <a href="/app/login.html" class="text-white hover:text-slate-300 font-medium">Área do Corretor</a>
+            <div class="flex gap-3 items-center">
+                <a href="/app/login.html" class="bauhaus-link">Área do Corretor</a>
             </div>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <div class="container mx-auto px-4 py-20">
-        <div class="max-w-4xl mx-auto text-center mb-16">
-            <h2 class="text-5xl md:text-6xl font-black text-white mb-6 uppercase tracking-tight">
-                Gestão Imobiliária<br/>
-                <span class="text-blue-400">Simples e Eficiente</span>
-            </h2>
-            <p class="text-xl text-slate-300 mb-12 max-w-2xl mx-auto">
-                Encontre o imóvel dos seus sonhos ou gerencie sua carteira de propriedades com facilidade
-            </p>
-        </div>
+    <div class="container mx-auto px-4 py-16">
+        <div class="grid lg:grid-cols-[1.2fr_0.8fr] gap-10 items-center">
+            <div class="space-y-6">
+                <div class="bauhaus-tagline">
+                    <span class="h-3 w-3 bg-[var(--bauhaus-red)] inline-block"></span>
+                    Plataforma completa para clientes, corretores e admins.
+                </div>
+                <h2 class="bauhaus-hero-title font-black">
+                    Gestão Imobiliária
+                    <span class="bauhaus-hero-highlight">simples, geométrica e vibrante</span>
+                </h2>
+                <p class="text-lg max-w-2xl">
+                    Experiência Bauhaus para busca de imóveis, atendimento e administração. Login rápido via Google ou e-mail e fluxos otimizados para sua equipe.
+                </p>
+                <div class="flex flex-wrap gap-3">
+                    <span class="bauhaus-chip">Pesquisa com filtros dinâmicos</span>
+                    <span class="bauhaus-chip">Chat direto com corretores</span>
+                    <span class="bauhaus-chip">Portal e área admin</span>
+                </div>
+            </div>
 
-        <!-- Login/Cadastro Section -->
-        <div class="max-w-md mx-auto">
-            <div class="bg-white rounded-2xl shadow-2xl p-8">
+            <!-- Login/Cadastro Section -->
+            <div class="bauhaus-panel p-8">
                 <div class="text-center mb-6">
-                    <h3 class="text-2xl font-black text-slate-900 mb-2">Bem-vindo!</h3>
-                    <p class="text-slate-600">Entre ou crie sua conta para continuar</p>
+                    <h3 class="text-2xl font-black text-[var(--bauhaus-black)] mb-2">Bem-vindo!</h3>
+                    <p class="text-[var(--bauhaus-ink)]">Entre ou crie sua conta para continuar</p>
                 </div>
 
                 <!-- Google Sign In Button -->
@@ -47,7 +57,7 @@
                      data-callback="handleCredentialResponse"
                      data-auto_prompt="false">
                 </div>
-                
+
                 <div class="mb-6">
                     <div id="g_id_signin"
                          data-type="standard"
@@ -62,73 +72,73 @@
 
                 <div class="relative mb-6">
                     <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-slate-300"></div>
+                        <div class="w-full border-t-4 border-[var(--bauhaus-black)]"></div>
                     </div>
                     <div class="relative flex justify-center text-sm">
-                        <span class="px-4 bg-white text-slate-500 font-medium">ou</span>
+                        <span class="px-4 bg-white text-[var(--bauhaus-ink)] font-bold uppercase">ou</span>
                     </div>
                 </div>
 
                 <!-- Email/Senha para clientes -->
                 <form id="clientLoginForm" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-900 mb-2">Email</label>
+                    <div class="space-y-2">
+                        <label class="block text-sm font-extrabold text-[var(--bauhaus-black)] uppercase tracking-wide">Email</label>
                         <input
                             type="email"
                             id="clientEmail"
                             required
-                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            class="w-full bauhaus-input"
                             placeholder="seu@email.com"
                         />
                     </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-900 mb-2">Senha</label>
+                    <div class="space-y-2">
+                        <label class="block text-sm font-extrabold text-[var(--bauhaus-black)] uppercase tracking-wide">Senha</label>
                         <input
                             type="password"
                             id="clientSenha"
                             required
-                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            class="w-full bauhaus-input"
                             placeholder="••••••••"
                         />
                     </div>
-                    
-                    <div id="errorMsg" class="hidden bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 text-sm rounded"></div>
+
+                    <div id="errorMsg" class="hidden bg-red-50 border-4 border-[var(--bauhaus-red)] text-[var(--bauhaus-black)] px-4 py-3 text-sm font-semibold"></div>
 
                     <button
                         type="submit"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition"
+                        class="w-full bauhaus-button"
                     >
                         Entrar como Cliente
                     </button>
                 </form>
 
                 <div class="mt-6 text-center">
-                    <p class="text-sm text-slate-600">
+                    <p class="text-sm text-[var(--bauhaus-ink)]">
                         Não tem conta? Ao entrar com Google, uma conta será criada automaticamente.
                     </p>
                 </div>
 
-                <div class="mt-4 pt-4 border-t border-slate-200 text-center">
-                    <a href="/app/login.html" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                <div class="mt-4 pt-4 border-t-4 border-[var(--bauhaus-black)] text-center">
+                    <a href="/app/login.html" class="text-sm bauhaus-link font-bold">
                         Acesso para corretores e administradores →
                     </a>
                 </div>
             </div>
+        </div>
 
-            <!-- Features -->
-            <div class="mt-12 grid grid-cols-3 gap-4 text-center">
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                    <div class="text-3xl mb-2">🔍</div>
-                    <p class="text-white text-sm font-medium">Busca Fácil</p>
-                </div>
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                    <div class="text-3xl mb-2">💬</div>
-                    <p class="text-white text-sm font-medium">Chat Direto</p>
-                </div>
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                    <div class="text-3xl mb-2">🔒</div>
-                    <p class="text-white text-sm font-medium">100% Seguro</p>
-                </div>
+        <!-- Features -->
+        <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bauhaus-card rounded-xl p-6 text-center">
+                <div class="text-4xl mb-3">🔍</div>
+                <p class="text-lg font-bold text-[var(--bauhaus-black)]">Busca geométrica com filtros rápidos</p>
+            </div>
+            <div class="bauhaus-card rounded-xl p-6 text-center">
+                <div class="text-4xl mb-3">💬</div>
+                <p class="text-lg font-bold text-[var(--bauhaus-black)]">Chat direto entre clientes e corretores</p>
+            </div>
+            <div class="bauhaus-card rounded-xl p-6 text-center">
+                <div class="text-4xl mb-3">🔒</div>
+                <p class="text-lg font-bold text-[var(--bauhaus-black)]">Autenticação segura e multi-tenant</p>
             </div>
         </div>
     </div>
