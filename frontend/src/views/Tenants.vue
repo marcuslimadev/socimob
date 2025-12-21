@@ -1,18 +1,18 @@
 <template>
-  <div class="min-h-screen bg-slate-50">
+  <div class="min-h-screen app-container p-4">
     <!-- Header -->
-    <header class="bg-slate-900 border-b border-slate-800">
+    <header class="rounded-2xl shadow-2xl bg-gradient-to-r from-primary-700 via-accent-500 to-sunshine-500 text-white mb-8">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="flex justify-between items-center">
           <div>
-            <h1 class="text-3xl font-black text-white tracking-tighter uppercase">🏢 Gerenciar Empresas</h1>
-            <p class="text-slate-400 mt-1 font-medium">Imobiliárias cadastradas no sistema</p>
+            <h1 class="text-3xl font-black tracking-tighter uppercase">🏢 Gerenciar Empresas</h1>
+            <p class="text-white/85 mt-1 font-semibold">Imobiliárias cadastradas no sistema</p>
           </div>
           <div class="flex gap-3">
-            <router-link to="/super-admin" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-none border border-slate-700 transition font-bold uppercase text-sm tracking-wide">
+            <router-link to="/super-admin" class="bauhaus-button px-4 py-2 text-sm">
               ← Voltar
             </router-link>
-            <button @click="showModal = true" class="px-4 py-2 bg-white text-slate-900 hover:bg-slate-200 rounded-none transition font-black uppercase text-sm tracking-wide">
+            <button @click="showModal = true" class="bauhaus-button px-4 py-2 text-sm bg-sunshine-500 text-ink hover:brightness-105">
               + Nova Empresa
             </button>
           </div>
@@ -21,22 +21,22 @@
     </header>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <!-- Filters -->
-      <div class="bg-white border-2 border-slate-200 rounded-none p-6 mb-6">
+      <div class="bauhaus-card p-6 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Buscar por nome ou email..."
-            class="px-4 py-3 border-2 border-slate-200 rounded-none focus:ring-0 focus:border-slate-900 focus:outline-none font-medium text-slate-900 placeholder-slate-400"
+            class="px-4 py-3 bauhaus-input"
           />
-          <select v-model="statusFilter" class="px-4 py-3 border-2 border-slate-200 rounded-none focus:ring-0 focus:border-slate-900 focus:outline-none bg-white font-medium text-slate-900">
+          <select v-model="statusFilter" class="px-4 py-3 bauhaus-input bg-white">
             <option value="">Todos os status</option>
             <option value="active">Ativos</option>
             <option value="inactive">Inativos</option>
           </select>
-          <div class="text-sm font-bold text-slate-500 flex items-center justify-end uppercase tracking-wide">
+          <div class="text-sm font-bold text-ink/70 flex items-center justify-end uppercase tracking-wide">
             Mostrando {{ filteredTenants.length }} de {{ tenants.length }} empresas
           </div>
         </div>
@@ -48,68 +48,68 @@
         <p class="mt-4 text-slate-900 font-bold uppercase tracking-wide">Carregando...</p>
       </div>
 
-      <div v-else-if="filteredTenants.length === 0" class="bg-white border-2 border-slate-200 rounded-none p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div v-else-if="filteredTenants.length === 0" class="bauhaus-card p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
         </svg>
-        <p class="mt-4 text-slate-500 font-medium">Nenhuma empresa encontrada</p>
-        <button @click="showModal = true" class="mt-6 px-6 py-3 bg-slate-900 text-white rounded-none hover:bg-slate-800 font-bold uppercase tracking-wide transition">
+        <p class="mt-4 text-ink/70 font-medium">Nenhuma empresa encontrada</p>
+        <button @click="showModal = true" class="mt-6 px-6 py-3 bauhaus-button text-sm">
           Cadastrar primeira empresa
         </button>
       </div>
 
       <div v-else class="grid grid-cols-1 gap-6">
-        <div v-for="tenant in filteredTenants" :key="tenant.id" class="bg-white border-2 border-slate-200 rounded-none hover:border-slate-900 transition-colors p-6 group">
+        <div v-for="tenant in filteredTenants" :key="tenant.id" class="bauhaus-card hover:-translate-y-1 transition-all p-6 group">
           <div class="flex justify-between items-start">
             <div class="flex-1">
               <div class="flex items-center gap-3 mb-3">
-                <h3 class="text-xl font-black text-slate-900 uppercase tracking-tight">{{ tenant.name }}</h3>
-                <span :class="['px-2 py-1 rounded-none text-xs font-bold uppercase tracking-wide border', tenant.is_active ? 'bg-emerald-100 text-emerald-900 border-emerald-200' : 'bg-rose-100 text-rose-900 border-rose-200']">
+                <h3 class="text-xl font-black text-ink uppercase tracking-tight">{{ tenant.name }}</h3>
+                <span :class="['px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wide border', tenant.is_active ? 'bg-emerald-100 text-emerald-900 border-emerald-200' : 'bg-rose-100 text-rose-900 border-rose-200']">
                   {{ tenant.is_active ? 'Ativo' : 'Inativo' }}
                 </span>
               </div>
               
               <div class="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p class="text-slate-500 font-bold uppercase text-xs">Email</p>
-                  <p class="font-medium text-slate-900">{{ tenant.contact_email || tenant.email }}</p>
+                  <p class="text-ink/60 font-bold uppercase text-xs">Email</p>
+                  <p class="font-medium text-ink">{{ tenant.contact_email || tenant.email }}</p>
                 </div>
                 <div>
-                  <p class="text-slate-500 font-bold uppercase text-xs">Telefone</p>
-                  <p class="font-medium text-slate-900">{{ tenant.contact_phone || tenant.phone || 'Não informado' }}</p>
+                  <p class="text-ink/60 font-bold uppercase text-xs">Telefone</p>
+                  <p class="font-medium text-ink">{{ tenant.contact_phone || tenant.phone || 'Não informado' }}</p>
                 </div>
                 <div>
-                  <p class="text-slate-500 font-bold uppercase text-xs">Domínio</p>
-                  <p class="font-medium text-slate-900">{{ tenant.domain || 'Não configurado' }}</p>
+                  <p class="text-ink/60 font-bold uppercase text-xs">Domínio</p>
+                  <p class="font-medium text-ink">{{ tenant.domain || 'Não configurado' }}</p>
                 </div>
                 <div>
-                  <p class="text-slate-500 font-bold uppercase text-xs">Cadastrado em</p>
-                  <p class="font-medium text-slate-900">{{ formatDate(tenant.created_at) }}</p>
+                  <p class="text-ink/60 font-bold uppercase text-xs">Cadastrado em</p>
+                  <p class="font-medium text-ink">{{ formatDate(tenant.created_at) }}</p>
                 </div>
               </div>
 
               <div class="mt-4 flex gap-4 text-sm">
                 <div class="flex items-center gap-2">
-                  <div class="p-1 bg-slate-100 border border-slate-200">
-                    <svg class="w-4 h-4 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div class="p-1 bg-primary-50 border border-primary-100 rounded-md">
+                    <svg class="w-4 h-4 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                   </div>
-                  <span class="text-slate-600 font-medium">{{ tenant.users_count || 0 }} usuários</span>
+                  <span class="text-ink/80 font-semibold">{{ tenant.users_count || 0 }} usuários</span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <div class="p-1 bg-slate-100 border border-slate-200">
-                    <svg class="w-4 h-4 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div class="p-1 bg-sunshine-50 border border-sunshine-100 rounded-md">
+                    <svg class="w-4 h-4 text-sunshine-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                     </svg>
                   </div>
-                  <span class="text-slate-600 font-medium">{{ tenant.properties_count || 0 }} imóveis</span>
+                  <span class="text-ink/80 font-semibold">{{ tenant.properties_count || 0 }} imóveis</span>
                 </div>
               </div>
             </div>
 
             <div class="flex gap-2">
-              <button @click="editTenant(tenant)" class="px-4 py-2 bg-slate-100 hover:bg-slate-900 hover:text-white text-slate-900 border border-slate-200 rounded-none transition font-bold uppercase text-xs tracking-wide">
+              <button @click="editTenant(tenant)" class="px-4 py-2 bauhaus-button text-xs">
                 Editar
               </button>
             </div>
@@ -119,11 +119,11 @@
     </main>
 
     <!-- Modal -->
-    <div v-if="showModal" class="fixed inset-0 bg-slate-900 bg-opacity-90 flex items-center justify-center p-4 z-50 backdrop-blur-sm" @click="closeModal">
-      <div class="bg-white border-2 border-slate-200 rounded-none shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" @click.stop>
-        <div class="flex justify-between items-center p-8 border-b-2 border-slate-100">
-          <h2 class="text-2xl font-black text-slate-900 uppercase tracking-tight">{{ editingTenant ? 'Editar' : 'Nova' }} Empresa</h2>
-          <button @click="closeModal" class="text-slate-400 hover:text-slate-900 transition">
+    <div v-if="showModal" class="fixed inset-0 bg-ink/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm" @click="closeModal">
+      <div class="bauhaus-card shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" @click.stop>
+        <div class="flex justify-between items-center p-8 border-b border-ink/5">
+          <h2 class="text-2xl font-black text-ink uppercase tracking-tight">{{ editingTenant ? 'Editar' : 'Nova' }} Empresa</h2>
+          <button @click="closeModal" class="text-ink/50 hover:text-ink transition">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -132,44 +132,44 @@
 
         <form @submit.prevent="saveTenant" class="p-8 space-y-6">
           <div>
-            <label class="block text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Nome da Empresa *</label>
-            <input v-model="form.name" type="text" required class="w-full px-4 py-3 border-2 border-slate-200 rounded-none focus:ring-0 focus:border-slate-900 focus:outline-none transition font-medium text-slate-900" />
+            <label class="block text-sm font-bold text-ink mb-2 uppercase tracking-wide">Nome da Empresa *</label>
+            <input v-model="form.name" type="text" required class="w-full px-4 py-3 bauhaus-input" />
           </div>
 
           <div class="grid grid-cols-2 gap-6">
             <div>
-              <label class="block text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Email *</label>
-              <input v-model="form.contact_email" type="email" required class="w-full px-4 py-3 border-2 border-slate-200 rounded-none focus:ring-0 focus:border-slate-900 focus:outline-none transition font-medium text-slate-900" />
+              <label class="block text-sm font-bold text-ink mb-2 uppercase tracking-wide">Email *</label>
+              <input v-model="form.contact_email" type="email" required class="w-full px-4 py-3 bauhaus-input" />
             </div>
             <div>
-              <label class="block text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Telefone</label>
-              <input v-model="form.contact_phone" type="tel" class="w-full px-4 py-3 border-2 border-slate-200 rounded-none focus:ring-0 focus:border-slate-900 focus:outline-none transition font-medium text-slate-900" />
+              <label class="block text-sm font-bold text-ink mb-2 uppercase tracking-wide">Telefone</label>
+              <input v-model="form.contact_phone" type="tel" class="w-full px-4 py-3 bauhaus-input" />
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Domínio *</label>
-            <input v-model="form.domain" type="text" required placeholder="exemplo.com" class="w-full px-4 py-3 border-2 border-slate-200 rounded-none focus:ring-0 focus:border-slate-900 focus:outline-none transition font-medium text-slate-900" />
+            <label class="block text-sm font-bold text-ink mb-2 uppercase tracking-wide">Domínio *</label>
+            <input v-model="form.domain" type="text" required placeholder="exemplo.com" class="w-full px-4 py-3 bauhaus-input" />
           </div>
 
           <div class="border-t-2 border-slate-100 pt-6 mt-6">
-            <h3 class="text-lg font-black text-slate-900 mb-4 uppercase tracking-tight">Acesso Inicial</h3>
+            <h3 class="text-lg font-black text-ink mb-4 uppercase tracking-tight">Acesso Inicial</h3>
             <div class="grid grid-cols-2 gap-6">
               <div>
-                <label class="block text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">
+                <label class="block text-sm font-bold text-ink mb-2 uppercase tracking-wide">
                   {{ editingTenant ? 'Nova Senha (opcional)' : 'Senha Inicial *' }}
                 </label>
-                <input 
-                  v-model="form.admin_password" 
-                  type="password" 
+                <input
+                  v-model="form.admin_password"
+                  type="password"
                   :required="!editingTenant"
-                  placeholder="••••••••" 
-                  class="w-full px-4 py-3 border-2 border-slate-200 rounded-none focus:ring-0 focus:border-slate-900 focus:outline-none transition font-medium text-slate-900" 
+                  placeholder="••••••••"
+                  class="w-full px-4 py-3 bauhaus-input"
                 />
               </div>
               <div>
-                <label class="block text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Tipo de Acesso</label>
-                <select v-model="form.admin_role" class="w-full px-4 py-3 border-2 border-slate-200 rounded-none focus:ring-0 focus:border-slate-900 focus:outline-none transition bg-white font-medium text-slate-900">
+                <label class="block text-sm font-bold text-ink mb-2 uppercase tracking-wide">Tipo de Acesso</label>
+                <select v-model="form.admin_role" class="w-full px-4 py-3 bauhaus-input bg-white">
                   <option value="admin">Administrador</option>
                   <option value="user">Usuário</option>
                 </select>
@@ -178,18 +178,18 @@
           </div>
 
           <div>
-            <label class="block text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Status</label>
-            <select v-model="form.status" class="w-full px-4 py-3 border-2 border-slate-200 rounded-none focus:ring-0 focus:border-slate-900 focus:outline-none transition bg-white font-medium text-slate-900">
+            <label class="block text-sm font-bold text-ink mb-2 uppercase tracking-wide">Status</label>
+            <select v-model="form.status" class="w-full px-4 py-3 bauhaus-input bg-white">
               <option value="active">Ativo</option>
               <option value="inactive">Inativo</option>
             </select>
           </div>
 
-          <div class="flex justify-end gap-3 pt-6 border-t-2 border-slate-100">
-            <button type="button" @click="closeModal" class="px-6 py-3 border-2 border-slate-200 text-slate-700 rounded-none hover:bg-slate-100 font-bold uppercase tracking-wide transition">
+          <div class="flex justify-end gap-3 pt-6 border-t border-ink/5">
+            <button type="button" @click="closeModal" class="px-6 py-3 bauhaus-button bauhaus-ghost text-sm">
               Cancelar
             </button>
-            <button type="submit" class="px-8 py-3 bg-slate-900 text-white rounded-none hover:bg-slate-800 font-bold uppercase tracking-wide transition">
+            <button type="submit" class="px-8 py-3 bauhaus-button text-sm">
               {{ editingTenant ? 'Atualizar' : 'Cadastrar' }}
             </button>
           </div>

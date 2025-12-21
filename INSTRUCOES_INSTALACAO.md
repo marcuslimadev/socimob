@@ -125,9 +125,6 @@ docker build -t exclusiva-saas:latest .
 
 # Executar container
 docker run -p 8000:8000 exclusiva-saas:latest
-
-# Com docker-compose
-docker-compose up -d
 ```
 
 ## ☁️ Passo 7: Deploy na AWS

@@ -40,8 +40,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
 # Definir diretório de trabalho
 WORKDIR /var/www/exclusiva
 
-# Copiar código da aplicação
-COPY ../backend /var/www/exclusiva
+# Copiar código da aplicação (backend agora está na raiz do repositório)
+COPY backend /var/www/exclusiva
 
 # Instalar dependências PHP
 # RUN composer install --optimize-autoloader --no-dev

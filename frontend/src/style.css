@@ -1,6 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Libre+Baskerville:wght@700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --bauhaus-blue: #0b3c6f;
+  --bauhaus-red: #d62828;
+  --bauhaus-yellow: #f2c230;
+  --bauhaus-ink: #0f172a;
+  --bauhaus-cream: #f6f1e6;
+  --bauhaus-ice: #eef2f7;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --shadow-float: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
 
 /* Estilos globais */
 * {
@@ -10,26 +25,148 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background-color: #f9fafb;
-  color: #111827;
+  font-family: 'Montserrat', 'Futura', 'Avenir Next', 'Helvetica Neue', sans-serif;
+  background: var(--bauhaus-cream);
+  color: var(--bauhaus-ink);
+  letter-spacing: 0.01em;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Libre Baskerville', 'Times New Roman', serif;
+  letter-spacing: -0.02em;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: radial-gradient(circle at 20% 20%, rgba(214, 40, 40, 0.08), transparent 30%),
+    radial-gradient(circle at 80% 0%, rgba(11, 60, 111, 0.08), transparent 26%),
+    radial-gradient(circle at 10% 80%, rgba(242, 194, 48, 0.1), transparent 25%),
+    var(--bauhaus-cream);
+}
+
+button,
+input,
+select,
+textarea {
+  border-radius: var(--radius-md);
+  border: 1.5px solid transparent;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+button:hover,
+input:focus,
+select:focus,
+textarea:focus {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  outline: none;
+}
+
+img,
+video,
+canvas,
+.card,
+.panel,
+.modal,
+.table,
+nav,
+header,
+section,
+article,
+aside,
+footer {
+  border-radius: var(--radius-lg);
+}
+
+.bauhaus-card {
+  background: linear-gradient(145deg, #ffffff 0%, #fbfbfb 50%, #f5f5f5 100%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-float);
+}
+
+.bauhaus-button {
+  background: linear-gradient(120deg, var(--bauhaus-blue), var(--bauhaus-red));
+  color: #fff;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-float);
+}
+
+.bauhaus-button:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.bauhaus-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.bauhaus-ghost {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.bauhaus-input {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1.5px solid rgba(11, 60, 111, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+  color: var(--bauhaus-ink);
+}
+
+.bauhaus-input:focus {
+  border-color: var(--bauhaus-blue);
+  box-shadow: 0 12px 22px rgba(11, 60, 111, 0.12);
+}
+
+.bauhaus-nav-shell {
+  background: linear-gradient(135deg, var(--bauhaus-blue) 0%, var(--bauhaus-red) 55%, var(--bauhaus-yellow) 100%);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-float);
+  border-radius: var(--radius-lg);
+  color: #fff;
+}
+
+.stat-icon {
+  padding: 0.9rem;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-float);
+}
+
+.bauhaus-ambient {
+  background: radial-gradient(circle at 15% 20%, rgba(214, 40, 40, 0.1), transparent 30%),
+    radial-gradient(circle at 70% 0%, rgba(11, 60, 111, 0.12), transparent 30%),
+    radial-gradient(circle at 20% 80%, rgba(242, 194, 48, 0.14), transparent 26%),
+    var(--bauhaus-cream);
 }
 
 /* Scrollbar customizada */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: var(--bauhaus-ice);
+  border-radius: var(--radius-md);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  background: linear-gradient(180deg, var(--bauhaus-blue), var(--bauhaus-red));
+  border-radius: var(--radius-md);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  filter: brightness(1.05);
 }

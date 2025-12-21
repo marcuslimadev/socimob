@@ -75,10 +75,10 @@ class AuthController extends Controller
             'success' => true,
             'user' => [
                 'id' => $user->id,
-                'nome' => $user->nome,
+                'name' => $user->name,
                 'email' => $user->email,
-                'tipo' => $user->tipo,
-                'telefone' => $user->telefone
+                'role' => $user->role,
+                'is_active' => $user->is_active,
             ]
         ]);
     }

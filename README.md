@@ -25,9 +25,8 @@ Este pacote contém toda a transformação do projeto "Exclusiva" em uma platafo
 9. **Fase 8** - Testes e Entrega
 10. **Resumo Executivo** - Visão geral do projeto
 
-### 🐳 Docker
+### 🐳 Docker (opcional)
 - **Dockerfile** - Imagem Docker completa
-- **docker-compose.yml** - Orquestração de containers
 - **entrypoint.sh** - Script de inicialização
 - **.env.example** - Variáveis de ambiente
 - **GUIA_DOCKER_AWS.md** - Guia completo de Docker e AWS
@@ -61,19 +60,12 @@ cd ../exclusiva/backend
 php artisan migrate
 ```
 
-### 4. Rodar Localmente (Sem Docker)
+### 4. Rodar Localmente
 ```bash
 php artisan serve
-npm run dev
 ```
 
-### 5. Rodar com Docker
-```bash
-cd exclusiva-saas-delivery
-docker-compose -f docker/docker-compose.yml up -d
-```
-
-### 6. Deploy na AWS
+### 5. Deploy na AWS
 ```bash
 # Ver GUIA_DOCKER_AWS.md para instruções detalhadas
 ```
@@ -99,7 +91,6 @@ exclusiva-saas-delivery/
 ├── docs/                      # Documentação completa (8 arquivos)
 ├── docker/                    # Arquivos Docker
 │   ├── Dockerfile
-│   ├── docker-compose.yml
 │   ├── entrypoint.sh
 │   ├── .env.example
 │   └── GUIA_DOCKER_AWS.md
@@ -149,14 +140,6 @@ exclusiva-saas-delivery/
 - ✅ Gerenciamento de preferências
 
 ---
-
-## 🐳 Docker vs Sem Docker
-
-### Com Docker
-✅ Ambiente consistente
-✅ Fácil de escalar
-✅ Deploy simplificado
-✅ Isolamento de dependências
 
 ### Sem Docker
 ✅ Mais direto para desenvolvimento
