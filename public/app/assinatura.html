@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assinatura - SOCIMOB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/bauhaus.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body class="bauhaus-page">
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="bauhaus-panel w-full max-w-3xl p-8 bg-white">
+            <div class="flex items-center justify-between gap-4 flex-wrap mb-6">
+                <div>
+                    <div class="bauhaus-badge mb-3">💳 Assinatura recorrente</div>
+                    <h1 class="text-3xl font-black uppercase text-[var(--bauhaus-black)]">Ative sua imobiliária</h1>
+                    <p class="text-[var(--bauhaus-ink)] font-semibold">Cobrança direta na conta Mercado Pago do titular.</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-[var(--bauhaus-ink)] font-semibold">Plano indexado ao salário mínimo</p>
+                    <p id="planAmount" class="text-3xl font-black text-[var(--bauhaus-red)]">--</p>
+                </div>
+            </div>
+
+            <div id="alertBox" class="hidden mb-4 p-4 border-4 border-[var(--bauhaus-red)] bg-red-50 text-[var(--bauhaus-black)] font-semibold"></div>
+            <div id="successBox" class="hidden mb-4 p-4 border-4 border-[var(--bauhaus-blue)] bg-blue-50 text-[var(--bauhaus-black)] font-semibold"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                    <div>
+                        <label class="bauhaus-label">Número do cartão</label>
+                        <input id="cardNumber" class="bauhaus-input" placeholder="0000 0000 0000 0000" maxlength="19" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="bauhaus-label">Validade (MM)</label>
+                            <input id="cardExpMonth" class="bauhaus-input" placeholder="08" maxlength="2" />
+                        </div>
+                        <div>
+                            <label class="bauhaus-label">Validade (AAAA)</label>
+                            <input id="cardExpYear" class="bauhaus-input" placeholder="2028" maxlength="4" />
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="bauhaus-label">CVV</label>
+                            <input id="cardCvv" class="bauhaus-input" placeholder="123" maxlength="4" />
+                        </div>
+                        <div>
+                            <label class="bauhaus-label">CPF do titular</label>
+                            <input id="cardDocument" class="bauhaus-input" placeholder="00000000000" maxlength="14" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="bauhaus-label">Nome impresso no cartão</label>
+                        <input id="cardHolder" class="bauhaus-input" placeholder="NOME COMPLETO" />
+                    </div>
+                    <div class="p-4 border-4 border-[var(--bauhaus-black)] bg-[var(--bauhaus-yellow)] text-[var(--bauhaus-black)] font-semibold rounded-sm">
+                        <p class="uppercase text-sm">Contrato</p>
+                        <p id="contractText" class="text-base leading-relaxed mt-2"></p>
+                    </div>
+                    <label class="flex items-center gap-2 text-sm font-semibold text-[var(--bauhaus-black)]">
+                        <input id="acceptContract" type="checkbox" class="w-4 h-4" />
+                        Confirmo e autorizo a cobrança recorrente via Mercado Pago.
+                    </label>
+                </div>
+            </div>
+
+            <div class="mt-8 flex items-center justify-between gap-4 flex-wrap">
+                <button id="backToDashboard" class="bauhaus-button-secondary">Voltar</button>
+                <button id="confirmSubscription" class="bauhaus-button">
+                    <span id="submitText">Ativar cobrança mensal</span>
+                    <span id="submitLoading" class="hidden">Ativando...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+
+        $(document).ready(() => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            $('#backToDashboard').on('click', () => window.location.href = 'dashboard.html');
+            $('#confirmSubscription').on('click', submitSubscription);
+
+            fetchPlan();
+        });
+
+        function fetchPlan() {
+            const token = localStorage.getItem('token');
+
+            $.ajax({
+                url: API_URL + '/subscriptions/current',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function(response) {
+                    if (response.plan) {
+                        $('#planAmount').text('R$ ' + Number(response.plan.amount).toFixed(2));
+                        $('#contractText').text(response.contract_terms || response.plan.description);
+                    }
+
+                    if (response.subscription && response.subscription.status === 'active') {
+                        showSuccess('Assinatura já está ativa.');
+                        disableForm();
+                    }
+                },
+                error: function() {
+                    showError('Não foi possível recuperar o plano.');
+                }
+            });
+        }
+
+        function submitSubscription() {
+            const token = localStorage.getItem('token');
+            const payload = {
+                card_number: $('#cardNumber').val().replace(/\s+/g, ''),
+                card_holder_name: $('#cardHolder').val(),
+                card_exp_month: parseInt($('#cardExpMonth').val(), 10),
+                card_exp_year: parseInt($('#cardExpYear').val(), 10),
+                card_cvv: $('#cardCvv').val(),
+                card_document: $('#cardDocument').val().replace(/\D/g, ''),
+                accept_contract: $('#acceptContract').is(':checked'),
+            };
+
+            if (!payload.accept_contract) {
+                showError('É necessário aceitar o contrato para ativar a cobrança.');
+                return;
+            }
+
+            toggleLoading(true);
+
+            $.ajax({
+                url: API_URL + '/subscriptions',
+                method: 'POST',
+                contentType: 'application/json',
+                headers: { 'Authorization': 'Bearer ' + token },
+                data: JSON.stringify(payload),
+                success: function(response) {
+                    showSuccess(response.message || 'Assinatura ativada com sucesso.');
+                    disableForm();
+                },
+                error: function(xhr) {
+                    const msg = xhr?.responseJSON?.message || xhr?.responseJSON?.error || 'Falha ao ativar assinatura.';
+                    showError(msg);
+                },
+                complete: function() { toggleLoading(false); }
+            });
+        }
+
+        function toggleLoading(isLoading) {
+            $('#confirmSubscription').prop('disabled', isLoading);
+            $('#submitText').toggle(!isLoading);
+            $('#submitLoading').toggle(isLoading);
+        }
+
+        function disableForm() {
+            $('input, button').prop('disabled', true);
+        }
+
+        function showError(message) {
+            $('#alertBox').text(message).removeClass('hidden');
+            $('#successBox').addClass('hidden');
+        }
+
+        function showSuccess(message) {
+            $('#successBox').text(message).removeClass('hidden');
+            $('#alertBox').addClass('hidden');
+        }
+    </script>
+</body>
+</html>

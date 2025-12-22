@@ -27,6 +27,8 @@ class Tenant extends Model
         'subscription_started_at',
         'pagar_me_customer_id',
         'pagar_me_subscription_id',
+        'mercado_pago_customer_id',
+        'mercado_pago_preapproval_id',
         'api_key_pagar_me',
         'api_key_apm_imoveis',
         'api_key_neca',
@@ -67,6 +69,8 @@ class Tenant extends Model
         'api_token',
         'pagar_me_customer_id',
         'pagar_me_subscription_id',
+        'mercado_pago_customer_id',
+        'mercado_pago_preapproval_id',
     ];
 
     /**

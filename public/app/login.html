@@ -123,8 +123,13 @@
                         localStorage.setItem('user', JSON.stringify(response.user));
 
                         // Redirecionar
-                        console.log('→ Redirecionando para dashboard...');
-                        window.location.href = 'dashboard.html';
+                        if (response.user.requires_subscription) {
+                            console.log('→ Redirecionando para assinatura...');
+                            window.location.href = 'assinatura.html';
+                        } else {
+                            console.log('→ Redirecionando para dashboard...');
+                            window.location.href = 'dashboard.html';
+                        }
                     } else {
                         showError(response.message || 'Erro ao fazer login');
                     }

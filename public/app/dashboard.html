@@ -104,6 +104,11 @@
                 const user = JSON.parse(userStr);
                 console.log('✓ Usuário:', user);
 
+                if (user.requires_subscription && (user.role === 'admin' || user.role === 'super_admin')) {
+                    window.location.href = 'assinatura.html';
+                    return;
+                }
+
                 // Exibir info do usuário
                 $('#userName').text(user.name);
                 $('#userRole').text(user.role.toUpperCase());

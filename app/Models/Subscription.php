@@ -15,6 +15,7 @@ class Subscription extends Model
         'plan_amount',
         'plan_interval',
         'status',
+        'gateway',
         'status_reason',
         'current_period_start',
         'current_period_end',
@@ -22,6 +23,9 @@ class Subscription extends Model
         'pagar_me_subscription_id',
         'pagar_me_customer_id',
         'pagar_me_card_id',
+        'mercado_pago_preapproval_id',
+        'mercado_pago_customer_id',
+        'mercado_pago_card_token',
         'payment_method',
         'card_last_four',
         'card_brand',
@@ -46,6 +50,9 @@ class Subscription extends Model
         'pagar_me_subscription_id',
         'pagar_me_customer_id',
         'pagar_me_card_id',
+        'mercado_pago_preapproval_id',
+        'mercado_pago_customer_id',
+        'mercado_pago_card_token',
     ];
 
     /**

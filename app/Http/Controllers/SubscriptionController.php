@@ -4,17 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Subscription;
 use App\Models\Tenant;
-use App\Services\PagarMeService;
+use App\Services\MercadoPagoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class SubscriptionController extends Controller
 {
-    protected $pagarMeService;
+    protected MercadoPagoService $mercadoPagoService;
 
-    public function __construct(PagarMeService $pagarMeService)
+    public function __construct(MercadoPagoService $mercadoPagoService)
     {
-        $this->pagarMeService = $pagarMeService;
+        $this->mercadoPagoService = $mercadoPagoService;
     }
 
     /**
@@ -30,12 +30,23 @@ class SubscriptionController extends Controller
         }
 
         $subscription = Subscription::where('tenant_id', $tenantId)->first();
+        $plan = $this->buildPlanForTenant($tenantId);
 
         if (!$subscription) {
-            return response()->json(['error' => 'No subscription found'], 404);
+            return response()->json([
+                'subscription' => null,
+                'plan' => $plan,
+                'requires_subscription' => true,
+                'contract_terms' => $this->contractTerms($plan['amount']),
+            ]);
         }
 
-        return response()->json($subscription);
+        return response()->json([
+            'subscription' => $subscription,
+            'plan' => $plan,
+            'requires_subscription' => !$subscription->isActive(),
+            'contract_terms' => $this->contractTerms($plan['amount']),
+        ]);
     }
 
     /**
@@ -62,106 +73,88 @@ class SubscriptionController extends Controller
         }
 
         $validated = $request->validate([
-            'plan_id' => 'required|string|max:50',
-            'plan_name' => 'required|string|max:255',
-            'plan_amount' => 'required|numeric|min:0.01',
-            'plan_interval' => 'required|in:month,year',
             'card_number' => 'required|string|regex:/^\d{13,19}$/',
             'card_holder_name' => 'required|string|max:255',
             'card_exp_month' => 'required|integer|min:1|max:12',
             'card_exp_year' => 'required|integer|min:' . date('Y'),
             'card_cvv' => 'required|string|regex:/^\d{3,4}$/',
-            'billing_address_street' => 'required|string|max:255',
-            'billing_address_number' => 'required|string|max:20',
-            'billing_address_zip_code' => 'required|string|max:10',
-            'billing_address_city' => 'required|string|max:100',
-            'billing_address_state' => 'required|string|max:2',
+            'card_document' => 'nullable|string|max:20',
+            'accept_contract' => 'required|boolean|in:1,true,yes,on',
         ]);
 
+        $plan = $this->buildPlanForTenant($tenantId);
+
         try {
-            // 1. Criar cliente no Pagar.me (se não existir)
-            if (!$tenant->pagar_me_customer_id) {
-                $customerData = [
-                    'name' => $tenant->name,
-                    'email' => $tenant->contact_email,
-                    'phone' => $tenant->contact_phone,
-                ];
-
-                $customer = $this->pagarMeService->createCustomer($customerData);
-                $tenant->update(['pagar_me_customer_id' => $customer['id']]);
-            }
-
-            // 2. Criar cartão
-            $cardData = [
-                'number' => $validated['card_number'],
-                'holder_name' => $validated['card_holder_name'],
-                'exp_month' => $validated['card_exp_month'],
-                'exp_year' => $validated['card_exp_year'],
-                'cvv' => $validated['card_cvv'],
-                'street' => $validated['billing_address_street'],
-                'number_address' => $validated['billing_address_number'],
-                'zip_code' => $validated['billing_address_zip_code'],
-                'city' => $validated['billing_address_city'],
-                'state' => $validated['billing_address_state'],
-            ];
-
-            $card = $this->pagarMeService->createCard($tenant->pagar_me_customer_id, $cardData);
-
-            // 3. Criar assinatura
-            $planData = [
-                'plan_id' => $validated['plan_id'],
-                'description' => $validated['plan_name'],
-                'amount' => $validated['plan_amount'],
-                'interval' => $validated['plan_interval'],
-                'interval_count' => 1,
-                'metadata' => [
-                    'tenant_id' => $tenantId,
-                    'plan_name' => $validated['plan_name'],
+            $customer = $this->mercadoPagoService->createOrUpdateCustomer([
+                'email' => $tenant->contact_email ?? $request->user()->email,
+                'first_name' => $tenant->name,
+                'phone' => $tenant->contact_phone,
+                'identification' => [
+                    'type' => 'CPF',
+                    'number' => $validated['card_document'] ?? '00000000000',
                 ],
-            ];
+            ]);
 
-            $pagarMeSubscription = $this->pagarMeService->createSubscription(
-                $tenant->pagar_me_customer_id,
-                $card['id'],
-                $planData
-            );
+            $tenant->update(['mercado_pago_customer_id' => $customer['id'] ?? null]);
 
-            // 4. Salvar assinatura localmente
+            $cardToken = $this->mercadoPagoService->createCardToken([
+                'card_number' => $validated['card_number'],
+                'security_code' => $validated['card_cvv'],
+                'expiration_month' => $validated['card_exp_month'],
+                'expiration_year' => $validated['card_exp_year'],
+                'holder_name' => $validated['card_holder_name'],
+                'document' => $validated['card_document'] ?? '00000000000',
+            ]);
+
+            $preapproval = $this->mercadoPagoService->createPreapproval([
+                'reason' => $plan['name'],
+                'payer_email' => $customer['email'] ?? $tenant->contact_email ?? $request->user()->email,
+                'card_token_id' => $cardToken['id'],
+                'amount' => $plan['amount'],
+                'back_url' => url('/app/dashboard.html'),
+                'external_reference' => 'tenant_' . $tenantId,
+            ]);
+
             $subscription = Subscription::create([
                 'tenant_id' => $tenantId,
-                'plan_id' => $validated['plan_id'],
-                'plan_name' => $validated['plan_name'],
-                'plan_amount' => $validated['plan_amount'],
-                'plan_interval' => $validated['plan_interval'],
+                'plan_id' => $plan['id'],
+                'plan_name' => $plan['name'],
+                'plan_amount' => $plan['amount'],
+                'plan_interval' => $plan['interval'],
                 'status' => 'active',
-                'pagar_me_subscription_id' => $pagarMeSubscription['id'],
-                'pagar_me_customer_id' => $tenant->pagar_me_customer_id,
-                'pagar_me_card_id' => $card['id'],
+                'gateway' => 'mercado_pago',
+                'mercado_pago_preapproval_id' => $preapproval['id'] ?? null,
+                'mercado_pago_customer_id' => $customer['id'] ?? null,
+                'mercado_pago_card_token' => $cardToken['id'] ?? null,
                 'payment_method' => 'credit_card',
                 'card_last_four' => substr($validated['card_number'], -4),
                 'card_brand' => $this->detectCardBrand($validated['card_number']),
                 'current_period_start' => now(),
-                'current_period_end' => $this->calculatePeriodEnd($validated['plan_interval']),
+                'current_period_end' => $this->calculatePeriodEnd($plan['interval']),
+                'metadata' => [
+                    'contract_terms' => $this->contractTerms($plan['amount']),
+                ],
             ]);
 
-            // 5. Atualizar tenant
             $tenant->update([
                 'subscription_status' => 'active',
-                'subscription_plan' => $validated['plan_id'],
+                'subscription_plan' => $plan['id'],
                 'subscription_expires_at' => $subscription->current_period_end,
                 'subscription_started_at' => now(),
-                'pagar_me_subscription_id' => $pagarMeSubscription['id'],
+                'mercado_pago_customer_id' => $customer['id'] ?? null,
+                'mercado_pago_preapproval_id' => $preapproval['id'] ?? null,
             ]);
 
             Log::info('Subscription created successfully', [
                 'tenant_id' => $tenantId,
                 'subscription_id' => $subscription->id,
-                'pagar_me_subscription_id' => $pagarMeSubscription['id'],
+                'mercado_pago_preapproval_id' => $preapproval['id'] ?? null,
             ]);
 
             return response()->json([
-                'message' => 'Subscription created successfully',
+                'message' => 'Assinatura criada com sucesso via Mercado Pago',
                 'subscription' => $subscription,
+                'contract_terms' => $this->contractTerms($plan['amount']),
             ], 201);
         } catch (\Exception $e) {
             Log::error('Failed to create subscription', [
@@ -200,8 +193,9 @@ class SubscriptionController extends Controller
         }
 
         try {
-            // Cancelar no Pagar.me
-            $this->pagarMeService->cancelSubscription($subscription->pagar_me_subscription_id);
+            if ($subscription->mercado_pago_preapproval_id) {
+                $this->mercadoPagoService->cancelPreapproval($subscription->mercado_pago_preapproval_id);
+            }
 
             // Atualizar localmente
             $subscription->cancel('Cancelada pelo usuário');
@@ -261,40 +255,25 @@ class SubscriptionController extends Controller
             'card_exp_month' => 'required|integer|min:1|max:12',
             'card_exp_year' => 'required|integer|min:' . date('Y'),
             'card_cvv' => 'required|string|regex:/^\d{3,4}$/',
-            'billing_address_street' => 'required|string|max:255',
-            'billing_address_number' => 'required|string|max:20',
-            'billing_address_zip_code' => 'required|string|max:10',
-            'billing_address_city' => 'required|string|max:100',
-            'billing_address_state' => 'required|string|max:2',
+            'card_document' => 'nullable|string|max:20',
         ]);
 
         try {
-            $tenant = Tenant::find($tenantId);
-
-            // Criar novo cartão
-            $cardData = [
-                'number' => $validated['card_number'],
+            $cardToken = $this->mercadoPagoService->createCardToken([
+                'card_number' => $validated['card_number'],
+                'security_code' => $validated['card_cvv'],
+                'expiration_month' => $validated['card_exp_month'],
+                'expiration_year' => $validated['card_exp_year'],
                 'holder_name' => $validated['card_holder_name'],
-                'exp_month' => $validated['card_exp_month'],
-                'exp_year' => $validated['card_exp_year'],
-                'cvv' => $validated['card_cvv'],
-                'street' => $validated['billing_address_street'],
-                'number_address' => $validated['billing_address_number'],
-                'zip_code' => $validated['billing_address_zip_code'],
-                'city' => $validated['billing_address_city'],
-                'state' => $validated['billing_address_state'],
-            ];
-
-            $card = $this->pagarMeService->createCard($tenant->pagar_me_customer_id, $cardData);
-
-            // Atualizar assinatura com novo cartão
-            $this->pagarMeService->updateSubscription($subscription->pagar_me_subscription_id, [
-                'card_id' => $card['id'],
+                'document' => $validated['card_document'] ?? '00000000000',
             ]);
 
-            // Atualizar localmente
+            if ($subscription->mercado_pago_preapproval_id) {
+                $this->mercadoPagoService->updatePreapprovalCard($subscription->mercado_pago_preapproval_id, $cardToken['id']);
+            }
+
             $subscription->update([
-                'pagar_me_card_id' => $card['id'],
+                'mercado_pago_card_token' => $cardToken['id'],
                 'card_last_four' => substr($validated['card_number'], -4),
                 'card_brand' => $this->detectCardBrand($validated['card_number']),
             ]);
@@ -329,25 +308,9 @@ class SubscriptionController extends Controller
     {
         $payload = $request->all();
 
-        Log::info('Pagar.me webhook received', ['payload' => $payload]);
+        Log::info('Mercado Pago webhook received', ['payload' => $payload]);
 
-        try {
-            // Verificar assinatura do webhook (opcional, mas recomendado)
-            // $signature = $request->header('X-Hub-Signature');
-            // if (!$this->pagarMeService->verifyWebhookSignature(json_encode($payload), $signature)) {
-            //     return response()->json(['error' => 'Invalid signature'], 401);
-            // }
-
-            $this->pagarMeService->handleWebhook($payload);
-
-            return response()->json(['success' => true]);
-        } catch (\Exception $e) {
-            Log::error('Webhook processing error', [
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json(['error' => 'Webhook processing failed'], 500);
-        }
+        return response()->json(['received' => true]);
     }
 
     /**
@@ -378,10 +341,36 @@ class SubscriptionController extends Controller
     {
         if ($interval === 'month') {
             return now()->addMonth();
-        } elseif ($interval === 'year') {
-            return now()->addYear();
         }
 
-        return now()->addMonth();
+        return now()->addYear();
+    }
+
+    private function buildPlanForTenant(int $tenantId): array
+    {
+        $amount = $this->getHalfMinimumWage();
+
+        return [
+            'id' => 'assinatura-meio-salario-minimo',
+            'name' => 'Assinatura mensal indexada a 50% do salário mínimo',
+            'amount' => $amount,
+            'interval' => 'month',
+            'description' => $this->contractTerms($amount),
+            'tenant_id' => $tenantId,
+        ];
+    }
+
+    private function contractTerms(float $amount): string
+    {
+        return sprintf(
+            'Assinatura recorrente mensal no valor de 50%% do salário mínimo vigente (atualmente R$ %.2f), cobrada automaticamente via Mercado Pago diretamente na conta do titular. Ao prosseguir, o contratante autoriza cobranças recorrentes até cancelamento.',
+            $amount
+        );
+    }
+
+    private function getHalfMinimumWage(): float
+    {
+        $minimum = (float) env('MINIMUM_WAGE_BRL', 1412.00);
+        return round($minimum * 0.5, 2);
     }
 }
