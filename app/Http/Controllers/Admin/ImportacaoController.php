@@ -187,7 +187,6 @@ class ImportacaoController extends Controller
                 'api_url' => $apiUrl,
             ]),
             'inicio_previsto' => $agora,
-            'inicio_real' => $agora,
             'created_at' => $agora,
             'updated_at' => $agora,
         ]);
