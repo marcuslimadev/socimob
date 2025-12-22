@@ -43,6 +43,10 @@ $router->group(['prefix' => 'api/super-admin', 'middleware' => ['simple-auth']],
     $router->get('/settings/integrations', 'SuperAdmin\SettingsController@getIntegrations');
     $router->put('/settings/integrations/{service}', 'SuperAdmin\SettingsController@updateIntegration');
 
+    // Billing Gateway
+    $router->get('/settings/billing-gateway', 'SuperAdmin\SettingsController@getBillingGateway');
+    $router->put('/settings/billing-gateway', 'SuperAdmin\SettingsController@updateBillingGateway');
+
     // Settings
     $router->get('/settings', 'SuperAdmin\SettingsController@index');
     $router->get('/settings/{key}', 'SuperAdmin\SettingsController@show');

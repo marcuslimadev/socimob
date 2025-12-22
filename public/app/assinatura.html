@@ -15,7 +15,7 @@
                 <div>
                     <div class="bauhaus-badge mb-3">💳 Assinatura recorrente</div>
                     <h1 class="text-3xl font-black uppercase text-[var(--bauhaus-black)]">Ative sua imobiliária</h1>
-                    <p class="text-[var(--bauhaus-ink)] font-semibold">Cobrança direta na conta Mercado Pago do titular.</p>
+                    <p class="text-[var(--bauhaus-ink)] font-semibold">Cobrança direta via <span id="gatewayLabel">--</span> na conta do titular.</p>
                 </div>
                 <div class="text-right">
                     <p class="text-sm text-[var(--bauhaus-ink)] font-semibold">Plano indexado ao salário mínimo</p>
@@ -65,7 +65,7 @@
                     </div>
                     <label class="flex items-center gap-2 text-sm font-semibold text-[var(--bauhaus-black)]">
                         <input id="acceptContract" type="checkbox" class="w-4 h-4" />
-                        Confirmo e autorizo a cobrança recorrente via Mercado Pago.
+                        <span>Confirmo e autorizo a cobrança recorrente via <span id="gatewayLabelInline">--</span>.</span>
                     </label>
                 </div>
             </div>
@@ -109,15 +109,18 @@
                         $('#contractText').text(response.contract_terms || response.plan.description);
                     }
 
+                    const label = response.gateway_label || response.plan?.gateway_label || 'Mercado Pago';
+                    $('#gatewayLabel, #gatewayLabelInline').text(label);
+
                     if (response.subscription && response.subscription.status === 'active') {
                         showSuccess('Assinatura já está ativa.');
                         disableForm();
                     }
                 },
                 error: function() {
-                    showError('Não foi possível recuperar o plano.');
-                }
-            });
+                showError('Não foi possível recuperar o plano.');
+            }
+        });
         }
 
         function submitSubscription() {

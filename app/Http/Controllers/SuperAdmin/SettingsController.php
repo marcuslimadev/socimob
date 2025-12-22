@@ -4,10 +4,15 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
+use App\Services\PaymentGatewayResolver;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
 {
+    public function __construct(private PaymentGatewayResolver $gatewayResolver)
+    {
+    }
+
     /**
      * Obter configurações globais
      * GET /api/super-admin/settings
@@ -221,6 +226,54 @@ class SettingsController extends Controller
         return response()->json([
             'message' => 'Integration updated successfully',
             'service' => $service,
+        ]);
+    }
+
+    /**
+     * Gateway de cobrança ativo e opções
+     * GET /api/super-admin/settings/billing-gateway
+     */
+    public function getBillingGateway(Request $request)
+    {
+        if (!$request->user() || !$request->user()->isSuperAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $active = $this->gatewayResolver->getActiveGateway();
+
+        return response()->json([
+            'active' => $active,
+            'label' => $this->gatewayResolver->getGatewayLabel($active),
+            'gateways' => $this->gatewayResolver->availableGateways(),
+        ]);
+    }
+
+    /**
+     * Atualizar gateway de cobrança
+     * PUT /api/super-admin/settings/billing-gateway
+     */
+    public function updateBillingGateway(Request $request)
+    {
+        if (!$request->user() || !$request->user()->isSuperAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $gateways = collect($this->gatewayResolver->availableGateways())
+            ->pluck('key')
+            ->toArray();
+
+        $validated = $request->validate([
+            'gateway' => 'required|string|in:' . implode(',', $gateways),
+        ]);
+
+        $gateway = $this->gatewayResolver->normalizeGateway($validated['gateway']) ?? 'mercado_pago';
+
+        AppSetting::setValue('billing_gateway', $gateway);
+
+        return response()->json([
+            'message' => 'Gateway atualizado com sucesso',
+            'gateway' => $gateway,
+            'label' => $this->gatewayResolver->getGatewayLabel($gateway),
         ]);
     }
 

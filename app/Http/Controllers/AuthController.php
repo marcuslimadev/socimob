@@ -5,12 +5,17 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use App\Services\PaymentGatewayResolver;
 
 /**
  * Controller de Autenticação
  */
 class AuthController extends Controller
 {
+    public function __construct(private PaymentGatewayResolver $gatewayResolver)
+    {
+    }
+
     /**
      * Login
      * POST /api/auth/login
@@ -45,6 +50,7 @@ class AuthController extends Controller
         $tenant = $user->tenant;
         $requiresSubscription = $user->isAdmin() && (!$tenant || !$tenant->isSubscribed());
         $subscriptionAmount = $this->getHalfMinimumWage();
+        $gateway = $this->gatewayResolver->getActiveGateway();
 
         return response()->json([
             'success' => true,
@@ -59,7 +65,7 @@ class AuthController extends Controller
                 'tenant_subscription_status' => $tenant?->subscription_status,
                 'requires_subscription' => $requiresSubscription,
                 'subscription_plan_amount' => $subscriptionAmount,
-                'subscription_contract' => $this->subscriptionContractTerms($subscriptionAmount),
+                'subscription_contract' => $this->subscriptionContractTerms($subscriptionAmount, $gateway),
             ],
             'message' => 'Login realizado com sucesso!'
         ]);
@@ -183,11 +189,14 @@ class AuthController extends Controller
         return round($minimum * 0.5, 2);
     }
 
-    private function subscriptionContractTerms(float $amount): string
+    private function subscriptionContractTerms(float $amount, string $gateway): string
     {
+        $gatewayLabel = $this->gatewayResolver->getGatewayLabel($gateway);
+
         return sprintf(
-            'Cobrança recorrente mensal de 50%% do salário mínimo vigente (R$ %.2f) via Mercado Pago, debitada automaticamente na conta configurada do titular da imobiliária.',
-            $amount
+            'Cobrança recorrente mensal de 50%% do salário mínimo vigente (R$ %.2f) via %s, debitada automaticamente na conta configurada do titular da imobiliária.',
+            $amount,
+            $gatewayLabel
         );
     }
 }

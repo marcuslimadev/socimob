@@ -5,16 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Services\MercadoPagoService;
+use App\Services\PaymentGatewayResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class SubscriptionController extends Controller
 {
-    protected MercadoPagoService $mercadoPagoService;
-
-    public function __construct(MercadoPagoService $mercadoPagoService)
-    {
-        $this->mercadoPagoService = $mercadoPagoService;
+    public function __construct(
+        private MercadoPagoService $mercadoPagoService,
+        private PaymentGatewayResolver $gatewayResolver
+    ) {
     }
 
     /**
@@ -30,14 +30,17 @@ class SubscriptionController extends Controller
         }
 
         $subscription = Subscription::where('tenant_id', $tenantId)->first();
-        $plan = $this->buildPlanForTenant($tenantId);
+        $gateway = $this->gatewayResolver->getActiveGateway();
+        $plan = $this->buildPlanForTenant($tenantId, $gateway);
 
         if (!$subscription) {
             return response()->json([
                 'subscription' => null,
                 'plan' => $plan,
                 'requires_subscription' => true,
-                'contract_terms' => $this->contractTerms($plan['amount']),
+                'contract_terms' => $this->contractTerms($plan['amount'], $gateway),
+                'gateway' => $gateway,
+                'gateway_label' => $this->gatewayResolver->getGatewayLabel($gateway),
             ]);
         }
 
@@ -45,7 +48,9 @@ class SubscriptionController extends Controller
             'subscription' => $subscription,
             'plan' => $plan,
             'requires_subscription' => !$subscription->isActive(),
-            'contract_terms' => $this->contractTerms($plan['amount']),
+            'contract_terms' => $this->contractTerms($plan['amount'], $gateway),
+            'gateway' => $gateway,
+            'gateway_label' => $this->gatewayResolver->getGatewayLabel($gateway),
         ]);
     }
 
@@ -82,7 +87,16 @@ class SubscriptionController extends Controller
             'accept_contract' => 'required|boolean|in:1,true,yes,on',
         ]);
 
-        $plan = $this->buildPlanForTenant($tenantId);
+        $gateway = $this->gatewayResolver->getActiveGateway();
+        $plan = $this->buildPlanForTenant($tenantId, $gateway);
+
+        if (!$this->gatewayResolver->isImplemented($gateway)) {
+            return response()->json([
+                'error' => 'Gateway de pagamento não implementado',
+                'message' => 'Configure um gateway compatível (Mercado Pago) para ativar a assinatura.',
+                'gateway' => $gateway,
+            ], 422);
+        }
 
         try {
             $customer = $this->mercadoPagoService->createOrUpdateCustomer([
@@ -122,7 +136,7 @@ class SubscriptionController extends Controller
                 'plan_amount' => $plan['amount'],
                 'plan_interval' => $plan['interval'],
                 'status' => 'active',
-                'gateway' => 'mercado_pago',
+                'gateway' => $gateway,
                 'mercado_pago_preapproval_id' => $preapproval['id'] ?? null,
                 'mercado_pago_customer_id' => $customer['id'] ?? null,
                 'mercado_pago_card_token' => $cardToken['id'] ?? null,
@@ -132,7 +146,7 @@ class SubscriptionController extends Controller
                 'current_period_start' => now(),
                 'current_period_end' => $this->calculatePeriodEnd($plan['interval']),
                 'metadata' => [
-                    'contract_terms' => $this->contractTerms($plan['amount']),
+                    'contract_terms' => $this->contractTerms($plan['amount'], $gateway),
                 ],
             ]);
 
@@ -152,9 +166,9 @@ class SubscriptionController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Assinatura criada com sucesso via Mercado Pago',
+                'message' => 'Assinatura criada com sucesso via ' . $this->gatewayResolver->getGatewayLabel($gateway),
                 'subscription' => $subscription,
-                'contract_terms' => $this->contractTerms($plan['amount']),
+                'contract_terms' => $this->contractTerms($plan['amount'], $gateway),
             ], 201);
         } catch (\Exception $e) {
             Log::error('Failed to create subscription', [
@@ -193,7 +207,7 @@ class SubscriptionController extends Controller
         }
 
         try {
-            if ($subscription->mercado_pago_preapproval_id) {
+            if ($subscription->gateway === 'mercado_pago' && $subscription->mercado_pago_preapproval_id) {
                 $this->mercadoPagoService->cancelPreapproval($subscription->mercado_pago_preapproval_id);
             }
 
@@ -247,6 +261,13 @@ class SubscriptionController extends Controller
 
         if (!$subscription) {
             return response()->json(['error' => 'No subscription found'], 404);
+        }
+
+        if ($subscription->gateway !== 'mercado_pago') {
+            return response()->json([
+                'error' => 'Gateway não suporta atualização de cartão aqui',
+                'message' => 'Atualize o cartão diretamente no gateway configurado.',
+            ], 422);
         }
 
         $validated = $request->validate([
@@ -325,6 +346,15 @@ class SubscriptionController extends Controller
                 return response()->json(['ignored' => true]);
             }
 
+            if ($subscription->gateway !== 'mercado_pago') {
+                Log::warning('Webhook ignorado para gateway divergente', [
+                    'gateway' => $subscription->gateway,
+                    'preapproval_id' => $preapprovalId,
+                ]);
+
+                return response()->json(['ignored' => true]);
+            }
+
             $status = $preapproval['status'] ?? null;
 
             if ($status === 'authorized') {
@@ -379,25 +409,31 @@ class SubscriptionController extends Controller
         return now()->addYear();
     }
 
-    private function buildPlanForTenant(int $tenantId): array
+    private function buildPlanForTenant(int $tenantId, string $gateway): array
     {
         $amount = $this->getHalfMinimumWage();
+        $gatewayLabel = $this->gatewayResolver->getGatewayLabel($gateway);
 
         return [
             'id' => 'assinatura-meio-salario-minimo',
             'name' => 'Assinatura mensal indexada a 50% do salário mínimo',
             'amount' => $amount,
             'interval' => 'month',
-            'description' => $this->contractTerms($amount),
+            'description' => $this->contractTerms($amount, $gateway),
+            'gateway' => $gateway,
+            'gateway_label' => $gatewayLabel,
             'tenant_id' => $tenantId,
         ];
     }
 
-    private function contractTerms(float $amount): string
+    private function contractTerms(float $amount, string $gateway): string
     {
+        $gatewayLabel = $this->gatewayResolver->getGatewayLabel($gateway);
+
         return sprintf(
-            'Assinatura recorrente mensal no valor de 50%% do salário mínimo vigente (atualmente R$ %.2f), cobrada automaticamente via Mercado Pago diretamente na conta do titular. Ao prosseguir, o contratante autoriza cobranças recorrentes até cancelamento.',
-            $amount
+            'Assinatura recorrente mensal no valor de 50%% do salário mínimo vigente (atualmente R$ %.2f), cobrada automaticamente via %s diretamente na conta do titular. Ao prosseguir, o contratante autoriza cobranças recorrentes até cancelamento.',
+            $amount,
+            $gatewayLabel
         );
     }
 

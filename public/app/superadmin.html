@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin - Gateway</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <nav class="bg-slate-900 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-black uppercase tracking-tight">Painel Super Admin</h1>
+            <a href="dashboard.html" class="text-sm font-semibold hover:underline">← Voltar ao dashboard</a>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-6">
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+            <div class="flex items-center justify-between gap-4 flex-wrap mb-4">
+                <div>
+                    <p class="text-xs uppercase text-slate-500 font-bold">Cobrança recorrente</p>
+                    <h2 class="text-2xl font-black text-slate-900">Selecionar gateway de pagamento</h2>
+                    <p class="text-slate-600">Escolha entre Mercado Pago, Stripe ou Abacatepay para faturar suas imobiliárias.</p>
+                </div>
+                <span id="implementationStatus" class="px-3 py-1 rounded text-xs font-bold uppercase bg-slate-200 text-slate-700">--</span>
+            </div>
+
+            <div id="alertBox" class="hidden mb-4 p-4 border-l-4 rounded" role="alert"></div>
+
+            <div class="space-y-4">
+                <label class="block text-sm font-semibold text-slate-700">Gateway ativo</label>
+                <select id="gatewaySelect" class="w-full md:w-96 border border-slate-300 rounded px-4 py-2 font-semibold text-slate-800">
+                </select>
+
+                <p class="text-sm text-slate-600" id="gatewayHint">Carregando opções...</p>
+
+                <div class="flex gap-3 items-center flex-wrap">
+                    <button id="saveGateway" class="bg-slate-900 text-white px-5 py-2 rounded font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Salvar preferência
+                    </button>
+                    <span id="saving" class="text-sm text-slate-500 hidden">Salvando...</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_URL = '/api/super-admin';
+
+        $(document).ready(function() {
+            const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+            if (!token || user.role !== 'super_admin') {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            fetchGateway(token);
+            $('#saveGateway').on('click', function() { saveGateway(token); });
+            $('#gatewaySelect').on('change', updateHint);
+        });
+
+        function fetchGateway(token) {
+            $.ajax({
+                url: API_URL + '/settings/billing-gateway',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function(data) {
+                    renderOptions(data);
+                    updateImplementationStatus(data);
+                    updateHint();
+                },
+                error: function(xhr) {
+                    showAlert('Não foi possível carregar as opções de gateway.', true, xhr);
+                }
+            });
+        }
+
+        function renderOptions(data) {
+            const select = $('#gatewaySelect');
+            select.empty();
+            (data.gateways || []).forEach(function(gateway) {
+                const option = $('<option></option>')
+                    .val(gateway.key)
+                    .text(`${gateway.label}${gateway.implemented ? '' : ' (em breve)'}`);
+                if (gateway.key === data.active) {
+                    option.attr('selected', 'selected');
+                }
+                select.append(option);
+            });
+            $('#gatewayHint').text(`Ativo: ${data.label}`);
+        }
+
+        function updateHint() {
+            const option = $('#gatewaySelect option:selected');
+            const value = option.val();
+            const label = option.text();
+            const isImplemented = !label.includes('(em breve)');
+
+            $('#gatewayHint').text(`Usar ${label} para cobrar 50% do salário mínimo mensal.`);
+            $('#implementationStatus')
+                .text(isImplemented ? 'Disponível' : 'Planejado')
+                .toggleClass('bg-green-100 text-green-800', isImplemented)
+                .toggleClass('bg-amber-100 text-amber-800', !isImplemented);
+        }
+
+        function updateImplementationStatus(data) {
+            const activeImplemented = (data.gateways || []).find(g => g.key === data.active)?.implemented;
+            $('#implementationStatus')
+                .text(activeImplemented ? 'Disponível' : 'Planejado')
+                .toggleClass('bg-green-100 text-green-800', !!activeImplemented)
+                .toggleClass('bg-amber-100 text-amber-800', !activeImplemented);
+        }
+
+        function saveGateway(token) {
+            const gateway = $('#gatewaySelect').val();
+            toggleSaving(true);
+
+            $.ajax({
+                url: API_URL + '/settings/billing-gateway',
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + token },
+                contentType: 'application/json',
+                data: JSON.stringify({ gateway }),
+                success: function(data) {
+                    showAlert(`Gateway atualizado para ${data.label}.`, false);
+                    $('#gatewayHint').text(`Ativo: ${data.label}`);
+                },
+                error: function(xhr) {
+                    showAlert('Falha ao salvar gateway.', true, xhr);
+                },
+                complete: function() { toggleSaving(false); }
+            });
+        }
+
+        function toggleSaving(isSaving) {
+            $('#saveGateway').prop('disabled', isSaving);
+            $('#saving').toggleClass('hidden', !isSaving);
+        }
+
+        function showAlert(message, isError, xhr) {
+            const alert = $('#alertBox');
+            alert.removeClass('hidden');
+            alert.toggleClass('bg-red-50 border-red-500 text-red-800', isError);
+            alert.toggleClass('bg-green-50 border-green-500 text-green-800', !isError);
+            alert.text(message + (xhr?.responseJSON?.message ? ` ${xhr.responseJSON.message}` : ''));
+        }
+    </script>
+</body>
+</html>
