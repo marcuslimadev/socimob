@@ -1,5 +1,18 @@
-RewriteEngine on
-RewriteCond %{HTTP_HOST} ^lojadaesquina\.store$ [NC,OR]
-RewriteCond %{HTTP_HOST} ^www\.lojadaesquina\.store$
-RewriteCond %{REQUEST_URI} !public/
-RewriteRule (.*) /public/$1 [L]
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirecionar www para sem www (opcional)
+    RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+    RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+    
+    # Se o arquivo/pasta existe no public, servir diretamente
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f [OR]
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -d
+    RewriteRule ^(.*)$ /public/$1 [L]
+    
+    # Redirecionar todo o resto para public/index.php
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ /public/index.php/$1 [L]
+</IfModule>
+
