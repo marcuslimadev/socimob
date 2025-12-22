@@ -461,7 +461,7 @@
             $('#textoProgresso').text('Conectando à API...');
 
             $.ajax({
-                url: `${API_URL}/admin/imoveis/importar`,
+                url: `${API_URL}/importacoes/imoveis`,
                 method: 'POST',
                 headers: {
                     'Authorization': 'Bearer ' + token,
