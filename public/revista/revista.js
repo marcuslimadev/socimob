@@ -126,7 +126,7 @@ async function loadData() {
     if (!viewerState.pages.length) {
         viewerState.pages = CDN_FALLBACKS.map((url, index) => ({
             id: `fallback-${index}`,
-            titulo: 'Edição especial Bauhaus',
+            titulo: 'Edição especial do catálogo',
             finalidade: 'Catálogo',
             preco: 'Design & Arte',
             descricao: 'Visual geométrico entregue via CDN e cache agressivo.',

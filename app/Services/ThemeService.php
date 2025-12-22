@@ -12,7 +12,7 @@ class ThemeService
      */
     const THEMES = [
         'classico' => 'Clássico',
-        'bauhaus' => 'Bauhaus',
+        'bauhaus' => 'Moderno',
     ];
 
     /**
@@ -153,7 +153,7 @@ class ThemeService
 
         // Adicionar estilos base por tema
         if ($theme['name'] === 'bauhaus') {
-            $css .= $this->getBauhausCSS($colors);
+            $css .= $this->getModernCSS($colors);
         } else {
             $css .= $this->getClassicoCSS($colors);
         }
@@ -223,12 +223,12 @@ CSS;
     }
 
     /**
-     * Obter CSS do tema Bauhaus
+     * Obter CSS do tema moderno
      */
-    private function getBauhausCSS(array $colors): string
+    private function getModernCSS(array $colors): string
     {
         return <<<CSS
-/* Tema Bauhaus */
+/* Tema moderno */
 body {
   font-family: 'Helvetica Neue', Arial, sans-serif;
   color: {$colors['primary']};
