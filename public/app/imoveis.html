@@ -531,7 +531,7 @@
                     );
                     
                     resetImportacaoUI();
-                    carregarImoveis(); // Recarregar lista
+                    loadImoveis(); // Recarregar lista
                 },
                 error: function(xhr) {
                     const errorMsg = xhr.responseJSON?.error || xhr.responseJSON?.message || 'Erro desconhecido';
