@@ -19,6 +19,12 @@ if [ -z "$COMPOSER_BIN" ]; then
   exit 1
 fi
 
+if [[ "$COMPOSER_BIN" == *.phar ]]; then
+  COMPOSER_CMD=("$PHP_BIN" "$COMPOSER_BIN")
+else
+  COMPOSER_CMD=("$COMPOSER_BIN")
+fi
+
 cd "$ROOT_DIR"
 
 echo "Usando PHP: $PHP_BIN"
@@ -36,7 +42,7 @@ if [ ! -f .env ] && [ -f .env.example ]; then
 fi
 
 set -x
-"$PHP_BIN" "$COMPOSER_BIN" install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+"${COMPOSER_CMD[@]}" install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 "$PHP_BIN" artisan key:generate --force
 "$PHP_BIN" artisan migrate --force
 
