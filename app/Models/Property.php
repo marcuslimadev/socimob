@@ -22,28 +22,28 @@ class Property extends Model
         'external_id',
         'finalidade_imovel',
         'tipo_imovel',
-        'preco',
-        'endereco',
+        'valor_venda',        // Mudado de 'preco'
+        'logradouro',         // Mudado de 'endereco'
         'cidade',
         'estado',
+        'bairro',            // Adicionado
         'area_total',
-        'quartos',
+        'dormitorios',        // Mudado de 'quartos'
         'banheiros',
-        'vagas',
-        'fotos',
-        'url_ficha',
+        'garagem',            // Mudado de 'vagas'
+        'imagens',            // Mudado de 'fotos'
         'last_sync',
     ];
 
     protected $casts = [
         'active' => 'boolean',
         'exibir_imovel' => 'boolean',
-        'preco' => 'float',
+        'valor_venda' => 'float',
         'area_total' => 'float',
-        'quartos' => 'integer',
+        'dormitorios' => 'integer',
         'banheiros' => 'integer',
-        'vagas' => 'integer',
-        'fotos' => 'array',
+        'garagem' => 'integer',
+        'imagens' => 'array',      // Mudado de 'fotos'
         'last_sync' => 'datetime',
     ];
 
