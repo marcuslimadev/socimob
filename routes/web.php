@@ -36,10 +36,27 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('/auth/logout', 'AuthController@logout');
     $router->get('/auth/me', ['middleware' => 'auth', 'uses' => 'AuthController@me']);
     
-    // Portal do Cliente (rotas públicas para clientes autenticados)
-    $router->group(['prefix' => 'portal', 'middleware' => 'auth'], function () use ($router) {
-        $router->get('/properties', 'PortalController@properties');
-        $router->post('/interesse', 'PortalController@registrarInteresse');
+    // Portal do Cliente - rotas públicas (sem autenticação)
+    $router->group(['prefix' => 'portal'], function () use ($router) {
+        // Configuração do tenant (público)
+        $router->get('/config', 'PortalController@config');
+        
+        // Listagem de imóveis (público)
+        $router->get('/imoveis', 'PortalController@imoveis');
+        
+        // Detalhes de imóvel (público)
+        $router->get('/imoveis/{id}', 'PortalController@imovel');
+        
+        // Login do portal
+        $router->post('/auth/login', 'PortalController@login');
+        
+        // Rotas autenticadas do portal
+        $router->group(['middleware' => 'auth'], function () use ($router) {
+            $router->post('/interesse', 'PortalController@registrarInteresse');
+            $router->get('/favoritos', 'PortalController@favoritos');
+            $router->post('/favoritos/{id}', 'PortalController@adicionarFavorito');
+            $router->delete('/favoritos/{id}', 'PortalController@removerFavorito');
+        });
     });
     
     // Dashboard routes
