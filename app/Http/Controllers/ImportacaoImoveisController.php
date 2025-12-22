@@ -197,7 +197,7 @@ class ImportacaoImoveisController extends Controller
     public function agendarImportacao(Request $request)
     {
         $data = $this->validate($request, [
-            'origem' => 'required|string|max:50',
+            'fonte' => 'required|string|max:50',  // Backend espera 'fonte'
             'periodoInicial' => 'required|date',
             'periodoFinal' => 'required|date|after_or_equal:periodoInicial',
             'incluirDetalhes' => 'boolean',

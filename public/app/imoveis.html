@@ -466,7 +466,7 @@
             trintaDiasAtras.setDate(hoje.getDate() - 30);
             
             const dados = {
-                origem: fonte,
+                fonte: fonte,  // Backend espera 'fonte', não 'origem'
                 periodoInicial: trintaDiasAtras.toISOString().split('T')[0],
                 periodoFinal: hoje.toISOString().split('T')[0],
                 incluirDetalhes: true,
