@@ -9,36 +9,44 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js" integrity="sha512-STtG3pExQIaxzmNVpwYBF9KTT+TXiSt3ZasOzambRHbUs4xN5dchQoC5ApcqgO43X2HZBDQzSltdjTB1XnFfFg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         :root {
-            --revista-bg: #f8f6f1;
-            --revista-ink: #0f172a;
+            --revista-bg: radial-gradient(circle at 20% 20%, #101018, #05060c 55%);
+            --revista-ink: #f7f7f5;
+            --revista-glow: rgba(255,255,255,0.08);
         }
         body {
             background: var(--revista-bg);
+            color: var(--revista-ink);
+            min-height: 100vh;
         }
         .revista-shell {
-            max-width: 1240px;
+            max-width: 1280px;
             margin: 0 auto;
             padding: 2rem 1rem 3rem;
         }
         .revista-toolbar {
-            background: white;
-            border: 4px solid var(--bauhaus-black);
+            background: linear-gradient(120deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+            border: 1px solid rgba(255,255,255,0.12);
             border-radius: 18px;
-            box-shadow: 10px 10px 0 rgba(0,0,0,0.08);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            backdrop-filter: blur(6px);
+        }
+        .revista-toolbar .bauhaus-button {
+            border-width: 2px;
         }
         .revista-canvas-wrapper {
-            background: white;
-            border: 4px solid var(--bauhaus-black);
-            border-radius: 18px;
-            min-height: 520px;
+            background: radial-gradient(circle at 50% 40%, #1c1c24, #0b0c12 70%);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 24px;
+            min-height: 560px;
             position: relative;
             overflow: hidden;
-            box-shadow: 12px 12px 0 rgba(0,0,0,0.1);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04);
         }
         #revistaCanvas {
             width: 100%;
             height: 100%;
             display: block;
+            background: transparent;
         }
         .revista-scroll-card {
             background: white;
@@ -48,6 +56,24 @@
         }
         .revista-meta {
             letter-spacing: 0.06em;
+        }
+        .revista-overlay-hint {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05), transparent 45%);
+        }
+        .revista-badge {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 9999px;
+            padding: 0.35rem 0.85rem;
+            letter-spacing: 0.16em;
+        }
+        .revista-mobile-note {
+            background: rgba(255,255,255,0.08);
+            border: 1px dashed rgba(255,255,255,0.16);
+            border-radius: 14px;
         }
         @media (max-width: 768px) {
             body { font-size: 18px; }
@@ -63,11 +89,12 @@
             <div class="flex items-center gap-4">
                 <div class="w-11 h-11 rounded-full bg-[var(--bauhaus-yellow)] flex items-center justify-center font-black text-lg">R</div>
                 <div>
-                    <div class="text-xs uppercase tracking-[0.16em]">Visualizador</div>
+                    <div class="text-xs uppercase tracking-[0.18em]">Viewer estilo Flipsnack</div>
                     <h1 class="text-2xl font-black">Revista de Imóveis</h1>
                 </div>
             </div>
             <div class="flex items-center gap-3">
+                <span class="revista-badge hidden md:inline-flex">Desktop: folha dupla com flip 3D</span>
                 <a href="/portal/index.html" class="bauhaus-button ghost">Voltar ao portal</a>
                 <button id="btnFullScreen" class="bauhaus-button hidden md:inline-flex">Tela cheia</button>
             </div>
@@ -75,42 +102,46 @@
     </nav>
 
     <main class="revista-shell">
-        <section class="revista-toolbar bauhaus-panel p-4 md:p-5 mb-6">
+        <section class="revista-toolbar bauhaus-panel p-4 md:p-5 mb-6 text-[var(--revista-ink)]">
             <div class="flex flex-wrap items-center gap-3 justify-between">
                 <div class="flex items-center gap-3">
                     <button id="revistaPrev" class="bauhaus-button secondary">Anterior</button>
                     <button id="revistaNext" class="bauhaus-button secondary">Próxima</button>
-                    <span id="revistaCounter" class="text-sm font-bold uppercase tracking-[0.14em] text-[var(--bauhaus-ink)]">1 / 1</span>
+                    <span id="revistaCounter" class="text-sm font-bold uppercase tracking-[0.14em]">1 / 1</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <label class="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bauhaus-ink)]">Zoom</label>
-                    <input id="revistaZoom" type="range" min="0.75" max="1.5" step="0.05" value="1" class="w-32">
-                    <button id="revistaFit" class="bauhaus-button ghost text-sm">Ajustar à tela</button>
+                    <label class="text-xs font-bold uppercase tracking-[0.14em]">Zoom</label>
+                    <input id="revistaZoom" type="range" min="0.75" max="1.35" step="0.05" value="1" class="w-32">
+                    <button id="revistaFit" class="bauhaus-button ghost text-sm">Ajustar</button>
                 </div>
             </div>
             <div class="mt-4 flex flex-wrap items-center gap-3">
                 <div class="flex items-center gap-2">
-                    <label for="revistaGoTo" class="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bauhaus-ink)]">Ir para</label>
+                    <label for="revistaGoTo" class="text-xs font-bold uppercase tracking-[0.14em]">Ir para</label>
                     <input id="revistaGoTo" type="number" min="1" value="1" class="bauhaus-input w-24">
                     <button id="revistaGo" class="bauhaus-button ghost text-sm">Ir</button>
                 </div>
-                <div class="text-xs uppercase tracking-[0.16em] text-[var(--bauhaus-ink)]">Desktop: efeito flipbook em Canvas / Mobile: rolagem vertical otimizada</div>
+                <div class="text-xs uppercase tracking-[0.16em] text-white/70">Modelo fiel ao exemplo Flipsnack: flip 3D em desktop, rolagem linear no mobile.</div>
             </div>
         </section>
 
         <section id="revistaCanvasWrapper" class="revista-canvas-wrapper">
-            <canvas id="revistaCanvas" width="1160" height="760" aria-label="Visualizador de revista"></canvas>
-            <div id="revistaLoading" class="absolute inset-0 flex items-center justify-center text-lg font-bold text-[var(--bauhaus-black)] bg-white/80">
+            <canvas id="revistaCanvas" width="1220" height="780" aria-label="Visualizador de revista"></canvas>
+            <div class="revista-overlay-hint"></div>
+            <div id="revistaLoading" class="absolute inset-0 flex items-center justify-center text-lg font-bold text-white/80 bg-black/40">
                 Carregando páginas...
             </div>
         </section>
 
         <section id="revistaScrollWrapper" class="hidden">
-            <div class="flex items-center gap-2 mb-4 text-[var(--bauhaus-ink)]">
+            <div class="flex items-center gap-2 mb-4 text-white">
                 <span class="text-xs uppercase tracking-[0.18em] font-black">Modo leitura móvel</span>
                 <div class="h-1 w-16 bg-[var(--bauhaus-yellow)]"></div>
             </div>
-            <div id="revistaScrollList" class="space-y-6"></div>
+            <div class="revista-mobile-note p-4 text-sm text-white/80">
+                No celular, o viewer replica a experiência do Flipsnack com rolagem contínua e miniatura de capa em cada bloco.
+            </div>
+            <div id="revistaScrollList" class="space-y-6 mt-4"></div>
         </section>
     </main>
 
