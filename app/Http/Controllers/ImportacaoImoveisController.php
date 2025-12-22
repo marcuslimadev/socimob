@@ -205,7 +205,27 @@ class ImportacaoImoveisController extends Controller
             'atualizarExistentes' => 'boolean',
         ]);
 
-        return $this->criarJob('importacao_completa', $data, 'Importação completa agendada para processamento.', $request);
+        // Executar importação imediatamente ao invés de agendar
+        try {
+            set_time_limit(300); // 5 minutos
+            
+            $importController = app(\App\Http\Controllers\Admin\ImportacaoController::class);
+            $resultado = $importController->importarExclusiva($request);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Importação concluída!',
+                'data' => $resultado->getData()
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Erro na importação: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao importar: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function agendarDetalhes(Request $request)
