@@ -301,16 +301,49 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * Webhook do Pagar.me
-     * POST /api/webhooks/pagar-me
+     * Webhook do Mercado Pago
+     * POST /api/subscriptions/webhook
      */
     public function webhook(Request $request)
     {
         $payload = $request->all();
 
-        Log::info('Mercado Pago webhook received', ['payload' => $payload]);
+        Log::info('Mercado Pago webhook recebido', ['payload' => $payload]);
 
-        return response()->json(['received' => true]);
+        $preapprovalId = $payload['data']['id'] ?? $payload['id'] ?? null;
+
+        if (!$preapprovalId) {
+            return response()->json(['error' => 'preapproval id ausente'], 400);
+        }
+
+        try {
+            $preapproval = $this->mercadoPagoService->getPreapproval($preapprovalId);
+            $subscription = Subscription::where('mercado_pago_preapproval_id', $preapprovalId)->first();
+
+            if (!$subscription) {
+                Log::warning('Assinatura não encontrada para preapproval', ['preapproval_id' => $preapprovalId]);
+                return response()->json(['ignored' => true]);
+            }
+
+            $status = $preapproval['status'] ?? null;
+
+            if ($status === 'authorized') {
+                $subscription->markAsActive();
+            } elseif (in_array($status, ['paused', 'pending'])) {
+                $subscription->markAsPastDue('Assinatura pausada ou pendente no Mercado Pago');
+            } elseif (in_array($status, ['cancelled', 'expired'])) {
+                $subscription->cancel('Cancelada no Mercado Pago');
+            }
+
+            return response()->json(['processed' => true, 'status' => $status]);
+        } catch (\Exception $e) {
+            Log::error('Erro ao processar webhook do Mercado Pago', [
+                'preapproval_id' => $preapprovalId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['error' => 'failed'], 500);
+        }
     }
 
     /**

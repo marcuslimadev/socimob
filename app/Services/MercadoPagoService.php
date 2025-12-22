@@ -126,6 +126,22 @@ class MercadoPagoService
         }
     }
 
+    public function getPreapproval(string $preapprovalId): array
+    {
+        try {
+            $response = $this->client->get("/preapproval/{$preapprovalId}");
+
+            return json_decode($response->getBody(), true);
+        } catch (RequestException $e) {
+            Log::error('Mercado Pago get preapproval error', [
+                'message' => $e->getMessage(),
+                'response' => $e->getResponse()?->getBody(),
+            ]);
+
+            throw $e;
+        }
+    }
+
     public function updatePreapprovalCard(string $preapprovalId, string $cardTokenId): array
     {
         try {
