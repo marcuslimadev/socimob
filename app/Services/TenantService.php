@@ -202,7 +202,7 @@ class TenantService
      * @param  string|null  $reason
      * @return Tenant
      */
-    public function suspendSubscription(Tenant $tenant, string $reason = null): Tenant
+    public function suspendSubscription(Tenant $tenant, ?string $reason = null): Tenant
     {
         $tenant->suspendSubscription($reason);
         return $tenant;

@@ -154,7 +154,7 @@ class Notification extends Model
         ]);
     }
 
-    public function recordSendAttempt(string $error = null): void
+    public function recordSendAttempt(?string $error = null): void
     {
         $attempts = $this->send_attempts + 1;
         $maxAttempts = 3;

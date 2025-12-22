@@ -118,7 +118,7 @@ class Subscription extends Model
         return $this->current_period_end && $this->current_period_end->isPast();
     }
 
-    public function cancel(string $reason = null): void
+    public function cancel(?string $reason = null): void
     {
         $this->update([
             'status' => 'canceled',
@@ -132,7 +132,7 @@ class Subscription extends Model
         ]);
     }
 
-    public function markAsPastDue(string $reason = null): void
+    public function markAsPastDue(?string $reason = null): void
     {
         $this->update([
             'status' => 'past_due',

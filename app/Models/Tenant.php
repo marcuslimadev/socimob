@@ -183,7 +183,7 @@ class Tenant extends Model
             ->get();
     }
 
-    public function suspendSubscription(string $reason = null): void
+    public function suspendSubscription(?string $reason = null): void
     {
         $this->update([
             'subscription_status' => 'suspended',
