@@ -546,7 +546,7 @@ class ImportacaoController extends Controller
             'estado' => $imovel['endereco']['estado'] ?? '',
             'bairro' => $imovel['endereco']['bairro'] ?? '',
             'descricao' => $imovel['descricaoImovel'] ?? '',
-            'imagens' => json_encode($fotos),  // Campo correto da tabela (longtext)
+            'imagens' => $fotos,  // Array será automaticamente convertido pelo cast
             'active' => $imovel['exibirImovel'] ?? true,
             'exibir_imovel' => $imovel['exibirImovel'] ?? true,
             'last_sync' => date('Y-m-d H:i:s')

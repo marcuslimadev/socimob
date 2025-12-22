@@ -260,18 +260,39 @@
         }
 
         function normalizeImovel(item) {
+            // Parse imagens se for string JSON
+            let imagens = [];
+            if (item.imagens) {
+                if (typeof item.imagens === 'string') {
+                    try {
+                        imagens = JSON.parse(item.imagens);
+                    } catch (e) {
+                        console.warn('Erro ao parsear imagens:', e);
+                        imagens = [];
+                    }
+                } else if (Array.isArray(item.imagens)) {
+                    imagens = item.imagens;
+                }
+            }
+            
             return {
                 id: item.id,
                 titulo: item.titulo || item.codigo || 'Imovel',
                 tipo: item.tipo_imovel || item.tipo || 'casa',
                 finalidade: item.finalidade_imovel || item.finalidade || 'venda',
-                preco: item.preco || 0,
+                preco: item.valor_venda || item.preco || 0,
                 area: item.area_total || item.area || null,
-                quartos: item.quartos || 0,
+                quartos: item.dormitorios || item.quartos || 0,
                 banheiros: item.banheiros || 0,
-                endereco: item.endereco || '',
+                vagas: item.garagem || item.vagas || 0,
+                endereco: item.logradouro || item.endereco || '',
+                cidade: item.cidade || '',
+                estado: item.estado || '',
+                bairro: item.bairro || '',
                 status: item.active === false ? 'vendido' : 'disponivel',
-                descricao: item.descricao || ''
+                descricao: item.descricao || '',
+                imagens: imagens,
+                primeira_imagem: imagens.length > 0 ? imagens[0] : null
             };
         }
         function renderDataTable(data) {
@@ -282,7 +303,9 @@
 
             // Preparar dados para DataTable
             const tableData = data.map(imovel => [
-                `<span class="text-4xl">${getTipoIcon(imovel.tipo)}</span>`,
+                imovel.primeira_imagem 
+                    ? `<img src="${imovel.primeira_imagem}" alt="${imovel.titulo}" class="w-16 h-16 object-cover rounded" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span class="text-4xl hidden">${getTipoIcon(imovel.tipo)}</span>`
+                    : `<span class="text-4xl">${getTipoIcon(imovel.tipo)}</span>`,
                 imovel.titulo,
                 `<span class="capitalize">${imovel.tipo}</span>`,
                 `<span class="capitalize">${imovel.finalidade}</span>`,
@@ -488,19 +511,27 @@
                     if (!response || response.success === false) {
                         const errorMsg = response?.error || response?.message || 'Erro ao importar imóveis';
                         showToast('Erro ao importar imoveis\n\n' + errorMsg, 'error', 6000);
-
                         resetImportacaoUI();
                         return;
                     }
 
-                    const jobId = response?.data?.job_id;
-                    if (!jobId) {
-                        showToast('Erro ao iniciar importação', 'error');
-                        resetImportacaoUI();
-                        return;
-                    }
-
-                    acompanharImportacao(jobId);
+                    // Importação síncrona - resultado imediato
+                    const resultado = response.data || {};
+                    const importados = resultado.importados || 0;
+                    const duplicados = resultado.duplicados || 0;
+                    const erros = resultado.erros || 0;
+                    
+                    showToast(
+                        `✅ Importação concluída!\n\n` +
+                        `Importados: ${importados}\n` +
+                        `Duplicados: ${duplicados}\n` +
+                        `Erros: ${erros}`,
+                        'success',
+                        8000
+                    );
+                    
+                    resetImportacaoUI();
+                    carregarImoveis(); // Recarregar lista
                 },
                 error: function(xhr) {
                     const errorMsg = xhr.responseJSON?.error || xhr.responseJSON?.message || 'Erro desconhecido';
