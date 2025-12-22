@@ -5,6 +5,7 @@ vendor/
 # Environment variables
 .env
 .env.*
+!.env.vercel
 
 # IDEs
 .idea/
