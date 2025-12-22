@@ -653,7 +653,16 @@ class ImportacaoController extends Controller
                 }
 
                 // Criar novo imóvel
-                Property::create($dadosFiltrados);
+                Log::info('Tentando criar Property', [
+                    'external_id' => $dadosFiltrados['external_id'],
+                    'titulo' => $dadosFiltrados['titulo'] ?? 'SEM_TITULO',
+                    'valor_venda' => $dadosFiltrados['valor_venda'] ?? 0,
+                    'imagens_count' => is_array($dadosFiltrados['imagens'] ?? null) ? count($dadosFiltrados['imagens']) : 0
+                ]);
+                
+                $property = Property::create($dadosFiltrados);
+                
+                Log::info('Property criado com sucesso', ['id' => $property->id]);
 
                 $importados++;
                 if ($jobId && $logged < $logLimit) {
