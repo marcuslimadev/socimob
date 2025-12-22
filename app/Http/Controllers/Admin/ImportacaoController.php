@@ -536,19 +536,19 @@ class ImportacaoController extends Controller
             'titulo' => $titulo,
             'tipo_imovel' => $this->mapearTipo($imovel['descricaoTipoImovel'] ?? 'Casa'),
             'finalidade_imovel' => $this->mapearFinalidade($imovel['finalidadeImovel'] ?? 'Venda'),
-            'preco' => floatval($imovel['valorEsperado'] ?? 0),
+            'valor_venda' => floatval($imovel['valorEsperado'] ?? 0),  // Campo correto da tabela
             'area_total' => $area,
-            'quartos' => intval($imovel['dormitorios'] ?? 0),
+            'dormitorios' => intval($imovel['dormitorios'] ?? 0),  // Campo correto da tabela
             'banheiros' => intval($imovel['banheiros'] ?? 0),
-            'vagas' => intval($imovel['garagem'] ?? 0),
-            'endereco' => $this->montarEnderecoExclusiva($imovel['endereco'] ?? []),
+            'garagem' => intval($imovel['garagem'] ?? 0),  // Campo correto da tabela
+            'logradouro' => $this->montarEnderecoExclusiva($imovel['endereco'] ?? []),
             'cidade' => $imovel['endereco']['cidade'] ?? '',
             'estado' => $imovel['endereco']['estado'] ?? '',
+            'bairro' => $imovel['endereco']['bairro'] ?? '',
             'descricao' => $imovel['descricaoImovel'] ?? '',
-            'fotos' => $fotos, // Remover json_encode, será feito automaticamente pelo cast
+            'imagens' => json_encode($fotos),  // Campo correto da tabela (longtext)
             'active' => $imovel['exibirImovel'] ?? true,
             'exibir_imovel' => $imovel['exibirImovel'] ?? true,
-            'url_ficha' => '', // Pode ser adicionado se disponível na API
             'last_sync' => date('Y-m-d H:i:s')
         ];
     }
@@ -626,9 +626,9 @@ class ImportacaoController extends Controller
                 // Filtrar apenas campos permitidos no fillable do Property
                 $camposPermitidos = [
                     'tenant_id', 'codigo', 'titulo', 'descricao', 'active', 'exibir_imovel',
-                    'external_id', 'finalidade_imovel', 'tipo_imovel', 'preco', 'endereco',
-                    'cidade', 'estado', 'area_total', 'quartos', 'banheiros', 'vagas',
-                    'fotos', 'url_ficha', 'last_sync'
+                    'external_id', 'finalidade_imovel', 'tipo_imovel', 'valor_venda', 'logradouro',
+                    'cidade', 'estado', 'bairro', 'area_total', 'dormitorios', 'banheiros', 'garagem',
+                    'imagens', 'last_sync'
                 ];
                 
                 $dadosFiltrados = array_intersect_key($imovelData, array_flip($camposPermitidos));
