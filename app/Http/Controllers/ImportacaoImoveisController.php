@@ -210,12 +210,12 @@ class ImportacaoImoveisController extends Controller
             set_time_limit(300); // 5 minutos
             
             $importController = app(\App\Http\Controllers\Admin\ImportacaoController::class);
-            $resultado = $importController->importar($request);
+            $resultado = $importController->importarSincrono($request);
             
             return response()->json([
                 'success' => true,
                 'message' => 'Importação concluída!',
-                'data' => $resultado->getData()
+                'data' => $resultado
             ]);
             
         } catch (\Exception $e) {

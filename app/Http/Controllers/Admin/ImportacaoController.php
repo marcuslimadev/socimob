@@ -140,6 +140,67 @@ class ImportacaoController extends Controller
     }
 
     /**
+     * Importação síncrona (sem callback terminating)
+     * Para uso em chamadas internas/controller
+     */
+    public function importarSincrono(Request $request)
+    {
+        $user = $request->user();
+        
+        if (!$user || !$user->tenant_id) {
+            throw new \Exception('User has no tenant');
+        }
+
+        $tenant = Tenant::find($user->tenant_id);
+
+        if (!$tenant) {
+            throw new \Exception('Tenant not found');
+        }
+
+        $tenantMetadata = $tenant->metadata ?? [];
+        $apiCookie = $tenantMetadata['exclusiva_api_cookie'] ?? null;
+
+        $fonte = $request->input('fonte', 'exclusiva');
+        
+        // Usar configuracoes salvas do tenant
+        $apiUrl = $tenant->api_url_externa ?: 'https://www.exclusivalarimoveis.com.br/';
+        $apiKey = $tenant->api_token_externa ?: 'SUA_API_KEY_AQUI';
+
+        $apiUrl = $this->normalizarBaseUrl($apiUrl);
+        $apiKey = $this->normalizarToken($apiKey);
+
+        if (!$apiUrl || !$apiKey) {
+            throw new \Exception('API não configurada. Configure em: Configurações > Integrações > API Externa');
+        }
+
+        ImportTablesManager::ensureImportTablesExist();
+
+        $agora = Carbon::now();
+        $jobId = DB::table('import_jobs')->insertGetId([
+            'tipo' => 'api_exclusiva_sincrono',
+            'status' => 'processando',
+            'origem' => $fonte,
+            'responsavel' => $user->name ?? $user->email ?? 'Sistema',
+            'parametros' => json_encode([
+                'tenant_id' => $tenant->id,
+                'fonte' => $fonte,
+                'api_url' => $apiUrl,
+            ]),
+            'inicio_previsto' => $agora,
+            'inicio_real' => $agora,
+            'created_at' => $agora,
+            'updated_at' => $agora,
+        ]);
+
+        $this->registrarLog('Importacao sincrona iniciada.', $jobId);
+
+        // Processar IMEDIATAMENTE (não no callback)
+        $resultado = $this->processarJobImportacao($jobId, $tenant->id, $apiUrl, $apiKey, $fonte, $apiCookie);
+
+        return $resultado;
+    }
+
+    /**
      * Importar imóveis da API externa
      * POST /api/admin/imoveis/importar
      */
