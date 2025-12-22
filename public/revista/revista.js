@@ -68,20 +68,48 @@ function resolveImage(imovel, fallbackIndex) {
     return CDN_FALLBACKS[fallbackIndex % CDN_FALLBACKS.length];
 }
 
+function resolveLocation(imovel) {
+    const bairro = imovel?.bairro || imovel?.neighborhood || '';
+    const cidade = imovel?.cidade || imovel?.cidade_nome || imovel?.city || '';
+    const estado = imovel?.estado || imovel?.state || '';
+    const texto = [bairro, cidade, estado].filter(Boolean).join(' · ');
+    return texto || 'Localização não informada';
+}
+
+function resolveFeatures(imovel) {
+    const area = imovel?.area || imovel?.area_total || imovel?.metragem || imovel?.metros || imovel?.area_privativa;
+    const quartos = imovel?.quartos || imovel?.dormitorios || imovel?.dorms;
+    const banheiros = imovel?.banheiros || imovel?.banhos;
+    const vagas = imovel?.vagas || imovel?.garagens || imovel?.garagem;
+
+    return [
+        area ? `${area} m²` : null,
+        quartos ? `${quartos} quart${Number(quartos) === 1 ? 'o' : 'os'}` : null,
+        banheiros ? `${banheiros} banheiro${Number(banheiros) === 1 ? '' : 's'}` : null,
+        vagas ? `${vagas} vaga${Number(vagas) === 1 ? '' : 's'}` : null
+    ].filter(Boolean);
+}
+
 function mapImovelToPage(imovel, index) {
-    const titulo = imovel?.titulo || 'Imóvel em destaque';
-    const finalidade = imovel?.finalidade || 'venda/aluguel';
-    const preco = imovel?.preco ? `R$ ${formatPrice(imovel.preco)}` : 'Sob consulta';
+    const titulo = imovel?.titulo || imovel?.nome || 'Imóvel em destaque';
+    const finalidade = imovel?.finalidade || imovel?.purpose || 'Venda/Aluguel';
+    const preco = imovel?.preco || imovel?.valor || imovel?.price;
+    const precoFormatado = preco ? `R$ ${formatPrice(preco)}` : 'Sob consulta';
     const imagem = resolveImage(imovel, index);
-    const descricao = (imovel?.descricao || '').slice(0, 260) || 'Catálogo multimídia com efeito de revista estilo Flipsnack.';
+    const descricao = (imovel?.descricao || imovel?.description || '').slice(0, 360) || 'Catálogo multimídia no formato revista, com fotos em alta e descrição objetiva.';
+    const caracteristicas = resolveFeatures(imovel);
+    const localizacao = resolveLocation(imovel);
+
     return {
         id: imovel?.id || `page-${index}`,
         titulo,
         finalidade,
-        preco,
+        preco: precoFormatado,
         descricao,
         imagem,
-        type: String(imagem).toLowerCase().endsWith('.pdf') ? 'pdf' : 'image'
+        caracteristicas,
+        localizacao,
+        type: 'property'
     };
 }
 
@@ -158,22 +186,30 @@ async function loadData() {
 }
 
 async function loadAsset(page) {
-    if (!page?.imagem) return null;
-    if (viewerState.cache.has(page.imagem)) {
-        return viewerState.cache.get(page.imagem);
+    if (!page?.imagem && page?.type !== 'property') return null;
+
+    const cacheKey = page.type === 'property' ? `property-${page.id}` : page.imagem;
+    if (viewerState.cache.has(cacheKey)) {
+        return viewerState.cache.get(cacheKey);
     }
 
     const promise = (async () => {
         try {
-            return page.type === 'pdf' ? await renderPdf(page.imagem) : await loadImage(page.imagem);
+            if (page.type === 'pdf') {
+                return await renderPdf(page.imagem);
+            }
+            if (page.type === 'property') {
+                return await buildPropertyAsset(page);
+            }
+            return await loadImage(page.imagem);
         } catch (error) {
             console.error('Falha ao carregar asset da revista:', error);
-            viewerState.cache.delete(page.imagem);
+            viewerState.cache.delete(cacheKey);
             return null;
         }
     })();
 
-    viewerState.cache.set(page.imagem, promise);
+    viewerState.cache.set(cacheKey, promise);
     return promise;
 }
 
@@ -198,6 +234,102 @@ async function renderPdf(url) {
     offscreen.height = viewport.height;
     const context = offscreen.getContext('2d');
     await page.render({ canvasContext: context, viewport }).promise;
+    return offscreen;
+}
+
+async function buildPropertyAsset(page) {
+    const image = page.imagem ? await loadImage(page.imagem) : null;
+    const offscreen = document.createElement('canvas');
+    offscreen.width = 1200;
+    offscreen.height = 1600;
+    const context = offscreen.getContext('2d');
+
+    // fundo e blocos de cor inspirados no layout de catálogo
+    const bgGradient = context.createLinearGradient(0, 0, offscreen.width, offscreen.height);
+    bgGradient.addColorStop(0, '#0b0c12');
+    bgGradient.addColorStop(1, '#10131f');
+    context.fillStyle = bgGradient;
+    context.fillRect(0, 0, offscreen.width, offscreen.height);
+
+    context.fillStyle = 'rgba(255,255,255,0.04)';
+    context.fillRect(40, 60, offscreen.width - 80, 1180);
+    context.fillStyle = 'rgba(255,255,255,0.06)';
+    context.fillRect(60, 80, offscreen.width - 120, 1140);
+
+    // área principal da foto
+    if (image) {
+        const photoWidth = offscreen.width - 200;
+        const photoHeight = 720;
+        const ratio = image.width / image.height;
+        const targetRatio = photoWidth / photoHeight;
+        let drawW = photoWidth;
+        let drawH = photoHeight;
+        if (ratio > targetRatio) {
+            drawH = photoWidth / ratio;
+        } else {
+            drawW = photoHeight * ratio;
+        }
+        const offsetX = 100 + (photoWidth - drawW) / 2;
+        const offsetY = 120 + (photoHeight - drawH) / 2;
+        context.save();
+        context.beginPath();
+        context.roundRect(100, 120, photoWidth, photoHeight, 22);
+        context.clip();
+        context.drawImage(image, offsetX, offsetY, drawW, drawH);
+        context.fillStyle = 'rgba(0,0,0,0.18)';
+        context.fillRect(100, 120, photoWidth, photoHeight);
+        context.restore();
+    }
+
+    // bloco de texto
+    context.fillStyle = 'white';
+    context.font = '700 34px "Inter", sans-serif';
+    context.fillText(page.titulo.slice(0, 46), 120, 980);
+
+    context.fillStyle = '#d6d6db';
+    context.font = '600 16px "Inter", sans-serif';
+    context.fillText(page.finalidade.toUpperCase(), 120, 1020);
+
+    context.fillStyle = '#f5f5f7';
+    context.font = '800 36px "Inter", sans-serif';
+    context.fillText(page.preco, 120, 1070);
+
+    context.fillStyle = '#cfd1d7';
+    context.font = '400 18px "Inter", sans-serif';
+    wrapText(context, page.descricao, 120, 1120, offscreen.width - 240, 28);
+
+    // linha de localização
+    context.fillStyle = '#9aa0ae';
+    context.font = '600 18px "Inter", sans-serif';
+    context.fillText(page.localizacao, 120, 1240);
+
+    // características em chips
+    const chips = page.caracteristicas && page.caracteristicas.length ? page.caracteristicas : ['Detalhes do imóvel em revisão'];
+    let chipX = 120;
+    const chipY = 1280;
+    chips.forEach((chip) => {
+        const paddingX = 16;
+        const paddingY = 10;
+        context.font = '700 14px "Inter", sans-serif';
+        const textWidth = context.measureText(chip).width;
+        const width = textWidth + paddingX * 2;
+        if (chipX + width > offscreen.width - 140) {
+            chipX = 120;
+        }
+        context.fillStyle = 'rgba(255,255,255,0.08)';
+        context.fillRect(chipX, chipY, width, 36);
+        context.fillStyle = '#f5f7fb';
+        context.fillText(chip, chipX + paddingX, chipY + 23);
+        chipX += width + 12;
+    });
+
+    // rodapé com indicação de continuidade
+    context.fillStyle = 'rgba(255,255,255,0.08)';
+    context.fillRect(100, 1380, offscreen.width - 200, 120);
+    context.fillStyle = '#f5f6fa';
+    context.font = '700 18px "Inter", sans-serif';
+    context.fillText('Portfólio interativo - deslize para ver o próximo imóvel', 140, 1435);
+
     return offscreen;
 }
 
@@ -477,7 +609,11 @@ function renderScrollMode() {
                 <div class="text-xs font-black uppercase revista-meta text-[var(--bauhaus-blue)]">${page.finalidade}</div>
                 <h2 class="text-2xl font-black text-[var(--bauhaus-black)]">${page.titulo}</h2>
                 <div class="text-lg font-bold text-[var(--bauhaus-ink)]">${page.preco}</div>
+                <div class="text-sm text-[var(--bauhaus-ink)]">${page.localizacao || ''}</div>
                 <p class="text-[var(--bauhaus-ink)] leading-relaxed">${page.descricao}</p>
+                <div class="flex flex-wrap gap-2 text-xs text-[var(--bauhaus-ink)] uppercase tracking-[0.12em]">
+                    ${(page.caracteristicas || ['Detalhes do imóvel em revisão']).map((chip) => `<span class="px-3 py-1 border border-[var(--bauhaus-black)] rounded-full">${chip}</span>`).join('')}
+                </div>
                 <div class="mt-auto flex items-center gap-3 text-xs text-[var(--bauhaus-ink)] uppercase tracking-[0.14em]">
                     <span>Página ${index + 1} de ${viewerState.pages.length}</span>
                     <div class="h-1 w-12 bg-[var(--bauhaus-yellow)]"></div>
