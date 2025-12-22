@@ -129,18 +129,34 @@
 
 
         function normalizeImovel(item) {
+            // Parse imagens se for string JSON
+            let fotos = [];
+            if (item.imagens) {
+                if (typeof item.imagens === 'string') {
+                    try {
+                        fotos = JSON.parse(item.imagens);
+                    } catch (e) {
+                        fotos = [];
+                    }
+                } else if (Array.isArray(item.imagens)) {
+                    fotos = item.imagens;
+                }
+            } else if (item.fotos) {
+                fotos = Array.isArray(item.fotos) ? item.fotos : [];
+            }
+            
             return {
                 id: item.id,
                 titulo: item.titulo || item.codigo || 'Imovel',
                 tipo: item.tipo_imovel || item.tipo || 'casa',
                 finalidade: item.finalidade_imovel || item.finalidade || 'venda',
-                preco: item.preco || 0,
+                preco: item.valor_venda || item.preco || 0,
                 area: item.area_total || item.area || null,
-                quartos: item.quartos || 0,
+                quartos: item.dormitorios || item.quartos || 0,
                 banheiros: item.banheiros || 0,
-                endereco: item.endereco || '',
+                endereco: item.logradouro || item.endereco || '',
                 descricao: item.descricao || '',
-                fotos: item.fotos || [],
+                fotos: fotos,
             };
         }
 
