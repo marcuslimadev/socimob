@@ -157,6 +157,9 @@ class ImportacaoController extends Controller
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
+        $tenantMetadata = $tenant->metadata ?? [];
+        $apiCookie = $tenantMetadata['exclusiva_api_cookie'] ?? null;
+
         $this->validate($request, [
             'fonte' => 'required|string',
         ]);
@@ -212,8 +215,8 @@ class ImportacaoController extends Controller
 
         $this->registrarLog('Importacao agendada para processamento.', $jobId);
 
-        app()->terminating(function () use ($jobId, $tenant, $apiUrl, $apiKey, $fonte) {
-            $this->processarJobImportacao($jobId, $tenant->id, $apiUrl, $apiKey, $fonte);
+        app()->terminating(function () use ($jobId, $tenant, $apiUrl, $apiKey, $fonte, $apiCookie) {
+            $this->processarJobImportacao($jobId, $tenant->id, $apiUrl, $apiKey, $fonte, $apiCookie);
         });
 
         return response()->json([
@@ -229,11 +232,11 @@ class ImportacaoController extends Controller
     /**
      * Buscar imóveis da API externa
      */
-    private function buscarImoveisExternos($apiUrl, $apiKey, $fonte)
+    private function buscarImoveisExternos($apiUrl, $apiKey, $fonte, ?string $apiCookie = null)
     {
         // API Exclusiva Lar Imóveis
         if (strpos($apiUrl, 'exclusivalarimoveis.com.br') !== false || $fonte === 'exclusiva') {
-            return $this->buscarExclusiva($apiUrl, $apiKey);
+            return $this->buscarExclusiva($apiUrl, $apiKey, $apiCookie);
         }
 
         // Outras APIs podem ser adicionadas aqui
@@ -243,13 +246,18 @@ class ImportacaoController extends Controller
     /**
      * Buscar da API Exclusiva (formato específico)
      */
-    private function buscarExclusiva($baseUrl, $token)
+    private function buscarExclusiva($baseUrl, $token, ?string $cookie = null)
     {
         $baseUrl = $this->normalizarBaseUrl($baseUrl);
         $token = $this->normalizarToken($token);
         $imoveis = [];
         $pagina = 1;
         $limite = 20;
+        $paginaMaxima = 200;
+        $totalPages = null;
+        $maxRetries = 3;
+        $retryDelayMicroseconds = 500000;
+        $retryCount = 0;
 
         try {
             // Criar cliente Guzzle customizado
@@ -259,19 +267,31 @@ class ImportacaoController extends Controller
                 'http_errors' => false
             ]);
 
-            do {
+            while (true) {
+                if ($pagina > $paginaMaxima) {
+                    Log::warning('Limite máximo de páginas atingido durante importação', ['pagina' => $pagina]);
+                    break;
+                }
+
                 // Montar URL completa
                 $url = $baseUrl . '/lista';
                 
                 Log::info("Buscando página $pagina", ['url' => $url]);
                 
                 // Fazer requisição com Guzzle
+                $headers = [
+                    'token' => $token,
+                    'Content-Type' => 'application/json'
+                ];
+                if ($cookie) {
+                    $headers['Cookie'] = $cookie;
+                }
+
                 $response = $client->get($url, [
-                    'headers' => [
-                        'token' => $token,
-                        'Content-Type' => 'application/json'
-                    ],
+                    'headers' => $headers,
                     'query' => [
+                        'pagina' => $pagina,
+                        'limite' => $limite,
                         'page' => $pagina,
                         'per_page' => $limite
                     ]
@@ -281,26 +301,39 @@ class ImportacaoController extends Controller
                 $body = $response->getBody()->getContents();
 
                 if ($statusCode !== 200) {
+                    $retryCount++;
                     Log::warning("Erro na página $pagina", [
                         'status' => $statusCode,
-                        'body' => $body
+                        'body' => $body,
+                        'retry' => $retryCount
                     ]);
-                    
-                    // Verificar se é erro de token inválido
+
                     $errorData = json_decode($body, true);
-                    if ($statusCode === 401 && isset($errorData['message']) && 
-                        strpos($errorData['message'], 'Token inválido') !== false) {
-                        throw new \Exception('Token da API Exclusiva é inválido. Entre em contato com a Exclusiva Lar Imóveis para obter um token válido para integração.');
+                    if ($statusCode === 401 && isset($errorData['message']) && strpos($errorData['message'], 'Token inválido') !== false) {
+                        $message = 'Token da API Exclusiva é inválido. Entre em contato com a Exclusiva Lar Imóveis para obter um token válido para integração.';
+                        $this->registrarErroImportacao($message, ['pagina' => $pagina, 'status' => $statusCode, 'body' => $body]);
+                        throw new \Exception($message);
                     }
-                    
-                    break;
+
+                    if ($statusCode >= 500 && $retryCount <= $maxRetries) {
+                        usleep($retryDelayMicroseconds);
+                        continue;
+                    }
+
+                    $message = "API Exclusiva retornou HTTP {$statusCode} na página {$pagina}: " . ($errorData['message'] ?? substr($body, 0, 250));
+                    $this->registrarErroImportacao($message, ['pagina' => $pagina, 'status' => $statusCode, 'body' => substr($body, 0, 1000)]);
+                    throw new \Exception($message);
                 }
+
+                $retryCount = 0;
 
                 $data = json_decode($body, true);
 
                 if (!$data) {
-                    Log::error("Falha ao decodificar JSON da página $pagina");
-                    break;
+                    $message = "Falha ao decodificar JSON da página {$pagina}.";
+                    Log::error($message);
+                    $this->registrarErroImportacao($message, ['pagina' => $pagina, 'body_snippet' => substr($body, 0, 1000)]);
+                    throw new \Exception($message);
                 }
 
                 Log::info("Resposta recebida", [
@@ -317,8 +350,11 @@ class ImportacaoController extends Controller
                 }
 
                 $resultSet = $data['resultSet'] ?? [];
-				$listaImoveis = $resultSet['data'] ?? [];
-				$totalPages = $resultSet['total_pages'] ?? 1;
+                $listaImoveis = $resultSet['data'] ?? [];
+                $totalPages = $resultSet['total_pages']
+                    ?? $resultSet['totalPages']
+                    ?? ($resultSet['pagination']['total_pages'] ?? null)
+                    ?? $totalPages ?? null;
 
                 if (empty($listaImoveis)) {
                     Log::info("Nenhum imóvel encontrado na página $pagina");
@@ -334,7 +370,7 @@ class ImportacaoController extends Controller
                     }
 
                     // Buscar detalhes completos do imóvel
-                    $detalhes = $this->buscarDetalhesExclusiva($baseUrl, $token, $imovelLista['codigoImovel']);
+                    $detalhes = $this->buscarDetalhesExclusiva($baseUrl, $token, $imovelLista['codigoImovel'], $cookie);
                     if ($detalhes) {
                         $imoveis[] = $this->mapearImovelExclusiva($detalhes);
                     }
@@ -343,17 +379,50 @@ class ImportacaoController extends Controller
                     usleep(100000); // 0.1 segundo
                 }
 
-                $pagina++;
-                
-                // Limitar a 3 páginas (60 imóveis) por importação para não travar
-                if ($pagina > 3 || $pagina > $totalPages) {
-                    Log::info("Limite de páginas atingido (3 páginas)");
+                $proximaPagina = null;
+
+                if (isset($resultSet['pagination']['next_page']) && $resultSet['pagination']['next_page']) {
+                    $proximaPagina = (int) $resultSet['pagination']['next_page'];
+                } elseif ($totalPages !== null) {
+                    $totalPagesInt = (int) $totalPages;
+                    if ($pagina < $totalPagesInt) {
+                        $proximaPagina = $pagina + 1;
+                    }
+                } elseif (isset($resultSet['total'])) {
+                    $totalItens = (int) $resultSet['total'];
+                    if ($limite > 0 && ($pagina * $limite) < $totalItens) {
+                        $proximaPagina = $pagina + 1;
+                    }
+                } elseif (count($listaImoveis) >= $limite) {
+                    $proximaPagina = $pagina + 1;
+                }
+
+                if (!$proximaPagina || $proximaPagina <= $pagina) {
+                    Log::info('Fim da paginação da API Exclusiva', [
+                        'pagina_atual' => $pagina,
+                        'total_paginas' => $totalPages,
+                        'lista_count' => count($listaImoveis),
+                    ]);
                     break;
                 }
 
-            } while (!empty($listaImoveis));
+                if ($proximaPagina > $paginaMaxima) {
+                    Log::warning('Próxima página excede limite permitido', [
+                        'pagina_atual' => $pagina,
+                        'proxima_pagina' => $proximaPagina,
+                        'limite_paginas' => $paginaMaxima,
+                    ]);
+                    break;
+                }
+
+                $pagina = $proximaPagina;
+
+                // Pequeno delay entre páginas para não sobrecarregar a API
+                usleep(200000);
+            }
 
         } catch (\Exception $e) {
+            $this->registrarErroImportacao('Erro ao buscar da API Exclusiva: ' . $e->getMessage(), ['pagina' => $pagina ?? null]);
             Log::error('Erro ao buscar da API Exclusiva: ' . $e->getMessage());
             throw $e;
         }
@@ -364,7 +433,7 @@ class ImportacaoController extends Controller
     /**
      * Buscar detalhes de um imóvel específico da Exclusiva
      */
-    private function buscarDetalhesExclusiva($baseUrl, $token, $imovelId)
+    private function buscarDetalhesExclusiva($baseUrl, $token, $imovelId, ?string $cookie = null)
     {
         try {
             $baseUrl = $this->normalizarBaseUrl($baseUrl);
@@ -377,11 +446,16 @@ class ImportacaoController extends Controller
 
             $url = $baseUrl . '/dados/' . $imovelId;
             
+            $detailHeaders = [
+                'token' => $token,
+                'Content-Type' => 'application/json'
+            ];
+            if ($cookie) {
+                $detailHeaders['Cookie'] = $cookie;
+            }
+
             $response = $client->get($url, [
-                'headers' => [
-                    'token' => $token,
-                    'Content-Type' => 'application/json'
-                ]
+                'headers' => $detailHeaders
             ]);
 
             if ($response->getStatusCode() === 200) {
@@ -415,6 +489,17 @@ class ImportacaoController extends Controller
         }
 
         return $baseUrl . '/api/v1/app/imovel';
+    }
+
+    private function registrarErroImportacao(string $mensagem, array $context = []): void
+    {
+        $caminho = base_path('import-errors.log');
+        $entrada = '[' . Carbon::now()->toDateTimeString() . '] ' . $mensagem;
+        if (!empty($context)) {
+            $entrada .= ' | ' . json_encode($context, JSON_UNESCAPED_UNICODE);
+        }
+        $entrada .= PHP_EOL;
+        file_put_contents($caminho, $entrada, FILE_APPEND | LOCK_EX);
     }
 
     private function normalizarToken($token)
@@ -495,10 +580,12 @@ class ImportacaoController extends Controller
     private function buscarGenerico($apiUrl, $apiKey)
     {
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Content-Type' => 'application/json'
-            ])->get($apiUrl);
+            $headers = [
+                'Content-Type' => 'application/json',
+                'token' => $apiKey,
+            ];
+
+            $response = Http::withHeaders($headers)->get($apiUrl);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -593,7 +680,7 @@ class ImportacaoController extends Controller
         ];
     }
 
-    private function processarJobImportacao(int $jobId, int $tenantId, string $apiUrl, string $apiKey, string $fonte): void
+    private function processarJobImportacao(int $jobId, int $tenantId, string $apiUrl, string $apiKey, string $fonte, ?string $apiCookie = null): void
     {
         $inicio = Carbon::now();
         $this->atualizarJob($jobId, [
@@ -602,7 +689,7 @@ class ImportacaoController extends Controller
         ]);
 
         try {
-            $imoveis = $this->buscarImoveisExternos($apiUrl, $apiKey, $fonte);
+            $imoveis = $this->buscarImoveisExternos($apiUrl, $apiKey, $fonte, $apiCookie);
             $total = count($imoveis);
 
             $this->atualizarJob($jobId, [
@@ -673,6 +760,18 @@ class ImportacaoController extends Controller
     {
         if (!Schema::hasTable('import_logs')) {
             Log::warning('Registro de log ignorado: ' . $mensagem);
+            // Também registrar em arquivo para garantir rastreabilidade
+            try {
+                $file = storage_path('logs/import_imoveis.log');
+                $entry = '[' . Carbon::now()->toDateTimeString() . '] ' . strtoupper($nivel) . ' job:' . ($jobId ?? 'null') . ' codigo:' . ($codigo ?? '') . ' - ' . $mensagem;
+                if (!empty($detalhes)) {
+                    $entry .= ' | ' . json_encode($detalhes, JSON_UNESCAPED_UNICODE);
+                }
+                $entry .= PHP_EOL;
+                file_put_contents($file, $entry, FILE_APPEND | LOCK_EX);
+            } catch (\Throwable $e) {
+                Log::error('Falha ao gravar import log em arquivo: ' . $e->getMessage());
+            }
             return;
         }
 
@@ -685,6 +784,18 @@ class ImportacaoController extends Controller
             'created_at' => Carbon::now(),
             'updated_at' => Carbon::now(),
         ]);
+        // Escrever também em arquivo para fácil consulta
+        try {
+            $file = storage_path('logs/import_imoveis.log');
+            $entry = '[' . Carbon::now()->toDateTimeString() . '] ' . strtoupper($nivel) . ' job:' . ($jobId ?? 'null') . ' codigo:' . ($codigo ?? '') . ' - ' . $mensagem;
+            if (!empty($detalhes)) {
+                $entry .= ' | ' . json_encode($detalhes, JSON_UNESCAPED_UNICODE);
+            }
+            $entry .= PHP_EOL;
+            file_put_contents($file, $entry, FILE_APPEND | LOCK_EX);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao gravar import log em arquivo: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -295,6 +295,18 @@ class ImportacaoImoveisController extends Controller
     {
         if (!Schema::hasTable('import_logs')) {
             Log::warning('Registro de log de importação ignorado porque tabela import_logs não existe: ' . $mensagem);
+            // também escrever em arquivo para garantir registro
+            try {
+                $file = storage_path('logs/import_imoveis.log');
+                $entry = '[' . Carbon::now()->toDateTimeString() . '] ' . strtoupper($nivel) . ' job:' . ($jobId ?? 'null') . ' codigo:' . ($codigo ?? '') . ' - ' . $mensagem;
+                if (!empty($detalhes)) {
+                    $entry .= ' | ' . json_encode($detalhes, JSON_UNESCAPED_UNICODE);
+                }
+                $entry .= PHP_EOL;
+                file_put_contents($file, $entry, FILE_APPEND | LOCK_EX);
+            } catch (\Throwable $e) {
+                Log::error('Falha ao gravar import log em arquivo: ' . $e->getMessage());
+            }
             return;
         }
 
@@ -307,6 +319,18 @@ class ImportacaoImoveisController extends Controller
             'created_at' => Carbon::now(),
             'updated_at' => Carbon::now(),
         ]);
+        // também escrever em arquivo
+        try {
+            $file = storage_path('logs/import_imoveis.log');
+            $entry = '[' . Carbon::now()->toDateTimeString() . '] ' . strtoupper($nivel) . ' job:' . ($jobId ?? 'null') . ' codigo:' . ($codigo ?? '') . ' - ' . $mensagem;
+            if (!empty($detalhes)) {
+                $entry .= ' | ' . json_encode($detalhes, JSON_UNESCAPED_UNICODE);
+            }
+            $entry .= PHP_EOL;
+            file_put_contents($file, $entry, FILE_APPEND | LOCK_EX);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao gravar import log em arquivo: ' . $e->getMessage());
+        }
     }
 
     private function resolverPendencia($item): string

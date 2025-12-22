@@ -17,14 +17,14 @@ $router->get('/api/health', function () use ($router) {
     ]);
 });
 
-// Home - servir index.html do frontend
+// Home - servir portal do cliente inicialmente
 $router->get('/', function () {
-    $path = base_path('public/index.html');
+    $path = base_path('public/portal/index.html');
     if (file_exists($path)) {
         return response(file_get_contents($path))
             ->header('Content-Type', 'text/html');
     }
-    return response('index.html nao encontrado', 404);
+    return response('Portal do cliente nao encontrado', 404);
 });
 
 $router->post('/github/webhook', 'GitHubWebhookController@handle');

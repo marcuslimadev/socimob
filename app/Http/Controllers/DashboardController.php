@@ -6,6 +6,7 @@ use App\Models\Lead;
 use App\Models\Conversa;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Controller do Dashboard
@@ -20,6 +21,15 @@ class DashboardController extends Controller
     {
         try {
             $db = app('db');
+            $hasProperties = Schema::hasTable('imo_properties');
+            $imoveis = ['total' => 0, 'ativos' => 0];
+            if ($hasProperties) {
+                $imoveis['total'] = $db->table('imo_properties')->count();
+                $imoveis['ativos'] = $db->table('imo_properties')
+                    ->where('active', 1)
+                    ->where('exibir_imovel', 1)
+                    ->count();
+            }
             $stats = [
                 'leads' => [
                     'total' => $db->table('leads')->count(),
@@ -39,7 +49,8 @@ class DashboardController extends Controller
                 'corretores' => [
                     'total' => $db->table('users')->where('role', 'admin')->where('is_active', true)->count(),
                     'online' => 0
-                ]
+                ],
+                'imoveis' => $imoveis
             ];
             
             return response()->json([
