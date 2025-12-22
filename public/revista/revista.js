@@ -1,4 +1,6 @@
-const API_URL = '/api';
+const API_BASE = document.body?.dataset?.apiBase || '';
+const API_PREFIX = `${API_BASE}/api`;
+const TENANT_ID = new URLSearchParams(window.location.search).get('tenant');
 const CDN_FALLBACKS = [
     'https://images.unsplash.com/photo-1505692794403-34d4982c87e4?auto=format&fit=crop&w=1600&q=80',
     'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1600&q=80',
@@ -48,6 +50,12 @@ function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
 }
 
+function buildEndpoint(path) {
+    if (!TENANT_ID) return `${API_PREFIX}${path}`;
+    const separator = path.includes('?') ? '&' : '?';
+    return `${API_PREFIX}${path}${separator}tenant=${encodeURIComponent(TENANT_ID)}`;
+}
+
 function resolveImage(imovel, fallbackIndex) {
     if (!imovel) return CDN_FALLBACKS[fallbackIndex % CDN_FALLBACKS.length];
     const fotos = imovel.fotos || imovel.imagens || imovel.images || [];
@@ -83,13 +91,35 @@ function formatPrice(value) {
 }
 
 async function loadData() {
-    try {
-        const response = await fetch(`${API_URL}/portal/imoveis`, { cache: 'force-cache' });
-        const body = await response.json();
-        const lista = Array.isArray(body?.data) ? body.data : Array.isArray(body) ? body : [];
-        viewerState.pages = lista.map(mapImovelToPage);
-    } catch (error) {
-        console.warn('Falha ao buscar imóveis, usando CDN:', error);
+    const endpoints = ['/portal/imoveis', '/portal/properties'];
+    const parseList = (body) => {
+        if (Array.isArray(body?.data)) return body.data;
+        if (Array.isArray(body?.properties)) return body.properties;
+        if (Array.isArray(body)) return body;
+        return [];
+    };
+
+    for (const path of endpoints) {
+        try {
+            const url = buildEndpoint(path);
+            const response = await fetch(url, { cache: 'force-cache' });
+            if (!response.ok) {
+                console.warn(`Endpoint ${url} retornou status ${response.status}`);
+                continue;
+            }
+
+            const body = await response.json();
+            const lista = parseList(body);
+            if (lista.length) {
+                viewerState.pages = lista.map(mapImovelToPage);
+                break;
+            }
+        } catch (error) {
+            console.warn(`Falha ao buscar imóveis em ${path}:`, error);
+        }
+    }
+
+    if (!viewerState.pages.length) {
         viewerState.pages = [];
     }
 
