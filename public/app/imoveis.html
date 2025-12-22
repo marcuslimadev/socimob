@@ -459,6 +459,22 @@
             $('#progressoImportacao').removeClass('hidden');
             $('#barraProgresso').css('width', '10%');
             $('#textoProgresso').text('Conectando à API...');
+            
+            // Preparar dados para o backend
+            const hoje = new Date();
+            const trintaDiasAtras = new Date();
+            trintaDiasAtras.setDate(hoje.getDate() - 30);
+            
+            const dados = {
+                origem: fonte,
+                periodoInicial: trintaDiasAtras.toISOString().split('T')[0],
+                periodoFinal: hoje.toISOString().split('T')[0],
+                incluirDetalhes: true,
+                processarMidia: true,
+                atualizarExistentes: true
+            };
+            
+            console.log('📤 Dados da requisição:', dados);
 
             $.ajax({
                 url: `${API_URL}/importacoes/imoveis`,
@@ -467,7 +483,7 @@
                     'Authorization': 'Bearer ' + token,
                     'Content-Type': 'application/json'
                 },
-                data: JSON.stringify({ fonte, api_url, api_key }),
+                data: JSON.stringify(dados),
                 success: function(response) {
                     if (!response || response.success === false) {
                         const errorMsg = response?.error || response?.message || 'Erro ao importar imóveis';
