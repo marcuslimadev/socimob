@@ -1,4 +1,4 @@
 ---
 deployment:
   tasks:
-    - /opt/alt/php83/usr/bin/php /usr/local/bin/composer install --no-dev
+    - /opt/alt/php83/usr/bin/php /usr/local/bin/composer install --no-dev --no-interaction --optimize-autoloader
