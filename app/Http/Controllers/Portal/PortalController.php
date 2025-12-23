@@ -70,12 +70,6 @@ class PortalController extends Controller
             ? $config->portal_finalidades
             : null;
 
-        $tenant = Tenant::find($tenantId);
-        $config = $tenant ? $tenant->config : null;
-        $allowedFinalidades = $config && is_array($config->portal_finalidades)
-            ? $config->portal_finalidades
-            : null;
-
         if (is_array($allowedFinalidades) && count($allowedFinalidades) === 0) {
             return response()->json([
                 'success' => true,
@@ -120,12 +114,18 @@ class PortalController extends Controller
     public function getImovel(Request $request, $id)
     {
         $tenantId = $request->attributes->get('tenant_id');
-        
+
         if (!$tenantId) {
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
         PropertyLikesTablesManager::ensurePropertyLikesTableExists();
+
+        $tenant = Tenant::find($tenantId);
+        $config = $tenant ? $tenant->config : null;
+        $allowedFinalidades = $config && is_array($config->portal_finalidades)
+            ? $config->portal_finalidades
+            : null;
 
         $imovel = Property::where('tenant_id', $tenantId)
             ->where('id', $id)
