@@ -188,7 +188,6 @@ body.bauhaus-page {
 .bauhaus-table-wrapper table.dataTable thead th {
     background: var(--bauhaus-black);
     color: #fff;
-    border-bottom: 0;
 }
 
 .bauhaus-table-wrapper table.dataTable tbody td {
