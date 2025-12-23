@@ -573,7 +573,7 @@
                 const titulo = escapeHtml(imovel.titulo || 'Im\u00f3vel');
                 const endereco = escapeHtml(imovel.endereco || '');
                 const finalidade = escapeHtml(imovel.finalidade || '');
-                const likeHtml = renderLikeButton(imovel);
+                const liked = likedIds.has(imovel.id);
                 const imagemHtml = imagem
                     ? `<img src="${imagem}" alt="Foto do im\u00f3vel" class="w-full h-full object-cover">`
                     : `<div class="h-64 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center"><span class="text-8xl">${getTipoIcon(imovel.tipo)}</span></div>`;
