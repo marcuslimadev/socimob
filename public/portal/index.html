@@ -591,6 +591,7 @@
                 const endereco = escapeHtml(imovel.endereco || '');
                 const finalidade = escapeHtml(imovel.finalidade || '');
                 const liked = likedIds.has(imovel.id);
+                const likeIcon = liked ? '❤️' : '🤍';
                 const imagemHtml = imagem
                     ? `<img src="${imagem}" alt="Foto do im\u00f3vel" class="w-full h-full object-cover">`
                     : `<div class="h-64 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center"><span class="text-8xl">${getTipoIcon(imovel.tipo)}</span></div>`;
@@ -605,7 +606,9 @@
                                 <h4 class="text-xl font-bold text-white">${titulo}</h4>
                                 <div class="flex flex-col items-end gap-2">
                                     <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full uppercase">${finalidade}</span>
-                                    ${likeHtml}
+                                    <button onclick="event.stopPropagation(); toggleLike(${imovel.id});" class="text-2xl hover:scale-110 transition-transform">
+                                        ${likeIcon}
+                                    </button>
                                 </div>
                             </div>
                             <p class="text-slate-300 text-sm mb-1">${endereco}</p>
@@ -657,7 +660,7 @@
 
             const rows = lista.map(imovel => {
                 const liked = likedIds.has(imovel.id);
-                const icon = liked ? 'Liked' : 'Like';
+                const likeIcon = liked ? '❤️' : '🤍';
                 return [
                     escapeHtml(imovel.titulo || 'Im\u00f3vel'),
                     escapeHtml(imovel.tipo || ''),
@@ -1036,11 +1039,11 @@
 
         function renderLikeButton(imovel) {
             const liked = likedIds.has(imovel.id);
-            const icon = liked ? '?' : '?';
+            const likeIcon = liked ? '❤️' : '🤍';
             const count = Number(imovel.likes_count || 0);
             return `
                 <button class="like-btn flex items-center gap-2 px-2 py-1 border-2 border-slate-300 text-slate-900 font-bold text-xs" onclick="event.stopPropagation(); toggleLike(${imovel.id});">
-                    <span>${icon}</span>
+                    <span>${likeIcon}</span>
                     <span>${count}</span>
                 </button>
             `;
@@ -1093,8 +1096,9 @@
             if (!imovelSelecionado) return;
             const count = Number(imovelSelecionado.likes_count || 0);
             const liked = likedIds.has(imovelSelecionado.id);
+            const likeIcon = liked ? '❤️' : '🤍';
             $('#modalLikeCount').text(count);
-            $('#modalLikeIcon').text(liked ? '?' : '?');
+            $('#modalLikeIcon').text(likeIcon);
             $('#modalLikeBtn').off('click').on('click', function(e) {
                 e.preventDefault();
                 toggleLike(imovelSelecionado.id);
