@@ -32,9 +32,25 @@ class ConversasController extends Controller
             $db = app('db');
             $tenantId = $this->resolveTenantId($request);
 
-            $query = $db->table('conversas')
-                ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
-                ->select('conversas.*', 'leads.nome as lead_nome', 'leads.email as lead_email');
+        $userMessages = DB::raw("(SELECT COUNT(*) FROM mensagens WHERE mensagens.conversa_id = conversas.id AND mensagens.direction = 'incoming') as user_messages_count");
+        $totalMessages = DB::raw("(SELECT COUNT(*) FROM mensagens WHERE mensagens.conversa_id = conversas.id) as total_messages");
+        $lastMessageSnippet = DB::raw("(SELECT content FROM mensagens WHERE mensagens.conversa_id = conversas.id ORDER BY sent_at DESC LIMIT 1) as ultima_mensagem_text");
+
+        $query = $db->table('conversas')
+            ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+            ->select(
+                'conversas.*',
+                'leads.nome as lead_nome',
+                'leads.email as lead_email',
+                'leads.whatsapp_name as lead_whatsapp_name',
+                'leads.telefone as lead_telefone',
+                'leads.status as lead_status',
+                'leads.budget_min as lead_budget_min',
+                'leads.budget_max as lead_budget_max',
+                $userMessages,
+                $totalMessages,
+                $lastMessageSnippet
+            );
 
             if ($tenantId) {
                 $query->where('conversas.tenant_id', $tenantId);
