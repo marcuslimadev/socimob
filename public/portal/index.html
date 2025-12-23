@@ -675,39 +675,22 @@
             $thead.find('tr.table-filter-row').remove();
 
             const $filterRow = $('<tr class="table-filter-row"></tr>');
-            api.columns().every(function() {
+            // Adiciona um campo de filtro no cabeçalho de cada coluna
+            this.api().columns().every(function () {
                 const column = this;
-                const headerText = $(column.header()).text().trim();
-                const isActions = headerText === 'Acoes' || headerText === 'A\u00e7\u00f5es';
-                const isSelect = headerText === 'Tipo' || headerText === 'Finalidade';
-                const $cell = $('<th></th>');
+                const $header = $(column.header());
+                const title = $header.text();
 
-                if (isActions) {
-                    $filterRow.append($cell);
-                    return;
-                }
-
-                if (isSelect) {
-                    const $select = $('<select class="w-full text-sm border border-slate-300 px-2 py-1"><option value="">Todos</option></select>');
-                    column.data().unique().sort().each(function(d) {
-                        if (!d) return;
-                        $select.append($('<option></option>').attr('value', d).text(d));
-                    });
-                    $select.on('change', function() {
-                        const val = $.fn.dataTable.util.escapeRegex($(this).val());
-                        column.search(val ? '^' + val + '$' : '', true, false).draw();
-                    });
-                    $cell.append($select);
-                    $filterRow.append($cell);
-                    return;
-                }
-
-                const $input = $('<input type="text" class="w-full text-sm border border-slate-300 px-2 py-1" placeholder="Filtrar">');
-                $input.on('input', function() {
-                    column.search(this.value).draw();
+                // Adiciona classes de cor ao input
+                const $input = $('<input type="text" class="w-full text-sm border border-slate-300 px-2 py-1 text-slate-900 placeholder:text-slate-500" placeholder="Filtrar">');
+                
+                $input.on('keyup change clear', function () {
+                    if (column.search() !== this.value) {
+                        column.search(this.value).draw();
+                    }
                 });
-                $cell.append($input);
-                $filterRow.append($cell);
+
+                $header.append($input);
             });
 
             $thead.append($filterRow);
@@ -1338,9 +1321,9 @@
 
             const replacements = {
                 'Im\u00c3\u00b3veis': 'Im\u00f3veis',
-                'Im\u00c3\u00b3vel': 'Im\u00f3vel',
-                'im\u00c3\u00b3veis': 'im\u00f3veis',
-                'im\u00c3\u00b3vel': 'im\u00f3vel',
+                'Im\u00c3\u00b3vel': 'Im\u00fóvel',
+                'im\u00c3\u00b3veis': 'im\u00fóveis',
+                'im\u00c3\u00b3vel': 'im\u00fóvel',
                 'op\u00c3\u00a7\u00c3\u00b5es': 'op\u00e7\u00f5es',
                 'voc\u00c3\u00aa': 'voc\u00ea',
                 'Descri\u00c3\u00a7\u00c3\u00a3o': 'Descri\u00e7\u00e3o',
@@ -1350,8 +1333,8 @@
                 'Pre\u00c3\u00a7o': 'Pre\u00e7o',
                 'Endere\u00c3\u00a7o': 'Endere\u00e7o',
                 'endere\u00c3\u00a7o': 'endere\u00e7o',
-                'Im\u251c\u2502veis': 'Im\u00f3veis',
-                'Im\u251c\u2502vel': 'Im\u00f3vel'
+                'Im\u251c\u2502veis': 'Im\u00fóveis',
+                'Im\u251c\u2502vel': 'Im\u00fóvel'
             };
 
             Object.keys(replacements).forEach(key => {
