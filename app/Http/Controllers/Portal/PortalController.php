@@ -74,14 +74,6 @@ class PortalController extends Controller
             ? array_map(fn ($value) => Str::lower($value), $allowedFinalidades)
             : null;
 
-        if (is_array($allowedFinalidades) && count($allowedFinalidades) === 0) {
-            return response()->json([
-                'success' => true,
-                'data' => [],
-                'total' => 0
-            ]);
-        }
-
         $imoveisQuery = Property::where('tenant_id', $tenantId)
             ->where('active', true)
             ->where('exibir_imovel', true)
