@@ -5,6 +5,7 @@
     --bauhaus-blue: #0046ad;
     --bauhaus-yellow: #f2c230;
     --bauhaus-black: #0f0f0f;
+    --bauhaus-border: #d1d5db;
     --bauhaus-cream: #f5f1e5;
     --bauhaus-ink: #1f1f1f;
 }
@@ -24,6 +25,7 @@ body.bauhaus-page {
 .bauhaus-nav {
     background: var(--bauhaus-black);
     color: #fff;
+    border-bottom: 2px solid var(--bauhaus-yellow);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
     border-radius: 0 0 18px 18px;
 }
@@ -47,20 +49,22 @@ body.bauhaus-page {
     color: var(--bauhaus-black);
     padding: 8px 14px;
     font-weight: 700;
+    border: 1px solid var(--bauhaus-border);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-radius: 14px;
-    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
 }
 
 .bauhaus-card {
     background: #fff;
+    border: 1px solid var(--bauhaus-border);
     box-shadow: 6px 10px 26px rgba(0, 0, 0, 0.12);
     border-radius: 16px;
 }
 
 .bauhaus-panel {
     background: #fff;
+    border: 1px solid var(--bauhaus-border);
     box-shadow: 6px 12px 28px rgba(0, 0, 0, 0.12);
     border-radius: 18px;
 }
@@ -72,6 +76,7 @@ body.bauhaus-page {
     gap: 8px;
     background: var(--bauhaus-red);
     color: #fff;
+    border: 1px solid var(--bauhaus-border);
     padding: 12px 18px;
     font-weight: 800;
     letter-spacing: 0.06em;
@@ -93,27 +98,27 @@ body.bauhaus-page {
 .bauhaus-button.ghost {
     background: #fff;
     color: var(--bauhaus-black);
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+    border-color: var(--bauhaus-border);
 }
 
 .bauhaus-chip {
     background: var(--bauhaus-yellow);
     color: var(--bauhaus-black);
     padding: 6px 12px;
+    border: 1px solid var(--bauhaus-border);
     font-weight: 700;
     display: inline-flex;
     align-items: center;
     gap: 6px;
     border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .bauhaus-input {
+    border: 1px solid var(--bauhaus-border);
     padding: 12px;
     background: #fff;
     color: var(--bauhaus-ink);
     border-radius: 14px;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .bauhaus-input:focus,
@@ -123,11 +128,11 @@ body.bauhaus-page {
 }
 
 .bauhaus-select {
+    border: 1px solid var(--bauhaus-border);
     padding: 12px;
     background: #fff;
     color: var(--bauhaus-ink);
     border-radius: 14px;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .bauhaus-section-title {
@@ -160,18 +165,18 @@ body.bauhaus-page {
     gap: 10px;
     background: #fff;
     padding: 10px 14px;
+    border: 1px solid var(--bauhaus-border);
     font-weight: 700;
     border-radius: 14px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .bauhaus-pill {
     background: #fff;
     padding: 6px 10px;
+    border: 1px solid var(--bauhaus-border);
     font-weight: 700;
     text-transform: uppercase;
     border-radius: 12px;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
 }
 
 .bauhaus-link {
@@ -186,11 +191,12 @@ body.bauhaus-page {
 }
 
 .bauhaus-table-wrapper table.dataTable tbody td {
-    border-bottom: none;
+    border-bottom: 1px solid var(--bauhaus-border);
 }
 
 .bauhaus-modal-close {
     background: #fff;
+    border: 1px solid var(--bauhaus-border);
     border-radius: 50%;
     width: 44px;
     height: 44px;
