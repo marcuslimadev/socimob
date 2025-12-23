@@ -577,7 +577,13 @@ class WhatsAppService
 
         $conversa->loadMissing('lead');
 
-        if ($conversa->lead && empty($conversa->lead->campos_pendentes)) {
+        // Verificar se já coletou informações básicas necessárias (não usar campos_pendentes porque começa vazio)
+        $leadQualificado = $conversa->lead 
+            && !empty($conversa->lead->tipo_imovel_interesse)
+            && !empty($conversa->lead->orcamento_max)
+            && !empty($conversa->lead->localizacao_preferida);
+
+        if ($leadQualificado) {
             $handoffMessage = 'Cadastro concluído! Um corretor humano vai continuar o atendimento e te enviar os detalhes. 👍';
 
             $conversa->update([
@@ -825,53 +831,57 @@ class WhatsAppService
                 'conversa_id' => $conversaId,
                 'mensagem_id' => $mensagemId
             ]);
-            
-            // Baixar áudio
+
             $audioData = $this->twilio->downloadMedia($mediaUrl);
-            
+
             if (!$audioData['success']) {
                 Log::error('❌ Falha ao baixar áudio', ['error' => $audioData['error'] ?? 'Unknown']);
                 return '[Áudio não pôde ser processado]';
             }
-            
-            Log::info('✅ Áudio baixado', ['size' => strlen($audioData['data']) . ' bytes']);
-            
-            // Criar diretório se não existir
+
+            $rawSize = strlen($audioData['data']);
+            $maxSize = 25 * 1024 * 1024; // 25MB
+            Log::info('✅ Áudio baixado', ['size' => $rawSize . ' bytes']);
+
+            if ($rawSize > $maxSize) {
+                Log::error('❌ Áudio excede limite de 25MB', ['size' => $rawSize]);
+                return '[Áudio muito grande para processar]';
+            }
+
             $tempDir = storage_path('app/temp');
             if (!is_dir($tempDir)) {
                 mkdir($tempDir, 0755, true);
                 Log::info('📁 Diretório temp criado', ['path' => $tempDir]);
             }
-            
-            // Salvar temporariamente
+
             $audioPath = $tempDir . '/audio_' . time() . '_' . uniqid() . '.ogg';
             file_put_contents($audioPath, $audioData['data']);
-            
             Log::info('💾 Áudio salvo temporariamente', ['path' => $audioPath]);
-            
-            // Transcrever
-            $transcription = $this->openai->transcribeAudio($audioPath);
-            
-            // Limpar arquivo
+
+            $mp3Path = $this->convertOggToMp3($audioPath);
             @unlink($audioPath);
-            
+
+            if (!$mp3Path) {
+                Log::error('❌ Falha na conversão para MP3');
+                return '[Não foi possível converter o áudio]';
+            }
+
+            $transcription = $this->openai->transcribeAudio($mp3Path);
+            @unlink($mp3Path);
+
             if ($transcription['success']) {
                 Log::info('✅ Transcrição bem-sucedida', [
                     'text' => $transcription['text'],
                     'length' => strlen($transcription['text'])
                 ]);
-                
-                // Atualizar mensagem com transcrição
-                Mensagem::where('id', $mensagemId)->update([
-                    'transcription' => $transcription['text']
-                ]);
-                
+
+                // Transcrição salva no histórico via content da mensagem
                 return $transcription['text'];
             }
-            
+
             Log::error('❌ Falha na transcrição', ['details' => $transcription]);
             return '[Não foi possível transcrever o áudio]';
-            
+
         } catch (\Exception $e) {
             Log::error('❌ Erro ao transcrever áudio', [
                 'error' => $e->getMessage(),
@@ -879,6 +889,46 @@ class WhatsAppService
             ]);
             return '[Erro ao processar áudio]';
         }
+    }
+
+    private function convertOggToMp3(string $audioPath): ?string
+    {
+        // Converter localmente com FFmpeg (não via HTTP para evitar deadlock)
+        $ffmpegPath = 'C:\\ffmpeg\\bin\\ffmpeg.exe';
+        
+        if (!file_exists($ffmpegPath)) {
+            Log::error('❌ FFmpeg não encontrado', ['path' => $ffmpegPath]);
+            return null;
+        }
+        
+        $tempDir = storage_path('app/temp');
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+        
+        $mp3Path = $tempDir . '/audio_' . time() . '_' . uniqid() . '.mp3';
+        
+        // Comando FFmpeg para converter OGG -> MP3
+        $cmd = $ffmpegPath . " -y -i " . escapeshellarg($audioPath) . " -ar 44100 -ac 2 -b:a 192k " . escapeshellarg($mp3Path) . " 2>&1";
+        
+        Log::info('🔄 Convertendo áudio localmente', ['cmd' => $cmd]);
+        
+        exec($cmd, $output, $returnCode);
+        
+        if (!file_exists($mp3Path) || filesize($mp3Path) === 0) {
+            Log::error('❌ Falha na conversão para MP3', [
+                'return_code' => $returnCode,
+                'ffmpeg_output' => implode("\n", $output)
+            ]);
+            return null;
+        }
+        
+        Log::info('✅ Áudio convertido para MP3', [
+            'path' => $mp3Path,
+            'size' => filesize($mp3Path)
+        ]);
+        
+        return $mp3Path;
     }
     
     /**
@@ -910,7 +960,7 @@ class WhatsAppService
     {
         $allowed = [
             'nome', 'budget_min', 'budget_max', 'localizacao', 'quartos', 'suites', 'garagem', 'caracteristicas_desejadas',
-            'cpf', 'renda_mensal', 'estado_civil', 'composicao_familiar', 'profissao', 'fonte_renda',
+            'renda_mensal', 'estado_civil', 'composicao_familiar', 'profissao', 'fonte_renda',
             'financiamento_status', 'prazo_compra', 'objetivo_compra', 'preferencia_tipo_imovel', 'preferencia_bairro',
             'preferencia_lazer', 'preferencia_seguranca', 'observacoes_cliente'
         ];
@@ -935,8 +985,6 @@ class WhatsAppService
                 $value = $this->normalizeNumericValue($value);
             } elseif (in_array($field, $integers, true)) {
                 $value = (int) preg_replace('/[^0-9-]/', '', (string) $value);
-            } elseif ($field === 'cpf') {
-                $value = $this->sanitizeCpfValue($value);
             } else {
                 $value = trim((string) $value);
             }
@@ -1528,7 +1576,7 @@ class WhatsAppService
         }
         
         $leadData = [
-            'nome' => $dados['profile_name'],
+            'nome' => $dados['profile_name'] ?: 'Contato WhatsApp',
             'whatsapp_name' => $dados['profile_name'],
             'localizacao' => $localizacao,
             'status' => 'novo',
@@ -1578,7 +1626,9 @@ class WhatsAppService
      */
     private function cleanPhoneNumber($phone)
     {
-        return str_replace('whatsapp:', '', $phone);
+        // Remove 'whatsapp:' e quaisquer espaços
+        $cleaned = str_replace(['whatsapp:', ' '], '', $phone);
+        return trim($cleaned);
     }
 
     private function isPortalChannel(string $telefone, ?Conversa $conversa): bool

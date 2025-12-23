@@ -49,13 +49,16 @@ Use apenas informações confirmadas. Se faltar algum dado relevante, sinalize c
     public function transcribeAudio($audioPath)
     {
         $url = 'https://api.openai.com/v1/audio/transcriptions';
-        
-        $file = new \CURLFile($audioPath, 'audio/ogg', 'audio.ogg');
-        
+
+        // Usa MP3 após conversão para melhor compatibilidade
+        $file = new \CURLFile($audioPath, 'audio/mpeg', 'audio.mp3');
+
         $postFields = [
             'file' => $file,
             'model' => 'whisper-1',
-            'language' => 'pt'
+            'language' => 'pt',
+            'response_format' => 'json',
+            'temperature' => 0.2
         ];
         
         $ch = curl_init();
@@ -115,7 +118,6 @@ Extraia SEMPRE um JSON com as seguintes chaves (use null se não houver dado):
   \"suites\": número inteiro,
   \"garagem\": número inteiro,
   \"caracteristicas_desejadas\": string,
-  \"cpf\": CPF apenas com 11 dígitos (sem pontos ou traços),
   \"renda_mensal\": número (apenas dígitos, sem formatação),
   \"estado_civil\": string,
   \"composicao_familiar\": string,
@@ -133,15 +135,13 @@ Extraia SEMPRE um JSON com as seguintes chaves (use null se não houver dado):
 
 ⚠️ REGRAS CRÍTICAS:
 1. Se houver múltiplos valores, SEMPRE escolha o MAIS RECENTE (última mensagem tem prioridade)
-2. Extraia CPF mesmo sem formatação (ex: 91963214234)
-3. Renda mensal: converta valores como \"150000\" ou \"5 mil\" para número puro
-4. NÃO invente informações - retorne null se não tiver certeza
-5. Retorne SOMENTE o JSON, sem texto adicional
+2. Renda mensal: converta valores como 150000 ou 5 mil para número puro
+3. NÃO invente informações - retorne null se não tiver certeza
+4. Retorne SOMENTE o JSON, sem texto adicional
 
 Exemplos de extração:
-- Cliente: \"Meu CPF é 91963214234\" → {\"cpf\": \"91963214234\"}
-- Cliente: \"150000\" ou \"minha renda mensal é de 150000\" → {\"renda_mensal\": 150000}
-- Cliente: \"quero 3 quartos\" → {\"quartos\": 3}";
+- Cliente: 150000 ou minha renda mensal é de 150000 → renda_mensal: 150000
+- Cliente: quero 3 quartos → quartos: 3";
 
         $userPrompt = "Conversa:\n\n" . $conversationHistory . "\n\nResponda apenas com o JSON solicitado. FOQUE NAS ÚLTIMAS MENSAGENS!";
         
@@ -187,7 +187,6 @@ Exemplos de extração:
             // Prioridade 1: Dados cadastrais básicos (mais importantes)
             if (empty($leadData['nome'])) $dadosFaltantes[] = 'nome';
             if (empty($leadData['telefone'])) $dadosFaltantes[] = 'telefone';
-            if (empty($leadData['cpf'])) $dadosFaltantes[] = 'CPF';
             if (empty($leadData['email'])) $dadosFaltantes[] = 'email';
             
             // Prioridade 2: Dados financeiros (qualificação)
@@ -209,7 +208,7 @@ Exemplos de extração:
             if (empty($leadData['preferencia_bairro'])) $dadosFaltantes[] = 'bairro preferido';
         } else {
             $dadosFaltantes = [
-                'nome', 'telefone', 'CPF', 'email', 'renda mensal', 'orçamento mínimo', 'orçamento máximo',
+                'nome', 'telefone', 'email', 'renda mensal', 'orçamento mínimo', 'orçamento máximo',
                 'estado civil', 'composição familiar', 'profissão', 'fonte de renda',
                 'localização desejada', 'quantidade de quartos', 'objetivo da compra',
                 'tipo de imóvel', 'bairro preferido'
@@ -223,19 +222,16 @@ Exemplos de extração:
             $camposPrioritarios = array_slice($dadosFaltantes, 0, 5);
             
             $dataCollectionContext = "\n\n⚠️ DADOS FALTANTES DO CLIENTE (em ordem de prioridade): " . implode(', ', $camposPrioritarios) . "\n";
-            $dataCollectionContext .= "⚠️ INSTRUÇÃO: Em TODA resposta, de forma SUTIL e GENTIL, pergunte por UM dos dados faltantes.\n";
+            $dataCollectionContext .= "⚠️ INSTRUÇÃO: Colete dados de forma NATURAL seguindo o fluxo do treinamento.\n";
             $dataCollectionContext .= "⚠️ Priorize sempre o PRIMEIRO dado faltante da lista acima.\n";
-            $dataCollectionContext .= "⚠️ Exemplos de abordagem:\n";
-            $dataCollectionContext .= "  - CPF: 'Ah, me passa seu CPF pra gente agilizar depois?'\n";
-            $dataCollectionContext .= "  - Email: 'Qual seu email pra te enviar os detalhes?'\n";
-            $dataCollectionContext .= "  - Renda: 'Pra te ajudar melhor, qual sua renda mensal?'\n";
-            $dataCollectionContext .= "  - Orçamento: 'Qual o valor máximo que você pode investir?'\n";
-            $dataCollectionContext .= "  - Estado civil: 'Você é casado(a)? Isso ajuda no financiamento'\n";
-            $dataCollectionContext .= "  - Profissão: 'Qual sua profissão? Só pra adequar as opções'\n";
-            $dataCollectionContext .= "  - Localização: 'Qual bairro ou região você prefere?'\n";
-            $dataCollectionContext .= "  - Quartos: 'Quantos quartos você precisa no mínimo?'\n";
-            $dataCollectionContext .= "  - Objetivo: 'É pra morar ou investimento?'\n";
-            $dataCollectionContext .= "⚠️ SEMPRE pergunte ao final da resposta, não no meio!\n";
+            $dataCollectionContext .= "⚠️ Exemplos de abordagem (SEMPRE com sugestão de resposta):\n";
+            $dataCollectionContext .= "  - Nome: 'Só preciso do seu nome completo para registrar. Por exemplo: \"Meu nome é Ana Paula Souza\"'\n";
+            $dataCollectionContext .= "  - Email: 'Qual seu email? Pode ser: \"meu.email@gmail.com\"'\n";
+            $dataCollectionContext .= "  - Renda: 'Me conte sobre sua renda. Exemplo: \"Tenho carteira assinada, ganho R\$4.000\" ou \"Sou autônoma\"'\n";
+            $dataCollectionContext .= "  - Orçamento: 'Qual o valor máximo? Pode dizer: \"Até 450 mil\" ou \"Entre 300 e 400 mil\"'\n";
+            $dataCollectionContext .= "  - Localização: 'Qual bairro ou região? Exemplo: \"Na Pampulha\" ou \"Qualquer bairro central\"'\n";
+            $dataCollectionContext .= "  - Quartos: 'Quantos quartos? Por exemplo: \"Preciso de 3 quartos\" ou \"2 quartos está bom\"'\n";
+            $dataCollectionContext .= "⚠️ SEMPRE sugira como o cliente pode responder!\n";
         }
         
         // Preparar contexto de imóveis disponíveis
@@ -304,45 +300,67 @@ Exemplos de extração:
             $propertiesContext .= "⚠️ FOTOS: Quando o cliente pedir fotos de um imóvel, ENVIE os links diretamente se disponíveis acima!\n";
         }
         
-        $systemPrompt = "Você é {$assistantName}, atendente virtual da Exclusiva Lar Imóveis, uma imobiliária especializada.
+        $systemPrompt = "Você é {$assistantName}, assistente imobiliário inteligente e empático da Exclusiva Lar Imóveis.
 
-Seu objetivo é:
-- Se apresentar como {$assistantName} e confirmar como o cliente prefere ser chamado
-- Ser cordial, profissional mas CASUAL e leve na conversa
-- **COLETAR DADOS IMPORTANTES de forma PERSISTENTE mas GENTIL**
-- SEMPRE terminar sua resposta perguntando por UM dado faltante (veja contexto abaixo)
-- Quando o cliente fornecer CPF ou renda, AGRADEÇA e confirme que registrou
-- Não fazer muitas perguntas de uma vez - 1 pergunta de dados por resposta
-- Quando receber documentos, avisar que um corretor validará
-- Manter tom conversacional e amigável{$audioInstruction}
+🎯 SEU PAPEL:
+- Conduzir TOTALMENTE o usuário em todas as etapas do atendimento
+- NUNCA deixar o usuário com dúvida
+- SEMPRE sugerir exemplos de resposta
+- NUNCA quebrar o fluxo
+- Agir como diretor e roteirista da conversa
+- Aplicar todas as regras do funil imobiliário brasileiro
+
+📋 REGRAS DE OURO:
+1. SEMPRE mostre imóveis ANTES de pedir dados pessoais (quando aplicável)
+2. Ao listar imóveis, use NUMERAÇÃO (1️⃣, 2️⃣, 3️⃣) e formato claro
+3. SEMPRE sugira como o cliente pode responder (exemplos explícitos)
+4. Uma pergunta de cada vez - não sobrecarregue
+5. Seja CASUAL mas profissional{$audioInstruction}
+
 {$propertiesContext}
+
+📝 FLUXO DE ATENDIMENTO:
+
+ETAPA 1 - ENTENDER A NECESSIDADE:
+- Cliente menciona interesse? → Mostre opções IMEDIATAMENTE (1️⃣, 2️⃣, 3️⃣)
+- Sugira: \"Me diga, por exemplo: 'Gostei da 1 e da 3' ou 'Quero saber mais sobre o primeiro'\"
+
+ETAPA 2 - APÓS INTERESSE EM IMÓVEL:
+- Peça nome completo: \"Só preciso do seu nome completo para registrar o atendimento, assim como: 'Meu nome é Ana Paula Souza'\"
+
+ETAPA 3 - QUALIFICAÇÃO FINANCEIRA:
+- Pergunte sobre renda: \"Me conte sobre sua renda, por exemplo: 'Tenho carteira assinada, ganho R$4.000' ou 'Sou autônoma'\"
+
+ETAPA 4 - DOCUMENTAÇÃO (se aplicável):
+- Peça docs: \"Envie fotos dos documentos: RG/CNH (frente e verso), 3 últimos contra-cheques, comprovante de endereço. Você pode dizer: 'Vou te enviar agora'\"
+
 {$dataCollectionContext}
 
-REGRAS CRÍTICAS:
-- Respostas curtas e diretas (máximo 3 linhas)
-- ⚠️ SEMPRE termine com uma pergunta sobre um dado faltante (CPF, renda, orçamento, localização ou quartos)
-- ⚠️ Seja SUTIL: não diga \"preciso\" ou \"é obrigatório\", diga \"pra te ajudar melhor\" ou \"só pra agilizar\"
-- ⚠️ NUNCA diga que não temos um imóvel sem CONSULTAR a lista acima
-- ⚠️ Quando o cliente pedir X quartos, considere TOTAL (dormitórios + suítes)
-- ⚠️ FOTOS: Se houver links de fotos acima (começando com http), ENVIE-OS diretamente
-- ⚠️ FOTOS: Se NÃO houver links acima, diga: 'Vou solicitar as fotos deste imóvel para o corretor e te envio em breve!'
-- ⚠️ NUNCA invente links de fotos - apenas envie se estiverem listados acima
-- ⚠️ Se cliente informar CPF, SEMPRE confirme: 'Perfeito! CPF XXX.XXX.XXX-XX registrado ✅'
-- ⚠️ Se cliente informar renda, SEMPRE confirme: 'Ótimo! Renda de R$ X.XXX registrada ✅'
-- ⚠️ Ao listar imóveis: Código, Valor, Bairro, Quartos (dormitórios/suítes) e 2-3 diferenciais
-- Sobre imóveis específicos: responda OBJETIVAMENTE o que souber
-- Não prometa enviar imóveis, fotos ou detalhes se não conseguir entregar na MESMA resposta. Se precisar de ajuda humana, diga que um corretor enviará.
-- Não invente dados - se não souber, diga que o corretor irá responder
+⚠️ FORMATAÇÃO DE IMÓVEIS:
+Sempre liste assim:
+1️⃣ [Tipo] [quartos]q, [vagas]v, [área]m², R$ [valor] — [diferencial]
+2️⃣ [Tipo] [quartos]q, [área]m², [característica], R$ [valor] — [localização]
 
-EXEMPLOS DE BOA ABORDAGEM:
-Cliente: 'Quero um apartamento de 2 quartos'
-Você: 'Temos várias opções de 2 quartos! Ah, e qual bairro você prefere? 😊'
+Exemplo:
+1️⃣ Apartamento 2 quartos, 1 vaga, 68m², R$ 299.000 — Próximo à lagoa
+2️⃣ Casa 3 quartos, 2 vagas, 120m², R$ 450.000 — Condomínio com lazer
 
-Cliente: 'Tem algum no Centro?'
-Você: 'Sim! Temos apartamentos no Centro a partir de R$ 300mil. E só pra eu te ajudar melhor, qual sua renda mensal?'
+🎤 SUGESTÕES DE RESPOSTA:
+- SEMPRE termine com exemplo de como o cliente pode responder
+- Exemplos: \"Você pode dizer: 'Gostei da 1' ou 'Quero ver mais opções'\"
+- Se cliente hesitar: \"Sem problemas! Posso te mostrar em outras faixas. Pode ser?\"
 
-Cliente: 'Minha renda é 5 mil'
-Você: 'Ótimo! Renda de R$ 5.000 registrada ✅ Me passa seu CPF também pra agilizar?'";
+❌ NÃO FAÇA:
+- Não invente dados de imóveis
+- Não prometa enviar algo que não pode entregar na mesma resposta
+- Não peça documentos antes de mostrar imóveis
+- Não faça múltiplas perguntas de uma vez
+
+✅ SEMPRE FAÇA:
+- Mostre opções primeiro
+- Sugira exemplos de resposta
+- Confirme dados recebidos (\"Perfeito! Renda de R$ 5.000 registrada ✅\")
+- Mantenha tom empático e guiador";
 
         $userPrompt = ($context ? "Contexto anterior:\n$context\n\n" : "") . "Cliente: $message\n\nResponda:";
         

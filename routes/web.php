@@ -33,6 +33,10 @@ $router->get('/', function () {
 
 $router->post('/github/webhook', 'GitHubWebhookController@handle');
 
+// Conversor de áudio (OGG -> MP3)
+$router->post('/conversor', 'AudioConverterController@convert');
+$router->post('/conversor/index.php', 'AudioConverterController@convert'); // Compatibilidade
+
 // Auth API routes
 $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('/auth/login', 'AuthController@login');

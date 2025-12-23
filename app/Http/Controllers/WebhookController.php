@@ -63,13 +63,8 @@ class WebhookController extends Controller
             Log::info('?? Resultado:', $result);
             Log::info('ННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН');
 
-<<<<<<< HEAD
-            // Resposta vazia para evitar qualquer eco no provedor (Twilio ignora o corpo)
-            return $this->twilioEmptyResponse();
-=======
             // Resposta vazia para evitar qualquer eco no provedor (Twilio ignora o corpo)
             return response('', 200);
->>>>>>> 34cb1ba (chore: return empty webhook response)
 
         } catch (\Throwable $e) {
             Log::error('ERRO NO WEBHOOK', [
@@ -82,13 +77,8 @@ class WebhookController extends Controller
             ]);
 
             // Retornar 200 para evitar reenvio do Twilio
-<<<<<<< HEAD
-            // Mesmo em erro, responder vazio para impedir reenvio e evitar eco
-            return $this->twilioEmptyResponse();
-=======
             // Mesmo em erro, responder vazio para impedir reenvio e evitar eco
             return response('', 200);
->>>>>>> 34cb1ba (chore: return empty webhook response)
         }
     }
     

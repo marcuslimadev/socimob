@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🟢 Teste Webhook WhatsApp - Ngrok</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-6 max-w-4xl">
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">🟢 Teste Webhook WhatsApp</h1>
+            <p class="text-gray-600">Simule mensagens chegando no webhook via ngrok</p>
+        </div>
+
+        <!-- Configuração -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">⚙️ Configuração</h2>
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">URL do Ngrok:</label>
+                <input type="text" id="ngrokUrl" value="https://99a3345711a3.ngrok-free.app" 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="text-sm text-gray-600">
+                <p>📍 Endpoint completo: <code id="fullUrl" class="bg-gray-100 px-2 py-1 rounded">https://99a3345711a3.ngrok-free.app/webhook/whatsapp</code></p>
+            </div>
+        </div>
+
+        <!-- Teste 1: Twilio -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">📱 Teste 1: Mensagem Twilio</h2>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">De (número):</label>
+                    <input type="text" id="twilioFrom" value="+5521987654321" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Para (número):</label>
+                    <input type="text" id="twilioTo" value="+5521999887766" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Nome do contato:</label>
+                <input type="text" id="twilioName" value="João da Silva" 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Mensagem:</label>
+                <textarea id="twilioMessage" rows="3" 
+                          class="w-full px-4 py-2 border border-gray-300 rounded-lg">Olá! Estou interessado em um imóvel de 3 quartos na Barra da Tijuca.</textarea>
+            </div>
+            <button onclick="sendTwilioWebhook()" 
+                    class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg">
+                🚀 Enviar Mensagem Twilio
+            </button>
+            <div id="twilioResult" class="mt-4"></div>
+        </div>
+
+        <!-- Teste 2: Evolution API -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">📱 Teste 2: Mensagem Evolution API</h2>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Número (remoteJid):</label>
+                    <input type="text" id="evolutionFrom" value="5521987654321" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2">Nome (pushName):</label>
+                    <input type="text" id="evolutionName" value="Maria Santos" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 font-medium mb-2">Mensagem:</label>
+                <textarea id="evolutionMessage" rows="3" 
+                          class="w-full px-4 py-2 border border-gray-300 rounded-lg">Gostaria de agendar uma visita ao apartamento anunciado no site.</textarea>
+            </div>
+            <button onclick="sendEvolutionWebhook()" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg">
+                🚀 Enviar Mensagem Evolution
+            </button>
+            <div id="evolutionResult" class="mt-4"></div>
+        </div>
+
+        <!-- Logs -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">📋 Logs de Teste</h2>
+            <div id="logs" class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm h-64 overflow-y-auto">
+                <p>> Aguardando testes...</p>
+            </div>
+            <button onclick="clearLogs()" class="mt-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">
+                🗑️ Limpar Logs
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Atualizar URL completa
+        document.getElementById('ngrokUrl').addEventListener('input', function() {
+            document.getElementById('fullUrl').textContent = this.value + '/webhook/whatsapp';
+        });
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString('pt-BR');
+            const colors = {
+                info: 'text-blue-400',
+                success: 'text-green-400',
+                error: 'text-red-400',
+                warning: 'text-yellow-400'
+            };
+            const color = colors[type] || 'text-green-400';
+            logsDiv.innerHTML += `<p class="${color}">[${timestamp}] ${message}</p>`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '<p>> Logs limpos.</p>';
+        }
+
+        function showResult(elementId, success, message) {
+            const resultDiv = document.getElementById(elementId);
+            resultDiv.className = `mt-4 p-4 rounded-lg ${success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+            resultDiv.innerHTML = `<p class="font-medium">${success ? '✅' : '❌'} ${message}</p>`;
+        }
+
+        async function sendTwilioWebhook() {
+            const ngrokUrl = document.getElementById('ngrokUrl').value;
+            const webhookUrl = ngrokUrl + '/webhook/whatsapp';
+            
+            const payload = {
+                MessageSid: 'SM' + Math.random().toString(36).substring(2, 18),
+                AccountSid: 'AC' + Math.random().toString(36).substring(2, 18),
+                From: 'whatsapp:' + document.getElementById('twilioFrom').value,
+                To: 'whatsapp:' + document.getElementById('twilioTo').value,
+                Body: document.getElementById('twilioMessage').value,
+                ProfileName: document.getElementById('twilioName').value,
+                FromCity: 'Rio de Janeiro',
+                FromState: 'RJ',
+                FromCountry: 'BR',
+                NumMedia: '0'
+            };
+
+            log('🚀 Enviando webhook Twilio...', 'info');
+            log('URL: ' + webhookUrl, 'info');
+            log('Payload: ' + JSON.stringify(payload, null, 2), 'info');
+
+            try {
+                const formBody = Object.keys(payload)
+                    .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(payload[key]))
+                    .join('&');
+
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'User-Agent': 'TwilioProxy/1.1'
+                    },
+                    body: formBody
+                });
+
+                const text = await response.text();
+                
+                if (response.ok) {
+                    log('✅ Webhook Twilio enviado com sucesso! Status: ' + response.status, 'success');
+                    log('Resposta: ' + text, 'success');
+                    showResult('twilioResult', true, 'Mensagem enviada com sucesso!');
+                } else {
+                    log('❌ Erro ao enviar webhook. Status: ' + response.status, 'error');
+                    log('Resposta: ' + text, 'error');
+                    showResult('twilioResult', false, 'Erro: ' + response.status);
+                }
+            } catch (error) {
+                log('❌ Erro: ' + error.message, 'error');
+                showResult('twilioResult', false, 'Erro: ' + error.message);
+            }
+        }
+
+        async function sendEvolutionWebhook() {
+            const ngrokUrl = document.getElementById('ngrokUrl').value;
+            const webhookUrl = ngrokUrl + '/webhook/whatsapp';
+            
+            const payload = {
+                event: 'messages.upsert',
+                instance: 'exclusiva_instance',
+                data: {
+                    key: {
+                        remoteJid: document.getElementById('evolutionFrom').value + '@s.whatsapp.net',
+                        fromMe: false,
+                        id: '3EB0' + Math.random().toString(36).substring(2, 10).toUpperCase()
+                    },
+                    pushName: document.getElementById('evolutionName').value,
+                    message: {
+                        conversation: document.getElementById('evolutionMessage').value
+                    },
+                    messageTimestamp: Math.floor(Date.now() / 1000)
+                }
+            };
+
+            log('🚀 Enviando webhook Evolution API...', 'info');
+            log('URL: ' + webhookUrl, 'info');
+            log('Payload: ' + JSON.stringify(payload, null, 2), 'info');
+
+            try {
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const text = await response.text();
+                
+                if (response.ok) {
+                    log('✅ Webhook Evolution enviado com sucesso! Status: ' + response.status, 'success');
+                    log('Resposta: ' + text, 'success');
+                    showResult('evolutionResult', true, 'Mensagem enviada com sucesso!');
+                } else {
+                    log('❌ Erro ao enviar webhook. Status: ' + response.status, 'error');
+                    log('Resposta: ' + text, 'error');
+                    showResult('evolutionResult', false, 'Erro: ' + response.status);
+                }
+            } catch (error) {
+                log('❌ Erro: ' + error.message, 'error');
+                showResult('evolutionResult', false, 'Erro: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

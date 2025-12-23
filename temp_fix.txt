@@ -1,0 +1,18 @@
+            if (!value) return value;
+
+            // Correções simples de encoding
+            value = value.replace(/ImÃ³veis/g, 'Imóveis');
+            value = value.replace(/ImÃ³vel/g, 'Imóvel');
+            value = value.replace(/imÃ³veis/g, 'imóveis');
+            value = value.replace(/imÃ³vel/g, 'imóvel');
+            value = value.replace(/opÃ§Ãµes/g, 'opções');
+            value = value.replace(/vocÃª/g, 'você');
+            value = value.replace(/DescriÃ§Ã£o/g, 'Descrição');
+            value = value.replace(/descriÃ§Ã£o/g, 'descrição');
+            value = value.replace(/ObservaÃ§Ãµes/g, 'Observações');
+            value = value.replace(/preÃ§o/g, 'preço');
+            value = value.replace(/PreÃ§o/g, 'Preço');
+            value = value.replace(/EndereÃ§o/g, 'Endereço');
+            value = value.replace(/endereÃ§o/g, 'endereço');
+
+            return value;
