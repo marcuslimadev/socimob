@@ -14,7 +14,7 @@
     <style>
         .magazine-book {
             background: var(--bauhaus-cream);
-            border: 4px solid var(--bauhaus-black);
+            border: 4px solid var(--bauhaus-border);
             padding: 32px;
             border-radius: 18px;
             min-height: 520px;
@@ -36,7 +36,7 @@
             padding: 28px;
             transform-origin: left center;
             transition: transform 0.6s ease;
-            border: 4px solid var(--bauhaus-black);
+            border: 4px solid var(--bauhaus-border);
         }
         .magazine-page.flip {
             transform: rotateY(-180deg);
@@ -46,7 +46,7 @@
             border-radius: 12px;
             overflow: hidden;
             min-height: 360px;
-            border: 3px solid var(--bauhaus-black);
+            border: 3px solid var(--bauhaus-border);
         }
         .magazine-photo img {
             width: 100%;
@@ -75,7 +75,7 @@
         }
         .magazine-scroll-card {
             background: #fff;
-            border: 4px solid var(--bauhaus-black);
+            border: 4px solid var(--bauhaus-border);
             border-radius: 14px;
             box-shadow: 8px 8px 0 rgba(0,0,0,0.1);
         }
@@ -116,7 +116,7 @@
     <!-- Hero Section -->
     <section class="py-20">
         <div class="container mx-auto px-4 text-center">
-            <div class="inline-flex items-center gap-2 bg-[var(--bauhaus-yellow)] px-3 py-2 border-4 border-[var(--bauhaus-black)] mb-4 font-black uppercase">Catálogo Bauhaus</div>
+            <div class="inline-flex items-center gap-2 bg-[var(--bauhaus-yellow)] px-3 py-2 border-4 border-[var(--bauhaus-border)] mb-4 font-black uppercase">Catálogo Bauhaus</div>
             <h2 id="heroSlogan" class="bauhaus-hero-title font-black mb-4">
                 Encontre o Imóvel dos Seus Sonhos
             </h2>
@@ -207,7 +207,7 @@
 
         <!-- Modal Detalhes do Imovel -->
     <div id="modalImovel" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50">
-        <div class="relative w-full h-full bg-white border-4 border-[var(--bauhaus-black)]">
+        <div class="relative w-full h-full bg-white border-4 border-[var(--bauhaus-border)]">
             <button onclick="fecharModal()" class="absolute top-4 right-4 bauhaus-modal-close flex items-center justify-center text-lg z-20">
                 X
             </button>
@@ -336,7 +336,7 @@
 
     <div id="modalChat" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
         <div class="bg-white bauhaus-panel w-full max-w-2xl h-[80vh] flex flex-col">
-            <div class="flex justify-between items-center p-4 border-b border-[var(--bauhaus-black)]">
+            <div class="flex justify-between items-center p-4 border-b border-[var(--bauhaus-border)]">
                 <div>
                     <h3 class="text-xl font-black text-[var(--bauhaus-black)] uppercase">Atendimento</h3>
                     <p id="chatStatus" class="text-xs text-[var(--bauhaus-ink)]">IA ativa</p>
@@ -344,7 +344,7 @@
                 <button onclick="fecharChat()" class="bauhaus-modal-close flex items-center justify-center text-lg">x</button>
             </div>
             <div id="chatMensagens" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[var(--bauhaus-cream)]"></div>
-            <form id="chatForm" class="p-4 border-t border-[var(--bauhaus-black)] flex gap-3">
+            <form id="chatForm" class="p-4 border-t border-[var(--bauhaus-border)] flex gap-3">
                 <input type="text" id="chatInput" placeholder="Escreva sua mensagem..." class="flex-1 bauhaus-input">
                 <button type="submit" class="bauhaus-button">Enviar</button>
             </form>
@@ -461,7 +461,7 @@
             const contactPhone = fixText(tenantConfig.contact_phone || '');
             const contactEmail = fixText(tenantConfig.contact_email || '');
             allowedFinalidades = Array.isArray(tenantConfig.portal_finalidades)
-                ? tenantConfig.portal_finalidades
+                ? tenantConfig.portal_finalidades.map(normalizeFinalidade).filter(Boolean)
                 : null;
 
             $('#pageTitle').text(tenantName || 'Portal de Im\u00f3veis');
@@ -767,7 +767,7 @@
                     <div class="magazine-price">R$ ${formatPrice(imovel.preco)}</div>
                     <p class="text-sm text-slate-600 leading-relaxed">${descricao}</p>
                     <div class="mt-auto flex flex-wrap gap-3">
-                        <button class="border-2 border-slate-900 px-4 py-2 font-bold uppercase" onclick="abrirModal(${imovel.id})">Ver detalhes</button>
+                        <button class="border-2 border-slate-300 px-4 py-2 font-bold uppercase" onclick="abrirModal(${imovel.id})">Ver detalhes</button>
                     </div>
                 </div>
             `;
@@ -998,7 +998,7 @@
             const icon = liked ? '❤' : '♡';
             const count = Number(imovel.likes_count || 0);
             return `
-                <button class="like-btn flex items-center gap-2 px-2 py-1 border-2 border-slate-900 text-slate-900 font-bold text-xs" onclick="event.stopPropagation(); toggleLike(${imovel.id});">
+                <button class="like-btn flex items-center gap-2 px-2 py-1 border-2 border-slate-300 text-slate-900 font-bold text-xs" onclick="event.stopPropagation(); toggleLike(${imovel.id});">
                     <span>${icon}</span>
                     <span>${count}</span>
                 </button>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\Property;
 use App\Services\PropertyLikesTablesManager;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -67,7 +68,10 @@ class PortalController extends Controller
         $tenant = Tenant::find($tenantId);
         $config = $tenant ? $tenant->config : null;
         $allowedFinalidades = $config && is_array($config->portal_finalidades)
-            ? $config->portal_finalidades
+            ? array_values(array_filter($config->portal_finalidades))
+            : null;
+        $normalizedFinalidades = $allowedFinalidades
+            ? array_map(fn ($value) => Str::lower($value), $allowedFinalidades)
             : null;
 
         if (is_array($allowedFinalidades) && count($allowedFinalidades) === 0) {
@@ -83,8 +87,8 @@ class PortalController extends Controller
             ->where('exibir_imovel', true)
             ->orderBy('created_at', 'desc');
 
-        if (is_array($allowedFinalidades) && count($allowedFinalidades) > 0) {
-            $imoveisQuery->whereIn('finalidade_imovel', $allowedFinalidades);
+        if ($normalizedFinalidades && count($normalizedFinalidades) > 0) {
+            $imoveisQuery->whereIn(DB::raw('LOWER(finalidade_imovel)'), $normalizedFinalidades);
         }
 
         $imoveis = $imoveisQuery->get();
@@ -124,7 +128,10 @@ class PortalController extends Controller
         $tenant = Tenant::find($tenantId);
         $config = $tenant ? $tenant->config : null;
         $allowedFinalidades = $config && is_array($config->portal_finalidades)
-            ? $config->portal_finalidades
+            ? array_values(array_filter($config->portal_finalidades))
+            : null;
+        $normalizedFinalidades = $allowedFinalidades
+            ? array_map(fn ($value) => Str::lower($value), $allowedFinalidades)
             : null;
 
         $imovel = Property::where('tenant_id', $tenantId)
@@ -136,8 +143,8 @@ class PortalController extends Controller
         if (!$imovel) {
             return response()->json(['error' => 'Property not found'], 404);
         }
-        if (is_array($allowedFinalidades) && count($allowedFinalidades) > 0) {
-            if (!in_array($imovel->finalidade_imovel, $allowedFinalidades, true)) {
+        if ($normalizedFinalidades && count($normalizedFinalidades) > 0) {
+            if (!in_array(Str::lower($imovel->finalidade_imovel), $normalizedFinalidades, true)) {
                 return response()->json(['error' => 'Property not found'], 404);
             }
         }

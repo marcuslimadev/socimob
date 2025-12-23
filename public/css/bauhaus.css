@@ -5,6 +5,7 @@
     --bauhaus-blue: #0046ad;
     --bauhaus-yellow: #f2c230;
     --bauhaus-black: #0f0f0f;
+    --bauhaus-border: #d1d5db;
     --bauhaus-cream: #f5f1e5;
     --bauhaus-ink: #1f1f1f;
 }
@@ -48,7 +49,7 @@ body.bauhaus-page {
     color: var(--bauhaus-black);
     padding: 8px 14px;
     font-weight: 700;
-    border: 1px solid var(--bauhaus-black);
+    border: 1px solid var(--bauhaus-border);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-radius: 14px;
@@ -56,14 +57,14 @@ body.bauhaus-page {
 
 .bauhaus-card {
     background: #fff;
-    border: 1px solid var(--bauhaus-black);
+    border: 1px solid var(--bauhaus-border);
     box-shadow: 6px 10px 26px rgba(0, 0, 0, 0.12);
     border-radius: 16px;
 }
 
 .bauhaus-panel {
     background: #fff;
-    border: 1px solid var(--bauhaus-black);
+    border: 1px solid var(--bauhaus-border);
     box-shadow: 6px 12px 28px rgba(0, 0, 0, 0.12);
     border-radius: 18px;
 }
@@ -75,7 +76,7 @@ body.bauhaus-page {
     gap: 8px;
     background: var(--bauhaus-red);
     color: #fff;
-    border: 1px solid var(--bauhaus-black);
+    border: 1px solid var(--bauhaus-border);
     padding: 12px 18px;
     font-weight: 800;
     letter-spacing: 0.06em;
@@ -97,14 +98,14 @@ body.bauhaus-page {
 .bauhaus-button.ghost {
     background: #fff;
     color: var(--bauhaus-black);
-    border-color: var(--bauhaus-black);
+    border-color: var(--bauhaus-border);
 }
 
 .bauhaus-chip {
     background: var(--bauhaus-yellow);
     color: var(--bauhaus-black);
     padding: 6px 12px;
-    border: 1px solid var(--bauhaus-black);
+    border: 1px solid var(--bauhaus-border);
     font-weight: 700;
     display: inline-flex;
     align-items: center;
@@ -113,7 +114,7 @@ body.bauhaus-page {
 }
 
 .bauhaus-input {
-    border: 1px solid var(--bauhaus-black);
+    border: 1px solid var(--bauhaus-border);
     padding: 12px;
     background: #fff;
     color: var(--bauhaus-ink);
@@ -127,7 +128,7 @@ body.bauhaus-page {
 }
 
 .bauhaus-select {
-    border: 1px solid var(--bauhaus-black);
+    border: 1px solid var(--bauhaus-border);
     padding: 12px;
     background: #fff;
     color: var(--bauhaus-ink);
@@ -164,7 +165,7 @@ body.bauhaus-page {
     gap: 10px;
     background: #fff;
     padding: 10px 14px;
-    border: 1px solid var(--bauhaus-black);
+    border: 1px solid var(--bauhaus-border);
     font-weight: 700;
     border-radius: 14px;
 }
@@ -172,7 +173,7 @@ body.bauhaus-page {
 .bauhaus-pill {
     background: #fff;
     padding: 6px 10px;
-    border: 1px solid var(--bauhaus-black);
+    border: 1px solid var(--bauhaus-border);
     font-weight: 700;
     text-transform: uppercase;
     border-radius: 12px;
@@ -191,12 +192,12 @@ body.bauhaus-page {
 }
 
 .bauhaus-table-wrapper table.dataTable tbody td {
-    border-bottom: 1px solid var(--bauhaus-black);
+    border-bottom: 1px solid var(--bauhaus-border);
 }
 
 .bauhaus-modal-close {
     background: #fff;
-    border: 1px solid var(--bauhaus-black);
+    border: 1px solid var(--bauhaus-border);
     border-radius: 50%;
     width: 44px;
     height: 44px;
