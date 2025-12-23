@@ -330,16 +330,24 @@ class TenantSettingsController extends Controller
             'twilio_whatsapp_from' => 'nullable|string',
         ]);
 
-                $tenantData = array_filter($validated, function ($value, $key) {
-            return in_array($key, ['api_key_pagar_me', 'api_key_apm_imoveis', 'api_key_neca', 'api_key_openai'], true);
+        // Log para debug
+        \Log::info('updateApiKeys - Dados recebidos:', $validated);
+
+        // Atualizar dados na tabela tenants (apenas api keys principais)
+        $tenantData = array_filter($validated, function ($value, $key) {
+            return in_array($key, ['api_key_pagar_me', 'api_key_apm_imoveis', 'api_key_neca', 'api_key_openai'], true) && !is_null($value);
         }, ARRAY_FILTER_USE_BOTH);
 
         if (!empty($tenantData)) {
             $tenant->update($tenantData);
+            \Log::info('updateApiKeys - Dados salvos em tenants:', $tenantData);
         }
 
-        $configData = array_filter($validated, function ($value, $key) {
-            return in_array($key, [
+        // Atualizar TODOS os dados em tenant_configs (incluindo Twilio)
+        // Não usar array_filter para permitir valores null/vazios que limpam campos
+        $configData = [];
+        foreach ($validated as $key => $value) {
+            if (in_array($key, [
                 'api_key_pagar_me',
                 'api_key_apm_imoveis',
                 'api_key_neca',
@@ -347,18 +355,24 @@ class TenantSettingsController extends Controller
                 'twilio_account_sid',
                 'twilio_auth_token',
                 'twilio_whatsapp_from',
-            ], true);
-        }, ARRAY_FILTER_USE_BOTH);
+            ], true)) {
+                $configData[$key] = $value; // Inclui null também
+            }
+        }
 
         if (!empty($configData)) {
             $config = $tenant->config;
             if (!$config) {
                 $config = TenantConfig::create(['tenant_id' => $tenant->id]);
+                \Log::info('updateApiKeys - TenantConfig criado para tenant_id:', $tenant->id);
             }
             $config->update($configData);
+            \Log::info('updateApiKeys - Dados salvos em tenant_configs:', $configData);
         }
+
         return response()->json([
             'message' => 'API keys updated successfully',
+            'saved_keys' => array_keys($configData),
         ]);
     }
 
