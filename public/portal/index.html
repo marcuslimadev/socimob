@@ -672,14 +672,14 @@
             });
         }
 
-                                        function setupTableFilters(api) {
+        function setupTableFilters(api) {
             const $table = $(api.table().node());
             const $thead = $table.find('thead');
             $thead.find('tr.table-filter-row').remove();
 
             const $filterRow = $('<tr class="table-filter-row"></tr>');
             // Adiciona um campo de filtro no cabeçalho de cada coluna
-            this.api().columns().every(function () {
+            api.columns().every(function () {
                 const column = this;
                 const $header = $(column.header());
                 const title = $header.text();
