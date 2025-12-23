@@ -63,7 +63,7 @@ class WebhookController extends Controller
             Log::info('?? Resultado:', $result);
             Log::info('ННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН');
 
-            return response('OK', 200)->header('Content-Type', 'text/plain');
+            return $this->twilioEmptyResponse();
 
         } catch (\Throwable $e) {
             Log::error('ERRO NO WEBHOOK', [
@@ -76,7 +76,7 @@ class WebhookController extends Controller
             ]);
 
             // Retornar 200 para evitar reenvio do Twilio
-            return response('OK', 200)->header('Content-Type', 'text/plain');
+            return $this->twilioEmptyResponse();
         }
     }
     
@@ -230,8 +230,13 @@ class WebhookController extends Controller
         
         Log::info('Status callback recebido', $statusData);
         
-        // Atualizar status da mensagem no banco se necess rio
+        // Atualizar status da mensagem no banco se necessário
         
-        return response('OK', 200);
+        return $this->twilioEmptyResponse();
+    }
+
+    private function twilioEmptyResponse()
+    {
+        return response('<Response></Response>', 200)->header('Content-Type', 'application/xml');
     }
 }
