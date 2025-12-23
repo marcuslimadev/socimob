@@ -9,7 +9,7 @@ $router->group(['prefix' => 'api/subscriptions', 'middleware' => ['resolve-tenan
     $router->post('/webhook', 'SubscriptionController@webhook');
 
     // Rotas autenticadas
-    $router->group(['middleware' => ['auth:api', 'validate-tenant-auth']], function () use ($router) {
+    $router->group(['middleware' => ['simple-auth', 'validate-tenant-auth']], function () use ($router) {
         $router->get('/current', 'SubscriptionController@current');
         $router->post('/', 'SubscriptionController@store');
         $router->post('/cancel', 'SubscriptionController@cancel');

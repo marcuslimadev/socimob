@@ -12,7 +12,7 @@ $router->group(['prefix' => 'api/theme', 'middleware' => ['resolve-tenant']], fu
     $router->get('/preview/{themeName}', 'ThemeController@preview');
 
     // Rotas autenticadas
-    $router->group(['middleware' => ['auth:api', 'validate-tenant-auth']], function () use ($router) {
+    $router->group(['middleware' => ['simple-auth', 'validate-tenant-auth']], function () use ($router) {
         $router->put('/', 'ThemeController@update');
         $router->post('/reset', 'ThemeController@reset');
     });

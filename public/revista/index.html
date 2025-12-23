@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Revista de Imóveis</title>
+    <title>Revista de ImÃ³veis</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/css/bauhaus.css">
+    <link rel="stylesheet" href="/css/glow.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js" integrity="sha512-STtG3pExQIaxzmNVpwYBF9KTT+TXiSt3ZasOzambRHbUs4xN5dchQoC5ApcqgO43X2HZBDQzSltdjTB1XnFfFg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         :root {
@@ -22,13 +22,13 @@
         }
         .revista-toolbar {
             background: white;
-            border: 4px solid var(--bauhaus-black);
+            border: 4px solid var(--glow-black);
             border-radius: 18px;
             box-shadow: 10px 10px 0 rgba(0,0,0,0.08);
         }
         .revista-canvas-wrapper {
             background: white;
-            border: 4px solid var(--bauhaus-black);
+            border: 4px solid var(--glow-black);
             border-radius: 18px;
             min-height: 520px;
             position: relative;
@@ -42,7 +42,7 @@
         }
         .revista-scroll-card {
             background: white;
-            border: 4px solid var(--bauhaus-black);
+            border: 4px solid var(--glow-black);
             border-radius: 16px;
             box-shadow: 8px 8px 0 rgba(0,0,0,0.08);
         }
@@ -57,58 +57,58 @@
         }
     </style>
 </head>
-<body class="bauhaus-page">
-    <nav class="bauhaus-nav text-white">
+<body class="glow-page">
+    <nav class="glow-nav text-white">
         <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
             <div class="flex items-center gap-4">
-                <div class="w-11 h-11 rounded-full bg-[var(--bauhaus-yellow)] flex items-center justify-center font-black text-lg">R</div>
+                <div class="w-11 h-11 rounded-full bg-[var(--glow-yellow)] flex items-center justify-center font-black text-lg">R</div>
                 <div>
                     <div class="text-xs uppercase tracking-[0.16em]">Visualizador</div>
-                    <h1 class="text-2xl font-black">Revista de Imóveis</h1>
+                    <h1 class="text-2xl font-black">Revista de ImÃ³veis</h1>
                 </div>
             </div>
             <div class="flex items-center gap-3">
-                <a href="/portal/index.html" class="bauhaus-button ghost">Voltar ao portal</a>
-                <button id="btnFullScreen" class="bauhaus-button hidden md:inline-flex">Tela cheia</button>
+                <a href="/portal/index.html" class="glow-button ghost">Voltar ao portal</a>
+                <button id="btnFullScreen" class="glow-button hidden md:inline-flex">Tela cheia</button>
             </div>
         </div>
     </nav>
 
     <main class="revista-shell">
-        <section class="revista-toolbar bauhaus-panel p-4 md:p-5 mb-6">
+        <section class="revista-toolbar glow-panel p-4 md:p-5 mb-6">
             <div class="flex flex-wrap items-center gap-3 justify-between">
                 <div class="flex items-center gap-3">
-                    <button id="revistaPrev" class="bauhaus-button secondary">Anterior</button>
-                    <button id="revistaNext" class="bauhaus-button secondary">Próxima</button>
-                    <span id="revistaCounter" class="text-sm font-bold uppercase tracking-[0.14em] text-[var(--bauhaus-ink)]">1 / 1</span>
+                    <button id="revistaPrev" class="glow-button secondary">Anterior</button>
+                    <button id="revistaNext" class="glow-button secondary">PrÃ³xima</button>
+                    <span id="revistaCounter" class="text-sm font-bold uppercase tracking-[0.14em] text-[var(--glow-black)]">1 / 1</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <label class="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bauhaus-ink)]">Zoom</label>
+                    <label class="text-xs font-bold uppercase tracking-[0.14em] text-[var(--glow-black)]">Zoom</label>
                     <input id="revistaZoom" type="range" min="0.75" max="1.5" step="0.05" value="1" class="w-32">
-                    <button id="revistaFit" class="bauhaus-button ghost text-sm">Ajustar à tela</button>
+                    <button id="revistaFit" class="glow-button ghost text-sm">Ajustar Ã  tela</button>
                 </div>
             </div>
             <div class="mt-4 flex flex-wrap items-center gap-3">
                 <div class="flex items-center gap-2">
-                    <label for="revistaGoTo" class="text-xs font-bold uppercase tracking-[0.14em] text-[var(--bauhaus-ink)]">Ir para</label>
-                    <input id="revistaGoTo" type="number" min="1" value="1" class="bauhaus-input w-24">
-                    <button id="revistaGo" class="bauhaus-button ghost text-sm">Ir</button>
+                    <label for="revistaGoTo" class="text-xs font-bold uppercase tracking-[0.14em] text-[var(--glow-black)]">Ir para</label>
+                    <input id="revistaGoTo" type="number" min="1" value="1" class="glow-input w-24">
+                    <button id="revistaGo" class="glow-button ghost text-sm">Ir</button>
                 </div>
-                <div class="text-xs uppercase tracking-[0.16em] text-[var(--bauhaus-ink)]">Desktop: efeito flipbook em Canvas / Mobile: rolagem vertical otimizada</div>
+                <div class="text-xs uppercase tracking-[0.16em] text-[var(--glow-black)]">Desktop: efeito flipbook em Canvas / Mobile: rolagem vertical otimizada</div>
             </div>
         </section>
 
         <section id="revistaCanvasWrapper" class="revista-canvas-wrapper">
             <canvas id="revistaCanvas" width="1160" height="760" aria-label="Visualizador de revista"></canvas>
-            <div id="revistaLoading" class="absolute inset-0 flex items-center justify-center text-lg font-bold text-[var(--bauhaus-black)] bg-white/80">
-                Carregando páginas...
+            <div id="revistaLoading" class="absolute inset-0 flex items-center justify-center text-lg font-bold text-[var(--glow-black)] bg-white/80">
+                Carregando pÃ¡ginas...
             </div>
         </section>
 
         <section id="revistaScrollWrapper" class="hidden">
-            <div class="flex items-center gap-2 mb-4 text-[var(--bauhaus-ink)]">
-                <span class="text-xs uppercase tracking-[0.18em] font-black">Modo leitura móvel</span>
-                <div class="h-1 w-16 bg-[var(--bauhaus-yellow)]"></div>
+            <div class="flex items-center gap-2 mb-4 text-[var(--glow-black)]">
+                <span class="text-xs uppercase tracking-[0.18em] font-black">Modo leitura mÃ³vel</span>
+                <div class="h-1 w-16 bg-[var(--glow-yellow)]"></div>
             </div>
             <div id="revistaScrollList" class="space-y-6"></div>
         </section>
@@ -117,3 +117,5 @@
     <script src="/revista/revista.js"></script>
 </body>
 </html>
+
+

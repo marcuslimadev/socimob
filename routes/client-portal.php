@@ -9,7 +9,7 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant']], function
     $router->post('/intentions', 'ClientIntentionController@store');
 
     // Rotas autenticadas
-    $router->group(['middleware' => ['auth:api', 'validate-tenant-auth']], function () use ($router) {
+    $router->group(['middleware' => ['simple-auth', 'validate-tenant-auth']], function () use ($router) {
         
         // Intenções
         $router->get('/intentions', 'ClientIntentionController@index');

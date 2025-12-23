@@ -11,7 +11,7 @@ $router->group(['prefix' => 'api/domain', 'middleware' => ['resolve-tenant']], f
     $router->post('/suggest', 'DomainController@suggest');
 
     // Rotas autenticadas
-    $router->group(['middleware' => ['auth:api', 'validate-tenant-auth']], function () use ($router) {
+    $router->group(['middleware' => ['simple-auth', 'validate-tenant-auth']], function () use ($router) {
         $router->put('/', 'DomainController@update');
         $router->get('/dns', 'DomainController@dnsInfo');
         $router->get('/dns-instructions', 'DomainController@dnsInstructions');

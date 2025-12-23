@@ -1,115 +1,115 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meu Perfil</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/css/bauhaus.css">
+    <link rel="stylesheet" href="/css/glow.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="/app/js/toast.js"></script>
 </head>
-<body class="bauhaus-page">
-    <nav class="bauhaus-nav p-4">
+<body class="glow-page">
+    <nav class="glow-nav p-4">
         <div class="container mx-auto flex justify-between items-center">
             <a href="/portal" class="text-2xl font-bold uppercase tracking-tighter">SOCIMOB</a>
-            <button id="btnLogout" class="bauhaus-button">Sair</button>
+            <button id="btnLogout" class="glow-button">Sair</button>
         </div>
     </nav>
 
     <div class="container mx-auto p-8 space-y-8">
-        <div class="bauhaus-panel p-8">
-            <h2 class="text-3xl font-black text-[var(--bauhaus-black)] uppercase mb-6">Meu Perfil</h2>
+        <div class="glow-panel p-8">
+            <h2 class="text-3xl font-black text-[var(--glow-black)] uppercase mb-6">Meu Perfil</h2>
             <form id="formPerfil" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Nome</label>
-                    <input type="text" id="perfilNome" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Nome</label>
+                    <input type="text" id="perfilNome" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Email</label>
-                    <input type="email" id="perfilEmail" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Email</label>
+                    <input type="email" id="perfilEmail" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Telefone</label>
-                    <input type="text" id="perfilTelefone" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Telefone</label>
+                    <input type="text" id="perfilTelefone" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">WhatsApp</label>
-                    <input type="text" id="perfilWhatsapp" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">WhatsApp</label>
+                    <input type="text" id="perfilWhatsapp" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Quartos desejados</label>
-                    <input type="number" id="perfilQuartos" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Quartos desejados</label>
+                    <input type="number" id="perfilQuartos" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Garagem</label>
-                    <input type="number" id="perfilGaragem" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Garagem</label>
+                    <input type="number" id="perfilGaragem" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Orçamento mínimo</label>
-                    <input type="number" id="perfilBudgetMin" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">OrÃ§amento mÃ­nimo</label>
+                    <input type="number" id="perfilBudgetMin" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Orçamento máximo</label>
-                    <input type="number" id="perfilBudgetMax" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">OrÃ§amento mÃ¡ximo</label>
+                    <input type="number" id="perfilBudgetMax" class="w-full glow-input">
                 </div>
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Localização desejada</label>
-                    <input type="text" id="perfilLocalizacao" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">LocalizaÃ§Ã£o desejada</label>
+                    <input type="text" id="perfilLocalizacao" class="w-full glow-input">
                 </div>
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Características desejadas</label>
-                    <textarea id="perfilCaracteristicas" rows="3" class="w-full bauhaus-input"></textarea>
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">CaracterÃ­sticas desejadas</label>
+                    <textarea id="perfilCaracteristicas" rows="3" class="w-full glow-input"></textarea>
                 </div>
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Observações</label>
-                    <textarea id="perfilObservacoes" rows="3" class="w-full bauhaus-input"></textarea>
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">ObservaÃ§Ãµes</label>
+                    <textarea id="perfilObservacoes" rows="3" class="w-full glow-input"></textarea>
                 </div>
                 <div class="md:col-span-2 flex justify-end">
-                    <button type="submit" class="bauhaus-button">Salvar</button>
+                    <button type="submit" class="glow-button">Salvar</button>
                 </div>
             </form>
         </div>
 
-        <div class="bauhaus-panel p-8">
-            <h3 class="text-2xl font-black text-[var(--bauhaus-black)] uppercase mb-6">Intenção de Compra</h3>
+        <div class="glow-panel p-8">
+            <h3 class="text-2xl font-black text-[var(--glow-black)] uppercase mb-6">IntenÃ§Ã£o de Compra</h3>
             <form id="formIntencao" class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Tipo</label>
-                    <select id="intencaoTipo" class="w-full bauhaus-select">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Tipo</label>
+                    <select id="intencaoTipo" class="w-full glow-select">
                         <option value="venda">Compra</option>
                         <option value="aluguel">Aluguel</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Min quartos</label>
-                    <input type="number" id="intencaoMinQuartos" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Min quartos</label>
+                    <input type="number" id="intencaoMinQuartos" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Max quartos</label>
-                    <input type="number" id="intencaoMaxQuartos" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Max quartos</label>
+                    <input type="number" id="intencaoMaxQuartos" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Cidade</label>
-                    <input type="text" id="intencaoCidade" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Cidade</label>
+                    <input type="text" id="intencaoCidade" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Bairro</label>
-                    <input type="text" id="intencaoBairro" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Bairro</label>
+                    <input type="text" id="intencaoBairro" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Max preço</label>
-                    <input type="number" id="intencaoMaxPreco" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Max preÃ§o</label>
+                    <input type="number" id="intencaoMaxPreco" class="w-full glow-input">
                 </div>
                 <div class="md:col-span-3 flex justify-end">
-                    <button type="submit" class="bauhaus-button">Registrar intenção</button>
+                    <button type="submit" class="glow-button">Registrar intenÃ§Ã£o</button>
                 </div>
             </form>
         </div>
 
-        <div class="bauhaus-panel p-8">
-            <h3 class="text-2xl font-black text-[var(--bauhaus-black)] uppercase mb-6">Minhas Intenções</h3>
-            <div id="listaIntencoes" class="space-y-4 text-[var(--bauhaus-ink)]"></div>
+        <div class="glow-panel p-8">
+            <h3 class="text-2xl font-black text-[var(--glow-black)] uppercase mb-6">Minhas IntenÃ§Ãµes</h3>
+            <div id="listaIntencoes" class="space-y-4 text-[var(--glow-black)]"></div>
         </div>
     </div>
 
@@ -208,12 +208,12 @@
                 contentType: 'application/json',
                 data: JSON.stringify(payload),
                 success: function() {
-                    showToast('Intenção registrada com sucesso.', 'success');
+                    showToast('IntenÃ§Ã£o registrada com sucesso.', 'success');
                     $('#formIntencao')[0].reset();
                     carregarIntencoes();
                 },
                 error: function() {
-                    showToast('Erro ao registrar intenção.', 'error');
+                    showToast('Erro ao registrar intenÃ§Ã£o.', 'error');
                 }
             });
         }
@@ -230,14 +230,14 @@
                     renderIntencoes(list);
                 },
                 error: function() {
-                    $('#listaIntencoes').html('<p class="text-slate-500">Nenhuma intenção encontrada.</p>');
+                    $('#listaIntencoes').html('<p class="text-slate-500">Nenhuma intenÃ§Ã£o encontrada.</p>');
                 }
             });
         }
 
         function renderIntencoes(lista) {
             if (!lista || !lista.length) {
-                $('#listaIntencoes').html('<p class="text-slate-500">Nenhuma intenção encontrada.</p>');
+                $('#listaIntencoes').html('<p class="text-slate-500">Nenhuma intenÃ§Ã£o encontrada.</p>');
                 return;
             }
 
@@ -245,7 +245,7 @@
                 <div class="border border-slate-200 rounded p-4">
                     <div class="font-bold">${item.type || ''} - ${item.city || ''} ${item.neighborhood || ''}</div>
                     <div class="text-sm text-slate-600">Quartos: ${item.min_bedrooms || '-'} a ${item.max_bedrooms || '-'}</div>
-                    <div class="text-sm text-slate-600">Max preço: ${item.max_price || '-'}</div>
+                    <div class="text-sm text-slate-600">Max preÃ§o: ${item.max_price || '-'}</div>
                     <div class="text-sm text-slate-600">Status: ${item.status || 'ativa'}</div>
                 </div>
             `).join('');
@@ -260,3 +260,5 @@
     </script>
 </body>
 </html>
+
+

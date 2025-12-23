@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -6,15 +6,15 @@
     <title id="pageTitle">Portal de Imóveis</title>
     <link id="pageFavicon" rel="icon" href="/favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/css/bauhaus.css">
+    <link rel="stylesheet" href="/css/glow.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="/app/js/toast.js"></script>
     <style>
         .magazine-book {
-            background: var(--bauhaus-cream);
-            border: 4px solid var(--bauhaus-border);
+            background: var(--glow-cream);
+            border: 4px solid var(--glow-border);
             padding: 32px;
             border-radius: 18px;
             min-height: 520px;
@@ -36,7 +36,7 @@
             padding: 28px;
             transform-origin: left center;
             transition: transform 0.6s ease;
-            border: 4px solid var(--bauhaus-border);
+            border: 4px solid var(--glow-border);
         }
         .magazine-page.flip {
             transform: rotateY(-180deg);
@@ -46,7 +46,7 @@
             border-radius: 12px;
             overflow: hidden;
             min-height: 360px;
-            border: 3px solid var(--bauhaus-border);
+            border: 3px solid var(--glow-border);
         }
         .magazine-photo img {
             width: 100%;
@@ -62,20 +62,20 @@
         .magazine-details h4 {
             font-size: 28px;
             font-weight: 800;
-            color: var(--bauhaus-black);
+            color: var(--glow-black);
         }
         .magazine-details .magazine-meta {
-            color: var(--bauhaus-ink);
+            color: var(--glow-ink);
             font-size: 14px;
         }
         .magazine-details .magazine-price {
             font-size: 26px;
             font-weight: 800;
-            color: var(--bauhaus-blue);
+            color: var(--glow-blue);
         }
         .magazine-scroll-card {
             background: #fff;
-            border: 4px solid var(--bauhaus-border);
+            border: 4px solid var(--glow-border);
             border-radius: 14px;
             box-shadow: 8px 8px 0 rgba(0,0,0,0.1);
         }
@@ -92,9 +92,9 @@
     </style>
     <style id="customStyles"></style>
 </head>
-<body class="bauhaus-page">
+<body class="glow-page">
     <!-- Navbar -->
-    <nav id="mainNav" class="bauhaus-nav">
+    <nav id="mainNav" class="glow-nav">
         <div class="container mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
                 <div class="flex items-center gap-4">
@@ -102,12 +102,12 @@
                     <h1 id="empresaNome" class="text-2xl font-bold uppercase tracking-tight">Carregando...</h1>
                 </div>
                 <div class="hidden md:flex gap-6 items-center">
-                    <a href="#imoveis" class="bauhaus-link">Imóveis</a>
-                    <a href="#sobre" class="bauhaus-link">Sobre</a>
-                    <a href="#contato" class="bauhaus-link">WhatsApp</a>
-                    <a id="linkPerfil" href="/portal/perfil.html" class="hidden bauhaus-link font-bold">Meu Perfil</a>
-                    <button id="btnLogin" class="bauhaus-button ghost">Entrar</button>
-                    <button id="btnLogoutPortal" class="hidden bauhaus-button">Sair</button>
+                    <a href="#imoveis" class="glow-link">Imóveis</a>
+                    <a href="#sobre" class="glow-link">Sobre</a>
+                    <a href="#contato" class="glow-link">WhatsApp</a>
+                    <a id="linkPerfil" href="/portal/perfil.html" class="hidden glow-link font-bold">Meu Perfil</a>
+                    <button id="btnLogin" class="glow-button ghost">Entrar</button>
+                    <button id="btnLogoutPortal" class="hidden glow-button">Sair</button>
                 </div>
             </div>
         </div>
@@ -116,39 +116,39 @@
     <!-- Hero Section -->
     <section class="py-20">
         <div class="container mx-auto px-4 text-center">
-            <div class="inline-flex items-center gap-2 bg-[var(--bauhaus-yellow)] px-3 py-2 border-4 border-[var(--bauhaus-border)] mb-4 font-black uppercase">Catálogo Bauhaus</div>
-            <h2 id="heroSlogan" class="bauhaus-hero-title font-black mb-4">
-                Encontre o Imóvel dos Seus Sonhos
+            <div class="inline-flex items-center gap-2 bg-[var(--glow-yellow)] px-3 py-2 border-4 border-[var(--glow-border)] mb-4 font-black uppercase">Catálogo Glow</div>
+            <h2 id="heroSlogan" class="glow-hero-title font-black mb-4">
+                Encon??o Imóvel dos Seus Sonhos
             </h2>
-            <p class="text-xl mb-8 text-[var(--bauhaus-ink)] max-w-3xl mx-auto">
-                As melhores opções de imóveis para você, com visual geométrico e cores primárias inspiradas na escola de arte Bauhaus.
+            <p class="text-xl mb-8 text-[var(--glow-black)] max-w-3xl mx-auto">
+                As melhores opções de imóveis para você, com visual geométrico e cores primárias inspiradas na escola de arte Glow.
             </p>
 
             <!-- Filtros de Busca -->
-            <div class="max-w-5xl mx-auto bauhaus-panel text-[var(--bauhaus-black)]">
+            <div class="max-w-5xl mx-auto glow-panel text-[var(--glow-black)]">
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <select id="filterTipo" class="bauhaus-select">
+                    <select id="filterTipo" class="glow-select">
                         <option value="">Tipo de Imóvel</option>
                         <option value="casa">Casa</option>
                         <option value="apartamento">Apartamento</option>
                         <option value="terreno">Terreno</option>
                         <option value="comercial">Comercial</option>
                     </select>
-                    <select id="filterFinalidade" class="bauhaus-select">
+                    <select id="filterFinalidade" class="glow-select">
                         <option value="">Finalidade</option>
                         <option value="venda">Venda</option>
                         <option value="aluguel">Aluguel</option>
                     </select>
                     <input type="text" id="filterLocal" placeholder="Bairro, Cidade..."
-                        class="bauhaus-input">
+                        class="glow-input">
                     <input type="text" id="filterTexto" placeholder="Ex: casa 3 quartos com quintal"
-                        class="bauhaus-input">
-                    <button id="btnBuscar" class="bauhaus-button w-full justify-center">
+                        class="glow-input">
+                    <button id="btnBuscar" class="glow-button w-full justify-center">
                         Buscar
                     </button>
                 </div>
                 <div class="mt-4 flex flex-col md:flex-row gap-4">
-                    <select id="sortBy" class="bauhaus-select md:w-64">
+                    <select id="sortBy" class="glow-select md:w-64">
                         <option value="">Ordenar por</option>
                         <option value="preco_asc">Menor preço</option>
                         <option value="preco_desc">Maior preço</option>
@@ -163,12 +163,12 @@
     <section id="imoveis" class="py-16">
         <div class="container mx-auto px-4">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                <h3 class="text-3xl font-black text-[var(--bauhaus-black)] uppercase text-center md:text-left">Imóveis Disponíveis</h3>
+                <h3 class="text-3xl font-black text-[var(--glow-black)] uppercase text-center md:text-left">Imóveis Disponíveis</h3>
                 <div class="flex flex-wrap gap-3 justify-center md:justify-end">
-                    <button id="btnViewCards" class="bauhaus-button secondary">Ver cards</button>
-                    <button id="btnViewTable" class="bauhaus-button ghost">Ver como tabela</button>
-                    <button id="btnViewMagazine" class="bauhaus-button ghost">Ver como revista</button>
-                    <a id="btnOpenRevista" href="/revista/index.html" class="bauhaus-button ghost" target="_blank" rel="noopener">Revista fullscreen</a>
+                    <button id="btnViewCards" class="glow-button secondary">Ver cards</button>
+                    <button id="btnViewTable" class="glow-button ghost">Ver como tabela</button>
+                    <button id="btnViewMagazine" class="glow-button ghost">Ver como revista</button>
+                    <a id="btnOpenRevista" href="/revista/index.html" class="glow-button ghost" target="_blank" rel="noopener">Revista fullscreen</a>
                 </div>
             </div>
             
@@ -179,20 +179,20 @@
                 </div>
             </div>
 
-            <div id="imoveisTabelaWrapper" class="hidden bauhaus-table-wrapper">
+            <div id="imoveisTabelaWrapper" class="hidden glow-table-wrapper">
                 <div class="mb-4 flex flex-wrap gap-3 items-center">
-                    <span class="text-sm text-[var(--bauhaus-ink)] font-semibold uppercase tracking-wide">Filtros por coluna</span>
-                    <button id="btnResetTableFilters" class="text-sm bauhaus-button ghost">Limpar filtros</button>
+                    <span class="text-sm text-[var(--glow-black)] font-semibold uppercase tracking-wide">Filtros por coluna</span>
+                    <button id="btnResetTableFilters" class="text-sm glow-button ghost">Limpar filtros</button>
                 </div>
                 <table id="imoveisTabela" class="display w-full"></table>
             </div>
             <div id="imoveisMagazineWrapper" class="hidden">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <div class="text-sm uppercase tracking-wide text-[var(--bauhaus-ink)]">Revista de imóveis</div>
+                    <div class="text-sm uppercase tracking-wide text-[var(--glow-black)]">Revista de imóveis</div>
                     <div class="flex items-center gap-2">
-                        <button id="magazinePrev" class="bauhaus-button ghost">Anterior</button>
-                        <span id="magazineCounter" class="text-sm text-[var(--bauhaus-ink)]">1 / 1</span>
-                        <button id="magazineNext" class="bauhaus-button ghost">Próximo</button>
+                        <button id="magazinePrev" class="glow-button ghost">Anterior</button>
+                        <span id="magazineCounter" class="text-sm text-[var(--glow-black)]">1 / 1</span>
+                        <button id="magazineNext" class="glow-button ghost">Próximo</button>
                     </div>
                 </div>
                 <div id="magazineBookWrapper" class="magazine-book">
@@ -207,8 +207,8 @@
 
         <!-- Modal Detalhes do Imovel -->
     <div id="modalImovel" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50">
-        <div class="relative w-full h-full bg-white border-4 border-[var(--bauhaus-border)]">
-            <button onclick="fecharModal()" class="absolute top-4 right-4 bauhaus-modal-close flex items-center justify-center text-lg z-20">
+        <div class="relative w-full h-full bg-white border-4 border-[var(--glow-border)]">
+            <button onclick="fecharModal()" class="absolute top-4 right-4 glow-modal-close flex items-center justify-center text-lg z-20">
                 X
             </button>
             <div class="h-full grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr]">
@@ -218,10 +218,10 @@
                         <div id="modalFotoFallback" class="h-full w-full flex items-center justify-center">
                             <span id="modalIcone" class="text-9xl"></span>
                         </div>
-                        <button id="carouselPrev" class="absolute left-4 top-1/2 -translate-y-1/2 bauhaus-modal-close flex items-center justify-center text-lg">
+                        <button id="carouselPrev" class="absolute left-4 top-1/2 -translate-y-1/2 glow-modal-close flex items-center justify-center text-lg">
                             &#10094;
                         </button>
-                        <button id="carouselNext" class="absolute right-4 top-1/2 -translate-y-1/2 bauhaus-modal-close flex items-center justify-center text-lg">
+                        <button id="carouselNext" class="absolute right-4 top-1/2 -translate-y-1/2 glow-modal-close flex items-center justify-center text-lg">
                             &#10095;
                         </button>
                         <div id="carouselDots" class="absolute bottom-3 left-0 right-0 flex flex-nowrap items-center justify-center gap-2 px-4 overflow-x-auto"></div>
@@ -230,27 +230,27 @@
                 <div class="p-8 overflow-y-auto">
                     <div class="flex flex-col gap-3 mb-4">
                         <div class="flex items-center justify-between gap-3">
-                            <h3 id="modalTitulo" class="text-3xl font-black text-[var(--bauhaus-black)]"></h3>
-                            <button id="modalLikeBtn" class="bauhaus-button ghost">
-                                <span id="modalLikeIcon">♡</span>
+                            <h3 id="modalTitulo" class="text-3xl font-black text-[var(--glow-black)]"></h3>
+                            <button id="modalLikeBtn" class="glow-button ghost">
+                                <span id="modalLikeIcon">?</span>
                                 <span id="modalLikeCount">0</span>
                             </button>
                         </div>
-                        <span id="modalPreco" class="text-3xl font-black text-[var(--bauhaus-blue)]"></span>
+                        <span id="modalPreco" class="text-3xl font-black text-[var(--glow-blue)]"></span>
                     </div>
-                    <p id="modalEndereco" class="text-[var(--bauhaus-ink)] mb-4"></p>
-                    <div id="modalDetalhes" class="flex flex-wrap gap-4 text-[var(--bauhaus-ink)] mb-6">
+                    <p id="modalEndereco" class="text-[var(--glow-black)] mb-4"></p>
+                    <div id="modalDetalhes" class="flex flex-wrap gap-4 text-[var(--glow-black)] mb-6">
                         <!-- Detalhes aqui -->
                     </div>
                     <div class="border-t pt-6">
                         <h4 class="font-bold text-lg mb-2">Descricao</h4>
-                        <div id="modalDescricao" class="text-[var(--bauhaus-ink)]"></div>
+                        <div id="modalDescricao" class="text-[var(--glow-black)]"></div>
                     </div>
                     <div class="mt-8 flex flex-col sm:flex-row gap-4">
-                        <button onclick="entrarEmContato()" class="flex-1 bauhaus-button secondary justify-center">
+                        <button onclick="entrarEmContato()" class="flex-1 glow-button secondary justify-center">
                             Entrar em Contato
                         </button>
-                        <button onclick="agendarVisita()" class="flex-1 bauhaus-button justify-center">
+                        <button onclick="agendarVisita()" class="flex-1 glow-button justify-center">
                             Agendar Visita
                         </button>
                     </div>
@@ -260,36 +260,36 @@
     </div>
 <!-- Modal Agendar Visita -->
     <div id="modalVisita" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-        <div class="bg-white bauhaus-panel max-w-xl w-full p-6">
+        <div class="bg-white glow-panel max-w-xl w-full p-6">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-2xl font-black text-[var(--bauhaus-black)] uppercase">Agendar Visita</h3>
-                <button onclick="fecharModalVisita()" class="bauhaus-modal-close flex items-center justify-center text-lg">x</button>
+                <h3 class="text-2xl font-black text-[var(--glow-black)] uppercase">Agendar Visita</h3>
+                <button onclick="fecharModalVisita()" class="glow-modal-close flex items-center justify-center text-lg">x</button>
             </div>
-            <p id="visitaImovelTitulo" class="text-sm text-[var(--bauhaus-ink)] mb-4"></p>
+            <p id="visitaImovelTitulo" class="text-sm text-[var(--glow-black)] mb-4"></p>
             <form id="formVisita" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Nome *</label>
-                    <input type="text" id="visitaNome" required class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Nome *</label>
+                    <input type="text" id="visitaNome" required class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Telefone *</label>
-                    <input type="tel" id="visitaTelefone" required class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Telefone *</label>
+                    <input type="tel" id="visitaTelefone" required class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Email</label>
-                    <input type="email" id="visitaEmail" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Email</label>
+                    <input type="email" id="visitaEmail" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Data e hora *</label>
-                    <input type="datetime-local" id="visitaDataHora" required class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Data e hora *</label>
+                    <input type="datetime-local" id="visitaDataHora" required class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Observações</label>
-                    <textarea id="visitaObservacoes" rows="3" class="w-full bauhaus-input"></textarea>
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Observações</label>
+                    <textarea id="visitaObservacoes" rows="3" class="w-full glow-input"></textarea>
                 </div>
                 <div class="flex gap-3 justify-end pt-2">
-                    <button type="button" onclick="fecharModalVisita()" class="bauhaus-button ghost">Cancelar</button>
-                    <button type="submit" class="bauhaus-button">Enviar</button>
+                    <button type="button" onclick="fecharModalVisita()" class="glow-button ghost">Cancelar</button>
+                    <button type="submit" class="glow-button">Enviar</button>
                 </div>
             </form>
         </div>
@@ -297,62 +297,62 @@
 
     <!-- Modal Login/Cadastro -->
     <div id="modalAuth" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-        <div class="bg-white bauhaus-panel max-w-md w-full p-6">
+        <div class="bg-white glow-panel max-w-md w-full p-6">
             <div class="flex justify-between items-center mb-4">
-                <h3 id="authTitle" class="text-2xl font-black text-[var(--bauhaus-black)] uppercase">Entrar</h3>
-                <button onclick="fecharModalAuth()" class="bauhaus-modal-close flex items-center justify-center text-lg">x</button>
+                <h3 id="authTitle" class="text-2xl font-black text-[var(--glow-black)] uppercase">Entrar</h3>
+                <button onclick="fecharModalAuth()" class="glow-modal-close flex items-center justify-center text-lg">x</button>
             </div>
             <form id="formAuth" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Nome</label>
-                    <input type="text" id="authNome" class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Nome</label>
+                    <input type="text" id="authNome" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Email *</label>
-                    <input type="email" id="authEmail" required class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Email *</label>
+                    <input type="email" id="authEmail" required class="w-full glow-input">
                 </div>
                 <div>
-                    <input type="tel" id="authTelefone" class="w-full bauhaus-input">
+                    <input type="tel" id="authTelefone" class="w-full glow-input">
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-[var(--bauhaus-black)] mb-2">Senha *</label>
-                    <input type="password" id="authSenha" required class="w-full bauhaus-input">
+                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Senha *</label>
+                    <input type="password" id="authSenha" required class="w-full glow-input">
                 </div>
                 <div class="flex gap-3 justify-end pt-2">
-                    <button type="button" onclick="fecharModalAuth()" class="bauhaus-button ghost">Cancelar</button>
-                    <button type="submit" class="bauhaus-button">Continuar</button>
+                    <button type="button" onclick="fecharModalAuth()" class="glow-button ghost">Cancelar</button>
+                    <button type="submit" class="glow-button">Continuar</button>
                 </div>
             </form>
-            <div class="mt-4 text-sm text-center text-[var(--bauhaus-ink)]">
-                <button id="btnToggleAuthMode" class="font-bold bauhaus-link">Criar conta</button>
+            <div class="mt-4 text-sm text-center text-[var(--glow-black)]">
+                <button id="btnToggleAuthMode" class="font-bold glow-link">Criar conta</button>
             </div>
         </div>
     </div>
 
     <!-- Chat do Portal -->
-    <button id="btnChat" class="hidden fixed bottom-6 right-6 bauhaus-button shadow-lg z-40 rounded-full px-5 py-3">
+    <button id="btnChat" class="hidden fixed bottom-6 right-6 glow-button shadow-lg z-40 rounded-full px-5 py-3">
         Chat com IA
     </button>
 
     <div id="modalChat" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-        <div class="bg-white bauhaus-panel w-full max-w-2xl h-[80vh] flex flex-col">
-            <div class="flex justify-between items-center p-4 border-b border-[var(--bauhaus-border)]">
+        <div class="bg-white glow-panel w-full max-w-2xl h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b border-[var(--glow-border)]">
                 <div>
-                    <h3 class="text-xl font-black text-[var(--bauhaus-black)] uppercase">Atendimento</h3>
-                    <p id="chatStatus" class="text-xs text-[var(--bauhaus-ink)]">IA ativa</p>
+                    <h3 class="text-xl font-black text-[var(--glow-black)] uppercase">Atendimento</h3>
+                    <p id="chatStatus" class="text-xs text-[var(--glow-black)]">IA ativa</p>
                 </div>
-                <button onclick="fecharChat()" class="bauhaus-modal-close flex items-center justify-center text-lg">x</button>
+                <button onclick="fecharChat()" class="glow-modal-close flex items-center justify-center text-lg">x</button>
             </div>
-            <div id="chatMensagens" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[var(--bauhaus-cream)]"></div>
-            <form id="chatForm" class="p-4 border-t border-[var(--bauhaus-border)] flex gap-3">
-                <input type="text" id="chatInput" placeholder="Escreva sua mensagem..." class="flex-1 bauhaus-input">
-                <button type="submit" class="bauhaus-button">Enviar</button>
+            <div id="chatMensagens" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[var(--glow-cream)]"></div>
+            <form id="chatForm" class="p-4 border-t border-[var(--glow-border)] flex gap-3">
+                <input type="text" id="chatInput" placeholder="Escreva sua mensagem..." class="flex-1 glow-input">
+                <button type="submit" class="glow-button">Enviar</button>
             </form>
         </div>
     </div>
 
     <!-- Footer -->
-    <footer class="bauhaus-nav text-white py-12 mt-16">
+    <footer class="glow-nav text-white py-12 mt-16">
         <div class="container mx-auto px-4">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div>
@@ -367,13 +367,13 @@
                 <div>
                     <h4 class="text-xl font-bold mb-4">Redes Sociais</h4>
                     <div class="flex gap-4 text-sm">
-                        <a href="#" class="hover:text-[var(--bauhaus-yellow)] transition">Facebook</a>
-                        <a href="#" class="hover:text-[var(--bauhaus-yellow)] transition">Instagram</a>
-                        <a href="#" class="hover:text-[var(--bauhaus-yellow)] transition">WhatsApp</a>
+                        <a href="#" class="hover:text-[var(--glow-yellow)] transition">Facebook</a>
+                        <a href="#" class="hover:text-[var(--glow-yellow)] transition">Instagram</a>
+                        <a href="#" class="hover:text-[var(--glow-yellow)] transition">WhatsApp</a>
                     </div>
                 </div>
             </div>
-            <div class="border-t-4 border-[var(--bauhaus-yellow)] mt-8 pt-8 text-center text-white/80">
+            <div class="border-t-4 border-[var(--glow-yellow)] mt-8 pt-8 text-center text-white/80">
                 <p>&copy; 2025 <span id="footerCopyright"></span> - Todos os direitos reservados</p>
                 <p class="text-sm mt-2">Powered by <strong>SOCIMOB</strong></p>
             </div>
@@ -445,7 +445,7 @@
                     name: 'Exclusiva Lar Im\u00f3veis',
                     contact_phone: '(31) 97559-7278',
                     contact_email: 'contato@exclusivalarimoveis.com.br',
-                    slogan: 'Encontre o Im\u00f3vel dos Seus Sonhos',
+                    slogan: 'Encon??o Im\u00f3vel dos Seus Sonhos',
                     primary_color: '#1e293b',
                     secondary_color: '#3b82f6',
                     logo_url: '',
@@ -457,7 +457,7 @@
 
         function aplicarConfiguracao() {
             const tenantName = fixText(tenantConfig.name || 'Portal de Im\u00f3veis');
-            const slogan = fixText(tenantConfig.slogan || 'Encontre o Im\u00f3vel dos Seus Sonhos');
+            const slogan = fixText(tenantConfig.slogan || 'Encon??o Im\u00f3vel dos Seus Sonhos');
             const contactPhone = fixText(tenantConfig.contact_phone || '');
             const contactEmail = fixText(tenantConfig.contact_email || '');
             allowedFinalidades = Array.isArray(tenantConfig.portal_finalidades)
@@ -470,12 +470,15 @@
                 $('#pageFavicon').attr('href', tenantConfig.favicon_url);
             }
 
+                        
             if (tenantConfig.logo_url) {
                 $('#logoImg').attr('src', tenantConfig.logo_url).removeClass('hidden');
+            } else {
+                $('#logoImg').attr('src', '/assets/logo.png').removeClass('hidden');
             }
 
             $('#empresaNome').text(tenantName);
-            $('#heroSlogan').text(slogan || 'Encontre o Im\u00f3vel dos Seus Sonhos');
+            $('#heroSlogan').text(slogan || 'Encon??o Im\u00f3vel dos Seus Sonhos');
             $('#footerNome').text(tenantName);
             $('#footerTelefone').text(contactPhone);
             $('#footerEmail').text(contactEmail);
@@ -753,7 +756,7 @@
                 imovel.quartos ? `Quartos: ${imovel.quartos}` : null,
                 imovel.banheiros ? `Banheiros: ${imovel.banheiros}` : null,
                 imovel.vagas ? `Vagas: ${imovel.vagas}` : null
-            ].filter(Boolean).join(' • ');
+            ].filter(Boolean).join('  ');
 
             const html = `
                 <div class="magazine-photo">
@@ -801,13 +804,13 @@
                             ${imagem ? `<img src="${imagem}" loading="lazy" class="w-full h-full object-cover" alt="${escapeHtml(imovel.titulo || 'Imóvel')}">` : `<div class="w-full h-full flex items-center justify-center text-6xl">${getTipoIcon(imovel.tipo)}</div>`}
                         </div>
                         <div class="p-5 flex flex-col gap-2">
-                            <div class="text-xs font-black uppercase tracking-[0.14em] text-[var(--bauhaus-blue)]">${escapeHtml(imovel.finalidade || '')}</div>
-                            <h4 class="text-2xl font-black text-[var(--bauhaus-black)]">${escapeHtml(imovel.titulo || 'Imóvel')}</h4>
-                            <div class="text-lg font-bold text-[var(--bauhaus-ink)]">R$ ${formatPrice(imovel.preco)}</div>
-                            <p class="text-[var(--bauhaus-ink)] leading-relaxed">${descricao}</p>
-                            <div class="mt-auto flex items-center gap-3 text-xs text-[var(--bauhaus-ink)] uppercase tracking-[0.12em]">
+                            <div class="text-xs font-black uppercase tracking-[0.14em] text-[var(--glow-blue)]">${escapeHtml(imovel.finalidade || '')}</div>
+                            <h4 class="text-2xl font-black text-[var(--glow-black)]">${escapeHtml(imovel.titulo || 'Imóvel')}</h4>
+                            <div class="text-lg font-bold text-[var(--glow-black)]">R$ ${formatPrice(imovel.preco)}</div>
+                            <p class="text-[var(--glow-black)] leading-relaxed">${descricao}</p>
+                            <div class="mt-auto flex items-center gap-3 text-xs text-[var(--glow-black)] uppercase tracking-[0.12em]">
                                 <span>Página ${index + 1} de ${magazineItems.length}</span>
-                                <button class="bauhaus-button ghost text-xs" onclick="abrirModal(${imovel.id})">Ver detalhes</button>
+                                <button class="glow-button ghost text-xs" onclick="abrirModal(${imovel.id})">Ver detalhes</button>
                             </div>
                         </div>
                     </article>
@@ -995,7 +998,7 @@
 
         function renderLikeButton(imovel) {
             const liked = likedIds.has(imovel.id);
-            const icon = liked ? '❤' : '♡';
+            const icon = liked ? '?' : '?';
             const count = Number(imovel.likes_count || 0);
             return `
                 <button class="like-btn flex items-center gap-2 px-2 py-1 border-2 border-slate-300 text-slate-900 font-bold text-xs" onclick="event.stopPropagation(); toggleLike(${imovel.id});">
@@ -1053,7 +1056,7 @@
             const count = Number(imovelSelecionado.likes_count || 0);
             const liked = likedIds.has(imovelSelecionado.id);
             $('#modalLikeCount').text(count);
-            $('#modalLikeIcon').text(liked ? '❤' : '♡');
+            $('#modalLikeIcon').text(liked ? '?' : '?');
             $('#modalLikeBtn').off('click').on('click', function(e) {
                 e.preventDefault();
                 toggleLike(imovelSelecionado.id);
@@ -1321,9 +1324,9 @@
 
             const replacements = {
                 'Im\u00c3\u00b3veis': 'Im\u00f3veis',
-                'Im\u00c3\u00b3vel': 'Im\u00fóvel',
-                'im\u00c3\u00b3veis': 'im\u00fóveis',
-                'im\u00c3\u00b3vel': 'im\u00fóvel',
+                'Im\u00c3\u00b3vel': 'Im\u00f3vel',
+                'im\u00c3\u00b3veis': 'im\u00f3veis',
+                'im\u00c3\u00b3vel': 'im\u00f3vel',
                 'op\u00c3\u00a7\u00c3\u00b5es': 'op\u00e7\u00f5es',
                 'voc\u00c3\u00aa': 'voc\u00ea',
                 'Descri\u00c3\u00a7\u00c3\u00a3o': 'Descri\u00e7\u00e3o',
@@ -1333,8 +1336,8 @@
                 'Pre\u00c3\u00a7o': 'Pre\u00e7o',
                 'Endere\u00c3\u00a7o': 'Endere\u00e7o',
                 'endere\u00c3\u00a7o': 'endere\u00e7o',
-                'Imveis': 'Im\u00fóveis',
-                'Imvel': 'Im\u00fóvel'
+                'Imveis': 'Im\u00f3veis',
+                'Imvel': 'Im\u00f3vel'
             };
 
             Object.keys(replacements).forEach(key => {
@@ -1660,12 +1663,12 @@
 
         function getTipoIcon(tipo) {
             const icons = {
-                'casa': '🏠',
-                'apartamento': '🏢',
-                'terreno': '🏞️',
-                'comercial': '🏪'
+                'casa': '??',
+                'apartamento': '??',
+                'terreno': '???',
+                'comercial': '??'
             };
-            return icons[tipo] || '🏘️';
+            return icons[tipo] || '???';
         }
 
         function formatPrice(price) {
@@ -1675,6 +1678,19 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

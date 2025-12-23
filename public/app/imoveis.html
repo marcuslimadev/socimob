@@ -88,8 +88,16 @@
 
     <!-- Modal Importar via API -->
     <div id="modalImportarAPI" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full my-8">
-            <h3 class="text-2xl font-black text-slate-900 mb-6 uppercase">📥 Importar Imóveis via API</h3>
+            <div class="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full my-8 relative">
+                <button
+                    type="button"
+                    id="btnFecharImportacaoModal"
+                    class="absolute top-4 right-4 text-slate-500 hover:text-slate-800 transition"
+                    aria-label="Fechar importação"
+                >
+                    ✕
+                </button>
+                <h3 class="text-2xl font-black text-slate-900 mb-6 uppercase">📥 Importar Imóveis via API</h3>
             <form id="formImportarAPI" class="space-y-6">
                 <div>
                     <label class="block text-sm font-bold text-slate-900 mb-2">Portal/Fonte *</label>
@@ -126,11 +134,23 @@
                     </ul>
                 </div>
 
-                <div id="progressoImportacao" class="hidden">
+                <div id="progressoImportacao" class="hidden space-y-3">
                     <div class="bg-slate-100 rounded-full h-4 overflow-hidden">
-                        <div id="barraProgresso" class="bg-blue-600 h-full transition-all duration-300" style="width: 0%"></div>
+                        <div
+                            id="barraProgresso"
+                            class="bg-blue-600 h-full transition-all duration-300"
+                            style="width: 0%"
+                            role="progressbar"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            aria-valuenow="0"
+                        ></div>
                     </div>
-                    <p id="textoProgresso" class="text-center text-sm text-slate-600 mt-2">Importando...</p>
+                    <div class="flex justify-between text-xs text-slate-600 font-semibold">
+                        <span id="textoProgresso">Importando...</span>
+                        <span id="textoProgressoPercent">0%</span>
+                    </div>
+                    <p id="textoProgressoDetalhe" class="text-xs text-slate-500 leading-relaxed">Aguarde enquanto conectamos à API.</p>
                 </div>
 
                 <div class="flex gap-4 justify-end mt-6">
@@ -203,6 +223,14 @@
     <script>
         const API_URL = '/api';
         let imoveis = [];
+        let importJobInterval = null;
+        const progressUI = {
+            wrapper: $('#progressoImportacao'),
+            bar: $('#barraProgresso'),
+            status: $('#textoProgresso'),
+            percent: $('#textoProgressoPercent'),
+            detail: $('#textoProgressoDetalhe')
+        };
 
         $(document).ready(function() {
             checkAuth();
@@ -212,14 +240,22 @@
             $('#btnNovoImovel').on('click', () => $('#modalImovel').removeClass('hidden'));
             $('#btnCancelarImovel').on('click', () => $('#modalImovel').addClass('hidden'));
             $('#formImovel').on('submit', handleSaveImovel);
-            // Filtros agora são nativos do DataTables
-            
+
             // Importação via API
             $('#btnImportarAPI').on('click', abrirModalImportacao);
             $('#btnCancelarImportacao').on('click', fecharModalImportacao);
+            $('#btnFecharImportacaoModal').on('click', fecharModalImportacao);
             $('[name="fonte"]').on('change', toggleCamposAPI);
             $('#formImportarAPI').on('submit', iniciarImportacao);
         });
+
+        function setProgress(value, status = 'Importando...', detail = '') {
+            const clamped = Math.max(0, Math.min(100, Math.round(value)));
+            progressUI.bar.css('width', `${clamped}%`).attr('aria-valuenow', clamped);
+            progressUI.percent.text(`${clamped}%`);
+            progressUI.status.text(status);
+            progressUI.detail.text(detail || 'Aguarde enquanto processamos os dados.');
+        }
 
         function checkAuth() {
             const token = localStorage.getItem('token');
@@ -442,6 +478,7 @@
         }
 
         function fecharModalImportacao() {
+            resetImportacaoUI();
             $('#modalImportarAPI').addClass('hidden');
         }
 
@@ -455,8 +492,6 @@
                 $('[name="api_url"]').attr('required', false);
             }
         }
-
-        let importJobInterval = null;
 
         function iniciarImportacao(e) {
             e.preventDefault();
@@ -479,9 +514,8 @@
             console.log('📥 Iniciando importação:', { fonte, api_url });
 
             $('#btnIniciarImportacao').prop('disabled', true).text('Importando...');
-            $('#progressoImportacao').removeClass('hidden');
-            $('#barraProgresso').css('width', '10%');
-            $('#textoProgresso').text('Conectando à API...');
+            progressUI.wrapper.removeClass('hidden');
+            setProgress(10, 'Conectando à API...', 'Preparando a requisição.');
             
             // Preparar dados para o backend
             const hoje = new Date();
@@ -576,14 +610,20 @@
                             progress = Math.max(progress, 30);
                         }
 
-                        $('#barraProgresso').css('width', progress + '%');
-                        $('#textoProgresso').text(`Importando... ${progress}%`);
+                        const statusLabel = data.status === 'agendado'
+                            ? 'Agendado...'
+                            : data.status === 'processando'
+                                ? 'Processando...'
+                                : 'Importando...';
+                        const detailText = total > 0
+                            ? `${processados} de ${total} itens processados`
+                            : 'Aguardando dados da API';
+                        setProgress(progress, statusLabel, detailText);
 
                         if (data.status === 'concluido') {
                             clearInterval(importJobInterval);
                             importJobInterval = null;
-                            $('#barraProgresso').css('width', '100%');
-                            $('#textoProgresso').text('Concluído!');
+                            setProgress(100, 'Concluído!', 'Importação concluída com sucesso.');
 
                             const resultado = data.resultado || {};
                             const importados = resultado.importados || 0;
@@ -612,6 +652,7 @@
                             clearInterval(importJobInterval);
                             importJobInterval = null;
                             const erro = data.erro || 'Erro ao importar imoveis. Verifique os logs.';
+                            setProgress(100, 'Falhou!', erro);
                             showToast(erro, 'error', 6000);
                             resetImportacaoUI();
                         }
@@ -633,10 +674,13 @@
 
         function resetImportacaoUI(resetProgress = true) {
             $('#btnIniciarImportacao').prop('disabled', false).text('Iniciar Importação');
+            if (importJobInterval) {
+                clearInterval(importJobInterval);
+                importJobInterval = null;
+            }
             if (resetProgress) {
-                $('#progressoImportacao').addClass('hidden');
-                $('#barraProgresso').css('width', '0%');
-                $('#textoProgresso').text('Importando...');
+                progressUI.wrapper.addClass('hidden');
+                setProgress(0, 'Importando...', 'Aguarde enquanto processamos os dados.');
             }
         }
 
@@ -647,3 +691,5 @@
     </script>
 </body>
 </html>
+
+

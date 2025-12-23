@@ -1,54 +1,83 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SOCIMOB - Sistema de Gestão Imobiliária</title>
+    <link rel="icon" href="/assets/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/css/bauhaus.css">
+    <link rel="stylesheet" href="/css/glow.css">
+    <script src="/js/login-utils.js" defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body class="bauhaus-page">
+<body class="glow-page">
     <!-- Navbar -->
-    <nav class="bauhaus-nav p-5">
+    <nav class="glow-nav p-5">
         <div class="container mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <div class="bauhaus-badge text-lg">🏠 SOCIMOB</div>
-                <span class="hidden md:inline-flex bauhaus-pill">Gestão Imobiliária</span>
+                                <div class="glow-badge text-lg">
+                    <img src="/assets/logo.png" alt="SOCIMOB" class="logo-glass h-12 w-12 object-contain">
+                    <span>SOCIMOB</span>
+                </div>
+                <span class="hidden md:inline-flex glow-pill">Gestão Imobiliária</span>
             </div>
             <div class="flex gap-3 items-center">
-                <a href="/app/login.html" class="bauhaus-link">Área do Corretor</a>
+                <a href="/app/login.html" class="glow-link">Área do Corretor</a>
             </div>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <div class="container mx-auto px-4 py-16">
-        <div class="grid lg:grid-cols-[1.2fr_0.8fr] gap-10 items-center">
-            <div class="space-y-6">
-                <div class="bauhaus-tagline">
-                    <span class="h-3 w-3 bg-[var(--bauhaus-red)] inline-block"></span>
-                    Plataforma completa para clientes, corretores e admins.
+    <div class="container mx-auto px-4 py-16 relative z-10">
+        <div class="grid lg:grid-cols-[1.15fr_0.85fr] gap-10 items-start">
+            <div class="space-y-8">
+                <div class="glow-tagline">
+                    <span class="h-3 w-3 bg-[var(--glow-red)] inline-block rounded-full"></span>
+                    Plataforma completa para clientes, corretores e administradores.
                 </div>
-                <h2 class="bauhaus-hero-title font-black">
-                    Gestão Imobiliária
-                    <span class="bauhaus-hero-highlight">simples, geométrica e vibrante</span>
-                </h2>
-                <p class="text-lg max-w-2xl">
-                    Experiência Bauhaus para busca de imóveis, atendimento e administração. Login rápido via Google ou e-mail e fluxos otimizados para sua equipe.
-                </p>
+                <div class="space-y-4">
+                    <h2 class="glow-hero-title font-black">
+                        Gestão imobiliária fluida
+                        <span class="glow-hero-highlight">enxuta, vibrante e pronta para você</span>
+                    </h2>
+                    <p class="text-lg max-w-3xl leading-relaxed text-[rgba(255,255,255,0.85)]">
+                        A experiência Glow entrega login único, atendimento inteligente e painéis que respeitam seu papel (cliente, corretor ou administrador) sem precisar trocar de tela.
+                    </p>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="glow-card p-5">
+                        <div class="text-3xl mb-2">✨</div>
+                        <p class="font-semibold text-[var(--glow-ink)]">
+                            Login inteligente que percebe o seu papel e direciona para a área certa.
+                        </p>
+                    </div>
+                    <div class="glow-card p-5">
+                        <div class="text-3xl mb-2">💡</div>
+                        <p class="font-semibold text-[var(--glow-ink)]">
+                            Liquid glass, espaçamentos generosos e tipografia cuidada evitam branco sobre branco.
+                        </p>
+                    </div>
+                </div>
+
                 <div class="flex flex-wrap gap-3">
-                    <span class="bauhaus-chip">Pesquisa com filtros dinâmicos</span>
-                    <span class="bauhaus-chip">Chat direto com corretores</span>
-                    <span class="bauhaus-chip">Portal e área admin</span>
+                    <span class="glow-chip">Busca com filtros dinâmicos</span>
+                    <span class="glow-chip">Chat direto com corretores</span>
+                    <span class="glow-chip">Dashboards administrativos</span>
                 </div>
             </div>
 
             <!-- Login/Cadastro Section -->
-            <div class="bauhaus-panel p-8">
-                <div class="text-center mb-6">
-                    <h3 class="text-2xl font-black text-[var(--bauhaus-black)] mb-2">Bem-vindo!</h3>
-                    <p class="text-[var(--bauhaus-ink)]">Entre ou crie sua conta para continuar</p>
+            <div class="glow-panel relative overflow-hidden">
+                <img src="/assets/logo.png" alt="SOCIMOB" class="hero-logo">
+                <div class="text-center space-y-2 mb-6">
+                    <h3 class="text-2xl font-black text-[var(--glow-ink)]">Bem-vindo ao SOCIMOB</h3>
+                    <p class="text-xs uppercase tracking-[0.4em] text-[rgba(255,255,255,0.7)]">
+                        Um único login para admins, corretores e clientes.
+                    </p>
                 </div>
 
                 <!-- Google Sign In Button -->
@@ -70,180 +99,232 @@
                     </div>
                 </div>
 
-                <div class="relative mb-6">
+                <div class="relative my-6">
                     <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t-4 border-[var(--bauhaus-black)]"></div>
+                        <div class="w-full border-t border-[rgba(255,255,255,0.15)]"></div>
                     </div>
-                    <div class="relative flex justify-center text-sm">
-                        <span class="px-4 bg-white text-[var(--bauhaus-ink)] font-bold uppercase">ou</span>
+                    <div class="relative flex justify-center text-xs uppercase tracking-[0.4em] text-[rgba(255,255,255,0.6)]">
+                        <span class="px-4 bg-[rgba(2,7,20,0.95)]">ou use e-mail</span>
                     </div>
                 </div>
 
+                <div id="loginFeedback" role="status" aria-live="polite" class="glow-feedback hidden"></div>
+
                 <!-- Email/Senha para clientes -->
-                <form id="clientLoginForm" class="space-y-4">
+                <form id="clientLoginForm" class="space-y-5">
                     <div class="space-y-2">
-                        <label class="block text-sm font-extrabold text-[var(--bauhaus-black)] uppercase tracking-wide">Email</label>
+                        <label class="block text-sm font-extrabold text-[var(--glow-ink)] uppercase tracking-wide">Email</label>
                         <input
                             type="email"
                             id="clientEmail"
                             required
-                            class="w-full bauhaus-input"
+                            class="w-full glow-input"
                             placeholder="seu@email.com"
                         />
                     </div>
                     <div class="space-y-2">
-                        <label class="block text-sm font-extrabold text-[var(--bauhaus-black)] uppercase tracking-wide">Senha</label>
+                        <label class="block text-sm font-extrabold text-[var(--glow-ink)] uppercase tracking-wide">Senha</label>
                         <input
                             type="password"
                             id="clientSenha"
                             required
-                            class="w-full bauhaus-input"
+                            class="w-full glow-input"
                             placeholder="••••••••"
                         />
                     </div>
 
-                    <div id="errorMsg" class="hidden bg-red-50 border-4 border-[var(--bauhaus-red)] text-[var(--bauhaus-black)] px-4 py-3 text-sm font-semibold"></div>
-
                     <button
                         type="submit"
-                        class="w-full bauhaus-button"
+                        class="w-full glow-button flex items-center justify-center gap-2"
                     >
-                        Entrar como Cliente
+                        <span id="btnLabel">Entrar</span>
+                        <span id="btnLoading" class="hidden">Entrando...</span>
                     </button>
                 </form>
 
-                <div class="mt-6 text-center">
-                    <p class="text-sm text-[var(--bauhaus-ink)]">
-                        Não tem conta? Ao entrar com Google, uma conta será criada automaticamente.
-                    </p>
+                <div class="mt-6 text-center text-xs text-[rgba(255,255,255,0.7)]">
+                    Acesso com Google cria conta automaticamente quando necessário.
                 </div>
 
-                <div class="mt-4 pt-4 border-t-4 border-[var(--bauhaus-black)] text-center">
-                    <a href="/app/login.html" class="text-sm bauhaus-link font-bold">
-                        Acesso para corretores e administradores →
-                    </a>
+                <div class="mt-4 pt-5 border-t border-[rgba(255,255,255,0.15)] text-center text-xs">
+                    <a href="/app/login.html" class="glow-link font-bold">Precisa do CRM completo? Clique aqui.</a>
                 </div>
             </div>
         </div>
 
         <!-- Features -->
-        <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bauhaus-card rounded-xl p-6 text-center">
+        <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-5 relative z-10">
+            <div class="glow-card rounded-xl p-6 text-center">
                 <div class="text-4xl mb-3">🔍</div>
-                <p class="text-lg font-bold text-[var(--bauhaus-black)]">Busca geométrica com filtros rápidos</p>
+                <p class="text-lg font-bold text-[var(--glow-ink)]">Busca geométrica com filtros rápidos</p>
             </div>
-            <div class="bauhaus-card rounded-xl p-6 text-center">
+            <div class="glow-card rounded-xl p-6 text-center">
                 <div class="text-4xl mb-3">💬</div>
-                <p class="text-lg font-bold text-[var(--bauhaus-black)]">Chat direto entre clientes e corretores</p>
+                <p class="text-lg font-bold text-[var(--glow-ink)]">Chat direto entre clientes e corretores</p>
             </div>
-            <div class="bauhaus-card rounded-xl p-6 text-center">
+            <div class="glow-card rounded-xl p-6 text-center">
                 <div class="text-4xl mb-3">🔒</div>
-                <p class="text-lg font-bold text-[var(--bauhaus-black)]">Autenticação segura e multi-tenant</p>
+                <p class="text-lg font-bold text-[var(--glow-ink)]">Autenticação segura e multi-tenant</p>
             </div>
         </div>
     </div>
 
     <script>
-        // Configuração da API
-        const API_URL = '/api';
-
-        // Callback do Google Sign-In
-        function handleCredentialResponse(response) {
-            console.log('Google credential received:', response.credential);
-            
-            // Enviar token para o backend
-            fetch(API_URL + '/auth/google', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    token: response.credential
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    // Salvar token e dados do usuário
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    
-                    // Redirecionar baseado no tipo de usuário
-                    if (data.user.role === 'client') {
-                        window.location.href = '/portal/imoveis.html';
-                    } else {
-                        window.location.href = '/app/dashboard.html';
-                    }
-                } else {
-                    showError(data.message || 'Erro ao fazer login com Google');
-                }
-            })
-            .catch(error => {
-                console.error('Erro:', error);
-                showError('Erro ao conectar com o servidor');
-            });
-        }
-
-        // Login com email/senha (clientes)
-        document.getElementById('clientLoginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const email = document.getElementById('clientEmail').value;
-            const senha = document.getElementById('clientSenha').value;
-            
-            fetch(API_URL + '/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ email, senha })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    
-                    // Redirecionar baseado no role
-                    if (data.user.role === 'client') {
-                        window.location.href = '/portal/imoveis.html';
-                    } else {
-                        window.location.href = '/app/dashboard.html';
-                    }
-                } else {
-                    showError(data.message || 'Credenciais inválidas');
-                }
-            })
-            .catch(error => {
-                console.error('Erro:', error);
-                showError('Erro ao conectar com o servidor');
-            });
-        });
-
-        function showError(message) {
-            const errorMsg = document.getElementById('errorMsg');
-            errorMsg.textContent = message;
-            errorMsg.classList.remove('hidden');
-        }
-
-        // Verificar se já está logado
-        const token = localStorage.getItem('token');
-        const userStr = localStorage.getItem('user');
-        
-        if (token && userStr) {
-            try {
-                const user = JSON.parse(userStr);
-                // Redirecionar para a área apropriada
-                if (user.role === 'client') {
-                    window.location.href = '/portal/imoveis.html';
-                } else {
-                    window.location.href = '/app/dashboard.html';
-                }
-            } catch (e) {
-                // Token inválido, limpar
-                localStorage.clear();
+        window.handleCredentialResponse = (response) => {
+            const handler = window.__processGoogleToken;
+            if (typeof handler === 'function') {
+                handler(response?.credential);
+            } else {
+                window.__pendingGoogleToken = response?.credential;
             }
-        }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginForm = document.getElementById('clientLoginForm');
+            const feedbackEl = document.getElementById('loginFeedback');
+            const submitButton = loginForm?.querySelector('button[type="submit"]');
+            const btnLabel = document.getElementById('btnLabel');
+            const btnLoading = document.getElementById('btnLoading');
+
+            const pendingToken = localStorage.getItem('token');
+            const pendingUser = localStorage.getItem('user');
+
+            if (pendingToken && pendingUser) {
+                try {
+                    const parsed = JSON.parse(pendingUser);
+                    window.location.href = LoginUtils.getRedirectForRole(parsed.role);
+                    return;
+                } catch (error) {
+                    console.warn('token inválido:', error);
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                }
+            }
+
+            loginForm?.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                await attemptLogin();
+            });
+
+            async function attemptLogin() {
+                const email = document.getElementById('clientEmail').value.trim();
+                const senha = document.getElementById('clientSenha').value;
+
+                if (!email || !senha) {
+                    LoginUtils.showFeedback(feedbackEl, 'error', 'Informe e-mail e senha para continuar.');
+                    return;
+                }
+
+                LoginUtils.clearFeedback(feedbackEl);
+                LoginUtils.setButtonLoading({
+                    button: submitButton,
+                    label: btnLabel,
+                    loadingIndicator: btnLoading,
+                    isLoading: true
+                });
+
+                const { response, data, error } = await LoginUtils.fetchLogin(email, senha);
+
+                if (error) {
+                    console.error('Erro no login:', error);
+                    LoginUtils.showFeedback(feedbackEl, 'error', 'Erro ao conectar com o servidor');
+                } else if (!response?.ok || !data.success) {
+                    LoginUtils.showFeedback(feedbackEl, 'error', data?.message || 'Credenciais inválidas');
+                } else {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    LoginUtils.showFeedback(feedbackEl, 'success', `Bem-vindo(a), ${data.user.name}. Redirecionando...`);
+                    setTimeout(() => {
+                        window.location.href = LoginUtils.getRedirectForRole(data.user.role);
+                    }, 750);
+                }
+
+                LoginUtils.setButtonLoading({
+                    button: submitButton,
+                    label: btnLabel,
+                    loadingIndicator: btnLoading,
+                    isLoading: false
+                });
+            }
+
+            async function googleFlow(token) {
+                if (!token) {
+                    LoginUtils.showFeedback(feedbackEl, 'error', 'Token do Google não foi entregue.');
+                    return;
+                }
+
+                LoginUtils.clearFeedback(feedbackEl);
+                LoginUtils.setButtonLoading({
+                    button: submitButton,
+                    label: btnLabel,
+                    loadingIndicator: btnLoading,
+                    isLoading: true
+                });
+
+                try {
+                    const response = await fetch(`${LoginUtils.API_URL}/auth/google`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token })
+                    });
+                    const payload = await response.json();
+
+                    if (!response.ok || !payload.success) {
+                        throw new Error(payload?.message || 'Erro ao fazer login com Google');
+                    }
+
+                    localStorage.setItem('token', payload.token);
+                    localStorage.setItem('user', JSON.stringify(payload.user));
+                    LoginUtils.showFeedback(feedbackEl, 'success', `Bem-vindo(a), ${payload.user.name}.`);
+                    setTimeout(() => {
+                        window.location.href = LoginUtils.getRedirectForRole(payload.user.role);
+                    }, 750);
+                } catch (err) {
+                    console.error('Erro:', err);
+                    LoginUtils.showFeedback(
+                        feedbackEl,
+                        'error',
+                        err instanceof Error ? err.message : 'Erro ao conectar com o servidor'
+                    );
+                } finally {
+                    LoginUtils.setButtonLoading({
+                        button: submitButton,
+                        label: btnLabel,
+                        loadingIndicator: btnLoading,
+                        isLoading: false
+                    });
+                }
+            }
+
+            window.__processGoogleToken = googleFlow;
+            if (window.__pendingGoogleToken) {
+                googleFlow(window.__pendingGoogleToken);
+                window.__pendingGoogleToken = null;
+            }
+        });
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

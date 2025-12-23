@@ -1,156 +1,148 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - SOCIMOB</title>
+    <link rel="icon" href="/assets/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/css/bauhaus.css">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="/css/glow.css">
+    <script src="/js/login-utils.js" defer></script>
 </head>
-<body class="bauhaus-page">
-    <div class="min-h-screen flex items-center justify-center p-4">
-        <div class="bauhaus-panel w-full max-w-md p-10 bg-white">
-            <div class="text-center mb-10">
-                <div class="bauhaus-badge justify-center mb-4">🏠 SOCIMOB</div>
-                <h1 class="text-3xl font-black text-[var(--bauhaus-black)] uppercase tracking-tight">Área do Corretor</h1>
-                <p class="text-[var(--bauhaus-ink)] font-semibold">Sistema de Gestão Imobiliária</p>
+<body class="glow-page">
+    <div class="min-h-screen flex items-center justify-center px-4 py-10">
+        <div class="glow-panel w-full max-w-md p-10 space-y-6">
+            <div class="text-center space-y-3">
+                <img src="/assets/logo-exclusiva.png" alt="SOCIMOB" class="hero-logo mx-auto w-36">
+                <div class="glow-badge justify-center text-xs">
+                    SOCIMOB · Portal Único
+                </div>
+                <h1 class="text-2xl font-black text-[var(--glow-ink)]">Login unificado</h1>
+                <p class="text-sm text-[rgba(255,255,255,0.7)]">
+                    Administradores, superadmins e clientes usam o mesmo fluxo. O middleware identifica o perfil e direciona para o painel certo.
+                </p>
             </div>
-
-            <form id="loginForm" class="space-y-6">
+            <form id="loginForm" class="space-y-5">
                 <div class="space-y-2">
-                    <label class="block text-sm font-extrabold text-[var(--bauhaus-black)] uppercase tracking-wide">
-                        E-mail
-                    </label>
+                    <label class="text-xs font-bold uppercase tracking-[0.3em] text-[rgba(255,255,255,0.7)]">Email</label>
                     <input
-                        id="email"
+                        id="loginEmail"
                         type="email"
                         required
-                        class="w-full bauhaus-input"
-                        placeholder="seu@email.com"
+                        class="w-full glow-input"
+                        placeholder="usuario@exemplo.com"
                     />
                 </div>
-
                 <div class="space-y-2">
-                    <label class="block text-sm font-extrabold text-[var(--bauhaus-black)] uppercase tracking-wide">
-                        Senha
-                    </label>
+                    <label class="text-xs font-bold uppercase tracking-[0.3em] text-[rgba(255,255,255,0.7)]">Senha</label>
                     <input
-                        id="senha"
+                        id="loginSenha"
                         type="password"
                         required
-                        class="w-full bauhaus-input"
+                        class="w-full glow-input"
                         placeholder="••••••••"
                     />
                 </div>
-
-                <div id="errorMsg" class="hidden bg-red-50 border-4 border-[var(--bauhaus-red)] text-[var(--bauhaus-black)] px-4 py-3 text-sm font-semibold"></div>
-
                 <button
                     type="submit"
                     id="btnLogin"
-                    class="w-full bauhaus-button disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="w-full glow-button flex items-center justify-center gap-2"
                 >
                     <span id="btnText">Entrar</span>
                     <span id="btnLoading" class="hidden">Entrando...</span>
                 </button>
             </form>
-
-            <div class="mt-4 text-center text-xs text-[var(--bauhaus-ink)] font-semibold">
-                <p>Versão HTML/jQuery - Servidor Único PHP</p>
+            <div id="loginFeedback" role="status" aria-live="polite" class="glow-feedback hidden"></div>
+            <div class="text-xs text-center text-[rgba(255,255,255,0.6)]">
+                Este login respeita quem você é. Caso precise do CRM completo, consulte o superadmin.
             </div>
         </div>
     </div>
 
     <script>
-        const API_URL = '/api';
+        document.addEventListener('DOMContentLoaded', () => {
+            const feedbackEl = document.getElementById('loginFeedback');
+            const form = document.getElementById('loginForm');
+            const loginButton = document.getElementById('btnLogin');
+            const btnText = document.getElementById('btnText');
+            const btnLoading = document.getElementById('btnLoading');
 
-        $(document).ready(function() {
-            console.log('✓ Login page carregada');
+            const storedToken = localStorage.getItem('token');
+            const storedUser = localStorage.getItem('user');
 
-            // Verificar se já está logado
-            const token = localStorage.getItem('token');
-            if (token) {
-                console.log('✓ Token encontrado, redirecionando...');
-                window.location.href = 'dashboard.html';
-                return;
+            if (storedToken && storedUser) {
+                try {
+                    const parsed = JSON.parse(storedUser);
+                    window.location.href = LoginUtils.getRedirectForRole(parsed.role);
+                    return;
+                } catch (error) {
+                    console.warn('token inválido:', error);
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                }
             }
 
-            $('#loginForm').on('submit', function(e) {
-                e.preventDefault();
-                console.log('🔐 Formulário submetido');
-                handleLogin();
-            });
-        });
-
-        function handleLogin() {
-            const email = $('#email').val();
-            const senha = $('#senha').val();
-
-            console.log('📧 Email:', email);
-            
-            // Mostrar loading
-            $('#btnLogin').prop('disabled', true);
-            $('#btnText').hide();
-            $('#btnLoading').show();
-            $('#errorMsg').hide();
-
-            console.log('📤 Enviando requisição:', {
-                url: API_URL + '/auth/login',
-                method: 'POST',
-                data: { email, password: senha }
+            form?.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                await handleSubmit();
             });
 
-            $.ajax({
-                url: API_URL + '/auth/login',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ email, password: senha }),
-                beforeSend: function(xhr, settings) {
-                    console.log('📋 Request details:', {
-                        url: settings.url,
-                        method: settings.type,
-                        headers: xhr.getAllResponseHeaders(),
-                        data: settings.data
-                    });
-                },
-                success: function(response) {
-                    console.log('✅ Login bem-sucedido!', response);
+            async function handleSubmit() {
+                const emailField = document.getElementById('loginEmail');
+                const senhaField = document.getElementById('loginSenha');
+                const email = emailField?.value.trim() || '';
+                const senha = senhaField?.value || '';
 
-                    if (response.success && response.token) {
-                        // Salvar dados
-                        localStorage.setItem('token', response.token);
-                        localStorage.setItem('user', JSON.stringify(response.user));
-
-                        // Redirecionar
-                        console.log('→ Redirecionando para dashboard...');
-                        window.location.href = 'dashboard.html';
-                    } else {
-                        showError(response.message || 'Erro ao fazer login');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('❌ Erro no login:', error);
-                    
-                    let errorMsg = 'Erro ao conectar com o servidor';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        errorMsg = xhr.responseJSON.message;
-                    }
-                    
-                    showError(errorMsg);
-                },
-                complete: function() {
-                    // Esconder loading
-                    $('#btnLogin').prop('disabled', false);
-                    $('#btnText').show();
-                    $('#btnLoading').hide();
+                if (!email || !senha) {
+                    LoginUtils.showFeedback(feedbackEl, 'error', 'Informe e-mail e senha.');
+                    return;
                 }
-            });
-        }
 
-        function showError(message) {
-            $('#errorMsg').text(message).removeClass('hidden');
-        }
+                LoginUtils.clearFeedback(feedbackEl);
+                LoginUtils.setButtonLoading({
+                    button: loginButton,
+                    label: btnText,
+                    loadingIndicator: btnLoading,
+                    isLoading: true
+                });
+
+                const { response, data, error } = await LoginUtils.fetchLogin(email, senha);
+
+                if (error) {
+                    console.error('Erro no login:', error);
+                    LoginUtils.showFeedback(feedbackEl, 'error', 'Erro ao conectar com o servidor');
+                } else if (!response?.ok || !data.success) {
+                    LoginUtils.showFeedback(feedbackEl, 'error', data?.message || 'Credenciais inválidas');
+                } else {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    LoginUtils.showFeedback(feedbackEl, 'success', `Bem-vindo(a), ${data.user.name}`);
+                    setTimeout(() => {
+                        window.location.href = LoginUtils.getRedirectForRole(data.user.role);
+                    }, 700);
+                }
+
+                LoginUtils.setButtonLoading({
+                    button: loginButton,
+                    label: btnText,
+                    loadingIndicator: btnLoading,
+                    isLoading: false
+                });
+            }
+        });
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+

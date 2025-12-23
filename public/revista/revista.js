@@ -1,4 +1,4 @@
-const API_URL = '/api';
+﻿const API_URL = '/api';
 const CDN_FALLBACKS = [
     'https://images.unsplash.com/photo-1505692794403-34d4982c87e4?auto=format&fit=crop&w=1400&q=80',
     'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1400&q=80',
@@ -51,11 +51,11 @@ function resolveImage(imovel, fallbackIndex) {
 }
 
 function mapImovelToPage(imovel, index) {
-    const titulo = imovel?.titulo || 'Imóvel em destaque';
+    const titulo = imovel?.titulo || 'ImÃ³vel em destaque';
     const finalidade = imovel?.finalidade || 'venda/aluguel';
     const preco = imovel?.preco ? `R$ ${formatPrice(imovel.preco)}` : 'Sob consulta';
     const imagem = resolveImage(imovel, index);
-    const descricao = (imovel?.descricao || '').slice(0, 260) || 'Catálogo multimídia com efeito de revista inspirado na estética Bauhaus.';
+    const descricao = (imovel?.descricao || '').slice(0, 260) || 'CatÃ¡logo multimÃ­dia com efeito de revista inspirado na estÃ©tica Glow.';
     return {
         id: imovel?.id || `page-${index}`,
         titulo,
@@ -79,13 +79,13 @@ async function loadData() {
         const lista = Array.isArray(body?.data) ? body.data : Array.isArray(body) ? body : [];
         viewerState.pages = lista.map(mapImovelToPage);
     } catch (error) {
-        console.warn('Falha ao buscar imóveis, usando CDN:', error);
+        console.warn('Falha ao buscar imÃ³veis, usando CDN:', error);
         viewerState.pages = CDN_FALLBACKS.map((url, index) => ({
             id: `fallback-${index}`,
-            titulo: 'Edição especial Bauhaus',
-            finalidade: 'Catálogo',
+            titulo: 'EdiÃ§Ã£o especial Glow',
+            finalidade: 'CatÃ¡logo',
             preco: 'Design & Arte',
-            descricao: 'Visual geométrico com assets em CDN e cache agressivo.',
+            descricao: 'Visual geomÃ©trico com assets em CDN e cache agressivo.',
             imagem: url,
             type: 'image'
         }));
@@ -94,9 +94,9 @@ async function loadData() {
     if (!viewerState.pages.length) {
         viewerState.pages = CDN_FALLBACKS.map((url, index) => ({
             id: `base-${index}`,
-            titulo: 'Coleção Imersiva',
-            finalidade: 'Experiência digital',
-            preco: 'Disponível sob consulta',
+            titulo: 'ColeÃ§Ã£o Imersiva',
+            finalidade: 'ExperiÃªncia digital',
+            preco: 'DisponÃ­vel sob consulta',
             descricao: 'Fallback de alta disponibilidade entregue via CDN.',
             imagem: url,
             type: 'image'
@@ -191,7 +191,7 @@ function renderFrame(page, asset, t, zoom) {
     ctx.translate(padding, padding);
     ctx.scale(zoom, zoom);
 
-    // Página atual e próxima (efeito flip)
+    // PÃ¡gina atual e prÃ³xima (efeito flip)
     const angle = (1 - t) * 0.35; // radianos aproximados
     ctx.save();
     ctx.transform(Math.cos(angle), 0, Math.sin(angle) * -1, 1, 0, 0);
@@ -203,10 +203,10 @@ function renderFrame(page, asset, t, zoom) {
     ctx.fillRect(0, innerH - 140, innerW, 140);
 
     ctx.fillStyle = '#fff8e7';
-    ctx.font = '700 28px "Bauhaus", "Inter", sans-serif';
+    ctx.font = '700 28px "Glow", "Inter", sans-serif';
     ctx.fillText(page.titulo, 24, innerH - 88);
     ctx.font = '600 16px "Inter", sans-serif';
-    ctx.fillText(`${page.finalidade} • ${page.preco}`, 24, innerH - 58);
+    ctx.fillText(`${page.finalidade} â¢ ${page.preco}`, 24, innerH - 58);
     ctx.font = '400 14px "Inter", sans-serif';
     wrapText(ctx, page.descricao, 24, innerH - 32, innerW - 48, 18);
 
@@ -295,13 +295,13 @@ function renderScrollMode() {
                 <img src="${page.imagem}" loading="lazy" alt="${page.titulo}" class="w-full h-full object-cover">
             </div>
             <div class="p-6 flex flex-col gap-2">
-                <div class="text-xs font-black uppercase revista-meta text-[var(--bauhaus-blue)]">${page.finalidade}</div>
-                <h2 class="text-2xl font-black text-[var(--bauhaus-black)]">${page.titulo}</h2>
-                <div class="text-lg font-bold text-[var(--bauhaus-ink)]">${page.preco}</div>
-                <p class="text-[var(--bauhaus-ink)] leading-relaxed">${page.descricao}</p>
-                <div class="mt-auto flex items-center gap-3 text-xs text-[var(--bauhaus-ink)] uppercase tracking-[0.14em]">
-                    <span>Página ${index + 1} de ${viewerState.pages.length}</span>
-                    <div class="h-1 w-12 bg-[var(--bauhaus-yellow)]"></div>
+                <div class="text-xs font-black uppercase revista-meta text-[var(--glow-blue)]">${page.finalidade}</div>
+                <h2 class="text-2xl font-black text-[var(--glow-black)]">${page.titulo}</h2>
+                <div class="text-lg font-bold text-[var(--glow-black)]">${page.preco}</div>
+                <p class="text-[var(--glow-black)] leading-relaxed">${page.descricao}</p>
+                <div class="mt-auto flex items-center gap-3 text-xs text-[var(--glow-black)] uppercase tracking-[0.14em]">
+                    <span>PÃ¡gina ${index + 1} de ${viewerState.pages.length}</span>
+                    <div class="h-1 w-12 bg-[var(--glow-yellow)]"></div>
                 </div>
             </div>
         `;
@@ -340,7 +340,7 @@ function bindEvents() {
         }
     });
 
-    // API mínima exportada
+    // API mÃ­nima exportada
     window.magazineViewer = {
         next: nextPage,
         prev: prevPage,
@@ -357,3 +357,5 @@ function bindEvents() {
     }
     loadData();
 })();
+
+

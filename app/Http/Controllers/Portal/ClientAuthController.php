@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Carbon;
 
 class ClientAuthController extends Controller
 {
@@ -143,8 +144,8 @@ class ClientAuthController extends Controller
             $lead->update([
                 'user_id' => $user->id,
                 'email' => $user->email,
-                'telefone' => $telefone ?: $lead->telefone,
-                'whatsapp' => $telefone ?: $lead->whatsapp,
+                'telefone' => $telefone ?: $lead->telefone ?: '',
+                'whatsapp' => $telefone ?: $lead->whatsapp ?: '',
                 'tenant_id' => $lead->tenant_id ?: $tenantId,
             ]);
             return $lead;
@@ -154,12 +155,14 @@ class ClientAuthController extends Controller
             'tenant_id' => $tenantId,
             'nome' => $user->name,
             'email' => $user->email,
-            'telefone' => $telefone,
-            'whatsapp' => $telefone,
+            'telefone' => $telefone ?: '',
+            'whatsapp' => $telefone ?: '',
             'status' => 'novo',
             'user_id' => $user->id,
-            'primeira_interacao' => now(),
-            'ultima_interacao' => now(),
+            'primeira_interacao' => Carbon::now(),
+            'ultima_interacao' => Carbon::now(),
         ]);
     }
 }
+
+
