@@ -1,6 +1,4 @@
 ---
 deployment:
   tasks:
-    - export PATH=/opt/alt/php83/usr/bin:$PATH
-    - export COMPOSER_ALLOW_SUPERUSER=1
-    - /opt/alt/php83/usr/bin/php /usr/local/bin/composer install --no-interaction --prefer-dist --optimize-autoloader
+    - /opt/alt/php83/usr/bin/php /usr/local/bin/composer install --no-dev
