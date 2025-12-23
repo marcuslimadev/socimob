@@ -129,6 +129,10 @@
 
 
         function normalizeImovel(item) {
+            // Debug: log do item original
+            console.log('Item original:', item);
+            console.log('valor_venda:', item.valor_venda, 'preco:', item.preco);
+            
             // Parse imagens se for string JSON
             let fotos = [];
             if (item.imagens) {
@@ -145,7 +149,7 @@
                 fotos = Array.isArray(item.fotos) ? item.fotos : [];
             }
             
-            return {
+            const normalized = {
                 id: item.id,
                 titulo: item.titulo || item.codigo || 'Imovel',
                 tipo: item.tipo_imovel || item.tipo || 'casa',
@@ -158,6 +162,9 @@
                 descricao: item.descricao || '',
                 fotos: fotos,
             };
+            
+            console.log('Normalizado:', normalized);
+            return normalized;
         }
 
         function getImagemPrincipal(imovel) {
