@@ -1,6 +1,8 @@
 <?php
 
 /** @var \Laravel\Lumen\Routing\Router $router */
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 /*
 |--------------------------------------------------------------------------
@@ -838,9 +840,43 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
         ]);
     });
 
-    // Configurações do CRM / IA
+// Configurações do CRM / IA
     $router->get('/settings', 'SettingsController@index');
     $router->put('/settings', 'SettingsController@update');
+});
+
+// Teste rápido de login remoto
+$router->post('/debug/remote-login-test', function (Request $request) {
+    $email = $request->input('email');
+    $password = $request->input('password');
+
+    if (!$email || !$password) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Email e senha são obrigatórios'
+        ], 400);
+    }
+
+    $remoteBase = rtrim(env('REMOTE_AUTH_URL', 'https://exclusivalarimoveis.com'), '/');
+    $target = $remoteBase . '/api/auth/login';
+
+    try {
+        $response = Http::timeout(20)->post($target, [
+            'email' => $email,
+            'password' => $password
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'status' => $response->status(),
+            'remote' => $response->json() ?: $response->body()
+        ], $response->status());
+    } catch (\Throwable $exception) {
+        return response()->json([
+            'success' => false,
+            'error' => $exception->getMessage()
+        ], 500);
+    }
 });
 
 // Trigger sync remoto (debug)
