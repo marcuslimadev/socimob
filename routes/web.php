@@ -2,6 +2,8 @@
 
 /** @var \Laravel\Lumen\Routing\Router $router */
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 
 /*
@@ -877,6 +879,66 @@ $router->post('/debug/remote-login-test', function (Request $request) {
             'error' => $exception->getMessage()
         ], 500);
     }
+});
+
+$router->post('/debug/create-user', function (Request $request) {
+    $secretKey = env('DEBUG_CREATE_USER_SECRET');
+    if ($secretKey && $request->header('X-Debug-Secret') !== $secretKey) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Unauthorized'
+        ], 403);
+    }
+
+    $data = $request->only(['name', 'email', 'password', 'role', 'tenant_id', 'is_active']);
+    if (empty($data['email']) || empty($data['password'])) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Email e senha são obrigatórios'
+        ], 400);
+    }
+
+    $data['tenant_id'] = $data['tenant_id'] ?? env('DEFAULT_TENANT_ID', 1);
+    $data['is_active'] = $data['is_active'] ?? 1;
+    $existing = DB::table('users')->where('email', $data['email'])->first();
+
+    $hashedPassword = Hash::make($data['password']);
+
+    if ($existing) {
+        DB::table('users')
+            ->where('id', $existing->id)
+            ->update([
+                'name' => $data['name'] ?? $existing->name,
+                'password' => $hashedPassword,
+                'role' => $data['role'] ?? $existing->role,
+                'tenant_id' => $data['tenant_id'],
+                'is_active' => $data['is_active'],
+                'updated_at' => now(),
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Usuário atualizado',
+            'user_id' => $existing->id
+        ]);
+    }
+
+    $insertId = DB::table('users')->insertGetId([
+        'name' => $data['name'] ?? 'Novo Usuário',
+        'email' => $data['email'],
+        'password' => $hashedPassword,
+        'role' => $data['role'] ?? 'admin',
+        'tenant_id' => $data['tenant_id'],
+        'is_active' => $data['is_active'],
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Usuário criado',
+        'user_id' => $insertId
+    ]);
 });
 
 // Trigger sync remoto (debug)

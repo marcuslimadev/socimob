@@ -5,26 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - SOCIMOB</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/glow.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
-<body class="bg-slate-50">
-    <!-- Navbar -->
-    <nav class="bg-slate-900 text-white p-4">
+<body class="glow-page">
+    <nav class="glow-nav">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold uppercase tracking-tighter">SOCIMOB</h1>
-            <div class="flex items-center gap-4">
-                <span id="userName" class="font-medium"></span>
-                <span id="userRole" class="text-xs bg-slate-700 px-2 py-1 rounded"></span>
-                <button id="btnLogout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold text-sm">
-                    Sair
-                </button>
+            <div class="flex items-center gap-3">
+                <div class="glow-badge text-base">SOCIMOB</div>
+                <span class="glow-pill hidden md:inline-flex">Dashboards internos</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="userName" class="text-sm font-semibold text-[var(--glow-ink)]"></span>
+                <span id="userRole" class="text-xs font-bold uppercase tracking-[0.3em] text-[rgba(255,255,255,0.7)]"></span>
+                <button id="btnLogout" class="glow-button px-6 py-2 text-sm">Sair</button>
             </div>
         </div>
     </nav>
 
-    <!-- Conteúdo -->
-    <div class="container mx-auto p-8">
-        <div class="bg-white rounded-lg shadow-xl p-8 mb-8">
+    <main class="container mx-auto px-4 py-10 space-y-8">
+        <div class="glow-panel">
+            <h2 class="glow-section-title mb-2">Dashboard</h2>
+            <p class="text-[rgba(255,255,255,0.7)] mb-6">Visão geral fluida dos leads, imóveis e conversas.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glow-card p-6 space-y-2">
+                    <div class="text-sm text-[rgba(255,255,255,0.6)] uppercase tracking-[0.4em]">Leads</div>
+                    <div id="statLeadsValue" class="text-4xl font-black">0</div>
+                    <p id="statLeadsDetail" class="text-sm text-[rgba(255,255,255,0.7)]">Carregando...</p>
+                </div>
+                <div class="glow-card p-6 space-y-2">
+                    <div class="text-sm text-[rgba(255,255,255,0.6)] uppercase tracking-[0.4em]">Imóveis</div>
+                    <div id="statPropertiesValue" class="text-4xl font-black">0</div>
+                    <p id="statPropertiesDetail" class="text-sm text-[rgba(255,255,255,0.7)]">Atualizando...</p>
+                </div>
+                <div class="glow-card p-6 space-y-2">
+                    <div class="text-sm text-[rgba(255,255,255,0.6)] uppercase tracking-[0.4em]">Conversas</div>
+                    <div id="statConversasValue" class="text-4xl font-black">0</div>
+                    <p id="statConversasDetail" class="text-sm text-[rgba(255,255,255,0.7)]">Sincronizando...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="glow-panel">
+            <h3 class="glow-section-title mb-6">Menu</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <a href="leads.html" class="glow-button secondary">Leads</a>
+                <a href="visitas.html" class="glow-button secondary">Visitas</a>
+                <a href="imoveis.html" class="glow-button secondary">Imóveis</a>
+                <a href="conversas.html" class="glow-button secondary">Conversas</a>
+                <a href="configuracoes.html" class="glow-button">Configurações</a>
+                <a href="#" id="linkSuperAdmin" class="glow-button ghost hidden">Super Admin</a>
+            </div>
+        </div>
+
+        <div class="glow-card text-center text-xs text-[rgba(255,255,255,0.6)]">
+            Versão HTML/jQuery - Servidor Único PHP
+        </div>
+    </main>
             <h2 class="text-3xl font-black text-slate-900 mb-4 uppercase">Dashboard</h2>
             <p class="text-slate-600 mb-6">Bem-vindo ao sistema!</p>
             

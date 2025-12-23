@@ -1,17 +1,86 @@
 @import url('https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;600;700;800&display=swap');
 
 :root {
-    --glow-red: #ff4f4f;
-    --glow-blue: #3d5afe;
-    --glow-yellow: #ffd449;
-    --glow-black: #0b1524;
-    --glow-border: rgba(255, 255, 255, 0.2);
-    --glow-cream: rgba(255, 255, 255, 0.2);
-    --glow-ink: #f4f4f9;
-    --glow-text-dark: #0b1524;
-    --glow-glass: rgba(18, 24, 43, 0.6);
-    --glow-glass-strong: rgba(16, 23, 34, 0.8);
-    --glow-glow: 0 10px 50px rgba(31, 50, 78, 0.65);
+    /* Cores principais neutras e claras */
+    --primary-bg: #f3f4f6;
+    --secondary-bg: #e5e7eb;
+    --card-bg: #ffffff;
+    --navbar-bg: #e5e7eb;
+    --text-primary: #1f2937;
+    --text-secondary: #4b5563;
+    --border-color: #d1d5db;
+    
+    /* Cores de status (tons médios e suaves) */
+    --status-novo: #94a3b8;
+    --status-atendimento: #fbbf24;
+    --status-qualificado: #818cf8;
+    --status-proposta: #fb923c;
+    --status-fechado: #34d399;
+    --status-perdido: #fb7185;
+    
+    /* Cores de ação */
+    --btn-primary: #64748b;
+    --btn-primary-hover: #475569;
+    --btn-danger: #ef4444;
+    --btn-danger-hover: #dc2626;
+    
+    /* Compatibilidade com sistema antigo */
+    --glow-red: #ef4444;
+    --glow-blue: #818cf8;
+    --glow-yellow: #fbbf24;
+    --glow-black: #1f2937;
+    --glow-border: #d1d5db;
+    --glow-cream: #f9fafb;
+    --glow-ink: #1f2937;
+    --glow-text-dark: #1f2937;
+    --glow-glass: rgba(229, 231, 235, 0.8);
+    --glow-glass-strong: rgba(209, 213, 219, 0.9);
+    --glow-glow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Estilos globais para todas as páginas */
+body {
+    background-color: var(--primary-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Navbar global */
+nav, .glow-nav {
+    background-color: var(--navbar-bg) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Cards e containers */
+.bg-white, [class*="bg-slate-"], [class*="bg-gray-50"] {
+    background-color: var(--card-bg) !important;
+}
+
+/* Botões primários */
+.bg-slate-900, .bg-slate-600, .bg-slate-800 {
+    background-color: var(--btn-primary) !important;
+}
+
+.bg-slate-900:hover, .bg-slate-600:hover, .bg-slate-800:hover {
+    background-color: var(--btn-primary-hover) !important;
+}
+
+/* Botões de perigo */
+.bg-red-600, .bg-red-500, .bg-rose-500 {
+    background-color: var(--btn-danger) !important;
+}
+
+.bg-red-600:hover, .bg-red-500:hover, .bg-rose-500:hover {
+    background-color: var(--btn-danger-hover) !important;
+}
+
+/* Texto */
+.text-slate-900, .text-slate-800 {
+    color: var(--text-primary) !important;
+}
+
+.text-slate-600, .text-slate-700 {
+    color: var(--text-secondary) !important;
 }
 
 body, input, button, select, textarea {

@@ -10,24 +10,24 @@
     <script src="/js/internal-glow.js" defer></script>
     <script src="js/toast.js"></script>
 </head>
-<body class="bg-slate-50">
+<body class="bg-gray-100">
     <!-- Navbar -->
-    <nav class="bg-slate-900 text-white p-4">
+    <nav class="bg-gray-200 text-slate-800 p-4 shadow-md">
         <div class="container mx-auto flex justify-between items-center">
             <h1 class="text-2xl font-bold uppercase tracking-tighter cursor-pointer" onclick="window.location.href='dashboard.html'">SOCIMOB</h1>
             <div class="flex items-center gap-4">
                 <span id="userName" class="font-medium"></span>
-                <by-200utton id="btnLogout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold text-gra">Sair</button>
+                <button id="btnLogout" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded font-bold text-white">Sair</button>
             </div>
         </div>
     </nav>
 
     <!-- Conteúdo -->
     <div class="container mx-auto p-8">
-        <div class="bg-white rounded-lg shadow-xl p-8">
+        <div class="bg-gray-50 rounded-lg shadow-xl p-8">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-3xl font-black text-slate-900 uppercase">Leads</h2>
-                <button id="btnNovoLead" class="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 font-bold uppercase">
+                <h2 class="text-3xl font-black text-slate-800 uppercase">Leads</h2>
+                <button id="btnNovoLead" class="bg-slate-600 hover:bg-slate-700 text-white px-6 py-3 font-bold uppercase">
                     + Novo Lead
                 </button>
             </div>
@@ -86,8 +86,8 @@
                     <textarea name="observacoes" rows="3" class="w-full px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none"></textarea>
                 </div>
                 <div class="flex gap-4 justify-end mt-6">
-                    <button type="button" id="btnCancelar" class="px-6 py-3 border-2 border-slate-900 text-slate-900 font-bold uppercase">Cancelar</button>
-                    <button type="submit" class="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase">Salvar</button>
+                    <button type="button" id="btnCancelar" class="px-6 py-3 border-2 border-slate-400 text-slate-700 font-bold uppercase hover:bg-slate-100">Cancelar</button>
+                    <button type="submit" class="px-6 py-3 bg-slate-600 hover:bg-slate-700 text-white font-bold uppercase">Salvar</button>
                 </div>
             </form>
         </div>
@@ -183,38 +183,38 @@
 
             const statusConfig = {
                 'novo': { 
-                    color: 'bg-blue-500', 
-                    border: 'border-blue-200',
+                    color: 'bg-slate-400', 
+                    border: 'border-slate-300',
                     label: 'Novo Lead',
                     icon: '🆕'
                 },
                 'em_atendimento': { 
-                    color: 'bg-yellow-500', 
-                    border: 'border-yellow-200',
+                    color: 'bg-amber-400', 
+                    border: 'border-amber-300',
                     label: 'Em Atendimento',
                     icon: '💬'
                 },
                 'qualificado': { 
-                    color: 'bg-purple-500', 
-                    border: 'border-purple-200',
+                    color: 'bg-indigo-400', 
+                    border: 'border-indigo-300',
                     label: 'Qualificado',
                     icon: '⭐'
                 },
                 'proposta': { 
-                    color: 'bg-orange-500', 
-                    border: 'border-orange-200',
+                    color: 'bg-orange-400', 
+                    border: 'border-orange-300',
                     label: 'Proposta Enviada',
                     icon: '📋'
                 },
                 'fechado': { 
-                    color: 'bg-green-500', 
-                    border: 'border-green-200',
+                    color: 'bg-emerald-400', 
+                    border: 'border-emerald-300',
                     label: 'Fechado',
                     icon: '✅'
                 },
                 'perdido': { 
-                    color: 'bg-red-500', 
-                    border: 'border-red-200',
+                    color: 'bg-rose-400', 
+                    border: 'border-rose-300',
                     label: 'Perdido',
                     icon: '❌'
                 }
@@ -226,15 +226,15 @@
                 const investimento = lead.valor_investimento;
                 
                 return `
-                    <div class="bg-gray-50 rounded-lg shadow-lg hover:shadow-2xl transition-all duration-300 border-l-4 ${status.border} overflow-hidden">
+                    <div class="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 border-l-4 ${status.border} overflow-hidden">
                         <!-- Header do Card -->
-                        <div class="${status.color} text-white px-6 py-3 flex items-center justify-between">
+                        <div class="${status.color} text-slate-800 px-6 py-3 flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <span class="text-2xl">${status.icon}</span>
                                 <span class="font-bold uppercase text-sm">${status.label}</span>
                             </div>
                             ${mensagens > 0 ? `
-                                <div class="bg-white text-slate-900 rounded-full px-3 py-1 text-xs font-black flex items-center gap-1">
+                                <div class="bg-slate-100 text-slate-800 rounded-full px-3 py-1 text-xs font-black flex items-center gap-1">
                                     <span>💬</span>
                                     <span>${mensagens}</span>
                                 </div>
@@ -278,10 +278,10 @@
                             
                             <!-- Ações -->
                             <div class="flex gap-2">
-                                <button onclick="editLead(${lead.id})" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2 px-4 rounded font-bold uppercase text-sm transition-colors">
+                                <button onclick="editLead(${lead.id})" class="flex-1 bg-slate-500 hover:bg-slate-600 text-white py-2 px-4 rounded font-bold uppercase text-sm transition-colors">
                                     ✏️ Editar
                                 </button>
-                                <button onclick="deleteLead(${lead.id})" class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded font-bold uppercase text-sm transition-colors">
+                                <button onclick="deleteLead(${lead.id})" class="bg-rose-500 hover:bg-rose-600 text-white py-2 px-4 rounded font-bold uppercase text-sm transition-colors">
                                     🗑️
                                 </button>
                             </div>
