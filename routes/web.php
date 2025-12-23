@@ -33,13 +33,6 @@ $router->get('/', function () {
 
 $router->post('/github/webhook', 'GitHubWebhookController@handle');
 
-// Twilio Webhooks (sem autenticação - Twilio precisa acessar)
-$router->group(['prefix' => 'api/webhooks/twilio'], function () use ($router) {
-    $router->post('/status', 'TwilioWebhookController@statusCallback');
-    $router->post('/incoming', 'TwilioWebhookController@incomingMessage');
-    $router->get('/health', 'TwilioWebhookController@health');
-});
-
 // Auth API routes
 $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('/auth/login', 'AuthController@login');
