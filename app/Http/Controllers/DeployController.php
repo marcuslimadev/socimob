@@ -130,13 +130,13 @@ class DeployController extends Controller
                     $npmPath = $this->findCommand('npm');
                     
                     if ($npmPath) {
-                        $env = "HOME=$homeDir NODE_ENV=production";
+                        $env = "HOME=$homeDir NODE_ENV=production PATH=$svelteDir/node_modules/.bin:\$PATH";
                         
                         // npm install (sempre executar para garantir dependências atualizadas)
                         Log::info('📦 npm install...');
-                        exec("cd $svelteDir && $env $npmPath install 2>&1", $npmInstallOutput, $npmInstallCode);
+                        exec("cd $svelteDir && HOME=$homeDir $npmPath install 2>&1", $npmInstallOutput, $npmInstallCode);
                         
-                        // npm run build
+                        // npm run build (com PATH incluindo node_modules/.bin)
                         Log::info('🔨 npm run build...');
                         exec("cd $svelteDir && $env $npmPath run build 2>&1", $npmBuildOutput, $npmBuildCode);
                         
