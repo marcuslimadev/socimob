@@ -131,13 +131,23 @@ class DeployController extends Controller
                     $nodePath = $this->findCommand('node');
                     
                     if ($npmPath && $nodePath) {
-                        // Adiciona node e npm ao PATH
+                        // Configura PATH completo com node, npm e node_modules/.bin
                         $nodeBinDir = dirname($nodePath);
                         $npmBinDir = dirname($npmPath);
-                        $pathDirs = array_unique([$nodeBinDir, $npmBinDir, "$svelteDir/node_modules/.bin"]);
-                        $pathEnv = implode(':', $pathDirs) . ':\$PATH';
+                        $pathDirs = array_unique([
+                            $nodeBinDir, 
+                            $npmBinDir, 
+                            "$svelteDir/node_modules/.bin",
+                            '/bin',           // Para sh, bash, etc
+                            '/usr/bin',
+                            '/usr/local/bin'
+                        ]);
+                        $pathEnv = implode(':', $pathDirs);
                         
                         $env = "HOME=$homeDir NODE_ENV=production PATH=$pathEnv";
+                        
+                        Log::info("📍 Node path: $nodePath");
+                        Log::info("📍 npm path: $npmPath");
                         
                         // npm install (sempre executar para garantir dependências atualizadas)
                         Log::info('📦 npm install...');
