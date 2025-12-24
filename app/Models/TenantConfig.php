@@ -81,14 +81,17 @@ class TenantConfig extends Model
      */
     public function getSmtpConfig(): array
     {
+        // Tentar buscar de variáveis de ambiente primeiro
+        $tenantId = $this->tenant_id;
+        
         return [
-            'host' => $this->smtp_host,
-            'port' => $this->smtp_port,
-            'username' => $this->smtp_username,
-            'password' => $this->smtp_password,
+            'host' => env("TENANT_{$tenantId}_SMTP_HOST", $this->smtp_host),
+            'port' => env("TENANT_{$tenantId}_SMTP_PORT", $this->smtp_port),
+            'username' => env("TENANT_{$tenantId}_SMTP_USERNAME", $this->smtp_username),
+            'password' => env("TENANT_{$tenantId}_SMTP_PASSWORD", $this->smtp_password),
             'from' => [
-                'address' => $this->smtp_from_email,
-                'name' => $this->smtp_from_name,
+                'address' => env("TENANT_{$tenantId}_SMTP_FROM_EMAIL", $this->smtp_from_email),
+                'name' => env("TENANT_{$tenantId}_SMTP_FROM_NAME", $this->smtp_from_name),
             ],
         ];
     }
@@ -107,11 +110,17 @@ class TenantConfig extends Model
 
     public function getApiKeys(): array
     {
+        // Tentar buscar de variáveis de ambiente primeiro
+        $tenantId = $this->tenant_id;
+        
         return [
-            'pagar_me' => $this->api_key_pagar_me,
-            'apm_imoveis' => $this->api_key_apm_imoveis,
-            'neca' => $this->api_key_neca,
-            'openai' => $this->api_key_openai,
+            'pagar_me' => env("TENANT_{$tenantId}_PAGAR_ME_KEY", $this->api_key_pagar_me),
+            'apm_imoveis' => env("TENANT_{$tenantId}_APM_IMOVEIS_KEY", $this->api_key_apm_imoveis),
+            'neca' => env("TENANT_{$tenantId}_NECA_KEY", $this->api_key_neca),
+            'openai' => env("TENANT_{$tenantId}_OPENAI_KEY", $this->api_key_openai),
+            'twilio_account_sid' => env("TENANT_{$tenantId}_TWILIO_ACCOUNT_SID", $this->twilio_account_sid),
+            'twilio_auth_token' => env("TENANT_{$tenantId}_TWILIO_AUTH_TOKEN", $this->twilio_auth_token),
+            'twilio_whatsapp_from' => env("TENANT_{$tenantId}_TWILIO_WHATSAPP_FROM", $this->twilio_whatsapp_from),
         ];
     }
 
