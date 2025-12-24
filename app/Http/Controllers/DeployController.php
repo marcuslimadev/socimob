@@ -132,11 +132,9 @@ class DeployController extends Controller
                     if ($npmPath) {
                         $env = "HOME=$homeDir NODE_ENV=production";
                         
-                        // npm install se node_modules não existe
-                        if (!is_dir("$svelteDir/node_modules")) {
-                            Log::info('📦 npm install...');
-                            exec("cd $svelteDir && $env $npmPath install 2>&1", $npmInstallOutput, $npmInstallCode);
-                        }
+                        // npm install (sempre executar para garantir dependências atualizadas)
+                        Log::info('📦 npm install...');
+                        exec("cd $svelteDir && $env $npmPath install 2>&1", $npmInstallOutput, $npmInstallCode);
                         
                         // npm run build
                         Log::info('🔨 npm run build...');
@@ -144,9 +142,11 @@ class DeployController extends Controller
                         
                         $output['svelte_build'] = [
                             'available' => true,
-                            'npm_install' => $npmInstallOutput ?? ['Skipped (node_modules exists)'],
+                            'npm_install' => $npmInstallOutput ?? [],
+                            'npm_install_code' => $npmInstallCode ?? 1,
                             'npm_build' => $npmBuildOutput ?? [],
-                            'exit_code' => $npmBuildCode ?? 0
+                            'npm_build_code' => $npmBuildCode ?? 1,
+                            'exit_code' => $npmBuildCode ?? 1
                         ];
                         
                         if ($npmBuildCode === 0) {

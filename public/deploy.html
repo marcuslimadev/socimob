@@ -173,13 +173,19 @@
                     if (data.output.svelte_build.available === false) {
                         log(`   ${data.output.svelte_build.message || 'Não disponível'}`, 'warning');
                     } else {
-                        if (data.output.svelte_build.npm_build) {
-                            data.output.svelte_build.npm_build.slice(0, 10).forEach(line => log('   ' + line, 'info'));
-                            if (data.output.svelte_build.npm_build.length > 10) {
-                                log(`   ... (${data.output.svelte_build.npm_build.length - 10} linhas omitidas)`, 'warning');
-                            }
+                        // npm install
+                        if (data.output.svelte_build.npm_install && data.output.svelte_build.npm_install.length > 0) {
+                            log('   📦 npm install:', 'info');
+                            data.output.svelte_build.npm_install.slice(-5).forEach(line => log('      ' + line, 'info'));
+                            log(`   Exit Code: ${data.output.svelte_build.npm_install_code}`, data.output.svelte_build.npm_install_code === 0 ? 'success' : 'error');
                         }
-                        log(`   Exit Code: ${data.output.svelte_build.exit_code}`, data.output.svelte_build.exit_code === 0 ? 'success' : 'error');
+                        
+                        // npm build
+                        if (data.output.svelte_build.npm_build && data.output.svelte_build.npm_build.length > 0) {
+                            log('   🔨 npm run build:', 'info');
+                            data.output.svelte_build.npm_build.slice(-5).forEach(line => log('      ' + line, 'info'));
+                            log(`   Exit Code: ${data.output.svelte_build.npm_build_code}`, data.output.svelte_build.npm_build_code === 0 ? 'success' : 'error');
+                        }
                     }
                     log('');
                 }
