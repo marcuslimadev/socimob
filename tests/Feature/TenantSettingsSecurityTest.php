@@ -42,23 +42,13 @@ class TenantSettingsSecurityTest extends TestCase
             'tenant_id' => $this->tenant->id,
         ]);
 
-        // Gerar token simples
-        $this->token = base64_encode($this->admin->id . '|' . time() . '|secret');
+        // Gerar token simples (apenas para teste - não usar em produção)
+        $this->token = base64_encode($this->admin->id . '|' . time() . '|test-secret');
     }
 
     protected function tearDown(): void
     {
-        // Limpar dados de teste
-        if ($this->admin) {
-            $this->admin->delete();
-        }
-        if ($this->tenant && $this->tenant->config) {
-            $this->tenant->config->delete();
-        }
-        if ($this->tenant) {
-            $this->tenant->delete();
-        }
-        
+        // Base TestCase already runs migrate:fresh, so no manual cleanup needed
         parent::tearDown();
     }
 
@@ -168,8 +158,8 @@ class TenantSettingsSecurityTest extends TestCase
         // Deve retornar o valor da variável de ambiente
         $this->assertEquals('sk-env-key', $apiKeys['openai']);
         
-        // Limpar variável de ambiente
-        putenv("TENANT_{$tenantId}_OPENAI_KEY");
+        // Limpar variável de ambiente (usar empty string para compatibilidade)
+        putenv("TENANT_{$tenantId}_OPENAI_KEY=");
     }
 
     /** @test */
@@ -187,9 +177,9 @@ class TenantSettingsSecurityTest extends TestCase
         $this->assertEquals('smtp.env.com', $smtpConfig['host']);
         $this->assertEquals('465', $smtpConfig['port']);
         
-        // Limpar variáveis de ambiente
-        putenv("TENANT_{$tenantId}_SMTP_HOST");
-        putenv("TENANT_{$tenantId}_SMTP_PORT");
+        // Limpar variáveis de ambiente (usar empty string para compatibilidade)
+        putenv("TENANT_{$tenantId}_SMTP_HOST=");
+        putenv("TENANT_{$tenantId}_SMTP_PORT=");
     }
 
     /** @test */
