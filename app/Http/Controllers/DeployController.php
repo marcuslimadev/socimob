@@ -151,8 +151,8 @@ class DeployController extends Controller
                         
                         // npm install (INCLUIR devDependencies - vite precisa delas!)
                         Log::info('📦 npm install...');
-                        $envInstall = "HOME=$homeDir PATH=$pathEnv"; // SEM NODE_ENV=production!
-                        exec("cd $svelteDir && $envInstall $npmPath install 2>&1", $npmInstallOutput, $npmInstallCode);
+                        $envInstall = "HOME=$homeDir PATH=$pathEnv NPM_CONFIG_PRODUCTION=false"; // força instalar devDependencies
+                        exec("cd $svelteDir && $envInstall $npmPath install --include=dev 2>&1", $npmInstallOutput, $npmInstallCode);
                         
                         // Build usando vite diretamente (mais confiável que npm run build)
                         Log::info('🔨 vite build...');
