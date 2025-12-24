@@ -100,7 +100,9 @@ class DeployController extends Controller
             $phpPath = $this->getPhpPath();
             $composerPath = $this->getComposerPath();
             
-            $composerCommand = "cd $baseDir && $phpPath $composerPath install --no-dev --optimize-autoloader 2>&1";
+            // Definir variáveis de ambiente necessárias para o Composer
+            $homeDir = $baseDir; // Usar diretório do projeto como HOME
+            $composerCommand = "cd $baseDir && HOME=$homeDir COMPOSER_HOME=$homeDir/.composer $phpPath $composerPath install --no-dev --optimize-autoloader 2>&1";
             exec($composerCommand, $composerOutput, $composerReturnCode);
             
             $output['composer_install'] = [
