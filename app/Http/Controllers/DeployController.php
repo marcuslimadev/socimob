@@ -157,7 +157,8 @@ class DeployController extends Controller
                         // Build usando vite diretamente (mais confiável que npm run build)
                         Log::info('🔨 vite build...');
                         $vitePath = "$svelteDir/node_modules/.bin/vite";
-                        $envBuild = "HOME=$homeDir NODE_ENV=production PATH=$pathEnv"; // Usar production só no build
+                        // Limita memória e força esbuild nativo para evitar fallback wasm/OOM
+                        $envBuild = "HOME=$homeDir NODE_ENV=production NODE_OPTIONS=--max-old-space-size=256 ESBUILD_BINARY_PATH=$svelteDir/node_modules/esbuild/bin/esbuild PATH=$pathEnv"; // Usar production só no build
                         if (file_exists($vitePath)) {
                             exec("cd $svelteDir && $envBuild $nodePath $vitePath build 2>&1", $npmBuildOutput, $npmBuildCode);
                         } else {
