@@ -25,7 +25,7 @@ class WebhookController extends Controller
      * Validar webhook (responde a requisições GET do Twilio)
      * GET /webhook/whatsapp
      */
-    public function validate(Request $request)
+    public function validateWebhook(Request $request)
     {
         Log::info('Webhook WhatsApp - Validação GET recebida', [
             'params' => $request->all(),
@@ -42,7 +42,7 @@ class WebhookController extends Controller
      * Validar webhook de status (responde a requisições GET do Twilio)
      * GET /webhook/whatsapp/status
      */
-    public function validateStatus(Request $request)
+    public function validateStatusWebhook(Request $request)
     {
         Log::info('Webhook Status - Validação GET recebida', [
             'params' => $request->all(),
@@ -61,73 +61,48 @@ class WebhookController extends Controller
     {
         $webhookData = $request->all();
 
-        // Detectar origem do webhook (apenas Twilio suportado)
-        $source = $this->detectWebhookSource($webhookData);
-        
-        Log::info('ЙНННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН»');
-        Log::info('є           ?? WEBHOOK RECEBIDO - ' . strtoupper($source) . '                    є');
-        Log::info('ИННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННј');
-        
-        // Normalizar dados conforme a origem (Twilio prioritário)
-        $normalizedData = $this->normalizeWebhookData($webhookData, $source);
-        $tenant = $this->resolveTenantForWebhook($request, $normalizedData);
-        if ($tenant) {
-            app()->instance('tenant', $tenant);
-            $request->attributes->set('tenant_id', $tenant->id);
-            $normalizedData['tenant_id'] = $tenant->id;
-        }
-        
-        Log::info('?? De: ' . ($normalizedData['from'] ?? 'N/A'));
-        Log::info('?? Nome: ' . ($normalizedData['profile_name'] ?? 'N/A'));
-        Log::info('?? Mensagem: ' . ($normalizedData['message'] ?? '[mЎdia]'));
-        Log::info('?? Message ID: ' . ($normalizedData['message_id'] ?? 'N/A'));
-        Log::info('?? Origem: ' . $source);
-        Log::info('?? Tenant ID: ' . ($tenant?->id ?? 'N/A'));
-        Log::info('ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД');
-        Log::info('?? Payload completo:', $webhookData);
-        Log::info('ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД');
-        
         try {
             // Detectar origem do webhook (apenas Twilio suportado)
             $source = $this->detectWebhookSource($webhookData);
 
-            Log::info('ЙНННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН»');
-            Log::info('є           ?? WEBHOOK RECEBIDO - ' . strtoupper($source) . '                    є');
-            Log::info('ИННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННј');
+            Log::info('╔═══════════════════════════════════════════════════════════╗');
+            Log::info('║           📥 WEBHOOK RECEBIDO - ' . strtoupper($source) . '                    ║');
+            Log::info('╚═══════════════════════════════════════════════════════════╝');
 
             // Normalizar dados conforme a origem (Twilio prioritário)
             $normalizedData = $this->normalizeWebhookData($webhookData, $source);
             $tenant = $this->resolveTenantForWebhook($request, $normalizedData);
+            
             if ($tenant) {
                 app()->instance('tenant', $tenant);
                 $request->attributes->set('tenant_id', $tenant->id);
                 $normalizedData['tenant_id'] = $tenant->id;
             }
 
-            Log::info('?? De: ' . ($normalizedData['from'] ?? 'N/A'));
-            Log::info('?? Nome: ' . ($normalizedData['profile_name'] ?? 'N/A'));
-            Log::info('?? Mensagem: ' . ($normalizedData['message'] ?? '[mЎdia]'));
-            Log::info('?? Message ID: ' . ($normalizedData['message_id'] ?? 'N/A'));
-            Log::info('?? Origem: ' . $source);
-            Log::info('?? Tenant ID: ' . ($tenant?->id ?? 'N/A'));
-            Log::info('ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД');
-            Log::info('?? Payload completo:', $webhookData);
-            Log::info('ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД');
+            Log::info('📞 De: ' . ($normalizedData['from'] ?? 'N/A'));
+            Log::info('👤 Nome: ' . ($normalizedData['profile_name'] ?? 'N/A'));
+            Log::info('💬 Mensagem: ' . ($normalizedData['message'] ?? '[mídia]'));
+            Log::info('🆔 Message ID: ' . ($normalizedData['message_id'] ?? 'N/A'));
+            Log::info('🔌 Origem: ' . $source);
+            Log::info('🏢 Tenant ID: ' . ($tenant?->id ?? 'N/A'));
+            Log::info('════════════════════════════════════════════════════════════');
+            Log::info('📦 Payload completo:', $webhookData);
+            Log::info('════════════════════════════════════════════════════════════');
 
             try {
                 $result = $this->whatsappService->processIncomingMessage($normalizedData);
 
-                Log::info('ЙНННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН»');
-                Log::info('є           ? WEBHOOK PROCESSADO COM SUCESSO                   є');
-                Log::info('ИННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННј');
-                Log::info('?? Resultado:', $result);
-                Log::info('ННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН');
+                Log::info('╔═══════════════════════════════════════════════════════════╗');
+                Log::info('║           ✅ WEBHOOK PROCESSADO COM SUCESSO                   ║');
+                Log::info('╚═══════════════════════════════════════════════════════════╝');
+                Log::info('📊 Resultado:', $result);
+                Log::info('══════════════════════════════════════════════════════════════');
 
                 // Resposta vazia para evitar qualquer eco no provedor (Twilio ignora o corpo)
                 return response('', 200);
 
             } catch (\Throwable $e) {
-                Log::error('ERRO NO WEBHOOK', [
+                Log::error('❌ ERRO NO PROCESSAMENTO DO WEBHOOK', [
                     'error' => $e->getMessage(),
                     'exception' => get_class($e),
                     'file' => $e->getFile(),
@@ -137,11 +112,10 @@ class WebhookController extends Controller
                 ]);
 
                 // Retornar 200 para evitar reenvio do Twilio
-                // Mesmo em erro, responder vazio para impedir reenvio e evitar eco
                 return response('', 200);
             }
         } catch (\Throwable $e) {
-            Log::error('ERRO NO WEBHOOK - FALHA NA NORMALIZAÇÃO', [
+            Log::error('❌ ERRO CRÍTICO NO WEBHOOK - FALHA NA NORMALIZAÇÃO', [
                 'error' => $e->getMessage(),
                 'exception' => get_class($e),
                 'file' => $e->getFile(),
@@ -153,6 +127,7 @@ class WebhookController extends Controller
             return response('', 200);
         }
     }
+
     
     /**
      * Detectar origem do webhook (Twilio)

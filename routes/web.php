@@ -729,8 +729,8 @@ $router->post('/api/format-text', 'TextFormatterController@formatText');
 // ===========================
 $router->group(['prefix' => 'webhook'], function () use ($router) {
     // GET para validação do webhook (Twilio)
-    $router->get('/whatsapp', 'WebhookController@validate');
-    $router->get('/whatsapp/status', 'WebhookController@validateStatus');
+    $router->get('/whatsapp', 'WebhookController@validateWebhook');
+    $router->get('/whatsapp/status', 'WebhookController@validateStatusWebhook');
     // POST para receber mensagens
     $router->post('/whatsapp', 'WebhookController@receive');
     $router->post('/whatsapp/status', 'WebhookController@status');
