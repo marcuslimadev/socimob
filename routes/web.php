@@ -21,14 +21,42 @@ $router->get('/api/health', function () use ($router) {
     ]);
 });
 
-// Home - servir portal do cliente inicialmente
-$router->get('/', function () {
-    $path = base_path('public/index.html');
-    if (file_exists($path)) {
-        return response(file_get_contents($path))
-            ->header('Content-Type', 'text/html');
+// Home - servir portal do cliente para tenants e homepage SaaS para domínios principais
+$router->get('/', function (Request $request) {
+    $host = $request->getHost();
+
+    $saasHosts = [
+        'lojadaesquina.store',
+        'socimob.com',
+        'www.lojadaesquina.store',
+        'www.socimob.com',
+    ];
+
+    $serveFile = function (string $path, string $notFoundMessage) {
+        if (file_exists($path)) {
+            return response(file_get_contents($path))
+                ->header('Content-Type', 'text/html');
+        }
+
+        return response($notFoundMessage, 404);
+    };
+
+    if (in_array($host, $saasHosts, true)) {
+        return $serveFile(base_path('public/index.html'), 'Homepage do SaaS não encontrada');
     }
-    return response('Portal do cliente nao encontrado', 404);
+
+    $isDevelopment = in_array($host, ['localhost', '127.0.0.1', '::1'], true)
+        || str_ends_with($host, '.local')
+        || str_ends_with($host, '.ngrok-free.app')
+        || str_ends_with($host, '.ngrok.io');
+
+    $tenantExists = $isDevelopment || \App\Models\Tenant::byDomain($host)->exists();
+
+    if ($tenantExists) {
+        return $serveFile(base_path('public/portal/index.html'), 'Portal do cliente nao encontrado');
+    }
+
+    return $serveFile(base_path('public/index.html'), 'Homepage do SaaS não encontrada');
 });
 
 $router->post('/github/webhook', 'GitHubWebhookController@handle');
