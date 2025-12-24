@@ -119,7 +119,66 @@ class DeployController extends Controller
             }
 
             // ==========================================
-            // 3. CACHE CLEAR (Lumen)
+            // 3. SVELTE BUILD
+            // ==========================================
+            Log::info('🎨 Build do Portal Svelte...');
+            
+            $svelteDir = $baseDir . '/portal-svelte';
+            
+            if (is_dir($svelteDir)) {
+                try {
+                    $npmPath = $this->findCommand('npm');
+                    
+                    if ($npmPath) {
+                        $env = "HOME=$homeDir NODE_ENV=production";
+                        
+                        // npm install se node_modules não existe
+                        if (!is_dir("$svelteDir/node_modules")) {
+                            Log::info('📦 npm install...');
+                            exec("cd $svelteDir && $env $npmPath install 2>&1", $npmInstallOutput, $npmInstallCode);
+                        }
+                        
+                        // npm run build
+                        Log::info('🔨 npm run build...');
+                        exec("cd $svelteDir && $env $npmPath run build 2>&1", $npmBuildOutput, $npmBuildCode);
+                        
+                        $output['svelte_build'] = [
+                            'available' => true,
+                            'npm_install' => $npmInstallOutput ?? ['Skipped (node_modules exists)'],
+                            'npm_build' => $npmBuildOutput ?? [],
+                            'exit_code' => $npmBuildCode ?? 0
+                        ];
+                        
+                        if ($npmBuildCode === 0) {
+                            Log::info('✅ Svelte build concluído');
+                        } else {
+                            $errors[] = 'Svelte build falhou';
+                            Log::error('❌ Svelte build falhou', $output['svelte_build']);
+                        }
+                    } else {
+                        $output['svelte_build'] = [
+                            'available' => false,
+                            'message' => 'npm não encontrado (Svelte build ignorado)'
+                        ];
+                        Log::warning('⚠️ npm não encontrado, Svelte build ignorado');
+                    }
+                } catch (\Exception $e) {
+                    $output['svelte_build'] = [
+                        'available' => false,
+                        'error' => $e->getMessage()
+                    ];
+                    Log::error('❌ Erro no Svelte build: ' . $e->getMessage());
+                }
+            } else {
+                $output['svelte_build'] = [
+                    'available' => false,
+                    'message' => 'Portal Svelte não encontrado'
+                ];
+                Log::info('ℹ️ Portal Svelte não encontrado em ' . $svelteDir);
+            }
+
+            // ==========================================
+            // 4. CACHE CLEAR (Lumen)
             // ==========================================
             Log::info('🧹 Limpando cache...');
             
@@ -280,6 +339,34 @@ class DeployController extends Controller
         }
 
         return env('COMPOSER_PATH', 'composer');
+    }
+
+    /**
+     * Encontrar comando no sistema
+     */
+    private function findCommand($command)
+    {
+        $paths = [
+            "/usr/local/bin/$command",
+            "/usr/bin/$command",
+            "/opt/alt/alt-nodejs16/root/usr/bin/$command",
+            "/opt/alt/alt-nodejs18/root/usr/bin/$command",
+            "/opt/alt/alt-nodejs20/root/usr/bin/$command"
+        ];
+        
+        foreach ($paths as $path) {
+            if (file_exists($path) && is_executable($path)) {
+                return $path;
+            }
+        }
+        
+        // Tentar via which
+        $result = shell_exec("which $command 2>/dev/null");
+        if ($result && file_exists(trim($result))) {
+            return trim($result);
+        }
+
+        return null;
     }
 
     /**
