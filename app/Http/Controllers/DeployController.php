@@ -163,6 +163,28 @@ class DeployController extends Controller
                         $esbuildForcedOutput = [];
                         $esbuildForcedCode = 0;
                         exec("cd $svelteDir && $envInstall $npmPath install esbuild-linux-64 --no-save 2>&1", $esbuildForcedOutput, $esbuildForcedCode);
+
+                        // Garante binário presente em esbuild/bin/esbuild (copia do pacote nativo)
+                        $esbuildNative = null;
+                        $esbuildCandidatesEnsure = [
+                            "$svelteDir/node_modules/@esbuild/linux-x64/bin/esbuild",
+                            "$svelteDir/node_modules/esbuild-linux-64/bin/esbuild",
+                            "$svelteDir/node_modules/esbuild/bin/esbuild",
+                        ];
+                        foreach ($esbuildCandidatesEnsure as $candidate) {
+                            if (file_exists($candidate) && is_file($candidate)) {
+                                $esbuildNative = $candidate;
+                                break;
+                            }
+                        }
+                        $esbuildTarget = "$svelteDir/node_modules/esbuild/bin/esbuild";
+                        if ($esbuildNative && file_exists($esbuildTarget) === false) {
+                            if (!is_dir(dirname($esbuildTarget))) {
+                                @mkdir(dirname($esbuildTarget), 0775, true);
+                            }
+                            @copy($esbuildNative, $esbuildTarget);
+                            @chmod($esbuildTarget, 0755);
+                        }
                         
                         // Build usando vite diretamente (mais confiável que npm run build)
                         Log::info('🔨 vite build...');
@@ -184,7 +206,7 @@ class DeployController extends Controller
                         }
 
                         // Limita memória e inclui ESBUILD_BINARY_PATH se encontrado
-                        $envBuild = "HOME=$homeDir NODE_ENV=production NODE_OPTIONS=--max-old-space-size=512 PATH=$pathEnv"; // Usar production só no build
+                        $envBuild = "HOME=$homeDir NODE_ENV=production NODE_OPTIONS=--max-old-space-size=768 PATH=$pathEnv"; // Usar production só no build
                         if ($esbuildBinary) {
                             $envBuild .= " ESBUILD_BINARY_PATH=$esbuildBinary";
                             Log::info('📍 esbuild bin: ' . $esbuildBinary);
