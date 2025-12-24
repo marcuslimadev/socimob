@@ -128,13 +128,20 @@ class DeployController extends Controller
             if (is_dir($svelteDir)) {
                 try {
                     $npmPath = $this->findCommand('npm');
+                    $nodePath = $this->findCommand('node');
                     
-                    if ($npmPath) {
-                        $env = "HOME=$homeDir NODE_ENV=production PATH=$svelteDir/node_modules/.bin:\$PATH";
+                    if ($npmPath && $nodePath) {
+                        // Adiciona node e npm ao PATH
+                        $nodeBinDir = dirname($nodePath);
+                        $npmBinDir = dirname($npmPath);
+                        $pathDirs = array_unique([$nodeBinDir, $npmBinDir, "$svelteDir/node_modules/.bin"]);
+                        $pathEnv = implode(':', $pathDirs) . ':\$PATH';
+                        
+                        $env = "HOME=$homeDir NODE_ENV=production PATH=$pathEnv";
                         
                         // npm install (sempre executar para garantir dependências atualizadas)
                         Log::info('📦 npm install...');
-                        exec("cd $svelteDir && HOME=$homeDir $npmPath install 2>&1", $npmInstallOutput, $npmInstallCode);
+                        exec("cd $svelteDir && $env $npmPath install 2>&1", $npmInstallOutput, $npmInstallCode);
                         
                         // npm run build (com PATH incluindo node_modules/.bin)
                         Log::info('🔨 npm run build...');
@@ -158,9 +165,11 @@ class DeployController extends Controller
                     } else {
                         $output['svelte_build'] = [
                             'available' => false,
-                            'message' => 'npm não encontrado (Svelte build ignorado)'
+                            'message' => ($nodePath ? '' : 'node não encontrado; ') . 
+                                       ($npmPath ? '' : 'npm não encontrado') . 
+                                       ' (Svelte build ignorado)'
                         ];
-                        Log::warning('⚠️ npm não encontrado, Svelte build ignorado');
+                        Log::warning('⚠️ npm ou node não encontrado, Svelte build ignorado');
                     }
                 } catch (\Exception $e) {
                     $output['svelte_build'] = [
