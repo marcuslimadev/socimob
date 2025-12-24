@@ -153,6 +153,11 @@ class DeployController extends Controller
                         Log::info('📦 npm install...');
                         $envInstall = "HOME=$homeDir PATH=$pathEnv NPM_CONFIG_PRODUCTION=false"; // força instalar devDependencies
                         exec("cd $svelteDir && $envInstall $npmPath install --include=dev 2>&1", $npmInstallOutput, $npmInstallCode);
+
+                        // Garante esbuild nativo (rebuild baixa binário correto)
+                        $esbuildRebuildOutput = [];
+                        $esbuildRebuildCode = 0;
+                        exec("cd $svelteDir && $envInstall $npmPath rebuild esbuild 2>&1", $esbuildRebuildOutput, $esbuildRebuildCode);
                         
                         // Build usando vite diretamente (mais confiável que npm run build)
                         Log::info('🔨 vite build...');
