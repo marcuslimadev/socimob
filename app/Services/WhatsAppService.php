@@ -1633,7 +1633,7 @@ class WhatsAppService
 
     private function isPortalChannel(string $telefone, ?Conversa $conversa): bool
     {
-        if (str_starts_with($telefone, 'portal:') || str_starts_with($telefone, 'web:')) {
+        if (Str::startsWith($telefone, 'portal:') || Str::startsWith($telefone, 'web:')) {
             return true;
         }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use App\Models\Tenant;
 use App\Models\TenantConfig;
 
@@ -53,21 +54,21 @@ class WebhookController extends Controller
     }
     
     /**
-     * Receber mensagens do WhatsApp (Twilio ou Evolution API)
+     * Receber mensagens do WhatsApp (Twilio)
      * POST /webhook/whatsapp
      */
     public function receive(Request $request)
     {
         $webhookData = $request->all();
-        
-        // Detectar origem do webhook (Twilio ou Evolution API)
+
+        // Detectar origem do webhook (apenas Twilio suportado)
         $source = $this->detectWebhookSource($webhookData);
         
         Log::info('ЙНННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН»');
         Log::info('є           ?? WEBHOOK RECEBIDO - ' . strtoupper($source) . '                    є');
         Log::info('ИННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННј');
         
-        // Normalizar dados conforme a origem
+        // Normalizar dados conforme a origem (Twilio prioritário)
         $normalizedData = $this->normalizeWebhookData($webhookData, $source);
         $tenant = $this->resolveTenantForWebhook($request, $normalizedData);
         if ($tenant) {
@@ -115,7 +116,7 @@ class WebhookController extends Controller
     }
     
     /**
-     * Detectar origem do webhook (Twilio ou Evolution API)
+     * Detectar origem do webhook (Twilio)
      */
     private function detectWebhookSource(array $data): string
     {
@@ -123,12 +124,7 @@ class WebhookController extends Controller
         if (isset($data['MessageSid']) || isset($data['AccountSid'])) {
             return 'twilio';
         }
-        
-        // Evolution API tem campos como event, instance, data
-        if (isset($data['event']) || isset($data['instance']) || isset($data['data'])) {
-            return 'evolution';
-        }
-        
+
         return 'unknown';
     }
     
@@ -140,12 +136,12 @@ class WebhookController extends Controller
         if ($source === 'twilio') {
             $from = $data['From'] ?? null;
             // Garantir que 'from' come‡a com whatsapp: se vier do Twilio
-            if ($from && strpos($from, 'whatsapp:') === false) {
-                // Se nЖo tem whatsapp:, adicionar
-                if (!str_starts_with($from, '+')) {
+            if ($from && !Str::startsWith($from, 'whatsapp:')) {
+                // Se não tem whatsapp:, adicionar
+                if (!Str::startsWith($from, '+')) {
                     $from = '+' . $from;
                 }
-                // NЖo adicionar whatsapp: aqui, o WhatsAppService vai fazer isso
+                // Não adicionar whatsapp: aqui, o WhatsAppService vai fazer isso
             }
             
             return [
@@ -167,35 +163,6 @@ class WebhookController extends Controller
                 'raw' => $data
             ];
         }
-        
-        if ($source === 'evolution') {
-            // Evolution API: data.key.remoteJid, data.message.conversation, etc
-            $messageData = $data['data'] ?? [];
-            $key = $messageData['key'] ?? [];
-            $message = $messageData['message'] ?? [];
-            $pushName = $messageData['pushName'] ?? null;
-            
-            // Extrair texto da mensagem (pode estar em conversation, extendedTextMessage, etc)
-            $messageText = $message['conversation'] 
-                ?? $message['extendedTextMessage']['text'] 
-                ?? $message['imageMessage']['caption']
-                ?? $message['videoMessage']['caption']
-                ?? null;
-            
-            return [
-                'from' => 'whatsapp:+' . preg_replace('/[^0-9]/', '', $key['remoteJid'] ?? ''),
-                'to' => null, // Evolution nЖo envia "to" no webhook
-                'message' => $messageText,
-                'message_id' => $key['id'] ?? null,
-                'profile_name' => $pushName,
-                'media_url' => null, // Implementar se necess rio
-                'media_type' => null,
-                'location' => null,
-                'source' => 'evolution',
-                'raw' => $data
-            ];
-        }
-        
         // Formato desconhecido - tentar extrair o que puder
         return [
             'from' => $data['from'] ?? $data['From'] ?? null,
