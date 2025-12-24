@@ -205,19 +205,20 @@ class DeployController extends Controller
                             }
                         }
 
-                        // Limita memória e inclui ESBUILD_BINARY_PATH se encontrado
-                        $envBuild = "HOME=$homeDir NODE_ENV=production NODE_OPTIONS=--max-old-space-size=768 PATH=$pathEnv"; // Usar production só no build
+                        // Limita memória, força binário nativo e desabilita fallback wasm
+                        $envBuild = "HOME=$homeDir NODE_ENV=production NODE_OPTIONS=--max-old-space-size=1024 PATH=$pathEnv"; // produção
                         if ($esbuildBinary) {
                             $envBuild .= " ESBUILD_BINARY_PATH=$esbuildBinary";
                             Log::info('📍 esbuild bin: ' . $esbuildBinary);
                         } else {
                             Log::warning('⚠️ esbuild bin não encontrado, pode cair em wasm');
                         }
-                        if (file_exists($vitePath)) {
-                            exec("cd $svelteDir && $envBuild $nodePath $vitePath build 2>&1", $npmBuildOutput, $npmBuildCode);
-                        } elseif (file_exists($viteJsPath)) {
-                            Log::info('📍 usando vite.js direto (sem .bin)');
+                        // Vite via binário JS direto (evita npm run e shells extras)
+                        if (file_exists($viteJsPath)) {
+                            Log::info('📍 usando vite.js direto');
                             exec("cd $svelteDir && $envBuild $nodePath $viteJsPath build 2>&1", $npmBuildOutput, $npmBuildCode);
+                        } elseif (file_exists($vitePath)) {
+                            exec("cd $svelteDir && $envBuild $nodePath $vitePath build 2>&1", $npmBuildOutput, $npmBuildCode);
                         } else {
                             // Fallback para npm run build
                             exec("cd $svelteDir && $envBuild $npmPath run build 2>&1", $npmBuildOutput, $npmBuildCode);
