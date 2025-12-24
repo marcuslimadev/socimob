@@ -157,6 +157,7 @@ class DeployController extends Controller
                         // Build usando vite diretamente (mais confiável que npm run build)
                         Log::info('🔨 vite build...');
                         $vitePath = "$svelteDir/node_modules/.bin/vite";
+                        $viteJsPath = "$svelteDir/node_modules/vite/bin/vite.js"; // fallback direto no bin JS
 
                         // Detecta binário nativo do esbuild (evita fallback wasm/OOM)
                         $esbuildBinary = null;
@@ -182,6 +183,9 @@ class DeployController extends Controller
                         }
                         if (file_exists($vitePath)) {
                             exec("cd $svelteDir && $envBuild $nodePath $vitePath build 2>&1", $npmBuildOutput, $npmBuildCode);
+                        } elseif (file_exists($viteJsPath)) {
+                            Log::info('📍 usando vite.js direto (sem .bin)');
+                            exec("cd $svelteDir && $envBuild $nodePath $viteJsPath build 2>&1", $npmBuildOutput, $npmBuildCode);
                         } else {
                             // Fallback para npm run build
                             exec("cd $svelteDir && $envBuild $npmPath run build 2>&1", $npmBuildOutput, $npmBuildCode);
