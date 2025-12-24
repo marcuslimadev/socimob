@@ -355,12 +355,47 @@ class DeployController extends Controller
      */
     private function findCommand($command)
     {
+        // Caminhos específicos para Node.js/npm no CloudLinux
+        if ($command === 'node') {
+            $nodePaths = [
+                '/opt/alt/alt-nodejs20/root/usr/bin/node',  // Preferir Node 20
+                '/opt/alt/alt-nodejs18/root/usr/bin/node',
+                '/opt/alt/alt-nodejs22/root/usr/bin/node',
+                '/opt/alt/alt-nodejs24/root/usr/bin/node',
+                '/usr/local/bin/node',
+                '/usr/bin/node',
+            ];
+            
+            foreach ($nodePaths as $path) {
+                if (file_exists($path) && is_executable($path)) {
+                    return $path;
+                }
+            }
+            return null;
+        }
+        
+        if ($command === 'npm') {
+            $npmPaths = [
+                '/opt/alt/alt-nodejs20/root/usr/bin/npm',
+                '/opt/alt/alt-nodejs18/root/usr/bin/npm',
+                '/opt/alt/alt-nodejs22/root/usr/bin/npm',
+                '/opt/alt/alt-nodejs24/root/usr/bin/npm',
+                '/usr/local/bin/npm',
+                '/usr/bin/npm',
+            ];
+            
+            foreach ($npmPaths as $path) {
+                if (file_exists($path) && is_executable($path)) {
+                    return $path;
+                }
+            }
+            return null;
+        }
+        
+        // Fallback genérico
         $paths = [
             "/usr/local/bin/$command",
             "/usr/bin/$command",
-            "/opt/alt/alt-nodejs16/root/usr/bin/$command",
-            "/opt/alt/alt-nodejs18/root/usr/bin/$command",
-            "/opt/alt/alt-nodejs20/root/usr/bin/$command"
         ];
         
         foreach ($paths as $path) {
