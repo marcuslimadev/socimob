@@ -153,9 +153,15 @@ class DeployController extends Controller
                         Log::info('📦 npm install...');
                         exec("cd $svelteDir && $env $npmPath install 2>&1", $npmInstallOutput, $npmInstallCode);
                         
-                        // npm run build (com PATH incluindo node_modules/.bin)
-                        Log::info('🔨 npm run build...');
-                        exec("cd $svelteDir && $env $npmPath run build 2>&1", $npmBuildOutput, $npmBuildCode);
+                        // Build usando vite diretamente (mais confiável que npm run build)
+                        Log::info('🔨 vite build...');
+                        $vitePath = "$svelteDir/node_modules/.bin/vite";
+                        if (file_exists($vitePath)) {
+                            exec("cd $svelteDir && $env $nodePath $vitePath build 2>&1", $npmBuildOutput, $npmBuildCode);
+                        } else {
+                            // Fallback para npm run build
+                            exec("cd $svelteDir && $env $npmPath run build 2>&1", $npmBuildOutput, $npmBuildCode);
+                        }
                         
                         $output['svelte_build'] = [
                             'available' => true,
