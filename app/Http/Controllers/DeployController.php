@@ -157,8 +157,29 @@ class DeployController extends Controller
                         // Build usando vite diretamente (mais confiável que npm run build)
                         Log::info('🔨 vite build...');
                         $vitePath = "$svelteDir/node_modules/.bin/vite";
-                        // Limita memória e força esbuild nativo para evitar fallback wasm/OOM
-                        $envBuild = "HOME=$homeDir NODE_ENV=production NODE_OPTIONS=--max-old-space-size=256 ESBUILD_BINARY_PATH=$svelteDir/node_modules/esbuild/bin/esbuild PATH=$pathEnv"; // Usar production só no build
+
+                        // Detecta binário nativo do esbuild (evita fallback wasm/OOM)
+                        $esbuildBinary = null;
+                        $esbuildCandidates = [
+                            "$svelteDir/node_modules/@esbuild/linux-x64/bin/esbuild",
+                            "$svelteDir/node_modules/esbuild-linux-64/bin/esbuild",
+                            "$svelteDir/node_modules/esbuild/bin/esbuild",
+                        ];
+                        foreach ($esbuildCandidates as $candidate) {
+                            if (file_exists($candidate) && is_file($candidate)) {
+                                $esbuildBinary = $candidate;
+                                break;
+                            }
+                        }
+
+                        // Limita memória e inclui ESBUILD_BINARY_PATH se encontrado
+                        $envBuild = "HOME=$homeDir NODE_ENV=production NODE_OPTIONS=--max-old-space-size=512 PATH=$pathEnv"; // Usar production só no build
+                        if ($esbuildBinary) {
+                            $envBuild .= " ESBUILD_BINARY_PATH=$esbuildBinary";
+                            Log::info('📍 esbuild bin: ' . $esbuildBinary);
+                        } else {
+                            Log::warning('⚠️ esbuild bin não encontrado, pode cair em wasm');
+                        }
                         if (file_exists($vitePath)) {
                             exec("cd $svelteDir && $envBuild $nodePath $vitePath build 2>&1", $npmBuildOutput, $npmBuildCode);
                         } else {
