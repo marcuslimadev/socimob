@@ -21,6 +21,38 @@ class WebhookController extends Controller
     }
     
     /**
+     * Validar webhook (responde a requisições GET do Twilio)
+     * GET /webhook/whatsapp
+     */
+    public function validate(Request $request)
+    {
+        Log::info('Webhook WhatsApp - Validação GET recebida', [
+            'params' => $request->all(),
+            'headers' => $request->headers->all()
+        ]);
+        
+        // Twilio pode enviar parâmetros de validação
+        // Responder com 200 OK para confirmar que o endpoint está ativo
+        return response('OK', 200)
+            ->header('Content-Type', 'text/plain');
+    }
+    
+    /**
+     * Validar webhook de status (responde a requisições GET do Twilio)
+     * GET /webhook/whatsapp/status
+     */
+    public function validateStatus(Request $request)
+    {
+        Log::info('Webhook Status - Validação GET recebida', [
+            'params' => $request->all(),
+            'headers' => $request->headers->all()
+        ]);
+        
+        return response('OK', 200)
+            ->header('Content-Type', 'text/plain');
+    }
+    
+    /**
      * Receber mensagens do WhatsApp (Twilio ou Evolution API)
      * POST /webhook/whatsapp
      */

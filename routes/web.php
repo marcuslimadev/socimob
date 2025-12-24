@@ -21,49 +21,17 @@ $router->get('/api/health', function () use ($router) {
     ]);
 });
 
-// Home - servir portal do cliente para tenants e homepage SaaS para domínios principais
-$router->get('/', function (Request $request) {
-    $host = $request->getHost();
-
-    $saasHosts = [
-        'lojadaesquina.store',
-        'socimob.com',
-        'www.lojadaesquina.store',
-        'www.socimob.com',
-    ];
-
-    $serveFile = function (string $path, string $notFoundMessage) {
-        if (file_exists($path)) {
-            return response(file_get_contents($path))
-                ->header('Content-Type', 'text/html');
-        }
-
-        return response($notFoundMessage, 404);
-    };
-
-    if (in_array($host, $saasHosts, true)) {
-        return $serveFile(base_path('public/index.html'), 'Homepage do SaaS não encontrada');
+// Home - servir portal do cliente inicialmente
+$router->get('/', function () {
+    $path = base_path('public/index.html');
+    if (file_exists($path)) {
+        return response(file_get_contents($path))
+            ->header('Content-Type', 'text/html');
     }
-
-    $isDevelopment = in_array($host, ['localhost', '127.0.0.1', '::1'], true)
-        || str_ends_with($host, '.local')
-        || str_ends_with($host, '.ngrok-free.app')
-        || str_ends_with($host, '.ngrok.io');
-
-    $tenantExists = $isDevelopment || \App\Models\Tenant::byDomain($host)->exists();
-
-    if ($tenantExists) {
-        return $serveFile(base_path('public/portal/index.html'), 'Portal do cliente nao encontrado');
-    }
-
-    return $serveFile(base_path('public/index.html'), 'Homepage do SaaS não encontrada');
+    return response('Portal do cliente nao encontrado', 404);
 });
 
 $router->post('/github/webhook', 'GitHubWebhookController@handle');
-
-// Conversor de áudio (OGG -> MP3)
-$router->post('/conversor', 'AudioConverterController@convert');
-$router->post('/conversor/index.php', 'AudioConverterController@convert'); // Compatibilidade
 
 // Auth API routes
 $router->group(['prefix' => 'api'], function () use ($router) {
@@ -760,8 +728,21 @@ $router->post('/api/format-text', 'TextFormatterController@formatText');
 // WEBHOOK (SEM AUTENTICAÇÃO)
 // ===========================
 $router->group(['prefix' => 'webhook'], function () use ($router) {
+    // GET para validação do webhook (Twilio)
+    $router->get('/whatsapp', 'WebhookController@validate');
+    $router->get('/whatsapp/status', 'WebhookController@validateStatus');
+    // POST para receber mensagens
     $router->post('/whatsapp', 'WebhookController@receive');
     $router->post('/whatsapp/status', 'WebhookController@status');
+});
+
+// ===========================
+// DEPLOY WEBHOOK (SEM AUTENTICAÇÃO, MAS COM SECRET TOKEN)
+// ===========================
+$router->group(['prefix' => 'api/deploy'], function () use ($router) {
+    $router->get('/', 'DeployController@deploy');   // GET também funciona
+    $router->post('/', 'DeployController@deploy');
+    $router->get('/info', 'DeployController@info');
 });
 
 // ===========================
