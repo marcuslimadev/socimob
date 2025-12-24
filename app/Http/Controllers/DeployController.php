@@ -149,18 +149,20 @@ class DeployController extends Controller
                         Log::info("📍 Node path: $nodePath");
                         Log::info("📍 npm path: $npmPath");
                         
-                        // npm install (sempre executar para garantir dependências atualizadas)
+                        // npm install (INCLUIR devDependencies - vite precisa delas!)
                         Log::info('📦 npm install...');
-                        exec("cd $svelteDir && $env $npmPath install 2>&1", $npmInstallOutput, $npmInstallCode);
+                        $envInstall = "HOME=$homeDir PATH=$pathEnv"; // SEM NODE_ENV=production!
+                        exec("cd $svelteDir && $envInstall $npmPath install 2>&1", $npmInstallOutput, $npmInstallCode);
                         
                         // Build usando vite diretamente (mais confiável que npm run build)
                         Log::info('🔨 vite build...');
                         $vitePath = "$svelteDir/node_modules/.bin/vite";
+                        $envBuild = "HOME=$homeDir NODE_ENV=production PATH=$pathEnv"; // Usar production só no build
                         if (file_exists($vitePath)) {
-                            exec("cd $svelteDir && $env $nodePath $vitePath build 2>&1", $npmBuildOutput, $npmBuildCode);
+                            exec("cd $svelteDir && $envBuild $nodePath $vitePath build 2>&1", $npmBuildOutput, $npmBuildCode);
                         } else {
                             // Fallback para npm run build
-                            exec("cd $svelteDir && $env $npmPath run build 2>&1", $npmBuildOutput, $npmBuildCode);
+                            exec("cd $svelteDir && $envBuild $npmPath run build 2>&1", $npmBuildOutput, $npmBuildCode);
                         }
                         
                         $output['svelte_build'] = [
