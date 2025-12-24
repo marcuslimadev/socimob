@@ -158,6 +158,11 @@ class DeployController extends Controller
                         $esbuildRebuildOutput = [];
                         $esbuildRebuildCode = 0;
                         exec("cd $svelteDir && $envInstall $npmPath rebuild esbuild 2>&1", $esbuildRebuildOutput, $esbuildRebuildCode);
+
+                        // Se ainda faltar binário, força download do pacote esbuild-linux-64 (sem salvar)
+                        $esbuildForcedOutput = [];
+                        $esbuildForcedCode = 0;
+                        exec("cd $svelteDir && $envInstall $npmPath install esbuild-linux-64 --no-save 2>&1", $esbuildForcedOutput, $esbuildForcedCode);
                         
                         // Build usando vite diretamente (mais confiável que npm run build)
                         Log::info('🔨 vite build...');
