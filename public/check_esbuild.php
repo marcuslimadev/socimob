@@ -59,8 +59,7 @@ foreach ($candidates as $c) {
     }
 }
 
-echo "\n6. PATH atual do deploy build:") ;
 $path = "/opt/alt/alt-nodejs20/root/usr/bin:$svelteDir/node_modules/.bin:/bin:/usr/bin";
-echo "\n$path\n";
+echo "\n6. PATH atual do deploy build:\n$path\n";
 
 echo "\n=== FIM ===\n";
