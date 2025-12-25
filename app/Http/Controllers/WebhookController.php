@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\Tenant;
 use App\Models\TenantConfig;
+use Carbon\Carbon;
 
 /**
  * Controller para receber webhooks do Twilio
@@ -25,7 +26,7 @@ class WebhookController extends Controller
      * Validar webhook (responde a requisições GET do Twilio)
      * GET /webhook/whatsapp
      */
-    public function validate(Request $request)
+    public function webhookValidation(Request $request)
     {
         Log::info('Webhook WhatsApp - Validação GET recebida', [
             'params' => $request->all(),
@@ -291,7 +292,7 @@ class WebhookController extends Controller
                 'remetente' => $this->maskIntegrationValue($whatsappFrom),
             ],
             'variaveis_ausentes' => $variaveisFaltantes,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => Carbon::now()->toIso8601String(),
         ];
     }
 
