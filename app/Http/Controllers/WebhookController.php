@@ -62,32 +62,6 @@ class WebhookController extends Controller
     {
         $webhookData = $request->all();
 
-        // Detectar origem do webhook (apenas Twilio suportado)
-        $source = $this->detectWebhookSource($webhookData);
-        
-        Log::info('ЙНННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН»');
-        Log::info('є           ?? WEBHOOK RECEBIDO - ' . strtoupper($source) . '                    є');
-        Log::info('ИННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННј');
-        
-        // Normalizar dados conforme a origem (Twilio prioritário)
-        $normalizedData = $this->normalizeWebhookData($webhookData, $source);
-        $tenant = $this->resolveTenantForWebhook($request, $normalizedData);
-        if ($tenant) {
-            app()->instance('tenant', $tenant);
-            $request->attributes->set('tenant_id', $tenant->id);
-            $normalizedData['tenant_id'] = $tenant->id;
-        }
-        
-        Log::info('?? De: ' . ($normalizedData['from'] ?? 'N/A'));
-        Log::info('?? Nome: ' . ($normalizedData['profile_name'] ?? 'N/A'));
-        Log::info('?? Mensagem: ' . ($normalizedData['message'] ?? '[mЎdia]'));
-        Log::info('?? Message ID: ' . ($normalizedData['message_id'] ?? 'N/A'));
-        Log::info('?? Origem: ' . $source);
-        Log::info('?? Tenant ID: ' . ($tenant?->id ?? 'N/A'));
-        Log::info('ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД');
-        Log::info('?? Payload completo:', $webhookData);
-        Log::info('ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД');
-        
         try {
             // Detectar origem do webhook (apenas Twilio suportado)
             $source = $this->detectWebhookSource($webhookData);
