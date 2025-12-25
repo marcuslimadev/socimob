@@ -162,15 +162,11 @@ class ImportacaoController extends Controller
 
         $fonte = $request->input('fonte', 'exclusiva');
         
-        // Usar configuracoes salvas do tenant
-        $apiUrl = $tenant->api_url_externa ?: 'https://www.exclusivalarimoveis.com.br/';
-        $apiKey = $tenant->api_token_externa ?: 'SUA_API_KEY_AQUI';
-
-        $apiUrl = $this->normalizarBaseUrl($apiUrl);
-        $apiKey = $this->normalizarToken($apiKey);
+        $apiUrl = $this->normalizarBaseUrl($tenant->getIntegrationValue('api_url_externa'));
+        $apiKey = $this->normalizarToken($tenant->getIntegrationValue('api_token_externa'));
 
         if (!$apiUrl || !$apiKey) {
-            throw new \Exception('API não configurada. Configure em: Configurações > Integrações > API Externa');
+            throw new \Exception('API externa não configurada para este tenant. Defina as variáveis de ambiente correspondentes.');
         }
 
         ImportTablesManager::ensureImportTablesExist();
@@ -231,17 +227,8 @@ class ImportacaoController extends Controller
             $apiUrl = $request->input('api_url');
             $apiKey = $request->input('api_key');
         } else {
-            // Usar configuracoes salvas do tenant
-            $apiUrl = $tenant->api_url_externa;
-            $apiKey = $tenant->api_token_externa;
-        }
-
-        // Se ainda não tiver, usar defaults da Exclusiva
-        if (!$apiUrl) {
-            $apiUrl = 'https://www.exclusivalarimoveis.com.br/';
-        }
-        if (!$apiKey) {
-            $apiKey = 'SUA_API_KEY_AQUI'; // Será configurado em Configurações
+            $apiUrl = $tenant->getIntegrationValue('api_url_externa');
+            $apiKey = $tenant->getIntegrationValue('api_token_externa');
         }
 
         $apiUrl = $this->normalizarBaseUrl($apiUrl);
@@ -251,7 +238,7 @@ class ImportacaoController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'API não configurada',
-                'message' => 'Configure a URL e Token da API em: Configurações > Integrações > API Externa'
+                'message' => 'As credenciais da API externa agora são definidas via variáveis de ambiente.'
             ], 400);
         }
 

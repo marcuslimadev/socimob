@@ -47,14 +47,9 @@ class TenantSettingsController extends Controller
                 'secondary_color' => $tenant->secondary_color,
                 'contact_email' => $tenant->contact_email,
                 'contact_phone' => $tenant->contact_phone,
-                'api_key_pagar_me' => $tenant->api_key_pagar_me,
-                'api_key_apm_imoveis' => $tenant->api_key_apm_imoveis,
-                'api_key_neca' => $tenant->api_key_neca,
-                'api_key_openai' => $tenant->api_key_openai,
-                'api_url_externa' => $tenant->api_url_externa,
-                'api_token_externa' => $tenant->api_token_externa,
             ],
             'config' => $config,
+            'integrations_managed_by_env' => true,
         ]);
     }
 
@@ -92,8 +87,6 @@ class TenantSettingsController extends Controller
             'slogan' => 'nullable|string|max:500',
             'primary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
             'secondary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
-            'api_url_externa' => 'nullable|string|max:500',
-            'api_token_externa' => 'nullable|string|max:500',
             'portal_finalidades' => 'nullable|array',
             'portal_finalidades.*' => 'in:venda,aluguel',
         ]);
@@ -107,10 +100,8 @@ class TenantSettingsController extends Controller
             'logo_url', 
             'favicon_url',
             'slogan',
-            'primary_color', 
+            'primary_color',
             'secondary_color',
-            'api_url_externa',
-            'api_token_externa'
         ]));
 
         if ($request->has('portal_finalidades')) {
@@ -294,85 +285,6 @@ class TenantSettingsController extends Controller
         return response()->json([
             'message' => 'Domain updated successfully',
             'domain' => $tenant->domain,
-        ]);
-    }
-
-    /**
-     * Atualizar chaves de API
-     * PUT /api/admin/settings/api-keys
-     */
-    public function updateApiKeys(Request $request)
-    {
-        $tenantId = $request->attributes->get('tenant_id');
-
-        if (!$tenantId) {
-            return response()->json(['error' => 'No tenant context'], 400);
-        }
-
-        $tenant = Tenant::find($tenantId);
-
-        if (!$tenant) {
-            return response()->json(['error' => 'Tenant not found'], 404);
-        }
-
-        // Verificar se o usuário é admin do tenant
-        if (!$request->user()->isAdmin() || $request->user()->tenant_id !== $tenantId) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $validated = $this->validate($request, [
-            'api_key_pagar_me' => 'nullable|string',
-            'api_key_apm_imoveis' => 'nullable|string',
-            'api_key_neca' => 'nullable|string',
-            'api_key_openai' => 'nullable|string',
-            'twilio_account_sid' => 'nullable|string',
-            'twilio_auth_token' => 'nullable|string',
-            'twilio_whatsapp_from' => 'nullable|string',
-        ]);
-
-        // Log para debug
-        \Log::info('updateApiKeys - Dados recebidos:', $validated);
-
-        // Atualizar dados na tabela tenants (apenas api keys principais)
-        $tenantData = array_filter($validated, function ($value, $key) {
-            return in_array($key, ['api_key_pagar_me', 'api_key_apm_imoveis', 'api_key_neca', 'api_key_openai'], true) && !is_null($value);
-        }, ARRAY_FILTER_USE_BOTH);
-
-        if (!empty($tenantData)) {
-            $tenant->update($tenantData);
-            \Log::info('updateApiKeys - Dados salvos em tenants:', $tenantData);
-        }
-
-        // Atualizar TODOS os dados em tenant_configs (incluindo Twilio)
-        // Não usar array_filter para permitir valores null/vazios que limpam campos
-        $configData = [];
-        foreach ($validated as $key => $value) {
-            if (in_array($key, [
-                'api_key_pagar_me',
-                'api_key_apm_imoveis',
-                'api_key_neca',
-                'api_key_openai',
-                'twilio_account_sid',
-                'twilio_auth_token',
-                'twilio_whatsapp_from',
-            ], true)) {
-                $configData[$key] = $value; // Inclui null também
-            }
-        }
-
-        if (!empty($configData)) {
-            $config = $tenant->config;
-            if (!$config) {
-                $config = TenantConfig::create(['tenant_id' => $tenant->id]);
-                \Log::info('updateApiKeys - TenantConfig criado para tenant_id:', $tenant->id);
-            }
-            $config->update($configData);
-            \Log::info('updateApiKeys - Dados salvos em tenant_configs:', $configData);
-        }
-
-        return response()->json([
-            'message' => 'API keys updated successfully',
-            'saved_keys' => array_keys($configData),
         ]);
     }
 

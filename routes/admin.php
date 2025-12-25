@@ -10,7 +10,6 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     $router->put('/settings/tenant', 'Admin\TenantSettingsController@updateTenant');
     $router->put('/settings/theme', 'Admin\TenantSettingsController@updateTheme');
     $router->put('/settings/domain', 'Admin\TenantSettingsController@updateDomain');
-    $router->put('/settings/api-keys', 'Admin\TenantSettingsController@updateApiKeys');
     $router->post('/settings/assets', 'Admin\TenantSettingsController@uploadAssets');
 
     // Email Settings
