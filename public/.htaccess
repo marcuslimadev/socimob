@@ -5,6 +5,10 @@
 
     RewriteEngine On
 
+    # Exceção para Portal Svelte (servir arquivos estáticos)
+    RewriteCond %{REQUEST_URI} ^/portal/svelte/
+    RewriteRule ^ - [L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
