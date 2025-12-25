@@ -32,27 +32,11 @@ class WebhookController extends Controller
             'headers' => $request->headers->all()
         ]);
 
-        try {
-            $tenant = $this->resolveTenantForWebhook($request, []);
+        $tenant = $this->resolveTenantForWebhook($request, []);
 
-            $status = $this->buildWhatsappStatus($tenant);
+        $status = $this->buildWhatsappStatus($tenant);
 
-            return response()->json($status);
-        } catch (\Throwable $e) {
-            Log::error('Webhook WhatsApp - Falha ao montar status', [
-                'error' => $e->getMessage(),
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'status' => 'erro',
-                'mensagem' => 'Não foi possível obter o status do webhook',
-                'timestamp' => now()->toIso8601String(),
-            ], 200);
-        }
+        return response()->json($status);
     }
     
     /**
