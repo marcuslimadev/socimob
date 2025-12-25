@@ -18,10 +18,12 @@ class OpenAIService
 {
     private $apiKey;
     private $model;
-    
+
     public function __construct()
     {
-        $this->apiKey = env('OPENAI_API_KEY');
+        $tenant = app()->bound('tenant') ? app('tenant') : null;
+
+        $this->apiKey = $tenant?->getIntegrationValue('api_key_openai', env('OPENAI_API_KEY'));
         $this->model = env('OPENAI_MODEL', 'gpt-4o-mini');
     }
 

@@ -31,11 +31,12 @@ class WebhookController extends Controller
             'params' => $request->all(),
             'headers' => $request->headers->all()
         ]);
-        
-        // Twilio pode enviar parâmetros de validação
-        // Responder com 200 OK para confirmar que o endpoint está ativo
-        return response('OK', 200)
-            ->header('Content-Type', 'text/plain');
+
+        $tenant = $this->resolveTenantForWebhook($request, []);
+
+        $status = $this->buildWhatsappStatus($tenant);
+
+        return response()->json($status);
     }
     
     /**
@@ -268,7 +269,7 @@ class WebhookController extends Controller
     public function status(Request $request)
     {
         $statusData = $request->all();
-        
+
         Log::info('Status callback recebido', $statusData);
         
         // Atualizar status da mensagem no banco se necessário
@@ -280,6 +281,59 @@ class WebhookController extends Controller
     {
         // Responder vazio e com 200 para evitar ecoar "OK" no provedor
         return response('', 200);
+    }
+
+    private function buildWhatsappStatus(?Tenant $tenant): array
+    {
+        $accountSid = $tenant?->getIntegrationValue('twilio_account_sid', env('TWILIO_ACCOUNT_SID'));
+        $authToken = $tenant?->getIntegrationValue('twilio_auth_token', env('TWILIO_AUTH_TOKEN'));
+        $whatsappFrom = $tenant?->getIntegrationValue(
+            'twilio_whatsapp_from',
+            env('TWILIO_WHATSAPP_FROM', env('TWILIO_WHATSAPP_NUMBER'))
+        );
+
+        $variaveisFaltantes = [];
+        foreach ([
+            'twilio_account_sid' => $accountSid,
+            'twilio_auth_token' => $authToken,
+            'twilio_whatsapp_from' => $whatsappFrom,
+        ] as $chave => $valor) {
+            if (empty($valor)) {
+                $variaveisFaltantes[] = $chave;
+            }
+        }
+
+        return [
+            'status' => empty($variaveisFaltantes) ? 'ok' : 'incompleto',
+            'tenant' => $tenant ? [
+                'id' => $tenant->id,
+                'nome' => $tenant->name ?? null,
+                'dominio' => $tenant->domain ?? null,
+            ] : null,
+            'twilio' => [
+                'account_sid_configurado' => !empty($accountSid),
+                'auth_token_configurado' => !empty($authToken),
+                'whatsapp_from_configurado' => !empty($whatsappFrom),
+                'remetente' => $this->maskIntegrationValue($whatsappFrom),
+            ],
+            'variaveis_ausentes' => $variaveisFaltantes,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
+
+    private function maskIntegrationValue(?string $valor): ?string
+    {
+        if ($valor === null || $valor === '') {
+            return null;
+        }
+
+        $tamanho = Str::length($valor);
+        if ($tamanho <= 4) {
+            return str_repeat('*', $tamanho);
+        }
+
+        $fimVisivel = Str::substr($valor, -4);
+        return str_repeat('*', $tamanho - Str::length($fimVisivel)) . $fimVisivel;
     }
 
     private function toNullableString($value): ?string

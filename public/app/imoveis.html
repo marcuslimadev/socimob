@@ -450,31 +450,6 @@
             $('#formImportarAPI')[0].reset();
             $('#camposAPI').addClass('hidden');
             $('#progressoImportacao').addClass('hidden');
-            
-            // Carregar configurações da API do tenant
-            try {
-                const token = localStorage.getItem('token');
-                const response = await $.ajax({
-                    url: `${API_URL}/admin/settings`,
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                
-                if (response.tenant && response.tenant.api_url_externa) {
-                    console.log('✓ Configurações carregadas:', {
-                        api_url: response.tenant.api_url_externa,
-                        has_token: !!response.tenant.api_token_externa
-                    });
-                    
-                    // Preencher campos hidden com as configurações
-                    $('[name="api_url"]').val(response.tenant.api_url_externa);
-                    $('[name="api_key"]').val(response.tenant.api_token_externa || '');
-                }
-            } catch (error) {
-                console.error('❌ Erro ao carregar configurações:', error);
-            }
         }
 
         function fecharModalImportacao() {

@@ -13,16 +13,16 @@ class TwilioService
     private $accountSid;
     private $authToken;
     private $whatsappFrom;
-    
+
     public function __construct()
     {
         $tenant = app()->bound('tenant') ? app('tenant') : null;
-        $config = $tenant?->config;
-
-        $this->accountSid = $config?->twilio_account_sid ?: env('TWILIO_ACCOUNT_SID');
-        $this->authToken = $config?->twilio_auth_token ?: env('TWILIO_AUTH_TOKEN');
-        $this->whatsappFrom = $config?->twilio_whatsapp_from
-            ?: env('TWILIO_WHATSAPP_FROM', env('TWILIO_WHATSAPP_NUMBER'));
+        $this->accountSid = $tenant?->getIntegrationValue('twilio_account_sid', env('TWILIO_ACCOUNT_SID'));
+        $this->authToken = $tenant?->getIntegrationValue('twilio_auth_token', env('TWILIO_AUTH_TOKEN'));
+        $this->whatsappFrom = $tenant?->getIntegrationValue(
+            'twilio_whatsapp_from',
+            env('TWILIO_WHATSAPP_FROM', env('TWILIO_WHATSAPP_NUMBER'))
+        );
     }
     
     /**
