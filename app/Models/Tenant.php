@@ -179,6 +179,35 @@ class Tenant extends Model
             ->get();
     }
 
+    public function getIntegrationValue(string $key, $default = null)
+    {
+        $envKey = 'TENANT_' . strtoupper($this->id . '_' . $key);
+        $valueFromEnv = env($envKey);
+
+        if ($valueFromEnv !== null) {
+            return $valueFromEnv;
+        }
+
+        $fallbackEnvKey = strtoupper($key);
+        $valueFromFallbackEnv = env($fallbackEnvKey);
+
+        if ($valueFromFallbackEnv !== null) {
+            return $valueFromFallbackEnv;
+        }
+
+        $config = $this->relationLoaded('config') ? $this->config : $this->config()->first();
+
+        if ($config && array_key_exists($key, $config->getAttributes()) && $config->{$key} !== null) {
+            return $config->{$key};
+        }
+
+        if (array_key_exists($key, $this->getAttributes()) && $this->{$key} !== null) {
+            return $this->{$key};
+        }
+
+        return $default;
+    }
+
     public function suspendSubscription(string $reason = null): void
     {
         $this->update([
