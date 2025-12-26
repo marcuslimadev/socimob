@@ -38,6 +38,37 @@ Token: d825c542e26df27c9fe696c391ee590
 Authorization: Basic Y29udGF0b0BleGNsdXNpdmFsYXJpbW92ZWlzLmNvbS5icjpkODI1YzU0MmUyNmRmMjdjOWZlNjk2YzM5MWVlNTkw
 ```
 
+### 🔧 Passos para Configurar no Painel Chaves na Mão
+
+1. **Acessar Painel Administrativo**
+   - Faça login no painel do Chaves na Mão
+   - Navegue até: Configurações → Integrações → Webhooks
+
+2. **Cadastrar URL do Webhook**
+   - Cole a URL: `https://lojadaesquina.store/webhook/chaves-na-mao`
+   - Método: POST
+   - Content-Type: application/json
+
+3. **Configurar Autenticação**
+   - Tipo: HTTP Basic Authentication
+   - Usuário: `contato@exclusivalarimoveis.com.br`
+   - Senha: `d825c542e26df27c9fe696c391ee590`
+
+4. **Selecionar Eventos**
+   - ✅ Novo Lead Criado
+   - ✅ Segmento: REAL_ESTATE (Imóveis)
+   - ✅ Segmento: VEHICLE (Veículos)
+
+5. **Testar Integração**
+   - Use o botão "Enviar Teste" no painel
+   - Verifique se o lead aparece no banco de dados
+   - Consulte os logs: `storage/logs/lumen-YYYY-MM-DD.log`
+
+6. **Ativar Webhook**
+   - Marque como "Ativo"
+   - Salve as configurações
+   - Webhook começa a receber leads em tempo real
+
 ---
 
 ## Arquitetura
