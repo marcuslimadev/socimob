@@ -31,46 +31,44 @@
         nav {
             border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
-        .lead-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 1rem;
+        
+        /* Layout Sidebar + Chat */
+        main {
+            height: calc(100vh - 80px);
         }
+        
+        aside, section {
+            height: 100%;
+        }
+        
+        /* Cards de Conversa na Sidebar */
         .lead-card {
             position: relative;
-            padding: 1.25rem;
-            border-radius: 20px;
-            border: 1px solid var(--card-border);
-            background: var(--card-bg);
-            overflow: hidden;
-            min-height: 190px;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            transition: transform 0.2s ease, border 0.2s ease, box-shadow 0.2s ease;
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: transparent;
+            cursor: pointer;
+            transition: background 0.2s ease;
         }
         .lead-card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(59, 130, 246, 0.5);
-            box-shadow: 0 20px 35px rgba(15, 23, 42, 0.6);
+            background: rgba(59, 130, 246, 0.1);
         }
         .lead-card.selected {
-            border-color: rgba(253, 204, 13, 0.8);
-            box-shadow: 0 0 24px rgba(253, 204, 13, 0.25);
+            background: rgba(59, 130, 246, 0.2);
+            border-left: 3px solid rgb(59, 130, 246);
         }
-        .lead-card.has-new::after {
+        .lead-card.has-new {
+            background: rgba(253, 204, 13, 0.05);
+        }
+        .lead-card.has-new::before {
             content: '';
             position: absolute;
-            inset: 0;
-            border-radius: inherit;
-            box-shadow: 0 0 0 1px var(--pulse);
-            animation: ping 1.6s ease-out;
-            pointer-events: none;
-        }
-        @keyframes ping {
-            0% { opacity: 0.8; transform: scale(1); }
-            70% { opacity: 0; transform: scale(1.08); }
-            100% { opacity: 0; transform: scale(1.12); }
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 60%;
+            background: rgb(253, 204, 13);
         }
         .stage-pill {
             display: inline-flex;
@@ -120,31 +118,35 @@
             background: rgba(15, 23, 42, 0.6);
         }
         .chat-panel {
-            border-radius: 26px;
+            border-radius: 20px;
             border: 1px solid rgba(255, 255, 255, 0.05);
             background: rgba(2, 6, 23, 0.65);
             box-shadow: 0 25px 60px rgba(2, 6, 23, 0.9);
         }
-        .chat-panel header {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .chat-empty {
-            min-height: 260px;
-        }
+        
+        /* Área de Mensagens */
         #mensagens {
-            max-height: 330px;
+            height: 100%;
+            min-height: 400px;
         }
-        #mensagens::-webkit-scrollbar, #listaConversas::-webkit-scrollbar {
-            width: 8px;
+        #mensagens::-webkit-scrollbar {
+            width: 6px;
         }
         #mensagens::-webkit-scrollbar-thumb {
             background: rgba(59, 130, 246, 0.4);
             border-radius: 999px;
         }
-        .lead-controls input {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            color: #f8fafc;
+        #mensagens::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        /* Scrollbar da Sidebar */
+        aside > div:last-child::-webkit-scrollbar {
+            width: 6px;
+        }
+        aside > div:last-child::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.3);
+            border-radius: 999px;
         }
     </style>
 </head>
@@ -153,55 +155,77 @@
         <nav class="flex items-center justify-between px-6 py-4">
             <div>
                 <p class="text-xs uppercase tracking-[0.3em] text-slate-400">SOCIMOB / Central de Atendimento</p>
-                <h1 class="text-3xl font-black text-white">Conversas em tempo real</h1>
+                <h1 class="text-3xl font-black text-white">Conversas</h1>
             </div>
             <div class="flex items-center gap-4">
                 <span id="userName" class="text-sm font-semibold"></span>
                 <button id="btnLogout" class="px-4 py-2 rounded-full bg-rose-600 text-white font-semibold">Sair</button>
             </div>
         </nav>
-        <main class="flex-1 px-6 pb-10 space-y-6">
-            <section class="p-6 space-y-4 lead-wrapper">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <p class="text-sm uppercase text-slate-400 tracking-[0.3em]">Pipeline ativo</p>
-                        <p id="leadCount" class="text-2xl font-bold text-white">0 leads ativos</p>
-                    </div>
-                    <div class="flex items-center gap-3 text-sm text-slate-300 lead-controls">
-                        <span id="leadMeta">Atualizando...</span>
-                        <input id="searchLead" type="search" placeholder="Buscar lead, telefone ou etapa" class="px-4 py-2 rounded-full focus:border-slate-200 focus:outline-none placeholder:text-slate-500" />
-                    </div>
-                </div>
-                <div id="leadCards" class="lead-grid">
-                    <div class="text-slate-400 text-sm">Carregando leads...</div>
-                </div>
-            </section>
-
-            <section class="chat-panel p-6 space-y-4">
-                <div id="chatHeader" class="hidden flex flex-col gap-2">
-                    <div class="flex items-center justify-between gap-4">
-                        <div>
-                            <h2 id="chatNome" class="text-xl font-semibold text-white"></h2>
-                            <p id="chatInfo" class="text-sm text-slate-300"></p>
+        
+        <!-- Layout tipo WhatsApp: Sidebar + Chat -->
+        <main class="flex-1 px-6 pb-6 overflow-hidden">
+            <div class="h-full grid grid-cols-12 gap-4">
+                
+                <!-- Sidebar de Conversas (col-span-4) -->
+                <aside class="col-span-4 flex flex-col section p-0 overflow-hidden">
+                    <!-- Header da Sidebar -->
+                    <div class="p-4 border-b border-white/10">
+                        <div class="mb-3">
+                            <p id="leadCount" class="text-lg font-bold text-white">0 conversas ativas</p>
+                            <p id="leadMeta" class="text-xs text-slate-400">Atualizando...</p>
                         </div>
-                        <div id="chatActions" class="flex gap-2"></div>
+                        <input id="searchLead" type="search" placeholder="Buscar conversa..." 
+                               class="w-full px-4 py-2 rounded-full bg-slate-900 text-white border border-white/10 focus:border-sky-500 focus:outline-none placeholder:text-slate-500 text-sm" />
                     </div>
-                    <p id="chatStage" class="text-xs uppercase tracking-[0.3em] text-slate-400"></p>
-                </div>
-                <div id="chatEmpty" class="chat-empty flex items-center justify-center text-slate-500">
-                    <div class="text-center">
-                        <p class="text-5xl mb-3">💬</p>
-                        <p class="text-lg font-semibold">Selecione um lead para abrir o chat</p>
+                    
+                    <!-- Lista de Conversas -->
+                    <div id="leadCards" class="flex-1 overflow-y-auto">
+                        <div class="p-4 text-slate-400 text-sm text-center">Carregando conversas...</div>
                     </div>
-                </div>
-                <div id="chatArea" class="hidden flex flex-col gap-4">
-                    <div id="mensagens" class="flex-1 overflow-y-auto space-y-4"></div>
-                    <form id="formMensagem" class="flex gap-3">
-                        <input id="inputMensagem" type="text" placeholder="Digite sua mensagem..." class="flex-1 px-4 py-3 rounded-2xl bg-slate-900 text-white border border-transparent focus:outline-none focus:ring-2 focus:ring-sky-500" />
-                        <button type="submit" class="px-6 py-3 rounded-2xl bg-slate-100 text-slate-900 font-semibold">Enviar</button>
-                    </form>
-                </div>
-            </section>
+                </aside>
+
+                <!-- Área de Chat (col-span-8) -->
+                <section class="col-span-8 flex flex-col chat-panel overflow-hidden">
+                    <!-- Header do Chat -->
+                    <div id="chatHeader" class="hidden p-4 border-b border-white/10">
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="flex-1 min-w-0">
+                                <h2 id="chatNome" class="text-xl font-semibold text-white truncate"></h2>
+                                <p id="chatInfo" class="text-sm text-slate-300 truncate"></p>
+                            </div>
+                            <div id="chatActions" class="flex gap-2 flex-shrink-0"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Estado Vazio -->
+                    <div id="chatEmpty" class="flex-1 flex items-center justify-center text-slate-500">
+                        <div class="text-center">
+                            <p class="text-6xl mb-4">💬</p>
+                            <p class="text-xl font-semibold mb-2">Selecione uma conversa</p>
+                            <p class="text-sm text-slate-400">Escolha um lead na lista para iniciar</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Área de Chat Ativa -->
+                    <div id="chatArea" class="hidden flex-1 flex flex-col min-h-0">
+                        <!-- Mensagens -->
+                        <div id="mensagens" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+                        
+                        <!-- Input de Mensagem -->
+                        <div class="p-4 border-t border-white/10">
+                            <form id="formMensagem" class="flex gap-3">
+                                <input id="inputMensagem" type="text" placeholder="Digite sua mensagem..." 
+                                       class="flex-1 px-4 py-3 rounded-2xl bg-slate-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                                <button type="submit" class="px-6 py-3 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-semibold transition-colors">
+                                    Enviar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+                
+            </div>
         </main>
     </div>
 
@@ -329,28 +353,26 @@
                 const lastActivity = conversa.ultima_atividade ? formatTime(conversa.ultima_atividade) : 'Sem atividade recente';
                 const messageSnippet = conversa.last_message_preview || 'Ainda sem mensagens definidas';
                 const userMessageCounter = conversa.user_messages_count ?? 0;
-                const counterHtml = hasBudget
-                    ? `<div class="message-counter" title="Mensagens recebidas do cliente"><span>${userMessageCounter}</span><span>mensagens do cliente</span></div>`
-                    : `<div class="message-counter muted">Compartilhe o investimento para habilitar o contador</div>`;
+                const hasNewMessages = userMessageCounter > 0;
+                
                 return `
                     <div class="lead-card" data-id="${conversa.id}">
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <h3 class="text-lg font-semibold text-white">${conversa.lead_profile?.nome}</h3>
-                                <p class="text-sm text-slate-400">${formatPhone(conversa.lead_profile?.telefone)}</p>
+                        <div class="flex items-start gap-3">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h3 class="text-base font-semibold text-white truncate">${conversa.lead_profile?.nome}</h3>
+                                    ${hasNewMessages ? `<span class="flex-shrink-0 w-5 h-5 rounded-full bg-sky-500 text-white text-xs flex items-center justify-center font-bold">${userMessageCounter}</span>` : ''}
+                                </div>
+                                <p class="text-xs text-slate-400 truncate mb-2">${messageSnippet}</p>
+                                <div class="flex items-center justify-between text-xs text-slate-500">
+                                    <span>${formatPhone(conversa.lead_profile?.telefone)}</span>
+                                    <span>${lastActivity}</span>
+                                </div>
                             </div>
-                            <span class="stage-pill" style="background: ${stageStyle};">${stageLabel}</span>
                         </div>
-                        <p class="card-meta">Estado atual: ${statusLabel}</p>
-                        <p class="text-sm text-slate-300 line-clamp-2">${messageSnippet}</p>
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <p class="card-meta">Última atividade: ${lastActivity}</p>
-                            <p class="text-xs text-slate-400">Orçamento: ${formattedBudget}</p>
-                        </div>
-                        ${counterHtml}
                     </div>
                 `;
-            }).join('') || '<div class="text-sm text-slate-500">Nenhuma conversa encontrada</div>';
+            }).join('') || '<div class="p-4 text-sm text-slate-500 text-center">Nenhuma conversa encontrada</div>';
             $('#leadCards').html(cardsHtml);
             filtered.forEach(conversa => {
                 const isNew = detectNewIncoming(conversa);
