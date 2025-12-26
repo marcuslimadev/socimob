@@ -1,8 +1,285 @@
 # Integração Chaves na Mão - Documentação
 
-## Visão Geral
+## ⚠️ IMPORTANTE: Fluxo de Integração
 
-Integração automática de leads do SaaS Exclusiva para a API de Leads do Chaves na Mão.
+**WEBHOOK (RECEBEMOS LEADS)**
+
+O Chaves na Mão **envia leads PARA NÓS** via webhook, não o contrário!
+
+### Fluxo Correto:
+1. 🌐 Portais de imóveis/veículos → Chaves na Mão
+2. 📤 Chaves na Mão → **NOSSO WEBHOOK**
+3. 💾 Salvamos lead no banco de dados
+4. ✅ Respondemos com sucesso 200
+
+---
+
+## Configuração no Chaves na Mão
+
+### URL do Webhook
+
+Forneça esta URL no painel do Chaves na Mão:
+
+```
+https://lojadaesquina.store/webhook/chaves-na-mao
+```
+
+### Credenciais de Autenticação
+
+O Chaves na Mão enviará estas credenciais via Basic Auth:
+
+```
+Email: contato@exclusivalarimoveis.com.br
+Token: d825c542e26df27c9fe696c391ee590
+```
+
+**Formato do Header:**
+```
+Authorization: Basic Y29udGF0b0BleGNsdXNpdmFsYXJpbW92ZWlzLmNvbS5icjpkODI1YzU0MmUyNmRmMjdjOWZlNjk2YzM5MWVlNTkw
+```
+
+---
+
+## Arquitetura
+
+### Componentes
+
+1. **ChavesNaMaoWebhookController** (`app/Http/Controllers/ChavesNaMaoWebhookController.php`)
+   - Recebe requisições POST do Chaves na Mão
+   - Valida autenticação Basic Auth
+   - Processa e salva leads
+
+2. **Rota Webhook** (`routes/web.php`)
+   - `POST /webhook/chaves-na-mao`
+   - Pública (sem middleware de auth do sistema)
+   - Valida autenticação internamente
+
+---
+
+## Formato dos Dados Recebidos
+
+### Lead de Imóvel
+
+```json
+{
+  "id": "12345",
+  "name": "João Silva",
+  "email": "joao@email.com",
+  "phone": "11999999999",
+  "message": "Tenho interesse no imóvel",
+  "segment": "REAL_ESTATE",
+  "ad": {
+    "id": "67890",
+    "title": "Apartamento 3 quartos",
+    "type": "Apartamento",
+    "purpose": "Venda",
+    "reference": "REF001",
+    "rooms": 3,
+    "suites": 1,
+    "garages": 2,
+    "price": 450000,
+    "neighborhood": "Pampulha",
+    "city": "Belo Horizonte",
+    "state": "MG"
+  }
+}
+```
+
+### Lead de Veículo
+
+```json
+{
+  "id": "54321",
+  "name": "Maria Santos",
+  "email": "maria@email.com",
+  "phone": "31988776655",
+  "message": "Quero fazer test drive",
+  "segment": "VEHICLE",
+  "ad": {
+    "id": "98765",
+    "title": "Honda Civic 2020",
+    "brand": "Honda",
+    "model": "Civic",
+    "year": 2020,
+    "price": 85000
+  }
+}
+```
+
+---
+
+## Processamento do Lead
+
+### Mapeamento de Campos
+
+| Chaves na Mão | Campo no Banco | Observações |
+|---------------|----------------|-------------|
+| `name` | `nome` | Obrigatório |
+| `email` | `email` | Opcional |
+| `phone` | `telefone` | Opcional |
+| `ad.rooms` | `quartos` | Apenas imóveis |
+| `ad.suites` | `suites` | Apenas imóveis |
+| `ad.garages` | `garagem` | Apenas imóveis |
+| `ad.price` | `budget_max` | Convertido para float |
+| `ad.neighborhood + city` | `localizacao` | Concatenado |
+| `message + ad data` | `observacoes` | Texto formatado |
+
+### Status Inicial
+
+Todos os leads recebidos são criados com `status = 'novo'`
+
+---
+
+## Testes
+
+### Testar Webhook Localmente
+
+```bash
+curl -X POST http://localhost:8000/webhook/chaves-na-mao \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic Y29udGF0b0BleGNsdXNpdmFsYXJpbW92ZWlzLmNvbS5icjpkODI1YzU0MmUyNmRmMjdjOWZlNjk2YzM5MWVlNTkw" \
+  -d '{
+    "id": "TEST001",
+    "name": "Lead de Teste",
+    "email": "teste@example.com",
+    "phone": "31999999999",
+    "message": "Teste de integração",
+    "segment": "REAL_ESTATE",
+    "ad": {
+      "id": "AD001",
+      "title": "Apartamento Teste",
+      "type": "Apartamento",
+      "purpose": "Venda",
+      "rooms": 3,
+      "price": 300000
+    }
+  }'
+```
+
+**Resposta esperada (200):**
+```json
+{
+  "success": true,
+  "message": "Lead recebido e processado",
+  "lead_id": 123
+}
+```
+
+### Testar em Produção
+
+```bash
+curl -X POST https://lojadaesquina.store/webhook/chaves-na-mao \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic Y29udGF0b0BleGNsdXNpdmFsYXJpbW92ZWlzLmNvbS5icjpkODI1YzU0MmUyNmRmMjdjOWZlNjk2YzM5MWVlNTkw" \
+  -d '{
+    "id": "PROD_TEST",
+    "name": "Teste Produção",
+    "phone": "31987654321",
+    "segment": "REAL_ESTATE"
+  }'
+```
+
+---
+
+## Monitoramento
+
+### Logs
+
+Todos os webhooks recebidos são logados em `storage/logs/lumen-YYYY-MM-DD.log`:
+
+- ✅ `📥 Lead recebido do Chaves na Mão`
+- ✅ `✅ Lead processado com sucesso`
+- ⚠️ `⚠️ Webhook sem autenticação`
+- 🔒 `🔒 Tentativa de acesso não autorizada`
+- ❌ `❌ Erro ao processar lead`
+
+### Queries Úteis
+
+**Leads recebidos hoje:**
+```sql
+SELECT id, nome, telefone, email, created_at, observacoes
+FROM leads 
+WHERE observacoes LIKE '%Chaves na Mão%'
+AND DATE(created_at) = CURDATE()
+ORDER BY created_at DESC;
+```
+
+**Últimos 10 leads do Chaves na Mão:**
+```sql
+SELECT id, nome, telefone, status, created_at
+FROM leads
+WHERE observacoes LIKE '%Origem: Chaves na Mão%'
+ORDER BY created_at DESC
+LIMIT 10;
+```
+
+---
+
+## Segurança
+
+- ✅ Autenticação Basic Auth obrigatória
+- ✅ Validação de credenciais via .env
+- ✅ Logs de tentativas não autorizadas
+- ✅ Resposta 401 para credenciais inválidas
+- ✅ Tenant ID fixo (Exclusiva = 1)
+
+---
+
+## Troubleshooting
+
+### Webhook não recebe leads
+
+1. **Verificar URL configurada no Chaves na Mão**
+   - URL correta: `https://lojadaesquina.store/webhook/chaves-na-mao`
+   - Método: POST
+   - Content-Type: application/json
+
+2. **Verificar logs**
+   ```bash
+   tail -f storage/logs/lumen-$(date +%Y-%m-%d).log | grep "Chaves"
+   ```
+
+3. **Testar endpoint manualmente** (ver seção Testes acima)
+
+### Erro 401
+
+- Verificar se credenciais no Chaves na Mão estão corretas
+- Email: `contato@exclusivalarimoveis.com.br`
+- Token: `d825c542e26df27c9fe696c391ee590`
+
+### Lead não aparece no sistema
+
+1. Verificar logs para erros de processamento
+2. Verificar se `tenant_id = 1` está correto
+3. Consultar banco diretamente:
+   ```sql
+   SELECT * FROM leads ORDER BY created_at DESC LIMIT 1;
+   ```
+
+---
+
+## Configuração no Painel Chaves na Mão
+
+1. Acesse o painel administrativo do Chaves na Mão
+2. Vá em **Configurações** → **Webhooks** (ou similar)
+3. Configure:
+   - **URL Webhook**: `https://lojadaesquina.store/webhook/chaves-na-mao`
+   - **Método**: POST
+   - **Autenticação**: Basic Auth
+   - **Email**: `contato@exclusivalarimoveis.com.br`
+   - **Token**: `d825c542e26df27c9fe696c391ee590`
+4. Salve e teste o envio
+
+---
+
+## Próximos Passos
+
+- [ ] Configurar webhook no painel do Chaves na Mão
+- [ ] Fazer teste de envio via painel
+- [ ] Monitorar logs por 24h
+- [ ] Configurar notificações de novos leads (opcional)
+- [ ] Criar dashboard de leads recebidos (opcional)
+
 
 ## Arquitetura
 

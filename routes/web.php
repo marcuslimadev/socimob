@@ -33,6 +33,9 @@ $router->get('/', function () {
 
 $router->post('/github/webhook', 'GitHubWebhookController@handle');
 
+// Webhook Chaves na Mão - Receber leads
+$router->post('/webhook/chaves-na-mao', 'ChavesNaMaoWebhookController@receive');
+
 // Auth API routes
 $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('/auth/login', 'AuthController@login');
