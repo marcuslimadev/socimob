@@ -69,8 +69,14 @@ class ChavesNaMaoWebhookController extends Controller
     {
         $authHeader = $request->header('Authorization');
 
+        Log::info('🔐 Validando autenticação webhook', [
+            'has_auth_header' => !empty($authHeader),
+            'ip' => $request->ip()
+        ]);
+
         if (!$authHeader || !str_starts_with($authHeader, 'Basic ')) {
             Log::warning('⚠️ Webhook sem autenticação', [
+                'auth_header' => $authHeader,
                 'ip' => $request->ip()
             ]);
             return response()->json(['error' => 'Autenticação necessária'], 401);
@@ -81,6 +87,9 @@ class ChavesNaMaoWebhookController extends Controller
         $credentials = base64_decode($authToken);
         
         if (!str_contains($credentials, ':')) {
+            Log::warning('⚠️ Formato inválido', [
+                'credentials_length' => strlen($credentials)
+            ]);
             return response()->json(['error' => 'Formato de autenticação inválido'], 401);
         }
 
@@ -90,9 +99,20 @@ class ChavesNaMaoWebhookController extends Controller
         $expectedEmail = env('EXCLUSIVA_MAIL_CHAVES_NA_MAO');
         $expectedToken = env('EXCLUSIVA_CHAVES_NA_MAO');
 
+        Log::info('🔍 Comparando credenciais', [
+            'email_recebido' => $email,
+            'email_esperado' => $expectedEmail,
+            'token_recebido_length' => strlen($token),
+            'token_esperado_length' => strlen($expectedToken),
+            'emails_match' => $email === $expectedEmail,
+            'tokens_match' => $token === $expectedToken
+        ]);
+
         if ($email !== $expectedEmail || $token !== $expectedToken) {
-            Log::warning('🔒 Tentativa de acesso não autorizada', [
+            Log::warning('🔒 Credenciais inválidas', [
                 'email_received' => $email,
+                'email_expected' => $expectedEmail,
+                'token_match' => $token === $expectedToken,
                 'ip' => $request->ip()
             ]);
             return response()->json(['error' => 'Credenciais inválidas'], 401);
