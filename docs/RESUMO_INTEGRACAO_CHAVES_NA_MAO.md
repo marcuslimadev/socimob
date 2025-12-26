@@ -90,7 +90,7 @@ Ambiente: Produção (https://lojadaesquina.store)
 
 2. **Autenticação**:
    - Tipo: HTTP Basic Auth
-   - Email: `contato@exclusivalarimoveis.com.br`
+   - Email: `contato@exclusivarlarimoveis.com`
    - Token: `d825c542e26df27c9fe696c391ee590`
 
 3. **Eventos**:

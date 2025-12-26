@@ -40,7 +40,7 @@ Invoke-RestMethod `
   -Uri "https://lojadaesquina.store/webhook/chaves-na-mao" `
   -Method POST `
   -Headers @{
-    "Authorization" = "Basic Y29udGF0b0BleGNsdXNpdmFsYXJpbW92ZWlzLmNvbS5icjpkODI1YzU0MmUyNmRmMjdjOWZlNjk2YzM5MWVlNTkw"
+    "Authorization" = "Basic Y29udGF0b0BleGNsdXNpdmFybGFyaW1vdmVpcy5jb206ZDgyNWM1NDJlMjZkZjI3YzlmZTY5NmMzOTFlZTU5MA=="
     "Content-Type" = "application/json"
   } `
   -Body $json
@@ -60,7 +60,7 @@ Invoke-RestMethod `
 ```bash
 curl -X POST https://lojadaesquina.store/webhook/chaves-na-mao \
   -H "Content-Type: application/json" \
-  -H "Authorization: Basic Y29udGF0b0BleGNsdXNpdmFsYXJpbW92ZWlzLmNvbS5icjpkODI1YzU0MmUyNmRmMjdjOWZlNjk2YzM5MWVlNTkw" \
+  -H "Authorization: Basic Y29udGF0b0BleGNsdXNpdmFybGFyaW1vdmVpcy5jb206ZDgyNWM1NDJlMjZkZjI3YzlmZTY5NmMzOTFlZTU5MA==" \
   -d '{
     "id":"TEST001",
     "name":"João Silva",
@@ -85,7 +85,7 @@ curl -X POST https://lojadaesquina.store/webhook/chaves-na-mao \
 2. **URL**: `https://lojadaesquina.store/webhook/chaves-na-mao`
 3. **Headers**:
    - `Content-Type`: `application/json`
-   - `Authorization`: `Basic Y29udGF0b0BleGNsdXNpdmFsYXJpbW92ZWlzLmNvbS5icjpkODI1YzU0MmUyNmRmMjdjOWZlNjk2YzM5MWVlNTkw`
+   - `Authorization`: `Basic Y29udGF0b0BleGNsdXNpdmFybGFyaW1vdmVpcy5jb206ZDgyNWM1NDJlMjZkZjI3YzlmZTY5NmMzOTFlZTU5MA==`
 4. **Body** (raw, JSON):
 ```json
 {
@@ -207,13 +207,13 @@ curl -X POST https://lojadaesquina.store/webhook/chaves-na-mao \
 
 ## 🔐 Credenciais
 
-- **Email**: `contato@exclusivalarimoveis.com.br`
+- **Email**: `contato@exclusivarlarimoveis.com`
 - **Token**: `d825c542e26df27c9fe696c391ee590`
-- **Basic Auth (Base64)**: `Y29udGF0b0BleGNsdXNpdmFsYXJpbW92ZWlzLmNvbS5icjpkODI1YzU0MmUyNmRmMjdjOWZlNjk2YzM5MWVlNTkw`
+- **Basic Auth (Base64)**: `Y29udGF0b0BleGNsdXNpdmFybGFyaW1vdmVpcy5jb206ZDgyNWM1NDJlMjZkZjI3YzlmZTY5NmMzOTFlZTU5MA==`
 
 **Como gerar Basic Auth:**
 ```bash
-echo -n "contato@exclusivalarimoveis.com.br:d825c542e26df27c9fe696c391ee590" | base64
+echo -n "contato@exclusivarlarimoveis.com:d825c542e26df27c9fe696c391ee590" | base64
 ```
 
 ## 📌 Próximos Passos

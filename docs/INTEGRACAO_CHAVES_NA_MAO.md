@@ -29,7 +29,7 @@ https://lojadaesquina.store/webhook/chaves-na-mao
 O Chaves na Mão enviará estas credenciais via Basic Auth:
 
 ```
-Email: contato@exclusivalarimoveis.com.br
+Email: contato@exclusivarlarimoveis.com
 Token: d825c542e26df27c9fe696c391ee590
 ```
 
@@ -51,7 +51,7 @@ Authorization: Basic Y29udGF0b0BleGNsdXNpdmFsYXJpbW92ZWlzLmNvbS5icjpkODI1YzU0MmU
 
 3. **Configurar Autenticação**
    - Tipo: HTTP Basic Authentication
-   - Usuário: `contato@exclusivalarimoveis.com.br`
+   - Usuário: `contato@exclusivarlarimoveis.com`
    - Senha: `d825c542e26df27c9fe696c391ee590`
 
 4. **Selecionar Eventos**
