@@ -107,8 +107,8 @@ class ChavesNaMaoWebhookController extends Controller
         $leadData = [
             'tenant_id' => 1, // Exclusiva
             'nome' => $data['name'] ?? 'Lead Chaves na Mão',
-            'email' => $data['email'] ?? null,
-            'telefone' => $data['phone'] ?? null,
+            'email' => $data['email'] ?? '',
+            'telefone' => $data['phone'] ?? '00000000000', // Telefone obrigatório no banco
             'status' => 'novo',
             'observacoes' => $this->buildObservacoes($data, $isVehicle),
         ];
