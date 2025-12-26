@@ -81,9 +81,12 @@ class ChavesNaMaoCommand extends Command
     {
         $this->info('🧪 Testando integração Chaves na Mão...');
 
-        // Buscar primeiro lead disponível
+        // Buscar primeiro lead disponível (com email ou telefone)
         $lead = Lead::whereNull('chaves_na_mao_sent_at')
-            ->whereNotNull('email')
+            ->where(function ($query) {
+                $query->whereNotNull('email')
+                      ->orWhereNotNull('telefone');
+            })
             ->first();
 
         if (!$lead) {
@@ -92,6 +95,8 @@ class ChavesNaMaoCommand extends Command
         }
 
         $this->info("📋 Testando com lead: {$lead->nome} (ID: {$lead->id})");
+        $this->line("   Email: " . ($lead->email ?? 'N/A'));
+        $this->line("   Telefone: " . ($lead->telefone ?? 'N/A'));
 
         $result = $this->service->sendLead($lead);
 
