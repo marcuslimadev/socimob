@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Log;
 class ChavesNaMaoService
 {
     private string $apiUrl = 'https://api.chavesnamao.com.br/leads'; // Endpoint da API
-    private string $email;
-    private string $token;
+    private ?string $email;
+    private ?string $token;
 
     public function __construct()
     {
@@ -39,6 +39,15 @@ class ChavesNaMaoService
      */
     public function sendLead(Lead $lead): array
     {
+        // Verificar credenciais
+        if (!$this->email || !$this->token) {
+            return [
+                'success' => false,
+                'error' => 'Credenciais não configuradas no .env',
+                'requires_configuration' => true
+            ];
+        }
+
         // Verificar se já foi enviado
         if ($lead->chaves_na_mao_sent_at) {
             Log::info('⚠️ Lead já enviado ao Chaves na Mão', [
