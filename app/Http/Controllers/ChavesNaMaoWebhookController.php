@@ -33,12 +33,23 @@ class ChavesNaMaoWebhookController extends Controller
         }
 
         try {
-            // Capturar dados do lead (JSON)
-            $leadData = $request->json()->all();
+            // Capturar dados do lead
+            $rawData = $request->json()->all();
             
             // Fallback para dados do body se json() retornar vazio
-            if (empty($leadData)) {
-                $leadData = json_decode($request->getContent(), true) ?? [];
+            if (empty($rawData)) {
+                $rawData = json_decode($request->getContent(), true) ?? [];
+            }
+            
+            // Adaptar para formato do Chaves na Mão: eles enviam o lead como string JSON na chave "lead"
+            if (isset($rawData['lead']) && is_string($rawData['lead'])) {
+                $leadData = json_decode($rawData['lead'], true);
+                if (!$leadData) {
+                    throw new \Exception('Formato inválido: chave "lead" não contém JSON válido');
+                }
+            } else {
+                // Fallback: se não vier na chave "lead", usa o rawData direto
+                $leadData = $rawData;
             }
 
             Log::info('📥 Lead recebido do Chaves na Mão', [
