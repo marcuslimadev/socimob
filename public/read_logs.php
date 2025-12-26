@@ -11,7 +11,27 @@ if ($secret !== 'ULqVBREGLgTL2cDw/WauzXgGuNxGLIG4/HcG3CdXwf8=') {
     die('Unauthorized');
 }
 
-$logFile = __DIR__ . '/storage/logs/lumen-' . date('Y-m-d') . '.log';
+// Permitir especificar data ou listar arquivos
+$date = $_GET['date'] ?? date('Y-m-d');
+$action = $_GET['action'] ?? 'read';
+
+if ($action === 'list') {
+    $logDir = __DIR__ . '/../storage/logs/';
+    $files = glob($logDir . 'lumen-*.log');
+    echo "📁 Arquivos de log disponíveis:\n\n";
+    foreach ($files as $file) {
+        echo basename($file) . " (" . human_filesize(filesize($file)) . ")\n";
+    }
+    exit;
+}
+
+$logFile = __DIR__ . '/../storage/logs/lumen-' . $date . '.log';
+
+function human_filesize($bytes, $decimals = 2) {
+    $size = array('B','KB','MB','GB','TB');
+    $factor = floor((strlen($bytes) - 1) / 3);
+    return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . $size[$factor];
+}
 
 header('Content-Type: text/plain; charset=utf-8');
 
