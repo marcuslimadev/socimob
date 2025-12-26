@@ -15,12 +15,9 @@ class ChavesNaMaoWebhookController extends Controller
     {
         return response()->json([
             'success' => false,
-            'error' => 'Método não permitido. Use POST para enviar leads.',
-            'message' => 'Este endpoint aceita apenas requisições POST.',
-            'endpoint' => '/webhook/chaves-na-mao',
-            'method_required' => 'POST',
-            'authentication' => 'Basic Auth (email:token)',
-            'documentation' => 'https://github.com/marcuslimadev/socimob'
+            'error' => 'Método não permitido',
+            'message' => 'Este endpoint aceita apenas requisições POST',
+            'method_required' => 'POST'
         ], 405);
     }
 
