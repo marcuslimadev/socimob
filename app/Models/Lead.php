@@ -48,6 +48,11 @@ class Lead extends Model
         'diagnostico_ia',
         'diagnostico_status',
         'diagnostico_gerado_em',
+        'chaves_na_mao_status',
+        'chaves_na_mao_sent_at',
+        'chaves_na_mao_response',
+        'chaves_na_mao_error',
+        'chaves_na_mao_retries',
     ];
 
     protected $casts = [
@@ -56,6 +61,7 @@ class Lead extends Model
         'primeira_interacao' => 'datetime',
         'ultima_interacao' => 'datetime',
         'diagnostico_gerado_em' => 'datetime',
+        'chaves_na_mao_sent_at' => 'datetime',
     ];
 
     public function corretor()
