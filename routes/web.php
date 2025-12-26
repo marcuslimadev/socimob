@@ -787,6 +787,8 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     $router->put('/leads/{id}', 'LeadsController@update');
     $router->patch('/leads/{id}/state', 'LeadsController@updateState');
     $router->patch('/leads/{id}/status', 'LeadsController@updateStatus');
+    $router->post('/leads/{id}/claim', 'LeadsController@claim');
+    $router->post('/leads/{id}/release', 'LeadsController@release');
     $router->delete('/leads/{id}', 'LeadsController@destroy');
     $router->delete('/leads', 'LeadsController@bulkDestroy');
     $router->post('/leads/{id}/diagnostico', 'LeadsController@diagnostico');

@@ -503,4 +503,100 @@ class LeadsController extends Controller
             'matches' => $matchesDeletados,
         ];
     }
+
+    /**
+     * Corretor pega um lead para atendimento
+     * POST /api/leads/{id}/claim
+     */
+    public function claim(Request $request, $id)
+    {
+        try {
+            $lead = $this->resolveLeadForTenant($id, $request);
+            
+            // Verificar se já está sendo atendido
+            if ($lead->corretor_id && $lead->corretor_id !== $request->attributes->get('user_id')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Este lead já está sendo atendido por outro corretor'
+                ], 409);
+            }
+            
+            // Atribuir corretor
+            $lead->corretor_id = $request->attributes->get('user_id');
+            $lead->status = 'em_atendimento';
+            $lead->updated_at = now();
+            $lead->save();
+            
+            Log::info('👤 Lead atribuído ao corretor', [
+                'lead_id' => $lead->id,
+                'corretor_id' => $lead->corretor_id,
+                'lead_nome' => $lead->nome
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead atribuído com sucesso',
+                'data' => $lead
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erro ao atribuir lead', [
+                'lead_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Liberar lead (admin ou corretor atual)
+     * POST /api/leads/{id}/release
+     */
+    public function release(Request $request, $id)
+    {
+        try {
+            $lead = $this->resolveLeadForTenant($id, $request);
+            $userId = $request->attributes->get('user_id');
+            $isAdmin = $request->attributes->get('is_admin', false);
+            
+            // Verificar permissão
+            if (!$isAdmin && $lead->corretor_id !== $userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Você não tem permissão para liberar este lead'
+                ], 403);
+            }
+            
+            // Liberar corretor
+            $lead->corretor_id = null;
+            $lead->status = 'novo';
+            $lead->updated_at = now();
+            $lead->save();
+            
+            Log::info('🔓 Lead liberado', [
+                'lead_id' => $lead->id,
+                'liberado_por' => $userId,
+                'lead_nome' => $lead->nome
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead liberado com sucesso',
+                'data' => $lead
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erro ao liberar lead', [
+                'lead_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
