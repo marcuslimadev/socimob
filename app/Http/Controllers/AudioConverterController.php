@@ -7,7 +7,41 @@ use Illuminate\Support\Facades\Log;
 
 class AudioConverterController extends Controller
 {
-    private const FFMPEG_PATH = 'C:\\ffmpeg\\bin\\ffmpeg.exe';
+    private static function getFfmpegPath(): string
+    {
+        // Auto-detectar caminho baseado no sistema operacional
+        $defaultPath = PHP_OS_FAMILY === 'Windows' 
+            ? 'C:\\ffmpeg\\bin\\ffmpeg.exe'
+            : '/usr/bin/ffmpeg';
+        
+        if (file_exists($defaultPath)) {
+            return $defaultPath;
+        }
+        
+        // Tentar encontrar via which/where
+        $whichCmd = PHP_OS_FAMILY === 'Windows' ? 'where ffmpeg' : 'which ffmpeg';
+        $foundPath = trim(shell_exec($whichCmd));
+        
+        if ($foundPath && file_exists($foundPath)) {
+            return $foundPath;
+        }
+        
+        // Tentar caminhos alternativos (binário estático)
+        $alternativePaths = [
+            base_path('ffmpeg'), // public_html/ffmpeg
+            getenv('HOME') . '/bin/ffmpeg', // ~/bin/ffmpeg
+            '/usr/local/bin/ffmpeg',
+            './ffmpeg' // diretório atual
+        ];
+        
+        foreach ($alternativePaths as $path) {
+            if (file_exists($path)) {
+                return $path;
+            }
+        }
+        
+        return $defaultPath;
+    }
     
     /**
      * Converter áudio OGG/outros formatos para MP3
@@ -44,14 +78,18 @@ class AudioConverterController extends Controller
             Log::info('💾 Arquivo temporário salvo', ['path' => $inputFile]);
             
             // Verificar se FFmpeg existe
-            if (!file_exists(self::FFMPEG_PATH)) {
-                Log::error('❌ FFmpeg não encontrado', ['path' => self::FFMPEG_PATH]);
+            $ffmpegPath = self::getFfmpegPath();
+            if (!file_exists($ffmpegPath)) {
+                Log::error('❌ FFmpeg não encontrado', [
+                    'path' => $ffmpegPath,
+                    'os' => PHP_OS_FAMILY
+                ]);
                 @unlink($inputFile);
                 return response('FFmpeg não instalado no servidor', 500);
             }
             
             // Converter com FFmpeg
-            $cmd = self::FFMPEG_PATH . " -y -i " . escapeshellarg($inputFile) . " -ar 44100 -ac 2 -b:a 192k " . escapeshellarg($outputFile) . " 2>&1";
+            $cmd = $ffmpegPath . " -y -i " . escapeshellarg($inputFile) . " -ar 44100 -ac 2 -b:a 192k " . escapeshellarg($outputFile) . " 2>&1";
             
             Log::info('🔄 Executando conversão', ['cmd' => $cmd]);
             

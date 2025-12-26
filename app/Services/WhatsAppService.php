@@ -894,11 +894,43 @@ class WhatsAppService
     private function convertOggToMp3(string $audioPath): ?string
     {
         // Converter localmente com FFmpeg (não via HTTP para evitar deadlock)
-        $ffmpegPath = 'C:\\ffmpeg\\bin\\ffmpeg.exe';
+        // Auto-detectar caminho baseado no sistema operacional
+        $ffmpegPath = PHP_OS_FAMILY === 'Windows' 
+            ? 'C:\\ffmpeg\\bin\\ffmpeg.exe'
+            : '/usr/bin/ffmpeg';
         
+        // Tentar encontrar via which/where ou em locais alternativos
         if (!file_exists($ffmpegPath)) {
-            Log::error('❌ FFmpeg não encontrado', ['path' => $ffmpegPath]);
-            return null;
+            $whichCmd = PHP_OS_FAMILY === 'Windows' ? 'where ffmpeg' : 'which ffmpeg';
+            $foundPath = trim(shell_exec($whichCmd));
+            
+            if ($foundPath && file_exists($foundPath)) {
+                $ffmpegPath = $foundPath;
+            } else {
+                // Tentar caminhos alternativos (binário estático, public_html, etc)
+                $alternativePaths = [
+                    base_path('ffmpeg'), // public_html/ffmpeg
+                    getenv('HOME') . '/bin/ffmpeg', // ~/bin/ffmpeg
+                    '/usr/local/bin/ffmpeg',
+                    './ffmpeg' // diretório atual
+                ];
+                
+                foreach ($alternativePaths as $altPath) {
+                    if (file_exists($altPath)) {
+                        $ffmpegPath = $altPath;
+                        break;
+                    }
+                }
+                
+                if (!file_exists($ffmpegPath)) {
+                    Log::error('❌ FFmpeg não encontrado', [
+                        'os' => PHP_OS_FAMILY,
+                        'tried_paths' => array_merge([$ffmpegPath], $alternativePaths),
+                        'which_result' => $foundPath
+                    ]);
+                    return null;
+                }
+            }
         }
         
         $tempDir = storage_path('app/temp');
