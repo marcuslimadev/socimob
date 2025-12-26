@@ -9,6 +9,22 @@ use Illuminate\Support\Facades\Log;
 class ChavesNaMaoWebhookController extends Controller
 {
     /**
+     * Responde ao método GET (não permitido)
+     */
+    public function methodNotAllowed()
+    {
+        return response()->json([
+            'success' => false,
+            'error' => 'Método não permitido. Use POST para enviar leads.',
+            'message' => 'Este endpoint aceita apenas requisições POST.',
+            'endpoint' => '/webhook/chaves-na-mao',
+            'method_required' => 'POST',
+            'authentication' => 'Basic Auth (email:token)',
+            'documentation' => 'https://github.com/marcuslimadev/socimob'
+        ], 405);
+    }
+
+    /**
      * Recebe leads do Chaves na Mão via webhook
      */
     public function receive(Request $request)

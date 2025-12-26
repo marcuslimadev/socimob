@@ -34,6 +34,7 @@ $router->get('/', function () {
 $router->post('/github/webhook', 'GitHubWebhookController@handle');
 
 // Webhook Chaves na Mão - Receber leads
+$router->get('/webhook/chaves-na-mao', 'ChavesNaMaoWebhookController@methodNotAllowed');
 $router->post('/webhook/chaves-na-mao', 'ChavesNaMaoWebhookController@receive');
 
 // Auth API routes
