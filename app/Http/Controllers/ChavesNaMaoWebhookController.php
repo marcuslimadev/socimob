@@ -20,13 +20,19 @@ class ChavesNaMaoWebhookController extends Controller
         }
 
         try {
-            // Capturar dados do lead
-            $leadData = $request->all();
+            // Capturar dados do lead (JSON)
+            $leadData = $request->json()->all();
+            
+            // Fallback para dados do body se json() retornar vazio
+            if (empty($leadData)) {
+                $leadData = json_decode($request->getContent(), true) ?? [];
+            }
 
             Log::info('📥 Lead recebido do Chaves na Mão', [
                 'lead_id' => $leadData['id'] ?? 'N/A',
                 'segment' => $leadData['segment'] ?? 'N/A',
-                'name' => $leadData['name'] ?? 'N/A'
+                'name' => $leadData['name'] ?? 'N/A',
+                'payload_keys' => array_keys($leadData)
             ]);
 
             // Processar e salvar lead
