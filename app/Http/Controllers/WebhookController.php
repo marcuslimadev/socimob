@@ -260,18 +260,15 @@ class WebhookController extends Controller
 
     private function buildWhatsappStatus(?Tenant $tenant): array
     {
-        $accountSid = $tenant?->getIntegrationValue('twilio_account_sid', env('TWILIO_ACCOUNT_SID'));
-        $authToken = $tenant?->getIntegrationValue('twilio_auth_token', env('TWILIO_AUTH_TOKEN'));
-        $whatsappFrom = $tenant?->getIntegrationValue(
-            'twilio_whatsapp_from',
-            env('TWILIO_WHATSAPP_FROM', env('TWILIO_WHATSAPP_NUMBER'))
-        );
+        $accountSid = env('EXCLUSIVA_TWILIO_ACCOUNT_SID');
+        $authToken = env('EXCLUSIVA_TWILIO_AUTH_TOKEN');
+        $whatsappFrom = env('EXCLUSIVA_TWILIO_WHATSAPP_FROM');
 
         $variaveisFaltantes = [];
         foreach ([
-            'twilio_account_sid' => $accountSid,
-            'twilio_auth_token' => $authToken,
-            'twilio_whatsapp_from' => $whatsappFrom,
+            'EXCLUSIVA_TWILIO_ACCOUNT_SID' => $accountSid,
+            'EXCLUSIVA_TWILIO_AUTH_TOKEN' => $authToken,
+            'EXCLUSIVA_TWILIO_WHATSAPP_FROM' => $whatsappFrom,
         ] as $chave => $valor) {
             if (empty($valor)) {
                 $variaveisFaltantes[] = $chave;

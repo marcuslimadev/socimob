@@ -16,13 +16,9 @@ class TwilioService
 
     public function __construct()
     {
-        $tenant = app()->bound('tenant') ? app('tenant') : null;
-        $this->accountSid = $tenant?->getIntegrationValue('twilio_account_sid', env('TWILIO_ACCOUNT_SID'));
-        $this->authToken = $tenant?->getIntegrationValue('twilio_auth_token', env('TWILIO_AUTH_TOKEN'));
-        $this->whatsappFrom = $tenant?->getIntegrationValue(
-            'twilio_whatsapp_from',
-            env('TWILIO_WHATSAPP_FROM', env('TWILIO_WHATSAPP_NUMBER'))
-        );
+        $this->accountSid = env('EXCLUSIVA_TWILIO_ACCOUNT_SID');
+        $this->authToken = env('EXCLUSIVA_TWILIO_AUTH_TOKEN');
+        $this->whatsappFrom = env('EXCLUSIVA_TWILIO_WHATSAPP_FROM');
     }
     
     /**

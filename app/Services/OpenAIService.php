@@ -21,10 +21,8 @@ class OpenAIService
 
     public function __construct()
     {
-        $tenant = app()->bound('tenant') ? app('tenant') : null;
-
-        $this->apiKey = $tenant?->getIntegrationValue('api_key_openai', env('OPENAI_API_KEY'));
-        $this->model = env('OPENAI_MODEL', 'gpt-4o-mini');
+        $this->apiKey = env('EXCLUSIVA_OPENAI_API_KEY');
+        $this->model = env('EXCLUSIVA_OPENAI_MODEL', 'gpt-4o-mini');
     }
 
     public function generateLeadDiagnostic($leadProfile, $conversationHistory, $availableProperties = [])
