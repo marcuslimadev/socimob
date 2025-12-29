@@ -9,32 +9,132 @@
     <link rel="stylesheet" href="sidebar.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="sidebar.js"></script>
+    <style>
+        body {
+            background: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        .page-container {
+            padding: 2rem;
+        }
+        .page-header {
+            margin-bottom: 2rem;
+        }
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+        .page-subtitle {
+            color: rgba(255,255,255,0.7);
+        }
+        .filter-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .lead-card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.8));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .lead-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        .badge-status {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .badge-novo { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge-em_atendimento { background: rgba(234, 179, 8, 0.2); color: #fbbf24; border: 1px solid rgba(234, 179, 8, 0.3); }
+        .badge-qualificado { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .badge-proposta { background: rgba(249, 115, 22, 0.2); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
+        .badge-fechado { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .badge-perdido { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-messages {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+        }
+        .investment-box {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 8px;
+            padding: 0.75rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        .form-control, .form-select {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            border-radius: 8px;
+            padding: 0.75rem;
+        }
+        .form-control:focus, .form-select:focus {
+            background: rgba(30, 41, 59, 0.7);
+            border-color: #3b82f6;
+            color: #fff;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .form-control::placeholder { color: rgba(255,255,255,0.4); }
+        .form-label { color: rgba(255,255,255,0.8); font-weight: 500; margin-bottom: 0.5rem; }
+        .modal-content {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.9));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+        }
+        .modal-header { border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .modal-title { color: #fff; font-weight: 700; }
+        .btn-close { filter: brightness(0) invert(1); }
+    </style>
 </head>
-<body class="glow-page">
-    <!-- Conteúdo -->
-    <main class="container mx-auto px-4 py-10 space-y-8">
-        <!-- Header -->
-        <div class="glow-panel">
-            <div class="flex items-center justify-between mb-6">
-                <div>
-                    <h2 class="glow-section-title mb-2">Leads</h2>
-                    <p class="text-[rgba(255,255,255,0.7)]">Gerencie seus contatos e oportunidades</p>
-                </div>
-                <button id="btnNovoLead" class="glow-button px-6 py-3">
-                    + Novo Lead
-                </button>
+<body>
+    <div class="page-container">
+        <div class="page-header d-flex justify-content-between align-items-start">
+            <div>
+                <h1 class="page-title">Leads</h1>
+                <p class="page-subtitle">Gerencie seus contatos e oportunidades</p>
             </div>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalLead">
+                <i class="bi bi-plus-lg me-2"></i>Novo Lead
+            </button>
+        </div>
 
-            <!-- Filtros -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
-                    <label class="block text-sm font-medium text-[rgba(255,255,255,0.7)] mb-2">Buscar</label>
-                    <input type="text" id="searchLead" placeholder="Nome, email ou telefone..." 
-                        class="w-full px-4 py-3 bg-[var(--glow-glass)] border border-[var(--glow-border)] rounded text-[var(--glow-ink)] placeholder-[rgba(255,255,255,0.4)] focus:border-[var(--glow-blue)] outline-none transition-all">
+        <div class="filter-card">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" id="searchLead" class="form-control" placeholder="Nome, email ou telefone...">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-[rgba(255,255,255,0.7)] mb-2">Status</label>
-                    <select id="filterStatus" class="w-full px-4 py-3 bg-[var(--glow-glass)] border border-[var(--glow-border)] rounded text-[var(--glow-ink)] focus:border-[var(--glow-blue)] outline-none transition-all">
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    <select id="filterStatus" class="form-select">
                         <option value="">Todos os status</option>
                         <option value="novo">Novo</option>
                         <option value="em_atendimento">Em Atendimento</option>
@@ -45,326 +145,207 @@
                     </select>
                 </div>
             </div>
-
-            <!-- Cards de Leads -->
-            <div id="leadsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="col-span-full text-center py-12">
-                    <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[var(--glow-blue)] border-r-transparent"></div>
-                    <p class="mt-2 text-sm text-[rgba(255,255,255,0.7)]">Carregando leads...</p>
-                </div>
-            </div>
         </div>
-    </main>
 
-    <!-- Modal Novo Lead -->
-    <div id="modalLead" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-        <div class="glow-card max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div class="p-6 border-b border-[var(--glow-border)]">
-                <h3 class="text-xl font-bold text-[var(--glow-ink)]">Novo Lead</h3>
+        <div id="leadsContainer">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-2 text-muted">Carregando leads...</p>
             </div>
-            
-            <form id="formLead" class="p-6 space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-[rgba(255,255,255,0.7)] mb-2">Nome *</label>
-                        <input type="text" name="nome" required 
-                            class="w-full px-4 py-3 bg-[var(--glow-glass)] border border-[var(--glow-border)] rounded text-[var(--glow-ink)] placeholder-[rgba(255,255,255,0.4)] focus:border-[var(--glow-blue)] outline-none transition-all">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-[rgba(255,255,255,0.7)] mb-2">Email *</label>
-                        <input type="email" name="email" required 
-                            class="w-full px-4 py-3 bg-[var(--glow-glass)] border border-[var(--glow-border)] rounded text-[var(--glow-ink)] placeholder-[rgba(255,255,255,0.4)] focus:border-[var(--glow-blue)] outline-none transition-all">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-[rgba(255,255,255,0.7)] mb-2">Telefone *</label>
-                        <input type="tel" name="telefone" required 
-                            class="w-full px-4 py-3 bg-[var(--glow-glass)] border border-[var(--glow-border)] rounded text-[var(--glow-ink)] placeholder-[rgba(255,255,255,0.4)] focus:border-[var(--glow-blue)] outline-none transition-all">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-[rgba(255,255,255,0.7)] mb-2">Status</label>
-                        <select name="status" 
-                            class="w-full px-4 py-3 bg-[var(--glow-glass)] border border-[var(--glow-border)] rounded text-[var(--glow-ink)] focus:border-[var(--glow-blue)] outline-none transition-all">
-                            <option value="novo">Novo</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-[rgba(255,255,255,0.7)] mb-2">Observações</label>
-                    <textarea name="observacoes" rows="3" 
-                        class="w-full px-4 py-3 bg-[var(--glow-glass)] border border-[var(--glow-border)] rounded text-[var(--glow-ink)] placeholder-[rgba(255,255,255,0.4)] focus:border-[var(--glow-blue)] outline-none transition-all"></textarea>
-                </div>
-                
-                <div class="flex gap-3 justify-end pt-4">
-                    <button type="button" id="btnCancelar" 
-                        class="px-6 py-3 border border-[var(--glow-border)] text-[var(--glow-ink)] rounded hover:bg-[var(--glow-glass)] transition-all font-bold uppercase tracking-wide text-sm">
-                        Cancelar
-                    </button>
-                    <button type="submit" 
-                        class="glow-button px-6 py-3">
-                        Salvar Lead
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 
+    <div class="modal fade" id="modalLead" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Novo Lead</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formLead">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nome *</label>
+                                <input type="text" name="nome" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email *</label>
+                                <input type="email" name="email" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Telefone *</label>
+                                <input type="tel" name="telefone" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <select name="status" class="form-select">
+                                    <option value="novo">Novo</option>
+                                    <option value="em_atendimento">Em Atendimento</option>
+                                    <option value="qualificado">Qualificado</option>
+                                    <option value="proposta">Proposta Enviada</option>
+                                    <option value="fechado">Fechado</option>
+                                    <option value="perdido">Perdido</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Observações</label>
+                                <textarea name="observacoes" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" form="formLead" class="btn btn-primary">Salvar Lead</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const API_URL = '/api';
         let leads = [];
-        let leadsRefreshTimer = null;
-        let lastMessageCount = 0;
-        let notificationSound = null;
 
         $(document).ready(function() {
             checkAuth();
             loadLeads();
-
-            // Criar áudio de notificação
-            notificationSound = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBCl+zPLTgjMGHm7A7+OZTRAMEFL+5rJiHAQ4kdfy');
-
-            $('#btnNovoLead').on('click', () => $('#modalLead').removeClass('hidden'));
-            $('#btnCancelar').on('click', () => $('#modalLead').addClass('hidden'));
             $('#formLead').on('submit', handleSaveLead);
             $('#searchLead').on('input', filterLeads);
             $('#filterStatus').on('change', filterLeads);
-
-            // Atualizar a cada 3 segundos
-            leadsRefreshTimer = setInterval(loadLeads, 3000);
+            setInterval(loadLeads, 30000);
         });
 
         function checkAuth() {
-            const token = localStorage.getItem('token');
-            const userStr = localStorage.getItem('user');
-            if (!token || !userStr) {
-                window.location.href = 'login.html';
-                return;
-            }
-            const user = JSON.parse(userStr);
-            $('#userName').text(user.name);
+            if (!localStorage.getItem('token')) window.location.href = 'login.html';
         }
 
         function loadLeads() {
-            const token = localStorage.getItem('token');
-            
             $.ajax({
                 url: API_URL + '/leads',
                 method: 'GET',
-                headers: { 'Authorization': 'Bearer ' + token },
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 success: function(response) {
-                    const newLeads = response.data || [];
-                    
-                    // Detectar novas mensagens
-                    const currentMessageCount = newLeads.reduce((total, lead) => total + (lead.mensagens_usuario || 0), 0);
-                    if (lastMessageCount > 0 && currentMessageCount > lastMessageCount) {
-                        playNotification();
-                    }
-                    lastMessageCount = currentMessageCount;
-                    
-                    leads = newLeads;
-                    console.log('✓ Leads carregados:', leads.length);
+                    leads = response.data || [];
                     filterLeads();
                 },
-                error: function(xhr) {
-                    console.error('✗ Erro ao carregar leads');
-                    // Mostrar dados de exemplo se API falhar
+                error: function() {
                     leads = [
                         { id: 1, nome: 'João Silva', email: 'joao@email.com', telefone: '(11) 98765-4321', status: 'novo', created_at: '2025-12-19', mensagens_usuario: 3, valor_investimento: 250000 },
-                        { id: 2, nome: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 98765-4322', status: 'em_atendimento', created_at: '2025-12-18', mensagens_usuario: 7, valor_investimento: null },
-                        { id: 3, nome: 'Pedro Costa', email: 'pedro@email.com', telefone: '(11) 98765-4323', status: 'qualificado', created_at: '2025-12-20', mensagens_usuario: 12, valor_investimento: 450000 },
-                        { id: 4, nome: 'Ana Oliveira', email: 'ana@email.com', telefone: '(11) 98765-4324', status: 'proposta', created_at: '2025-12-21', mensagens_usuario: 15, valor_investimento: 180000 }
+                        { id: 2, nome: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 98765-4322', status: 'em_atendimento', created_at: '2025-12-18', mensagens_usuario: 7 },
+                        { id: 3, nome: 'Pedro Costa', email: 'pedro@email.com', telefone: '(11) 98765-4323', status: 'qualificado', created_at: '2025-12-20', mensagens_usuario: 12, valor_investimento: 450000 }
                     ];
                     filterLeads();
                 }
             });
         }
 
-        function playNotification() {
-            try {
-                if (notificationSound) {
-                    notificationSound.currentTime = 0;
-                    notificationSound.play().catch(e => console.log('Notificação bloqueada'));
-                }
-            } catch(e) {
-                console.log('Erro ao tocar notificação');
-            }
-        }
-
         function renderLeads(data) {
-            if (data.length === 0) {
-                $('#leadsContainer').html(`
-                    <div class="col-span-full text-center py-12">
-                        <p class="text-[rgba(255,255,255,0.7)]">Nenhum lead encontrado</p>
-                    </div>
-                `);
+            if (!data.length) {
+                $('#leadsContainer').html('<div class="text-center py-5"><i class="bi bi-inbox" style="font-size:4rem;color:rgba(255,255,255,0.3)"></i><p class="mt-3 text-muted">Nenhum lead encontrado</p></div>');
                 return;
             }
 
-            const statusConfig = {
-                'novo': { 
-                    badge: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-                    label: 'Novo'
-                },
-                'em_atendimento': { 
-                    badge: 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30',
-                    label: 'Em Atendimento'
-                },
-                'qualificado': { 
-                    badge: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
-                    label: 'Qualificado'
-                },
-                'proposta': { 
-                    badge: 'bg-orange-500/20 text-orange-300 border border-orange-500/30',
-                    label: 'Proposta'
-                },
-                'fechado': { 
-                    badge: 'bg-green-500/20 text-green-300 border border-green-500/30',
-                    label: 'Fechado'
-                },
-                'perdido': { 
-                    badge: 'bg-red-500/20 text-red-300 border border-red-500/30',
-                    label: 'Perdido'
-                }
-            };
-
-            const html = data.map(lead => {
-                const status = statusConfig[lead.status] || statusConfig['novo'];
-                const mensagens = lead.mensagens_usuario || 0;
-                const investimento = lead.valor_investimento;
-                
-                return `
-                    <div class="glow-card p-6 hover:scale-[1.02] transition-transform cursor-pointer">
-                        <div class="flex items-start justify-between mb-4">
-                            <div class="flex-1">
-                                <h3 class="text-xl font-bold text-[var(--glow-ink)] mb-2">${lead.nome}</h3>
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${status.badge}">
-                                    ${status.label}
-                                </span>
-                            </div>
-                            ${mensagens > 0 ? `
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[var(--glow-blue)]/20 text-[var(--glow-blue)] border border-[var(--glow-blue)]/30">
-                                    💬 ${mensagens}
-                                </span>
-                            ` : ''}
+            const labels = { novo: 'Novo', em_atendimento: 'Em Atendimento', qualificado: 'Qualificado', proposta: 'Proposta', fechado: 'Fechado', perdido: 'Perdido' };
+            
+            $('#leadsContainer').html(data.map(lead => `
+                <div class="lead-card">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="flex-grow-1">
+                            <h5 class="mb-2">${lead.nome}</h5>
+                            <span class="badge-status badge-${lead.status}">${labels[lead.status]}</span>
                         </div>
-
-                        <div class="space-y-3 text-sm mb-4">
-                            <div class="flex items-center text-[rgba(255,255,255,0.7)]">
-                                <span class="mr-2">📱</span>
-                                <a href="tel:${lead.telefone}" class="hover:text-[var(--glow-blue)] transition-colors">${lead.telefone}</a>
+                        ${lead.mensagens_usuario > 0 ? `<span class="badge-messages"><i class="bi bi-chat-dots me-1"></i>${lead.mensagens_usuario}</span>` : ''}
+                    </div>
+                    <div class="mb-3">
+                        <div class="mb-2"><i class="bi bi-telephone me-2 text-primary"></i><a href="tel:${lead.telefone}" class="text-decoration-none text-white">${lead.telefone}</a></div>
+                        <div><i class="bi bi-envelope me-2 text-primary"></i><a href="mailto:${lead.email}" class="text-decoration-none text-white">${lead.email}</a></div>
+                    </div>
+                    ${lead.valor_investimento ? `
+                        <div class="investment-box mb-3">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-cash-coin me-2 text-success" style="font-size:1.5rem"></i>
+                                <div><small class="d-block text-success">Investimento</small><strong class="text-success">R$ ${formatMoney(lead.valor_investimento)}</strong></div>
                             </div>
-                            <div class="flex items-center text-[rgba(255,255,255,0.7)]">
-                                <span class="mr-2">📧</span>
-                                <a href="mailto:${lead.email}" class="hover:text-[var(--glow-blue)] transition-colors truncate">${lead.email}</a>
-                            </div>
-                            ${investimento ? `
-                                <div class="mt-3 p-3 bg-green-500/10 rounded border border-green-500/30">
-                                    <div class="flex items-center text-green-300">
-                                        <span class="mr-2 text-lg">💰</span>
-                                        <div>
-                                            <p class="text-xs font-medium uppercase tracking-wide">Investimento</p>
-                                            <p class="text-sm font-bold">R$ ${formatMoney(investimento)}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ` : ''}
                         </div>
-
-                        <div class="pt-4 border-t border-[var(--glow-border)] flex items-center justify-between text-xs">
-                            <span class="text-[rgba(255,255,255,0.5)]">${formatDate(lead.created_at)}</span>
-                            <div class="flex gap-2">
-                                <button onclick="event.stopPropagation(); editLead(${lead.id})" 
-                                    class="text-[var(--glow-blue)] hover:text-[var(--glow-yellow)] font-bold transition-colors">
-                                    ✏️ Editar
-                                </button>
-                                <button onclick="event.stopPropagation(); deleteLead(${lead.id})" 
-                                    class="text-[var(--glow-red)] hover:brightness-125 font-bold transition-all">
-                                    🗑️ Excluir
-                                </button>
-                            </div>
+                    ` : ''}
+                    <div class="d-flex justify-content-between align-items-center pt-3 border-top border-secondary">
+                        <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${formatDate(lead.created_at)}</small>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="editLead(${lead.id})"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-outline-danger" onclick="deleteLead(${lead.id})"><i class="bi bi-trash"></i></button>
                         </div>
                     </div>
-                `;
-            }).join('');
-
-            $('#leadsContainer').html(html);
-        }
-
-        function formatMoney(value) {
-            return new Intl.NumberFormat('pt-BR', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(value);
+                </div>
+            `).join(''));
         }
 
         function filterLeads() {
             const search = $('#searchLead').val().toLowerCase();
             const status = $('#filterStatus').val();
-
-            const filtered = leads.filter(lead => {
-                const matchSearch = !search || 
-                    lead.nome.toLowerCase().includes(search) ||
-                    lead.email.toLowerCase().includes(search) ||
-                    lead.telefone.includes(search);
-                
-                const matchStatus = !status || lead.status === status;
-
-                return matchSearch && matchStatus;
+            const filtered = leads.filter(l => {
+                const match = !search || l.nome.toLowerCase().includes(search) || l.email.toLowerCase().includes(search) || l.telefone.includes(search);
+                return match && (!status || l.status === status);
             });
-
             renderLeads(filtered);
         }
 
         function handleSaveLead(e) {
             e.preventDefault();
-            const token = localStorage.getItem('token');
-            const formData = {
+            const data = {
                 nome: $('[name="nome"]').val(),
                 email: $('[name="email"]').val(),
                 telefone: $('[name="telefone"]').val(),
                 status: $('[name="status"]').val(),
                 observacoes: $('[name="observacoes"]').val()
             };
-
             $.ajax({
                 url: API_URL + '/leads',
                 method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token },
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 contentType: 'application/json',
-                data: JSON.stringify(formData),
-                success: function(response) {
-                    $('#modalLead').addClass('hidden');
+                data: JSON.stringify(data),
+                success: function() {
+                    bootstrap.Modal.getInstance('#modalLead').hide();
                     $('#formLead')[0].reset();
                     loadLeads();
-                },
-                error: function() {
-                    $('#modalLead').addClass('hidden');
-                    $('#formLead')[0].reset();
                 }
             });
         }
 
         function editLead(id) {
-            alert('Editar lead #' + id);
+            const lead = leads.find(l => l.id === id);
+            if (lead) {
+                $('[name="nome"]').val(lead.nome);
+                $('[name="email"]').val(lead.email);
+                $('[name="telefone"]').val(lead.telefone);
+                $('[name="status"]').val(lead.status);
+                $('[name="observacoes"]').val(lead.observacoes || '');
+                new bootstrap.Modal('#modalLead').show();
+            }
         }
 
         function deleteLead(id) {
             if (confirm('Deseja realmente excluir este lead?')) {
-                const token = localStorage.getItem('token');
                 $.ajax({
                     url: API_URL + '/leads/' + id,
                     method: 'DELETE',
-                    headers: { 'Authorization': 'Bearer ' + token },
-                    success: function() {
-                        loadLeads();
-                    }
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                    success: loadLeads
                 });
             }
         }
 
-        function formatDate(date) {
-            return new Date(date).toLocaleDateString('pt-BR');
+        function formatMoney(v) {
+            return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(v);
         }
 
+        function formatDate(d) {
+            return new Date(d).toLocaleDateString('pt-BR');
+        }
     </script>
 </body>
 </html>
