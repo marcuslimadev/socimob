@@ -31,17 +31,27 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     $router->patch('/visitas/{id}', 'Admin\\VisitasController@update');
 
     // Usuários/Equipe
-    $router->get('/users', function () {
+    $router->get('/users', function () use ($router) {
+        $user = app('request')->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
         $users = app('db')->table('users')
-            ->where('tenant_id', request()->user()->tenant_id)
+            ->where('tenant_id', $user->tenant_id)
             ->select('id', 'name', 'email', 'telefone', 'role', 'is_active as ativo', 'created_at')
             ->orderBy('created_at', 'desc')
             ->get();
         return response()->json(['data' => $users]);
     });
     
-    $router->post('/users', function () {
-        $data = request()->all();
+    $router->post('/users', function () use ($router) {
+        $user = app('request')->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
+        $data = app('request')->all();
         
         // Validação básica
         if (!isset($data['name']) || !isset($data['email']) || !isset($data['password'])) {
@@ -50,7 +60,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
         
         // Verifica se email já existe no tenant
         $exists = app('db')->table('users')
-            ->where('tenant_id', request()->user()->tenant_id)
+            ->where('tenant_id', $user->tenant_id)
             ->where('email', $data['email'])
             ->exists();
             
@@ -60,22 +70,27 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
         
         // Criar usuário
         $userId = app('db')->table('users')->insertGetId([
-            'tenant_id' => request()->user()->tenant_id,
+            'tenant_id' => $user->tenant_id,
             'name' => $data['name'],
             'email' => $data['email'],
             'telefone' => $data['telefone'] ?? null,
             'password' => password_hash($data['password'], PASSWORD_BCRYPT),
             'role' => $data['role'] ?? 'user',
             'is_active' => $data['ativo'] ?? true,
-            'created_at' => now(),
-            'updated_at' => now()
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
         ]);
         
         return response()->json(['message' => 'Usuário criado com sucesso', 'id' => $userId], 201);
     });
     
-    $router->put('/users/{id}', function ($id) {
-        $data = request()->all();
+    $router->put('/users/{id}', function ($id) use ($router) {
+        $user = app('request')->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
+        $data = app('request')->all();
         
         $update = [
             'name' => $data['name'],
@@ -83,7 +98,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
             'telefone' => $data['telefone'] ?? null,
             'role' => $data['role'] ?? 'user',
             'is_active' => $data['ativo'] ?? true,
-            'updated_at' => now()
+            'updated_at' => date('Y-m-d H:i:s')
         ];
         
         // Atualizar senha apenas se fornecida
@@ -93,16 +108,21 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
         
         app('db')->table('users')
             ->where('id', $id)
-            ->where('tenant_id', request()->user()->tenant_id)
+            ->where('tenant_id', $user->tenant_id)
             ->update($update);
             
         return response()->json(['message' => 'Usuário atualizado com sucesso']);
     });
     
-    $router->delete('/users/{id}', function ($id) {
+    $router->delete('/users/{id}', function ($id) use ($router) {
+        $user = app('request')->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
         app('db')->table('users')
             ->where('id', $id)
-            ->where('tenant_id', request()->user()->tenant_id)
+            ->where('tenant_id', $user->tenant_id)
             ->delete();
             
         return response()->json(['message' => 'Usuário excluído com sucesso']);
