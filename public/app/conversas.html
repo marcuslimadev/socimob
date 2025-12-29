@@ -25,6 +25,20 @@
             --text-secondary: rgba(15, 23, 42, 0.5);
             --border-color: rgba(15, 23, 42, 0.1);
         }
+        [data-theme="light"] .leads-sidebar {
+            background: rgba(255, 255, 255, 0.95) !important;
+        }
+        [data-theme="light"] .chat-area {
+            background: linear-gradient(to bottom, rgba(241, 245, 249, 0.95), rgba(248, 250, 252, 0.95)) !important;
+        }
+        [data-theme="light"] .form-control {
+            background: rgba(248, 250, 252, 0.8) !important;
+            border: 1px solid rgba(15, 23, 42, 0.2) !important;
+            color: var(--text-primary) !important;
+        }
+        [data-theme="light"] .form-control::placeholder {
+            color: rgba(15, 23, 42, 0.4) !important;
+        }
         body {
             background: var(--bg-primary);
             color: var(--text-primary);
@@ -306,9 +320,16 @@
         }
 
         function selectConversa(conversaId) {
+            console.log('Selecionando conversa:', conversaId);
             currentConversaId = conversaId;
             const conversa = conversas.find(c => c.id === conversaId);
-            if (!conversa) return;
+            if (!conversa) {
+                console.log('Conversa não encontrada:', conversaId);
+                return;
+            }
+
+            // Limpar mensagens da conversa anterior
+            $('#messagesContainer').html('<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div></div>');
 
             const nome = conversa.lead_nome || conversa.lead_whatsapp_name || conversa.telefone || 'Contato';
             const telefone = conversa.lead_telefone || conversa.telefone || '-';
@@ -339,13 +360,16 @@
         }
 
         function loadMessages(conversaId) {
+            console.log('Carregando mensagens para conversa:', conversaId);
             $.ajax({
                 url: API_URL + '/conversas/' + conversaId,
                 method: 'GET',
                 headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 success: function(response) {
+                    console.log('Resposta da API:', response);
                     const data = response.data || {};
                     messages[conversaId] = data.mensagens || [];
+                    console.log('Mensagens carregadas:', messages[conversaId].length);
 
                     // Atualizar cabeçalho com dados mais frescos
                     const nome = data.lead_nome || data.lead_whatsapp_name || data.telefone || $('#chatLeadName').text();
@@ -369,10 +393,22 @@
         }
 
         function renderMessages() {
+            if (!currentConversaId) {
+                $('#messagesContainer').html('<div class="text-center py-5 text-muted">Selecione uma conversa</div>');
+                return;
+            }
+            
             const msgs = messages[currentConversaId] || [];
+            console.log('Renderizando', msgs.length, 'mensagens para conversa', currentConversaId);
+            
+            if (msgs.length === 0) {
+                $('#messagesContainer').html('<div class="text-center py-5 text-muted">Nenhuma mensagem ainda</div>');
+                return;
+            }
+            
             const html = msgs.map(msg => {
                 const type = msg.direction === 'incoming' ? 'received' : 'sent';
-                const text = msg.content || msg.text || '';
+                const text = msg.content || msg.text || msg.body || 'Mensagem sem conteúdo';
                 const timestamp = msg.sent_at || msg.created_at || new Date().toISOString();
                 return `
                     <div class="message message-${type}">
