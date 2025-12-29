@@ -256,9 +256,6 @@
     </style>
 </head>
 <body>
-    <button id="themeToggle" class="theme-toggle" title="Alternar tema">
-        <i class="bi bi-sun-fill"></i>
-    </button>
     <div class="page-container">
         <div class="page-header d-flex justify-content-between align-items-start">
             <div>
@@ -365,7 +362,6 @@
         let leads = [];
 
         $(document).ready(function() {
-            initTheme();
             checkAuth();
             loadLeads();
             $('#formLead').on('submit', handleSaveLead);
