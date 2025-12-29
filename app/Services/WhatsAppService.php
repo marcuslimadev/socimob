@@ -9,6 +9,7 @@ use App\Models\Property;
 use App\Models\LeadPropertyMatch;
 use App\Models\LeadDocument;
 use App\Models\AppSetting;
+use App\Services\LeadCustomerService;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
@@ -31,12 +32,14 @@ class WhatsAppService
     private $twilio;
     private $openai;
     private $stageDetection;
+    private LeadCustomerService $leadCustomerService;
     
-    public function __construct(TwilioService $twilio, OpenAIService $openai, StageDetectionService $stageDetection)
+    public function __construct(TwilioService $twilio, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService)
     {
         $this->twilio = $twilio;
         $this->openai = $openai;
         $this->stageDetection = $stageDetection;
+        $this->leadCustomerService = $leadCustomerService;
     }
     
     /**
@@ -1650,6 +1653,8 @@ class WhatsAppService
         Log::info('🎯 Status: ' . $lead->status);
         Log::info('─────────────────────────────────────────────────────────────────');
         
+        $this->leadCustomerService->ensureClientForLead($lead);
+
         return $lead;
     }
     

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clientes - SOCIMOB</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="sidebar.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="theme-toggle.js"></script>
+    <script src="sidebar.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: rgba(30, 41, 59, 0.9);
+            --bg-tertiary: rgba(15, 23, 42, 0.8);
+            --text-primary: #f8fafc;
+            --text-secondary: rgba(255,255,255,0.7);
+            --border-color: rgba(255,255,255,0.1);
+        }
+        [data-theme="light"] {
+            --bg-primary: #f1f5f9;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f8fafc;
+            --text-primary: #0f172a;
+            --text-secondary: rgba(15, 23, 42, 0.7);
+            --border-color: rgba(15, 23, 42, 0.1);
+        }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+        }
+        .page-container {
+            padding: 2rem;
+        }
+        .page-header {
+            margin-bottom: 2rem;
+        }
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .page-subtitle {
+            color: var(--text-secondary);
+        }
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        .dataTables_wrapper {
+            color: var(--text-primary);
+        }
+        .dataTables_wrapper .dataTables_filter input,
+        .dataTables_wrapper .dataTables_length select {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            border-radius: 6px;
+            padding: 0.375rem 0.75rem;
+        }
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_paginate {
+            color: var(--text-secondary);
+        }
+        table.dataTable {
+            border-collapse: separate !important;
+            border-spacing: 0 0.5rem;
+        }
+        table.dataTable thead th {
+            background: rgba(30, 41, 59, 0.5);
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            padding: 1rem;
+        }
+        table.dataTable tbody tr {
+            background: var(--bg-secondary);
+            transition: all 0.2s;
+        }
+        table.dataTable tbody tr:hover {
+            background: rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        table.dataTable tbody td {
+            border: none;
+            padding: 1rem;
+            vertical-align: middle;
+        }
+        .badge {
+            padding: 0.5rem 0.75rem;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <div class="page-header d-flex justify-content-between align-items-start">
+            <div>
+                <h1 class="page-title">Clientes</h1>
+                <p class="page-subtitle">Cadastros criados automaticamente a partir dos leads</p>
+            </div>
+            <button class="btn btn-primary" id="btnSyncClientes">
+                <i class="bi bi-arrow-repeat me-2"></i>Sincronizar clientes
+            </button>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <table id="clientesTable" class="table table-hover" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Email</th>
+                            <th>Telefone</th>
+                            <th>Status Lead</th>
+                            <th>Atualizado</th>
+                            <th>Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = '/api';
+        let clientesTable;
+        let clientesData = [];
+
+        const statusLabels = {
+            'novo': 'Novo',
+            'em_atendimento': 'Em Atendimento',
+            'qualificado': 'Qualificado',
+            'proposta': 'Proposta',
+            'fechado': 'Fechado',
+            'perdido': 'Perdido'
+        };
+
+        const statusColors = {
+            'novo': 'primary',
+            'em_atendimento': 'warning',
+            'qualificado': 'success',
+            'proposta': 'info',
+            'fechado': 'success',
+            'perdido': 'danger'
+        };
+
+        $(document).ready(function() {
+            checkAuth();
+            loadClientes();
+            $('#btnSyncClientes').on('click', handleSyncClientes);
+        });
+
+        function checkAuth() {
+            if (!localStorage.getItem('token')) window.location.href = 'login.html';
+        }
+
+        function loadClientes() {
+            $.ajax({
+                url: API_URL + '/admin/clientes',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                success: function(response) {
+                    clientesData = response.data || [];
+                    initDataTable(clientesData);
+                },
+                error: function() {
+                    clientesData = [];
+                    initDataTable([]);
+                }
+            });
+        }
+
+        function initDataTable(data) {
+            if (clientesTable) {
+                clientesTable.destroy();
+            }
+
+            clientesTable = $('#clientesTable').DataTable({
+                data: data,
+                columns: [
+                    {
+                        data: 'name',
+                        render: function(data) {
+                            return `<strong>${data || '-'}</strong>`;
+                        }
+                    },
+                    { data: 'email' },
+                    {
+                        data: 'lead_telefone',
+                        render: function(data) {
+                            return data ? `<span class="text-nowrap">${data}</span>` : '-';
+                        }
+                    },
+                    {
+                        data: 'lead_status',
+                        render: function(data) {
+                            if (!data) return '-';
+                            const color = statusColors[data] || 'secondary';
+                            const label = statusLabels[data] || data;
+                            return `<span class="badge bg-${color}">${label}</span>`;
+                        }
+                    },
+                    {
+                        data: 'lead_updated_at',
+                        render: function(data) {
+                            return data ? `<small class="text-muted">${formatDate(data)}</small>` : '-';
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function(row) {
+                            const leadId = row.lead_id || '';
+                            const telefone = row.lead_telefone || '';
+                            const chatLink = leadId || telefone
+                                ? `conversas.html?lead_id=${leadId}&telefone=${encodeURIComponent(telefone)}`
+                                : '#';
+                            return `
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-light" onclick="showClienteDetails(${row.id})" title="Detalhes">
+                                        <i class="bi bi-card-text"></i>
+                                    </button>
+                                    <a href="${chatLink}" class="btn btn-info" title="Abrir conversa">
+                                        <i class="bi bi-chat-dots"></i>
+                                    </a>
+                                </div>
+                            `;
+                        }
+                    }
+                ],
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
+                },
+                pageLength: 25,
+                order: [[4, 'desc']],
+                responsive: true,
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip'
+            });
+        }
+
+        function handleSyncClientes() {
+            if (!confirm('Deseja criar clientes para leads existentes?')) return;
+            $('#btnSyncClientes').prop('disabled', true);
+
+            $.ajax({
+                url: API_URL + '/admin/clientes/sync',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                contentType: 'application/json',
+                data: JSON.stringify({ source: 'all' }),
+                success: function() {
+                    loadClientes();
+                },
+                complete: function() {
+                    $('#btnSyncClientes').prop('disabled', false);
+                }
+            });
+        }
+
+        function formatDate(d) {
+            return new Date(d).toLocaleDateString('pt-BR');
+        }
+
+        function showClienteDetails(id) {
+            const cliente = clientesData.find(item => Number(item.id) === Number(id));
+            if (!cliente) return;
+
+            const fields = [
+                { id: 'detailNome', value: cliente.lead_nome || cliente.name },
+                { id: 'detailEmail', value: cliente.lead_email || cliente.email },
+                { id: 'detailTelefone', value: cliente.lead_telefone || '-' },
+                { id: 'detailWhatsapp', value: cliente.lead_whatsapp || '-' },
+                { id: 'detailWhatsappName', value: cliente.lead_whatsapp_name || '-' },
+                { id: 'detailCpf', value: cliente.lead_cpf || '-' },
+                { id: 'detailStatus', value: cliente.lead_status || '-' },
+                { id: 'detailRenda', value: formatMoney(cliente.lead_renda_mensal) },
+                { id: 'detailBudgetMin', value: formatMoney(cliente.lead_budget_min) },
+                { id: 'detailBudgetMax', value: formatMoney(cliente.lead_budget_max) },
+                { id: 'detailEstadoCivil', value: cliente.lead_estado_civil || '-' },
+                { id: 'detailComposicao', value: cliente.lead_composicao_familiar || '-' },
+                { id: 'detailProfissao', value: cliente.lead_profissao || '-' },
+                { id: 'detailFonteRenda', value: cliente.lead_fonte_renda || '-' },
+                { id: 'detailFinanciamento', value: cliente.lead_financiamento_status || '-' },
+                { id: 'detailPrazoCompra', value: cliente.lead_prazo_compra || '-' },
+                { id: 'detailObjetivo', value: cliente.lead_objetivo_compra || '-' },
+                { id: 'detailLocalizacao', value: cliente.lead_localizacao || '-' },
+                { id: 'detailQuartos', value: cliente.lead_quartos ?? '-' },
+                { id: 'detailSuites', value: cliente.lead_suites ?? '-' },
+                { id: 'detailGaragem', value: cliente.lead_garagem ?? '-' },
+                { id: 'detailTipoImovel', value: cliente.lead_preferencia_tipo_imovel || '-' },
+                { id: 'detailBairro', value: cliente.lead_preferencia_bairro || '-' },
+                { id: 'detailLazer', value: cliente.lead_preferencia_lazer || '-' },
+                { id: 'detailSeguranca', value: cliente.lead_preferencia_seguranca || '-' },
+                { id: 'detailCaracteristicas', value: cliente.lead_caracteristicas_desejadas || '-' },
+                { id: 'detailObservacoes', value: cliente.lead_observacoes || '-' },
+                { id: 'detailObservacoesCliente', value: cliente.lead_observacoes_cliente || '-' },
+                { id: 'detailDiagnostico', value: cliente.lead_diagnostico_ia || '-' },
+                { id: 'detailDiagnosticoStatus', value: cliente.lead_diagnostico_status || '-' },
+                { id: 'detailDiagnosticoData', value: formatDateTime(cliente.lead_diagnostico_gerado_em) },
+                { id: 'detailChavesStatus', value: cliente.lead_chaves_na_mao_status || '-' },
+                { id: 'detailChavesSentAt', value: formatDateTime(cliente.lead_chaves_na_mao_sent_at) },
+                { id: 'detailChavesError', value: cliente.lead_chaves_na_mao_error || '-' },
+                { id: 'detailCreatedAt', value: formatDateTime(cliente.lead_created_at || cliente.created_at) },
+                { id: 'detailUpdatedAt', value: formatDateTime(cliente.lead_updated_at) }
+            ];
+
+            fields.forEach(field => {
+                const el = document.getElementById(field.id);
+                if (el) {
+                    el.textContent = field.value === undefined || field.value === null || field.value === '' ? '-' : field.value;
+                }
+            });
+
+            const modal = new bootstrap.Modal(document.getElementById('modalCliente'));
+            modal.show();
+        }
+
+        function formatMoney(value) {
+            if (value === undefined || value === null || value === '') return '-';
+            const numberValue = Number(value);
+            if (Number.isNaN(numberValue)) return value;
+            return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(numberValue);
+        }
+
+        function formatDateTime(value) {
+            if (!value) return '-';
+            return new Date(value).toLocaleString('pt-BR');
+        }
+    </script>
+
+    <div class="modal fade" id="modalCliente" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 16px;">
+                <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                    <h5 class="modal-title">Detalhes do Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-4">
+                        <div class="col-lg-6">
+                            <h6>Identificacao</h6>
+                            <div class="border rounded-3 p-3 mb-3">
+                                <div><strong>Nome:</strong> <span id="detailNome"></span></div>
+                                <div><strong>Email:</strong> <span id="detailEmail"></span></div>
+                                <div><strong>Telefone:</strong> <span id="detailTelefone"></span></div>
+                                <div><strong>WhatsApp:</strong> <span id="detailWhatsapp"></span></div>
+                                <div><strong>WhatsApp Nome:</strong> <span id="detailWhatsappName"></span></div>
+                                <div><strong>CPF:</strong> <span id="detailCpf"></span></div>
+                                <div><strong>Status Lead:</strong> <span id="detailStatus"></span></div>
+                            </div>
+
+                            <h6>Financeiro</h6>
+                            <div class="border rounded-3 p-3 mb-3">
+                                <div><strong>Renda Mensal:</strong> <span id="detailRenda"></span></div>
+                                <div><strong>Orcamento Min:</strong> <span id="detailBudgetMin"></span></div>
+                                <div><strong>Orcamento Max:</strong> <span id="detailBudgetMax"></span></div>
+                                <div><strong>Financiamento:</strong> <span id="detailFinanciamento"></span></div>
+                                <div><strong>Prazo Compra:</strong> <span id="detailPrazoCompra"></span></div>
+                                <div><strong>Objetivo Compra:</strong> <span id="detailObjetivo"></span></div>
+                            </div>
+
+                            <h6>Perfil</h6>
+                            <div class="border rounded-3 p-3 mb-3">
+                                <div><strong>Estado Civil:</strong> <span id="detailEstadoCivil"></span></div>
+                                <div><strong>Composicao Familiar:</strong> <span id="detailComposicao"></span></div>
+                                <div><strong>Profissao:</strong> <span id="detailProfissao"></span></div>
+                                <div><strong>Fonte de Renda:</strong> <span id="detailFonteRenda"></span></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <h6>Preferencias</h6>
+                            <div class="border rounded-3 p-3 mb-3">
+                                <div><strong>Localizacao:</strong> <span id="detailLocalizacao"></span></div>
+                                <div><strong>Quartos:</strong> <span id="detailQuartos"></span></div>
+                                <div><strong>Suites:</strong> <span id="detailSuites"></span></div>
+                                <div><strong>Garagem:</strong> <span id="detailGaragem"></span></div>
+                                <div><strong>Tipo Imovel:</strong> <span id="detailTipoImovel"></span></div>
+                                <div><strong>Bairro:</strong> <span id="detailBairro"></span></div>
+                                <div><strong>Lazer:</strong> <span id="detailLazer"></span></div>
+                                <div><strong>Seguranca:</strong> <span id="detailSeguranca"></span></div>
+                                <div><strong>Caracteristicas:</strong> <span id="detailCaracteristicas"></span></div>
+                            </div>
+
+                            <h6>IA</h6>
+                            <div class="border rounded-3 p-3 mb-3">
+                                <div><strong>Diagnostico:</strong></div>
+                                <pre id="detailDiagnostico" class="mb-2"></pre>
+                                <div><strong>Status Diagnostico:</strong> <span id="detailDiagnosticoStatus"></span></div>
+                                <div><strong>Gerado em:</strong> <span id="detailDiagnosticoData"></span></div>
+                            </div>
+
+                            <h6>Integracao</h6>
+                            <div class="border rounded-3 p-3 mb-3">
+                                <div><strong>Status Chaves:</strong> <span id="detailChavesStatus"></span></div>
+                                <div><strong>Enviado em:</strong> <span id="detailChavesSentAt"></span></div>
+                                <div><strong>Erro Chaves:</strong> <span id="detailChavesError"></span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6>Observacoes</h6>
+                    <div class="border rounded-3 p-3">
+                        <pre id="detailObservacoes" class="mb-0"></pre>
+                        <div class="mt-3"><strong>Observacoes do Cliente:</strong></div>
+                        <pre id="detailObservacoesCliente" class="mb-0"></pre>
+                    </div>
+
+                    <div class="mt-4">
+                        <strong>Datas:</strong>
+                        <div>Criado em: <span id="detailCreatedAt"></span></div>
+                        <div>Atualizado em: <span id="detailUpdatedAt"></span></div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

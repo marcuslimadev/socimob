@@ -130,6 +130,10 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     $router->post('/portal-chat/{id}/take', 'Admin\\PortalChatController@take');
     $router->post('/portal-chat/{id}/release', 'Admin\\PortalChatController@release');
 
+    // Clientes
+    $router->get('/clientes', 'Admin\\ClientesController@index');
+    $router->post('/clientes/sync', 'Admin\\ClientesController@sync');
+
     // Chaves na Mão - Integração de Leads
     $router->get('/chaves-na-mao/status', 'ChavesNaMaoController@status');
     $router->post('/chaves-na-mao/test', 'ChavesNaMaoController@test');

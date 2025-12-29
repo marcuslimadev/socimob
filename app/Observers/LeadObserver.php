@@ -4,15 +4,18 @@ namespace App\Observers;
 
 use App\Models\Lead;
 use App\Services\ChavesNaMaoService;
+use App\Services\LeadCustomerService;
 use Illuminate\Support\Facades\Log;
 
 class LeadObserver
 {
     private ChavesNaMaoService $chavesNaMaoService;
+    private LeadCustomerService $leadCustomerService;
 
-    public function __construct(ChavesNaMaoService $chavesNaMaoService)
+    public function __construct(ChavesNaMaoService $chavesNaMaoService, LeadCustomerService $leadCustomerService)
     {
         $this->chavesNaMaoService = $chavesNaMaoService;
+        $this->leadCustomerService = $leadCustomerService;
     }
 
     /**
@@ -26,6 +29,10 @@ class LeadObserver
                 'nome' => $lead->nome
             ]);
             return;
+        }
+
+        if (!$lead->user_id && !empty($lead->email)) {
+            $this->leadCustomerService->ensureClientForLead($lead);
         }
 
         Log::info('ÐYÅ Novo lead criado, enviando para Chaves na MÇœo', [
@@ -42,6 +49,14 @@ class LeadObserver
      */
     public function updated(Lead $lead): void
     {
+        if ($this->isFromChavesNaMao($lead)) {
+            return;
+        }
+
+        if (!$lead->user_id && !empty($lead->email)) {
+            $this->leadCustomerService->ensureClientForLead($lead);
+        }
+
         // Verificar se jÇ­ foi enviado antes
         if ($lead->chaves_na_mao_sent_at) {
             Log::debug('ƒ"û‹÷? Lead jÇ­ sincronizado com Chaves na MÇœo', [
