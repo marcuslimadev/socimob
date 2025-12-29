@@ -240,11 +240,56 @@
         </div>
     </div>
 
+    <!-- Modal de Confirmação de Exclusão -->
+    <div class="modal fade" id="modalConfirmDelete" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Deseja realmente excluir este usuário?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="btnConfirmDelete">Excluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Mensagens -->
+    <div class="modal fade" id="modalMessage" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalMessageTitle">Aviso</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="modalMessageText"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const API_URL = '/api';
         let usuarios = [];
         let usuariosTable;
+        let userToDelete = null;
+
+        // Função auxiliar para mostrar mensagens
+        function showMessage(title, message, type = 'info') {
+            $('#modalMessageTitle').text(title);
+            $('#modalMessageText').text(message);
+            new bootstrap.Modal('#modalMessage').show();
+        }
 
         $(document).ready(function() {
             checkAuth();
@@ -262,8 +307,8 @@
             
             // Apenas admin e super_admin podem acessar
             if (!['admin', 'super_admin'].includes(user.role)) {
-                alert('Acesso negado. Apenas administradores podem gerenciar usuários.');
-                window.location.href = 'dashboard.html';
+                showMessage('Acesso Negado', 'Apenas administradores podem gerenciar usuários.');
+                setTimeout(() => window.location.href = 'dashboard.html', 2000);
             }
         }
 
@@ -381,7 +426,7 @@
             const passwordConfirm = $('[name="password_confirmation"]').val();
             
             if (password !== passwordConfirm) {
-                alert('As senhas não coincidem!');
+                showMessage('Erro', 'As senhas não coincidem!');
                 return;
             }
 
@@ -406,11 +451,11 @@
                     bootstrap.Modal.getInstance('#modalUsuario').hide();
                     $('#formUsuario')[0].reset();
                     loadUsuarios();
-                    alert('Usuário criado com sucesso!');
+                    showMessage('Sucesso', 'Usuário criado com sucesso!');
                 },
                 error: function(xhr) {
                     const error = xhr.responseJSON?.message || 'Erro ao salvar usuário';
-                    alert(error);
+                    showMessage('Erro', error);
                 }
             });
         }
@@ -433,21 +478,31 @@
         }
 
         function deleteUsuario(id) {
-            if (!confirm('Deseja realmente excluir este usuário?')) return;
+            userToDelete = id;
+            new bootstrap.Modal('#modalConfirmDelete').show();
+        }
+
+        // Handler do botão de confirmação
+        $(document).on('click', '#btnConfirmDelete', function() {
+            if (!userToDelete) return;
             
             $.ajax({
-                url: API_URL + '/admin/users/' + id,
+                url: API_URL + '/admin/users/' + userToDelete,
                 method: 'DELETE',
                 headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 success: function() {
+                    bootstrap.Modal.getInstance('#modalConfirmDelete').hide();
                     loadUsuarios();
-                    alert('Usuário excluído com sucesso!');
+                    showMessage('Sucesso', 'Usuário excluído com sucesso!');
+                    userToDelete = null;
                 },
                 error: function() {
-                    alert('Erro ao excluir usuário');
+                    bootstrap.Modal.getInstance('#modalConfirmDelete').hide();
+                    showMessage('Erro', 'Erro ao excluir usuário');
+                    userToDelete = null;
                 }
             });
-        }
+        });
 
         function formatDate(dateStr) {
             return new Date(dateStr).toLocaleDateString('pt-BR');
