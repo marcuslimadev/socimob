@@ -526,6 +526,105 @@ class TenantSettingsController extends Controller
             'using_default' => true,
         ]);
     }
-}
 
+    /**
+     * Obter status do atendimento automático
+     * GET /api/admin/settings/atendimento-automatico
+     */
+    public function getAtendimentoAutomatico(Request $request)
+    {
+        $user = $request->user();
 
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        $ativo = \App\Models\AppSetting::getValue('atendimento_automatico_ativo', true, $user->tenant_id);
+
+        return response()->json([
+            'ativo' => (bool) $ativo,
+        ]);
+    }
+
+    /**
+     * Definir status do atendimento automático
+     * POST /api/admin/settings/atendimento-automatico
+     */
+    public function setAtendimentoAutomatico(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        $this->validate($request, [
+            'ativo' => 'required|boolean',
+        ]);
+
+        $ativo = $request->input('ativo');
+        
+        \App\Models\AppSetting::setValue('atendimento_automatico_ativo', $ativo, $user->tenant_id);
+
+        $mensagem = $ativo 
+            ? 'Atendimento automático ATIVADO. Novos leads da Chaves na Mão entrarão automaticamente em atendimento via WhatsApp.'
+            : 'Atendimento automático DESATIVADO. Novos leads não entrarão automaticamente em atendimento.';
+
+        return response()->json([
+            'success' => true,
+            'message' => $mensagem,
+            'ativo' => (bool) $ativo,
+        ]);
+    }
+
+    /**
+     * Obter status do atendimento automático
+     * GET /api/admin/settings/auto-atendimento
+     */
+    public function getAutoAtendimento(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        $enabled = \App\Models\AppSetting::getValue('auto_atendimento_enabled', 'true', $user->tenant_id);
+        
+        return response()->json([
+            'enabled' => $enabled === 'true' || $enabled === true || $enabled === '1',
+        ]);
+    }
+
+    /**
+     * Atualizar status do atendimento automático
+     * POST /api/admin/settings/auto-atendimento
+     */
+    public function setAutoAtendimento(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        $this->validate($request, [
+            'enabled' => 'required|boolean',
+        ]);
+
+        $enabled = $request->input('enabled', true);
+        
+        \App\Models\AppSetting::setValue('auto_atendimento_enabled', $enabled ? 'true' : 'false', $user->tenant_id);
+
+        \Illuminate\Support\Facades\Log::info('[TenantSettings] Atendimento automático alterado', [
+            'tenant_id' => $user->tenant_id,
+            'enabled' => $enabled,
+            'user' => $user->name ?? $user->email
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $enabled ? 'Atendimento automático ativado' : 'Atendimento automático desativado',
+            'enabled' => $enabled,
+        ]);
+    }

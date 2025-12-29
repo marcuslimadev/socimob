@@ -25,6 +25,10 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     $router->post('/settings/ai-prompt', 'Admin\TenantSettingsController@saveAiPrompt');
     $router->delete('/settings/ai-prompt', 'Admin\TenantSettingsController@deleteAiPrompt');
 
+    // Atendimento Automático Settings
+    $router->get('/settings/atendimento-automatico', 'Admin\TenantSettingsController@getAtendimentoAutomatico');
+    $router->post('/settings/atendimento-automatico', 'Admin\TenantSettingsController@setAtendimentoAutomatico');
+
     // Financeiro - Comissões
     $router->get('/comissoes', 'Admin\CommissionController@index');
     $router->post('/comissoes', 'Admin\CommissionController@store');

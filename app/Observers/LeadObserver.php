@@ -35,8 +35,15 @@ class LeadObserver
                 'nome' => $lead->nome
             ]);
             
-            // MAS iniciar atendimento IA automaticamente!
-            $this->iniciarAtendimentoIA($lead);
+            // MAS iniciar atendimento IA automaticamente (se configurado)!
+            if ($this->isAtendimentoAutomaticoAtivo($lead->tenant_id)) {
+                $this->iniciarAtendimentoIA($lead);
+            } else {
+                Log::info('[LeadObserver] Atendimento automático DESATIVADO para este tenant', [
+                    'tenant_id' => $lead->tenant_id,
+                    'lead_id' => $lead->id
+                ]);
+            }
             
             return;
         }
@@ -178,6 +185,24 @@ class LeadObserver
                 'lead_id' => $lead->id,
                 'error' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Verificar se atendimento automático está ativo para o tenant
+     */
+    private function isAtendimentoAutomaticoAtivo($tenantId): bool
+    {
+        try {
+            $ativo = \App\Models\AppSetting::getValue('atendimento_automatico_ativo', true, $tenantId);
+            return (bool) $ativo;
+        } catch (\Exception $e) {
+            // Se houver erro, retorna true (ativo por padrão)
+            Log::warning('[LeadObserver] Erro ao verificar config atendimento automático, usando padrão (ativo)', [
+                'tenant_id' => $tenantId,
+                'error' => $e->getMessage()
+            ]);
+            return true;
         }
     }
 }

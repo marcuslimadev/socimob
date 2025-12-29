@@ -246,6 +246,37 @@
                         </div>
                     </div>
 
+                    <!-- Atendimento Automático IA -->
+                    <div class="card mb-4" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;">
+                        <div class="card-body">
+                            <h6 class="mb-2"><i class="bi bi-lightning-charge-fill me-2"></i>Atendimento Automático IA</h6>
+                            <p class="text-muted mb-3">Quando ativado, todos os novos leads da integração "Chaves na Mão" que possuam número de WhatsApp válido entrarão automaticamente em atendimento via IA.</p>
+                            
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <strong>Status do Atendimento Automático</strong>
+                                    <div class="text-muted small mt-1" id="atendimentoAutoDescription">
+                                        <span id="atendimentoAutoStatusText">Carregando...</span>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input 
+                                        class="form-check-input" 
+                                        type="checkbox" 
+                                        role="switch" 
+                                        id="toggleAtendimentoAutomatico"
+                                        style="width: 3rem; height: 1.5rem; cursor: pointer;"
+                                    >
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info mt-3 mb-0" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3);">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Como funciona:</strong> Quando um novo lead chega pela Chaves na Mão e tem WhatsApp, o sistema cria automaticamente uma conversa e a IA envia a primeira mensagem personalizada usando o prompt configurado acima.
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Integrações Existentes -->
                     <div class="card" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;">
                         <div class="card-body">
@@ -299,6 +330,7 @@
             $('#btnResetPrompt').on('click', handleResetPrompt);
             $('#btnSyncConversas').on('click', handleSyncConversas);
             $('#btnSyncClientes').on('click', handleSyncClientes);
+            $('#toggleAtendimentoAutomatico').on('change', handleToggleAtendimentoAutomatico);
             
             // Contador de caracteres do prompt
             $('#ai_prompt_custom').on('input', function() {
@@ -306,8 +338,9 @@
                 $('#promptCharCount').text(length);
             });
             
-            // Carregar prompt customizado
+            // Carregar prompt customizado e status atendimento automático
             loadAiPrompt();
+            loadAtendimentoAutomatico();
         });
 
         function checkAuth() {
@@ -464,6 +497,72 @@
             $status.text('Resetando...').removeClass('text-danger').addClass('text-info');
             
             $.ajax({
+                url: '/api/admin/settings/ai-prompt',
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                success: function(response) {
+                    $('#ai_prompt_custom').val('');
+                    $('#promptCharCount').text('0');
+                    $status.text('✅ Prompt resetado! Agora usando orientações padrão do sistema.').removeClass('text-info').addClass('text-success');
+                    setTimeout(() => $status.text(''), 5000);
+                },
+                error: function(xhr) {
+                    const message = xhr.responseJSON?.error || 'Erro ao resetar prompt.';
+                    $status.text('❌ ' + message).removeClass('text-info').addClass('text-danger');
+                }
+            });
+        }
+
+        function loadAtendimentoAutomatico() {
+            $.ajax({
+                url: '/api/admin/settings/atendimento-automatico',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                success: function(response) {
+                    const ativo = response.ativo === true;
+                    $('#toggleAtendimentoAutomatico').prop('checked', ativo);
+                    updateAtendimentoAutoStatus(ativo);
+                },
+                error: function(xhr) {
+                    console.error('Erro ao carregar status do atendimento automático:', xhr);
+                    $('#atendimentoAutoStatusText').text('Erro ao carregar status');
+                }
+            });
+        }
+
+        function updateAtendimentoAutoStatus(ativo) {
+            const $statusText = $('#atendimentoAutoStatusText');
+            if (ativo) {
+                $statusText.html('<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>ATIVO - Novos leads entram automaticamente em atendimento</span>');
+            } else {
+                $statusText.html('<span class="text-warning"><i class="bi bi-pause-circle-fill me-1"></i>DESATIVADO - Atendimento manual apenas</span>');
+            }
+        }
+
+        function handleToggleAtendimentoAutomatico(e) {
+            const ativo = $(e.target).prop('checked');
+            
+            $.ajax({
+                url: '/api/admin/settings/atendimento-automatico',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                contentType: 'application/json',
+                data: JSON.stringify({ ativo: ativo }),
+                success: function(response) {
+                    updateAtendimentoAutoStatus(ativo);
+                    // Feedback visual temporário
+                    const $card = $('#toggleAtendimentoAutomatico').closest('.card');
+                    $card.css('border', '2px solid #10b981');
+                    setTimeout(() => $card.css('border', ''), 1500);
+                },
+                error: function(xhr) {
+                    const message = xhr.responseJSON?.error || 'Erro ao alterar configuração.';
+                    alert('Erro: ' + message);
+                    // Reverte o toggle
+                    $(e.target).prop('checked', !ativo);
+                }
+            });
+        }
                 url: '/api/admin/settings/ai-prompt',
                 method: 'DELETE',
                 headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
