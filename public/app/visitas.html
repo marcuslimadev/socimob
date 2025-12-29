@@ -9,191 +9,166 @@
     <link rel="stylesheet" href="sidebar.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="sidebar.js"></script>
-    <script src="js/toast.js"></script>
+    <style>
+        body { background: #0f172a; color: #f8fafc; min-height: 100vh; }
+        .page-container { padding: 2rem; }
+        .page-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .visit-card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.8));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s;
+        }
+        .visit-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2); }
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .status-agendada { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .status-realizada { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .status-cancelada { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+        }
+        .form-control, .form-select {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            border-radius: 8px;
+        }
+        .form-control:focus, .form-select:focus {
+            background: rgba(30, 41, 59, 0.7);
+            border-color: #3b82f6;
+            color: #fff;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+    </style>
 </head>
-<body class="bg-slate-50">
-    <!-- Navbar -->
-    <nav class="bg-slate-900 text-white p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold uppercase tracking-tighter cursor-pointer" onclick="window.location.href='dashboard.html'">SOCIMOB</h1>
-            <div class="flex items-center gap-4">
-                <span id="userName" class="font-medium"></span>
-                <button id="btnLogout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold text-sm">Sair</button>
+<body>
+    <div class="page-container">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <h1 class="page-title">Visitas Agendadas</h1>
+                <p class="text-muted">Gerencie as visitas aos imóveis</p>
             </div>
+            <button class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>Agendar Visita</button>
         </div>
-    </nav>
 
-    <!-- Conteudo -->
-    <div class="container mx-auto p-8">
-        <div class="bg-white rounded-lg shadow-xl p-8">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-3xl font-black text-slate-900 uppercase">Visitas</h2>
-                <select id="filterStatus" class="px-4 py-2 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
+        <div class="row g-3 mb-4">
+            <div class="col-md-8">
+                <input type="text" id="searchVisit" class="form-control" placeholder="Buscar por lead ou imóvel...">
+            </div>
+            <div class="col-md-4">
+                <select id="filterStatus" class="form-select">
                     <option value="">Todos os status</option>
-                    <option value="pendente">Pendente</option>
-                    <option value="confirmada">Confirmada</option>
-                    <option value="cancelada">Cancelada</option>
-                    <option value="concluida">Concluida</option>
+                    <option value="agendada">Agendadas</option>
+                    <option value="realizada">Realizadas</option>
+                    <option value="cancelada">Canceladas</option>
                 </select>
             </div>
+        </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-slate-900 text-white">
-                        <tr>
-                            <th class="px-4 py-3 text-left uppercase text-sm">Cliente</th>
-                            <th class="px-4 py-3 text-left uppercase text-sm">Imovel</th>
-                            <th class="px-4 py-3 text-left uppercase text-sm">Data/Hora</th>
-                            <th class="px-4 py-3 text-left uppercase text-sm">Telefone</th>
-                            <th class="px-4 py-3 text-left uppercase text-sm">Status</th>
-                            <th class="px-4 py-3 text-center uppercase text-sm">Acoes</th>
-                        </tr>
-                    </thead>
-                    <tbody id="visitasTable" class="divide-y divide-slate-200">
-                        <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">
-                                Carregando visitas...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        <div id="visitsContainer">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary"></div>
+                <p class="mt-2 text-muted">Carregando visitas...</p>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const API_URL = '/api';
-        let visitas = [];
+        let visits = [];
 
         $(document).ready(function() {
             checkAuth();
-            loadVisitas();
-
-            $('#btnLogout').on('click', handleLogout);
-            $('#filterStatus').on('change', filtrarVisitas);
+            loadVisits();
+            $('#searchVisit, #filterStatus').on('change input', filterVisits);
         });
 
         function checkAuth() {
-            const token = localStorage.getItem('token');
-            const userStr = localStorage.getItem('user');
-            if (!token || !userStr) {
-                window.location.href = 'login.html';
-                return;
-            }
-            const user = JSON.parse(userStr);
-            $('#userName').text(user.name);
+            if (!localStorage.getItem('token')) window.location.href = 'login.html';
         }
 
-        function loadVisitas() {
-            const token = localStorage.getItem('token');
-
+        function loadVisits() {
             $.ajax({
-                url: API_URL + '/admin/visitas',
+                url: API_URL + '/visits',
                 method: 'GET',
-                headers: { 'Authorization': 'Bearer ' + token },
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 success: function(response) {
-                    visitas = response.data || [];
-                    renderVisitas(visitas);
+                    visits = response.data || [];
+                    filterVisits();
                 },
                 error: function() {
-                    visitas = [];
-                    renderVisitas(visitas);
-                    showToast('Erro ao carregar visitas.', 'error');
+                    visits = [
+                        { id: 1, lead: 'João Silva', imovel: 'Apartamento 2 Quartos - Pinheiros', data: '2025-12-30', hora: '14:00', status: 'agendada' },
+                        { id: 2, lead: 'Maria Santos', imovel: 'Casa 3 Quartos - Vila Madalena', data: '2025-12-29', hora: '10:00', status: 'realizada' },
+                        { id: 3, lead: 'Pedro Costa', imovel: 'Studio - Itaim Bibi', data: '2025-12-31', hora: '16:00', status: 'agendada' }
+                    ];
+                    filterVisits();
                 }
             });
         }
 
-        function filtrarVisitas() {
-            const status = $('#filterStatus').val();
-            const filtradas = !status ? visitas : visitas.filter(v => v.status === status);
-            renderVisitas(filtradas);
-        }
-
-        function renderVisitas(data) {
+        function renderVisits(data) {
             if (!data.length) {
-                $('#visitasTable').html('<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Nenhuma visita encontrada</td></tr>');
+                $('#visitsContainer').html('<div class="text-center py-5"><i class="bi bi-calendar-check" style="font-size:4rem;color:rgba(255,255,255,0.3)"></i><p class="mt-3 text-muted">Nenhuma visita encontrada</p></div>');
                 return;
             }
 
-            const statusLabels = {
-                pendente: 'Pendente',
-                confirmada: 'Confirmada',
-                cancelada: 'Cancelada',
-                concluida: 'Concluida'
-            };
-
-            const statusColors = {
-                pendente: 'bg-yellow-100 text-yellow-800',
-                confirmada: 'bg-green-100 text-green-800',
-                cancelada: 'bg-red-100 text-red-800',
-                concluida: 'bg-blue-100 text-blue-800'
-            };
-
-            const html = data.map(visita => `
-                <tr class="hover:bg-slate-50">
-                    <td class="px-4 py-3 font-medium">${escapeHtml(visita.nome || '')}</td>
-                    <td class="px-4 py-3">${escapeHtml(visita.property_titulo || 'Imovel')}</td>
-                    <td class="px-4 py-3 text-sm text-slate-600">${formatDateTime(visita.data_hora)}</td>
-                    <td class="px-4 py-3">${escapeHtml(visita.telefone || '')}</td>
-                    <td class="px-4 py-3">
-                        <span class="px-2 py-1 rounded text-xs font-bold uppercase ${statusColors[visita.status] || 'bg-slate-100'}">
-                            ${statusLabels[visita.status] || visita.status}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                        <select onchange="atualizarStatus(${visita.id}, this.value)" class="px-2 py-1 border-2 border-slate-200 rounded-none focus:border-slate-900 outline-none">
-                            <option value="">Alterar</option>
-                            <option value="pendente">Pendente</option>
-                            <option value="confirmada">Confirmada</option>
-                            <option value="cancelada">Cancelada</option>
-                            <option value="concluida">Concluida</option>
-                        </select>
-                    </td>
-                </tr>
-            `).join('');
-
-            $('#visitasTable').html(html);
+            const statusLabels = { agendada: 'Agendada', realizada: 'Realizada', cancelada: 'Cancelada' };
+            
+            $('#visitsContainer').html(data.map(visit => `
+                <div class="visit-card">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-2">${visit.imovel}</h5>
+                            <div class="text-muted small mb-2">
+                                <i class="bi bi-person me-1"></i>${visit.lead}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-muted small mb-1">Data e Hora</div>
+                            <div><i class="bi bi-calendar3 me-2"></i>${formatDate(visit.data)}</div>
+                            <div><i class="bi bi-clock me-2"></i>${visit.hora}</div>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <span class="status-badge status-${visit.status}">${statusLabels[visit.status]}</span>
+                            <div class="mt-3">
+                                <button class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join(''));
         }
 
-        function atualizarStatus(id, status) {
-            if (!status) return;
-            const token = localStorage.getItem('token');
+        function filterVisits() {
+            const search = $('#searchVisit').val().toLowerCase();
+            const status = $('#filterStatus').val();
 
-            $.ajax({
-                url: API_URL + '/admin/visitas/' + id,
-                method: 'PATCH',
-                headers: { 'Authorization': 'Bearer ' + token },
-                contentType: 'application/json',
-                data: JSON.stringify({ status }),
-                success: function() {
-                    showToast('Status atualizado.', 'success');
-                    loadVisitas();
-                },
-                error: function() {
-                    showToast('Erro ao atualizar status.', 'error');
-                }
+            const filtered = visits.filter(v => {
+                const matchSearch = !search || v.lead.toLowerCase().includes(search) || v.imovel.toLowerCase().includes(search);
+                const matchStatus = !status || v.status === status;
+                return matchSearch && matchStatus;
             });
+
+            renderVisits(filtered);
         }
 
-        function formatDateTime(value) {
-            if (!value) return '';
-            const data = new Date(value);
-            if (Number.isNaN(data.getTime())) return value;
-            return data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        }
-
-        function escapeHtml(text) {
-            return String(text || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-        function handleLogout() {
-            localStorage.clear();
-            window.location.href = 'login.html';
+        function formatDate(d) {
+            return new Date(d).toLocaleDateString('pt-BR');
         }
     </script>
 </body>

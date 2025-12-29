@@ -10,462 +10,171 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="sidebar.js"></script>
     <style>
-        .kanban-board {
-            display: flex;
-            gap: 1.5rem;
-            overflow-x: auto;
-            padding-bottom: 2rem;
-            min-height: calc(100vh - 250px);
-        }
-        
+        body { background: #0f172a; color: #f8fafc; min-height: 100vh; overflow-x: hidden; }
+        .page-container { padding: 2rem; }
+        .page-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .kanban-board { display: flex; gap: 1.5rem; overflow-x: auto; padding-bottom: 2rem; }
         .kanban-column {
             min-width: 320px;
-            max-width: 320px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid rgba(255,255,255,0.1);
             border-radius: 12px;
             padding: 1rem;
-            display: flex;
-            flex-direction: column;
         }
-        
-        .kanban-column-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-            padding: 0.75rem;
+        .column-header {
+            padding: 1rem;
             border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        .kanban-column-title {
-            font-size: 14px;
+            margin-bottom: 1rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            font-size: 0.875rem;
         }
-        
-        .kanban-column-count {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            font-size: 11px;
-            font-weight: 700;
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .kanban-cards {
-            flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        
-        .kanban-card {
-            background: var(--glow-glass);
-            border: 1px solid var(--glow-border);
-            border-radius: 8px;
+        .col-leads { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .col-contato { background: rgba(234, 179, 8, 0.2); color: #fbbf24; border: 1px solid rgba(234, 179, 8, 0.3); }
+        .col-interesse { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .col-negociacao { background: rgba(249, 115, 22, 0.2); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
+        .col-fechado { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .lead-card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.8));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
             padding: 1rem;
-            cursor: pointer;
+            margin-bottom: 1rem;
+            cursor: move;
             transition: all 0.2s;
         }
-        
-        .kanban-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            border-color: var(--glow-blue);
-        }
-        
-        .kanban-card-dragging {
-            opacity: 0.5;
-            transform: rotate(2deg);
-        }
-        
-        /* Estados com cores específicas */
-        .estado-inicio { border-left: 3px solid #3b82f6; }
-        .estado-aguardando-interesse { border-left: 3px solid #8b5cf6; }
-        .estado-coletando-nome { border-left: 3px solid #06b6d4; }
-        .estado-identificando-renda { border-left: 3px solid #10b981; }
-        .estado-solicitando-documentos { border-left: 3px solid #f59e0b; }
-        .estado-apresentando-imoveis { border-left: 3px solid #ec4899; }
-        .estado-detalhes-imovel { border-left: 3px solid #6366f1; }
-        .estado-venda-dados-imovel { border-left: 3px solid #14b8a6; }
-        .estado-venda-fotos { border-left: 3px solid #f97316; }
-        .estado-finalizado { border-left: 3px solid #22c55e; }
-        
-        /* Scrollbar customizado */
-        .kanban-cards::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .kanban-cards::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 3px;
-        }
-        
-        .kanban-cards::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-        }
-        
-        .kanban-cards::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
+        .lead-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
     </style>
 </head>
-<body class="glow-page">
-    <!-- Navbar -->
-    <nav class="glow-nav">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="glow-badge text-base cursor-pointer" onclick="window.location.href='dashboard.html'">SOCIMOB</div>
-                <span class="glow-pill hidden md:inline-flex">Funil de Leads</span>
-            </div>
-            <div class="flex items-center gap-3">
-                <span id="userName" class="text-sm font-semibold text-[var(--glow-ink)]"></span>
-                <button id="btnLogout" class="glow-button px-6 py-2 text-sm">Sair</button>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Conteúdo -->
-    <main class="container mx-auto px-4 py-6">
-        <!-- Header -->
-        <div class="mb-6">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <h2 class="glow-section-title mb-2">Funil de Atendimento</h2>
-                    <p class="text-[rgba(255,255,255,0.7)]">Acompanhe seus leads por estágio</p>
-                </div>
-                <div class="flex gap-3">
-                    <button onclick="window.location.href='leads.html'" class="px-4 py-2 border border-[var(--glow-border)] text-[var(--glow-ink)] rounded hover:bg-[var(--glow-glass)] transition-all">
-                        📋 Visualização Lista
-                    </button>
-                    <button id="btnNovoLead" class="glow-button px-6 py-2">
-                        + Novo Lead
-                    </button>
-                </div>
-            </div>
-
-            <!-- Filtros -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <input type="text" id="searchLead" placeholder="Buscar lead..." 
-                        class="w-full px-4 py-2 bg-[var(--glow-glass)] border border-[var(--glow-border)] rounded text-[var(--glow-ink)] placeholder-[rgba(255,255,255,0.4)] focus:border-[var(--glow-blue)] outline-none transition-all text-sm">
-                </div>
-                <div>
-                    <select id="filterPerfil" class="w-full px-4 py-2 bg-[var(--glow-glass)] border border-[var(--glow-border)] rounded text-[var(--glow-ink)] focus:border-[var(--glow-blue)] outline-none transition-all text-sm">
-                        <option value="">Todos os perfis</option>
-                        <option value="comprador">🏠 Compradores</option>
-                        <option value="vendedor">💰 Vendedores</option>
-                    </select>
-                </div>
-                <div class="text-right">
-                    <span class="inline-flex items-center px-4 py-2 bg-[var(--glow-blue)]/20 border border-[var(--glow-blue)]/30 rounded text-[var(--glow-blue)] font-bold text-sm">
-                        <span id="totalLeads">0</span> leads no funil
-                    </span>
-                </div>
-            </div>
+<body>
+    <div class="page-container">
+        <div class="mb-4">
+            <h1 class="page-title">Funil de Vendas</h1>
+            <p class="text-muted">Gerencie o andamento dos seus leads</p>
         </div>
 
-        <!-- Kanban Board -->
-        <div id="kanbanBoard" class="kanban-board">
-            <!-- Loading -->
-            <div class="col-span-full text-center py-12">
-                <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[var(--glow-blue)] border-r-transparent"></div>
-                <p class="mt-2 text-sm text-[rgba(255,255,255,0.7)]">Carregando funil...</p>
+        <div class="kanban-board" id="kanbanBoard">
+            <div class="kanban-column">
+                <div class="column-header col-leads">
+                    <i class="bi bi-person-plus me-2"></i>Leads <span class="badge bg-light text-dark ms-2">0</span>
+                </div>
+                <div id="colLeads" class="column-content"></div>
             </div>
-        </div>
-    </main>
 
-    <!-- Modal Lead -->
-    <div id="modalLead" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50" onclick="if(event.target === this) closeModal()">
-        <div class="glow-card max-w-xl w-full max-h-[90vh] overflow-y-auto">
-            <div class="p-6 border-b border-[var(--glow-border)] flex items-center justify-between">
-                <h3 class="text-xl font-bold text-[var(--glow-ink)]" id="modalTitle">Detalhes do Lead</h3>
-                <button onclick="closeModal()" class="text-2xl text-[rgba(255,255,255,0.5)] hover:text-white">&times;</button>
+            <div class="kanban-column">
+                <div class="column-header col-contato">
+                    <i class="bi bi-telephone me-2"></i>Primeiro Contato <span class="badge bg-light text-dark ms-2">0</span>
+                </div>
+                <div id="colContato" class="column-content"></div>
             </div>
-            
-            <div id="modalContent" class="p-6">
-                <!-- Conteúdo dinâmico -->
+
+            <div class="kanban-column">
+                <div class="column-header col-interesse">
+                    <i class="bi bi-heart me-2"></i>Interesse <span class="badge bg-light text-dark ms-2">0</span>
+                </div>
+                <div id="colInteresse" class="column-content"></div>
+            </div>
+
+            <div class="kanban-column">
+                <div class="column-header col-negociacao">
+                    <i class="bi bi-cash me-2"></i>Negociação <span class="badge bg-light text-dark ms-2">0</span>
+                </div>
+                <div id="colNegociacao" class="column-content"></div>
+            </div>
+
+            <div class="kanban-column">
+                <div class="column-header col-fechado">
+                    <i class="bi bi-check-circle me-2"></i>Fechados <span class="badge bg-light text-dark ms-2">0</span>
+                </div>
+                <div id="colFechado" class="column-content"></div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const API_URL = '/api';
-        
-        // Estados do funil baseados no arquivo Estados.php
-        const ESTADOS_FUNIL = [
-            { id: 'inicio', nome: 'Início', emoji: '👋', cor: '#3b82f6' },
-            { id: 'aguardando_interesse', nome: 'Aguardando Interesse', emoji: '⏳', cor: '#8b5cf6' },
-            { id: 'coletando_nome', nome: 'Coletando Nome', emoji: '📝', cor: '#06b6d4' },
-            { id: 'identificando_renda', nome: 'Identificando Renda', emoji: '💰', cor: '#10b981' },
-            { id: 'solicitando_documentos', nome: 'Documentos', emoji: '📄', cor: '#f59e0b' },
-            { id: 'apresentando_imoveis', nome: 'Apresentando Imóveis', emoji: '🏠', cor: '#ec4899' },
-            { id: 'detalhes_imovel', nome: 'Detalhes Imóvel', emoji: '🔍', cor: '#6366f1' },
-            { id: 'venda_dados_imovel', nome: 'Dados Venda', emoji: '📋', cor: '#14b8a6' },
-            { id: 'venda_fotos', nome: 'Fotos Venda', emoji: '📸', cor: '#f97316' },
-            { id: 'finalizado', nome: 'Finalizado', emoji: '✅', cor: '#22c55e' }
-        ];
-        
         let leads = [];
-        let filteredLeads = [];
 
         $(document).ready(function() {
             checkAuth();
             loadLeads();
-            
-            $('#btnLogout').on('click', handleLogout);
-            $('#btnNovoLead').on('click', () => window.location.href = 'leads.html');
-            $('#searchLead').on('input', filterAndRenderLeads);
-            $('#filterPerfil').on('change', filterAndRenderLeads);
-            
-            // Atualizar a cada 5 segundos
-            setInterval(loadLeads, 5000);
+            setInterval(loadLeads, 30000);
         });
 
         function checkAuth() {
-            const token = localStorage.getItem('token');
-            const userStr = localStorage.getItem('user');
-            if (!token || !userStr) {
-                window.location.href = 'login.html';
-                return;
-            }
-            const user = JSON.parse(userStr);
-            $('#userName').text(user.name);
+            if (!localStorage.getItem('token')) window.location.href = 'login.html';
         }
 
         function loadLeads() {
-            const token = localStorage.getItem('token');
-            
             $.ajax({
                 url: API_URL + '/leads',
                 method: 'GET',
-                headers: { 'Authorization': 'Bearer ' + token },
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 success: function(response) {
                     leads = response.data || [];
-                    console.log('✓ Leads carregados:', leads.length);
-                    filterAndRenderLeads();
+                    renderKanban();
                 },
-                error: function(xhr) {
-                    console.error('✗ Erro ao carregar leads');
-                    // Dados de exemplo para demonstração
-                    leads = generateMockLeads();
-                    filterAndRenderLeads();
+                error: function() {
+                    leads = [
+                        { id: 1, nome: 'João Silva', telefone: '(11) 98765-4321', stage: 'leads', valor_investimento: 250000 },
+                        { id: 2, nome: 'Maria Santos', telefone: '(11) 98765-4322', stage: 'contato' },
+                        { id: 3, nome: 'Pedro Costa', telefone: '(11) 98765-4323', stage: 'interesse', valor_investimento: 450000 },
+                        { id: 4, nome: 'Ana Oliveira', telefone: '(11) 98765-4324', stage: 'negociacao', valor_investimento: 180000 },
+                        { id: 5, nome: 'Carlos Souza', telefone: '(11) 98765-4325', stage: 'fechado', valor_investimento: 320000 }
+                    ];
+                    renderKanban();
                 }
             });
         }
 
-        function generateMockLeads() {
-            return [
-                { id: 1, nome: 'João Silva', telefone: '(11) 98765-4321', email: 'joao@email.com', estado_funil: 'inicio', perfil: 'comprador', mensagens_usuario: 2, created_at: '2025-12-23' },
-                { id: 2, nome: 'Maria Santos', telefone: '(11) 98765-4322', email: 'maria@email.com', estado_funil: 'coletando_nome', perfil: 'comprador', mensagens_usuario: 5, created_at: '2025-12-23' },
-                { id: 3, nome: 'Pedro Costa', telefone: '(11) 98765-4323', email: 'pedro@email.com', estado_funil: 'identificando_renda', perfil: 'comprador', mensagens_usuario: 8, valor_investimento: 450000, created_at: '2025-12-22' },
-                { id: 4, nome: 'Ana Oliveira', telefone: '(11) 98765-4324', email: 'ana@email.com', estado_funil: 'apresentando_imoveis', perfil: 'comprador', mensagens_usuario: 12, valor_investimento: 380000, created_at: '2025-12-21' },
-                { id: 5, nome: 'Carlos Souza', telefone: '(11) 98765-4325', email: 'carlos@email.com', estado_funil: 'detalhes_imovel', perfil: 'comprador', mensagens_usuario: 15, created_at: '2025-12-20' },
-                { id: 6, nome: 'Julia Lima', telefone: '(11) 98765-4326', email: 'julia@email.com', estado_funil: 'venda_dados_imovel', perfil: 'vendedor', mensagens_usuario: 7, created_at: '2025-12-23' },
-                { id: 7, nome: 'Roberto Alves', telefone: '(11) 98765-4327', email: 'roberto@email.com', estado_funil: 'venda_fotos', perfil: 'vendedor', mensagens_usuario: 10, created_at: '2025-12-22' },
-                { id: 8, nome: 'Fernanda Cruz', telefone: '(11) 98765-4328', email: 'fernanda@email.com', estado_funil: 'finalizado', perfil: 'comprador', mensagens_usuario: 20, created_at: '2025-12-19' }
-            ];
-        }
-
-        function filterAndRenderLeads() {
-            const searchTerm = $('#searchLead').val().toLowerCase();
-            const perfilFilter = $('#filterPerfil').val();
-            
-            filteredLeads = leads.filter(lead => {
-                const matchesSearch = !searchTerm || 
-                    lead.nome.toLowerCase().includes(searchTerm) ||
-                    lead.telefone.includes(searchTerm) ||
-                    (lead.email && lead.email.toLowerCase().includes(searchTerm));
-                
-                const matchesPerfil = !perfilFilter || lead.perfil === perfilFilter;
-                
-                return matchesSearch && matchesPerfil;
-            });
-            
-            $('#totalLeads').text(filteredLeads.length);
-            renderKanban();
-        }
-
         function renderKanban() {
-            const html = ESTADOS_FUNIL.map(estado => {
-                const leadsNaColuna = filteredLeads.filter(l => (l.estado_funil || 'inicio') === estado.id);
-                
-                return `
-                    <div class="kanban-column">
-                        <div class="kanban-column-header" style="border-left: 3px solid ${estado.cor}">
-                            <div class="kanban-column-title" style="color: ${estado.cor}">
-                                ${estado.emoji} ${estado.nome}
-                            </div>
-                            <div class="kanban-column-count" style="background: ${estado.cor}33; color: ${estado.cor}">
-                                ${leadsNaColuna.length}
-                            </div>
-                        </div>
-                        
-                        <div class="kanban-cards" data-estado="${estado.id}">
-                            ${leadsNaColuna.length === 0 ? `
-                                <div class="text-center py-8 text-sm text-[rgba(255,255,255,0.3)]">
-                                    Nenhum lead neste estágio
-                                </div>
-                            ` : leadsNaColuna.map(lead => renderLeadCard(lead, estado)).join('')}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            $('#kanbanBoard').html(html);
+            const columns = {
+                leads: $('#colLeads'),
+                contato: $('#colContato'),
+                interesse: $('#colInteresse'),
+                negociacao: $('#colNegociacao'),
+                fechado: $('#colFechado')
+            };
+
+            Object.values(columns).forEach(col => col.empty());
+
+            leads.forEach(lead => {
+                const stage = lead.stage || 'leads';
+                if (columns[stage]) {
+                    columns[stage].append(createLeadCard(lead));
+                }
+            });
+
+            Object.keys(columns).forEach(key => {
+                const count = leads.filter(l => (l.stage || 'leads') === key).length;
+                $(`.col-${key} .badge`).text(count);
+            });
         }
 
-        function renderLeadCard(lead, estado) {
-            const mensagens = lead.mensagens_usuario || 0;
-            const investimento = lead.valor_investimento;
-            const perfilIcon = lead.perfil === 'vendedor' ? '💰' : '🏠';
-            const perfilLabel = lead.perfil === 'vendedor' ? 'Vendedor' : 'Comprador';
-            
-            return `
-                <div class="kanban-card estado-${estado.id.replace('_', '-')}" onclick="showLeadDetails(${lead.id})" data-lead-id="${lead.id}">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex-1">
-                            <h4 class="font-bold text-[var(--glow-ink)] mb-1 text-sm">${lead.nome}</h4>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style="background: ${estado.cor}20; color: ${estado.cor}; border: 1px solid ${estado.cor}40">
-                                ${perfilIcon} ${perfilLabel}
-                            </span>
-                        </div>
-                        ${mensagens > 0 ? `
-                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-[var(--glow-blue)]/20 text-[var(--glow-blue)] border border-[var(--glow-blue)]/30">
-                                💬 ${mensagens}
-                            </span>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="space-y-2 text-xs text-[rgba(255,255,255,0.7)]">
-                        <div class="flex items-center">
-                            <span class="mr-1">📱</span>
-                            <span>${lead.telefone}</span>
-                        </div>
-                        ${investimento ? `
-                            <div class="mt-2 p-2 bg-green-500/10 rounded border border-green-500/20">
-                                <div class="flex items-center text-green-300">
-                                    <span class="mr-1 text-sm">💰</span>
-                                    <span class="text-xs font-bold">R$ ${formatMoney(investimento)}</span>
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="mt-3 pt-3 border-t border-[var(--glow-border)] text-xs text-[rgba(255,255,255,0.5)]">
-                        ${formatDate(lead.created_at)}
-                    </div>
-                </div>
-            `;
-        }
-
-        function showLeadDetails(leadId) {
-            const lead = leads.find(l => l.id === leadId);
-            if (!lead) return;
-            
-            const estado = ESTADOS_FUNIL.find(e => e.id === (lead.estado_funil || 'inicio'));
-            
-            const content = `
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between pb-4 border-b border-[var(--glow-border)]">
-                        <div>
-                            <h4 class="text-2xl font-bold text-[var(--glow-ink)] mb-2">${lead.nome}</h4>
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold" style="background: ${estado.cor}20; color: ${estado.cor}; border: 1px solid ${estado.cor}40">
-                                ${estado.emoji} ${estado.nome}
-                            </span>
-                        </div>
-                        ${lead.mensagens_usuario > 0 ? `
-                            <span class="text-4xl font-bold text-[var(--glow-blue)]">
-                                💬 ${lead.mensagens_usuario}
-                            </span>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <p class="text-xs text-[rgba(255,255,255,0.5)] mb-1">Telefone</p>
-                            <p class="text-sm font-medium text-[var(--glow-ink)]">
-                                <a href="tel:${lead.telefone}" class="hover:text-[var(--glow-blue)]">${lead.telefone}</a>
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-[rgba(255,255,255,0.5)] mb-1">Email</p>
-                            <p class="text-sm font-medium text-[var(--glow-ink)] truncate">
-                                <a href="mailto:${lead.email}" class="hover:text-[var(--glow-blue)]">${lead.email}</a>
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-[rgba(255,255,255,0.5)] mb-1">Perfil</p>
-                            <p class="text-sm font-medium text-[var(--glow-ink)]">
-                                ${lead.perfil === 'vendedor' ? '💰 Vendedor' : '🏠 Comprador'}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-[rgba(255,255,255,0.5)] mb-1">Cadastro</p>
-                            <p class="text-sm font-medium text-[var(--glow-ink)]">${formatDate(lead.created_at)}</p>
-                        </div>
-                    </div>
-                    
+        function createLeadCard(lead) {
+            return $(`
+                <div class="lead-card" data-id="${lead.id}">
+                    <strong class="d-block mb-2">${lead.nome}</strong>
+                    <small class="text-muted d-block mb-2">
+                        <i class="bi bi-telephone me-1"></i>${lead.telefone}
+                    </small>
                     ${lead.valor_investimento ? `
-                        <div class="p-4 bg-green-500/10 rounded border border-green-500/30">
-                            <p class="text-xs text-green-300 mb-1">💰 Investimento</p>
-                            <p class="text-2xl font-bold text-green-300">R$ ${formatMoney(lead.valor_investimento)}</p>
+                        <div class="mt-2 p-2" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:6px;">
+                            <small class="text-success">
+                                <i class="bi bi-cash-coin me-1"></i>R$ ${formatMoney(lead.valor_investimento)}
+                            </small>
                         </div>
                     ` : ''}
-                    
-                    <div class="pt-4 flex gap-3">
-                        <button onclick="window.location.href='conversas.html?lead=${lead.id}'" class="flex-1 glow-button py-3">
-                            💬 Abrir Conversa
-                        </button>
-                        <button onclick="closeModal()" class="px-6 py-3 border border-[var(--glow-border)] text-[var(--glow-ink)] rounded hover:bg-[var(--glow-glass)] transition-all">
-                            Fechar
-                        </button>
-                    </div>
                 </div>
-            `;
-            
-            $('#modalContent').html(content);
-            $('#modalLead').removeClass('hidden');
+            `);
         }
 
-        function closeModal() {
-            $('#modalLead').addClass('hidden');
-        }
-
-        function formatMoney(value) {
-            return new Intl.NumberFormat('pt-BR', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }).format(value);
-        }
-
-        function formatDate(dateStr) {
-            if (!dateStr) return 'N/A';
-            const date = new Date(dateStr);
-            const now = new Date();
-            const diffTime = Math.abs(now - date);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays === 0) return 'Hoje';
-            if (diffDays === 1) return 'Ontem';
-            if (diffDays < 7) return `${diffDays} dias atrás`;
-            
-            return date.toLocaleDateString('pt-BR');
-        }
-
-        function handleLogout() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = 'login.html';
+        function formatMoney(v) {
+            return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(v);
         }
     </script>
 </body>
