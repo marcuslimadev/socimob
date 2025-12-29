@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Carbon;
+use App\Services\LeadService;
 
 class ClientAuthController extends Controller
 {
@@ -124,39 +125,30 @@ class ClientAuthController extends Controller
 
     private function findOrCreateLead(int $tenantId, User $user, ?string $telefone): ?Lead
     {
-        $leadQuery = Lead::where(function ($query) use ($tenantId) {
-                $query->where('tenant_id', $tenantId)
-                    ->orWhereNull('tenant_id');
-            })
-            ->where(function ($query) use ($user, $telefone) {
-                if ($user->email) {
-                    $query->where('email', $user->email);
-                }
-                if ($telefone) {
-                    $query->orWhere('telefone', $telefone)
-                        ->orWhere('whatsapp', $telefone);
-                }
-            });
+        /** @var LeadService $leadService */
+        $leadService = app(LeadService::class);
 
-        $lead = $leadQuery->first();
+        $lead = $leadService->findExisting($tenantId, $user->email, $telefone, $telefone);
 
         if ($lead) {
-            $lead->update([
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'telefone' => $telefone ?: $lead->telefone ?: '',
-                'whatsapp' => $telefone ?: $lead->whatsapp ?: '',
+            return $leadService->saveUnique([
+                'id' => $lead->id,
                 'tenant_id' => $lead->tenant_id ?: $tenantId,
+                'nome' => $user->name,
+                'email' => $user->email,
+                'telefone' => $telefone ?: $lead->telefone,
+                'whatsapp' => $telefone ?: $lead->whatsapp,
+                'user_id' => $user->id,
+                'ultima_interacao' => Carbon::now(),
             ]);
-            return $lead;
         }
 
-        return Lead::create([
+        return $leadService->saveUnique([
             'tenant_id' => $tenantId,
             'nome' => $user->name,
             'email' => $user->email,
-            'telefone' => $telefone ?: '',
-            'whatsapp' => $telefone ?: '',
+            'telefone' => $telefone ?: null,
+            'whatsapp' => $telefone ?: null,
             'status' => 'novo',
             'user_id' => $user->id,
             'primeira_interacao' => Carbon::now(),

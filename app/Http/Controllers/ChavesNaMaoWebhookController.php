@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Lead;
 use App\Services\LeadConversationService;
 use App\Services\LeadCustomerService;
+use App\Services\LeadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -12,11 +13,17 @@ class ChavesNaMaoWebhookController extends Controller
 {
     private LeadConversationService $leadConversationService;
     private LeadCustomerService $leadCustomerService;
+    private LeadService $leadService;
 
-    public function __construct(LeadConversationService $leadConversationService, LeadCustomerService $leadCustomerService)
+    public function __construct(
+        LeadConversationService $leadConversationService,
+        LeadCustomerService $leadCustomerService,
+        LeadService $leadService,
+    )
     {
         $this->leadConversationService = $leadConversationService;
         $this->leadCustomerService = $leadCustomerService;
+        $this->leadService = $leadService;
     }
     /**
      * Responde ao método GET (não permitido)
@@ -205,7 +212,7 @@ class ChavesNaMaoWebhookController extends Controller
         }
 
         // Criar ou atualizar lead
-        $lead = Lead::create($leadData);
+        $lead = $this->leadService->saveUnique($leadData);
 
         return $lead;
     }
