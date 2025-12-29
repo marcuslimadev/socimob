@@ -63,7 +63,10 @@ class ConversasController extends Controller
             
             // Apenas conversas ativas por padrão
             if (!$request->has('all')) {
-                $query->where('conversas.status', '!=', 'encerrada');
+                $query->where(function ($q) {
+                    $q->where('conversas.status', '!=', 'encerrada')
+                        ->orWhereNull('conversas.status');
+                });
             }
             
             $conversas = $query->orderBy('conversas.ultima_atividade', 'desc')->get();
