@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\User;
+use App\Services\LeadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -29,6 +30,20 @@ class ProfileController extends Controller
         $lead = Lead::where('tenant_id', $tenantId)
             ->where('user_id', $targetUser->id)
             ->first();
+
+        /** @var LeadService $leadService */
+        $leadService = app(LeadService::class);
+
+        if (!$lead) {
+            $lead = $leadService->findExisting(
+                $tenantId,
+                $targetUser->email,
+            );
+        }
+
+        if ($lead && !$lead->user_id) {
+            $lead->update(['user_id' => $targetUser->id]);
+        }
 
         return response()->json([
             'success' => true,
@@ -96,7 +111,7 @@ class ProfileController extends Controller
             ->first();
 
         if (!$lead) {
-            $lead = Lead::create([
+            $lead = $leadService->saveUnique([
                 'tenant_id' => $tenantId,
                 'nome' => $targetUser->name,
                 'email' => $targetUser->email,
@@ -126,7 +141,17 @@ class ProfileController extends Controller
         ], fn ($value) => $value !== null);
 
         if (!empty($leadPayload)) {
-            $lead->update($leadPayload);
+            $leadService->saveUnique(array_merge(
+                [
+                    'tenant_id' => $tenantId,
+                    'email' => $leadPayload['email'] ?? $lead->email,
+                    'telefone' => $leadPayload['telefone'] ?? $lead->telefone,
+                    'whatsapp' => $leadPayload['whatsapp'] ?? $lead->whatsapp,
+                    'user_id' => $targetUser->id,
+                ],
+                $leadPayload,
+            ));
+            $lead = $lead->fresh();
         }
 
         return response()->json([
