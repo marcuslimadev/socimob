@@ -30,6 +30,84 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     $router->get('/visitas', 'Admin\\VisitasController@index');
     $router->patch('/visitas/{id}', 'Admin\\VisitasController@update');
 
+    // Usuários/Equipe
+    $router->get('/users', function () {
+        $users = app('db')->table('users')
+            ->where('tenant_id', request()->user()->tenant_id)
+            ->select('id', 'name', 'email', 'telefone', 'role', 'is_active as ativo', 'created_at')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        return response()->json(['data' => $users]);
+    });
+    
+    $router->post('/users', function () {
+        $data = request()->all();
+        
+        // Validação básica
+        if (!isset($data['name']) || !isset($data['email']) || !isset($data['password'])) {
+            return response()->json(['message' => 'Campos obrigatórios faltando'], 400);
+        }
+        
+        // Verifica se email já existe no tenant
+        $exists = app('db')->table('users')
+            ->where('tenant_id', request()->user()->tenant_id)
+            ->where('email', $data['email'])
+            ->exists();
+            
+        if ($exists) {
+            return response()->json(['message' => 'Email já cadastrado'], 400);
+        }
+        
+        // Criar usuário
+        $userId = app('db')->table('users')->insertGetId([
+            'tenant_id' => request()->user()->tenant_id,
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'telefone' => $data['telefone'] ?? null,
+            'password' => password_hash($data['password'], PASSWORD_BCRYPT),
+            'role' => $data['role'] ?? 'user',
+            'is_active' => $data['ativo'] ?? true,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+        
+        return response()->json(['message' => 'Usuário criado com sucesso', 'id' => $userId], 201);
+    });
+    
+    $router->put('/users/{id}', function ($id) {
+        $data = request()->all();
+        
+        $update = [
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'telefone' => $data['telefone'] ?? null,
+            'role' => $data['role'] ?? 'user',
+            'is_active' => $data['ativo'] ?? true,
+            'updated_at' => now()
+        ];
+        
+        // Atualizar senha apenas se fornecida
+        if (!empty($data['password'])) {
+            $update['password'] = password_hash($data['password'], PASSWORD_BCRYPT);
+        }
+        
+        app('db')->table('users')
+            ->where('id', $id)
+            ->where('tenant_id', request()->user()->tenant_id)
+            ->update($update);
+            
+        return response()->json(['message' => 'Usuário atualizado com sucesso']);
+    });
+    
+    $router->delete('/users/{id}', function ($id) {
+        app('db')->table('users')
+            ->where('id', $id)
+            ->where('tenant_id', request()->user()->tenant_id)
+            ->delete();
+            
+        return response()->json(['message' => 'Usuário excluído com sucesso']);
+    });
+
     // Portal chat
     $router->post('/portal-chat/{id}/take', 'Admin\\PortalChatController@take');
     $router->post('/portal-chat/{id}/release', 'Admin\\PortalChatController@release');

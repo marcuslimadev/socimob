@@ -293,7 +293,7 @@
 
         function loadUsuarios() {
             $.ajax({
-                url: API_URL + '/users',
+                url: API_URL + '/admin/users',
                 method: 'GET',
                 headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 success: function(response) {
@@ -407,7 +407,7 @@
             };
 
             $.ajax({
-                url: API_URL + '/users',
+                url: API_URL + '/admin/users',
                 method: 'POST',
                 headers: { 
                     'Authorization': 'Bearer ' + localStorage.getItem('token'),
@@ -449,7 +449,7 @@
             if (!confirm('Deseja realmente excluir este usuário?')) return;
             
             $.ajax({
-                url: API_URL + '/users/' + id,
+                url: API_URL + '/admin/users/' + id,
                 method: 'DELETE',
                 headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 success: function() {
