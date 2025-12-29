@@ -4,25 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leads - SOCIMOB</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="sidebar.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/glow.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="sidebar.js"></script>
 </head>
 <body class="glow-page">
-    <!-- Navbar -->
-    <nav class="glow-nav">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="glow-badge text-base cursor-pointer" onclick="window.location.href='dashboard.html'">SOCIMOB</div>
-                <span class="glow-pill hidden md:inline-flex">Gestão de Leads</span>
-            </div>
-            <div class="flex items-center gap-3">
-                <span id="userName" class="text-sm font-semibold text-[var(--glow-ink)]"></span>
-                <button id="btnLogout" class="glow-button px-6 py-2 text-sm">Sair</button>
-            </div>
-        </div>
-    </nav>
-
     <!-- Conteúdo -->
     <main class="container mx-auto px-4 py-10 space-y-8">
         <!-- Header -->
@@ -134,7 +123,6 @@
             // Criar áudio de notificação
             notificationSound = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBCl+zPLTgjMGHm7A7+OZTRAMEFL+5rJiHAQ4kdfy');
 
-            $('#btnLogout').on('click', handleLogout);
             $('#btnNovoLead').on('click', () => $('#modalLead').removeClass('hidden'));
             $('#btnCancelar').on('click', () => $('#modalLead').addClass('hidden'));
             $('#formLead').on('submit', handleSaveLead);
@@ -378,10 +366,6 @@
             return new Date(date).toLocaleDateString('pt-BR');
         }
 
-        function handleLogout() {
-            localStorage.clear();
-            window.location.href = 'login.html';
-        }
     </script>
 </body>
 </html>

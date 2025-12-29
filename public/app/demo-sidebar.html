@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Sidebar - SOCIMOB</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="sidebar.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="sidebar.js"></script>
+    <style>
+        .demo-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        .feature-list {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .feature-item {
+            padding: 0.75rem;
+            border-left: 3px solid #3b82f6;
+            margin-bottom: 0.5rem;
+            background: #f8fafc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="demo-card">
+            <h1 class="display-5 fw-bold mb-3">
+                <i class="bi bi-layout-sidebar-inset"></i>
+                Sistema de Sidebar
+            </h1>
+            <p class="lead mb-0">
+                Painel lateral responsivo com controle de acesso por roles
+            </p>
+        </div>
+
+        <!-- Instruções -->
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="feature-list">
+                    <h3 class="h5 mb-3">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        Recursos Implementados
+                    </h3>
+                    <div class="feature-item">
+                        <strong>Controle de Acesso</strong>
+                        <p class="mb-0 small text-muted">Menu dinâmico baseado no role do usuário</p>
+                    </div>
+                    <div class="feature-item">
+                        <strong>Responsivo</strong>
+                        <p class="mb-0 small text-muted">Adaptável para desktop, tablet e mobile</p>
+                    </div>
+                    <div class="feature-item">
+                        <strong>Colapsar/Expandir</strong>
+                        <p class="mb-0 small text-muted">Estado salvo no localStorage</p>
+                    </div>
+                    <div class="feature-item">
+                        <strong>Mobile First</strong>
+                        <p class="mb-0 small text-muted">Menu hambúrguer + overlay em telas pequenas</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="feature-list">
+                    <h3 class="h5 mb-3">
+                        <i class="bi bi-gear-fill text-primary"></i>
+                        Controles
+                    </h3>
+                    <div class="alert alert-info">
+                        <strong>Desktop:</strong> Clique no botão <i class="bi bi-chevron-left"></i> para colapsar/expandir
+                    </div>
+                    <div class="alert alert-warning">
+                        <strong>Mobile:</strong> Use o botão <i class="bi bi-list"></i> no canto superior esquerdo
+                    </div>
+                    <div class="alert alert-success">
+                        <strong>Teste:</strong> Redimensione a janela para ver a responsividade
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roles -->
+        <div class="row g-4 mt-2">
+            <div class="col-md-4">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white fw-bold">
+                        <i class="bi bi-shield-fill-check"></i> Super Admin
+                    </div>
+                    <div class="card-body">
+                        <ul class="small mb-0">
+                            <li>Dashboard</li>
+                            <li>Leads</li>
+                            <li>Visitas</li>
+                            <li>Imóveis</li>
+                            <li>Conversas</li>
+                            <li>Configurações</li>
+                            <li><strong>Super Admin</strong></li>
+                            <li><strong>Tenants</strong></li>
+                            <li><strong>Usuários</strong></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white fw-bold">
+                        <i class="bi bi-person-badge"></i> Admin
+                    </div>
+                    <div class="card-body">
+                        <ul class="small mb-0">
+                            <li>Dashboard</li>
+                            <li>Leads</li>
+                            <li>Visitas</li>
+                            <li>Imóveis</li>
+                            <li>Conversas</li>
+                            <li>Configurações</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card border-secondary">
+                    <div class="card-header bg-secondary text-white fw-bold">
+                        <i class="bi bi-person"></i> Usuário
+                    </div>
+                    <div class="card-body">
+                        <ul class="small mb-0">
+                            <li>Dashboard</li>
+                            <li>Leads</li>
+                            <li>Visitas</li>
+                            <li>Conversas</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Código de Exemplo -->
+        <div class="feature-list mt-4">
+            <h3 class="h5 mb-3">
+                <i class="bi bi-code-slash text-warning"></i>
+                Como Usar em Novas Páginas
+            </h3>
+            <pre class="bg-dark text-light p-3 rounded"><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="pt-BR"&gt;
+&lt;head&gt;
+    &lt;!-- Bootstrap Icons --&gt;
+    &lt;link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"&gt;
+    
+    &lt;!-- Sidebar CSS --&gt;
+    &lt;link rel="stylesheet" href="sidebar.css"&gt;
+    
+    &lt;!-- jQuery --&gt;
+    &lt;script src="https://code.jquery.com/jquery-3.7.1.min.js"&gt;&lt;/script&gt;
+    
+    &lt;!-- Sidebar JS --&gt;
+    &lt;script src="sidebar.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;!-- A sidebar será injetada automaticamente --&gt;
+    
+    &lt;div class="container py-4"&gt;
+        &lt;!-- Seu conteúdo aqui --&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+        </div>
+
+        <!-- Links -->
+        <div class="alert alert-info mt-4">
+            <h5 class="alert-heading">
+                <i class="bi bi-info-circle-fill"></i>
+                Documentação
+            </h5>
+            <p class="mb-2">Para mais informações, consulte:</p>
+            <ul class="mb-0">
+                <li><strong>SIDEBAR_README.md</strong> - Resumo da implementação</li>
+                <li><strong>SIDEBAR_DOCS.md</strong> - Documentação completa</li>
+                <li><strong>_template-sidebar.html</strong> - Template de exemplo</li>
+            </ul>
+        </div>
+
+        <!-- Simulador de Roles -->
+        <div class="card border-primary mt-4">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-person-gear"></i>
+                Simulador de Roles
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Simule diferentes tipos de usuário:</p>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-danger" onclick="simulateRole('super_admin')">
+                        <i class="bi bi-shield-fill-check"></i> Super Admin
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="simulateRole('admin')">
+                        <i class="bi bi-person-badge"></i> Admin
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="simulateRole('user')">
+                        <i class="bi bi-person"></i> Usuário
+                    </button>
+                </div>
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Nota:</strong> Recarregue a página após mudar o role para ver as mudanças no menu.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function simulateRole(role) {
+            const users = {
+                'super_admin': {
+                    name: 'Admin Sistema',
+                    email: 'admin@socimob.com',
+                    role: 'super_admin'
+                },
+                'admin': {
+                    name: 'Gestor Imobiliária',
+                    email: 'gestor@imobiliaria.com',
+                    role: 'admin'
+                },
+                'user': {
+                    name: 'Corretor',
+                    email: 'corretor@imobiliaria.com',
+                    role: 'user'
+                }
+            };
+
+            const user = users[role];
+            const token = 'demo-token-' + role;
+
+            localStorage.setItem('user', JSON.stringify(user));
+            localStorage.setItem('token', token);
+
+            alert(`Role alterado para: ${role}\n\nRecarregando página...`);
+            
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
+
+        $(document).ready(function() {
+            // Verificar se há usuário
+            const user = localStorage.getItem('user');
+            if (!user) {
+                // Definir usuário padrão para demo
+                simulateRole('admin');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -4,130 +4,62 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - SOCIMOB</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/css/glow.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="sidebar.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="sidebar.js"></script>
 </head>
-<body class="glow-page">
-    <nav class="glow-nav">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="glow-badge text-base">SOCIMOB</div>
-                <span class="glow-pill hidden md:inline-flex">Dashboards internos</span>
-            </div>
-            <div class="flex items-center gap-3">
-                <span id="userName" class="text-sm font-semibold text-[var(--glow-ink)]"></span>
-                <span id="userRole" class="text-xs font-bold uppercase tracking-[0.3em] text-[rgba(255,255,255,0.7)]"></span>
-                <button id="btnLogout" class="glow-button px-6 py-2 text-sm">Sair</button>
-            </div>
-        </div>
-    </nav>
-
-    <main class="container mx-auto px-4 py-10 space-y-8">
-        <div class="glow-panel">
-            <h2 class="glow-section-title mb-2">Dashboard</h2>
-            <p class="text-[rgba(255,255,255,0.7)] mb-6">Visão geral fluida dos leads, imóveis e conversas.</p>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="glow-card p-6 space-y-2">
-                    <div class="text-sm text-[rgba(255,255,255,0.6)] uppercase tracking-[0.4em]">Leads</div>
-                    <div id="statLeadsValue" class="text-4xl font-black">0</div>
-                    <p id="statLeadsDetail" class="text-sm text-[rgba(255,255,255,0.7)]">Carregando...</p>
+<body class="bg-light">
+    <main class="container py-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h2 class="card-title h4 mb-2">Dashboard</h2>
+                <p class="text-muted mb-4">Visão geral dos leads, imóveis e conversas</p>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <div class="small text-uppercase opacity-75">Leads</div>
+                                <div id="statLeadsValue" class="display-4 fw-bold">0</div>
+                                <p id="statLeadsDetail" class="small mb-0 opacity-75">Carregando...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <div class="small text-uppercase opacity-75">Imóveis</div>
+                                <div id="statPropertiesValue" class="display-4 fw-bold">0</div>
+                                <p id="statPropertiesDetail" class="small mb-0 opacity-75">Atualizando...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <div class="small text-uppercase opacity-75">Conversas</div>
+                                <div id="statConversasValue" class="display-4 fw-bold">0</div>
+                                <p id="statConversasDetail" class="small mb-0 opacity-75">Sincronizando...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="glow-card p-6 space-y-2">
-                    <div class="text-sm text-[rgba(255,255,255,0.6)] uppercase tracking-[0.4em]">Imóveis</div>
-                    <div id="statPropertiesValue" class="text-4xl font-black">0</div>
-                    <p id="statPropertiesDetail" class="text-sm text-[rgba(255,255,255,0.7)]">Atualizando...</p>
-                </div>
-                <div class="glow-card p-6 space-y-2">
-                    <div class="text-sm text-[rgba(255,255,255,0.6)] uppercase tracking-[0.4em]">Conversas</div>
-                    <div id="statConversasValue" class="text-4xl font-black">0</div>
-                    <p id="statConversasDetail" class="text-sm text-[rgba(255,255,255,0.7)]">Sincronizando...</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="glow-panel">
-            <h3 class="glow-section-title mb-6">Menu</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <a href="leads.html" class="glow-button secondary">Leads</a>
-                <a href="visitas.html" class="glow-button secondary">Visitas</a>
-                <a href="imoveis.html" class="glow-button secondary">Imóveis</a>
-                <a href="conversas.html" class="glow-button secondary">Conversas</a>
-                <a href="configuracoes.html" class="glow-button">Configurações</a>
-                <a href="#" id="linkSuperAdmin" class="glow-button ghost hidden">Super Admin</a>
             </div>
         </div>
 
-        <div class="glow-card text-center text-xs text-[rgba(255,255,255,0.6)]">
+        <div class="text-center text-muted small mt-4">
             Versão HTML/jQuery - Servidor Único PHP
         </div>
     </main>
-            <h2 class="text-3xl font-black text-slate-900 mb-4 uppercase">Dashboard</h2>
-            <p class="text-slate-600 mb-6">Bem-vindo ao sistema!</p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-blue-50 border-l-4 border-blue-500 p-6">
-                    <h3 class="text-xl font-bold text-blue-900 mb-2">Leads</h3>
-                    <p id="statLeadsValue" class="text-3xl font-black text-blue-600">0</p>
-                    <p id="statLeadsDetail" class="text-sm text-slate-500 mt-2"></p>
-                </div>
 
-                <div class="bg-green-50 border-l-4 border-green-500 p-6">
-                    <h3 class="text-xl font-bold text-green-900 mb-2">Imóveis</h3>
-                    <p id="statPropertiesValue" class="text-3xl font-black text-green-600">0</p>
-                    <p id="statPropertiesDetail" class="text-sm text-slate-500 mt-2"></p>
-                </div>
-
-                <div class="bg-purple-50 border-l-4 border-purple-500 p-6">
-                    <h3 class="text-xl font-bold text-purple-900 mb-2">Conversas</h3>
-                    <p id="statConversasValue" class="text-3xl font-black text-purple-600">0</p>
-                    <p id="statConversasDetail" class="text-sm text-slate-500 mt-2"></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Menu de Navegação -->
-        <div class="bg-white rounded-lg shadow-xl p-8">
-            <h3 class="text-2xl font-black text-slate-900 mb-6 uppercase">Menu</h3>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <a href="leads.html" class="block bg-slate-900 hover:bg-slate-800 text-white p-6 text-center font-bold uppercase transition">
-                    📋 Leads
-                </a>
-                <a href="visitas.html" class="block bg-slate-900 hover:bg-slate-800 text-white p-6 text-center font-bold uppercase transition">
-                    ?? Visitas
-                </a>
-                <a href="imoveis.html" class="block bg-slate-900 hover:bg-slate-800 text-white p-6 text-center font-bold uppercase transition">
-                    🏠 Imóveis
-                </a>
-                <a href="conversas.html" class="block bg-slate-900 hover:bg-slate-800 text-white p-6 text-center font-bold uppercase transition">
-                    💬 Conversas
-                </a>
-                <a href="configuracoes.html" class="block bg-slate-900 hover:bg-slate-800 text-white p-6 text-center font-bold uppercase transition">
-                    ⚙️ Configurações
-                </a>
-                <a href="#" id="linkSuperAdmin" class="hidden block bg-red-900 hover:bg-red-800 text-white p-6 text-center font-bold uppercase transition col-span-full">
-                    👑 Super Admin
-                </a>
-            </div>
-        </div>
-
-        <div class="mt-4 text-center text-sm text-slate-500">
-            <p>Versão HTML/jQuery - Servidor Único PHP</p>
-        </div>
-    </div>
-
-    <script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         const API_URL = '/api';
 
         $(document).ready(function() {
             console.log('✓ Dashboard carregado');
             
             checkAuth();
-
-            $('#btnLogout').on('click', function() {
-                handleLogout();
-            });
         });
 
         function checkAuth() {
@@ -144,44 +76,12 @@
                 const user = JSON.parse(userStr);
                 console.log('✓ Usuário:', user);
 
-                // Exibir info do usuário
-                $('#userName').text(user.name);
-                $('#userRole').text(user.role.toUpperCase());
-
-                // Mostrar link super admin se for super_admin
-                if (user.role === 'super_admin') {
-                    $('#linkSuperAdmin').removeClass('hidden');
-                }
-
                 fetchDashboardStats();
 
             } catch (e) {
                 console.error('✗ Erro ao processar usuário:', e);
                 window.location.href = 'login.html';
             }
-        }
-
-        function handleLogout() {
-            console.log('🚪 Fazendo logout...');
-
-            const token = localStorage.getItem('token');
-
-            // Chamar API de logout (opcional, pode falhar mas continua)
-            $.ajax({
-                url: API_URL + '/auth/logout',
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + token
-                },
-                complete: function() {
-                    // Limpar storage
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    
-                    console.log('✓ Logout realizado');
-                    window.location.href = 'login.html';
-                }
-            });
         }
 
         function fetchDashboardStats() {
