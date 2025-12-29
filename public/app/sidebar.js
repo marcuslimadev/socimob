@@ -116,6 +116,13 @@ class Sidebar {
                 section: 'Sistema',
                 items: [
                     {
+                        id: 'usuarios',
+                        label: 'Equipe',
+                        icon: 'bi-people',
+                        href: 'usuarios.html',
+                        roles: ['super_admin', 'admin']
+                    },
+                    {
                         id: 'configuracoes',
                         label: 'Configurações',
                         icon: 'bi-gear-fill',
