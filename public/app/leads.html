@@ -6,11 +6,8 @@
     <title>Leads - SOCIMOB</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="sidebar.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
     <script src="theme-toggle.js"></script>
     <script src="sidebar.js"></script>
     <style>
@@ -253,6 +250,56 @@
             border-color: #3b82f6;
             color: #fff;
         }
+        .lead-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            height: 100%;
+        }
+        .lead-box:hover {
+            transform: translateY(-2px);
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        .lead-box-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.75rem;
+            gap: 0.5rem;
+        }
+        .lead-box-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+            line-height: 1.3;
+        }
+        .lead-box-info {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin: 0.25rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .lead-box-actions {
+            display: flex;
+            gap: 0.25rem;
+            margin-top: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .lead-box-actions .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        .origem-badge {
+            font-size: 0.65rem;
+            padding: 0.25rem 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -288,23 +335,23 @@
             </div>
         </div>
 
-        <div class="card" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px;">
-            <div class="card-body">
-                <table id="leadsTable" class="table table-hover" style="width:100%">
-                    <thead>
-                        <tr>
-                            <th>Origem</th>
-                            <th>Nome</th>
-                            <th>Telefone</th>
-                            <th>Status</th>
-                            <th>Valor</th>
-                            <th>Data</th>
-                            <th>Atendimento</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+        <!-- Grid de Leads -->
+        <div id="leadsGrid" class="row g-3">
+            <!-- Leads serão inseridos aqui -->
+        </div>
+
+        <!-- Paginação -->
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div class="text-muted">
+                Mostrando <span id="showingCount">0</span> de <span id="totalCount">0</span> leads
+            </div>
+            <div class="btn-group">
+                <button id="btnPrev" class="btn btn-outline-primary" onclick="changePage(-1)" disabled>
+                    <i class="bi bi-chevron-left"></i> Anterior
+                </button>
+                <button id="btnNext" class="btn btn-outline-primary" onclick="changePage(1)" disabled>
+                    Próxima <i class="bi bi-chevron-right"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -362,6 +409,8 @@
         const API_URL = '/api';
         let leads = [];
         let currentUser = {};
+        let currentPage = 1;
+        const leadsPerPage = 20;
 
         $(document).ready(function() {
             checkAuth();
@@ -394,7 +443,6 @@
             'interesse': 'Interesse'
         };
 
-        let leadsTable;
         function buildMockLeads() {
             return [
                 { id: 1, nome: 'João Silva', email: 'joao@email.com', telefone: '(11) 98765-4321', status: 'novo', created_at: '2025-12-19', mensagens_usuario: 3, valor_investimento: 250000, origem: 'ia', assigned_user_id: null, assigned_user_name: null },
@@ -416,13 +464,94 @@
                 headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 success: function(response) {
                     leads = response.data || [];
-                    initDataTable(leads);
+                    leads.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    renderLeadsGrid();
                 },
                 error: function() {
                     leads = buildMockLeads();
-                    initDataTable(leads);
+                    renderLeadsGrid();
                 }
             });
+        }
+
+        function renderLeadsGrid() {
+            const start = (currentPage - 1) * leadsPerPage;
+            const end = start + leadsPerPage;
+            const pageLeads = leads.slice(start, end);
+
+            const html = pageLeads.map(lead => renderLeadBox(lead)).join('');
+            $('#leadsGrid').html(html || '<div class="col-12 text-center text-muted py-5">Nenhum lead encontrado</div>');
+
+            // Atualizar paginação
+            const totalPages = Math.ceil(leads.length / leadsPerPage);
+            $('#showingCount').text(pageLeads.length);
+            $('#totalCount').text(leads.length);
+            $('#btnPrev').prop('disabled', currentPage === 1);
+            $('#btnNext').prop('disabled', currentPage >= totalPages || leads.length === 0);
+        }
+
+        function renderLeadBox(lead) {
+            const statusColor = statusColors[lead.status] || 'secondary';
+            const statusLabel = statusLabels[lead.status] || lead.status;
+            const origem = lead.origem === 'ia' ? '<i class="bi bi-robot me-1"></i>IA' : 
+                           lead.origem === 'chaves_na_mao' ? '<i class="bi bi-house-door me-1"></i>CNM' : '-';
+            const origemClass = lead.origem === 'ia' ? 'bg-info' : lead.origem === 'chaves_na_mao' ? 'bg-warning' : 'bg-secondary';
+            
+            const isFree = !lead.assigned_user_id;
+            const isMine = currentUser && currentUser.id && Number(lead.assigned_user_id) === Number(currentUser.id);
+            const isBusy = lead.assigned_user_id && !isMine;
+            const assignedLabel = isFree ? 'Livre' : isMine ? 'Você' : (lead.assigned_user_name || 'Em atendimento');
+            const assignedColor = isFree ? 'secondary' : isMine ? 'success' : 'primary';
+
+            return `
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <div class="lead-box">
+                        <div class="lead-box-header">
+                            <h6 class="lead-box-name">${lead.nome}</h6>
+                            <span class="badge ${origemClass} origem-badge">${origem}</span>
+                        </div>
+                        <div class="lead-box-info">
+                            <i class="bi bi-telephone"></i>
+                            ${lead.telefone}
+                        </div>
+                        <div class="lead-box-info">
+                            <span class="badge bg-${statusColor}">${statusLabel}</span>
+                            <span class="badge bg-${assignedColor}">${assignedLabel}</span>
+                        </div>
+                        ${lead.valor_investimento ? `
+                            <div class="lead-box-info">
+                                <i class="bi bi-currency-dollar"></i>
+                                R$ ${formatMoney(lead.valor_investimento)}
+                            </div>
+                        ` : ''}
+                        <div class="lead-box-info">
+                            <i class="bi bi-calendar"></i>
+                            ${formatDate(lead.created_at)}
+                        </div>
+                        <div class="lead-box-actions">
+                            ${isFree ? `<button class="btn btn-success btn-sm" onclick="claimLead(${lead.id})" title="Assumir"><i class="bi bi-hand-thumbs-up"></i></button>` : ''}
+                            ${isMine ? `<button class="btn btn-warning btn-sm" onclick="releaseLead(${lead.id})" title="Liberar"><i class="bi bi-arrow-counterclockwise"></i></button>` : ''}
+                            <a href="conversas.html?lead_id=${lead.id}&telefone=${encodeURIComponent(lead.telefone || '')}" class="btn btn-info btn-sm" title="Conversa">
+                                <i class="bi bi-chat-dots"></i>
+                            </a>
+                            <a href="${getWhatsAppLink(lead.telefone, lead.nome)}" target="_blank" class="btn btn-success btn-sm" title="WhatsApp">
+                                <i class="bi bi-whatsapp"></i>
+                            </a>
+                            <button class="btn btn-primary btn-sm" onclick="editLead(${lead.id})" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteLead(${lead.id})" title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function changePage(direction) {
+            currentPage += direction;
+            renderLeadsGrid();
         }
 
         function initDataTable(data) {
