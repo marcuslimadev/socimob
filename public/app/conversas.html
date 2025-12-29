@@ -263,19 +263,52 @@
         }
 
         function loadConversas() {
+            console.log('Carregando lista de conversas...');
             $.ajax({
                 url: API_URL + '/conversas',
                 method: 'GET',
                 headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 success: function(response) {
+                    console.log('Conversas carregadas da API:', response);
                     conversas = response.data || [];
                     renderConversasList();
                 },
-                error: function() {
+                error: function(xhr, status, error) {
+                    console.warn('Erro ao carregar conversas da API, usando dados mock:', error);
                     conversas = [
-                        { id: 1, lead_nome: 'João Silva', telefone: '(11) 98765-4321', lead_status: 'leads', user_messages_count: 3, ultima_mensagem_text: 'Olá! Tenho interesse em um imóvel.' },
-                        { id: 2, lead_nome: 'Maria Santos', telefone: '(11) 98765-4322', lead_status: 'contato', user_messages_count: 0, ultima_mensagem_text: 'Podemos falar amanhã?' },
-                        { id: 3, lead_nome: 'Pedro Costa', telefone: '(11) 98765-4323', lead_status: 'interesse', user_messages_count: 5, ultima_mensagem_text: 'Quero um ap de 2q' }
+                        { 
+                            id: 1, 
+                            lead_nome: 'João Silva', 
+                            lead_telefone: '(11) 98765-4321', 
+                            telefone: '(11) 98765-4321',
+                            lead_status: 'novo', 
+                            status: 'ativa',
+                            user_messages_count: 3, 
+                            ultima_mensagem_text: 'Olá! Tenho interesse em um imóvel de 2 quartos.',
+                            ultima_atividade: '2025-12-29 10:30:00'
+                        },
+                        { 
+                            id: 2, 
+                            lead_nome: 'Maria Santos', 
+                            lead_telefone: '(11) 98765-4322',
+                            telefone: '(11) 98765-4322', 
+                            lead_status: 'em_atendimento', 
+                            status: 'ativa',
+                            user_messages_count: 0, 
+                            ultima_mensagem_text: 'Podemos falar amanhã pela manhã?',
+                            ultima_atividade: '2025-12-29 09:15:00'
+                        },
+                        { 
+                            id: 3, 
+                            lead_nome: 'Pedro Costa', 
+                            lead_telefone: '(11) 98765-4323',
+                            telefone: '(11) 98765-4323', 
+                            lead_status: 'qualificado', 
+                            status: 'ativa',
+                            user_messages_count: 5, 
+                            ultima_mensagem_text: 'Quero um apartamento na zona sul, até R$ 350mil',
+                            ultima_atividade: '2025-12-29 11:45:00'
+                        }
                     ];
                     renderConversasList();
                 }
@@ -381,12 +414,35 @@
 
                     renderMessages();
                 },
-                error: function() {
-                    messages[conversaId] = [
-                        { id: 1, direction: 'incoming', content: 'Olá! Tenho interesse em um imóvel.', sent_at: '2025-12-29 10:30:00' },
-                        { id: 2, direction: 'outgoing', content: 'Olá! Fico feliz com seu interesse. Que tipo de imóvel você procura?', sent_at: '2025-12-29 10:35:00' },
-                        { id: 3, direction: 'incoming', content: 'Estou procurando um apartamento de 2 quartos.', sent_at: '2025-12-29 10:40:00' }
-                    ];
+                error: function(xhr, status, error) {
+                    console.warn('Erro ao carregar mensagens da API para conversa', conversaId, ':', error);
+                    
+                    // Mensagens diferentes para cada conversa
+                    const mockMessagesByConversaId = {
+                        1: [
+                            { id: 1, direction: 'incoming', content: 'Olá! Tenho interesse em um imóvel de 2 quartos.', sent_at: '2025-12-29 10:30:00' },
+                            { id: 2, direction: 'outgoing', content: 'Olá João! Fico feliz com seu interesse. Que região você prefere?', sent_at: '2025-12-29 10:35:00' },
+                            { id: 3, direction: 'incoming', content: 'Prefiro zona sul, se possível próximo ao metrô.', sent_at: '2025-12-29 10:40:00' },
+                            { id: 4, direction: 'outgoing', content: 'Perfeito! Tenho algumas opções interessantes. Qual seu orçamento?', sent_at: '2025-12-29 10:42:00' }
+                        ],
+                        2: [
+                            { id: 5, direction: 'incoming', content: 'Boa tarde! Vi um anúncio de apartamento no site.', sent_at: '2025-12-29 09:15:00' },
+                            { id: 6, direction: 'outgoing', content: 'Boa tarde Maria! Qual apartamento despertou seu interesse?', sent_at: '2025-12-29 09:20:00' },
+                            { id: 7, direction: 'incoming', content: 'Era um de 3 quartos na Vila Madalena.', sent_at: '2025-12-29 09:25:00' },
+                            { id: 8, direction: 'outgoing', content: 'Ah sim! Conheço bem esse imóvel. Podemos agendar uma visita?', sent_at: '2025-12-29 09:30:00' },
+                            { id: 9, direction: 'incoming', content: 'Podemos falar amanhã pela manhã?', sent_at: '2025-12-29 09:32:00' }
+                        ],
+                        3: [
+                            { id: 10, direction: 'incoming', content: 'Quero um apartamento na zona sul, até R$ 350mil', sent_at: '2025-12-29 11:45:00' },
+                            { id: 11, direction: 'outgoing', content: 'Ótimo Pedro! Com esse orçamento temos várias opções. Quantos quartos?', sent_at: '2025-12-29 11:47:00' },
+                            { id: 12, direction: 'incoming', content: '2 quartos está bom. Tem vaga de garagem?', sent_at: '2025-12-29 11:48:00' },
+                            { id: 13, direction: 'outgoing', content: 'Sim! A maioria das nossas opções inclui pelo menos 1 vaga.', sent_at: '2025-12-29 11:50:00' },
+                            { id: 14, direction: 'incoming', content: 'Perfeito! Quando posso ver alguns?', sent_at: '2025-12-29 11:52:00' },
+                            { id: 15, direction: 'outgoing', content: 'Posso agendar para esta semana. Que tal quinta-feira de manhã?', sent_at: '2025-12-29 11:55:00' }
+                        ]
+                    };
+                    
+                    messages[conversaId] = mockMessagesByConversaId[conversaId] || [];
                     renderMessages();
                 }
             });
