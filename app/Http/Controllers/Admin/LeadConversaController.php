@@ -59,4 +59,29 @@ class LeadConversaController extends Controller
             'skipped' => $skipped
         ]);
     }
+
+    public function startAi(Request $request, int $leadId)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $lead = Lead::where('tenant_id', $user->tenant_id)
+            ->where('id', $leadId)
+            ->first();
+
+        if (!$lead) {
+            return response()->json(['error' => 'Lead not found'], 404);
+        }
+
+        $result = $this->leadConversationService->startAiForLead($lead, [
+            'canal' => $request->input('canal', 'chaves_na_mao'),
+            'message' => $request->input('message'),
+        ]);
+
+        $statusCode = $result['success'] ? 200 : 400;
+
+        return response()->json($result, $statusCode);
+    }
 }
