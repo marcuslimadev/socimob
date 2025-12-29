@@ -71,8 +71,12 @@ class ChavesNaMaoWebhookController extends Controller
 
             // Processar e salvar lead
             $lead = $this->processLead($leadData);
-            $this->leadConversationService->ensureConversaForLead($lead, [
+            $conversa = $this->leadConversationService->ensureConversaForLead($lead, [
                 'canal' => 'chaves_na_mao'
+            ]);
+            $this->leadConversationService->startAiForLead($lead, [
+                'canal' => 'chaves_na_mao',
+                'message' => $conversa?->mensagens()->where('direction', 'incoming')->value('content')
             ]);
             $this->leadCustomerService->ensureClientForLead($lead);
 

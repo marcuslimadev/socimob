@@ -142,7 +142,5 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
 
     // Conversas a partir de leads
     $router->post('/leads/conversas/sync', 'Admin\\LeadConversaController@syncFromLeads');
-
-    // Financeiro - NFSe de comissão para corretores
-    $router->post('/financeiro/comissoes/nfse', 'Admin\\FinanceiroController@emitirNfseComissao');
+    $router->post('/leads/{id}/start-ai', 'Admin\\LeadConversaController@startAi');
 });

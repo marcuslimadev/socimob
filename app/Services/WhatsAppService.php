@@ -88,9 +88,7 @@ class WhatsAppService
             $telefone = $this->cleanPhoneNumber($from);
             
             // 1. Obter ou criar conversa
-            $tenantId = $webhookData['tenant_id']
-                ?? (app()->bound('tenant') ? app('tenant')->id : null)
-                ?? env('WEBHOOK_TENANT_ID');
+            $tenantId = $this->resolveTenantId($webhookData['tenant_id'] ?? null);
             $conversaData = [
                 'profile_name' => $profileName,
                 'city' => $city,
@@ -221,7 +219,7 @@ class WhatsAppService
      */
     private function getOrCreateConversa($telefone, $dados)
     {
-        $tenantId = $dados['tenant_id'] ?? null;
+        $tenantId = $this->resolveTenantId($dados['tenant_id'] ?? null);
         $query = Conversa::where('telefone', $telefone)
             ->where('status', '!=', 'encerrada');
 
@@ -317,6 +315,36 @@ class WhatsAppService
         }
 
         return $this->handleRegularMessage($conversa, $body, false);
+    }
+
+    public function initiateAiConversation(Conversa $conversa, Lead $lead, ?string $mensagemInicial = null): array
+    {
+        if (!$conversa->telefone) {
+            return ['success' => false, 'message' => 'Conversa sem telefone'];
+        }
+
+        $stage = $conversa->stage ?: 'coleta_dados';
+        $conversa->update([
+            'stage' => $stage,
+            'status' => 'ativa',
+            'ultima_atividade' => Carbon::now(),
+        ]);
+
+        $this->updateLeadStatusFromStage($lead, $stage);
+
+        $assistantName = $this->getAssistantName();
+        $nomePreferido = $this->extractPreferredName($lead->nome ?? $conversa->lead->nome ?? null);
+        $property = $mensagemInicial ? $this->findPropertyFromMessage($mensagemInicial) : null;
+        $mensagemBoasVindas = $property
+            ? $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property)
+            : $this->buildGenericWelcomeMessage($assistantName, $nomePreferido);
+
+        $this->sendMessage($conversa->id, $conversa->telefone, $mensagemBoasVindas);
+
+        return [
+            'success' => true,
+            'message' => 'Atendimento iniciado pela IA',
+        ];
     }
     
     /**
@@ -821,6 +849,27 @@ class WhatsAppService
         if ($lead->status !== $status) {
             $lead->update(['status' => $status]);
         }
+    }
+
+    private function resolveTenantId(?int $tenantId = null, ?int $conversaId = null): ?int
+    {
+        if ($tenantId) {
+            return $tenantId;
+        }
+
+        if ($conversaId) {
+            $conversaTenant = Conversa::where('id', $conversaId)->value('tenant_id');
+            if ($conversaTenant) {
+                return $conversaTenant;
+            }
+        }
+
+        if (app()->bound('tenant') && app('tenant')) {
+            return app('tenant')->id;
+        }
+
+        return env('WEBHOOK_TENANT_ID')
+            ?? env('DEFAULT_TENANT_ID', 1);
     }
 
     /**
@@ -1581,9 +1630,7 @@ class WhatsAppService
     private function saveMensagem($conversaId, $data)
     {
         $conversa = Conversa::find($conversaId);
-        $tenantId = $conversa?->tenant_id
-            ?? (app()->bound('tenant') ? app('tenant')->id : null)
-            ?? env('WEBHOOK_TENANT_ID');
+        $tenantId = $this->resolveTenantId($conversa?->tenant_id);
 
         return Mensagem::create(array_merge([
             'tenant_id' => $tenantId,
@@ -1610,6 +1657,8 @@ class WhatsAppService
             $localizacao = $state;
         }
         
+        $tenantId = $this->resolveTenantId($dados['tenant_id'] ?? null, $conversaId);
+
         $leadData = [
             'nome' => $dados['profile_name'] ?: 'Contato WhatsApp',
             'whatsapp_name' => $dados['profile_name'],
@@ -1617,13 +1666,13 @@ class WhatsAppService
             'status' => 'novo',
             'origem' => 'whatsapp',
             'primeira_interacao' => Carbon::now(),
-            'ultima_interacao' => Carbon::now()
+            'ultima_interacao' => Carbon::now(),
+            'tenant_id' => $tenantId,
         ];
 
         $criteria = ['telefone' => $telefone];
-        if (!empty($dados['tenant_id'])) {
-            $leadData['tenant_id'] = $dados['tenant_id'];
-            $criteria['tenant_id'] = $dados['tenant_id'];
+        if (!empty($tenantId)) {
+            $criteria['tenant_id'] = $tenantId;
         }
         
         $lead = Lead::firstOrCreate(
@@ -1636,7 +1685,7 @@ class WhatsAppService
             $updates = [];
             if (!$lead->nome && isset($dados['profile_name'])) $updates['nome'] = $dados['profile_name'];
             if (!$lead->localizacao && $localizacao) $updates['localizacao'] = $localizacao;
-            if (!$lead->tenant_id && !empty($dados['tenant_id'])) $updates['tenant_id'] = $dados['tenant_id'];
+            if (!$lead->tenant_id && !empty($tenantId)) $updates['tenant_id'] = $tenantId;
             
             if (!empty($updates)) {
                 $lead->update($updates);

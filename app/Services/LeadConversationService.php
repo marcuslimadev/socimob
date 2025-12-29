@@ -9,6 +9,13 @@ use Carbon\Carbon;
 
 class LeadConversationService
 {
+    private WhatsAppService $whatsappService;
+
+    public function __construct(WhatsAppService $whatsappService)
+    {
+        $this->whatsappService = $whatsappService;
+    }
+
     public function ensureConversaForLead(Lead $lead, array $options = []): ?Conversa
     {
         $existing = $lead->conversas()->orderBy('id', 'desc')->first();
@@ -51,6 +58,45 @@ class LeadConversationService
         }
 
         return $conversa;
+    }
+
+    public function startAiForLead(Lead $lead, array $options = []): array
+    {
+        $conversa = $this->ensureConversaForLead($lead, $options);
+        if (!$conversa) {
+            return [
+                'success' => false,
+                'message' => 'Lead não possui telefone para iniciar atendimento'
+            ];
+        }
+
+        if ($conversa->corretor_id) {
+            return [
+                'success' => false,
+                'message' => 'Atendimento humano já iniciado para este lead'
+            ];
+        }
+
+        $hasOutgoingMessages = $conversa->mensagens()
+            ->where('direction', 'outgoing')
+            ->exists();
+
+        if ($hasOutgoingMessages) {
+            return [
+                'success' => false,
+                'message' => 'A IA já iniciou o atendimento para este lead'
+            ];
+        }
+
+        $mensagemInicial = $options['message'] ?? $this->extractMensagemFromObservacoes($lead->observacoes);
+
+        $result = $this->whatsappService->initiateAiConversation($conversa, $lead, $mensagemInicial);
+
+        return [
+            'success' => $result['success'] ?? false,
+            'message' => $result['message'] ?? 'Falha ao iniciar atendimento',
+            'conversa_id' => $conversa->id,
+        ];
     }
 
     private function normalizeTelefone(?string $telefone): ?string
