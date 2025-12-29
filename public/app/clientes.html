@@ -14,7 +14,7 @@
     <script src="theme-toggle.js"></script>
     <script src="sidebar.js"></script>
     <style>
-        .td {
+        .tr {
             border-radius: 3px;
         }
         :root {
@@ -87,6 +87,14 @@
         table.dataTable {
             border-collapse: separate !important;
             border-spacing: 0 0.5rem;
+        }
+        table.dataTable tbody tr td:first-child {
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+        }
+        table.dataTable tbody tr td:last-child {
+            border-top-right-radius: 12px;
+            border-bottom-right-radius: 12px;
         }
         table.dataTable thead th {
             background: rgba(30, 41, 59, 0.5);
