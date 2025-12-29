@@ -32,7 +32,14 @@ try {
     echo "<h2>Response</h2>";
     echo "<pre>";
     echo "Status: " . $response->getStatusCode() . "\n";
-    echo "Content:\n";
+    echo "Headers:\n";
+    foreach ($response->headers->all() as $key => $values) {
+        echo "  $key: " . implode(', ', $values) . "\n";
+    }
+    echo "\nContent Type: " . $response->headers->get('Content-Type') . "\n";
+    echo "\nRaw Content:\n";
+    echo $response->getContent();
+    echo "\n\nDecoded Content:\n";
     print_r(json_decode($response->getContent(), true));
     echo "</pre>";
     
