@@ -172,7 +172,6 @@
                         <tr>
                             <th>Usuário</th>
                             <th>Email</th>
-                            <th>Telefone</th>
                             <th>Perfil</th>
                             <th>Status</th>
                             <th>Data Criação</th>
@@ -203,10 +202,6 @@
                             <div class="col-md-6">
                                 <label class="form-label">Email *</label>
                                 <input type="email" name="email" class="form-control" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Telefone</label>
-                                <input type="tel" name="telefone" class="form-control" placeholder="(11) 98765-4321">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Perfil *</label>
@@ -285,10 +280,10 @@
         };
 
         const mockUsuarios = [
-            { id: 1, name: 'Admin Principal', email: 'admin@exclusiva.com', telefone: '(11) 98765-4321', role: 'admin', ativo: true, created_at: '2025-01-15' },
-            { id: 2, name: 'João Corretor', email: 'joao@exclusiva.com', telefone: '(11) 98765-4322', role: 'user', ativo: true, created_at: '2025-02-20' },
-            { id: 3, name: 'Maria Silva', email: 'maria@exclusiva.com', telefone: '(11) 98765-4323', role: 'user', ativo: true, created_at: '2025-03-10' },
-            { id: 4, name: 'Carlos Santos', email: 'carlos@exclusiva.com', telefone: '(11) 98765-4324', role: 'user', ativo: false, created_at: '2025-04-05' }
+            { id: 1, name: 'Admin Principal', email: 'admin@exclusiva.com', role: 'admin', ativo: true, created_at: '2025-01-15' },
+            { id: 2, name: 'João Corretor', email: 'joao@exclusiva.com', role: 'user', ativo: true, created_at: '2025-02-20' },
+            { id: 3, name: 'Maria Silva', email: 'maria@exclusiva.com', role: 'user', ativo: true, created_at: '2025-03-10' },
+            { id: 4, name: 'Carlos Santos', email: 'carlos@exclusiva.com', role: 'user', ativo: false, created_at: '2025-04-05' }
         ];
 
         function loadUsuarios() {
@@ -328,12 +323,6 @@
                         }
                     },
                     { data: 'email' },
-                    { 
-                        data: 'telefone',
-                        render: function(data) {
-                            return data || '-';
-                        }
-                    },
                     { 
                         data: 'role',
                         render: function(data) {
@@ -375,7 +364,7 @@
                     url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
                 },
                 pageLength: 25,
-                order: [[5, 'desc']],
+                order: [[4, 'desc']],
                 responsive: true,
                 dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip'
             });
@@ -399,7 +388,6 @@
             const data = {
                 name: $('[name="name"]').val(),
                 email: $('[name="email"]').val(),
-                telefone: $('[name="telefone"]').val(),
                 role: $('[name="role"]').val(),
                 password: password,
                 password_confirmation: passwordConfirm,
@@ -432,7 +420,6 @@
             if (usuario) {
                 $('[name="name"]').val(usuario.name);
                 $('[name="email"]').val(usuario.email);
-                $('[name="telefone"]').val(usuario.telefone || '');
                 $('[name="role"]').val(usuario.role);
                 $('[name="ativo"]').prop('checked', usuario.ativo);
                 

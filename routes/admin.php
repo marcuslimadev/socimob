@@ -39,7 +39,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
         
         $users = app('db')->table('users')
             ->where('tenant_id', $user->tenant_id)
-            ->select('id', 'name', 'email', 'telefone', 'role', 'is_active as ativo', 'created_at')
+            ->select('id', 'name', 'email', 'role', 'is_active as ativo', 'created_at')
             ->orderBy('created_at', 'desc')
             ->get();
         return response()->json(['data' => $users]);
@@ -73,7 +73,6 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
             'tenant_id' => $user->tenant_id,
             'name' => $data['name'],
             'email' => $data['email'],
-            'telefone' => $data['telefone'] ?? null,
             'password' => password_hash($data['password'], PASSWORD_BCRYPT),
             'role' => $data['role'] ?? 'user',
             'is_active' => $data['ativo'] ?? true,
@@ -95,7 +94,6 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
         $update = [
             'name' => $data['name'],
             'email' => $data['email'],
-            'telefone' => $data['telefone'] ?? null,
             'role' => $data['role'] ?? 'user',
             'is_active' => $data['ativo'] ?? true,
             'updated_at' => date('Y-m-d H:i:s')
