@@ -142,4 +142,5 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
 
     // Conversas a partir de leads
     $router->post('/leads/conversas/sync', 'Admin\\LeadConversaController@syncFromLeads');
+    $router->post('/leads/{id}/start-ai', 'Admin\\LeadConversaController@startAi');
 });
