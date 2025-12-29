@@ -293,6 +293,7 @@
                 <table id="leadsTable" class="table table-hover" style="width:100%">
                     <thead>
                         <tr>
+                            <th>Origem</th>
                             <th>Nome</th>
                             <th>Email</th>
                             <th>Telefone</th>
@@ -393,15 +394,15 @@
 
         let leadsTable;
         const mockLeads = [
-            { id: 1, nome: 'João Silva', email: 'joao@email.com', telefone: '(11) 98765-4321', status: 'novo', created_at: '2025-12-19', mensagens_usuario: 3, valor_investimento: 250000 },
-            { id: 2, nome: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 98765-4322', status: 'em_atendimento', created_at: '2025-12-18', mensagens_usuario: 7 },
-            { id: 3, nome: 'Pedro Costa', email: 'pedro@email.com', telefone: '(11) 98765-4323', status: 'qualificado', created_at: '2025-12-20', mensagens_usuario: 12, valor_investimento: 450000 },
-            { id: 4, nome: 'Ana Oliveira', email: 'ana@email.com', telefone: '(11) 98765-4324', status: 'proposta', created_at: '2025-12-21', mensagens_usuario: 5, valor_investimento: 180000 },
-            { id: 5, nome: 'Carlos Souza', email: 'carlos@email.com', telefone: '(11) 98765-4325', status: 'fechado', created_at: '2025-12-22', mensagens_usuario: 0, valor_investimento: 320000 },
-            { id: 6, nome: 'Beatriz Lima', email: 'beatriz@email.com', telefone: '(11) 98765-4326', status: 'novo', created_at: '2025-12-23', mensagens_usuario: 2 },
-            { id: 7, nome: 'Rafael Mendes', email: 'rafael@email.com', telefone: '(11) 98765-4327', status: 'em_atendimento', created_at: '2025-12-24', mensagens_usuario: 8, valor_investimento: 380000 },
-            { id: 8, nome: 'Fernanda Rocha', email: 'fernanda@email.com', telefone: '(11) 98765-4328', status: 'interesse', created_at: '2025-12-25', mensagens_usuario: 4 },
-            { id: 9, nome: 'Lucas Ferreira', email: 'lucas@email.com', telefone: '(11) 98765-4329', status: 'qualificado', created_at: '2025-12-26', mensagens_usuario: 6, valor_investimento: 520000 }
+            { id: 1, nome: 'João Silva', email: 'joao@email.com', telefone: '(11) 98765-4321', status: 'novo', created_at: '2025-12-19', mensagens_usuario: 3, valor_investimento: 250000, origem: 'ia' },
+            { id: 2, nome: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 98765-4322', status: 'em_atendimento', created_at: '2025-12-18', mensagens_usuario: 7, origem: 'chaves_na_mao' },
+            { id: 3, nome: 'Pedro Costa', email: 'pedro@email.com', telefone: '(11) 98765-4323', status: 'qualificado', created_at: '2025-12-20', mensagens_usuario: 12, valor_investimento: 450000, origem: 'ia' },
+            { id: 4, nome: 'Ana Oliveira', email: 'ana@email.com', telefone: '(11) 98765-4324', status: 'proposta', created_at: '2025-12-21', mensagens_usuario: 5, valor_investimento: 180000, origem: 'chaves_na_mao' },
+            { id: 5, nome: 'Carlos Souza', email: 'carlos@email.com', telefone: '(11) 98765-4325', status: 'fechado', created_at: '2025-12-22', mensagens_usuario: 0, valor_investimento: 320000, origem: 'ia' },
+            { id: 6, nome: 'Beatriz Lima', email: 'beatriz@email.com', telefone: '(11) 98765-4326', status: 'novo', created_at: '2025-12-23', mensagens_usuario: 2, origem: 'chaves_na_mao' },
+            { id: 7, nome: 'Rafael Mendes', email: 'rafael@email.com', telefone: '(11) 98765-4327', status: 'em_atendimento', created_at: '2025-12-24', mensagens_usuario: 8, valor_investimento: 380000, origem: 'ia' },
+            { id: 8, nome: 'Fernanda Rocha', email: 'fernanda@email.com', telefone: '(11) 98765-4328', status: 'interesse', created_at: '2025-12-25', mensagens_usuario: 4, origem: 'chaves_na_mao' },
+            { id: 9, nome: 'Lucas Ferreira', email: 'lucas@email.com', telefone: '(11) 98765-4329', status: 'qualificado', created_at: '2025-12-26', mensagens_usuario: 6, valor_investimento: 520000, origem: 'ia' }
         ];
 
         function loadLeads() {
@@ -428,6 +429,18 @@
             leadsTable = $('#leadsTable').DataTable({
                 data: data,
                 columns: [
+                    { 
+                        data: 'origem',
+                        render: function(data, type, row) {
+                            if (data === 'ia') {
+                                return `<span class="badge bg-info"><i class="bi bi-robot me-1"></i>IA</span>`;
+                            } else if (data === 'chaves_na_mao') {
+                                return `<span class="badge bg-warning"><i class="bi bi-house-door me-1"></i>Chaves na Mão</span>`;
+                            } else {
+                                return `<span class="badge bg-secondary">-</span>`;
+                            }
+                        }
+                    },
                     { 
                         data: 'nome',
                         render: function(data, type, row) {
@@ -485,7 +498,7 @@
                     url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
                 },
                 pageLength: 25,
-                order: [[5, 'desc']], // Ordenar por data (mais recente primeiro)
+                order: [[6, 'desc']], // Ordenar por data (mais recente primeiro)
                 responsive: true,
                 dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip'
             });
