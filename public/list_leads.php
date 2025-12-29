@@ -52,7 +52,6 @@ try {
             'telefone',
             'email',
             'status',
-            'origem',
             'tenant_id',
             'user_id',
             'assigned_user_id',
