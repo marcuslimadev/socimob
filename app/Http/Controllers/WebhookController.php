@@ -74,18 +74,26 @@ class WebhookController extends Controller
             // Normalizar dados conforme a origem (Twilio prioritário)
             $normalizedData = $this->normalizeWebhookData($webhookData, $source);
             $tenant = $this->resolveTenantForWebhook($request, $normalizedData);
-            if ($tenant) {
-                app()->instance('tenant', $tenant);
-                $request->attributes->set('tenant_id', $tenant->id);
-                $normalizedData['tenant_id'] = $tenant->id;
+            
+            if (!$tenant) {
+                Log::error('❌ Webhook ignorado - tenant não identificado', [
+                    'from' => $normalizedData['from'] ?? 'N/A',
+                    'to' => $normalizedData['to'] ?? 'N/A',
+                    'host' => $request->getHost()
+                ]);
+                return response('', 200); // Retorna 200 para evitar reenvio do Twilio
             }
+            
+            app()->instance('tenant', $tenant);
+            $request->attributes->set('tenant_id', $tenant->id);
+            $normalizedData['tenant_id'] = $tenant->id;
 
-            Log::info('?? De: ' . ($normalizedData['from'] ?? 'N/A'));
-            Log::info('?? Nome: ' . ($normalizedData['profile_name'] ?? 'N/A'));
-            Log::info('?? Mensagem: ' . ($normalizedData['message'] ?? '[mЎdia]'));
-            Log::info('?? Message ID: ' . ($normalizedData['message_id'] ?? 'N/A'));
-            Log::info('?? Origem: ' . $source);
-            Log::info('?? Tenant ID: ' . ($tenant?->id ?? 'N/A'));
+            Log::info('📞 De: ' . ($normalizedData['from'] ?? 'N/A'));
+            Log::info('👤 Nome: ' . ($normalizedData['profile_name'] ?? 'N/A'));
+            Log::info('💬 Mensagem: ' . ($normalizedData['message'] ?? '[mídia]'));
+            Log::info('🆔 Message ID: ' . ($normalizedData['message_id'] ?? 'N/A'));
+            Log::info('📱 Origem: ' . $source);
+            Log::info('🏢 Tenant ID: ' . $tenant->id);
             Log::info('ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД');
             Log::info('?? Payload completo:', $webhookData);
             Log::info('ДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДДД');
@@ -221,9 +229,13 @@ class WebhookController extends Controller
             return Tenant::find($tenantId);
         }
 
-        // SEMPRE retornar tenant padrão (ID 1) se não conseguir resolver
-        Log::warning('⚠️ Tenant não resolvido, usando tenant padrão (ID 1)');
-        return Tenant::find(1);
+        // NÃO criar leads sem tenant identificado
+        Log::warning('⚠️ Tenant não resolvido para webhook - mensagem será ignorada', [
+            'host' => $request->getHost(),
+            'to_number' => $normalizedData['to'] ?? 'N/A'
+        ]);
+        
+        return null;
     }
 
     private function normalizeWhatsappNumber(?string $value): ?string

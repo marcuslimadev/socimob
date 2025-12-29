@@ -868,11 +868,11 @@ class WhatsAppService
             return app('tenant')->id;
         }
 
-        $defaultTenantId = env('WEBHOOK_TENANT_ID') ?? env('DEFAULT_TENANT_ID') ?? 1;
+        // Se chegou aqui, não conseguiu resolver o tenant
+        // Isso NÃO deveria acontecer se o webhook foi validado corretamente
+        Log::error('⚠️ Tentativa de criar lead/conversa sem tenant identificado');
         
-        Log::info('⚠️ Usando tenant padrão', ['tenant_id' => $defaultTenantId]);
-        
-        return $defaultTenantId;
+        return null;
     }
 
     /**

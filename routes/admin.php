@@ -20,6 +20,11 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     $router->get('/settings/notifications', 'Admin\TenantSettingsController@getNotificationSettings');
     $router->put('/settings/notifications', 'Admin\TenantSettingsController@updateNotificationSettings');
 
+    // AI Prompt Settings
+    $router->get('/settings/ai-prompt', 'Admin\TenantSettingsController@getAiPrompt');
+    $router->post('/settings/ai-prompt', 'Admin\TenantSettingsController@saveAiPrompt');
+    $router->delete('/settings/ai-prompt', 'Admin\TenantSettingsController@deleteAiPrompt');
+
     // Importação de Imóveis
     $router->get('/imoveis', 'Admin\ImportacaoController@listar');
     $router->post('/imoveis/importar', 'Admin\ImportacaoController@importar');

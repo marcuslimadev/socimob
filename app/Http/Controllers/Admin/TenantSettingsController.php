@@ -446,6 +446,86 @@ class TenantSettingsController extends Controller
             'message' => 'Notification settings updated successfully',
         ]);
     }
+
+    /**
+     * Obter prompt customizado da IA
+     * GET /api/admin/settings/ai-prompt
+     */
+    public function getAiPrompt(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        $prompt = \App\Models\AppSetting::getValue('ai_prompt_custom', null, $user->tenant_id);
+
+        return response()->json([
+            'prompt' => $prompt,
+            'using_default' => empty($prompt),
+        ]);
+    }
+
+    /**
+     * Salvar prompt customizado da IA
+     * POST /api/admin/settings/ai-prompt
+     */
+    public function saveAiPrompt(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        $this->validate($request, [
+            'prompt' => 'nullable|string|max:2000',
+        ]);
+
+        $prompt = $request->input('prompt', '');
+        
+        // Se vazio, remove a customização (volta ao padrão)
+        if (empty(trim($prompt))) {
+            \App\Models\AppSetting::setValue('ai_prompt_custom', null, $user->tenant_id);
+            return response()->json([
+                'success' => true,
+                'message' => 'Prompt resetado. Sistema usará o padrão.',
+                'using_default' => true,
+            ]);
+        }
+
+        // Salvar prompt customizado
+        \App\Models\AppSetting::setValue('ai_prompt_custom', $prompt, $user->tenant_id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Prompt customizado salvo com sucesso',
+            'prompt' => $prompt,
+            'using_default' => false,
+        ]);
+    }
+
+    /**
+     * Resetar prompt (voltar ao padrão)
+     * DELETE /api/admin/settings/ai-prompt
+     */
+    public function deleteAiPrompt(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        \App\Models\AppSetting::setValue('ai_prompt_custom', null, $user->tenant_id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Prompt resetado para o padrão do sistema',
+            'using_default' => true,
+        ]);
+    }
 }
 
 
