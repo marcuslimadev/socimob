@@ -135,4 +135,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     $router->post('/chaves-na-mao/test', 'ChavesNaMaoController@test');
     $router->post('/chaves-na-mao/retry', 'ChavesNaMaoController@retry');
     $router->post('/chaves-na-mao/resend', 'ChavesNaMaoController@resend');
+
+    // Conversas a partir de leads
+    $router->post('/leads/conversas/sync', 'Admin\\LeadConversaController@syncFromLeads');
 });

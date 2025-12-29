@@ -363,10 +363,15 @@
         let conversas = [];
         let currentConversaId = null;
         let messages = {};
+        let prefillLeadId = null;
+        let prefillTelefone = null;
 
         $(document).ready(function() {
             initTheme();
             checkAuth();
+            const params = new URLSearchParams(window.location.search);
+            prefillLeadId = params.get('lead_id');
+            prefillTelefone = params.get('telefone');
             loadConversas();
             $('#formMessage').on('submit', handleSendMessage);
             setInterval(() => {
@@ -389,6 +394,7 @@
                     console.log('Conversas carregadas da API:', response);
                     conversas = response.data || [];
                     renderConversasList();
+                    autoSelectConversa();
                 },
                 error: function(xhr, status, error) {
                     console.warn('Erro ao carregar conversas da API, usando dados mock:', error);
@@ -428,6 +434,7 @@
                         }
                     ];
                     renderConversasList();
+                    autoSelectConversa();
                 }
             });
         }
@@ -467,6 +474,31 @@
             }).join('');
 
             $('#leadsList').html(html || '<div class="text-center py-5 text-muted">Nenhuma conversa</div>');
+        }
+
+        function autoSelectConversa() {
+            if (!prefillLeadId && !prefillTelefone) return;
+            if (!Array.isArray(conversas) || conversas.length === 0) return;
+
+            const telefoneBusca = prefillTelefone ? normalizeTelefone(prefillTelefone) : null;
+            const conversa = conversas.find(conv => {
+                if (prefillLeadId && String(conv.lead_id || '') === String(prefillLeadId)) return true;
+                if (telefoneBusca) {
+                    const telConv = normalizeTelefone(conv.telefone || conv.lead_telefone || '');
+                    return telConv && telConv === telefoneBusca;
+                }
+                return false;
+            });
+
+            if (conversa) {
+                prefillLeadId = null;
+                prefillTelefone = null;
+                selectConversa(conversa.id);
+            }
+        }
+
+        function normalizeTelefone(valor) {
+            return String(valor || '').replace(/\D/g, '');
         }
 
         function selectConversa(conversaId) {

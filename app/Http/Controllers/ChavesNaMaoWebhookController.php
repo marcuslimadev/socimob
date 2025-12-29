@@ -3,11 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lead;
+use App\Services\LeadConversationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class ChavesNaMaoWebhookController extends Controller
 {
+    private LeadConversationService $leadConversationService;
+
+    public function __construct(LeadConversationService $leadConversationService)
+    {
+        $this->leadConversationService = $leadConversationService;
+    }
     /**
      * Responde ao método GET (não permitido)
      */
@@ -61,6 +68,9 @@ class ChavesNaMaoWebhookController extends Controller
 
             // Processar e salvar lead
             $lead = $this->processLead($leadData);
+            $this->leadConversationService->ensureConversaForLead($lead, [
+                'canal' => 'chaves_na_mao'
+            ]);
 
             Log::info('✅ Lead processado com sucesso', [
                 'internal_id' => $lead->id,

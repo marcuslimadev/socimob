@@ -503,6 +503,9 @@
                             return `
                                 <div class="btn-group btn-group-sm">
                                     ${claimBtn || releaseBtn || busyBtn}
+                                    <a href="conversas.html?lead_id=${row.id}&telefone=${encodeURIComponent(row.telefone || '')}" class="btn btn-info" title="Abrir conversa">
+                                        <i class="bi bi-chat-dots"></i>
+                                    </a>
                                     <a href="${getWhatsAppLink(row.telefone, row.nome)}" target="_blank" class="btn btn-success" title="WhatsApp">
                                         <i class="bi bi-whatsapp"></i>
                                     </a>
