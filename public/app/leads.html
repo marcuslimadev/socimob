@@ -295,7 +295,6 @@
                         <tr>
                             <th>Origem</th>
                             <th>Nome</th>
-                            <th>Email</th>
                             <th>Telefone</th>
                             <th>Status</th>
                             <th>Valor</th>
@@ -452,7 +451,6 @@
                             return `<strong>${data}</strong>`;
                         }
                     },
-                    { data: 'email' },
                     { 
                         data: 'telefone',
                         render: function(data) {
@@ -523,9 +521,12 @@
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
                 },
-                pageLength: 25,
-                order: [[6, 'desc']], // Ordenar por data (mais recente primeiro)
+                pageLength: 20,
+                lengthMenu: [[10, 20, 50], [10, 20, 50]],
+                order: [[5, 'desc']], // Ordenar por data (mais recente primeiro)
                 responsive: true,
+                scrollY: '60vh',
+                scrollCollapse: true,
                 dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip'
             });
         }
