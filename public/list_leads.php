@@ -44,20 +44,8 @@ $capsule->bootEloquent();
 header('Content-Type: application/json');
 
 try {
+    // Pegar todas as colunas sem especificar (evitar erros de colunas inexistentes)
     $leads = DB::table('leads')
-        ->select([
-            'id',
-            'nome',
-            'whatsapp_name',
-            'telefone',
-            'email',
-            'status',
-            'tenant_id',
-            'user_id',
-            'assigned_user_id',
-            'created_at',
-            'updated_at'
-        ])
         ->orderBy('id', 'DESC')
         ->limit(50)
         ->get();
