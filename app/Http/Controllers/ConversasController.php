@@ -53,7 +53,10 @@ class ConversasController extends Controller
             );
 
             if ($tenantId) {
-                $query->where('conversas.tenant_id', $tenantId);
+                $query->where(function ($q) use ($tenantId) {
+                    $q->where('conversas.tenant_id', $tenantId)
+                        ->orWhere('leads.tenant_id', $tenantId);
+                });
             }
             
             // Filtrar por status
@@ -121,7 +124,12 @@ class ConversasController extends Controller
                     'users.name as corretor_nome'
                 )
                 ->where('conversas.id', $id)
-                ->when($tenantId, fn($q) => $q->where('conversas.tenant_id', $tenantId))
+                ->when($tenantId, function ($q) use ($tenantId) {
+                    $q->where(function ($sub) use ($tenantId) {
+                        $sub->where('conversas.tenant_id', $tenantId)
+                            ->orWhere('leads.tenant_id', $tenantId);
+                    });
+                })
                 ->first();
             
             if (!$conversa) {
@@ -137,7 +145,6 @@ class ConversasController extends Controller
             // Buscar mensagens
             $mensagens = $db->table('mensagens')
                 ->where('conversa_id', $id)
-                ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
                 ->orderBy('sent_at', 'asc')
                 ->get();
             
@@ -525,13 +532,19 @@ class ConversasController extends Controller
     {
         $tenantId = $this->resolveTenantId($request);
 
-        $query = Conversa::query();
+        $query = Conversa::query()
+            ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+            ->select('conversas.*')
+            ->where('conversas.id', $id);
 
         if ($tenantId) {
-            $query->where('tenant_id', $tenantId);
+            $query->where(function ($q) use ($tenantId) {
+                $q->where('conversas.tenant_id', $tenantId)
+                    ->orWhere('leads.tenant_id', $tenantId);
+            });
         }
 
-        return $query->findOrFail($id);
+        return $query->firstOrFail();
     }
 
     private function resolveTenantId(Request $request): ?int
