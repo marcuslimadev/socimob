@@ -25,6 +25,13 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     $router->post('/settings/ai-prompt', 'Admin\TenantSettingsController@saveAiPrompt');
     $router->delete('/settings/ai-prompt', 'Admin\TenantSettingsController@deleteAiPrompt');
 
+    // Financeiro - Comissões
+    $router->get('/comissoes', 'Admin\CommissionController@index');
+    $router->post('/comissoes', 'Admin\CommissionController@store');
+    $router->get('/comissoes/{id}', 'Admin\CommissionController@show');
+    $router->get('/comissoes/{id}/status', 'Admin\CommissionController@verificarStatus');
+    $router->get('/corretores', 'Admin\CommissionController@listarCorretores');
+
     // Importação de Imóveis
     $router->get('/imoveis', 'Admin\ImportacaoController@listar');
     $router->post('/imoveis/importar', 'Admin\ImportacaoController@importar');

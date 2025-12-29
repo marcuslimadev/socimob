@@ -116,6 +116,13 @@ class Sidebar {
                         icon: 'bi-chat-dots-fill',
                         href: 'conversas.html',
                         roles: ['super_admin', 'admin', 'user']
+                    },
+                    {
+                        id: 'financeiro',
+                        label: 'Financeiro',
+                        icon: 'bi-cash-coin',
+                        href: 'financeiro.html',
+                        roles: ['super_admin', 'admin']
                     }
                 ]
             },

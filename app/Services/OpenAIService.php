@@ -300,7 +300,25 @@ Exemplos de extração:
             $propertiesContext .= "⚠️ FOTOS: Quando o cliente pedir fotos de um imóvel, ENVIE os links diretamente se disponíveis acima!\n";
         }
         
-        $systemPrompt = "Você é {$assistantName}, assistente imobiliário inteligente e empático da Exclusiva Lar Imóveis.
+        // NOVO: Buscar prompt personalizado do admin (prevalece sobre o default)
+        $customPrompt = AppSetting::getValue('ai_prompt_custom', null);
+        
+        if (!empty($customPrompt)) {
+            // Admin configurou prompt customizado - SUBSTITUI completamente o prompt padrão
+            Log::info('[OpenAI] Usando prompt CUSTOMIZADO do administrador', [
+                'length' => strlen($customPrompt),
+                'preview' => substr($customPrompt, 0, 100)
+            ]);
+            
+            // Injeta variáveis no prompt customizado
+            $systemPrompt = str_replace('{$assistantName}', $assistantName, $customPrompt);
+            $systemPrompt = str_replace('{$audioInstruction}', $audioInstruction, $systemPrompt);
+            $systemPrompt = str_replace('{$propertiesContext}', $propertiesContext, $systemPrompt);
+        } else {
+            // Usa prompt padrão do sistema
+            Log::info('[OpenAI] Usando prompt PADRÃO do sistema');
+            
+            $systemPrompt = "Você é {$assistantName}, assistente imobiliário inteligente e empático da Exclusiva Lar Imóveis.
 
 🎯 SEU PAPEL:
 - Conduzir TOTALMENTE o usuário em todas as etapas do atendimento
@@ -361,6 +379,12 @@ Exemplo:
 - Sugira exemplos de resposta
 - Confirme dados recebidos (\"Perfeito! Renda de R$ 5.000 registrada ✅\")
 - Mantenha tom empático e guiador";
+        }
+        
+        // Adicionar contexto de dados coletados (se houver)
+        if (!empty($dataCollectionContext)) {
+            $systemPrompt .= "\n\n" . $dataCollectionContext;
+        }
 
         $userPrompt = ($context ? "Contexto anterior:\n$context\n\n" : "") . "Cliente: $message\n\nResponda:";
         
