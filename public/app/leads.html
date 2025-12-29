@@ -18,414 +18,387 @@
             --text-primary: #f8fafc;
             --text-secondary: rgba(255,255,255,0.7);
             --border-color: rgba(255,255,255,0.1);
-            --accent-color: #3b82f6;
         }
-
+        [data-theme="light"] {
+            --bg-primary: #f1f5f9;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f8fafc;
+            --text-primary: #0f172a;
+            --text-secondary: rgba(15, 23, 42, 0.7);
+            --border-color: rgba(15, 23, 42, 0.1);
+        }
         body {
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
-            padding-bottom: 100px;
+            transition: background 0.3s, color 0.3s;
         }
-
         .page-container {
             padding: 2rem;
         }
-
         .page-header {
             margin-bottom: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
-
         .page-title {
             font-size: 2rem;
             font-weight: 700;
             color: #fff;
-            margin: 0;
+            margin-bottom: 0.5rem;
         }
-
-        /* CARDS SIMPLIFICADOS */
-        .lead-card {
-            background: var(--bg-secondary);
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1.25rem;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
+        .page-subtitle {
+            color: var(--text-secondary);
         }
-
-        .lead-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
-            border-color: rgba(59, 130, 246, 0.5);
+        [data-theme="light"] .form-control,
+        [data-theme="light"] .form-select {
+            background: #fff;
+            color: #0f172a;
         }
-
-        .lead-card.selected {
-            border-color: var(--accent-color);
-            background: rgba(59, 130, 246, 0.1);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        [data-theme="light"] .modal-content {
+            background: #fff;
         }
-
-        .lead-card-checkbox {
-            position: absolute;
+        .theme-toggle {
+            position: fixed;
             top: 1rem;
             right: 1rem;
-        }
-
-        .lead-card-checkbox input[type="checkbox"] {
-            width: 22px;
-            height: 22px;
+            z-index: 9999;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
             cursor: pointer;
-            accent-color: var(--accent-color);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            transition: all 0.3s;
         }
-
-        .lead-card-name {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-            padding-right: 2.5rem;
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6);
         }
-
-        .lead-card-phone {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.95rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.75rem;
-        }
-
-        .lead-card-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            align-items: center;
-        }
-
-        .lead-card-date {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-        }
-
-        /* BARRA DE AÇÕES FIXA */
-        .action-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(180deg, transparent, rgba(15, 23, 42, 0.98) 20%);
-            backdrop-filter: blur(10px);
-            border-top: 2px solid var(--accent-color);
-            padding: 1.25rem 2rem;
-            transform: translateY(100%);
-            transition: transform 0.3s ease;
-            z-index: 1000;
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .action-bar.visible {
-            transform: translateY(0);
-        }
-
-        .action-bar-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .action-bar-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .action-bar-count {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--accent-color);
-        }
-
-        .action-bar-buttons {
-            display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-        }
-
-        .action-bar-buttons .btn {
-            padding: 0.6rem 1.2rem;
-            font-weight: 600;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        /* BADGES */
-        .badge {
-            padding: 0.4rem 0.7rem;
-            font-weight: 600;
-            font-size: 0.75rem;
-            border-radius: 6px;
-        }
-
-        /* MODAL DE DETALHES */
-        .modal-content {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-        }
-
-        .modal-header {
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .modal-footer {
-            border-top: 1px solid var(--border-color);
-        }
-
-        .detail-row {
-            padding: 0.75rem 0;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-
-        .detail-label {
-            font-weight: 600;
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .detail-value {
-            font-size: 1rem;
-            color: var(--text-primary);
-            margin-top: 0.25rem;
-        }
-
-        /* FILTROS */
         .filter-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            padding: 1.25rem;
+            padding: 1rem;
             margin-bottom: 1.5rem;
         }
-
-        /* PAGINAÇÃO */
-        .pagination-container {
+        .lead-card {
+            background: linear-gradient(145deg, var(--bg-secondary), var(--bg-tertiary));
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            transition: all 0.3s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .lead-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        .badge-status {
+            padding: 0.35rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .lead-card h5 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+        .lead-card small, .lead-card .mb-2 {
+            font-size: 0.85rem;
+        }
+        .badge-novo { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge-em_atendimento { background: rgba(234, 179, 8, 0.2); color: #fbbf24; border: 1px solid rgba(234, 179, 8, 0.3); }
+        .badge-qualificado { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .badge-proposta { background: rgba(249, 115, 22, 0.2); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
+        .badge-fechado { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .badge-perdido { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-messages {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+        }
+        .investment-box {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 6px;
+            padding: 0.5rem;
+        }
+        .lead-card .mb-3 {
+            margin-bottom: 0.75rem !important;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        .form-control, .form-select {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            border-radius: 8px;
+            padding: 0.75rem;
+        }
+        .form-control:focus, .form-select:focus {
+            background: rgba(30, 41, 59, 0.7);
+            border-color: #3b82f6;
+            color: #fff;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .form-control::placeholder { color: rgba(255,255,255,0.4); }
+        .form-label { color: rgba(255,255,255,0.8); font-weight: 500; margin-bottom: 0.5rem; }
+        .modal-content {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.9));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+        }
+        .modal-header { border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .modal-title { color: #fff; font-weight: 700; }
+        .btn-close { filter: brightness(0) invert(1); }
+        .btn-whatsapp {
+            background: linear-gradient(135deg, #25D366, #128C7E);
+            color: white;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+        .btn-whatsapp:hover {
+            background: linear-gradient(135deg, #128C7E, #075E54);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+        }
+        /* DataTable Styles */
+        .dataTables_wrapper {
+            color: var(--text-primary);
+        }
+        .dataTables_wrapper .dataTables_filter input,
+        .dataTables_wrapper .dataTables_length select {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            border-radius: 6px;
+            padding: 0.375rem 0.75rem;
+        }
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_paginate {
+            color: var(--text-secondary);
+        }
+        table.dataTable {
+            border-collapse: separate !important;
+            border-spacing: 0 0.5rem;
+        }
+        table.dataTable thead th {
+            background: rgba(30, 41, 59, 0.5);
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            padding: 1rem;
+        }
+        table.dataTable tbody tr {
+            background: var(--bg-secondary);
+            transition: all 0.2s;
+        }
+        table.dataTable tbody tr:hover {
+            background: rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        table.dataTable tbody td {
+            border: none;
+            padding: 1rem;
+            vertical-align: middle;
+        }
+        .badge {
+            padding: 0.5rem 0.75rem;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+        .status-badge {
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .page-item.active .page-link {
+            background: #3b82f6;
+            border-color: #3b82f6;
+        }
+        .page-link {
+            background: rgba(30, 41, 59, 0.5);
+            border-color: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+        .page-link:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            color: #fff;
+        }
+        .lead-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            height: 100%;
+        }
+        .lead-box:hover {
+            transform: translateY(-2px);
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        .lead-box-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-top: 2rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border-color);
-        }
-
-        /* SELEÇÃO RÁPIDA */
-        .quick-select {
-            display: flex;
+            align-items: start;
+            margin-bottom: 0.75rem;
             gap: 0.5rem;
-            margin-bottom: 1rem;
         }
-
-        .quick-select .btn {
-            font-size: 0.85rem;
-            padding: 0.4rem 0.8rem;
+        .lead-box-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+            line-height: 1.3;
+        }
+        .lead-box-info {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin: 0.25rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .lead-box-actions {
+            display: flex;
+            gap: 0.25rem;
+            margin-top: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .lead-box-actions .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        .origem-badge {
+            font-size: 0.65rem;
+            padding: 0.25rem 0.5rem;
         }
     </style>
 </head>
 <body>
-    <div id="sidebar-container"></div>
-
     <div class="page-container">
-        <div class="page-header">
+        <div class="page-header d-flex justify-content-between align-items-start">
             <div>
                 <h1 class="page-title">Leads</h1>
-                <p class="text-muted mb-0">Gerencie seus contatos e oportunidades</p>
+                <p class="page-subtitle">Gerencie seus contatos e oportunidades</p>
             </div>
-            <button class="btn btn-primary" onclick="openNewLeadModal()">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalLead">
                 <i class="bi bi-plus-lg me-2"></i>Novo Lead
             </button>
         </div>
 
-        <!-- Filtros -->
-        <div class="filter-card">
+        <div class="filter-card" style="display: none;">
             <div class="row g-3">
-                <div class="col-md-3">
-                    <input type="text" id="filterSearch" class="form-control" placeholder="Buscar por nome ou telefone...">
+                <div class="col-md-8">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" id="searchLead" class="form-control" placeholder="Nome, email ou telefone...">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
                     <select id="filterStatus" class="form-select">
-                        <option value="">Todos os Status</option>
+                        <option value="">Todos os status</option>
                         <option value="novo">Novo</option>
                         <option value="em_atendimento">Em Atendimento</option>
-                        <option value="interesse">Interesse</option>
                         <option value="qualificado">Qualificado</option>
-                        <option value="proposta">Proposta</option>
+                        <option value="proposta">Proposta Enviada</option>
                         <option value="fechado">Fechado</option>
                         <option value="perdido">Perdido</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <select id="filterOrigem" class="form-select">
-                        <option value="">Todas as Origens</option>
-                        <option value="ia">IA</option>
-                        <option value="chaves_na_mao">Chaves na Mão</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select id="filterAssigned" class="form-select">
-                        <option value="">Todos</option>
-                        <option value="free">Livres</option>
-                        <option value="mine">Meus</option>
-                        <option value="others">Outros</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button class="btn btn-outline-primary w-100" onclick="applyFilters()">
-                        <i class="bi bi-funnel me-2"></i>Filtrar
-                    </button>
-                    <button class="btn btn-outline-secondary" onclick="clearFilters()">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                </div>
             </div>
-        </div>
-
-        <!-- Seleção Rápida -->
-        <div class="quick-select">
-            <button class="btn btn-sm btn-outline-secondary" onclick="selectAll()">
-                <i class="bi bi-check-all me-1"></i>Selecionar Todos
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="deselectAll()">
-                <i class="bi bi-x-lg me-1"></i>Desmarcar Todos
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="invertSelection()">
-                <i class="bi bi-arrow-left-right me-1"></i>Inverter Seleção
-            </button>
         </div>
 
         <!-- Grid de Leads -->
-        <div class="row g-3" id="leadsGrid">
-            <!-- Cards serão renderizados aqui via JavaScript -->
+        <div id="leadsGrid" class="row g-3">
+            <!-- Leads serão inseridos aqui -->
         </div>
 
         <!-- Paginação -->
-        <div class="pagination-container">
+        <div class="d-flex justify-content-between align-items-center mt-4">
             <div class="text-muted">
                 Mostrando <span id="showingCount">0</span> de <span id="totalCount">0</span> leads
             </div>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary" id="btnPrev" onclick="prevPage()">
+            <div class="btn-group">
+                <button id="btnPrev" class="btn btn-outline-primary" onclick="changePage(-1)" disabled>
                     <i class="bi bi-chevron-left"></i> Anterior
                 </button>
-                <button class="btn btn-outline-primary" id="btnNext" onclick="nextPage()">
-                    Próximo <i class="bi bi-chevron-right"></i>
+                <button id="btnNext" class="btn btn-outline-primary" onclick="changePage(1)" disabled>
+                    Próxima <i class="bi bi-chevron-right"></i>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Barra de Ações Fixa -->
-    <div class="action-bar" id="actionBar">
-        <div class="action-bar-content">
-            <div class="action-bar-info">
-                <span class="action-bar-count">
-                    <i class="bi bi-check-circle-fill me-2"></i>
-                    <span id="selectedCount">0</span> selecionado(s)
-                </span>
-                <button class="btn btn-sm btn-outline-light" onclick="deselectAll()">
-                    <i class="bi bi-x-lg"></i> Limpar
-                </button>
-            </div>
-            <div class="action-bar-buttons">
-                <button class="btn btn-success" onclick="bulkClaimLeads()">
-                    <i class="bi bi-hand-thumbs-up"></i> Assumir
-                </button>
-                <button class="btn btn-warning" onclick="bulkReleaseLeads()">
-                    <i class="bi bi-arrow-counterclockwise"></i> Liberar
-                </button>
-                <button class="btn btn-info" onclick="bulkStartAI()">
-                    <i class="bi bi-robot"></i> Iniciar IA
-                </button>
-                <button class="btn btn-primary" onclick="bulkChangeStatus()">
-                    <i class="bi bi-flag"></i> Alterar Status
-                </button>
-                <button class="btn btn-danger" onclick="bulkDelete()">
-                    <i class="bi bi-trash"></i> Excluir
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Detalhes do Lead -->
-    <div class="modal fade" id="leadDetailModal" tabindex="-1">
+    <div class="modal fade" id="modalLead" tabindex="-1">
         <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="leadDetailName">Detalhes do Lead</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="leadDetailBody">
-                    <!-- Será preenchido via JavaScript -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Novo Lead -->
-    <div class="modal fade" id="newLeadModal" tabindex="-1">
-        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Novo Lead</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="formNewLead">
-                        <div class="mb-3">
-                            <label class="form-label">Nome *</label>
-                            <input type="text" class="form-control" name="nome" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" name="email">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Telefone *</label>
-                            <input type="tel" class="form-control" name="telefone" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Status</label>
-                            <select class="form-select" name="status">
-                                <option value="novo">Novo</option>
-                                <option value="em_atendimento">Em Atendimento</option>
-                                <option value="interesse">Interesse</option>
-                                <option value="qualificado">Qualificado</option>
-                            </select>
+                    <form id="formLead">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nome *</label>
+                                <input type="text" name="nome" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email *</label>
+                                <input type="email" name="email" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Telefone *</label>
+                                <input type="tel" name="telefone" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <select name="status" class="form-select">
+                                    <option value="novo">Novo</option>
+                                    <option value="em_atendimento">Em Atendimento</option>
+                                    <option value="qualificado">Qualificado</option>
+                                    <option value="proposta">Proposta Enviada</option>
+                                    <option value="fechado">Fechado</option>
+                                    <option value="perdido">Perdido</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Observações</label>
+                                <textarea name="observacoes" class="form-control" rows="3"></textarea>
+                            </div>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="saveNewLead()">Salvar</button>
+                    <button type="submit" form="formLead" class="btn btn-primary">Salvar Lead</button>
                 </div>
             </div>
         </div>
@@ -433,63 +406,55 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const API_URL = '/api/admin';
+        const API_URL = '/api';
         let leads = [];
-        let filteredLeads = [];
-        let selectedLeads = new Set();
+        let currentUser = {};
         let currentPage = 1;
-        let leadsPerPage = 20;
-        let currentUser = null;
-
-        const statusLabels = {
-            'novo': 'Novo',
-            'em_atendimento': 'Em Atendimento',
-            'interesse': 'Interesse',
-            'qualificado': 'Qualificado',
-            'proposta': 'Proposta',
-            'fechado': 'Fechado',
-            'perdido': 'Perdido'
-        };
-
-        const statusColors = {
-            'novo': 'primary',
-            'em_atendimento': 'info',
-            'interesse': 'warning',
-            'qualificado': 'success',
-            'proposta': 'purple',
-            'fechado': 'success',
-            'perdido': 'danger'
-        };
+        const leadsPerPage = 20;
 
         $(document).ready(function() {
             checkAuth();
-            loadCurrentUser();
             loadLeads();
-            updateActionBar();
-            
-            // Resetar modal ao fechar
-            $('#newLeadModal').on('hidden.bs.modal', function() {
-                $('#formNewLead')[0].reset();
-                $('#formNewLead').removeData('edit-id');
-                $('#newLeadModal .modal-title').text('Novo Lead');
-            });
+            $('#formLead').on('submit', handleSaveLead);
+            setInterval(loadLeads, 30000);
         });
 
         function checkAuth() {
-            if (!localStorage.getItem('token')) {
-                window.location.href = 'login.html';
-            }
+            if (!localStorage.getItem('token')) window.location.href = 'login.html';
+            currentUser = JSON.parse(localStorage.getItem('user') || '{}');
         }
 
-        function loadCurrentUser() {
-            const userData = localStorage.getItem('user');
-            if (userData) {
-                try {
-                    currentUser = JSON.parse(userData);
-                } catch (e) {
-                    console.error('Erro ao parsear dados do usuário:', e);
-                }
-            }
+        const statusColors = {
+            'novo': 'primary',
+            'em_atendimento': 'warning',
+            'qualificado': 'success',
+            'proposta': 'info',
+            'fechado': 'success',
+            'perdido': 'danger',
+            'interesse': 'info'
+        };
+        const statusLabels = {
+            'novo': 'Novo',
+            'em_atendimento': 'Em Atendimento',
+            'qualificado': 'Qualificado',
+            'proposta': 'Proposta',
+            'fechado': 'Fechado',
+            'perdido': 'Perdido',
+            'interesse': 'Interesse'
+        };
+
+        function buildMockLeads() {
+            return [
+                { id: 1, nome: 'João Silva', email: 'joao@email.com', telefone: '(11) 98765-4321', status: 'novo', created_at: '2025-12-19', mensagens_usuario: 3, valor_investimento: 250000, origem: 'ia', assigned_user_id: null, assigned_user_name: null },
+                { id: 2, nome: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 98765-4322', status: 'em_atendimento', created_at: '2025-12-18', mensagens_usuario: 7, origem: 'chaves_na_mao', assigned_user_id: 7, assigned_user_name: 'Rafael Mendes' },
+                { id: 3, nome: 'Pedro Costa', email: 'pedro@email.com', telefone: '(11) 98765-4323', status: 'qualificado', created_at: '2025-12-20', mensagens_usuario: 12, valor_investimento: 450000, origem: 'ia', assigned_user_id: currentUser.id || 99, assigned_user_name: currentUser.name || 'Você' },
+                { id: 4, nome: 'Ana Oliveira', email: 'ana@email.com', telefone: '(11) 98765-4324', status: 'proposta', created_at: '2025-12-21', mensagens_usuario: 5, valor_investimento: 180000, origem: 'chaves_na_mao', assigned_user_id: null, assigned_user_name: null },
+                { id: 5, nome: 'Carlos Souza', email: 'carlos@email.com', telefone: '(11) 98765-4325', status: 'fechado', created_at: '2025-12-22', mensagens_usuario: 0, valor_investimento: 320000, origem: 'ia', assigned_user_id: 2, assigned_user_name: 'Admin Principal' },
+                { id: 6, nome: 'Beatriz Lima', email: 'beatriz@email.com', telefone: '(11) 98765-4326', status: 'novo', created_at: '2025-12-23', mensagens_usuario: 2, origem: 'chaves_na_mao', assigned_user_id: null, assigned_user_name: null },
+                { id: 7, nome: 'Rafael Mendes', email: 'rafael@email.com', telefone: '(11) 98765-4327', status: 'em_atendimento', created_at: '2025-12-24', mensagens_usuario: 8, valor_investimento: 380000, origem: 'ia', assigned_user_id: 7, assigned_user_name: 'Rafael Mendes' },
+                { id: 8, nome: 'Fernanda Rocha', email: 'fernanda@email.com', telefone: '(11) 98765-4328', status: 'interesse', created_at: '2025-12-25', mensagens_usuario: 4, origem: 'chaves_na_mao', assigned_user_id: null, assigned_user_name: null },
+                { id: 9, nome: 'Lucas Ferreira', email: 'lucas@email.com', telefone: '(11) 98765-4329', status: 'qualificado', created_at: '2025-12-26', mensagens_usuario: 6, valor_investimento: 520000, origem: 'ia', assigned_user_id: currentUser.id || 99, assigned_user_name: currentUser.name || 'Você' }
+            ];
         }
 
         function loadLeads() {
@@ -500,572 +465,317 @@
                 success: function(response) {
                     leads = response.data || [];
                     leads.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                    applyFilters();
+                    renderLeadsGrid();
                 },
                 error: function() {
                     leads = buildMockLeads();
-                    applyFilters();
+                    renderLeadsGrid();
                 }
             });
-        }
-
-        function buildMockLeads() {
-            return [
-                { id: 1, nome: 'João Silva', email: 'joao@email.com', telefone: '(11) 98765-4321', status: 'novo', created_at: '2025-12-28', origem: 'ia', assigned_user_id: null },
-                { id: 2, nome: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 98765-4322', status: 'em_atendimento', created_at: '2025-12-27', origem: 'chaves_na_mao', assigned_user_id: 1, assigned_user_name: 'Admin Principal' },
-                { id: 3, nome: 'Pedro Costa', email: 'pedro@email.com', telefone: '(11) 98765-4323', status: 'qualificado', created_at: '2025-12-20', origem: 'ia', assigned_user_id: currentUser?.id, assigned_user_name: currentUser?.name },
-                { id: 4, nome: 'Ana Oliveira', email: 'ana@email.com', telefone: '(11) 98765-4324', status: 'proposta', created_at: '2025-12-21', origem: 'chaves_na_mao', assigned_user_id: null },
-                { id: 5, nome: 'Carlos Souza', email: 'carlos@email.com', telefone: '(11) 98765-4325', status: 'fechado', created_at: '2025-12-22', origem: 'ia', assigned_user_id: 2, assigned_user_name: 'Outro Corretor' },
-            ];
-        }
-
-        function applyFilters() {
-            const search = $('#filterSearch').val().toLowerCase();
-            const status = $('#filterStatus').val();
-            const origem = $('#filterOrigem').val();
-            const assigned = $('#filterAssigned').val();
-
-            filteredLeads = leads.filter(lead => {
-                // Busca por nome/telefone
-                if (search && !lead.nome.toLowerCase().includes(search) && !lead.telefone.includes(search)) {
-                    return false;
-                }
-
-                // Filtro de status
-                if (status && lead.status !== status) {
-                    return false;
-                }
-
-                // Filtro de origem
-                if (origem && lead.origem !== origem) {
-                    return false;
-                }
-
-                // Filtro de atribuição
-                if (assigned === 'free' && lead.assigned_user_id) return false;
-                if (assigned === 'mine' && (!currentUser || lead.assigned_user_id !== currentUser.id)) return false;
-                if (assigned === 'others' && (!lead.assigned_user_id || lead.assigned_user_id === currentUser?.id)) return false;
-
-                return true;
-            });
-
-            currentPage = 1;
-            renderLeadsGrid();
-        }
-
-        function clearFilters() {
-            $('#filterSearch').val('');
-            $('#filterStatus').val('');
-            $('#filterOrigem').val('');
-            $('#filterAssigned').val('');
-            applyFilters();
         }
 
         function renderLeadsGrid() {
             const start = (currentPage - 1) * leadsPerPage;
             const end = start + leadsPerPage;
-            const pageLeads = filteredLeads.slice(start, end);
+            const pageLeads = leads.slice(start, end);
 
-            const html = pageLeads.map(lead => renderLeadCard(lead)).join('');
+            const html = pageLeads.map(lead => renderLeadBox(lead)).join('');
             $('#leadsGrid').html(html || '<div class="col-12 text-center text-muted py-5">Nenhum lead encontrado</div>');
 
-            // Atualizar contadores
-            const totalPages = Math.ceil(filteredLeads.length / leadsPerPage);
+            // Atualizar paginação
+            const totalPages = Math.ceil(leads.length / leadsPerPage);
             $('#showingCount').text(pageLeads.length);
-            $('#totalCount').text(filteredLeads.length);
+            $('#totalCount').text(leads.length);
             $('#btnPrev').prop('disabled', currentPage === 1);
-            $('#btnNext').prop('disabled', currentPage >= totalPages || filteredLeads.length === 0);
-
-            // Marcar selecionados
-            selectedLeads.forEach(id => {
-                $(`#lead-checkbox-${id}`).prop('checked', true);
-                $(`#lead-card-${id}`).addClass('selected');
-            });
+            $('#btnNext').prop('disabled', currentPage >= totalPages || leads.length === 0);
         }
 
-        function renderLeadCard(lead) {
+        function renderLeadBox(lead) {
             const statusColor = statusColors[lead.status] || 'secondary';
             const statusLabel = statusLabels[lead.status] || lead.status;
             const origem = lead.origem === 'ia' ? '<i class="bi bi-robot me-1"></i>IA' : 
-                           lead.origem === 'chaves_na_mao' ? '<i class="bi bi-house-door me-1"></i>Chaves na Mão' : '-';
+                           lead.origem === 'chaves_na_mao' ? '<i class="bi bi-house-door me-1"></i>CNM' : '-';
             const origemClass = lead.origem === 'ia' ? 'bg-info' : lead.origem === 'chaves_na_mao' ? 'bg-warning' : 'bg-secondary';
             
             const isFree = !lead.assigned_user_id;
             const isMine = currentUser && currentUser.id && Number(lead.assigned_user_id) === Number(currentUser.id);
+            const isBusy = lead.assigned_user_id && !isMine;
             const assignedLabel = isFree ? 'Livre' : isMine ? 'Você' : (lead.assigned_user_name || 'Em atendimento');
             const assignedColor = isFree ? 'secondary' : isMine ? 'success' : 'primary';
 
             return `
                 <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                    <div class="lead-card" id="lead-card-${lead.id}" onclick="toggleLeadSelection(${lead.id}, event)">
-                        <div class="lead-card-checkbox">
-                            <input type="checkbox" id="lead-checkbox-${lead.id}" onclick="event.stopPropagation(); toggleLeadSelection(${lead.id}, event);">
+                    <div class="lead-box">
+                        <div class="lead-box-header">
+                            <h6 class="lead-box-name">${lead.nome}</h6>
+                            <span class="badge ${origemClass} origem-badge">${origem}</span>
                         </div>
-                        
-                        <div class="lead-card-name">${lead.nome}</div>
-                        
-                        <div class="lead-card-phone">
+                        <div class="lead-box-info">
                             <i class="bi bi-telephone"></i>
                             ${lead.telefone}
                         </div>
-                        
-                        <div class="lead-card-meta">
+                        <div class="lead-box-info">
                             <span class="badge bg-${statusColor}">${statusLabel}</span>
                             <span class="badge bg-${assignedColor}">${assignedLabel}</span>
-                            <span class="badge ${origemClass}">${origem}</span>
                         </div>
-                        
-                        <div class="lead-card-date mt-2">
-                            <i class="bi bi-calendar3"></i>
+                        ${lead.valor_investimento ? `
+                            <div class="lead-box-info">
+                                <i class="bi bi-currency-dollar"></i>
+                                R$ ${formatMoney(lead.valor_investimento)}
+                            </div>
+                        ` : ''}
+                        <div class="lead-box-info">
+                            <i class="bi bi-calendar"></i>
                             ${formatDate(lead.created_at)}
                         </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function toggleLeadSelection(leadId, event) {
-            if (event.target.type === 'checkbox') {
-                // Click direto no checkbox
-                if (event.target.checked) {
-                    selectedLeads.add(leadId);
-                    $(`#lead-card-${leadId}`).addClass('selected');
-                } else {
-                    selectedLeads.delete(leadId);
-                    $(`#lead-card-${leadId}`).removeClass('selected');
-                }
-            } else {
-                // Click no card - abre detalhes
-                openLeadDetail(leadId);
-            }
-            
-            updateActionBar();
-        }
-
-        function selectAll() {
-            filteredLeads.forEach(lead => {
-                selectedLeads.add(lead.id);
-                $(`#lead-checkbox-${lead.id}`).prop('checked', true);
-                $(`#lead-card-${lead.id}`).addClass('selected');
-            });
-            updateActionBar();
-        }
-
-        function deselectAll() {
-            selectedLeads.clear();
-            $('.lead-card').removeClass('selected');
-            $('input[type="checkbox"]').prop('checked', false);
-            updateActionBar();
-        }
-
-        function invertSelection() {
-            const currentPage = filteredLeads.slice((currentPage - 1) * leadsPerPage, currentPage * leadsPerPage);
-            currentPage.forEach(lead => {
-                if (selectedLeads.has(lead.id)) {
-                    selectedLeads.delete(lead.id);
-                    $(`#lead-checkbox-${lead.id}`).prop('checked', false);
-                    $(`#lead-card-${lead.id}`).removeClass('selected');
-                } else {
-                    selectedLeads.add(lead.id);
-                    $(`#lead-checkbox-${lead.id}`).prop('checked', true);
-                    $(`#lead-card-${lead.id}`).addClass('selected');
-                }
-            });
-            updateActionBar();
-        }
-
-        function updateActionBar() {
-            const count = selectedLeads.size;
-            $('#selectedCount').text(count);
-            
-            if (count > 0) {
-                $('#actionBar').addClass('visible');
-            } else {
-                $('#actionBar').removeClass('visible');
-            }
-        }
-
-        function openLeadDetail(leadId) {
-            const lead = leads.find(l => l.id === leadId);
-            if (!lead) return;
-
-            const statusLabel = statusLabels[lead.status] || lead.status;
-            const origem = lead.origem === 'ia' ? 'IA' : lead.origem === 'chaves_na_mao' ? 'Chaves na Mão' : '-';
-            const isFree = !lead.assigned_user_id;
-            const isMine = currentUser && currentUser.id && Number(lead.assigned_user_id) === Number(currentUser.id);
-            const assignedLabel = isFree ? 'Livre' : isMine ? 'Você' : (lead.assigned_user_name || 'Em atendimento');
-
-            const html = `
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="detail-row">
-                            <div class="detail-label">Nome</div>
-                            <div class="detail-value">${lead.nome}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="detail-row">
-                            <div class="detail-label">Telefone</div>
-                            <div class="detail-value">${lead.telefone}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="detail-row">
-                            <div class="detail-label">Email</div>
-                            <div class="detail-value">${lead.email || '-'}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="detail-row">
-                            <div class="detail-label">Status</div>
-                            <div class="detail-value">${statusLabel}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="detail-row">
-                            <div class="detail-label">Origem</div>
-                            <div class="detail-value">${origem}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="detail-row">
-                            <div class="detail-label">Responsável</div>
-                            <div class="detail-value">${assignedLabel}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="detail-row">
-                            <div class="detail-label">Data de Criação</div>
-                            <div class="detail-value">${formatDate(lead.created_at)}</div>
-                        </div>
-                    </div>
-                    ${lead.valor_investimento ? `
-                        <div class="col-md-6">
-                            <div class="detail-row">
-                                <div class="detail-label">Valor Investimento</div>
-                                <div class="detail-value">R$ ${formatMoney(lead.valor_investimento)}</div>
-                            </div>
-                        </div>
-                    ` : ''}
-                    <div class="col-12 mt-4">
-                        <div class="d-flex gap-2 flex-wrap">
-                            ${isFree ? `<button class="btn btn-success" onclick="claimLead(${lead.id})"><i class="bi bi-hand-thumbs-up me-2"></i>Assumir</button>` : ''}
-                            ${isMine ? `<button class="btn btn-warning" onclick="releaseLead(${lead.id})"><i class="bi bi-arrow-counterclockwise me-2"></i>Liberar</button>` : ''}
-                            <button class="btn btn-info" onclick="iniciarAtendimentoIA(${lead.id})"><i class="bi bi-robot me-2"></i>Iniciar IA</button>
-                            <a href="conversas.html?lead_id=${lead.id}&telefone=${encodeURIComponent(lead.telefone || '')}" class="btn btn-primary"><i class="bi bi-chat-dots me-2"></i>Conversa</a>
-                            <a href="${getWhatsAppLink(lead.telefone, lead.nome)}" target="_blank" class="btn btn-success"><i class="bi bi-whatsapp me-2"></i>WhatsApp</a>
-                            <button class="btn btn-outline-primary" onclick="editLead(${lead.id})"><i class="bi bi-pencil me-2"></i>Editar</button>
-                            <button class="btn btn-outline-danger" onclick="deleteLead(${lead.id})"><i class="bi bi-trash me-2"></i>Excluir</button>
+                        <div class="lead-box-actions">
+                            ${isFree ? `<button class="btn btn-success btn-sm" onclick="claimLead(${lead.id})" title="Assumir"><i class="bi bi-hand-thumbs-up"></i></button>` : ''}
+                            ${isMine ? `<button class="btn btn-warning btn-sm" onclick="releaseLead(${lead.id})" title="Liberar"><i class="bi bi-arrow-counterclockwise"></i></button>` : ''}
+                            <button class="btn btn-outline-primary btn-sm" onclick="iniciarAtendimentoIA(${lead.id})" title="Iniciar Atendimento IA">
+                                <i class="bi bi-robot"></i>
+                            </button>
+                            <a href="conversas.html?lead_id=${lead.id}&telefone=${encodeURIComponent(lead.telefone || '')}" class="btn btn-info btn-sm" title="Conversa">
+                                <i class="bi bi-chat-dots"></i>
+                            </a>
+                            <a href="${getWhatsAppLink(lead.telefone, lead.nome)}" target="_blank" class="btn btn-success btn-sm" title="WhatsApp">
+                                <i class="bi bi-whatsapp"></i>
+                            </a>
+                            <button class="btn btn-primary btn-sm" onclick="editLead(${lead.id})" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteLead(${lead.id})" title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
             `;
-
-            $('#leadDetailName').text(lead.nome);
-            $('#leadDetailBody').html(html);
-            new bootstrap.Modal(document.getElementById('leadDetailModal')).show();
         }
 
-        // AÇÕES EM LOTE
-        function bulkClaimLeads() {
-            if (selectedLeads.size === 0) return;
-            if (!confirm(`Assumir ${selectedLeads.size} lead(s)?`)) return;
-            
-            let success = 0;
-            let errors = 0;
-            const total = selectedLeads.size;
-            const leadArray = Array.from(selectedLeads);
-            
-            const promises = leadArray.map(id => 
-                $.ajax({
-                    url: API_URL + '/leads/' + id + '/claim',
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
-                }).then(() => success++).catch(() => errors++)
-            );
-            
-            Promise.all(promises).finally(() => {
-                alert(`Concluído!\n✅ Assumidos: ${success}\n❌ Erros: ${errors}`);
-                deselectAll();
-                loadLeads();
-            });
+        function changePage(direction) {
+            currentPage += direction;
+            renderLeadsGrid();
         }
 
-        function bulkReleaseLeads() {
-            if (selectedLeads.size === 0) return;
-            if (!confirm(`Liberar ${selectedLeads.size} lead(s)?`)) return;
+        function initDataTable(data) {
+            if (leadsTable) {
+                leadsTable.destroy();
+            }
             
-            let success = 0;
-            let errors = 0;
-            const leadArray = Array.from(selectedLeads);
-            
-            const promises = leadArray.map(id => 
-                $.ajax({
-                    url: API_URL + '/leads/' + id + '/release',
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
-                }).then(() => success++).catch(() => errors++)
-            );
-            
-            Promise.all(promises).finally(() => {
-                alert(`Concluído!\n✅ Liberados: ${success}\n❌ Erros: ${errors}`);
-                deselectAll();
-                loadLeads();
-            });
-        }
-
-        function bulkStartAI() {
-            if (selectedLeads.size === 0) return;
-            if (!confirm(`Iniciar atendimento IA para ${selectedLeads.size} lead(s)?`)) return;
-            
-            const leadIds = Array.from(selectedLeads);
-            
-            $.ajax({
-                url: API_URL + '/leads/iniciar-atendimento-lote',
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-                contentType: 'application/json',
-                data: JSON.stringify({ lead_ids: leadIds }),
-                success: function(response) {
-                    alert(`Atendimento iniciado com sucesso!\n${response.message || ''}`);
-                    deselectAll();
-                    loadLeads();
+            leadsTable = $('#leadsTable').DataTable({
+                data: data,
+                columns: [
+                    { 
+                        data: 'origem',
+                        render: function(data, type, row) {
+                            if (data === 'ia') {
+                                return `<span class="badge bg-info"><i class="bi bi-robot me-1"></i>IA</span>`;
+                            } else if (data === 'chaves_na_mao') {
+                                return `<span class="badge bg-warning"><i class="bi bi-house-door me-1"></i>Chaves na Mão</span>`;
+                            } else {
+                                return `<span class="badge bg-secondary">-</span>`;
+                            }
+                        }
+                    },
+                    { 
+                        data: 'nome',
+                        render: function(data, type, row) {
+                            return `<strong>${data}</strong>`;
+                        }
+                    },
+                    { 
+                        data: 'telefone',
+                        render: function(data) {
+                            return `<span class="text-nowrap">${data}</span>`;
+                        }
+                    },
+                    { 
+                        data: 'status',
+                        render: function(data) {
+                            const color = statusColors[data] || 'secondary';
+                            const label = statusLabels[data] || data;
+                            return `<span class="badge bg-${color} status-badge">${label}</span>`;
+                        }
+                    },
+                    { 
+                        data: 'valor_investimento',
+                        render: function(data) {
+                            return data ? `<span class="text-success fw-bold">R$ ${formatMoney(data)}</span>` : '-';
+                        }
+                    },
+                    { 
+                        data: 'created_at',
+                        render: function(data) {
+                            return `<small class="text-muted">${formatDate(data)}</small>`;
+                        }
+                    },
+                    {
+                        data: 'assigned_user_id',
+                        render: function(data, type, row) {
+                            const name = row.assigned_user_name || row.assigned_to_name || (row.assigned_user && row.assigned_user.name) || '-';
+                            if (!data) return '<span class="badge bg-secondary">Livre</span>';
+                            if (currentUser && currentUser.id && Number(data) === Number(currentUser.id)) {
+                                return '<span class="badge bg-success">Você</span>';
+                            }
+                            return `<span class="badge bg-primary">${name}</span>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function(data, type, row) {
+                            const isFree = !row.assigned_user_id;
+                            const isMine = currentUser && currentUser.id && Number(row.assigned_user_id) === Number(currentUser.id);
+                            const isBusy = row.assigned_user_id && !isMine;
+                            const claimBtn = isFree ? `<button class="btn btn-outline-success btn-sm" onclick="claimLead(${row.id})" title="Assumir"><i class="bi bi-hand-thumbs-up"></i></button>` : '';
+                            const releaseBtn = isMine ? `<button class="btn btn-outline-warning btn-sm" onclick="releaseLead(${row.id})" title="Liberar"><i class="bi bi-arrow-counterclockwise"></i></button>` : '';
+                            const busyBtn = isBusy ? `<button class="btn btn-outline-secondary btn-sm" disabled title="Em atendimento"><i class="bi bi-lock"></i></button>` : '';
+                            return `
+                                <div class="btn-group btn-group-sm">
+                                    ${claimBtn || releaseBtn || busyBtn}
+                                    <a href="conversas.html?lead_id=${row.id}&telefone=${encodeURIComponent(row.telefone || '')}" class="btn btn-info" title="Abrir conversa">
+                                        <i class="bi bi-chat-dots"></i>
+                                    </a>
+                                    <a href="${getWhatsAppLink(row.telefone, row.nome)}" target="_blank" class="btn btn-success" title="WhatsApp">
+                                        <i class="bi bi-whatsapp"></i>
+                                    </a>
+                                    <button class="btn btn-primary" onclick="editLead(${row.id})" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-danger" onclick="deleteLead(${row.id})" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            `;
+                        }
+                    }
+                ],
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
                 },
-                error: function(xhr) {
-                    alert('Erro: ' + (xhr.responseJSON?.error || 'Não foi possível iniciar atendimento'));
-                }
+                pageLength: 20,
+                lengthMenu: [[10, 20, 50], [10, 20, 50]],
+                order: [[5, 'desc']], // Ordenar por data (mais recente primeiro)
+                responsive: true,
+                scrollY: '60vh',
+                scrollCollapse: true,
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip'
             });
         }
 
-        function bulkChangeStatus() {
-            if (selectedLeads.size === 0) return;
-            
-            const statusOptions = ['novo', 'em_atendimento', 'interesse', 'qualificado', 'proposta', 'fechado', 'perdido'];
-            const newStatus = prompt('Digite o novo status:\n' + statusOptions.join(', '));
-            
-            if (!newStatus || !statusOptions.includes(newStatus)) {
-                alert('Status inválido!');
-                return;
-            }
-            
-            let success = 0;
-            let errors = 0;
-            const leadArray = Array.from(selectedLeads);
-            
-            const promises = leadArray.map(id => 
-                $.ajax({
-                    url: API_URL + '/leads/' + id,
-                    method: 'PATCH',
-                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-                    contentType: 'application/json',
-                    data: JSON.stringify({ status: newStatus })
-                }).then(() => success++).catch(() => errors++)
-            );
-            
-            Promise.all(promises).finally(() => {
-                alert(`Status alterado!\n✅ Atualizados: ${success}\n❌ Erros: ${errors}`);
-                deselectAll();
-                loadLeads();
-            });
-        }
-
-        function bulkDelete() {
-            if (selectedLeads.size === 0) return;
-            if (!confirm(`ATENÇÃO: Deseja EXCLUIR ${selectedLeads.size} lead(s)? Esta ação não pode ser desfeita!`)) return;
-            
-            const leadArray = Array.from(selectedLeads);
-            
+        function handleSaveLead(e) {
+            e.preventDefault();
+            const data = {
+                nome: $('[name="nome"]').val(),
+                email: $('[name="email"]').val(),
+                telefone: $('[name="telefone"]').val(),
+                status: $('[name="status"]').val(),
+                observacoes: $('[name="observacoes"]').val()
+            };
             $.ajax({
                 url: API_URL + '/leads',
-                method: 'DELETE',
+                method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 contentType: 'application/json',
-                data: JSON.stringify({ ids: leadArray }),
-                success: function(response) {
-                    alert(`✅ ${leadArray.length} lead(s) excluído(s) com sucesso!`);
-                    deselectAll();
+                data: JSON.stringify(data),
+                success: function() {
+                    bootstrap.Modal.getInstance('#modalLead').hide();
+                    $('#formLead')[0].reset();
                     loadLeads();
-                },
-                error: function(xhr) {
-                    alert('❌ Erro ao excluir leads: ' + (xhr.responseJSON?.error || 'Erro desconhecido'));
-                }
-            });
-        }
-
-        // AÇÕES INDIVIDUAIS
-        function claimLead(id) {
-            $.ajax({
-                url: API_URL + '/leads/' + id + '/claim',
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-                success: function(response) {
-                    alert('✅ Lead assumido com sucesso!');
-                    loadLeads();
-                    bootstrap.Modal.getInstance(document.getElementById('leadDetailModal'))?.hide();
-                },
-                error: function(xhr) {
-                    alert('❌ Erro: ' + (xhr.responseJSON?.message || 'Não foi possível assumir o lead'));
-                }
-            });
-        }
-
-        function releaseLead(id) {
-            if (!confirm('Deseja liberar este lead?')) return;
-            
-            $.ajax({
-                url: API_URL + '/leads/' + id + '/release',
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-                success: function(response) {
-                    alert('✅ Lead liberado com sucesso!');
-                    loadLeads();
-                    bootstrap.Modal.getInstance(document.getElementById('leadDetailModal'))?.hide();
-                },
-                error: function(xhr) {
-                    alert('❌ Erro: ' + (xhr.responseJSON?.message || 'Não foi possível liberar o lead'));
-                }
-            });
-        }
-
-        function iniciarAtendimentoIA(leadId) {
-            if (!confirm('Iniciar atendimento IA para este lead?')) return;
-            
-            const $btn = event?.target?.closest('.btn');
-            if ($btn) {
-                const originalText = $btn.innerHTML;
-                $btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Iniciando...';
-                $btn.disabled = true;
-            }
-            
-            $.ajax({
-                url: API_URL + '/leads/' + leadId + '/iniciar-atendimento',
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-                success: function(response) {
-                    alert('Atendimento IA iniciado com sucesso!\n' + (response.message || ''));
-                    loadLeads();
-                    bootstrap.Modal.getInstance(document.getElementById('leadDetailModal'))?.hide();
-                },
-                error: function(xhr) {
-                    alert('Erro: ' + (xhr.responseJSON?.error || 'Não foi possível iniciar atendimento'));
-                },
-                complete: function() {
-                    if ($btn) {
-                        $btn.innerHTML = originalText;
-                        $btn.disabled = false;
-                    }
                 }
             });
         }
 
         function editLead(id) {
             const lead = leads.find(l => l.id === id);
-            if (!lead) return;
-            
-            // Preencher formulário
-            $('#formNewLead [name="nome"]').val(lead.nome);
-            $('#formNewLead [name="email"]').val(lead.email);
-            $('#formNewLead [name="telefone"]').val(lead.telefone);
-            $('#formNewLead [name="status"]').val(lead.status);
-            $('#formNewLead').data('edit-id', id);
-            
-            $('#newLeadModal .modal-title').text('Editar Lead');
-            bootstrap.Modal.getInstance(document.getElementById('leadDetailModal'))?.hide();
-            new bootstrap.Modal(document.getElementById('newLeadModal')).show();
+            if (lead) {
+                $('[name="nome"]').val(lead.nome);
+                $('[name="email"]').val(lead.email);
+                $('[name="telefone"]').val(lead.telefone);
+                $('[name="status"]').val(lead.status);
+                $('[name="observacoes"]').val(lead.observacoes || '');
+                new bootstrap.Modal('#modalLead').show();
+            }
         }
 
         function deleteLead(id) {
-            if (!confirm('ATENÇÃO: Deseja EXCLUIR este lead?\nEsta ação não pode ser desfeita!')) return;
-            
+            if (confirm('Deseja realmente excluir este lead?')) {
+                $.ajax({
+                    url: API_URL + '/leads/' + id,
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                    success: loadLeads
+                });
+            }
+        }
+
+        function claimLead(id) {
             $.ajax({
-                url: API_URL + '/leads/' + id,
-                method: 'DELETE',
+                url: API_URL + '/leads/' + id + '/claim',
+                method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-                success: function(response) {
-                    alert('✅ Lead excluído com sucesso!');
-                    loadLeads();
-                    bootstrap.Modal.getInstance(document.getElementById('leadDetailModal'))?.hide();
-                },
-                error: function(xhr) {
-                    alert('❌ Erro ao excluir: ' + (xhr.responseJSON?.error || 'Erro desconhecido'));
-                }
+                success: loadLeads,
+                error: function() { alert('Erro ao assumir lead'); }
             });
         }
 
-        function openNewLeadModal() {
-            new bootstrap.Modal(document.getElementById('newLeadModal')).show();
+        function releaseLead(id) {
+            $.ajax({
+                url: API_URL + '/leads/' + id + '/release',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                success: loadLeads,
+                error: function() { alert('Erro ao liberar lead'); }
+            });
         }
 
-        function saveNewLead() {
-            const form = $('#formNewLead');
-            const editId = form.data('edit-id');
-            
-            const data = {
-                nome: form.find('[name="nome"]').val(),
-                email: form.find('[name="email"]').val(),
-                telefone: form.find('[name="telefone"]').val(),
-                status: form.find('[name="status"]').val()
-            };
-            
-            if (!data.nome || !data.telefone) {
-                alert('Nome e telefone são obrigatórios!');
+        function iniciarAtendimentoIA(id) {
+            if (!confirm('Deseja iniciar atendimento IA automático para este lead?')) {
                 return;
             }
-            
-            const isEdit = !!editId;
-            
+
+            const $btn = $(`button[onclick="iniciarAtendimentoIA(${id})"]`);
+            const originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
             $.ajax({
-                url: API_URL + '/leads' + (isEdit ? '/' + editId : ''),
-                method: isEdit ? 'PUT' : 'POST',
-                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-                contentType: 'application/json',
-                data: JSON.stringify(data),
+                url: `/api/admin/leads/${id}/iniciar-atendimento`,
+                method: 'POST',
+                headers: { 
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    'Content-Type': 'application/json'
+                },
                 success: function(response) {
-                    alert('✅ Lead ' + (isEdit ? 'atualizado' : 'criado') + ' com sucesso!');
-                    bootstrap.Modal.getInstance(document.getElementById('newLeadModal')).hide();
-                    form[0].reset();
-                    form.removeData('edit-id');
-                    $('#newLeadModal .modal-title').text('Novo Lead');
-                    loadLeads();
+                    alert('✅ Atendimento IA iniciado com sucesso!\n\nMensagem enviada via WhatsApp.');
+                    loadLeads(); // Recarregar lista
                 },
                 error: function(xhr) {
-                    alert('❌ Erro: ' + (xhr.responseJSON?.error || 'Não foi possível salvar'));
+                    const error = xhr.responseJSON?.error || 'Erro ao iniciar atendimento';
+                    alert('❌ ' + error);
+                    $btn.prop('disabled', false).html(originalHtml);
                 }
             });
         }
 
-        // PAGINAÇÃO
-        function prevPage() {
-            if (currentPage > 1) {
-                currentPage--;
-                renderLeadsGrid();
-            }
+        function formatMoney(v) {
+            return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(v);
         }
 
-        function nextPage() {
-            const totalPages = Math.ceil(filteredLeads.length / leadsPerPage);
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderLeadsGrid();
-            }
+        function formatDate(d) {
+            return new Date(d).toLocaleDateString('pt-BR');
         }
 
-        // UTILITÁRIOS
-        function formatDate(dateStr) {
-            if (!dateStr) return '-';
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('pt-BR');
-        }
-
-        function formatMoney(value) {
-            return new Intl.NumberFormat('pt-BR').format(value);
-        }
-
-        function getWhatsAppLink(phone, name) {
-            const cleanPhone = phone.replace(/\D/g, '');
-            const message = encodeURIComponent(`Olá ${name}, tudo bem?`);
-            return `https://wa.me/55${cleanPhone}?text=${message}`;
+        function getWhatsAppLink(telefone, nome) {
+            // Remove caracteres não numéricos
+            const numeroLimpo = telefone.replace(/\D/g, '');
+            // Adiciona +55 se não tiver código do país
+            const numeroCompleto = numeroLimpo.startsWith('55') ? numeroLimpo : '55' + numeroLimpo;
+            // Mensagem pré-formatada
+            const mensagem = encodeURIComponent(`Olá ${nome}, tudo bem? Sou da equipe SOCIMOB e gostaria de conversar sobre sua solicitação.`);
+            return `https://wa.me/${numeroCompleto}?text=${mensagem}`;
         }
     </script>
 </body>
 </html>
+
+
