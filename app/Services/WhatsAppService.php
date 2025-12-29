@@ -170,7 +170,7 @@ class WhatsAppService
                 $lead = $this->createLead($telefone, $conversaData, $conversa->id);
                 $conversa->update(['lead_id' => $lead->id]);
                 $conversa->setRelation('lead', $lead);
-                Log::info('Lead criado e vinculado à conversa', ['lead_id' => $lead->id, 'conversa_id' => $conversa->id]);
+                Log::info('✅ Lead criado e vinculado à conversa', ['lead_id' => $lead->id, 'conversa_id' => $conversa->id, 'user_id' => $lead->user_id ?? null]);
             }
 
             $leadModel = $conversa->lead;
