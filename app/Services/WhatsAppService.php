@@ -868,8 +868,11 @@ class WhatsAppService
             return app('tenant')->id;
         }
 
-        return env('WEBHOOK_TENANT_ID')
-            ?? env('DEFAULT_TENANT_ID', 1);
+        $defaultTenantId = env('WEBHOOK_TENANT_ID') ?? env('DEFAULT_TENANT_ID') ?? 1;
+        
+        Log::info('⚠️ Usando tenant padrão', ['tenant_id' => $defaultTenantId]);
+        
+        return $defaultTenantId;
     }
 
     /**

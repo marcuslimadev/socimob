@@ -221,7 +221,9 @@ class WebhookController extends Controller
             return Tenant::find($tenantId);
         }
 
-        return null;
+        // SEMPRE retornar tenant padrão (ID 1) se não conseguir resolver
+        Log::warning('⚠️ Tenant não resolvido, usando tenant padrão (ID 1)');
+        return Tenant::find(1);
     }
 
     private function normalizeWhatsappNumber(?string $value): ?string
