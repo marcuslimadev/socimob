@@ -790,6 +790,10 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     $router->patch('/leads/{id}/status', 'LeadsController@updateStatus');
     $router->post('/leads/{id}/claim', 'LeadsController@claim');
     $router->post('/leads/{id}/release', 'LeadsController@release');
+    $router->get('/leads/{id}/documents', 'LeadDocumentsController@index');
+    $router->post('/leads/{id}/documents', 'LeadDocumentsController@store');
+    $router->delete('/leads/{id}/documents/{documentId}', 'LeadDocumentsController@destroy');
+    $router->get('/leads/{id}/documents/export', 'LeadDocumentsController@export');
     $router->delete('/leads/{id}', 'LeadsController@destroy');
     $router->delete('/leads', 'LeadsController@bulkDestroy');
     $router->post('/leads/{id}/diagnostico', 'LeadsController@diagnostico');
