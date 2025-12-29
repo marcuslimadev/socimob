@@ -104,6 +104,13 @@ class Sidebar {
                         roles: ['super_admin', 'admin']
                     },
                     {
+                        id: 'clientes',
+                        label: 'Clientes',
+                        icon: 'bi-people',
+                        href: 'clientes.html',
+                        roles: ['super_admin', 'admin', 'user']
+                    },
+                    {
                         id: 'conversas',
                         label: 'Conversas',
                         icon: 'bi-chat-dots-fill',
