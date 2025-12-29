@@ -57,6 +57,29 @@
             padding: 0.75rem 1.5rem;
             font-weight: 600;
         }
+        .logo-preview {
+            width: 200px;
+            height: 80px;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-tertiary);
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        .logo-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .logo-preview .placeholder {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            text-align: center;
+            padding: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -76,11 +99,6 @@
                 <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#empresa">
                         <i class="bi bi-building me-2"></i>Empresa
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#integracoes">
-                        <i class="bi bi-plug me-2"></i>Integrações
                     </button>
                 </li>
                 <li class="nav-item">
@@ -122,6 +140,22 @@
                     <h5 class="mb-4">Dados da Empresa</h5>
                     <form id="formEmpresa">
                         <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">Nome do Sistema (White Label)</label>
+                                <input type="text" class="form-control" id="sistema_nome" name="sistema_nome" placeholder="Ex: Imobiliária Premium">
+                                <small class="text-muted">Este nome aparecerá no lugar de "SOCIMOB" em todo o sistema</small>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Logo da Empresa</label>
+                                <div class="logo-preview" id="logoPreview">
+                                    <div class="placeholder">
+                                        <i class="bi bi-image" style="font-size: 2rem;"></i>
+                                        <p class="mb-0 mt-2">Clique para selecionar o logo</p>
+                                    </div>
+                                </div>
+                                <input type="file" class="form-control" id="logoUpload" name="logo" accept="image/*">
+                                <small class="text-muted">Formatos aceitos: PNG, JPG, SVG. Tamanho recomendado: 200x80px</small>
+                            </div>
                             <div class="col-md-6">
                                 <label class="form-label">Razão Social</label>
                                 <input type="text" class="form-control" name="razao_social">
@@ -147,26 +181,6 @@
                             </div>
                         </div>
                     </form>
-                </div>
-
-                <div class="tab-pane fade" id="integracoes">
-                    <h5 class="mb-4">Integrações Externas</h5>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="p-3 border border-secondary rounded">
-                                <h6><i class="bi bi-whatsapp me-2 text-success"></i>WhatsApp</h6>
-                                <p class="small text-muted mb-2">Integração com Twilio para mensagens</p>
-                                <button class="btn btn-sm btn-outline-primary">Configurar</button>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="p-3 border border-secondary rounded">
-                                <h6><i class="bi bi-robot me-2 text-primary"></i>OpenAI</h6>
-                                <p class="small text-muted mb-2">Assistente virtual com IA</p>
-                                <button class="btn btn-sm btn-outline-primary">Configurar</button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="tab-pane fade" id="seguranca">
@@ -200,15 +214,73 @@
     <script>
         $(document).ready(function() {
             checkAuth();
+            loadTenantConfig();
 
-            $('#formPerfil, #formEmpresa, #formSenha').on('submit', function(e) {
-                e.preventDefault();
-                alert('Configurações salvas com sucesso!');
+            // Preview do logo
+            $('#logoUpload').on('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        $('#logoPreview').html(`<img src="${event.target.result}" alt="Logo">`);
+                    };
+                    reader.readAsDataURL(file);
+                }
             });
+
+            // Click no preview para abrir seletor
+            $('#logoPreview').on('click', function() {
+                $('#logoUpload').click();
+            });
+
+            $('#formPerfil').on('submit', handleSavePerfil);
+            $('#formEmpresa').on('submit', handleSaveEmpresa);
+            $('#formSenha').on('submit', handleSaveSenha);
         });
 
         function checkAuth() {
             if (!localStorage.getItem('token')) window.location.href = 'login.html';
+        }
+
+        function loadTenantConfig() {
+            const tenantConfig = JSON.parse(localStorage.getItem('tenantConfig') || '{}');
+            if (tenantConfig.sistema_nome) {
+                $('#sistema_nome').val(tenantConfig.sistema_nome);
+            }
+            if (tenantConfig.logo_url) {
+                $('#logoPreview').html(`<img src="${tenantConfig.logo_url}" alt="Logo">`);
+            }
+        }
+
+        function handleSavePerfil(e) {
+            e.preventDefault();
+            alert('Perfil atualizado com sucesso!');
+        }
+
+        function handleSaveEmpresa(e) {
+            e.preventDefault();
+            
+            const sistemaNome = $('#sistema_nome').val() || 'SOCIMOB';
+            const logoFile = $('#logoUpload')[0].files[0];
+            
+            const tenantConfig = {
+                sistema_nome: sistemaNome,
+                logo_url: logoFile ? $('#logoPreview img').attr('src') : (JSON.parse(localStorage.getItem('tenantConfig') || '{}')).logo_url || ''
+            };
+            
+            localStorage.setItem('tenantConfig', JSON.stringify(tenantConfig));
+            
+            // Atualizar sidebar imediatamente
+            if (window.sidebar && window.sidebar.updateBranding) {
+                window.sidebar.updateBranding();
+            }
+            
+            alert('Configurações da empresa salvas com sucesso! O sistema agora exibe sua marca.');
+        }
+
+        function handleSaveSenha(e) {
+            e.preventDefault();
+            alert('Senha alterada com sucesso!');
         }
     </script>
 </body>

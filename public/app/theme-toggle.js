@@ -4,29 +4,7 @@
 
     // CSS para o botão de toggle e variáveis de tema
     const themeToggleCSS = `
-        .theme-toggle {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 9999;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .theme-toggle:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6);
-        }
+        /* Botão de tema na sidebar */
         
         /* Tema Escuro (padrão) */
         :root {
@@ -117,17 +95,15 @@
         const savedTheme = localStorage.getItem('theme') || 'dark';
         applyTheme(savedTheme);
         
-        // Cria botão se não existir
-        if (!document.getElementById('themeToggle')) {
-            const btn = document.createElement('button');
-            btn.id = 'themeToggle';
-            btn.className = 'theme-toggle';
-            btn.title = 'Alternar tema';
-            btn.innerHTML = '<i class="bi ' + (savedTheme === 'dark' ? 'bi-sun-fill' : 'bi-moon-fill') + '"></i>';
-            document.body.insertBefore(btn, document.body.firstChild);
-            
-            btn.addEventListener('click', toggleTheme);
-        }
+        // Botão será criado pela sidebar
+        // Adicionar listener quando o botão for criado
+        setTimeout(() => {
+            const btn = document.getElementById('themeToggle');
+            if (btn && !btn.hasAttribute('data-theme-listener')) {
+                btn.setAttribute('data-theme-listener', 'true');
+                btn.addEventListener('click', toggleTheme);
+            }
+        }, 100);
     }
 
     function applyTheme(theme) {
@@ -142,9 +118,16 @@
         applyTheme(newTheme);
         localStorage.setItem('theme', newTheme);
         
-        const icon = document.querySelector('#themeToggle i');
-        if (icon) {
-            icon.className = 'bi ' + (newTheme === 'dark' ? 'bi-sun-fill' : 'bi-moon-fill');
+        const btn = document.getElementById('themeToggle');
+        if (btn) {
+            const icon = btn.querySelector('i');
+            const span = btn.querySelector('span');
+            if (icon) {
+                icon.className = 'bi ' + (newTheme === 'dark' ? 'bi-sun-fill' : 'bi-moon-fill');
+            }
+            if (span) {
+                span.textContent = newTheme === 'dark' ? 'Modo Claro' : 'Modo Escuro';
+            }
         }
         
         console.log('Tema alterado para:', newTheme);

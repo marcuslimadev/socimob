@@ -15,6 +15,7 @@ class Sidebar {
 
     init() {
         this.loadUserData();
+        this.loadTenantConfig();
         this.render();
         this.attachEventListeners();
         this.handleResize();
@@ -28,6 +29,20 @@ class Sidebar {
             } catch (e) {
                 console.error('Erro ao carregar dados do usuário:', e);
             }
+        }
+    }
+
+    loadTenantConfig() {
+        const configStr = localStorage.getItem('tenantConfig');
+        if (configStr) {
+            try {
+                this.tenantConfig = JSON.parse(configStr);
+            } catch (e) {
+                console.error('Erro ao carregar configuração do tenant:', e);
+                this.tenantConfig = {};
+            }
+        } else {
+            this.tenantConfig = {};
         }
     }
 
@@ -151,6 +166,8 @@ class Sidebar {
 
     render() {
         const menuSections = this.getMenuItems();
+        const sistemaNome = this.tenantConfig.sistema_nome || 'SOCIMOB';
+        const logoUrl = this.tenantConfig.logo_url;
         
         const sidebarHTML = `
             <!-- Sidebar -->
@@ -158,8 +175,10 @@ class Sidebar {
                 <!-- Header -->
                 <div class="sidebar-header">
                     <a href="dashboard.html" class="sidebar-logo">
-                        <i class="bi bi-building"></i>
-                        <span class="sidebar-logo-text">SOCIMOB</span>
+                        ${logoUrl ? 
+                            `<img src="${logoUrl}" alt="${sistemaNome}" style="max-width: 100%; max-height: 40px; object-fit: contain;">` : 
+                            `<i class="bi bi-building"></i><span class="sidebar-logo-text">${sistemaNome}</span>`
+                        }
                     </a>
                     <button class="sidebar-toggle" id="sidebarToggle">
                         <i class="bi bi-chevron-left"></i>
@@ -176,6 +195,10 @@ class Sidebar {
 
                 <!-- Footer -->
                 <div class="sidebar-footer">
+                    <button class="sidebar-footer-btn" id="themeToggle">
+                        <i class="bi ${localStorage.getItem('theme') === 'light' ? 'bi-moon-fill' : 'bi-sun-fill'}"></i>
+                        <span>${localStorage.getItem('theme') === 'light' ? 'Modo Escuro' : 'Modo Claro'}</span>
+                    </button>
                     <button class="sidebar-footer-btn" id="btnSidebarLogout">
                         <i class="bi bi-box-arrow-right"></i>
                         <span>Sair</span>
@@ -363,6 +386,21 @@ class Sidebar {
             badge.textContent = value;
         } else if (badge) {
             badge.remove();
+        }
+    }
+
+    updateBranding() {
+        this.loadTenantConfig();
+        const sistemaNome = (this.tenantConfig && this.tenantConfig.sistema_nome) || 'SOCIMOB';
+        const logoUrl = this.tenantConfig && this.tenantConfig.logo_url;
+        const logoElement = document.querySelector('.sidebar-logo');
+        
+        if (logoElement) {
+            if (logoUrl) {
+                logoElement.innerHTML = `<img src="${logoUrl}" alt="${sistemaNome}" style="max-width: 100%; max-height: 40px; object-fit: contain;">`;
+            } else {
+                logoElement.innerHTML = `<i class="bi bi-building"></i><span class="sidebar-logo-text">${sistemaNome}</span>`;
+            }
         }
     }
 }

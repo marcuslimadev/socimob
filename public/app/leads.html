@@ -6,8 +6,11 @@
     <title>Leads - SOCIMOB</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="sidebar.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
     <script src="theme-toggle.js"></script>
     <script src="sidebar.js"></script>
     <style>
@@ -186,6 +189,70 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
         }
+        /* DataTable Styles */
+        .dataTables_wrapper {
+            color: var(--text-primary);
+        }
+        .dataTables_wrapper .dataTables_filter input,
+        .dataTables_wrapper .dataTables_length select {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            border-radius: 6px;
+            padding: 0.375rem 0.75rem;
+        }
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_paginate {
+            color: var(--text-secondary);
+        }
+        table.dataTable {
+            border-collapse: separate !important;
+            border-spacing: 0 0.5rem;
+        }
+        table.dataTable thead th {
+            background: rgba(30, 41, 59, 0.5);
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            padding: 1rem;
+        }
+        table.dataTable tbody tr {
+            background: var(--bg-secondary);
+            transition: all 0.2s;
+        }
+        table.dataTable tbody tr:hover {
+            background: rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        table.dataTable tbody td {
+            border: none;
+            padding: 1rem;
+            vertical-align: middle;
+        }
+        .badge {
+            padding: 0.5rem 0.75rem;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+        .status-badge {
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .page-item.active .page-link {
+            background: #3b82f6;
+            border-color: #3b82f6;
+        }
+        .page-link {
+            background: rgba(30, 41, 59, 0.5);
+            border-color: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+        .page-link:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -203,7 +270,7 @@
             </button>
         </div>
 
-        <div class="filter-card">
+        <div class="filter-card" style="display: none;">
             <div class="row g-3">
                 <div class="col-md-8">
                     <label class="form-label">Buscar</label>
@@ -224,12 +291,22 @@
             </div>
         </div>
 
-        <div id="leadsContainer">
-            <div class="text-center py-5">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Carregando...</span>
-                </div>
-                <p class="mt-2 text-muted">Carregando leads...</p>
+        <div class="card" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px;">
+            <div class="card-body">
+                <table id="leadsTable" class="table table-hover" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Telefone</th>
+                            <th>Status</th>
+                            <th>Valor</th>
+                            <th>Data</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -292,14 +369,44 @@
             checkAuth();
             loadLeads();
             $('#formLead').on('submit', handleSaveLead);
-            $('#searchLead').on('input', filterLeads);
-            $('#filterStatus').on('change', filterLeads);
             setInterval(loadLeads, 30000);
         });
 
         function checkAuth() {
             if (!localStorage.getItem('token')) window.location.href = 'login.html';
         }
+
+        const statusColors = {
+            'novo': 'primary',
+            'em_atendimento': 'warning',
+            'qualificado': 'success',
+            'proposta': 'info',
+            'fechado': 'success',
+            'perdido': 'danger',
+            'interesse': 'info'
+        };
+        const statusLabels = {
+            'novo': 'Novo',
+            'em_atendimento': 'Em Atendimento',
+            'qualificado': 'Qualificado',
+            'proposta': 'Proposta',
+            'fechado': 'Fechado',
+            'perdido': 'Perdido',
+            'interesse': 'Interesse'
+        };
+
+        let leadsTable;
+        const mockLeads = [
+            { id: 1, nome: 'João Silva', email: 'joao@email.com', telefone: '(11) 98765-4321', status: 'novo', created_at: '2025-12-19', mensagens_usuario: 3, valor_investimento: 250000 },
+            { id: 2, nome: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 98765-4322', status: 'em_atendimento', created_at: '2025-12-18', mensagens_usuario: 7 },
+            { id: 3, nome: 'Pedro Costa', email: 'pedro@email.com', telefone: '(11) 98765-4323', status: 'qualificado', created_at: '2025-12-20', mensagens_usuario: 12, valor_investimento: 450000 },
+            { id: 4, nome: 'Ana Oliveira', email: 'ana@email.com', telefone: '(11) 98765-4324', status: 'proposta', created_at: '2025-12-21', mensagens_usuario: 5, valor_investimento: 180000 },
+            { id: 5, nome: 'Carlos Souza', email: 'carlos@email.com', telefone: '(11) 98765-4325', status: 'fechado', created_at: '2025-12-22', mensagens_usuario: 0, valor_investimento: 320000 },
+            { id: 6, nome: 'Beatriz Lima', email: 'beatriz@email.com', telefone: '(11) 98765-4326', status: 'novo', created_at: '2025-12-23', mensagens_usuario: 2 },
+            { id: 7, nome: 'Rafael Mendes', email: 'rafael@email.com', telefone: '(11) 98765-4327', status: 'em_atendimento', created_at: '2025-12-24', mensagens_usuario: 8, valor_investimento: 380000 },
+            { id: 8, nome: 'Fernanda Rocha', email: 'fernanda@email.com', telefone: '(11) 98765-4328', status: 'interesse', created_at: '2025-12-25', mensagens_usuario: 4 },
+            { id: 9, nome: 'Lucas Ferreira', email: 'lucas@email.com', telefone: '(11) 98765-4329', status: 'qualificado', created_at: '2025-12-26', mensagens_usuario: 6, valor_investimento: 520000 }
+        ];
 
         function loadLeads() {
             $.ajax({
@@ -308,78 +415,84 @@
                 headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 success: function(response) {
                     leads = response.data || [];
-                    filterLeads();
+                    initDataTable(leads);
                 },
                 error: function() {
-                    leads = [
-                        { id: 1, nome: 'João Silva', email: 'joao@email.com', telefone: '(11) 98765-4321', status: 'novo', created_at: '2025-12-19', mensagens_usuario: 3, valor_investimento: 250000 },
-                        { id: 2, nome: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 98765-4322', status: 'em_atendimento', created_at: '2025-12-18', mensagens_usuario: 7 },
-                        { id: 3, nome: 'Pedro Costa', email: 'pedro@email.com', telefone: '(11) 98765-4323', status: 'qualificado', created_at: '2025-12-20', mensagens_usuario: 12, valor_investimento: 450000 },
-                        { id: 4, nome: 'Ana Oliveira', email: 'ana@email.com', telefone: '(11) 98765-4324', status: 'proposta', created_at: '2025-12-21', mensagens_usuario: 5, valor_investimento: 180000 },
-                        { id: 5, nome: 'Carlos Souza', email: 'carlos@email.com', telefone: '(11) 98765-4325', status: 'fechado', created_at: '2025-12-22', mensagens_usuario: 0, valor_investimento: 320000 },
-                        { id: 6, nome: 'Beatriz Lima', email: 'beatriz@email.com', telefone: '(11) 98765-4326', status: 'novo', created_at: '2025-12-23', mensagens_usuario: 2 },
-                        { id: 7, nome: 'Rafael Mendes', email: 'rafael@email.com', telefone: '(11) 98765-4327', status: 'em_atendimento', created_at: '2025-12-24', mensagens_usuario: 8, valor_investimento: 380000 },
-                        { id: 8, nome: 'Fernanda Rocha', email: 'fernanda@email.com', telefone: '(11) 98765-4328', status: 'interesse', created_at: '2025-12-25', mensagens_usuario: 4 },
-                        { id: 9, nome: 'Lucas Ferreira', email: 'lucas@email.com', telefone: '(11) 98765-4329', status: 'qualificado', created_at: '2025-12-26', mensagens_usuario: 6, valor_investimento: 520000 }
-                    ];
-                    filterLeads();
+                    leads = mockLeads;
+                    initDataTable(leads);
                 }
             });
         }
 
-        function renderLeads(data) {
-            if (!data.length) {
-                $('#leadsContainer').html('<div class="text-center py-5"><i class="bi bi-inbox" style="font-size:4rem;color:rgba(255,255,255,0.3)"></i><p class="mt-3 text-muted">Nenhum lead encontrado</p></div>');
-                return;
+        function initDataTable(data) {
+            if (leadsTable) {
+                leadsTable.destroy();
             }
-
-            const labels = { novo: 'Novo', em_atendimento: 'Em Atendimento', qualificado: 'Qualificado', proposta: 'Proposta', fechado: 'Fechado', perdido: 'Perdido' };
             
-            $('#leadsContainer').html(data.map(lead => `
-                <div class="lead-card">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div class="flex-grow-1">
-                            <h5>${lead.nome}</h5>
-                            <span class="badge-status badge-${lead.status}">${labels[lead.status]}</span>
-                        </div>
-                        ${lead.mensagens_usuario > 0 ? `<span class="badge-messages"><i class="bi bi-chat-dots me-1"></i>${lead.mensagens_usuario}</span>` : ''}
-                    </div>
-                    <div class="mb-3">
-                        <div class="mb-1 small"><i class="bi bi-telephone me-1 text-primary"></i><a href="tel:${lead.telefone}" class="text-decoration-none text-white">${lead.telefone}</a></div>
-                        <div class="small"><i class="bi bi-envelope me-1 text-primary"></i><a href="mailto:${lead.email}" class="text-decoration-none text-white text-truncate d-inline-block" style="max-width:200px" title="${lead.email}">${lead.email}</a></div>
-                    </div>
-                    ${lead.valor_investimento ? `
-                        <div class="investment-box mb-3">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-cash-coin me-2 text-success" style="font-size:1.25rem"></i>
-                                <div><small class="d-block text-success">Investimento</small><strong class="text-success" style="font-size:0.9rem">R$ ${formatMoney(lead.valor_investimento)}</strong></div>
-                            </div>
-                        </div>
-                    ` : ''}
-                    <div class="mb-3">
-                        <a href="${getWhatsAppLink(lead.telefone, lead.nome)}" target="_blank" class="btn btn-whatsapp w-100">
-                            <i class="bi bi-whatsapp me-1"></i>WhatsApp
-                        </a>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary mt-auto">
-                        <small class="text-muted" style="font-size:0.75rem"><i class="bi bi-calendar3 me-1"></i>${formatDate(lead.created_at)}</small>
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary btn-sm" onclick="editLead(${lead.id})" style="padding:0.25rem 0.5rem"><i class="bi bi-pencil"></i></button>
-                            <button class="btn btn-outline-danger btn-sm" onclick="deleteLead(${lead.id})" style="padding:0.25rem 0.5rem"><i class="bi bi-trash"></i></button>
-                        </div>
-                    </div>
-                </div>
-            `).join(''));
-        }
-
-        function filterLeads() {
-            const search = $('#searchLead').val().toLowerCase();
-            const status = $('#filterStatus').val();
-            const filtered = leads.filter(l => {
-                const match = !search || l.nome.toLowerCase().includes(search) || l.email.toLowerCase().includes(search) || l.telefone.includes(search);
-                return match && (!status || l.status === status);
+            leadsTable = $('#leadsTable').DataTable({
+                data: data,
+                columns: [
+                    { 
+                        data: 'nome',
+                        render: function(data, type, row) {
+                            return `<strong>${data}</strong>`;
+                        }
+                    },
+                    { data: 'email' },
+                    { 
+                        data: 'telefone',
+                        render: function(data) {
+                            return `<span class="text-nowrap">${data}</span>`;
+                        }
+                    },
+                    { 
+                        data: 'status',
+                        render: function(data) {
+                            const color = statusColors[data] || 'secondary';
+                            const label = statusLabels[data] || data;
+                            return `<span class="badge bg-${color} status-badge">${label}</span>`;
+                        }
+                    },
+                    { 
+                        data: 'valor_investimento',
+                        render: function(data) {
+                            return data ? `<span class="text-success fw-bold">R$ ${formatMoney(data)}</span>` : '-';
+                        }
+                    },
+                    { 
+                        data: 'created_at',
+                        render: function(data) {
+                            return `<small class="text-muted">${formatDate(data)}</small>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function(data, type, row) {
+                            return `
+                                <div class="btn-group btn-group-sm">
+                                    <a href="${getWhatsAppLink(row.telefone, row.nome)}" target="_blank" class="btn btn-success" title="WhatsApp">
+                                        <i class="bi bi-whatsapp"></i>
+                                    </a>
+                                    <button class="btn btn-primary" onclick="editLead(${row.id})" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-danger" onclick="deleteLead(${row.id})" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            `;
+                        }
+                    }
+                ],
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
+                },
+                pageLength: 25,
+                order: [[5, 'desc']], // Ordenar por data (mais recente primeiro)
+                responsive: true,
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip'
             });
-            renderLeads(filtered);
         }
 
         function handleSaveLead(e) {
@@ -444,25 +557,6 @@
             // Mensagem pré-formatada
             const mensagem = encodeURIComponent(`Olá ${nome}, tudo bem? Sou da equipe SOCIMOB e gostaria de conversar sobre sua solicitação.`);
             return `https://wa.me/${numeroCompleto}?text=${mensagem}`;
-        }
-
-        function initTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            updateThemeIcon(savedTheme);
-            
-            $('#themeToggle').on('click', function() {
-                const currentTheme = document.documentElement.getAttribute('data-theme');
-                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                document.documentElement.setAttribute('data-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-                updateThemeIcon(newTheme);
-            });
-        }
-
-        function updateThemeIcon(theme) {
-            const icon = theme === 'dark' ? 'bi-sun-fill' : 'bi-moon-fill';
-            $('#themeToggle i').attr('class', 'bi ' + icon);
         }
     </script>
 </body>
