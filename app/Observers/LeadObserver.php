@@ -5,17 +5,23 @@ namespace App\Observers;
 use App\Models\Lead;
 use App\Services\ChavesNaMaoService;
 use App\Services\LeadCustomerService;
+use App\Services\LeadAutomationService;
 use Illuminate\Support\Facades\Log;
 
 class LeadObserver
 {
     private ChavesNaMaoService $chavesNaMaoService;
     private LeadCustomerService $leadCustomerService;
+    private LeadAutomationService $leadAutomationService;
 
-    public function __construct(ChavesNaMaoService $chavesNaMaoService, LeadCustomerService $leadCustomerService)
-    {
+    public function __construct(
+        ChavesNaMaoService $chavesNaMaoService, 
+        LeadCustomerService $leadCustomerService,
+        LeadAutomationService $leadAutomationService
+    ) {
         $this->chavesNaMaoService = $chavesNaMaoService;
         $this->leadCustomerService = $leadCustomerService;
+        $this->leadAutomationService = $leadAutomationService;
     }
 
     /**
@@ -24,10 +30,14 @@ class LeadObserver
     public function created(Lead $lead): void
     {
         if ($this->isFromChavesNaMao($lead)) {
-            Log::info('Lead recebido do Chaves na Mao, ignorando envio de retorno', [
+            Log::info('[LeadObserver] Lead recebido do Chaves na Mao, ignorando envio de retorno', [
                 'lead_id' => $lead->id,
                 'nome' => $lead->nome
             ]);
+            
+            // MAS iniciar atendimento IA automaticamente!
+            $this->iniciarAtendimentoIA($lead);
+            
             return;
         }
 
@@ -127,5 +137,47 @@ class LeadObserver
     {
         $observacoes = $lead->observacoes ?? '';
         return stripos($observacoes, 'Chaves na') !== false;
+    }
+
+    /**
+     * Iniciar atendimento IA automaticamente
+     */
+    private function iniciarAtendimentoIA(Lead $lead): void
+    {
+        try {
+            Log::info('[LeadObserver] Iniciando atendimento IA automático', [
+                'lead_id' => $lead->id,
+                'nome' => $lead->nome,
+                'telefone' => $lead->telefone
+            ]);
+
+            // Verificar se tem telefone
+            if (empty($lead->telefone)) {
+                Log::warning('[LeadObserver] Lead sem telefone, atendimento IA não iniciado', [
+                    'lead_id' => $lead->id
+                ]);
+                return;
+            }
+
+            // Iniciar atendimento via LeadAutomationService
+            $resultado = $this->leadAutomationService->iniciarAtendimento($lead);
+
+            if ($resultado['success']) {
+                Log::info('[LeadObserver] Atendimento IA iniciado com sucesso', [
+                    'lead_id' => $lead->id,
+                    'conversa_id' => $resultado['conversa_id'] ?? null
+                ]);
+            } else {
+                Log::warning('[LeadObserver] Falha ao iniciar atendimento IA', [
+                    'lead_id' => $lead->id,
+                    'error' => $resultado['error'] ?? 'Erro desconhecido'
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('[LeadObserver] Exceção ao iniciar atendimento IA', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

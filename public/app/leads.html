@@ -531,6 +531,9 @@
                         <div class="lead-box-actions">
                             ${isFree ? `<button class="btn btn-success btn-sm" onclick="claimLead(${lead.id})" title="Assumir"><i class="bi bi-hand-thumbs-up"></i></button>` : ''}
                             ${isMine ? `<button class="btn btn-warning btn-sm" onclick="releaseLead(${lead.id})" title="Liberar"><i class="bi bi-arrow-counterclockwise"></i></button>` : ''}
+                            <button class="btn btn-outline-primary btn-sm" onclick="iniciarAtendimentoIA(${lead.id})" title="Iniciar Atendimento IA">
+                                <i class="bi bi-robot"></i>
+                            </button>
                             <a href="conversas.html?lead_id=${lead.id}&telefone=${encodeURIComponent(lead.telefone || '')}" class="btn btn-info btn-sm" title="Conversa">
                                 <i class="bi bi-chat-dots"></i>
                             </a>
@@ -723,6 +726,34 @@
                 headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 success: loadLeads,
                 error: function() { alert('Erro ao liberar lead'); }
+            });
+        }
+
+        function iniciarAtendimentoIA(id) {
+            if (!confirm('Deseja iniciar atendimento IA automático para este lead?')) {
+                return;
+            }
+
+            const $btn = $(`button[onclick="iniciarAtendimentoIA(${id})"]`);
+            const originalHtml = $btn.html();
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
+            $.ajax({
+                url: `/api/admin/leads/${id}/iniciar-atendimento`,
+                method: 'POST',
+                headers: { 
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    'Content-Type': 'application/json'
+                },
+                success: function(response) {
+                    alert('✅ Atendimento IA iniciado com sucesso!\n\nMensagem enviada via WhatsApp.');
+                    loadLeads(); // Recarregar lista
+                },
+                error: function(xhr) {
+                    const error = xhr.responseJSON?.error || 'Erro ao iniciar atendimento';
+                    alert('❌ ' + error);
+                    $btn.prop('disabled', false).html(originalHtml);
+                }
             });
         }
 

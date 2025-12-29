@@ -32,6 +32,10 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     $router->get('/comissoes/{id}/status', 'Admin\CommissionController@verificarStatus');
     $router->get('/corretores', 'Admin\CommissionController@listarCorretores');
 
+    // Leads - Automação IA
+    $router->post('/leads/{id}/iniciar-atendimento', 'Admin\LeadsController@iniciarAtendimento');
+    $router->post('/leads/iniciar-atendimento-lote', 'Admin\LeadsController@iniciarAtendimentoLote');
+
     // Importação de Imóveis
     $router->get('/imoveis', 'Admin\ImportacaoController@listar');
     $router->post('/imoveis/importar', 'Admin\ImportacaoController@importar');
