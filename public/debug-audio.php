@@ -11,7 +11,8 @@ echo "╔═══════════════════════�
 echo "║     🔍 DEBUG DE TRANSCRIÇÃO DE ÁUDIO                              ║\n";
 echo "╚═══════════════════════════════════════════════════════════════════╝\n\n";
 
-$logFile = __DIR__ . '/storage/logs/lumen-' . date('Y-m-d') . '.log';
+$basePath = dirname(__DIR__); // Voltar um nível de public/
+$logFile = $basePath . '/storage/logs/lumen-' . date('Y-m-d') . '.log';
 
 if (!file_exists($logFile)) {
     echo "❌ Log file não encontrado: $logFile\n";
@@ -74,8 +75,8 @@ echo str_repeat("-", 70) . "\n\n";
 // Verificar FFmpeg
 echo "1. Verificando FFmpeg:\n";
 $ffmpegPaths = [
-    __DIR__ . '/bin/ffmpeg',
-    __DIR__ . '/ffmpeg',
+    $basePath . '/bin/ffmpeg',
+    $basePath . '/ffmpeg',
     getenv('HOME') . '/bin/ffmpeg',
     '/usr/bin/ffmpeg',
     '/usr/local/bin/ffmpeg'
@@ -107,11 +108,11 @@ if ($ffmpegFound) {
 }
 
 echo "\n2. Diretório de trabalho:\n";
-echo "   - Base path: " . __DIR__ . "\n";
-echo "   - Storage: " . (__DIR__ . '/storage') . "\n";
-echo "   - Temp: " . (__DIR__ . '/storage/app/temp') . "\n";
+echo "   - Base path: " . $basePath . "\n";
+echo "   - Storage: " . ($basePath . '/storage') . "\n";
+echo "   - Temp: " . ($basePath . '/storage/app/temp') . "\n";
 
-$tempDir = __DIR__ . '/storage/app/temp';
+$tempDir = $basePath . '/storage/app/temp';
 if (!is_dir($tempDir)) {
     echo "   ⚠️  Diretório temp não existe!\n";
 } else {
