@@ -245,17 +245,37 @@ class Sidebar {
             oldSidebarContainer.remove();
         }
         
-        // Mover conteúdo existente para main-content (exceto scripts)
+        // Salva elementos importantes antes de limpar
+        const scriptsToPreserve = Array.from(document.querySelectorAll('script'));
+        
+        // Mover conteúdo existente para main-content (exceto scripts e sidebar-container)
         const bodyChildren = Array.from(document.body.children).filter(el => 
-            el.tagName !== 'SCRIPT' && el.id !== 'sidebar-container'
+            el.tagName !== 'SCRIPT' && 
+            el.id !== 'sidebar-container' &&
+            !el.classList.contains('app-layout')
         );
         
+        // Limpa o body mas preserva scripts
+        const tempContent = bodyChildren.map(child => child.cloneNode(true));
         document.body.innerHTML = '';
+        
+        // Re-adiciona scripts
+        scriptsToPreserve.forEach(script => {
+            const newScript = document.createElement('script');
+            Array.from(script.attributes).forEach(attr => {
+                newScript.setAttribute(attr.name, attr.value);
+            });
+            newScript.textContent = script.textContent;
+            document.body.appendChild(newScript);
+        });
+        
+        // Adiciona app layout
         document.body.appendChild(appLayout);
         
+        // Adiciona conteúdo ao main-content
         const mainContent = document.createElement('div');
         mainContent.className = 'main-content';
-        bodyChildren.forEach(child => mainContent.appendChild(child));
+        tempContent.forEach(child => mainContent.appendChild(child));
         appLayout.appendChild(mainContent);
     }
 
