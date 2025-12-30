@@ -964,6 +964,7 @@ class WhatsAppService
             } else {
                 // Tentar caminhos alternativos (binário estático, public_html, etc)
                 $alternativePaths = [
+                    base_path('bin/ffmpeg'), // public_html/bin/ffmpeg (repo)
                     base_path('ffmpeg'), // public_html/ffmpeg
                     getenv('HOME') . '/bin/ffmpeg', // ~/bin/ffmpeg
                     '/usr/local/bin/ffmpeg',
