@@ -41,25 +41,34 @@
     }
 
     function applyTheme(themeName) {
-        // Remove link antigo se existir
+        // Remove link antigo do Bootswatch se existir
         const oldLink = document.getElementById('bootswatch-theme-link');
         if (oldLink) {
             oldLink.remove();
         }
 
-        // Se não for tema padrão, adiciona o CSS do Bootswatch
+        // Encontra o link do Bootstrap padrão
+        const bootstrapLink = document.querySelector('link[href*="bootstrap"][href*=".min.css"]:not([id="bootswatch-theme-link"])');
+        
         if (themeName !== 'default') {
+            // Substitui o Bootstrap pelo tema Bootswatch
             const link = document.createElement('link');
             link.id = 'bootswatch-theme-link';
             link.rel = 'stylesheet';
             link.href = `${BOOTSWATCH_CDN}/${themeName}/bootstrap.min.css`;
             
-            // Insere antes do primeiro link de stylesheet (ou no head)
-            const firstLink = document.querySelector('link[rel="stylesheet"]');
-            if (firstLink) {
-                document.head.insertBefore(link, firstLink);
+            if (bootstrapLink) {
+                // Oculta o Bootstrap padrão
+                bootstrapLink.disabled = true;
+                // Insere o tema após o Bootstrap original
+                bootstrapLink.parentNode.insertBefore(link, bootstrapLink.nextSibling);
             } else {
                 document.head.appendChild(link);
+            }
+        } else {
+            // Restaura o Bootstrap padrão
+            if (bootstrapLink) {
+                bootstrapLink.disabled = false;
             }
         }
 
