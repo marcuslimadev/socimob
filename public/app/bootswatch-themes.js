@@ -36,8 +36,26 @@
 
     function initThemeSelector() {
         const savedTheme = localStorage.getItem('bootswatch-theme') || 'default';
+        const savedFontSize = localStorage.getItem('font-size') || 'md';
+        
         applyTheme(savedTheme);
+        applyFontSize(savedFontSize);
         createThemeUI();
+    }
+
+    function applyFontSize(size) {
+        console.log('📏 Aplicando tamanho de fonte:', size);
+        
+        // Remove classes antigas
+        document.documentElement.classList.remove('font-sm', 'font-md', 'font-lg', 'font-xl');
+        
+        // Adiciona nova classe
+        if (size !== 'md') {
+            document.documentElement.classList.add(`font-${size}`);
+        }
+        
+        localStorage.setItem('font-size', size);
+        console.log('✅ Tamanho de fonte salvo:', size);
     }
 
     function applyTheme(themeName) {
@@ -95,27 +113,62 @@
         modal.id = 'theme-selector-modal';
         modal.tabIndex = -1;
         modal.innerHTML = `
-            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">
                             <i class="bi bi-palette-fill me-2"></i>
-                            Escolher Tema Visual
+                            Personalização Visual
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
+                        <!-- Font Size Selector -->
+                        <div class="mb-4">
+                            <h6 class="mb-3">
+                                <i class="bi bi-fonts me-2"></i>
+                                Tamanho do Texto
+                            </h6>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="fontSize" id="fontSize-sm" value="sm">
+                                <label class="btn btn-outline-primary" for="fontSize-sm">
+                                    <small>Pequeno</small>
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="fontSize" id="fontSize-md" value="md" checked>
+                                <label class="btn btn-outline-primary" for="fontSize-md">
+                                    Normal
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="fontSize" id="fontSize-lg" value="lg">
+                                <label class="btn btn-outline-primary" for="fontSize-lg">
+                                    Grande
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="fontSize" id="fontSize-xl" value="xl">
+                                <label class="btn btn-outline-primary" for="fontSize-xl">
+                                    <strong>Extra Grande</strong>
+                                </label>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Theme Selector -->
+                        <h6 class="mb-3">
+                            <i class="bi bi-palette me-2"></i>
+                            Tema de Cores
+                        </h6>
                         <p class="text-muted mb-4">
-                            Selecione um tema visual para personalizar a aparência do sistema.
                             Powered by <a href="https://bootswatch.com/" target="_blank">Bootswatch</a>
                         </p>
                         <div class="row g-3" id="theme-grid">
                             ${bootswatchThemes.map(theme => `
-                                <div class="col-md-6 col-lg-4">
+                                <div class="col-md-6 col-lg-4 col-xl-3">
                                     <div class="theme-option card h-100" data-theme="${theme.value}">
                                         <div class="card-body text-center">
-                                            <div class="theme-preview mb-3" style="background: ${theme.preview}; height: 80px; border-radius: 8px;"></div>
-                                            <h6 class="card-title">${theme.name}</h6>
+                                            <div class="theme-preview mb-3" style="background: ${theme.preview}; height: 60px; border-radius: 8px;"></div>
+                                            <h6 class="card-title small">${theme.name}</h6>
                                             <button class="btn btn-sm btn-outline-primary select-theme-btn">
                                                 <i class="bi bi-check-circle"></i> Selecionar
                                             </button>
@@ -133,7 +186,22 @@
         `;
         document.body.appendChild(modal);
 
-        // Adiciona event listeners
+        // Event listeners para tamanho de fonte
+        const fontSizeInputs = modal.querySelectorAll('input[name="fontSize"]');
+        fontSizeInputs.forEach(input => {
+            input.addEventListener('change', (e) => {
+                applyFontSize(e.target.value);
+            });
+        });
+
+        // Marca o tamanho atual
+        const currentFontSize = localStorage.getItem('font-size') || 'md';
+        const currentFontInput = modal.querySelector(`#fontSize-${currentFontSize}`);
+        if (currentFontInput) {
+            currentFontInput.checked = true;
+        }
+
+        // Adiciona event listeners para temas
         const themeOptions = modal.querySelectorAll('.theme-option');
         themeOptions.forEach(option => {
             const btn = option.querySelector('.select-theme-btn');
@@ -172,6 +240,21 @@
         // Adiciona CSS customizado
         const style = document.createElement('style');
         style.textContent = `
+            /* Font size classes */
+            html.font-sm {
+                font-size: 14px;
+            }
+            html.font-md {
+                font-size: 16px;
+            }
+            html.font-lg {
+                font-size: 18px;
+            }
+            html.font-xl {
+                font-size: 20px;
+            }
+
+            /* Theme option cards */
             .theme-option {
                 cursor: pointer;
                 transition: all 0.3s ease;
