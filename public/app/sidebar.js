@@ -239,14 +239,23 @@ class Sidebar {
         appLayout.className = 'app-layout';
         appLayout.innerHTML = sidebarHTML;
         
-        // Mover conteúdo existente para main-content
-        const existingContent = document.body.innerHTML;
+        // Remove o container de sidebar antigo se existir
+        const oldSidebarContainer = document.getElementById('sidebar-container');
+        if (oldSidebarContainer) {
+            oldSidebarContainer.remove();
+        }
+        
+        // Mover conteúdo existente para main-content (exceto scripts)
+        const bodyChildren = Array.from(document.body.children).filter(el => 
+            el.tagName !== 'SCRIPT' && el.id !== 'sidebar-container'
+        );
+        
         document.body.innerHTML = '';
         document.body.appendChild(appLayout);
         
         const mainContent = document.createElement('div');
         mainContent.className = 'main-content';
-        mainContent.innerHTML = existingContent;
+        bodyChildren.forEach(child => mainContent.appendChild(child));
         appLayout.appendChild(mainContent);
     }
 
