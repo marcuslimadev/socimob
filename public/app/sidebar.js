@@ -234,41 +234,34 @@ class Sidebar {
             ${this.isMobile ? '<button class="mobile-menu-btn" id="mobileMenuBtn"><i class="bi bi-list"></i></button>' : ''}
         `;
 
+        // Verifica se já existe app-layout para evitar duplicação
+        if (document.querySelector('.app-layout')) {
+            console.log('⚠️ App layout já existe, não renderizando novamente');
+            return;
+        }
+
         // Inserir no início do body
         const appLayout = document.createElement('div');
         appLayout.className = 'app-layout';
         appLayout.innerHTML = sidebarHTML;
         
-        // Remove o container de sidebar antigo se existir
-        const oldSidebarContainer = document.getElementById('sidebar-container');
-        if (oldSidebarContainer) {
-            oldSidebarContainer.remove();
-        }
+        // Pega todo o conteúdo atual do body
+        const bodyContent = Array.from(document.body.children);
         
-        // Remove app-layout anterior se existir
-        const oldAppLayout = document.querySelector('.app-layout');
-        if (oldAppLayout) {
-            oldAppLayout.remove();
-        }
-        
-        // Coleta apenas o conteúdo visível (não scripts)
-        const bodyChildren = Array.from(document.body.children).filter(el => 
-            el.tagName !== 'SCRIPT' && 
-            el.id !== 'sidebar-container' &&
-            !el.classList.contains('app-layout') &&
-            !el.classList.contains('modal') &&
-            el.id !== 'theme-selector-modal'
-        );
-        
-        // Adiciona app layout ao body
+        // Adiciona app-layout no body
         document.body.insertBefore(appLayout, document.body.firstChild);
         
-        // Move conteúdo existente para dentro do main-content
+        // Cria main-content e move o conteúdo existente
         const mainContent = document.createElement('div');
         mainContent.className = 'main-content';
-        bodyChildren.forEach(child => {
-            mainContent.appendChild(child);
+        
+        bodyContent.forEach(child => {
+            // Não move o app-layout que acabamos de adicionar
+            if (child !== appLayout && !child.classList.contains('app-layout')) {
+                mainContent.appendChild(child);
+            }
         });
+        
         appLayout.appendChild(mainContent);
     }
 
