@@ -59,16 +59,20 @@ if ($conversa) {
     echo "   Criado em: {$conversa->created_at}\n\n";
     
     // Verificar mensagens
-    $mensagens = DB::table('mensagens')->where('conversa_id', 25)->orderBy('created_at')->get();
-    echo "   📱 Mensagens ({$mensagens->count()}):\n";
-    if ($mensagens->count() > 0) {
-        foreach ($mensagens as $msg) {
-            $tipo = $msg->tipo === 'received' ? '📥 Cliente' : '📤 IA';
-            $preview = mb_strlen($msg->mensagem) > 60 ? mb_substr($msg->mensagem, 0, 60) . '...' : $msg->mensagem;
-            echo "      [{$msg->created_at}] {$tipo}: {$preview}\n";
+    try {
+        $mensagens = DB::table('mensagens')->where('conversa_id', 25)->orderBy('created_at')->get();
+        echo "   📱 Mensagens ({$mensagens->count()}):\n";
+        if ($mensagens->count() > 0) {
+            foreach ($mensagens as $msg) {
+                $tipo = $msg->tipo === 'received' ? '📥 Cliente' : '📤 IA';
+                $preview = strlen($msg->mensagem) > 60 ? substr($msg->mensagem, 0, 60) . '...' : $msg->mensagem;
+                echo "      [{$msg->created_at}] {$tipo}: {$preview}\n";
+            }
+        } else {
+            echo "      (nenhuma mensagem)\n";
         }
-    } else {
-        echo "      (nenhuma mensagem)\n";
+    } catch (\Exception $e) {
+        echo "   ⚠️ Erro ao buscar mensagens: " . $e->getMessage() . "\n";
     }
     echo "\n";
 } else {
