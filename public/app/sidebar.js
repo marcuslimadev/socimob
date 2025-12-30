@@ -4,6 +4,9 @@
  */
 
 class Sidebar {
+    // Páginas onde o sidebar NÃO deve aparecer
+    static EXCLUDED_PAGES = ['dashboard-leads-tv', 'login', 'index'];
+
     constructor() {
         this.user = null;
         this.currentPage = this.getCurrentPage();
@@ -14,11 +17,30 @@ class Sidebar {
     }
 
     init() {
+        // Verifica se a página atual está excluída
+        if (Sidebar.EXCLUDED_PAGES.includes(this.currentPage)) {
+            console.log('📺 Página excluída do sidebar:', this.currentPage);
+            return;
+        }
+
         this.loadUserData();
+        
+        // Se não há usuário logado, redireciona para login
+        if (!this.user && !this.isPublicPage()) {
+            console.log('⚠️ Usuário não logado, redirecionando...');
+            window.location.href = 'login.html';
+            return;
+        }
+
         this.loadTenantConfig();
         this.render();
         this.attachEventListeners();
         this.handleResize();
+    }
+
+    isPublicPage() {
+        const publicPages = ['login', 'index'];
+        return publicPages.includes(this.currentPage);
     }
 
     loadUserData() {

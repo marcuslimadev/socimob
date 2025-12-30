@@ -10,14 +10,11 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="bootswatch-themes.js"></script>
     <style>
-        body { background: var(--bg-primary, #0f172a); color: var(--text-primary, #f8fafc); min-height: 100vh; overflow-x: hidden; margin: 0; padding: 0; }
         .page-container { padding: 1.5rem 1rem; }
         .page-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
         .kanban-board { display: flex; gap: 1.5rem; overflow-x: auto; padding-bottom: 2rem; }
         .kanban-column {
             min-width: 320px;
-            background: rgba(30, 41, 59, 0.3);
-            border: 1px solid rgba(255,255,255,0.1);
             border-radius: 12px;
             padding: 1rem;
         }
@@ -29,14 +26,7 @@
             text-transform: uppercase;
             font-size: 0.875rem;
         }
-        .col-leads { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
-        .col-contato { background: rgba(234, 179, 8, 0.2); color: #fbbf24; border: 1px solid rgba(234, 179, 8, 0.3); }
-        .col-interesse { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
-        .col-negociacao { background: rgba(249, 115, 22, 0.2); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
-        .col-fechado { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
         .lead-card {
-            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.8));
-            border: 1px solid rgba(255,255,255,0.1);
             border-radius: 12px;
             padding: 1rem;
             margin-bottom: 1rem;
@@ -45,7 +35,6 @@
         }
         .lead-card:hover {
             transform: scale(1.02);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
     </style>
 </head>

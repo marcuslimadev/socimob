@@ -1,14 +1,9 @@
 /* Sidebar Styles - Sistema SOCIMOB */
+/* Usa cores do tema Bootstrap/Bootswatch */
 
 :root {
     --sidebar-width: 15%;
     --sidebar-collapsed-width: 70px;
-    --sidebar-bg: #1e293b;
-    --sidebar-hover: #334155;
-    --sidebar-active: #3b82f6;
-    --sidebar-text: #e2e8f0;
-    --sidebar-text-muted: #94a3b8;
-    --sidebar-border: #334155;
 }
 
 /* Layout principal com sidebar */
@@ -17,15 +12,15 @@
     min-height: 100vh;
 }
 
-/* Sidebar container */
+/* Sidebar container - usa classes do Bootstrap */
 .sidebar {
     position: fixed;
     left: 0;
     top: 0;
     bottom: 0;
     width: var(--sidebar-width);
-    background-color: var(--sidebar-bg);
-    color: var(--sidebar-text);
+    background-color: var(--bs-dark, #212529);
+    color: var(--bs-light, #f8f9fa);
     display: flex;
     flex-direction: column;
     transition: all 0.3s ease;
@@ -40,7 +35,7 @@
 /* Header da sidebar */
 .sidebar-header {
     padding: 1.5rem 1rem;
-    border-bottom: 1px solid var(--sidebar-border);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -52,7 +47,7 @@
     gap: 0.75rem;
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--sidebar-text);
+    color: inherit;
     text-decoration: none;
 }
 
@@ -67,7 +62,8 @@
 .sidebar-toggle {
     background: none;
     border: none;
-    color: var(--sidebar-text-muted);
+    color: inherit;
+    opacity: 0.7;
     cursor: pointer;
     padding: 0.5rem;
     border-radius: 0.375rem;
@@ -75,8 +71,8 @@
 }
 
 .sidebar-toggle:hover {
-    background-color: var(--sidebar-hover);
-    color: var(--sidebar-text);
+    background-color: rgba(255,255,255,0.1);
+    opacity: 1;
 }
 
 .sidebar.collapsed .sidebar-toggle {
@@ -86,7 +82,7 @@
 /* User info */
 .sidebar-user {
     padding: 1rem;
-    border-bottom: 1px solid var(--sidebar-border);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -96,7 +92,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    background: var(--bs-primary, #0d6efd);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -112,7 +108,7 @@
 .sidebar-user-name {
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--sidebar-text);
+    color: inherit;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -120,7 +116,7 @@
 
 .sidebar-user-role {
     font-size: 0.75rem;
-    color: var(--sidebar-text-muted);
+    opacity: 0.7;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -141,7 +137,7 @@
 }
 
 .sidebar-nav::-webkit-scrollbar-thumb {
-    background-color: var(--sidebar-border);
+    background-color: rgba(255,255,255,0.2);
     border-radius: 3px;
 }
 
@@ -153,7 +149,7 @@
     padding: 0.5rem 1rem;
     font-size: 0.75rem;
     font-weight: 700;
-    color: var(--sidebar-text-muted);
+    opacity: 0.7;
     text-transform: uppercase;
     letter-spacing: 0.1em;
 }
@@ -177,19 +173,19 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    color: var(--sidebar-text);
+    color: inherit;
     text-decoration: none;
     transition: all 0.2s;
     position: relative;
 }
 
 .sidebar-menu-link:hover {
-    background-color: var(--sidebar-hover);
-    color: #fff;
+    background-color: rgba(255,255,255,0.1);
+    color: inherit;
 }
 
 .sidebar-menu-link.active {
-    background-color: var(--sidebar-active);
+    background-color: var(--bs-primary, #0d6efd);
     color: #fff;
 }
 
@@ -222,7 +218,7 @@
 
 .sidebar-menu-badge {
     margin-left: auto;
-    background-color: #ef4444;
+    background-color: var(--bs-danger, #dc3545);
     color: #fff;
     font-size: 0.75rem;
     font-weight: 600;
@@ -241,7 +237,7 @@
 /* Footer */
 .sidebar-footer {
     padding: 1rem;
-    border-top: 1px solid var(--sidebar-border);
+    border-top: 1px solid rgba(255,255,255,0.1);
 }
 
 .sidebar-footer-btn {
@@ -252,8 +248,8 @@
     gap: 0.5rem;
     padding: 0.75rem;
     background-color: transparent;
-    border: 1px solid var(--sidebar-border);
-    color: var(--sidebar-text);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: inherit;
     border-radius: 0.375rem;
     cursor: pointer;
     transition: all 0.2s;
@@ -262,8 +258,8 @@
 }
 
 .sidebar-footer-btn:hover {
-    background-color: var(--sidebar-hover);
-    border-color: var(--sidebar-text-muted);
+    background-color: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.3);
 }
 
 .sidebar.collapsed .sidebar-footer-btn span {
@@ -315,8 +311,8 @@
         top: 1rem;
         left: 1rem;
         z-index: 998;
-        background-color: var(--sidebar-bg);
-        color: var(--sidebar-text);
+        background-color: var(--bs-dark, #212529);
+        color: var(--bs-light, #f8f9fa);
         border: none;
         padding: 0.75rem;
         border-radius: 0.375rem;
@@ -342,8 +338,8 @@
     transform: translateY(-50%);
     margin-left: 0.5rem;
     padding: 0.5rem 0.75rem;
-    background-color: #1e293b;
-    color: #fff;
+    background-color: var(--bs-dark, #212529);
+    color: var(--bs-light, #f8f9fa);
     border-radius: 0.375rem;
     white-space: nowrap;
     font-size: 0.875rem;
