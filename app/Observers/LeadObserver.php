@@ -194,15 +194,16 @@ class LeadObserver
     private function isAtendimentoAutomaticoAtivo($tenantId): bool
     {
         try {
-            $ativo = \App\Models\AppSetting::getValue('atendimento_automatico_ativo', true, $tenantId);
+            // DESATIVADO por padrão - Admin precisa ativar no painel
+            $ativo = \App\Models\AppSetting::getValue('atendimento_automatico_ativo', false, $tenantId);
             return (bool) $ativo;
         } catch (\Exception $e) {
-            // Se houver erro, retorna true (ativo por padrão)
-            Log::warning('[LeadObserver] Erro ao verificar config atendimento automático, usando padrão (ativo)', [
+            // Se houver erro, retorna false (desativado por padrão)
+            Log::warning('[LeadObserver] Erro ao verificar config atendimento automático, usando padrão (desativado)', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage()
             ]);
-            return true;
+            return false;
         }
     }
 }

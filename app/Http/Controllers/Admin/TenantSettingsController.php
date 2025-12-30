@@ -539,7 +539,8 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
         }
 
-        $ativo = \App\Models\AppSetting::getValue('atendimento_automatico_ativo', true, $user->tenant_id);
+        // DESATIVADO por padrão - Admin precisa ativar manualmente
+        $ativo = \App\Models\AppSetting::getValue('atendimento_automatico_ativo', false, $user->tenant_id);
 
         return response()->json([
             'ativo' => (bool) $ativo,
