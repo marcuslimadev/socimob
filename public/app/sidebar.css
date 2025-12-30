@@ -293,7 +293,7 @@
     }
     
     .main-content {
-        margin-left: 0 !important;
+        margin-left: 0;
     }
     
     /* Overlay para fechar sidebar no mobile */
