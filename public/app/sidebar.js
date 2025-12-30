@@ -240,29 +240,45 @@ class Sidebar {
             return;
         }
 
-        // Inserir no início do body
+        // Remove sidebar-container antigo se existir
+        const sidebarContainer = document.getElementById('sidebar-container');
+        if (sidebarContainer) {
+            sidebarContainer.remove();
+        }
+
+        // Remove botão de toggle de tema antigo se existir
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            themeToggle.remove();
+        }
+
+        // Cria app-layout
         const appLayout = document.createElement('div');
         appLayout.className = 'app-layout';
         appLayout.innerHTML = sidebarHTML;
         
-        // Pega todo o conteúdo atual do body
-        const bodyContent = Array.from(document.body.children);
+        // Coleta todo o conteúdo visível do body (exceto scripts)
+        const bodyContent = Array.from(document.body.children).filter(el => 
+            el.tagName !== 'SCRIPT' && 
+            !el.classList.contains('modal') &&
+            el.id !== 'theme-selector-modal'
+        );
         
-        // Adiciona app-layout no body
+        // Insere app-layout no início
         document.body.insertBefore(appLayout, document.body.firstChild);
         
-        // Cria main-content e move o conteúdo existente
+        // Cria main-content e move o conteúdo
         const mainContent = document.createElement('div');
         mainContent.className = 'main-content';
         
         bodyContent.forEach(child => {
-            // Não move o app-layout que acabamos de adicionar
-            if (child !== appLayout && !child.classList.contains('app-layout')) {
+            if (child !== appLayout) {
                 mainContent.appendChild(child);
             }
         });
         
         appLayout.appendChild(mainContent);
+        console.log('✅ Sidebar renderizada com sucesso');
     }
 
     renderUserInfo() {
