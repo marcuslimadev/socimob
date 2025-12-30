@@ -188,27 +188,66 @@
         document.head.appendChild(style);
     }
 
-    // Inicializa quando DOM estiver pronto
+    // Inicializa quando DOM estiver pronto E Bootstrap carregado
+    function waitForBootstrap() {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            console.log('✅ Bootstrap carregado, inicializando tema');
+            initThemeSelector();
+        } else {
+            console.log('⏳ Aguardando Bootstrap carregar...');
+            setTimeout(waitForBootstrap, 100);
+        }
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initThemeSelector);
+        document.addEventListener('DOMContentLoaded', waitForBootstrap);
     } else {
-        initThemeSelector();
+        waitForBootstrap();
     }
 
     // Expõe função global para abrir seletor
     window.openThemeSelector = function() {
         console.log('🎨 Abrindo seletor de temas');
         const modalEl = document.getElementById('theme-selector-modal');
-        if (modalEl) {
-            console.log('✅ Modal encontrado, abrindo...');
-            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                const modal = new bootstrap.Modal(modalEl);
-                modal.show();
-            } else {
-                console.error('❌ Bootstrap não disponível!');
-            }
-        } else {
+        if (!modalEl) {
             console.error('❌ Modal não encontrado!');
+            return;
+        }
+        
+        console.log('✅ Modal encontrado, abrindo...');
+        console.log('Bootstrap disponível?', typeof bootstrap);
+        console.log('Bootstrap.Modal disponível?', typeof bootstrap?.Modal);
+        
+        // Tenta diferentes métodos para abrir o modal
+        try {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const modal = new bootstrap.Modal(modalEl, {
+                    backdrop: true,
+                    keyboard: true,
+                    focus: true
+                });
+                console.log('Modal instance criada:', modal);
+                modal.show();
+                console.log('Modal.show() chamado');
+            } else if (typeof $ !== 'undefined') {
+                // Fallback para jQuery se Bootstrap JS não estiver disponível
+                console.log('Usando jQuery fallback');
+                $(modalEl).modal('show');
+            } else {
+                console.error('❌ Nem Bootstrap nem jQuery disponíveis!');
+                // Último recurso: mostra manualmente
+                modalEl.classList.add('show');
+                modalEl.style.display = 'block';
+                document.body.classList.add('modal-open');
+                
+                // Adiciona backdrop
+                const backdrop = document.createElement('div');
+                backdrop.className = 'modal-backdrop fade show';
+                backdrop.id = 'theme-modal-backdrop';
+                document.body.appendChild(backdrop);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao abrir modal:', error);
         }
     };
 })();
