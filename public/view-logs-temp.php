@@ -11,11 +11,46 @@ if ($token !== 'temp-debug-2025') {
     die('Access denied');
 }
 
-$logFile = __DIR__ . '/../storage/logs/lumen-' . date('Y-m-d') . '.log';
+$logDir = __DIR__ . '/../storage/logs/';
 
-if (!file_exists($logFile)) {
+// Tentar hoje e ontem (timezone pode ser diferente)
+$possibleDates = [
+    date('Y-m-d'),
+    date('Y-m-d', strtotime('-1 day')),
+    date('Y-m-d', strtotime('-2 days'))
+];
+
+$logFile = null;
+foreach ($possibleDates as $date) {
+    $file = $logDir . 'lumen-' . $date . '.log';
+    if (file_exists($file)) {
+        $logFile = $file;
+        break;
+    }
+}
+
+// Se não encontrou, pegar o mais recente
+if (!$logFile && is_dir($logDir)) {
+    $files = glob($logDir . 'lumen-*.log');
+    if (!empty($files)) {
+        rsort($files); // Mais recente primeiro
+        $logFile = $files[0];
+    }
+}
+
+if (!$logFile || !file_exists($logFile)) {
     http_response_code(404);
-    die('Log file not found: ' . $logFile);
+    echo "Log files not found.\n\n";
+    echo "Searched in: $logDir\n";
+    echo "Attempted dates: " . implode(', ', $possibleDates) . "\n";
+    if (is_dir($logDir)) {
+        $files = glob($logDir . 'lumen-*.log');
+        echo "\nAvailable logs:\n";
+        foreach ($files as $f) {
+            echo "  - " . basename($f) . " (" . date('Y-m-d H:i:s', filemtime($f)) . ")\n";
+        }
+    }
+    die();
 }
 
 // Ler arquivo
@@ -38,7 +73,8 @@ foreach ($lines as $line) {
 
 header('Content-Type: text/plain; charset=utf-8');
 echo "═══════════════════════════════════════════════════════════════\n";
-echo "LOGS DO WEBHOOK - " . date('Y-m-d H:i:s') . "\n";
+echo "LOGS DO WEBHOOK - " . basename($logFile) . "\n";
+echo "Última modificação: " . date('Y-m-d H:i:s', filemtime($logFile)) . "\n";
 echo "═══════════════════════════════════════════════════════════════\n\n";
 
 if (empty($filtered)) {
