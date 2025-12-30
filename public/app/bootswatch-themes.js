@@ -41,14 +41,18 @@
     }
 
     function applyTheme(themeName) {
+        console.log('🎨 Aplicando tema:', themeName);
+        
         // Remove link antigo do Bootswatch se existir
         const oldLink = document.getElementById('bootswatch-theme-link');
         if (oldLink) {
+            console.log('🗑️ Removendo tema anterior');
             oldLink.remove();
         }
 
         // Encontra o link do Bootstrap padrão
         const bootstrapLink = document.querySelector('link[href*="bootstrap"][href*=".min.css"]:not([id="bootswatch-theme-link"])');
+        console.log('🔍 Bootstrap link encontrado:', !!bootstrapLink);
         
         if (themeName !== 'default') {
             // Substitui o Bootstrap pelo tema Bootswatch
@@ -56,6 +60,8 @@
             link.id = 'bootswatch-theme-link';
             link.rel = 'stylesheet';
             link.href = `${BOOTSWATCH_CDN}/${themeName}/bootstrap.min.css`;
+            
+            console.log('📥 Carregando tema:', link.href);
             
             if (bootstrapLink) {
                 // Oculta o Bootstrap padrão
@@ -69,11 +75,12 @@
             // Restaura o Bootstrap padrão
             if (bootstrapLink) {
                 bootstrapLink.disabled = false;
+                console.log('🔄 Restaurado Bootstrap padrão');
             }
         }
 
         localStorage.setItem('bootswatch-theme', themeName);
-        console.log('✅ Tema aplicado:', themeName);
+        console.log('✅ Tema salvo no localStorage:', themeName);
     }
 
     function createThemeUI() {
@@ -132,7 +139,11 @@
             const btn = option.querySelector('.select-theme-btn');
             const themeName = option.dataset.theme;
             
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log('🎨 Selecionando tema:', themeName);
                 applyTheme(themeName);
                 
                 // Atualiza UI
@@ -144,14 +155,10 @@
                 option.classList.add('border-primary', 'border-3');
                 btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Selecionado';
                 
-                // Fecha modal após 500ms
+                // Recarrega a página para aplicar o tema completamente
                 setTimeout(() => {
-                    const modalEl = document.getElementById('theme-selector-modal');
-                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
-                    if (modalInstance) {
-                        modalInstance.hide();
-                    }
-                }, 500);
+                    location.reload();
+                }, 300);
             });
 
             // Marca tema atual
@@ -190,10 +197,18 @@
 
     // Expõe função global para abrir seletor
     window.openThemeSelector = function() {
+        console.log('🎨 Abrindo seletor de temas');
         const modalEl = document.getElementById('theme-selector-modal');
         if (modalEl) {
-            const modal = new bootstrap.Modal(modalEl);
-            modal.show();
+            console.log('✅ Modal encontrado, abrindo...');
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            } else {
+                console.error('❌ Bootstrap não disponível!');
+            }
+        } else {
+            console.error('❌ Modal não encontrado!');
         }
     };
 })();
