@@ -275,6 +275,7 @@
     margin-left: var(--sidebar-width);
     flex: 1;
     transition: margin-left 0.3s ease;
+    padding-left: 0;
 }
 
 .sidebar.collapsed ~ .main-content {

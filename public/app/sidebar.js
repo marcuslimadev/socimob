@@ -216,9 +216,9 @@ class Sidebar {
 
                 <!-- Footer -->
                 <div class="sidebar-footer">
-                    <button class="sidebar-footer-btn" id="themeToggle">
-                        <i class="bi ${localStorage.getItem('theme') === 'light' ? 'bi-moon-fill' : 'bi-sun-fill'}"></i>
-                        <span>${localStorage.getItem('theme') === 'light' ? 'Modo Escuro' : 'Modo Claro'}</span>
+                    <button class="sidebar-footer-btn" id="themeSelectorBtn">
+                        <i class="bi bi-palette-fill"></i>
+                        <span>Temas</span>
                     </button>
                     <button class="sidebar-footer-btn" id="btnSidebarLogout">
                         <i class="bi bi-box-arrow-right"></i>
@@ -324,6 +324,16 @@ class Sidebar {
         const overlay = document.getElementById('sidebarOverlay');
         if (overlay) {
             overlay.addEventListener('click', () => this.closeMobileSidebar());
+        }
+
+        // Theme Selector
+        const themeSelectorBtn = document.getElementById('themeSelectorBtn');
+        if (themeSelectorBtn) {
+            themeSelectorBtn.addEventListener('click', () => {
+                if (typeof window.openThemeSelector === 'function') {
+                    window.openThemeSelector();
+                }
+            });
         }
 
         // Logout
