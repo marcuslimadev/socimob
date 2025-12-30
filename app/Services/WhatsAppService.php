@@ -1705,7 +1705,16 @@ class WhatsAppService
         Log::info('🎯 Status: ' . $lead->status);
         Log::info('─────────────────────────────────────────────────────────────────');
         
-        $this->leadCustomerService->ensureClientForLead($lead);
+        $user = $this->leadCustomerService->ensureClientForLead($lead);
+        
+        // Atualizar conversa com user_id se foi criado/encontrado
+        if ($user && $conversaId) {
+            $conversa = Conversa::find($conversaId);
+            if ($conversa && !$conversa->user_id) {
+                $conversa->update(['user_id' => $user->id]);
+                Log::info('✅ Conversa vinculada ao cliente', ['conversa_id' => $conversaId, 'user_id' => $user->id]);
+            }
+        }
 
         return $lead;
     }
