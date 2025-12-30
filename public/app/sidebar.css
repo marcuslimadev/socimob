@@ -1,7 +1,7 @@
 /* Sidebar Styles - Sistema SOCIMOB */
 
 :root {
-    --sidebar-width: 260px;
+    --sidebar-width: 240px;
     --sidebar-collapsed-width: 70px;
     --sidebar-bg: #1e293b;
     --sidebar-hover: #334155;
