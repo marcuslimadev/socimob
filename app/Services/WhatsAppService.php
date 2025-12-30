@@ -913,16 +913,11 @@ class WhatsAppService
             file_put_contents($audioPath, $audioData['data']);
             Log::info('💾 Áudio salvo temporariamente', ['path' => $audioPath]);
 
-            $mp3Path = $this->convertOggToMp3($audioPath);
+            // OpenAI Whisper aceita OGG diretamente - sem necessidade de conversão!
+            Log::info('🎤 Transcrevendo áudio OGG diretamente (sem conversão)');
+            
+            $transcription = $this->openai->transcribeAudio($audioPath);
             @unlink($audioPath);
-
-            if (!$mp3Path) {
-                Log::error('❌ Falha na conversão para MP3');
-                return '[Não foi possível converter o áudio]';
-            }
-
-            $transcription = $this->openai->transcribeAudio($mp3Path);
-            @unlink($mp3Path);
 
             if ($transcription['success']) {
                 Log::info('✅ Transcrição bem-sucedida', [
