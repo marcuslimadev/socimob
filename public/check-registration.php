@@ -64,9 +64,14 @@ if ($conversa) {
         echo "   📱 Mensagens ({$mensagens->count()}):\n";
         if ($mensagens->count() > 0) {
             foreach ($mensagens as $msg) {
-                $tipo = $msg->tipo === 'received' ? '📥 Cliente' : '📤 IA';
-                $preview = strlen($msg->mensagem) > 60 ? substr($msg->mensagem, 0, 60) . '...' : $msg->mensagem;
-                echo "      [{$msg->created_at}] {$tipo}: {$preview}\n";
+                // Determinar direção pela presença de remetente/destinatario
+                $isReceived = !empty($msg->remetente) && $msg->remetente !== 'whatsapp:+553173341150';
+                $icone = $isReceived ? '📥' : '📤';
+                $de = $isReceived ? 'Cliente' : 'IA';
+                
+                $texto = $msg->mensagem ?? $msg->corpo ?? '';
+                $preview = strlen($texto) > 60 ? substr($texto, 0, 60) . '...' : $texto;
+                echo "      {$icone} [{$msg->created_at}] {$de}: {$preview}\n";
             }
         } else {
             echo "      (nenhuma mensagem)\n";
