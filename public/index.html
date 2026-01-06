@@ -42,27 +42,29 @@
                     <span class="h-3 w-3 bg-[var(--glow-red)] inline-block rounded-full"></span>
                     Plataforma completa para clientes, corretores e administradores.
                 </div>
-                <div class="space-y-4">
+                <div class="space-y-6">
                     <h2 class="glow-hero-title font-black" id="heroTitle">
-                        Gestão imobiliária fluida
-                        <span class="glow-hero-highlight">enxuta, vibrante e pronta para você</span>
+                        Encontre o <span class="glow-hero-highlight">Imóvel Perfeito</span>
+                        <br>para Você
                     </h2>
-                    <p id="heroDescription" class="text-lg max-w-3xl leading-relaxed text-[rgba(255,255,255,0.85)]">
-                        A experiência Glow entrega login único, atendimento inteligente e painéis que respeitam seu papel (cliente, corretor ou administrador) sem precisar trocar de tela.
+                    <p id="heroDescription" class="text-xl max-w-2xl leading-relaxed text-[rgba(255,255,255,0.9)]">
+                        Tecnologia e experiência para você comprar, vender ou alugar com segurança e praticidade.
                     </p>
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <div class="glow-card p-5">
-                        <div class="text-3xl mb-2">✨</div>
-                        <p class="font-semibold text-[var(--glow-ink)]">
-                            Login inteligente que percebe o seu papel e direciona para a área certa.
+                    <div class="glow-card p-6">
+                        <div class="text-4xl mb-3">🏠</div>
+                        <h3 class="font-bold text-lg text-[var(--glow-ink)] mb-2">Imóveis Selecionados</h3>
+                        <p class="text-sm text-[rgba(255,255,255,0.8)]">
+                            Casas, apartamentos e terrenos com as melhores localizações e preços.
                         </p>
                     </div>
-                    <div class="glow-card p-5">
-                        <div class="text-3xl mb-2">💡</div>
-                        <p class="font-semibold text-[var(--glow-ink)]">
-                            Liquid glass, espaçamentos generosos e tipografia cuidada evitam branco sobre branco.
+                    <div class="glow-card p-6">
+                        <div class="text-4xl mb-3">💼</div>
+                        <h3 class="font-bold text-lg text-[var(--glow-ink)] mb-2">Atendimento Personalizado</h3>
+                        <p class="text-sm text-[rgba(255,255,255,0.8)]">
+                            Corretores especializados para ajudar você em cada etapa do processo.
                         </p>
                     </div>
                 </div>
@@ -157,18 +159,27 @@
         </div>
 
         <!-- Features -->
-        <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-5 relative z-10">
-            <div class="glow-card rounded-xl p-6 text-center">
-                <div class="text-4xl mb-3">🔍</div>
-                <p class="text-lg font-bold text-[var(--glow-ink)]">Busca geométrica com filtros rápidos</p>
+        <div class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+            <div class="glow-card rounded-xl p-8 text-center hover:scale-105 transition-transform">
+                <div class="text-5xl mb-4">🔍</div>
+                <h3 class="text-xl font-bold text-[var(--glow-ink)] mb-2">Busca Inteligente</h3>
+                <p class="text-sm text-[rgba(255,255,255,0.8)]">
+                    Encontre o imóvel ideal com filtros por localização, preço, tamanho e muito mais.
+                </p>
             </div>
-            <div class="glow-card rounded-xl p-6 text-center">
-                <div class="text-4xl mb-3">💬</div>
-                <p class="text-lg font-bold text-[var(--glow-ink)]">Chat direto entre clientes e corretores</p>
+            <div class="glow-card rounded-xl p-8 text-center hover:scale-105 transition-transform">
+                <div class="text-5xl mb-4">📱</div>
+                <h3 class="text-xl font-bold text-[var(--glow-ink)] mb-2">Atendimento 24/7</h3>
+                <p class="text-sm text-[rgba(255,255,255,0.8)]">
+                    Chat direto com corretores e assistente virtual para tirar suas dúvidas a qualquer hora.
+                </p>
             </div>
-            <div class="glow-card rounded-xl p-6 text-center">
-                <div class="text-4xl mb-3">🔒</div>
-                <p class="text-lg font-bold text-[var(--glow-ink)]">Autenticação segura e multi-tenant</p>
+            <div class="glow-card rounded-xl p-8 text-center hover:scale-105 transition-transform">
+                <div class="text-5xl mb-4">✅</div>
+                <h3 class="text-xl font-bold text-[var(--glow-ink)] mb-2">Processo Seguro</h3>
+                <p class="text-sm text-[rgba(255,255,255,0.8)]">
+                    Documentação completa, vistorias e suporte jurídico em todas as negociações.
+                </p>
             </div>
         </div>
     </div>
@@ -191,45 +202,90 @@
         }
 
         function applyTenantConfig(tenant) {
+            console.log('🎨 Aplicando config do tenant:', tenant);
+            
             // Atualizar título da página
             document.title = `${tenant.name || 'SOCIMOB'} - Sistema de Gestão Imobiliária`;
+            
+            // Criar logo placeholder com iniciais se não tiver logo
+            const logoFallback = createLogoPlaceholder(tenant.name);
             
             // Atualizar navbar
             const navLogo = document.getElementById('navLogo');
             const navName = document.getElementById('navName');
             const navSlogan = document.getElementById('navSlogan');
             
-            if (navLogo && tenant.logo_url) navLogo.src = tenant.logo_url;
+            if (navLogo) {
+                if (tenant.logo_url && tenant.logo_url !== '/assets/logo.png') {
+                    navLogo.src = tenant.logo_url;
+                    navLogo.onerror = () => { navLogo.style.display = 'none'; };
+                } else {
+                    navLogo.style.display = 'none';
+                }
+            }
             if (navName) navName.textContent = tenant.name || 'SOCIMOB';
             if (navSlogan && tenant.slogan) navSlogan.textContent = tenant.slogan;
             
             // Atualizar hero section
             const heroTitle = document.getElementById('heroTitle');
-            if (heroTitle && tenant.hero_title) {
-                heroTitle.innerHTML = tenant.hero_title;
-            } else if (heroTitle && tenant.slogan) {
-                heroTitle.innerHTML = `${tenant.name}<br><span class="glow-hero-highlight">${tenant.slogan}</span>`;
+            if (heroTitle) {
+                if (tenant.hero_title) {
+                    heroTitle.innerHTML = tenant.hero_title;
+                } else {
+                    heroTitle.innerHTML = `Encontre o <span class="glow-hero-highlight">Imóvel Perfeito</span><br>para Você`;
+                }
             }
             
             const heroDescription = document.getElementById('heroDescription');
-            if (heroDescription && tenant.hero_description) {
-                heroDescription.textContent = tenant.hero_description;
+            if (heroDescription) {
+                if (tenant.hero_description) {
+                    heroDescription.textContent = tenant.hero_description;
+                } else if (tenant.description) {
+                    heroDescription.textContent = tenant.description;
+                }
             }
             
-            // Atualizar painel de login
+            // Atualizar painel de login - criar badge com iniciais ao invés de logo
             const loginLogo = document.getElementById('loginLogo');
             const loginTitle = document.getElementById('loginTitle');
             
-            if (loginLogo && tenant.logo_url) loginLogo.src = tenant.logo_url;
-            if (loginTitle) loginTitle.textContent = `Bem-vindo ao ${tenant.name || 'Portal'}`;
+            if (loginLogo) {
+                if (tenant.logo_url && tenant.logo_url !== '/assets/logo.png') {
+                    loginLogo.src = tenant.logo_url;
+                    loginLogo.onerror = () => {
+                        // Se falhar, substituir por badge com iniciais
+                        const badge = createLogoBadge(tenant.name);
+                        loginLogo.parentNode.replaceChild(badge, loginLogo);
+                    };
+                } else {
+                    // Substituir por badge com iniciais
+                    const badge = createLogoBadge(tenant.name);
+                    loginLogo.parentNode.replaceChild(badge, loginLogo);
+                }
+            }
+            if (loginTitle) loginTitle.textContent = `Bem-vindo à ${tenant.name || 'Portal'}`;
             
-            // Aplicar cores personalizadas se configuradas
+            // Aplicar cores personalizadas
             if (tenant.primary_color) {
                 document.documentElement.style.setProperty('--tenant-primary', tenant.primary_color);
             }
             if (tenant.secondary_color) {
                 document.documentElement.style.setProperty('--tenant-secondary', tenant.secondary_color);
             }
+        }
+        
+        function createLogoBadge(name) {
+            const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+            const div = document.createElement('div');
+            div.className = 'hero-logo';
+            div.style.cssText = 'width: 120px; height: 120px; background: linear-gradient(135deg, var(--glow-purple) 0%, var(--glow-red) 100%); border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 900; color: white; margin: 0 auto 1.5rem; box-shadow: 0 0 40px rgba(168, 85, 247, 0.4);';
+            div.textContent = initials;
+            return div;
+        }
+        
+        function createLogoPlaceholder(name) {
+            const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+            return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23a855f7"/><text x="50" y="50" font-size="40" fill="white" text-anchor="middle" dy=".3em" font-weight="bold">${initials}</text></svg>`)}`;
         }
 
         window.handleCredentialResponse = (response) => {
