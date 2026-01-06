@@ -11,6 +11,9 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     $router->put('/settings/theme', 'Admin\TenantSettingsController@updateTheme');
     $router->put('/settings/domain', 'Admin\TenantSettingsController@updateDomain');
     $router->post('/settings/assets', 'Admin\TenantSettingsController@uploadAssets');
+    
+    // Tenant Config - Salvar configurações da empresa (nome, logo, etc)
+    $router->post('/tenant/config', 'Admin\TenantSettingsController@updateConfig');
 
     // Email Settings
     $router->get('/settings/email', 'Admin\TenantSettingsController@getEmailSettings');

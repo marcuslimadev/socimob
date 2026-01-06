@@ -55,6 +55,32 @@ class Sidebar {
     }
 
     loadTenantConfig() {
+        // Tentar carregar do servidor primeiro
+        const token = localStorage.getItem('token');
+        if (token && !this.tenantConfig) {
+            fetch('/api/admin/settings', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.tenant) {
+                    this.tenantConfig = {
+                        sistema_nome: data.tenant.name,
+                        logo_url: data.tenant.logo_url
+                    };
+                    localStorage.setItem('tenantConfig', JSON.stringify(this.tenantConfig));
+                    this.updateBranding();
+                }
+            })
+            .catch(err => {
+                console.log('ℹ️ Usando config do localStorage');
+            });
+        }
+
+        // Fallback para localStorage
         const configStr = localStorage.getItem('tenantConfig');
         if (configStr) {
             try {

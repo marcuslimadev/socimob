@@ -106,7 +106,7 @@
                             <div class="col-12">
                                 <label class="form-label">Nome do Sistema (White Label)</label>
                                 <input type="text" class="form-control" id="sistema_nome" name="sistema_nome" placeholder="Ex: Imobiliária Premium">
-                                <small class="text-muted">Este nome aparecerá no lugar de "SOCIMOB" em todo o sistema</small>
+                                <small class="text-muted">Este nome aparecerá em todo o sistema (navegação, documentos, emails)</small>
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Logo da Empresa</label>
@@ -306,13 +306,45 @@
         }
 
         function loadTenantConfig() {
-            const tenantConfig = JSON.parse(localStorage.getItem('tenantConfig') || '{}');
-            if (tenantConfig.sistema_nome) {
-                $('#sistema_nome').val(tenantConfig.sistema_nome);
-            }
-            if (tenantConfig.logo_url) {
-                $('#logoPreview').html(`<img src="${tenantConfig.logo_url}" alt="Logo">`);
-            }
+            // Carregar do servidor
+            $.ajax({
+                url: '/api/admin/settings',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                success: function(response) {
+                    if (response.tenant) {
+                        const tenant = response.tenant;
+                        
+                        // Preencher formulário
+                        $('#sistema_nome').val(tenant.name || '');
+                        $('#telefone').val(tenant.contact_phone || '');
+                        $('#email').val(tenant.contact_email || '');
+                        
+                        // Logo preview
+                        if (tenant.logo_url) {
+                            $('#logoPreview').html(`<img src="${tenant.logo_url}" alt="Logo">`);
+                        }
+                        
+                        // Atualizar localStorage para o sidebar
+                        const tenantConfig = {
+                            sistema_nome: tenant.name,
+                            logo_url: tenant.logo_url
+                        };
+                        localStorage.setItem('tenantConfig', JSON.stringify(tenantConfig));
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Erro ao carregar configurações do tenant:', xhr);
+                    // Fallback para localStorage
+                    const tenantConfig = JSON.parse(localStorage.getItem('tenantConfig') || '{}');
+                    if (tenantConfig.sistema_nome) {
+                        $('#sistema_nome').val(tenantConfig.sistema_nome);
+                    }
+                    if (tenantConfig.logo_url) {
+                        $('#logoPreview').html(`<img src="${tenantConfig.logo_url}" alt="Logo">`);
+                    }
+                }
+            });
         }
 
         function handleSavePerfil(e) {
@@ -324,21 +356,56 @@
             e.preventDefault();
             
             const sistemaNome = $('#sistema_nome').val() || 'SOCIMOB';
+            const razaoSocial = $('#razao_social').val() || '';
+            const cnpj = $('#cnpj').val() || '';
+            const telefone = $('#telefone').val() || '';
+            const email = $('#email').val() || '';
+            const endereco = $('#endereco').val() || '';
             const logoFile = $('#logoUpload')[0].files[0];
             
-            const tenantConfig = {
+            const formData = {
                 sistema_nome: sistemaNome,
-                logo_url: logoFile ? $('#logoPreview img').attr('src') : (JSON.parse(localStorage.getItem('tenantConfig') || '{}')).logo_url || ''
+                razao_social: razaoSocial,
+                cnpj: cnpj,
+                telefone: telefone,
+                email: email,
+                endereco: endereco
             };
-            
-            localStorage.setItem('tenantConfig', JSON.stringify(tenantConfig));
-            
-            // Atualizar sidebar imediatamente
-            if (window.sidebar && window.sidebar.updateBranding) {
-                window.sidebar.updateBranding();
+
+            // Se tiver logo, enviar como base64
+            if (logoFile) {
+                formData.logo_url = $('#logoPreview img').attr('src');
             }
-            
-            alert('Configurações da empresa salvas com sucesso! O sistema agora exibe sua marca.');
+
+            $.ajax({
+                url: '/api/admin/tenant/config',
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    // Atualizar localStorage
+                    const tenantConfig = {
+                        sistema_nome: sistemaNome,
+                        logo_url: response.logo_url || formData.logo_url || ''
+                    };
+                    localStorage.setItem('tenantConfig', JSON.stringify(tenantConfig));
+                    
+                    // Atualizar sidebar e títulos
+                    if (window.sidebar && window.sidebar.updateBranding) {
+                        window.sidebar.updateBranding();
+                    }
+                    document.title = sistemaNome + ' - Configurações';
+                    
+                    alert('✅ Configurações salvas com sucesso! O sistema agora exibe sua marca.');
+                },
+                error: function(xhr) {
+                    const message = xhr.responseJSON?.error || 'Erro ao salvar configurações.';
+                    alert('❌ Erro: ' + message);
+                }
+            });
         }
 
         function handleSaveSenha(e) {
@@ -518,21 +585,6 @@
                     alert('Erro: ' + message);
                     // Reverte o toggle
                     $(e.target).prop('checked', !ativo);
-                }
-            });
-        }
-                url: '/api/admin/settings/ai-prompt',
-                method: 'DELETE',
-                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-                success: function(response) {
-                    $('#ai_prompt_custom').val('');
-                    $('#promptCharCount').text('0');
-                    $status.text('✅ Prompt resetado. Sistema voltou ao padrão.').removeClass('text-info').addClass('text-success');
-                    setTimeout(() => $status.text(''), 5000);
-                },
-                error: function(xhr) {
-                    const message = xhr.responseJSON?.error || 'Erro ao resetar prompt.';
-                    $status.text('❌ ' + message).removeClass('text-info').addClass('text-danger');
                 }
             });
         }

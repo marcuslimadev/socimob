@@ -198,6 +198,119 @@ class TenantSettingsController extends Controller
     }
 
     /**
+     * Atualizar configurações do tenant (nome, logo, dados da empresa)
+     * POST /api/admin/tenant/config
+     */
+    public function updateConfig(Request $request)
+    {
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 401);
+        }
+
+        if (!$user->tenant_id) {
+            return response()->json(['error' => 'User has no tenant'], 400);
+        }
+
+        $tenant = Tenant::find($user->tenant_id);
+
+        if (!$tenant) {
+            return response()->json(['error' => 'Tenant not found'], 404);
+        }
+
+        // Validação
+        $this->validate($request, [
+            'sistema_nome' => 'nullable|string|max:255',
+            'razao_social' => 'nullable|string|max:255',
+            'cnpj' => 'nullable|string|max:18',
+            'telefone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'endereco' => 'nullable|string|max:500',
+            'logo_url' => 'nullable|string', // base64 ou URL
+        ]);
+
+        // Preparar updates
+        $updates = [];
+        
+        if ($request->has('sistema_nome')) {
+            $updates['name'] = $request->input('sistema_nome');
+        }
+        
+        if ($request->has('telefone')) {
+            $updates['contact_phone'] = $request->input('telefone');
+        }
+        
+        if ($request->has('email')) {
+            $updates['contact_email'] = $request->input('email');
+        }
+
+        // Logo: se for base64, salvar como arquivo
+        if ($request->has('logo_url') && $request->input('logo_url')) {
+            $logoData = $request->input('logo_url');
+            
+            // Verificar se é base64
+            if (preg_match('/^data:image\\/(\w+);base64,/', $logoData, $matches)) {
+                $extension = $matches[1];
+                $base64String = substr($logoData, strpos($logoData, ',') + 1);
+                $imageData = base64_decode($base64String);
+                
+                // Criar diretório se não existir
+                $uploadsDir = public_path('uploads/tenants/' . $tenant->id);
+                if (!is_dir($uploadsDir)) {
+                    mkdir($uploadsDir, 0755, true);
+                }
+                
+                // Salvar arquivo
+                $fileName = 'logo_' . time() . '.' . $extension;
+                $filePath = $uploadsDir . '/' . $fileName;
+                file_put_contents($filePath, $imageData);
+                
+                $updates['logo_url'] = '/uploads/tenants/' . $tenant->id . '/' . $fileName;
+            } else {
+                // Se não for base64, usar como está (URL)
+                $updates['logo_url'] = $logoData;
+            }
+        }
+
+        // Atualizar tenant
+        $tenant->update($updates);
+
+        // Atualizar ou criar config com dados adicionais
+        $config = $tenant->config;
+        if (!$config) {
+            $config = TenantConfig::create(['tenant_id' => $tenant->id]);
+        }
+        
+        $configUpdates = [];
+        if ($request->has('razao_social')) {
+            $configUpdates['razao_social'] = $request->input('razao_social');
+        }
+        if ($request->has('cnpj')) {
+            $configUpdates['cnpj'] = $request->input('cnpj');
+        }
+        if ($request->has('endereco')) {
+            $configUpdates['endereco'] = $request->input('endereco');
+        }
+        
+        if (!empty($configUpdates)) {
+            $config->update($configUpdates);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Configurações atualizadas com sucesso',
+            'logo_url' => $tenant->logo_url,
+            'tenant' => [
+                'name' => $tenant->name,
+                'contact_phone' => $tenant->contact_phone,
+                'contact_email' => $tenant->contact_email,
+                'logo_url' => $tenant->logo_url,
+            ]
+        ]);
+    }
+
+    /**
      * Atualizar tema
      * PUT /api/admin/settings/theme
      */
