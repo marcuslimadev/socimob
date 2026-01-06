@@ -31,13 +31,20 @@ class LeadsController extends Controller
             $lead = Lead::where('tenant_id', $tenantId)
                 ->findOrFail($id);
 
-            Log::info('[LeadsController] Iniciando atendimento IA manual', [
-                'lead_id' => $lead->id,
-                'admin_user' => $request->user()->name ?? 'N/A'
-            ]);
-
-            // Forçar início mesmo se já tiver conversa
+            // Capturar parâmetro force do request (JSON ou form-data)
             $forceStart = $request->input('force', false);
+            
+            // Se vier como string "true"/"false", converter para boolean
+            if (is_string($forceStart)) {
+                $forceStart = filter_var($forceStart, FILTER_VALIDATE_BOOLEAN);
+            }
+
+            Log::info('[LeadsController] Iniciando atendimento IA manual', [
+                'tenant_id' => $tenantId,
+                'lead_id' => $lead->id,
+                'admin_user' => $request->user()->name ?? 'N/A',
+                'force' => $forceStart
+            ]);
 
             $resultado = $this->leadAutomationService->iniciarAtendimento($lead, $forceStart);
 

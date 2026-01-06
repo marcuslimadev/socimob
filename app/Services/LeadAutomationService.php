@@ -40,6 +40,7 @@ class LeadAutomationService
     {
         try {
             Log::info('[LeadAutomation] Iniciando atendimento para lead', [
+                'tenant_id' => $lead->tenant_id,
                 'lead_id' => $lead->id,
                 'nome' => $lead->nome,
                 'telefone' => $lead->telefone,
@@ -49,6 +50,7 @@ class LeadAutomationService
             // 1. Validar número de WhatsApp
             if (!$this->validarWhatsApp($lead->telefone)) {
                 Log::warning('[LeadAutomation] Telefone inválido ou não é WhatsApp', [
+                    'tenant_id' => $lead->tenant_id,
                     'lead_id' => $lead->id,
                     'telefone' => $lead->telefone
                 ]);
@@ -67,6 +69,7 @@ class LeadAutomationService
 
             if ($conversaExistente && !$forceStart) {
                 Log::info('[LeadAutomation] Lead já possui conversa', [
+                    'tenant_id' => $lead->tenant_id,
                     'lead_id' => $lead->id,
                     'conversa_id' => $conversaExistente->id
                 ]);
@@ -90,6 +93,7 @@ class LeadAutomationService
 
             if (!$enviado) {
                 Log::error('[LeadAutomation] Falha ao enviar mensagem WhatsApp', [
+                    'tenant_id' => $lead->tenant_id,
                     'lead_id' => $lead->id
                 ]);
 
@@ -109,6 +113,7 @@ class LeadAutomationService
             $lead->save();
 
             Log::info('[LeadAutomation] Atendimento iniciado com sucesso', [
+                'tenant_id' => $lead->tenant_id,
                 'lead_id' => $lead->id,
                 'conversa_id' => $conversa->id,
                 'mensagem_preview' => substr($mensagemIA, 0, 100)
@@ -123,6 +128,7 @@ class LeadAutomationService
 
         } catch (\Exception $e) {
             Log::error('[LeadAutomation] Exceção ao iniciar atendimento', [
+                'tenant_id' => $lead->tenant_id,
                 'lead_id' => $lead->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -188,19 +194,30 @@ class LeadAutomationService
     private function validarWhatsApp($telefone)
     {
         if (empty($telefone)) {
+            Log::debug('[LeadAutomation] Telefone vazio');
             return false;
         }
 
-        // Limpar número
-        $telefone = preg_replace('/[^0-9]/', '', $telefone);
+        // Limpar número ANTES de qualquer validação
+        $telefoneLimpo = preg_replace('/[^0-9]/', '', $telefone);
 
-        // Validar formato brasileiro (11 dígitos com DDD)
-        if (strlen($telefone) < 10 || strlen($telefone) > 13) {
+        // Validar tamanho (10-13 dígitos: DDD+número ou 55+DDD+número)
+        $tamanho = strlen($telefoneLimpo);
+        if ($tamanho < 10 || $tamanho > 13) {
+            Log::debug('[LeadAutomation] Telefone com tamanho inválido', [
+                'original' => $telefone,
+                'limpo' => $telefoneLimpo,
+                'tamanho' => $tamanho
+            ]);
             return false;
         }
 
-        // Número deve começar com código do país ou DDD
-        if (!preg_match('/^(55)?[1-9]{2}9?\d{8}$/', $telefone)) {
+        // Validar formato brasileiro: (55)?[DDD][9?][número]
+        // Aceita: 11987654321, 5511987654321, 1187654321, etc
+        if (!preg_match('/^(55)?[1-9]{2}9?\d{8}$/', $telefoneLimpo)) {
+            Log::debug('[LeadAutomation] Telefone não corresponde ao padrão brasileiro', [
+                'telefone' => $telefoneLimpo
+            ]);
             return false;
         }
 
@@ -333,11 +350,17 @@ Gere a mensagem de primeiro contato:";
         $nome = $lead->nome ?? 'Cliente';
         $saudacao = $this->obterSaudacao();
 
-        $msg = "{$saudacao}! Meu nome é Alex, assistente virtual da Exclusiva Lar Imóveis.\n\n";
+        // Personalizar com nome se disponível
+        if ($lead->nome) {
+            $msg = "{$saudacao}, {$nome}! Meu nome é Alex, assistente virtual da Exclusiva Lar Imóveis.\n\n";
+        } else {
+            $msg = "{$saudacao}! Meu nome é Alex, assistente virtual da Exclusiva Lar Imóveis.\n\n";
+        }
+
         $msg .= "Vi que você demonstrou interesse em nossos imóveis";
 
         if ($lead->tipo_interesse) {
-            $msg .= " ({$lead->tipo_interesse})";
+            $msg .= " para {$lead->tipo_interesse}";
         }
 
         $msg .= ". Gostaria de te ajudar a encontrar o imóvel ideal!\n\n";

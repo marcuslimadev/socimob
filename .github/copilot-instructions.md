@@ -1,134 +1,221 @@
 # 🛠️ Instruções para Agentes de Codificação AI
 
 ## Visão Geral do Projeto
-Plataforma SaaS multi-tenant "Exclusiva" para gerenciamento de imobiliárias. Stack: **Lumen 10** (backend API) + **HTML/jQuery** (frontend) + **MySQL** + **Docker**.
+**SOCIMOB/Exclusiva**: Plataforma SaaS multi-tenant para gestão imobiliária. Stack: **Lumen 10** + **HTML/jQuery** + **MySQL** (single-server architecture).
 
-### Componentes Principais
-- **Backend**: Lumen 10 (não Laravel!) em `backend/` - API REST com autenticação token-based
-- **Frontend**: HTML/jQuery em `backend/public/app/` - Interface simples com TailwindCSS CDN
-- **Banco**: MySQL local via XAMPP ou Docker
-- **Docs**: Arquitetura detalhada em `docs/`
+### Arquitetura-Chave
+- **Single-server design**: Frontend e backend no MESMO servidor PHP (porta 8000)
+- **Lumen, não Laravel**: Sem facades complexos, rotas diretas em `routes/web.php`
+- **Multi-tenancy via trait**: `BelongsToTenant` auto-injeta `tenant_id` em models
+- **Sem build tools**: CDN-only frontend (jQuery 3.7.1 + TailwindCSS), zero npm/Vite
+- **Token auth simples**: base64 encoding `user_id|timestamp|secret` (não JWT)
 
-## 🚀 Início Rápido (SERVIDOR ÚNICO)
+## 🚀 Início Rápido (Desenvolvimento Local)
 
 ### Pré-requisitos
-- PHP 8.1+ com extensões MySQL
+- PHP 8.1+ (com extensões: mysqli, pdo_mysql, mbstring, openssl)
 - MySQL rodando (XAMPP ou standalone)
-- Banco `exclusiva` criado
-- **Node.js NÃO é necessário** ✅
+- Banco `exclusiva` criado (ou será auto-criado)
+- **Node.js NÃO necessário** ✅
 
-### Configuração e Execução
-
-#### 1. Configurar Backend
+### Execução (Um Comando)
 ```bash
-cd backend
-composer install
-cp .env.example .env  # Configure DB_*
+# Windows (raiz do projeto)
+START.bat
+
+# Ou manual
+php -S 127.0.0.1:8000 -t public router.php
 ```
 
-#### 2. Iniciar Servidor (Opção 1 - Recomendada)
-**Windows:**
-```bash
-# Clique duplo no arquivo ou:
-backend\START.bat
-```
+### Acesso
+- **Admin/CRM**: `http://127.0.0.1:8000/app/`
+- **Portal Cliente**: `http://127.0.0.1:8000/portal/`
+- **API Health**: `http://127.0.0.1:8000/api/health`
 
-#### 2. Iniciar Servidor (Opção 2 - Manual)
-```bash
-cd backend
-php -S 127.0.0.1:8000 -t public
-```
-
-#### 3. Acessar Sistema
-Abra o navegador em:
-```
-http://127.0.0.1:8000/app/
-```
-
-#### 4. Credenciais
+### Credenciais
 - **Super Admin**: `admin@exclusiva.com` / `password`
-- **Admin Imobiliária**: `contato@exclusivalarimoveis.com.br` / (verificar no banco)
+- **Criar novos**: Veja scripts na raiz (`create_superadmin.php`, `quick_create_user.php`)
 
-### Docker (alternativa)
-```bash
-docker-compose -f docker/docker-compose.yml up -d
+## 🏗️ Arquitetura e Padrões
+
+### Multi-Tenancy (CRÍTICO)
+O isolamento de dados é feito via `tenant_id` em todas as tabelas:
+
+**Trait BelongsToTenant** (`app/Models/Traits/BelongsToTenant.php`):
+```php
+// Em qualquer model que precisa isolamento:
+use App\Models\Traits\BelongsToTenant;
+
+class Lead extends Model {
+    use BelongsToTenant; // Auto-filtra queries e adiciona tenant_id ao criar
+}
 ```
 
-## Convenções e Padrões
+**Middleware ResolveTenant** (`app/Http/Middleware/ResolveTenant.php`):
+- Resolve tenant por domínio/subdomínio ou ngrok (dev)
+- Injeta `app('tenant')` e `$request->attributes['tenant_id']`
+- Em localhost/ngrok usa primeiro tenant do banco
 
-### Multi-Tenancy
-- **BelongsToTenant trait**: Adiciona `tenant_id` automaticamente a models
-- **ResolveTenant middleware**: Resolve tenant por domínio/subdomínio
-- **Global Scopes**: Filtram queries automaticamente por tenant
-- Exemplo:
-  ```php
-  class Property extends Model {
-      use BelongsToTenant; // Auto-adiciona tenant_id
-  }
-  ```
+**Global Scopes**: O trait adiciona automaticamente:
+- `creating()`: Injeta `tenant_id` ao criar records
+- `global scope 'tenant'`: Filtra todas as queries pelo tenant atual
+- Para queries sem filtro: `Model::withoutTenant()->get()`
+
+### Autenticação
+**SimpleTokenAuth** (`app/Http/Middleware/SimpleTokenAuth.php`):
+```php
+// Formato: base64("user_id|timestamp|secret")
+// Header: Authorization: Bearer <token>
+
+// Middleware injeta:
+// - $request->user() → User model
+// - app('tenant') → Tenant do usuário
+```
+
+**Tipos de usuário** (campo `role` em `users`):
+- `super_admin` → Acessa tudo, sem tenant_id
+- `admin` → Admin da imobiliária (tenant)
+- `corretor` → Corretor da imobiliária
+- `cliente` → Cliente do portal
+
+### Estrutura de Rotas
+```
+routes/
+├── web.php           # Rotas principais (auth, portal público, webhooks)
+├── super-admin.php   # /api/super-admin/* (gestão de tenants)
+├── admin.php         # Rotas administrativas
+├── portal.php        # Portal do cliente
+├── subscriptions.php # Gestão de assinaturas
+└── themes.php        # Temas personalizáveis
+```
+
+**Padrão de proteção**:
+```php
+// Rotas protegidas
+$router->group(['middleware' => 'simple-auth'], function () use ($router) {
+    $router->get('/api/leads', 'LeadsController@index');
+});
+
+// Super Admin (sem validação de tenant)
+$router->group(['prefix' => 'api/super-admin', 'middleware' => 'simple-auth'], ...);
+```
 
 ### Backend (Lumen)
-- **Estrutura**:
-  - `app/Http/Controllers/` - Controllers (não use namespaces aninhados desnecessários)
-  - `app/Services/` - Lógica de negócio (TenantService, PagarMeService, etc.)
-  - `app/Models/` - Models Eloquent com traits
-  - `app/Http/Middleware/` - Auth, CORS, ResolveTenant
-  - `routes/web.php` - Rotas principais
-  - `routes/super-admin.php`, `routes/admin.php` - Rotas específicas
+**Localização**: Raiz do projeto (não há subpasta `backend/`)
 
-- **Autenticação**: Token simples base64 (não JWT completo)
-  ```php
-  // Gera: base64(user_id|timestamp|secret)
-  $token = base64_encode($user->id . '|' . time() . '|' . $secret);
-  ```
-
-- **Middleware**: Use `simple-auth` para rotas protegidas
-  ```php
-  $router->group(['middleware' => 'simple-auth'], function () use ($router) {
-      // rotas protegidas
-  });
-  ```
-
-### Frontend (HTML/jQuery)
-- **Localização**: `backend/public/app/` - Tudo no mesmo servidor!
-- **API**: Usa caminhos relativos (`/api`) - sem configuração de proxy
-- **Autenticação**: localStorage com token Bearer
-- **Estrutura**:
-  - `index.html` - Redirecionamento inteligente (login ou dashboard)
-  - `login.html` - Página de login com credenciais pré-preenchidas
-  - `dashboard.html` - Dashboard principal com cards e menu
-  - `leads.html` - Gestão de leads com tabela e filtros
-  - `imoveis.html` - Gestão de imóveis com grid de cards
-  - `conversas.html` - Sistema de chat estilo WhatsApp
-  - `configuracoes.html` - Configurações com abas (perfil, empresa, integrações, segurança)
-
-- **Dependências**: Apenas CDNs (jQuery 3.7.1 + TailwindCSS)
-- **Vantagens**: 
-  - ✅ Zero build process
-  - ✅ Servidor único (porta 8000)
-  - ✅ Sem Node.js/npm
-  - ✅ Deploy extremamente simples
-
-### Testes
-```bash
-# Backend
-cd backend && vendor/bin/phpunit
+**Estrutura**:
+```
+app/
+├── Http/
+│   ├── Controllers/   # Controllers organizados por feature
+│   └── Middleware/    # SimpleTokenAuth, ResolveTenant, ValidateTenantAuth
+├── Services/          # Lógica de negócio isolada
+│   ├── TenantService.php
+│   ├── LeadAutomationService.php
+│   ├── TwilioService.php      # WhatsApp integration
+│   ├── OpenAIService.php      # Whisper + GPT
+│   ├── PagarMeService.php
+│   └── ChavesNaMaoService.php
+├── Models/
+│   ├── Traits/
+│   │   └── BelongsToTenant.php
+│   └── *.php          # Eloquent models
+└── Observers/
+    └── LeadObserver.php # Auto-inicia atendimento IA
 ```
 
-### Deploy
-Ver `docker/GUIA_DOCKER_AWS.md` para AWS deployment completo
+**Padrões de Controller**:
+- Controllers em `app/Http/Controllers/` (sem namespaces aninhados)
+- Use Services para lógica de negócio complexa
+- Retorne JSON sempre: `return response()->json(['data' => $result]);`
 
-## Integrações e Dependências
-- **Pagar.me**: Integração para gerenciamento de pagamentos.
-- **Docker**: Configuração completa para desenvolvimento e produção.
-- **AWS**: Infraestrutura de deploy.
+**Services**:
+- Services injetados via DI ou `app(OpenAIService::class)`
+- Configuração via `.env` (ex: `EXCLUSIVA_OPENAI_API_KEY`)
 
-## Padrões de Código
-- **Backend**:
-  - Siga as práticas recomendadas do Laravel.
-  - Utilize migrations para alterações no banco de dados.
-- **Frontend**:
-  - Siga o padrão de projeto definido em `frontend/ARCHITECTURE_DIAGRAM.md`.
+**Observers**:
+- `LeadObserver@created`: Auto-inicia atendimento IA para leads da Chaves na Mão
+- Registrado em `bootstrap/app.php`: `App\Models\Lead::observe(...)`
+
+### Frontend (HTML/jQuery)
+**Localização**: `public/app/` - Servido pelo mesmo servidor PHP!
+
+**Arquitetura**:
+```
+public/
+├── app/               # Admin/CRM (HTML puro)
+│   ├── login.html     # Login unificado (auto-detecta role)
+│   ├── dashboard.html # Dashboard com cards
+│   ├── leads.html     # Gestão leads + botão "Iniciar IA"
+│   ├── imoveis.html   # Gestão imóveis
+│   ├── conversas.html # Chat estilo WhatsApp
+│   └── configuracoes.html # Abas (perfil, integrações)
+├── portal/            # Portal cliente (HTML)
+│   └── index.html
+├── js/                # Scripts compartilhados
+│   └── login-utils.js # Funções de autenticação
+└── css/
+    └── glow.css       # Estilo neon/glow
+```
+
+**API Communication**:
+```javascript
+// Sempre use caminhos relativos - NUNCA localhost:3000!
+fetch('/api/leads', {
+    headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+    }
+});
+```
+
+**Login Flow**:
+1. `login.html`: Form simples, valida credenciais
+2. Backend retorna token + user object com `role`
+3. `LoginUtils.getRedirectForRole(role)` redireciona:
+   - `super_admin` → `/app/dashboard.html`
+   - `admin`/`corretor` → `/app/dashboard.html`
+   - `cliente` → `/portal/`
+4. Token salvo em `localStorage.setItem('token', ...)`
+
+**Padrões UI**:
+- TailwindCSS via CDN (sem build)
+- jQuery 3.7.1 para AJAX
+- Classes `glow-*` para estilo neon
+- Feedback via `<div class="glow-feedback">` (sucesso/erro)
+
+### Integrações Externas
+
+**Twilio WhatsApp** (`app/Services/TwilioService.php`):
+- Usado para enviar mensagens WhatsApp
+- Config: `EXCLUSIVA_TWILIO_ACCOUNT_SID`, `EXCLUSIVA_TWILIO_AUTH_TOKEN`, `EXCLUSIVA_TWILIO_WHATSAPP_FROM`
+- Método principal: `sendMessage($to, $body)` - formato `$to` = `whatsapp:+5531999999999`
+
+**OpenAI** (`app/Services/OpenAIService.php`):
+- Whisper API para transcrição de áudio WhatsApp
+- GPT-4o-mini para geração de respostas IA
+- Config: `EXCLUSIVA_OPENAI_API_KEY`, `EXCLUSIVA_OPENAI_MODEL`
+- Métodos: `transcribeAudio($audioPath)`, `chatCompletion($system, $user)`
+
+**Chaves na Mão** (`app/Services/ChavesNaMaoService.php`):
+- Webhook recebe leads: `POST /webhook/chaves-na-mao`
+- `LeadObserver@created` detecta leads desta origem
+- Auto-inicia atendimento IA via `LeadAutomationService`
+
+**Automação IA**:
+```php
+// LeadAutomationService flow:
+1. Valida WhatsApp brasileiro
+2. Cria/reutiliza Conversa
+3. OpenAI gera msg personalizada (contexto do lead)
+4. Envia via Twilio
+5. Registra mensagem + atualiza status
+```
+
+**Botão Manual** em `leads.html`:
+- Cada card tem ícone 🤖
+- Chama `/api/admin/leads/{id}/iniciar-atendimento`
+- Útil para leads que não foram auto-processados
 
 ## 🔧 Troubleshooting Comum
 
@@ -136,22 +223,22 @@ Ver `docker/GUIA_DOCKER_AWS.md` para AWS deployment completo
 1. **Verificar MySQL**: `Get-Service mysql` (deve estar Running)
 2. **Criar banco se não existe**: `mysql -u root -e "CREATE DATABASE exclusiva"`
 3. **Verificar .env**: Confirme `DB_CONNECTION=mysql`, `DB_DATABASE=exclusiva`
-4. **Logs**: `backend/storage/logs/lumen-YYYY-MM-DD.log`
+4. **Logs**: `storage/logs/lumen-YYYY-MM-DD.log`
 5. **Reiniciar servidor**:
    ```bash
    # Matar processos PHP
    Get-Process php | Stop-Process -Force
    # Reiniciar
-   cd backend; php -S 127.0.0.1:8000 -t public
+   php -S 127.0.0.1:8000 -t public router.php
    ```
 
 ### Frontend não carrega
-1. **Verificar backend**: `http://127.0.0.1:8000` deve retornar JSON com app info
+1. **Verificar backend**: `http://127.0.0.1:8000/api/health` deve retornar JSON
 2. **Acessar URL correta**: `http://127.0.0.1:8000/app/` (com `/app/`)
 3. **CORS não é problema**: Frontend e API no mesmo domínio!
 4. **Token**: Limpar localStorage se necessário: `localStorage.clear()`
 5. **Debug login**: Abra DevTools (F12) → Console para ver logs detalhados
-6. **Verificar arquivos**: Confirme que `backend/public/app/*.html` existem
+6. **Verificar arquivos**: Confirme que `public/app/*.html` existem
 
 ### Sistema de Autenticação
 - **Simples e direto**: localStorage + Bearer token
@@ -161,7 +248,7 @@ Ver `docker/GUIA_DOCKER_AWS.md` para AWS deployment completo
 
 ### Credenciais de teste
 - **Super Admin**: `admin@exclusiva.com` / `password`
-- Para criar novos users: `backend/create_superadmin.php` como exemplo
+- Para criar novos users: `create_superadmin.php` como exemplo
 
 ## 📚 Arquivos-Chave
 
@@ -171,16 +258,16 @@ Ver `docker/GUIA_DOCKER_AWS.md` para AWS deployment completo
 - `docs/INDICE_DOCUMENTACAO.md` - Índice completo
 
 ### Backend
-- `backend/bootstrap/app.php` - Configuração principal do Lumen
-- `backend/routes/web.php` - Rotas principais (auth, dashboard)
-- `backend/app/Http/Middleware/ResolveTenant.php` - Lógica de tenant resolution
-- `backend/app/Services/TenantService.php` - Gerenciamento de tenants
+- `bootstrap/app.php` - Configuração principal do Lumen
+- `routes/web.php` - Rotas principais (auth, dashboard)
+- `app/Http/Middleware/ResolveTenant.php` - Lógica de tenant resolution
+- `app/Services/TenantService.php` - Gerenciamento de tenants
 
 ### Frontend
-- `backend/public/app/*.html` - Páginas HTML/jQuery (servidor único)
-- `backend/START.bat` - Script de inicialização simples
+- `public/app/*.html` - Páginas HTML/jQuery (servidor único)
+- `START.bat` - Script de inicialização simples
 - `SERVIDOR_UNICO.md` - Documentação completa do novo setup
 
 ---
 
-**Dica**: Para desenvolvimento rápido, use os scripts em `backend/` como `create_superadmin.php`, `check_db.php`, `test_login.php`
+**Dica**: Para desenvolvimento rápido, use os scripts em raiz como `create_superadmin.php`, `check_db.php`, `test_login.php`
