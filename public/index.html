@@ -12,17 +12,21 @@
     <link rel="stylesheet" href="/css/glow.css">
     <script src="/js/login-utils.js" defer></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        // Configuração do tenant (será carregada dinamicamente)
+        window.TENANT_CONFIG = null;
+    </script>
 </head>
 <body class="glow-page">
     <!-- Navbar -->
     <nav class="glow-nav p-5">
         <div class="container mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
-                                <div class="glow-badge text-lg">
-                    <img src="/assets/logo.png" alt="SOCIMOB" class="logo-glass h-12 w-12 object-contain">
-                    <span>SOCIMOB</span>
+                <div class="glow-badge text-lg">
+                    <img id="navLogo" src="/assets/logo.png" alt="Logo" class="logo-glass h-12 w-12 object-contain">
+                    <span id="navName">Carregando...</span>
                 </div>
-                <span class="hidden md:inline-flex glow-pill">Gestão Imobiliária</span>
+                <span id="navSlogan" class="hidden md:inline-flex glow-pill">Gestão Imobiliária</span>
             </div>
             <div class="flex gap-3 items-center">
                 <a href="/app/login.html" class="glow-link">Área do Corretor</a>
@@ -39,11 +43,11 @@
                     Plataforma completa para clientes, corretores e administradores.
                 </div>
                 <div class="space-y-4">
-                    <h2 class="glow-hero-title font-black">
+                    <h2 class="glow-hero-title font-black" id="heroTitle">
                         Gestão imobiliária fluida
                         <span class="glow-hero-highlight">enxuta, vibrante e pronta para você</span>
                     </h2>
-                    <p class="text-lg max-w-3xl leading-relaxed text-[rgba(255,255,255,0.85)]">
+                    <p id="heroDescription" class="text-lg max-w-3xl leading-relaxed text-[rgba(255,255,255,0.85)]">
                         A experiência Glow entrega login único, atendimento inteligente e painéis que respeitam seu papel (cliente, corretor ou administrador) sem precisar trocar de tela.
                     </p>
                 </div>
@@ -72,9 +76,9 @@
 
             <!-- Login/Cadastro Section -->
             <div class="glow-panel relative overflow-hidden">
-                <img src="/assets/logo.png" alt="SOCIMOB" class="hero-logo">
+                <img id="loginLogo" src="/assets/logo.png" alt="Logo" class="hero-logo">
                 <div class="text-center space-y-2 mb-6">
-                    <h3 class="text-2xl font-black text-[var(--glow-ink)]">Bem-vindo ao SOCIMOB</h3>
+                    <h3 id="loginTitle" class="text-2xl font-black text-[var(--glow-ink)]">Bem-vindo</h3>
                     <p class="text-xs uppercase tracking-[0.4em] text-[rgba(255,255,255,0.7)]">
                         Um único login para admins, corretores e clientes.
                     </p>
@@ -170,6 +174,64 @@
     </div>
 
     <script>
+        // Carregar configurações do tenant
+        async function loadTenantConfig() {
+            try {
+                const response = await fetch('/api/tenant/config');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.tenant) {
+                        window.TENANT_CONFIG = data.tenant;
+                        applyTenantConfig(data.tenant);
+                    }
+                }
+            } catch (error) {
+                console.warn('Erro ao carregar config do tenant, usando padrão:', error);
+            }
+        }
+
+        function applyTenantConfig(tenant) {
+            // Atualizar título da página
+            document.title = `${tenant.name || 'SOCIMOB'} - Sistema de Gestão Imobiliária`;
+            
+            // Atualizar navbar
+            const navLogo = document.getElementById('navLogo');
+            const navName = document.getElementById('navName');
+            const navSlogan = document.getElementById('navSlogan');
+            
+            if (navLogo && tenant.logo_url) navLogo.src = tenant.logo_url;
+            if (navName) navName.textContent = tenant.name || 'SOCIMOB';
+            if (navSlogan && tenant.slogan) navSlogan.textContent = tenant.slogan;
+            
+            // Atualizar hero section
+            const heroTitle = document.getElementById('heroTitle');
+            if (heroTitle && tenant.hero_title) {
+                heroTitle.innerHTML = tenant.hero_title;
+            } else if (heroTitle && tenant.slogan) {
+                heroTitle.innerHTML = `${tenant.name}<br><span class="glow-hero-highlight">${tenant.slogan}</span>`;
+            }
+            
+            const heroDescription = document.getElementById('heroDescription');
+            if (heroDescription && tenant.hero_description) {
+                heroDescription.textContent = tenant.hero_description;
+            }
+            
+            // Atualizar painel de login
+            const loginLogo = document.getElementById('loginLogo');
+            const loginTitle = document.getElementById('loginTitle');
+            
+            if (loginLogo && tenant.logo_url) loginLogo.src = tenant.logo_url;
+            if (loginTitle) loginTitle.textContent = `Bem-vindo ao ${tenant.name || 'Portal'}`;
+            
+            // Aplicar cores personalizadas se configuradas
+            if (tenant.primary_color) {
+                document.documentElement.style.setProperty('--tenant-primary', tenant.primary_color);
+            }
+            if (tenant.secondary_color) {
+                document.documentElement.style.setProperty('--tenant-secondary', tenant.secondary_color);
+            }
+        }
+
         window.handleCredentialResponse = (response) => {
             const handler = window.__processGoogleToken;
             if (typeof handler === 'function') {
@@ -180,6 +242,8 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Carregar configurações do tenant primeiro
+            loadTenantConfig();
             const loginForm = document.getElementById('clientLoginForm');
             const feedbackEl = document.getElementById('loginFeedback');
             const submitButton = loginForm?.querySelector('button[type="submit"]');

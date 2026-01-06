@@ -65,7 +65,8 @@ $app->configure('queue');
 */
 
 $app->middleware([
-    App\Http\Middleware\CorsMiddleware::class
+    App\Http\Middleware\CorsMiddleware::class,
+    App\Http\Middleware\ResolveTenant::class, // Resolver tenant em todas as requisições
 ]);
 
 $app->routeMiddleware([

@@ -44,6 +44,58 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('/auth/logout', 'AuthController@logout');
     $router->get('/auth/me', ['middleware' => 'auth', 'uses' => 'AuthController@me']);
     
+    // Configuração do tenant (público) - para homepage dinâmica
+    $router->get('/tenant/config', function () {
+        try {
+            // Resolver tenant pelo domínio
+            $tenant = app('tenant');
+            
+            if (!$tenant) {
+                // Fallback: usar primeiro tenant do banco
+                $tenant = \App\Models\Tenant::first();
+            }
+            
+            if ($tenant) {
+                return response()->json([
+                    'success' => true,
+                    'tenant' => [
+                        'name' => $tenant->name,
+                        'slogan' => $tenant->description ?? 'Encontre o Imóvel dos Seus Sonhos',
+                        'logo_url' => $tenant->logo_url ?? '/assets/logo.png',
+                        'primary_color' => $tenant->primary_color ?? '#1e293b',
+                        'secondary_color' => $tenant->secondary_color ?? '#3b82f6',
+                        'contact_phone' => $tenant->contact_phone,
+                        'contact_email' => $tenant->contact_email,
+                        'domain' => $tenant->domain,
+                        'hero_title' => "Gestão imobiliária fluida<br><span class=\"glow-hero-highlight\">{$tenant->name}</span>",
+                        'hero_description' => $tenant->description ?? 'A experiência Glow entrega login único, atendimento inteligente e painéis que respeitam seu papel (cliente, corretor ou administrador) sem precisar trocar de tela.'
+                    ]
+                ]);
+            }
+            
+            // Se não encontrar tenant, retornar padrão SOCIMOB
+            return response()->json([
+                'success' => true,
+                'tenant' => [
+                    'name' => 'SOCIMOB',
+                    'slogan' => 'Gestão Imobiliária',
+                    'logo_url' => '/assets/logo.png',
+                    'primary_color' => '#1e293b',
+                    'secondary_color' => '#3b82f6'
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao carregar config do tenant', [
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao carregar configurações'
+            ], 500);
+        }
+    });
+    
     // Portal do Cliente - rotas públicas (sem autenticação)
     $router->group(['prefix' => 'portal'], function () use ($router) {
         // Configuração do tenant (público)
