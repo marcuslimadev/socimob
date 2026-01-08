@@ -29,25 +29,51 @@ class ConversasController extends BaseController
                 )
                 ->where('conversas.tenant_id', $tenantId);
             
-            // Se for corretor, ver apenas:
-            // 1. Suas próprias conversas (atribuídas a ele)
-            // 2. Conversas em fila (sem corretor atribuído)
+            // Se for corretor, buscar suas conversas E uma da fila
             if ($user->role === 'corretor') {
-                $query->where(function($q) use ($user) {
-                    $q->where('conversas.corretor_id', $user->id)
-                      ->orWhereNull('conversas.corretor_id');
-                });
+                // Buscar conversas do corretor
+                $minhasConversas = DB::table('conversas')
+                    ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+                    ->leftJoin('users as corretor', 'conversas.corretor_id', '=', 'corretor.id')
+                    ->select(
+                        'conversas.*',
+                        'leads.nome as lead_nome',
+                        'leads.telefone as lead_telefone',
+                        'leads.email as lead_email',
+                        'corretor.name as corretor_nome'
+                    )
+                    ->where('conversas.tenant_id', $tenantId)
+                    ->where('conversas.corretor_id', $user->id)
+                    ->orderBy('conversas.ultima_atividade', 'desc')
+                    ->get();
+                
+                // Buscar UMA conversa da fila (FIFO - mais antiga primeiro)
+                $conversaDaFila = DB::table('conversas')
+                    ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+                    ->leftJoin('users as corretor', 'conversas.corretor_id', '=', 'corretor.id')
+                    ->select(
+                        'conversas.*',
+                        'leads.nome as lead_nome',
+                        'leads.telefone as lead_telefone',
+                        'leads.email as lead_email',
+                        'corretor.name as corretor_nome'
+                    )
+                    ->where('conversas.tenant_id', $tenantId)
+                    ->whereNull('conversas.corretor_id')
+                    ->orderBy('conversas.created_at', 'asc') // FIFO
+                    ->first();
+                
+                // Juntar minhas conversas + 1 da fila
+                $conversas = $minhasConversas;
+                if ($conversaDaFila) {
+                    $conversas->push($conversaDaFila);
+                }
+            } else {
+                // Admin vê tudo
+                $conversas = $query->orderBy('conversas.ultima_atividade', 'desc')
+                    ->orderBy('conversas.created_at', 'asc')
+                    ->get();
             }
-            
-            // Ordenar: primeiro as atribuídas ao corretor, depois as em fila
-            if ($user->role === 'corretor') {
-                $query->orderByRaw('CASE WHEN conversas.corretor_id = ? THEN 0 ELSE 1 END', [$user->id]);
-            }
-            
-            // Depois por última atividade
-            $conversas = $query->orderBy('conversas.ultima_atividade', 'desc')
-                ->orderBy('conversas.created_at', 'asc') // FIFO para fila
-                ->get();
             
             // Adicionar informações extras
             foreach ($conversas as &$conversa) {
