@@ -853,6 +853,9 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     // Conversas e Chat
     $router->group(['prefix' => 'admin'], function () use ($router) {
         $router->get('/conversas', 'Admin\ConversasController@index');
+        $router->get('/conversas/fila/estatisticas', 'Admin\ConversasController@estatisticasFila');
+        $router->post('/conversas/fila/pegar-proxima', 'Admin\ConversasController@pegarProxima');
+        $router->post('/conversas/{id}/devolver-fila', 'Admin\ConversasController@devolverParaFila');
         $router->get('/conversas/tempo-real', 'ConversasController@tempoReal');
         $router->get('/conversas/por-telefone/{telefone}', 'ConversasController@porTelefone');
         $router->get('/conversas/{id}', 'Admin\ConversasController@show');

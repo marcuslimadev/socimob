@@ -321,6 +321,26 @@
             opacity: 0.5;
         }
         
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+        }
+        
         /* Utility */
         .hidden {
             display: none !important;
@@ -356,8 +376,22 @@
                         <p id="userRole">Corretor</p>
                     </div>
                 </div>
-                <button onclick="logout()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer;">
-                    <i class="fas fa-sign-out-alt"></i>
+                <div style="display: flex; gap: 8px;">
+                    <button id="statsBtn" onclick="showStats()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer;">
+                        <i class="fas fa-chart-bar"></i>
+                    </button>
+                    <button onclick="logout()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer;">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Botão Pegar Próximo Cliente (apenas corretor) -->
+            <div id="filaControls" class="hidden" style="padding: 12px 16px; background: rgba(16, 185, 129, 0.1); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <button onclick="pegarProximo()" style="width: 100%; background: linear-gradient(135deg, #10B981, #059669); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Pegar Próximo Cliente da Fila</span>
+                    <span id="filaCount" class="badge" style="background: rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 12px; font-size: 12px;">0</span>
                 </button>
             </div>
             
@@ -420,8 +454,17 @@
             // Carregar informações do usuário
             user = JSON.parse(localStorage.getItem('user') || '{}');
             $('#userRole').text(user.role === 'admin' ? 'Administrador' : 'Corretor');
+            
+            // Mostrar controles de fila apenas para corretores
+            if (user.role === 'corretor') {
+                $('#filaControls').removeClass('hidden');
+            }
 
             loadConversations();
+            loadStats();
+            
+            // Auto-atualizar stats a cada 10 segundos
+            setInterval(loadStats, 10000);
             
             // Auto-resize textarea
             $('#messageInput').on('input', function() {
@@ -444,6 +487,125 @@
                     .catch(err => console.log('Service Worker erro:', err));
             }
         });
+
+        function loadStats() {
+            if (user.role !== 'corretor') return;
+            
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: '/api/admin/conversas/fila/estatisticas',
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                success: function(response) {
+                    const stats = response.data;
+                    $('#filaCount').text(stats.em_fila || 0);
+                }
+            });
+        }
+
+        function pegarProximo() {
+            const token = localStorage.getItem('token');
+            
+            const btn = event.target.closest('button');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procurando...';
+            
+            $.ajax({
+                url: '/api/admin/conversas/fila/pegar-proxima',
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Recarregar lista e abrir conversa
+                        loadConversations();
+                        loadStats();
+                        
+                        // Abrir conversa automaticamente
+                        setTimeout(() => {
+                            openChat(response.data.id, response.data.lead_id);
+                        }, 500);
+                    }
+                },
+                error: function(xhr) {
+                    if (xhr.status === 404) {
+                        alert('Não há clientes na fila no momento');
+                    } else {
+                        alert('Erro ao pegar cliente: ' + (xhr.responseJSON?.message || 'Erro desconhecido'));
+                    }
+                },
+                complete: function() {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-user-plus"></i><span>Pegar Próximo Cliente da Fila</span><span id="filaCount" class="badge" style="background: rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 12px; font-size: 12px;">0</span>';
+                    loadStats();
+                }
+            });
+        }
+
+        function showStats() {
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: '/api/admin/conversas/fila/estatisticas',
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                success: function(response) {
+                    const stats = response.data;
+                    
+                    let porCorretor = '';
+                    if (stats.por_corretor && stats.por_corretor.length > 0) {
+                        porCorretor = '<h4 style="margin-top: 16px; font-weight: 600;">Por Corretor:</h4><ul style="margin-top: 8px;">';
+                        stats.por_corretor.forEach(c => {
+                            porCorretor += `<li>${c.name}: ${c.total} conversas</li>`;
+                        });
+                        porCorretor += '</ul>';
+                    }
+                    
+                    const html = `
+                        <div style="background: #1E293B; color: white; padding: 20px; border-radius: 12px; max-width: 400px;">
+                            <h3 style="margin: 0 0 16px 0; font-weight: 600;">📊 Estatísticas da Fila</h3>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <div style="background: rgba(16, 185, 129, 0.1); padding: 12px; border-radius: 8px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #10B981;">${stats.em_fila || 0}</div>
+                                    <div style="font-size: 14px; color: #94A3B8;">Clientes na Fila</div>
+                                </div>
+                                <div style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #3B82F6;">${stats.atribuidas || 0}</div>
+                                    <div style="font-size: 14px; color: #94A3B8;">Conversas Atribuídas</div>
+                                </div>
+                                <div style="background: rgba(168, 85, 247, 0.1); padding: 12px; border-radius: 8px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #A855F7;">${stats.total_ativas || 0}</div>
+                                    <div style="font-size: 14px; color: #94A3B8;">Total Ativas</div>
+                                </div>
+                                ${porCorretor}
+                            </div>
+                            <button onclick="closeModal()" style="margin-top: 20px; width: 100%; background: #10B981; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer;">
+                                Fechar
+                            </button>
+                        </div>
+                    `;
+                    
+                    showModal(html);
+                }
+            });
+        }
+
+        function showModal(content) {
+            const modal = $('<div class="modal-overlay"></div>').html(content);
+            $('body').append(modal);
+            setTimeout(() => modal.addClass('active'), 10);
+        }
+
+        function closeModal() {
+            $('.modal-overlay').removeClass('active');
+            setTimeout(() => $('.modal-overlay').remove(), 300);
+        }
 
         function loadConversations() {
             const token = localStorage.getItem('token');
@@ -495,15 +657,26 @@
                 const unread = conv.mensagens_nao_lidas > 0 
                     ? `<span class="unread-badge">${conv.mensagens_nao_lidas}</span>` 
                     : '';
+                
+                // Badges de status da fila
+                let statusBadge = '';
+                if (conv.em_fila) {
+                    statusBadge = '<span style="background: #10B981; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">FILA</span>';
+                } else if (conv.atribuida_a_mim) {
+                    statusBadge = '<span style="background: #3B82F6; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">MINHA</span>';
+                }
+                
+                const corretor = conv.corretor_name ? `<div style="font-size: 11px; color: #64748B; margin-top: 2px;">👤 ${conv.corretor_name}</div>` : '';
 
                 return `
                     <div class="conversation-item" onclick="openChat(${conv.id}, ${conv.lead_id})">
                         <div class="conversation-avatar">${initials}</div>
                         <div class="conversation-content">
                             <div class="conversation-header">
-                                <span class="conversation-name">${conv.lead_nome || 'Cliente'}</span>
+                                <span class="conversation-name">${conv.lead_nome || 'Cliente'}${statusBadge}</span>
                                 <span class="conversation-time">${time}${unread}</span>
                             </div>
+                            ${corretor}
                             <div class="conversation-preview">${lastMessage}</div>
                         </div>
                     </div>

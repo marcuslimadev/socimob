@@ -19,25 +19,37 @@ class ConversasController extends BaseController
             
             $query = DB::table('conversas')
                 ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+                ->leftJoin('users as corretor', 'conversas.corretor_id', '=', 'corretor.id')
                 ->select(
                     'conversas.*',
                     'leads.nome as lead_nome',
                     'leads.telefone as lead_telefone',
-                    'leads.email as lead_email'
+                    'leads.email as lead_email',
+                    'corretor.name as corretor_nome'
                 )
                 ->where('conversas.tenant_id', $tenantId);
             
-            // Se for corretor, filtrar apenas suas conversas
+            // Se for corretor, ver apenas:
+            // 1. Suas próprias conversas (atribuídas a ele)
+            // 2. Conversas em fila (sem corretor atribuído)
             if ($user->role === 'corretor') {
-                $query->where('conversas.corretor_id', $user->id);
+                $query->where(function($q) use ($user) {
+                    $q->where('conversas.corretor_id', $user->id)
+                      ->orWhereNull('conversas.corretor_id');
+                });
             }
             
-            // Ordenar por última atividade
+            // Ordenar: primeiro as atribuídas ao corretor, depois as em fila
+            if ($user->role === 'corretor') {
+                $query->orderByRaw('CASE WHEN conversas.corretor_id = ? THEN 0 ELSE 1 END', [$user->id]);
+            }
+            
+            // Depois por última atividade
             $conversas = $query->orderBy('conversas.ultima_atividade', 'desc')
-                ->orderBy('conversas.created_at', 'desc')
+                ->orderBy('conversas.created_at', 'asc') // FIFO para fila
                 ->get();
             
-            // Adicionar última mensagem e contador de não lidas
+            // Adicionar informações extras
             foreach ($conversas as &$conversa) {
                 // Última mensagem
                 $ultimaMensagem = DB::table('mensagens')
@@ -55,6 +67,10 @@ class ConversasController extends BaseController
                     ->where('direction', 'incoming')
                     ->whereNull('read_at')
                     ->count();
+                
+                // Indicar se está em fila ou atribuída
+                $conversa->em_fila = is_null($conversa->corretor_id);
+                $conversa->atribuida_a_mim = $conversa->corretor_id == $user->id;
             }
             
             return response()->json([
@@ -66,6 +82,194 @@ class ConversasController extends BaseController
             return response()->json([
                 'success' => false,
                 'message' => 'Erro ao carregar conversas',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Pegar próxima conversa da fila (sistema de fila de táxi)
+     */
+    public function pegarProxima(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $tenantId = $request->attributes->get('tenant_id');
+            
+            // Apenas corretores podem pegar conversas da fila
+            if ($user->role !== 'corretor') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Apenas corretores podem pegar conversas da fila'
+                ], 403);
+            }
+            
+            // Buscar próxima conversa em fila (FIFO - primeiro que chegou)
+            $conversa = DB::table('conversas')
+                ->where('tenant_id', $tenantId)
+                ->whereNull('corretor_id')
+                ->where('status', 'ativa')
+                ->orderBy('created_at', 'asc') // Primeira a chegar
+                ->first();
+            
+            if (!$conversa) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Não há conversas na fila no momento'
+                ], 404);
+            }
+            
+            // Atribuir ao corretor
+            DB::table('conversas')
+                ->where('id', $conversa->id)
+                ->update([
+                    'corretor_id' => $user->id,
+                    'updated_at' => now()
+                ]);
+            
+            // Registrar log
+            \App\Models\SystemLog::info(
+                \App\Models\SystemLog::CATEGORY_AUTOMATION,
+                'conversa_atribuida',
+                'Conversa atribuída automaticamente ao corretor',
+                [
+                    'conversa_id' => $conversa->id,
+                    'corretor_id' => $user->id,
+                    'corretor_nome' => $user->name,
+                    'lead_id' => $conversa->lead_id,
+                    'tenant_id' => $tenantId
+                ]
+            );
+            
+            // Buscar dados completos
+            $conversaCompleta = DB::table('conversas')
+                ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+                ->select('conversas.*', 'leads.nome as lead_nome', 'leads.telefone as lead_telefone')
+                ->where('conversas.id', $conversa->id)
+                ->first();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Conversa atribuída com sucesso',
+                'data' => $conversaCompleta
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao pegar conversa da fila',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Devolver conversa para a fila
+     */
+    public function devolverParaFila(Request $request, $conversaId)
+    {
+        try {
+            $user = $request->user();
+            $tenantId = $request->attributes->get('tenant_id');
+            
+            $conversa = DB::table('conversas')
+                ->where('id', $conversaId)
+                ->where('tenant_id', $tenantId)
+                ->first();
+            
+            if (!$conversa) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Conversa não encontrada'
+                ], 404);
+            }
+            
+            // Verificar permissão
+            if ($user->role === 'corretor' && $conversa->corretor_id != $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Você não tem permissão para devolver esta conversa'
+                ], 403);
+            }
+            
+            // Devolver para fila
+            DB::table('conversas')
+                ->where('id', $conversaId)
+                ->update([
+                    'corretor_id' => null,
+                    'updated_at' => now()
+                ]);
+            
+            \App\Models\SystemLog::info(
+                \App\Models\SystemLog::CATEGORY_AUTOMATION,
+                'conversa_devolvida',
+                'Conversa devolvida para a fila',
+                [
+                    'conversa_id' => $conversaId,
+                    'corretor_id' => $user->id,
+                    'tenant_id' => $tenantId
+                ]
+            );
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Conversa devolvida para a fila'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao devolver conversa',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Estatísticas da fila
+     */
+    public function estatisticasFila(Request $request)
+    {
+        try {
+            $tenantId = $request->attributes->get('tenant_id');
+            
+            $stats = [
+                'em_fila' => DB::table('conversas')
+                    ->where('tenant_id', $tenantId)
+                    ->whereNull('corretor_id')
+                    ->where('status', 'ativa')
+                    ->count(),
+                    
+                'atribuidas' => DB::table('conversas')
+                    ->where('tenant_id', $tenantId)
+                    ->whereNotNull('corretor_id')
+                    ->where('status', 'ativa')
+                    ->count(),
+                    
+                'total_ativas' => DB::table('conversas')
+                    ->where('tenant_id', $tenantId)
+                    ->where('status', 'ativa')
+                    ->count(),
+                    
+                'por_corretor' => DB::table('conversas')
+                    ->join('users', 'conversas.corretor_id', '=', 'users.id')
+                    ->where('conversas.tenant_id', $tenantId)
+                    ->where('conversas.status', 'ativa')
+                    ->whereNotNull('conversas.corretor_id')
+                    ->select('users.name', DB::raw('COUNT(*) as total'))
+                    ->groupBy('users.id', 'users.name')
+                    ->get()
+            ];
+            
+            return response()->json([
+                'success' => true,
+                'data' => $stats
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao carregar estatísticas',
                 'error' => $e->getMessage()
             ], 500);
         }
