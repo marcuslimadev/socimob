@@ -159,7 +159,7 @@ class LeadObserver
             ]);
 
             // Verificar se tem telefone
-            if (empty($lead->telefone)) {
+            if (empty($lead->telefone) && empty($lead->whatsapp)) {
                 Log::warning('[LeadObserver] Lead sem telefone, atendimento IA não iniciado', [
                     'lead_id' => $lead->id
                 ]);
@@ -196,6 +196,14 @@ class LeadObserver
         try {
             // DESATIVADO por padrão - Admin precisa ativar no painel
             $ativo = \App\Models\AppSetting::getValue('atendimento_automatico_ativo', false, $tenantId);
+            
+            \App\Models\SystemLog::debug(
+                \App\Models\SystemLog::CATEGORY_AUTOMATION,
+                'check_auto_attendance',
+                'Verificando se atendimento automático está ativo',
+                ['tenant_id' => $tenantId, 'ativo' => $ativo]
+            );
+            
             return (bool) $ativo;
         } catch (\Exception $e) {
             // Se houver erro, retorna false (desativado por padrão)
@@ -203,6 +211,15 @@ class LeadObserver
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage()
             ]);
+            
+            \App\Models\SystemLog::warning(
+                \App\Models\SystemLog::CATEGORY_AUTOMATION,
+                'check_auto_attendance_error',
+                'Erro ao verificar configuração de atendimento automático',
+                ['tenant_id' => $tenantId],
+                $e
+            );
+            
             return false;
         }
     }

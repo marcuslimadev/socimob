@@ -26,6 +26,10 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'User has no tenant'], 400);
         }
 
+        if (!$user->isAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
         $tenant = Tenant::find($user->tenant_id);
 
         if (!$tenant) {
@@ -47,6 +51,10 @@ class TenantSettingsController extends Controller
                 'secondary_color' => $tenant->secondary_color,
                 'contact_email' => $tenant->contact_email,
                 'contact_phone' => $tenant->contact_phone,
+                'metadata' => $tenant->metadata,
+                'razao_social' => $tenant->metadata['razao_social'] ?? null,
+                'cnpj' => $tenant->metadata['cnpj'] ?? null,
+                'endereco' => $tenant->metadata['endereco'] ?? null,
             ],
             'config' => $config,
             'integrations_managed_by_env' => true,
@@ -70,6 +78,10 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'User has no tenant'], 400);
         }
 
+        if (!$user->isAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
         $tenant = Tenant::find($user->tenant_id);
 
         if (!$tenant) {
@@ -87,22 +99,40 @@ class TenantSettingsController extends Controller
             'slogan' => 'nullable|string|max:500',
             'primary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
             'secondary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
+            'razao_social' => 'nullable|string|max:255',
+            'cnpj' => 'nullable|string|max:30',
+            'endereco' => 'nullable|string|max:255',
             'portal_finalidades' => 'nullable|array',
             'portal_finalidades.*' => 'in:venda,aluguel',
         ]);
 
-        // Atualizar apenas campos enviados
-        $tenant->update($request->only([
-            'name', 
-            'contact_email', 
-            'contact_phone', 
-            'description', 
-            'logo_url', 
+        $metadataUpdates = [];
+        foreach (['razao_social', 'cnpj', 'endereco'] as $metadataKey) {
+            if ($request->exists($metadataKey)) {
+                $metadataUpdates[$metadataKey] = $request->input($metadataKey);
+            }
+        }
+
+        $tenantUpdates = $request->only([
+            'name',
+            'contact_email',
+            'contact_phone',
+            'description',
+            'logo_url',
             'favicon_url',
             'slogan',
             'primary_color',
             'secondary_color',
-        ]));
+        ]);
+
+        if (!empty($metadataUpdates)) {
+            $tenantUpdates['metadata'] = array_merge($tenant->metadata ?? [], $metadataUpdates);
+        }
+
+        // Atualizar apenas campos enviados
+        if (!empty($tenantUpdates)) {
+            $tenant->update($tenantUpdates);
+        }
 
         if ($request->has('portal_finalidades')) {
             $config = $tenant->config;
@@ -135,6 +165,10 @@ class TenantSettingsController extends Controller
 
         if (!$user->tenant_id) {
             return response()->json(['error' => 'User has no tenant'], 400);
+        }
+
+        if (!$user->isAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $tenant = Tenant::find($user->tenant_id);
@@ -742,3 +776,4 @@ class TenantSettingsController extends Controller
             'enabled' => $enabled,
         ]);
     }
+}

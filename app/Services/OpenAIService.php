@@ -40,6 +40,13 @@ Use apenas informações confirmadas. Se faltar algum dado relevante, sinalize c
         return $this->chatCompletion($systemPrompt, $userPrompt);
     }
 
+    public function generateSimpleMessage($systemPrompt, $userPrompt): string
+    {
+        $result = $this->chatCompletion($systemPrompt, $userPrompt);
+
+        return $result['success'] ? $result['content'] : '';
+    }
+
     /**
      * Transcrever áudio do WhatsApp usando Whisper API
      * 
@@ -176,6 +183,18 @@ Exemplos de extração:
      */
     public function processMessage($message, $context = '', $isFromAudio = false, $availableProperties = [], $leadData = null)
     {
+        \App\Models\SystemLog::info(
+            \App\Models\SystemLog::CATEGORY_IA,
+            'process_message_start',
+            'Iniciando processamento de mensagem com IA',
+            [
+                'message_length' => strlen($message),
+                'has_context' => !empty($context),
+                'is_audio' => $isFromAudio,
+                'properties_count' => count($availableProperties)
+            ]
+        );
+        
         $assistantName = $this->resolveAssistantName();
         $audioInstruction = $isFromAudio
             ? "\n- O cliente acabou de enviar um ÁUDIO que foi transcrito. Responda de forma natural, mostrando que você OUVIU e ENTENDEU o que ele disse. Use expressões como 'Entendi!', 'Certo!', 'Perfeito!' para confirmar que você ouviu."
@@ -388,7 +407,32 @@ Exemplo:
 
         $userPrompt = ($context ? "Contexto anterior:\n$context\n\n" : "") . "Cliente: $message\n\nResponda:";
         
-        return $this->chatCompletion($systemPrompt, $userPrompt);
+        \App\Models\SystemLog::debug(
+            \App\Models\SystemLog::CATEGORY_IA,
+            'send_to_openai',
+            'Enviando prompt para OpenAI',
+            ['model' => $this->model, 'prompt_length' => strlen($userPrompt)]
+        );
+        
+        $result = $this->chatCompletion($systemPrompt, $userPrompt);
+        
+        if ($result['success']) {
+            \App\Models\SystemLog::info(
+                \App\Models\SystemLog::CATEGORY_IA,
+                'process_message_success',
+                'Mensagem processada com sucesso',
+                ['response_length' => strlen($result['content'])]
+            );
+        } else {
+            \App\Models\SystemLog::error(
+                \App\Models\SystemLog::CATEGORY_IA,
+                'process_message_error',
+                'Erro ao processar mensagem',
+                ['error' => $result['error'] ?? 'Unknown']
+            );
+        }
+        
+        return $result;
     }
     
     /**

@@ -30,6 +30,13 @@ class TwilioService
      */
     public function sendMessage($to, $body)
     {
+        \App\Models\SystemLog::info(
+            \App\Models\SystemLog::CATEGORY_TWILIO,
+            'send_message_start',
+            'Iniciando envio de mensagem via Twilio',
+            ['to' => $to, 'body_length' => strlen($body)]
+        );
+        
         $url = "https://api.twilio.com/2010-04-01/Accounts/{$this->accountSid}/Messages.json";
         
         // Garantir formato correto do número
@@ -39,6 +46,14 @@ class TwilioService
         
         if (empty($this->whatsappFrom)) {
             \Log::error('Twilio Send Message - Remetente não configurado');
+            
+            \App\Models\SystemLog::error(
+                \App\Models\SystemLog::CATEGORY_TWILIO,
+                'config_missing',
+                'Remetente Twilio não configurado',
+                ['to' => $to]
+            );
+            
             return [
                 'success' => false,
                 'http_code' => null,
@@ -76,6 +91,31 @@ class TwilioService
             'response' => $responseData,
             'error' => $error
         ]);
+        
+        if ($httpCode === 201) {
+            \App\Models\SystemLog::info(
+                \App\Models\SystemLog::CATEGORY_TWILIO,
+                'send_message_success',
+                'Mensagem enviada com sucesso via Twilio',
+                [
+                    'to' => $to,
+                    'message_sid' => $responseData['sid'] ?? null,
+                    'status' => $responseData['status'] ?? null
+                ]
+            );
+        } else {
+            \App\Models\SystemLog::error(
+                \App\Models\SystemLog::CATEGORY_TWILIO,
+                'send_message_error',
+                'Erro ao enviar mensagem via Twilio',
+                [
+                    'to' => $to,
+                    'http_code' => $httpCode,
+                    'error' => $error,
+                    'response' => $responseData
+                ]
+            );
+        }
         
         return [
             'success' => $httpCode === 201,

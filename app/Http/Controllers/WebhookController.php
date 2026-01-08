@@ -67,6 +67,17 @@ class WebhookController extends Controller
             // Detectar origem do webhook (apenas Twilio suportado)
             $source = $this->detectWebhookSource($webhookData);
 
+            \App\Models\SystemLog::info(
+                \App\Models\SystemLog::CATEGORY_WEBHOOK,
+                'webhook_received',
+                'Webhook WhatsApp recebido',
+                [
+                    'source' => $source,
+                    'from' => $webhookData['From'] ?? 'N/A',
+                    'message_sid' => $webhookData['MessageSid'] ?? 'N/A'
+                ]
+            );
+
             Log::info('ЙНННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН»');
             Log::info('є           ?? WEBHOOK RECEBIDO - ' . strtoupper($source) . '                    є');
             Log::info('ИННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННј');
@@ -101,6 +112,13 @@ class WebhookController extends Controller
             try {
                 $result = $this->whatsappService->processIncomingMessage($normalizedData);
 
+                \App\Models\SystemLog::info(
+                    \App\Models\SystemLog::CATEGORY_WEBHOOK,
+                    'webhook_processed',
+                    'Webhook processado com sucesso',
+                    ['result' => $result]
+                );
+
                 Log::info('ЙНННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННН»');
                 Log::info('є           ? WEBHOOK PROCESSADO COM SUCESSO                   є');
                 Log::info('ИННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННННј');
@@ -111,6 +129,14 @@ class WebhookController extends Controller
                 return response('', 200);
 
             } catch (\Throwable $e) {
+                \App\Models\SystemLog::error(
+                    \App\Models\SystemLog::CATEGORY_WEBHOOK,
+                    'webhook_process_error',
+                    'Erro ao processar webhook',
+                    ['from' => $normalizedData['from'] ?? 'N/A'],
+                    $e
+                );
+                
                 Log::error('ERRO NO WEBHOOK', [
                     'error' => $e->getMessage(),
                     'exception' => get_class($e),

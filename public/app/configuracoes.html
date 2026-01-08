@@ -106,7 +106,7 @@
                             <div class="col-12">
                                 <label class="form-label">Nome do Sistema (White Label)</label>
                                 <input type="text" class="form-control" id="sistema_nome" name="sistema_nome" placeholder="Ex: Imobiliária Premium">
-                                <small class="text-muted">Este nome aparecerá em todo o sistema (navegação, documentos, emails)</small>
+                                <small class="text-muted">Este nome aparecerá no lugar de "SOCIMOB" em todo o sistema</small>
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Logo da Empresa</label>
@@ -306,43 +306,66 @@
         }
 
         function loadTenantConfig() {
-            // Carregar do servidor
+            const cachedConfig = JSON.parse(localStorage.getItem('tenantConfig') || '{}');
+
+            if (cachedConfig.sistema_nome) {
+                $('#sistema_nome').val(cachedConfig.sistema_nome);
+            }
+            if (cachedConfig.logo_url) {
+                $('#logoPreview').html(`<img src="${cachedConfig.logo_url}" alt="Logo">`);
+            }
+            if (cachedConfig.contact_email) {
+                $('#formEmpresa [name="email"]').val(cachedConfig.contact_email);
+            }
+            if (cachedConfig.contact_phone) {
+                $('#formEmpresa [name="telefone"]').val(cachedConfig.contact_phone);
+            }
+            if (cachedConfig.razao_social) {
+                $('#formEmpresa [name="razao_social"]').val(cachedConfig.razao_social);
+            }
+            if (cachedConfig.cnpj) {
+                $('#formEmpresa [name="cnpj"]').val(cachedConfig.cnpj);
+            }
+            if (cachedConfig.endereco) {
+                $('#formEmpresa [name="endereco"]').val(cachedConfig.endereco);
+            }
+
             $.ajax({
                 url: '/api/admin/settings',
                 method: 'GET',
                 headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
                 success: function(response) {
-                    if (response.tenant) {
-                        const tenant = response.tenant;
-                        
-                        // Preencher formulário
-                        $('#sistema_nome').val(tenant.name || '');
-                        $('#telefone').val(tenant.contact_phone || '');
-                        $('#email').val(tenant.contact_email || '');
-                        
-                        // Logo preview
-                        if (tenant.logo_url) {
-                            $('#logoPreview').html(`<img src="${tenant.logo_url}" alt="Logo">`);
-                        }
-                        
-                        // Atualizar localStorage para o sidebar
-                        const tenantConfig = {
-                            sistema_nome: tenant.name,
-                            logo_url: tenant.logo_url
-                        };
-                        localStorage.setItem('tenantConfig', JSON.stringify(tenantConfig));
+                    const tenant = response.tenant || {};
+                    const metadata = tenant.metadata || {};
+                    const mergedConfig = {
+                        sistema_nome: tenant.name || cachedConfig.sistema_nome || 'SOCIMOB',
+                        logo_url: tenant.logo_url || cachedConfig.logo_url || '',
+                        contact_email: tenant.contact_email || cachedConfig.contact_email || '',
+                        contact_phone: tenant.contact_phone || cachedConfig.contact_phone || '',
+                        razao_social: tenant.razao_social || metadata.razao_social || cachedConfig.razao_social || '',
+                        cnpj: tenant.cnpj || metadata.cnpj || cachedConfig.cnpj || '',
+                        endereco: tenant.endereco || metadata.endereco || cachedConfig.endereco || ''
+                    };
+
+                    $('#sistema_nome').val(mergedConfig.sistema_nome);
+                    $('#formEmpresa [name="email"]').val(mergedConfig.contact_email);
+                    $('#formEmpresa [name="telefone"]').val(mergedConfig.contact_phone);
+                    $('#formEmpresa [name="razao_social"]').val(mergedConfig.razao_social);
+                    $('#formEmpresa [name="cnpj"]').val(mergedConfig.cnpj);
+                    $('#formEmpresa [name="endereco"]').val(mergedConfig.endereco);
+
+                    if (mergedConfig.logo_url) {
+                        $('#logoPreview').html(`<img src="${mergedConfig.logo_url}" alt="Logo">`);
+                    }
+
+                    localStorage.setItem('tenantConfig', JSON.stringify(mergedConfig));
+
+                    if (window.sidebar && window.sidebar.updateBranding) {
+                        window.sidebar.updateBranding();
                     }
                 },
-                error: function(xhr) {
-                    console.error('Erro ao carregar configurações do tenant:', xhr);
-                    // Fallback para localStorage
-                    const tenantConfig = JSON.parse(localStorage.getItem('tenantConfig') || '{}');
-                    if (tenantConfig.sistema_nome) {
-                        $('#sistema_nome').val(tenantConfig.sistema_nome);
-                    }
-                    if (tenantConfig.logo_url) {
-                        $('#logoPreview').html(`<img src="${tenantConfig.logo_url}" alt="Logo">`);
-                    }
+                error: function() {
+                    console.log('Nao foi possivel carregar as configuracoes do tenant.');
                 }
             });
         }
@@ -354,56 +377,88 @@
 
         function handleSaveEmpresa(e) {
             e.preventDefault();
-            
-            const sistemaNome = $('#sistema_nome').val() || 'SOCIMOB';
-            const razaoSocial = $('#razao_social').val() || '';
-            const cnpj = $('#cnpj').val() || '';
-            const telefone = $('#telefone').val() || '';
-            const email = $('#email').val() || '';
-            const endereco = $('#endereco').val() || '';
+
+            const sistemaNome = $('#sistema_nome').val().trim() || 'SOCIMOB';
+            const contactEmail = $('#formEmpresa [name="email"]').val().trim();
+            const contactPhone = $('#formEmpresa [name="telefone"]').val().trim();
+            const razaoSocial = $('#formEmpresa [name="razao_social"]').val().trim();
+            const cnpj = $('#formEmpresa [name="cnpj"]').val().trim();
+            const endereco = $('#formEmpresa [name="endereco"]').val().trim();
             const logoFile = $('#logoUpload')[0].files[0];
-            
-            const formData = {
-                sistema_nome: sistemaNome,
-                razao_social: razaoSocial,
-                cnpj: cnpj,
-                telefone: telefone,
-                email: email,
-                endereco: endereco
+
+            const payload = {
+                name: sistemaNome,
+                contact_email: contactEmail || null,
+                contact_phone: contactPhone || null,
+                razao_social: razaoSocial || null,
+                cnpj: cnpj || null,
+                endereco: endereco || null
             };
 
-            // Se tiver logo, enviar como base64
-            if (logoFile) {
-                formData.logo_url = $('#logoPreview img').attr('src');
-            }
+            const $button = $('#formEmpresa button[type="submit"]');
+            $button.prop('disabled', true);
 
             $.ajax({
-                url: '/api/admin/tenant/config',
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
-                    'Content-Type': 'application/json'
-                },
-                data: JSON.stringify(formData),
+                url: '/api/admin/settings/tenant',
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
                 success: function(response) {
-                    // Atualizar localStorage
+                    const tenant = response.tenant || {};
                     const tenantConfig = {
-                        sistema_nome: sistemaNome,
-                        logo_url: response.logo_url || formData.logo_url || ''
+                        sistema_nome: tenant.name || sistemaNome,
+                        logo_url: tenant.logo_url || '',
+                        contact_email: tenant.contact_email || contactEmail,
+                        contact_phone: tenant.contact_phone || contactPhone,
+                        razao_social: razaoSocial,
+                        cnpj: cnpj,
+                        endereco: endereco
                     };
-                    localStorage.setItem('tenantConfig', JSON.stringify(tenantConfig));
-                    
-                    // Atualizar sidebar e títulos
-                    if (window.sidebar && window.sidebar.updateBranding) {
-                        window.sidebar.updateBranding();
+
+                    const finalizeSave = function() {
+                        localStorage.setItem('tenantConfig', JSON.stringify(tenantConfig));
+                        if (window.sidebar && window.sidebar.updateBranding) {
+                            window.sidebar.updateBranding();
+                        }
+                        alert('Configuracoes da empresa salvas com sucesso!');
+                        $button.prop('disabled', false);
+                    };
+
+                    if (logoFile) {
+                        const formData = new FormData();
+                        formData.append('logo', logoFile);
+
+                        $.ajax({
+                            url: '/api/admin/settings/assets',
+                            method: 'POST',
+                            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                            data: formData,
+                            processData: false,
+                            contentType: false,
+                            success: function(assetResponse) {
+                                const logoUrl = assetResponse?.assets?.logo_url || '';
+                                if (logoUrl) {
+                                    tenantConfig.logo_url = logoUrl;
+                                    $('#logoPreview').html(`<img src="${logoUrl}" alt="Logo">`);
+                                }
+                                finalizeSave();
+                            },
+                            error: function(xhr) {
+                                const message = xhr.responseJSON?.error || 'Erro ao enviar logo.';
+                                alert('Erro: ' + message);
+                                $button.prop('disabled', false);
+                            }
+                        });
+                        return;
                     }
-                    document.title = sistemaNome + ' - Configurações';
-                    
-                    alert('✅ Configurações salvas com sucesso! O sistema agora exibe sua marca.');
+
+                    finalizeSave();
                 },
                 error: function(xhr) {
-                    const message = xhr.responseJSON?.error || 'Erro ao salvar configurações.';
-                    alert('❌ Erro: ' + message);
+                    const message = xhr.responseJSON?.error || 'Erro ao salvar configuracoes da empresa.';
+                    alert('Erro: ' + message);
+                    $button.prop('disabled', false);
                 }
             });
         }
@@ -485,19 +540,19 @@
                     }
                 },
                 error: function(xhr) {
-                    console.log('Prompt customizado não carregado (usando padrão)');
+                    console.log('Prompt customizado nao carregado (usando padrao)');
                 }
             });
         }
 
         function handleSaveAiPrompt(e) {
             e.preventDefault();
-            
+
             const prompt = $('#ai_prompt_custom').val().trim();
             const $status = $('#aiPromptStatus');
-            
+
             $status.text('Salvando...').removeClass('text-danger').addClass('text-info');
-            
+
             $.ajax({
                 url: '/api/admin/settings/ai-prompt',
                 method: 'POST',
@@ -505,22 +560,22 @@
                 contentType: 'application/json',
                 data: JSON.stringify({ prompt: prompt }),
                 success: function(response) {
-                    $status.text('✅ Prompt salvo com sucesso! A IA já está usando suas orientações.').removeClass('text-info').addClass('text-success');
+                    $status.text('Prompt salvo com sucesso! A IA ja esta usando suas orientacoes.').removeClass('text-info').addClass('text-success');
                     setTimeout(() => $status.text(''), 5000);
                 },
                 error: function(xhr) {
                     const message = xhr.responseJSON?.error || 'Erro ao salvar prompt.';
-                    $status.text('❌ ' + message).removeClass('text-info').addClass('text-danger');
+                    $status.text('Erro: ' + message).removeClass('text-info').addClass('text-danger');
                 }
             });
         }
 
         function handleResetPrompt() {
-            if (!confirm('Deseja resetar e usar o prompt padrão do sistema?')) return;
-            
+            if (!confirm('Deseja resetar e usar o prompt padrao do sistema?')) return;
+
             const $status = $('#aiPromptStatus');
             $status.text('Resetando...').removeClass('text-danger').addClass('text-info');
-            
+
             $.ajax({
                 url: '/api/admin/settings/ai-prompt',
                 method: 'DELETE',
@@ -528,12 +583,12 @@
                 success: function(response) {
                     $('#ai_prompt_custom').val('');
                     $('#promptCharCount').text('0');
-                    $status.text('✅ Prompt resetado! Agora usando orientações padrão do sistema.').removeClass('text-info').addClass('text-success');
+                    $status.text('Prompt resetado! Agora usando orientacoes padrao do sistema.').removeClass('text-info').addClass('text-success');
                     setTimeout(() => $status.text(''), 5000);
                 },
                 error: function(xhr) {
                     const message = xhr.responseJSON?.error || 'Erro ao resetar prompt.';
-                    $status.text('❌ ' + message).removeClass('text-info').addClass('text-danger');
+                    $status.text('Erro: ' + message).removeClass('text-info').addClass('text-danger');
                 }
             });
         }
@@ -549,7 +604,7 @@
                     updateAtendimentoAutoStatus(ativo);
                 },
                 error: function(xhr) {
-                    console.error('Erro ao carregar status do atendimento automático:', xhr);
+                    console.error('Erro ao carregar status do atendimento automatico:', xhr);
                     $('#atendimentoAutoStatusText').text('Erro ao carregar status');
                 }
             });
@@ -566,7 +621,7 @@
 
         function handleToggleAtendimentoAutomatico(e) {
             const ativo = $(e.target).prop('checked');
-            
+
             $.ajax({
                 url: '/api/admin/settings/atendimento-automatico',
                 method: 'POST',
@@ -575,13 +630,13 @@
                 data: JSON.stringify({ ativo: ativo }),
                 success: function(response) {
                     updateAtendimentoAutoStatus(ativo);
-                    // Feedback visual temporário
+                    // Feedback visual temporario
                     const $card = $('#toggleAtendimentoAutomatico').closest('.card');
                     $card.css('border', '2px solid #10b981');
                     setTimeout(() => $card.css('border', ''), 1500);
                 },
                 error: function(xhr) {
-                    const message = xhr.responseJSON?.error || 'Erro ao alterar configuração.';
+                    const message = xhr.responseJSON?.error || 'Erro ao alterar configuracao.';
                     alert('Erro: ' + message);
                     // Reverte o toggle
                     $(e.target).prop('checked', !ativo);
@@ -592,6 +647,9 @@
     <script src="sidebar.js"></script>
 </body>
 </html>
+
+
+
 
 
 

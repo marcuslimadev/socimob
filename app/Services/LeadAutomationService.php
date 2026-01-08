@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Services;
 
@@ -39,22 +39,42 @@ class LeadAutomationService
     public function iniciarAtendimento(Lead $lead, $forceStart = false)
     {
         try {
+            $telefone = $this->getLeadTelefone($lead);
+
             Log::info('[LeadAutomation] Iniciando atendimento para lead', [
                 'tenant_id' => $lead->tenant_id,
                 'lead_id' => $lead->id,
                 'nome' => $lead->nome,
-                'telefone' => $lead->telefone,
+                'telefone' => $telefone,
                 'force' => $forceStart
             ]);
+            
+            \App\Models\SystemLog::info(
+                \App\Models\SystemLog::CATEGORY_AUTOMATION,
+                'iniciar_atendimento',
+                'Iniciando atendimento IA para lead',
+                [
+                    'lead_id' => $lead->id,
+                    'lead_nome' => $lead->nome,
+                    'lead_telefone' => $telefone,
+                    'force_start' => $forceStart,
+                    'tenant_id' => $lead->tenant_id,
+                ]
+            );
 
             // 1. Validar número de WhatsApp
-            if (!$this->validarWhatsApp($lead->telefone)) {
+            if (!$this->validarWhatsApp($telefone)) {
                 Log::warning('[LeadAutomation] Telefone inválido ou não é WhatsApp', [
                     'tenant_id' => $lead->tenant_id,
                     'lead_id' => $lead->id,
-                    'telefone' => $lead->telefone
-                ]);
-
+                    'telefone' => $telefone
+                ]);                
+                \App\Models\SystemLog::warning(
+                    \App\Models\SystemLog::CATEGORY_AUTOMATION,
+                    'validacao_telefone',
+                    'Telefone inválido para WhatsApp',
+                    ['lead_id' => $lead->id, 'telefone' => $lead->telefone]
+                );
                 return [
                     'success' => false,
                     'error' => 'Número de WhatsApp inválido',
@@ -83,20 +103,25 @@ class LeadAutomationService
             }
 
             // 3. Criar ou reutilizar conversa
-            $conversa = $conversaExistente ?? $this->criarConversa($lead);
+            $conversa = $conversaExistente ?? $this->criarConversa($lead, $telefone);
 
             // 4. Gerar mensagem personalizada com contexto do lead
             $mensagemIA = $this->gerarMensagemInicial($lead);
 
             // 5. Enviar mensagem via WhatsApp
-            $enviado = $this->enviarMensagemWhatsApp($lead, $mensagemIA, $conversa);
+            $enviado = $this->enviarMensagemWhatsApp($lead, $mensagemIA, $conversa, $telefone);
 
             if (!$enviado) {
                 Log::error('[LeadAutomation] Falha ao enviar mensagem WhatsApp', [
                     'tenant_id' => $lead->tenant_id,
                     'lead_id' => $lead->id
-                ]);
-
+                ]);                
+                \App\Models\SystemLog::error(
+                    \App\Models\SystemLog::CATEGORY_TWILIO,
+                    'envio_falhou',
+                    'Falha ao enviar mensagem WhatsApp',
+                    ['lead_id' => $lead->id, 'mensagem' => substr($mensagemIA, 0, 100)]
+                );
                 return [
                     'success' => false,
                     'error' => 'Falha ao enviar mensagem via WhatsApp',
@@ -118,6 +143,18 @@ class LeadAutomationService
                 'conversa_id' => $conversa->id,
                 'mensagem_preview' => substr($mensagemIA, 0, 100)
             ]);
+            
+            \App\Models\SystemLog::info(
+                \App\Models\SystemLog::CATEGORY_AUTOMATION,
+                'atendimento_iniciado',
+                'Atendimento IA iniciado com sucesso',
+                [
+                    'lead_id' => $lead->id,
+                    'conversa_id' => $conversa->id,
+                    'mensagem_preview' => substr($mensagemIA, 0, 100),
+                    'tenant_id' => $lead->tenant_id,
+                ]
+            );
 
             return [
                 'success' => true,
@@ -133,6 +170,14 @@ class LeadAutomationService
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+            
+            \App\Models\SystemLog::error(
+                \App\Models\SystemLog::CATEGORY_AUTOMATION,
+                'exception',
+                'Exceção ao iniciar atendimento IA',
+                ['lead_id' => $lead->id],
+                $e
+            );
 
             return [
                 'success' => false,
@@ -230,12 +275,12 @@ class LeadAutomationService
      * @param Lead $lead
      * @return Conversa
      */
-    private function criarConversa(Lead $lead)
+    private function criarConversa(Lead $lead, $telefone)
     {
         $conversa = new Conversa();
         $conversa->tenant_id = $lead->tenant_id;
         $conversa->lead_id = $lead->id;
-        $conversa->telefone = $this->formatarTelefone($lead->telefone);
+        $conversa->telefone = $this->formatarTelefone($telefone);
         $conversa->nome = $lead->nome ?? 'Cliente';
         $conversa->status = 'ativa';
         $conversa->origem = 'automacao_chaves_na_mao';
@@ -276,7 +321,7 @@ INSTRUÇÕES:
 
 Gere a mensagem de primeiro contato:";
 
-            $mensagem = $this->openAIService->chatCompletion(
+            $mensagem = $this->openAIService->generateSimpleMessage(
                 "Você é um assistente imobiliário profissional e cordial.",
                 $prompt
             );
@@ -316,8 +361,9 @@ Gere a mensagem de primeiro contato:";
             $partes[] = "Email: {$lead->email}";
         }
 
-        if ($lead->telefone) {
-            $partes[] = "Telefone: {$lead->telefone}";
+        $telefone = $this->getLeadTelefone($lead);
+        if ($telefone) {
+            $partes[] = "Telefone: {$telefone}";
         }
 
         if ($lead->tipo_interesse) {
@@ -395,17 +441,28 @@ Gere a mensagem de primeiro contato:";
      * @param Conversa $conversa
      * @return bool Sucesso
      */
-    private function enviarMensagemWhatsApp(Lead $lead, $mensagem, Conversa $conversa)
+    private function enviarMensagemWhatsApp(Lead $lead, $mensagem, Conversa $conversa, $telefone)
     {
         try {
-            $telefoneFormatado = $this->formatarTelefone($lead->telefone);
+            $telefoneFormatado = $this->formatarTelefone($telefone);
 
-            $resultado = $this->twilioService->enviarMensagem($telefoneFormatado, $mensagem);
+            $resultado = $this->twilioService->sendMessage($telefoneFormatado, $mensagem);
+
+            if (empty($resultado['success'])) {
+                Log::error('[LeadAutomation] Falha no envio do WhatsApp (Twilio)', [
+                    'lead_id' => $lead->id,
+                    'telefone' => $telefoneFormatado,
+                    'http_code' => $resultado['http_code'] ?? null,
+                    'response' => $resultado['response'] ?? null,
+                    'error' => $resultado['error'] ?? null
+                ]);
+                return false;
+            }
 
             Log::info('[LeadAutomation] Mensagem WhatsApp enviada', [
                 'lead_id' => $lead->id,
                 'telefone' => $telefoneFormatado,
-                'sid' => $resultado['sid'] ?? null
+                'sid' => $resultado['message_sid'] ?? null
             ]);
 
             return true;
@@ -435,8 +492,8 @@ Gere a mensagem de primeiro contato:";
         $mensagem->conversa_id = $conversa->id;
         $mensagem->direction = $direction;
         $mensagem->body = $texto;
-        $mensagem->from_number = $direction === 'sent' ? env('TWILIO_WHATSAPP_FROM') : $conversa->telefone;
-        $mensagem->to_number = $direction === 'sent' ? $conversa->telefone : env('TWILIO_WHATSAPP_FROM');
+        $mensagem->from_number = $direction === 'sent' ? env('EXCLUSIVA_TWILIO_WHATSAPP_FROM') : $conversa->telefone;
+        $mensagem->to_number = $direction === 'sent' ? $conversa->telefone : env('EXCLUSIVA_TWILIO_WHATSAPP_FROM');
         $mensagem->status = 'sent';
         $mensagem->message_type = 'text';
         $mensagem->origem = 'automacao';
@@ -461,5 +518,10 @@ Gere a mensagem de primeiro contato:";
         }
 
         return 'whatsapp:+' . $telefone;
+    }
+
+    private function getLeadTelefone(Lead $lead): ?string
+    {
+        return $lead->telefone ?: $lead->whatsapp;
     }
 }
