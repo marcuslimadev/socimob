@@ -16,7 +16,7 @@ if (file_exists(__DIR__ . '/../.env')) {
     $host = 'localhost';
     $dbname = 'u815655858_saas';
     $username = 'u815655858_saas';
-    $password = 'Ekbt5WOqy#hJg#';
+    $password = 'MundoMelhor@10';
 }
 
 try {
