@@ -97,7 +97,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => password_hash($data['password'], PASSWORD_BCRYPT),
-            'role' => $data['role'] ?? 'user',
+            'role' => $data['role'] ?? 'corretor',
             'is_active' => $data['ativo'] ?? true,
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s')
