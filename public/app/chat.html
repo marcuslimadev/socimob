@@ -865,13 +865,21 @@
             // Buscar informações do lead
             const token = localStorage.getItem('token');
             $.ajax({
-                url: `/api/admin/leads/${leadId}`,
+                url: `/api/leads/${leadId}`,
                 method: 'GET',
                 headers: {
                     'Authorization': 'Bearer ' + token
                 },
                 success: function(response) {
                     currentLead = response.data || response;
+                    showChatView();
+                    loadMessages();
+                    startPolling();
+                },
+                error: function(xhr) {
+                    console.error('Erro ao buscar lead:', xhr);
+                    // Mesmo com erro, abrir o chat
+                    currentLead = { id: leadId, nome: 'Cliente', telefone: '' };
                     showChatView();
                     loadMessages();
                     startPolling();
