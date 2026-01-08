@@ -79,7 +79,12 @@
             if (storedToken && storedUser) {
                 try {
                     const parsed = JSON.parse(storedUser);
-                    window.location.href = LoginUtils.getRedirectForRole(parsed.role);
+                    console.log('🔍 [LOGIN] Token e user em localStorage detectados');
+                    console.log('🔍 [LOGIN] User role:', parsed.role);
+                    const redirectUrl = LoginUtils.getRedirectForRole(parsed.role);
+                    console.log('🔍 [LOGIN] Redirect URL:', redirectUrl);
+                    alert(`DEBUG: Redirecionando ${parsed.role} para ${redirectUrl}`);
+                    window.location.href = redirectUrl;
                     return;
                 } catch (error) {
                     console.warn('token inválido:', error);
@@ -122,9 +127,21 @@
                 } else {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    console.log('🔍 [LOGIN] Login bem-sucedido');
+                    console.log('🔍 [LOGIN] User data:', data.user);
+                    console.log('🔍 [LOGIN] Role:', data.user.role);
+                    
+                    const redirectUrl = LoginUtils.getRedirectForRole(data.user.role);
+                    console.log('🔍 [LOGIN] Redirect URL:', redirectUrl);
+                    
                     LoginUtils.showFeedback(feedbackEl, 'success', `Bem-vindo(a), ${data.user.name}`);
+                    
+                    // Alert de debug temporário
+                    alert(`DEBUG LOGIN:\nNome: ${data.user.name}\nRole: ${data.user.role}\nRedirect: ${redirectUrl}`);
+                    
                     setTimeout(() => {
-                        window.location.href = LoginUtils.getRedirectForRole(data.user.role);
+                        window.location.href = redirectUrl;
                     }, 700);
                 }
 
