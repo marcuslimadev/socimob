@@ -12,13 +12,19 @@
 
     function getRedirectForRole(role) {
         const normalized = (role || '').toString().toLowerCase();
+        console.log('🔍 Login redirect - Role original:', role);
+        console.log('🔍 Login redirect - Role normalizado:', normalized);
+        
         if (adminRoles.has(normalized)) {
+            console.log('✅ Redirecionando admin para dashboard');
             return '/app/dashboard.html';
         }
         // Corretor vai direto pro chat (experiência de app)
         if (normalized === 'corretor') {
+            console.log('✅ Redirecionando corretor para chat');
             return '/app/chat.html';
         }
+        console.log('✅ Redirecionando cliente para portal');
         return '/portal/imoveis.html';
     }
 
