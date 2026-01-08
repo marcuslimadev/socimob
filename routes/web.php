@@ -851,12 +851,14 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     $router->post('/leads/{id}/diagnostico', 'LeadsController@diagnostico');
 
     // Conversas e Chat
-    $router->get('/conversas', 'Admin\ConversasController@index');
-    $router->get('/conversas/tempo-real', 'ConversasController@tempoReal');
-    $router->get('/conversas/por-telefone/{telefone}', 'ConversasController@porTelefone');
-    $router->get('/conversas/{id}', 'Admin\ConversasController@show');
-    $router->get('/conversas/{id}/mensagens', 'Admin\ConversasController@mensagens');
-    $router->post('/conversas/{id}/mensagens', 'Admin\ConversasController@enviarMensagem');
+    $router->group(['prefix' => 'admin'], function () use ($router) {
+        $router->get('/conversas', 'Admin\ConversasController@index');
+        $router->get('/conversas/tempo-real', 'ConversasController@tempoReal');
+        $router->get('/conversas/por-telefone/{telefone}', 'ConversasController@porTelefone');
+        $router->get('/conversas/{id}', 'Admin\ConversasController@show');
+        $router->get('/conversas/{id}/mensagens', 'Admin\ConversasController@mensagens');
+        $router->post('/conversas/{id}/mensagens', 'Admin\ConversasController@enviarMensagem');
+    });
     
     // Imóveis - Debug completo
     $router->get('/imoveis/detalhes/{codigo}', 'PropertyController@detalhesCompletos');
