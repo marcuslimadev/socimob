@@ -15,6 +15,10 @@
         if (adminRoles.has(normalized)) {
             return '/app/dashboard.html';
         }
+        // Corretor vai direto pro chat (experiência de app)
+        if (normalized === 'corretor') {
+            return '/app/chat.html';
+        }
         return '/portal/imoveis.html';
     }
 
