@@ -15,7 +15,7 @@ if (!$email) {
 }
 
 // Conectar direto ao banco
-$host = getenv('DB_HOST') ?: 'srv1005.hstgr.io';
+$host = getenv('DB_HOST') ?: 'localhost';
 $dbname = getenv('DB_DATABASE') ?: 'u815655858_saas';
 $username = getenv('DB_USERNAME') ?: 'u815655858_saas';
 $password = getenv('DB_PASSWORD') ?: 'Ekbt5WOqy#hJg#';
