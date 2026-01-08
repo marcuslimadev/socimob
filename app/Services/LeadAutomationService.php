@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 namespace App\Services;
 
@@ -6,6 +6,7 @@ use App\Models\Lead;
 use App\Models\Conversa;
 use App\Models\Mensagem;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Carbon;
 
 /**
  * Serviço de Automação de Atendimento IA para Leads
@@ -130,11 +131,11 @@ class LeadAutomationService
             }
 
             // 6. Registrar mensagem no banco
-            $this->registrarMensagem($conversa, $mensagemIA, 'sent');
+            $this->registrarMensagem($conversa, $mensagemIA, 'outgoing');
 
             // 7. Atualizar status do lead
             $lead->status = 'em_atendimento';
-            $lead->last_interaction = now();
+            $lead->ultima_interacao = Carbon::now();
             $lead->save();
 
             Log::info('[LeadAutomation] Atendimento iniciado com sucesso', [
@@ -281,9 +282,7 @@ class LeadAutomationService
         $conversa->tenant_id = $lead->tenant_id;
         $conversa->lead_id = $lead->id;
         $conversa->telefone = $this->formatarTelefone($telefone);
-        $conversa->nome = $lead->nome ?? 'Cliente';
         $conversa->status = 'ativa';
-        $conversa->origem = 'automacao_chaves_na_mao';
         $conversa->save();
 
         Log::info('[LeadAutomation] Conversa criada', [
@@ -485,18 +484,16 @@ Gere a mensagem de primeiro contato:";
      * @param string $direction sent|received
      * @return Mensagem
      */
-    private function registrarMensagem(Conversa $conversa, $texto, $direction = 'sent')
+    private function registrarMensagem(Conversa $conversa, $texto, $direction = 'outgoing')
     {
         $mensagem = new Mensagem();
         $mensagem->tenant_id = $conversa->tenant_id;
         $mensagem->conversa_id = $conversa->id;
         $mensagem->direction = $direction;
-        $mensagem->body = $texto;
-        $mensagem->from_number = $direction === 'sent' ? env('EXCLUSIVA_TWILIO_WHATSAPP_FROM') : $conversa->telefone;
-        $mensagem->to_number = $direction === 'sent' ? $conversa->telefone : env('EXCLUSIVA_TWILIO_WHATSAPP_FROM');
+        $mensagem->content = $texto;
         $mensagem->status = 'sent';
         $mensagem->message_type = 'text';
-        $mensagem->origem = 'automacao';
+        $mensagem->sent_at = Carbon::now();
         $mensagem->save();
 
         return $mensagem;
