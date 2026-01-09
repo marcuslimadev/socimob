@@ -192,14 +192,14 @@ class ConversasController extends BaseController
     /**
      * Devolver conversa para a fila
      */
-    public function devolverParaFila(Request $request, $conversaId)
+    public function devolverParaFila(Request $request, $id)
     {
         try {
             $user = $request->user();
             $tenantId = $request->attributes->get('tenant_id');
             
             $conversa = DB::table('conversas')
-                ->where('id', $conversaId)
+                ->where('id', $id)
                 ->where('tenant_id', $tenantId)
                 ->first();
             
@@ -220,7 +220,7 @@ class ConversasController extends BaseController
             
             // Devolver para fila
             DB::table('conversas')
-                ->where('id', $conversaId)
+                ->where('id', $id)
                 ->update([
                     'corretor_id' => null,
                     'updated_at' => now()
@@ -231,7 +231,7 @@ class ConversasController extends BaseController
                 'conversa_devolvida',
                 'Conversa devolvida para a fila',
                 [
-                    'conversa_id' => $conversaId,
+                    'conversa_id' => $id,
                     'corretor_id' => $user->id,
                     'tenant_id' => $tenantId
                 ]
@@ -304,14 +304,14 @@ class ConversasController extends BaseController
     /**
      * Listar mensagens de uma conversa
      */
-    public function mensagens(Request $request, $conversaId)
+    public function mensagens(Request $request, $id)
     {
         try {
             $tenantId = $request->attributes->get('tenant_id');
             
             // Verificar se conversa existe e pertence ao tenant
             $conversa = DB::table('conversas')
-                ->where('id', $conversaId)
+                ->where('id', $id)
                 ->where('tenant_id', $tenantId)
                 ->first();
             
@@ -324,13 +324,13 @@ class ConversasController extends BaseController
             
             // Buscar mensagens
             $mensagens = DB::table('mensagens')
-                ->where('conversa_id', $conversaId)
+                ->where('conversa_id', $id)
                 ->orderBy('created_at', 'asc')
                 ->get();
             
             // Marcar mensagens incoming como lidas
             DB::table('mensagens')
-                ->where('conversa_id', $conversaId)
+                ->where('conversa_id', $id)
                 ->where('direction', 'incoming')
                 ->whereNull('read_at')
                 ->update(['read_at' => now()]);
@@ -352,7 +352,7 @@ class ConversasController extends BaseController
     /**
      * Enviar mensagem
      */
-    public function enviarMensagem(Request $request, $conversaId)
+    public function enviarMensagem(Request $request, $id)
     {
         try {
             $this->validate($request, [
@@ -364,7 +364,7 @@ class ConversasController extends BaseController
             
             // Verificar conversa
             $conversa = DB::table('conversas')
-                ->where('id', $conversaId)
+                ->where('id', $id)
                 ->where('tenant_id', $tenantId)
                 ->first();
             
@@ -378,7 +378,7 @@ class ConversasController extends BaseController
             // Criar mensagem
             $mensagemId = DB::table('mensagens')->insertGetId([
                 'tenant_id' => $tenantId,
-                'conversa_id' => $conversaId,
+                'conversa_id' => $id,
                 'direction' => 'outgoing',
                 'message_type' => 'text',
                 'content' => $request->content,
@@ -422,7 +422,7 @@ class ConversasController extends BaseController
             
             // Atualizar última atividade da conversa
             DB::table('conversas')
-                ->where('id', $conversaId)
+                ->where('id', $id)
                 ->update([
                     'ultima_atividade' => now(),
                     'updated_at' => now()
@@ -453,7 +453,7 @@ class ConversasController extends BaseController
     /**
      * Detalhes de uma conversa
      */
-    public function show(Request $request, $conversaId)
+    public function show(Request $request, $id)
     {
         try {
             $tenantId = $request->attributes->get('tenant_id');
@@ -472,7 +472,7 @@ class ConversasController extends BaseController
                     'leads.budget_max',
                     'corretor.name as corretor_nome'
                 )
-                ->where('conversas.id', $conversaId)
+                ->where('conversas.id', $id)
                 ->where('conversas.tenant_id', $tenantId)
                 ->first();
             
