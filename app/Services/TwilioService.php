@@ -14,6 +14,47 @@ class TwilioService
     private $authToken;
     private $whatsappFrom;
 
+    private function normalizeTo(string $to): string
+    {
+        $raw = trim($to);
+
+        // Remover prefixos conhecidos para normalização
+        if (stripos($raw, 'whatsapp:') === 0) {
+            $raw = substr($raw, strlen('whatsapp:'));
+        }
+
+        $raw = trim($raw);
+
+        // Manter apenas + e dígitos
+        $hasPlus = str_starts_with($raw, '+');
+        $digits = preg_replace('/\D+/', '', $raw);
+        if (!$digits) {
+            return $to;
+        }
+
+        // Corrigir padrão BR legado: 55 + DDD(2) + número(8) => inserir 9 quando parece celular
+        // Ex: 559292287144 -> 5592992287144
+        if (str_starts_with($digits, '55') && strlen($digits) === 12) {
+            $ddd = substr($digits, 2, 2);
+            $local = substr($digits, 4); // 8 dígitos
+            $first = substr($local, 0, 1);
+
+            // Heurística: celulares/whatsapp normalmente começam com 6-9; fixo começa 2-5
+            if (ctype_digit($first) && (int) $first >= 6) {
+                $fixed = '55' . $ddd . '9' . $local;
+                if ($fixed !== $digits) {
+                    \Log::warning('TwilioService: ajustando número BR para 9 dígitos', [
+                        'original' => $digits,
+                        'fixed' => $fixed,
+                    ]);
+                    $digits = $fixed;
+                }
+            }
+        }
+
+        return ($hasPlus ? '+' : '+') . $digits;
+    }
+
     public function __construct()
     {
         $this->accountSid = env('EXCLUSIVA_TWILIO_ACCOUNT_SID');
@@ -39,7 +80,8 @@ class TwilioService
         
         $url = "https://api.twilio.com/2010-04-01/Accounts/{$this->accountSid}/Messages.json";
         
-        // Garantir formato correto do número
+        // Normalizar número e garantir formato correto do canal
+        $to = $this->normalizeTo((string) $to);
         if (strpos($to, 'whatsapp:') === false) {
             $to = 'whatsapp:' . $to;
         }
@@ -133,7 +175,8 @@ class TwilioService
     public function sendMedia($to, $body, $mediaUrl)
     {
         $url = "https://api.twilio.com/2010-04-01/Accounts/{$this->accountSid}/Messages.json";
-        
+
+        $to = $this->normalizeTo((string) $to);
         if (strpos($to, 'whatsapp:') === false) {
             $to = 'whatsapp:' . $to;
         }
