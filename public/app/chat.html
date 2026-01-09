@@ -470,6 +470,41 @@
         .toast.error {
             background: linear-gradient(135deg, #EF4444, #DC2626);
         }
+
+        /* Botão flutuante: ir para o fim (estilo WhatsApp) */
+        .scroll-down-btn {
+            position: sticky;
+            left: 100%;
+            bottom: 12px;
+            margin-left: auto;
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            background: rgba(30, 41, 59, 0.95);
+            color: white;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            z-index: 20;
+        }
+
+        .scroll-down-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 6px;
+            border-radius: 999px;
+            background: #10B981;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
         
         @keyframes toastSlide {
             from {
@@ -601,17 +636,19 @@
                     </button>
                 </div>
                 
-                <div class="messages-wrapper" ref="messagesContainer">
-                    <div v-if="loadingMessages" class="loading">
+                <div class="messages-wrapper" ref="messagesContainer" @scroll.passive="handleMessagesScroll">
+                    <!-- Loading só na primeira carga do chat (não no polling) -->
+                    <div v-show="loadingMessages && messagesInitialLoad" class="loading">
                         <div class="spinner"></div>
                     </div>
                     
-                    <div v-else-if="mensagens.length === 0" class="empty-state">
+                    <div v-show="!loadingMessages && mensagens.length === 0" class="empty-state">
                         <i class="fas fa-comment-dots"></i>
                         <p>Nenhuma mensagem ainda</p>
                     </div>
                     
-                    <div v-else>
+                    <!-- Lista sempre no DOM (evita piscar) -->
+                    <div v-show="mensagens.length > 0">
                         <div 
                             v-for="msg in mensagens" 
                             :key="msg.id"
@@ -629,6 +666,17 @@
                             </div>
                         </div>
                     </div>
+
+                    <button
+                        v-show="unreadCount > 0 && !isNearBottom"
+                        class="scroll-down-btn"
+                        @click.stop="scrollToBottom(true)"
+                        type="button"
+                        aria-label="Ir para o fim"
+                    >
+                        <i class="fas fa-arrow-down"></i>
+                        <span class="scroll-down-badge">{{ unreadCount }}</span>
+                    </button>
                 </div>
                 
                 <div class="message-input-container">
@@ -669,6 +717,9 @@
                     loading: false,
                     initialLoad: true,
                     loadingMessages: false,
+                    messagesInitialLoad: true,
+                    isNearBottom: true,
+                    unreadCount: 0,
                     sending: false,
                     menuOpen: false,
                     pollingInterval: null,
@@ -816,6 +867,9 @@
                     this.stopConversationsPolling();
                     this.currentConversa = conversa;
                     this.mensagens = [];
+                    this.unreadCount = 0;
+                    this.isNearBottom = true;
+                    this.messagesInitialLoad = true;
                     
                     // Buscar lead
                     try {
@@ -833,14 +887,18 @@
                     }
                     
                     // Carregar mensagens e iniciar polling
-                    await this.loadMessages();
+                    await this.loadMessages({ initial: true });
                     this.startPolling();
                 },
                 
-                async loadMessages() {
+                async loadMessages(options = {}) {
                     if (!this.currentConversa) return;
-                    
-                    this.loadingMessages = true;
+                    const silent = !!options.silent;
+                    const initial = !!options.initial;
+
+                    if (!silent) {
+                        this.loadingMessages = true;
+                    }
                     try {
                         const response = await fetch(
                             `/api/admin/conversas/${this.currentConversa.id}/mensagens`,
@@ -853,11 +911,16 @@
                         // Renderização incremental
                         const existingIds = new Set(this.mensagens.map(m => m.id));
                         let hasNewMessages = false;
+                        let newIncomingCount = 0;
                         
                         novasMensagens.forEach(msg => {
                             if (!existingIds.has(msg.id)) {
                                 this.mensagens.push(msg);
                                 hasNewMessages = true;
+
+                                if (msg.direction === 'incoming') {
+                                    newIncomingCount += 1;
+                                }
                                 
                                 // Push notification para mensagens incoming
                                 if (msg.direction === 'incoming' && document.hidden) {
@@ -870,12 +933,27 @@
                         });
                         
                         if (hasNewMessages) {
-                            this.$nextTick(() => this.scrollToBottom());
+                            this.$nextTick(() => {
+                                // Comportamento tipo WhatsApp:
+                                // - Se usuário está no fim, auto-scroll
+                                // - Se usuário está lendo acima, não puxa; só incrementa contador
+                                if (this.isNearBottom) {
+                                    this.scrollToBottom(true);
+                                } else if (newIncomingCount > 0) {
+                                    this.unreadCount += newIncomingCount;
+                                }
+                            });
                         }
                     } catch (error) {
                         console.error('Erro ao carregar mensagens:', error);
                     } finally {
-                        this.loadingMessages = false;
+                        if (!silent) {
+                            this.loadingMessages = false;
+                        }
+                        if (initial && this.messagesInitialLoad) {
+                            this.messagesInitialLoad = false;
+                            this.$nextTick(() => this.scrollToBottom(true));
+                        }
                     }
                 },
                 
@@ -897,7 +975,8 @@
                         });
                         
                         if (response.ok) {
-                            await this.loadMessages();
+                            await this.loadMessages({ silent: true });
+                            this.$nextTick(() => this.scrollToBottom(true));
                             this.showToast('Mensagem enviada', 'success');
                         } else {
                             console.error('Erro ao enviar mensagem');
@@ -925,7 +1004,7 @@
                 startPolling() {
                     this.stopPolling();
                     this.pollingInterval = setInterval(() => {
-                        this.loadMessages();
+                        this.loadMessages({ silent: true });
                     }, 3000);
                 },
                 
@@ -936,10 +1015,28 @@
                     }
                 },
                 
-                scrollToBottom() {
+                handleMessagesScroll() {
+                    const container = this.$refs.messagesContainer;
+                    if (!container) return;
+
+                    const thresholdPx = 80;
+                    const distanceFromBottom = container.scrollHeight - (container.scrollTop + container.clientHeight);
+                    const nowNearBottom = distanceFromBottom <= thresholdPx;
+
+                    this.isNearBottom = nowNearBottom;
+                    if (nowNearBottom) {
+                        this.unreadCount = 0;
+                    }
+                },
+
+                scrollToBottom(force = false) {
                     const container = this.$refs.messagesContainer;
                     if (container) {
-                        container.scrollTop = container.scrollHeight;
+                        if (force || this.isNearBottom) {
+                            container.scrollTop = container.scrollHeight;
+                            this.unreadCount = 0;
+                            this.isNearBottom = true;
+                        }
                     }
                 },
                 
