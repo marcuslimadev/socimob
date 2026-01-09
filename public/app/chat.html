@@ -191,6 +191,52 @@
             overflow-y: auto;
             background: #0F172A;
         }
+
+        .conversations-controls {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            background: #0F172A;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-btn {
+            background: rgba(255,255,255,0.08);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.10);
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: rgba(16, 185, 129, 0.35);
+        }
+
+        .search-input {
+            flex: 1;
+            background: rgba(255,255,255,0.06);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.10);
+            padding: 10px 12px;
+            border-radius: 12px;
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: rgba(255,255,255,0.55);
+        }
         
         .conversation-item {
             display: flex;
@@ -629,21 +675,41 @@
                 </div>
                 
                 <div class="conversations-container">
+                    <div class="conversations-controls">
+                        <div class="controls-row">
+                            <button
+                                type="button"
+                                class="filter-btn"
+                                :class="{ active: showOnlyMine }"
+                                @click.stop="toggleOnlyMine"
+                            >
+                                Meus Atendimentos
+                            </button>
+                            <input
+                                v-model="searchQuery"
+                                type="text"
+                                class="search-input"
+                                placeholder="Pesquisar pessoas e palavras..."
+                                autocomplete="off"
+                                @keydown.stop
+                            />
+                        </div>
+                    </div>
                     <!-- Loading só aparece na primeira vez -->
                     <div v-show="loading && initialLoad" class="loading">
                         <div class="spinner"></div>
                     </div>
                     
                     <!-- Empty state -->
-                    <div v-show="!loading && conversas.length === 0" class="empty-state">
+                    <div v-show="!loading && filteredConversas.length === 0" class="empty-state">
                         <i class="fas fa-inbox"></i>
-                        <p>Nenhuma conversa no momento</p>
+                        <p>{{ (searchQuery.trim() || showOnlyMine) ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa no momento' }}</p>
                     </div>
                     
                     <!-- Lista - sempre no DOM, só esconde se loading inicial ou vazio -->
-                    <div v-show="conversas.length > 0">
+                    <div v-show="filteredConversas.length > 0">
                         <div 
-                            v-for="conversa in conversas" 
+                            v-for="conversa in filteredConversas" 
                             :key="conversa.id"
                             class="conversation-item"
                             @click="openChat(conversa)"
@@ -781,6 +847,8 @@
                     tenantDisplayName: 'SOCIMOB',
                     token: localStorage.getItem('token'),
                     conversas: [],
+                    showOnlyMine: false,
+                    searchQuery: '',
                     mensagens: [],
                     currentConversa: null,
                     currentLead: null,
@@ -801,6 +869,31 @@
                         type: 'success'
                     }
                 };
+            },
+
+            computed: {
+                filteredConversas() {
+                    const list = Array.isArray(this.conversas) ? this.conversas : [];
+                    const mineFiltered = this.showOnlyMine
+                        ? list.filter(c => !!c?.atribuida_a_mim)
+                        : list;
+
+                    const q = (this.searchQuery || '').trim().toLowerCase();
+                    if (!q) return mineFiltered;
+
+                    return mineFiltered.filter(c => {
+                        const hay = [
+                            c?.lead_nome,
+                            c?.lead_telefone,
+                            c?.lead_email,
+                            c?.ultima_mensagem,
+                        ]
+                            .filter(Boolean)
+                            .join(' ')
+                            .toLowerCase();
+                        return hay.includes(q);
+                    });
+                }
             },
             
             async mounted() {
@@ -833,6 +926,9 @@
             },
             
             methods: {
+                toggleOnlyMine() {
+                    this.showOnlyMine = !this.showOnlyMine;
+                },
                 async loadTenantConfig() {
                     try {
                         const response = await fetch('/api/tenant/config', {
