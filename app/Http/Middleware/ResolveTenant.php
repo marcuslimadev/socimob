@@ -17,6 +17,13 @@ class ResolveTenant
      */
     public function handle(Request $request, Closure $next)
     {
+        // Webhooks (ex.: Twilio) podem chegar por domínios/hosts que não são tenants.
+        // Essas rotas fazem sua própria resolução/validação de tenant no controller.
+        $path = trim($request->path(), '/');
+        if (str_starts_with($path, 'webhook/')) {
+            return $next($request);
+        }
+
         // Obter o dominio da requisicao
         $host = $request->getHost();
 
