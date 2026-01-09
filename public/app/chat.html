@@ -861,6 +861,7 @@
 
         function openChat(conversaId, leadId) {
             currentConversaId = conversaId;
+            lastMessageIds.clear(); // Limpar cache de mensagens
             
             // Buscar informações do lead
             const token = localStorage.getItem('token');
@@ -893,6 +894,9 @@
             $('#chatContactName').text(currentLead.nome || 'Cliente');
             $('#chatContactPhone').text(currentLead.telefone || '');
             
+            // Limpar mensagens antigas
+            $('#messagesContainer').empty();
+            
             $('#conversationsView').addClass('hidden');
             $('#chatView').removeClass('hidden');
         }
@@ -920,36 +924,55 @@
             });
         }
 
+        let lastMessageIds = new Set();
+
         function renderMessages(mensagens) {
             if (!mensagens || mensagens.length === 0) {
-                $('#messagesContainer').html(`
-                    <div class="empty-state">
-                        <i class="fas fa-comment-dots"></i>
-                        <p>Nenhuma mensagem ainda</p>
-                    </div>
-                `);
+                if ($('#messagesContainer .message').length === 0) {
+                    $('#messagesContainer').html(`
+                        <div class="empty-state">
+                            <i class="fas fa-comment-dots"></i>
+                            <p>Nenhuma mensagem ainda</p>
+                        </div>
+                    `);
+                }
                 return;
             }
 
-            const html = mensagens.map(msg => {
-                const type = msg.direction === 'outgoing' ? 'outgoing' : 'incoming';
-                const time = formatTime(msg.created_at);
-                const status = msg.direction === 'outgoing' 
-                    ? `<span class="message-status"><i class="fas fa-check${msg.status === 'sent' ? '-double' : ''}"></i></span>`
-                    : '';
+            // Remover empty state se existir
+            $('#messagesContainer .empty-state').remove();
 
-                return `
-                    <div class="message ${type}">
-                        <div class="message-bubble">
-                            <div>${msg.content || msg.body}</div>
-                            <div class="message-time">${time}${status}</div>
+            const container = $('#messagesContainer');
+            let shouldScroll = false;
+
+            mensagens.forEach(msg => {
+                // Só adiciona se for nova
+                if (!lastMessageIds.has(msg.id)) {
+                    lastMessageIds.add(msg.id);
+                    
+                    const type = msg.direction === 'outgoing' ? 'outgoing' : 'incoming';
+                    const time = formatTime(msg.created_at);
+                    const status = msg.direction === 'outgoing' 
+                        ? `<span class="message-status"><i class="fas fa-check${msg.status === 'sent' ? '-double' : ''}"></i></span>`
+                        : '';
+
+                    const html = `
+                        <div class="message ${type}" data-msg-id="${msg.id}">
+                            <div class="message-bubble">
+                                <div>${msg.content || msg.body}</div>
+                                <div class="message-time">${time}${status}</div>
+                            </div>
                         </div>
-                    </div>
-                `;
-            }).join('');
+                    `;
 
-            $('#messagesContainer').html(html);
-            scrollToBottom();
+                    container.append(html);
+                    shouldScroll = true;
+                }
+            });
+
+            if (shouldScroll) {
+                scrollToBottom();
+            }
         }
 
         function sendMessage() {
