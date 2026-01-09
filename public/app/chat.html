@@ -37,11 +37,16 @@
             max-height: -webkit-fill-available;
         }
         
+        #conversationsView,
         #chatView {
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            max-height: -webkit-fill-available;
+            height: 100%;
+            flex: 1;
+        }
+        
+        .hidden {
+            display: none !important;
         }
         
         /* Header */
