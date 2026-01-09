@@ -659,7 +659,7 @@
                         if (response.ok) {
                             await this.loadMessages();
                         } else {
-                            alert('Erro ao enviar mensagem');
+                            console.error('Erro ao enviar mensagem');
                             this.newMessage = content;
                         }
                     } catch (error) {
@@ -718,7 +718,7 @@
                 },
                 
                 showStats() {
-                    alert('Estatísticas em desenvolvimento');
+                    console.log('Estatísticas em desenvolvimento');
                 },
                 
                 logout() {
