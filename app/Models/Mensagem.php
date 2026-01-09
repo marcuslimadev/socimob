@@ -15,6 +15,7 @@ class Mensagem extends Model
     protected $fillable = [
         'tenant_id',
         'conversa_id',
+        'user_id',
         'message_sid',
         'direction',
         'message_type',

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Laravel\Lumen\Routing\Controller as BaseController;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class ConversasController extends BaseController
 {
@@ -312,8 +313,17 @@ class ConversasController extends BaseController
             
             // Verificar se conversa existe e pertence ao tenant
             $conversa = DB::table('conversas')
-                ->where('id', $id)
-                ->where('tenant_id', $tenantId)
+                ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+                ->leftJoin('users as corretor', 'conversas.corretor_id', '=', 'corretor.id')
+                ->select(
+                    'conversas.id',
+                    'conversas.tenant_id',
+                    'conversas.corretor_id',
+                    'leads.nome as lead_nome',
+                    'corretor.name as corretor_nome'
+                )
+                ->where('conversas.id', $id)
+                ->where('conversas.tenant_id', $tenantId)
                 ->first();
             
             if (!$conversa) {
@@ -328,6 +338,39 @@ class ConversasController extends BaseController
                 ->where('conversa_id', $id)
                 ->orderBy('created_at', 'asc')
                 ->get();
+
+            $hasUserIdColumn = Schema::hasColumn('mensagens', 'user_id');
+
+            $senderNamesByUserId = [];
+            if ($hasUserIdColumn) {
+                $userIds = $mensagens
+                    ->filter(fn ($m) => ($m->direction ?? null) === 'outgoing' && !empty($m->user_id))
+                    ->pluck('user_id')
+                    ->unique()
+                    ->values();
+
+                if ($userIds->count() > 0) {
+                    $senderNamesByUserId = DB::table('users')
+                        ->whereIn('id', $userIds->all())
+                        ->pluck('name', 'id')
+                        ->toArray();
+                }
+            }
+
+            $leadName = $conversa->lead_nome ?: 'Cliente';
+            $fallbackOutgoingName = $conversa->corretor_nome ?: 'Atendente';
+
+            foreach ($mensagens as $m) {
+                if (($m->direction ?? null) === 'incoming') {
+                    $m->sender_name = $leadName;
+                } else {
+                    $senderName = null;
+                    if ($hasUserIdColumn && !empty($m->user_id)) {
+                        $senderName = $senderNamesByUserId[(string) $m->user_id] ?? $senderNamesByUserId[(int) $m->user_id] ?? null;
+                    }
+                    $m->sender_name = $senderName ?: $fallbackOutgoingName;
+                }
+            }
             
             // Marcar mensagens incoming como lidas
             DB::table('mensagens')
@@ -377,7 +420,7 @@ class ConversasController extends BaseController
             }
             
             // Criar mensagem
-            $mensagemId = DB::table('mensagens')->insertGetId([
+            $payload = [
                 'tenant_id' => $tenantId,
                 'conversa_id' => $id,
                 'direction' => 'outgoing',
@@ -386,7 +429,14 @@ class ConversasController extends BaseController
                 'status' => 'queued',
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now()
-            ]);
+            ];
+
+            // Se existir coluna user_id, registrar quem enviou
+            if (Schema::hasColumn('mensagens', 'user_id')) {
+                $payload['user_id'] = $user?->id;
+            }
+
+            $mensagemId = DB::table('mensagens')->insertGetId($payload);
             
             // Enviar via Twilio
             try {

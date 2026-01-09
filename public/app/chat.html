@@ -342,6 +342,24 @@
             gap: 4px;
         }
 
+        .message-meta {
+            margin-top: 6px;
+            font-size: 11px;
+            opacity: 0.78;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .message-sender {
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 70%;
+        }
+
         .audio-message {
             display: flex;
             flex-direction: column;
@@ -706,11 +724,14 @@
                                     <div v-if="msg.transcription" class="audio-transcription">{{ msg.transcription }}</div>
                                 </div>
                                 <div v-else>{{ msg.content || msg.body }}</div>
-                                <div class="message-time">
-                                    {{ formatTime(msg.created_at) }}
-                                    <i v-if="msg.direction === 'outgoing'" 
-                                       :class="['fas', msg.status === 'sent' ? 'fa-check-double' : 'fa-check']"
-                                    ></i>
+                                <div class="message-meta">
+                                    <span class="message-sender">{{ getSenderName(msg) }}</span>
+                                    <span class="message-time">
+                                        {{ formatTime(msg.sent_at || msg.created_at) }}
+                                        <i v-if="msg.direction === 'outgoing'" 
+                                           :class="['fas', msg.status === 'sent' ? 'fa-check-double' : 'fa-check']"
+                                        ></i>
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -1097,6 +1118,20 @@
                     if ((msg.message_type || '') === 'audio') return true;
                     // Fallback: alguns webhooks podem não preencher message_type
                     return !!msg.media_url && /\.(ogg|oga|mp3|wav|m4a|mp4)(\?|$)/i.test(msg.media_url);
+                },
+
+                getSenderName(msg) {
+                    if (!msg) return '';
+                    // Preferir o que vier do backend
+                    if (msg.sender_name) return msg.sender_name;
+
+                    // Fallbacks (para compatibilidade com mensagens antigas)
+                    if ((msg.direction || '') === 'incoming') {
+                        return this.currentLead?.nome || 'Cliente';
+                    }
+
+                    // outgoing
+                    return this.user?.name || this.currentConversa?.corretor_nome || 'Atendente';
                 },
 
                 async loadAudio(msg) {
