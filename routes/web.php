@@ -38,7 +38,7 @@ $router->get('/webhook/chaves-na-mao', 'ChavesNaMaoWebhookController@methodNotAl
 $router->post('/webhook/chaves-na-mao', 'ChavesNaMaoWebhookController@receive');
 
 // Auth API routes
-$router->group(['prefix' => 'api'], function () use ($router) {
+$router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function () use ($router) {
     $router->post('/auth/login', 'AuthController@login');
     $router->post('/auth/google', 'AuthController@googleLogin');
     $router->post('/auth/logout', 'AuthController@logout');

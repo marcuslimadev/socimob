@@ -38,6 +38,19 @@ class AuthController extends Controller
             ], 401);
         }
         
+        // Validar tenant - usuários só podem fazer login no domínio do seu tenant
+        // Super admins (sem tenant_id) podem fazer login em qualquer domínio
+        if ($user->tenant_id) {
+            $currentTenant = app('tenant');
+            
+            if (!$currentTenant || $currentTenant->id !== $user->tenant_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Este usuário não tem acesso a este domínio. Acesse pelo domínio correto da sua imobiliária.'
+                ], 403);
+            }
+        }
+        
         // Gerar token simples
         $secret = env('JWT_SECRET', env('APP_KEY', 'default-secret-key'));
         $token = base64_encode($user->id . '|' . time() . '|' . $secret);
