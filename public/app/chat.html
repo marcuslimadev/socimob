@@ -668,6 +668,7 @@
                     sending: false,
                     menuOpen: false,
                     pollingInterval: null,
+                    conversationsPollingInterval: null,
                     toast: {
                         show: false,
                         message: '',
@@ -695,10 +696,12 @@
                 
                 await this.loadUser();
                 await this.loadConversations();
+                this.startConversationsPolling();
             },
             
             beforeUnmount() {
                 this.stopPolling();
+                this.stopConversationsPolling();
             },
             
             methods: {
@@ -739,6 +742,9 @@
                         });
                         
                         if (response.status === 401) {
+                            // Limpar token inválido antes de redirecionar
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
                             window.location.href = '/app/login.html';
                             return;
                         }
@@ -747,10 +753,16 @@
                         this.user = data.data || data;
                     } catch (error) {
                         console.error('Erro ao carregar usuário:', error);
+                        // Se houver erro de rede, também limpar e redirecionar
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        window.location.href = '/app/login.html';
                     }
                 },
                 
                 async loadConversations() {
+                    if (this.loading) return;
+                    
                     this.loading = true;
                     try {
                         const response = await fetch('/api/admin/conversas', {
@@ -758,7 +770,12 @@
                         });
                         
                         const data = await response.json();
-                        this.conversas = data.data || data;
+                        const novasConversas = data.data || data;
+                        
+                        // Renderização incremental - apenas atualiza se houver mudanças
+                        if (JSON.stringify(this.conversas) !== JSON.stringify(novasConversas)) {
+                            this.conversas = novasConversas;
+                        }
                     } catch (error) {
                         console.error('Erro ao carregar conversas:', error);
                     } finally {
@@ -766,7 +783,24 @@
                     }
                 },
                 
+                startConversationsPolling() {
+                    this.stopConversationsPolling();
+                    this.conversationsPollingInterval = setInterval(() => {
+                        if (!this.currentConversa) {
+                            this.loadConversations();
+                        }
+                    }, 5000);
+                },
+                
+                stopConversationsPolling() {
+                    if (this.conversationsPollingInterval) {
+                        clearInterval(this.conversationsPollingInterval);
+                        this.conversationsPollingInterval = null;
+                    }
+                },
+                
                 async openChat(conversa) {
+                    this.stopConversationsPolling();
                     this.currentConversa = conversa;
                     this.mensagens = [];
                     
@@ -872,6 +906,7 @@
                     this.currentLead = null;
                     this.mensagens = [];
                     this.loadConversations();
+                    this.startConversationsPolling();
                 },
                 
                 startPolling() {
