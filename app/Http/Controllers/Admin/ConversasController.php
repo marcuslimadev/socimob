@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Laravel\Lumen\Routing\Controller as BaseController;
+use Illuminate\Support\Carbon;
 
 class ConversasController extends BaseController
 {
@@ -150,7 +151,7 @@ class ConversasController extends BaseController
                 ->where('id', $conversa->id)
                 ->update([
                     'corretor_id' => $user->id,
-                    'updated_at' => now()
+                    'updated_at' => Carbon::now()
                 ]);
             
             // Registrar log
@@ -223,7 +224,7 @@ class ConversasController extends BaseController
                 ->where('id', $id)
                 ->update([
                     'corretor_id' => null,
-                    'updated_at' => now()
+                    'updated_at' => Carbon::now()
                 ]);
             
             \App\Models\SystemLog::info(
@@ -333,7 +334,7 @@ class ConversasController extends BaseController
                 ->where('conversa_id', $id)
                 ->where('direction', 'incoming')
                 ->whereNull('read_at')
-                ->update(['read_at' => now()]);
+                ->update(['read_at' => Carbon::now()]);
             
             return response()->json([
                 'success' => true,
@@ -383,8 +384,8 @@ class ConversasController extends BaseController
                 'message_type' => 'text',
                 'content' => $request->content,
                 'status' => 'queued',
-                'created_at' => now(),
-                'updated_at' => now()
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now()
             ]);
             
             // Enviar via Twilio
@@ -401,8 +402,8 @@ class ConversasController extends BaseController
                     ->update([
                         'message_sid' => $resultado['sid'] ?? null,
                         'status' => 'sent',
-                        'sent_at' => now(),
-                        'updated_at' => now()
+                        'sent_at' => Carbon::now(),
+                        'updated_at' => Carbon::now()
                     ]);
                 
             } catch (\Exception $e) {
@@ -411,7 +412,7 @@ class ConversasController extends BaseController
                     ->where('id', $mensagemId)
                     ->update([
                         'status' => 'failed',
-                        'updated_at' => now()
+                        'updated_at' => Carbon::now()
                     ]);
                 
                 \Illuminate\Support\Facades\Log::error('Erro ao enviar via Twilio', [
@@ -424,8 +425,8 @@ class ConversasController extends BaseController
             DB::table('conversas')
                 ->where('id', $id)
                 ->update([
-                    'ultima_atividade' => now(),
-                    'updated_at' => now()
+                    'ultima_atividade' => Carbon::now(),
+                    'updated_at' => Carbon::now()
                 ]);
             
             $mensagem = DB::table('mensagens')->find($mensagemId);
