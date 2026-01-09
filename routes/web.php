@@ -861,6 +861,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
         $router->get('/conversas/{id}', 'Admin\ConversasController@show');
         $router->get('/conversas/{id}/mensagens', 'Admin\ConversasController@mensagens');
         $router->post('/conversas/{id}/mensagens', 'Admin\ConversasController@enviarMensagem');
+        $router->get('/mensagens/{id}/media', 'Admin\MensagemMediaController@show');
     });
     
     // Imóveis - Debug completo

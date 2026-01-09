@@ -341,6 +341,41 @@
             align-items: center;
             gap: 4px;
         }
+
+        .audio-message {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .audio-load-btn {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.18);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            width: fit-content;
+        }
+
+        .audio-load-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .audio-player {
+            width: 240px;
+            max-width: 100%;
+        }
+
+        .audio-transcription {
+            font-size: 14px;
+            line-height: 1.35;
+            opacity: 0.95;
+            white-space: pre-wrap;
+        }
         
         /* Input de Mensagem */
         .message-input-container {
@@ -656,7 +691,21 @@
                             :class="msg.direction"
                         >
                             <div class="message-bubble">
-                                <div>{{ msg.content || msg.body }}</div>
+                                <div v-if="isAudioMessage(msg)" class="audio-message">
+                                    <audio v-if="msg._audioUrl" class="audio-player" controls :src="msg._audioUrl"></audio>
+                                    <button
+                                        v-else
+                                        class="audio-load-btn"
+                                        type="button"
+                                        @click.stop="loadAudio(msg)"
+                                        :disabled="msg._audioLoading"
+                                    >
+                                        {{ msg._audioLoading ? 'Carregando áudio…' : 'Ouvir áudio' }}
+                                    </button>
+
+                                    <div v-if="msg.transcription" class="audio-transcription">{{ msg.transcription }}</div>
+                                </div>
+                                <div v-else>{{ msg.content || msg.body }}</div>
                                 <div class="message-time">
                                     {{ formatTime(msg.created_at) }}
                                     <i v-if="msg.direction === 'outgoing'" 
@@ -757,6 +806,7 @@
             beforeUnmount() {
                 this.stopPolling();
                 this.stopConversationsPolling();
+                this.revokeAllAudioUrls();
             },
             
             methods: {
@@ -866,6 +916,7 @@
                 async openChat(conversa) {
                     this.stopConversationsPolling();
                     this.currentConversa = conversa;
+                    this.revokeAllAudioUrls();
                     this.mensagens = [];
                     this.unreadCount = 0;
                     this.isNearBottom = true;
@@ -996,6 +1047,7 @@
                     this.stopPolling();
                     this.currentConversa = null;
                     this.currentLead = null;
+                    this.revokeAllAudioUrls();
                     this.mensagens = [];
                     this.loadConversations();
                     this.startConversationsPolling();
@@ -1038,6 +1090,57 @@
                             this.isNearBottom = true;
                         }
                     }
+                },
+
+                isAudioMessage(msg) {
+                    if (!msg) return false;
+                    if ((msg.message_type || '') === 'audio') return true;
+                    // Fallback: alguns webhooks podem não preencher message_type
+                    return !!msg.media_url && /\.(ogg|oga|mp3|wav|m4a|mp4)(\?|$)/i.test(msg.media_url);
+                },
+
+                async loadAudio(msg) {
+                    if (!msg || msg._audioUrl || msg._audioLoading) return;
+                    msg._audioLoading = true;
+                    try {
+                        const response = await fetch(`/api/admin/mensagens/${msg.id}/media`, {
+                            headers: { 'Authorization': `Bearer ${this.token}` }
+                        });
+
+                        if (response.status === 401) {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            window.location.href = '/app/login.html';
+                            return;
+                        }
+
+                        if (!response.ok) {
+                            this.showToast('Não foi possível carregar o áudio', 'error');
+                            return;
+                        }
+
+                        const blob = await response.blob();
+                        msg._audioUrl = URL.createObjectURL(blob);
+                    } catch (e) {
+                        console.error('Erro ao carregar áudio:', e);
+                        this.showToast('Erro ao carregar áudio', 'error');
+                    } finally {
+                        msg._audioLoading = false;
+                    }
+                },
+
+                revokeAllAudioUrls() {
+                    try {
+                        (this.mensagens || []).forEach(m => {
+                            if (m && m._audioUrl) {
+                                URL.revokeObjectURL(m._audioUrl);
+                                m._audioUrl = null;
+                            }
+                            if (m) {
+                                m._audioLoading = false;
+                            }
+                        });
+                    } catch (_) {}
                 },
                 
                 autoResize(event) {

@@ -925,8 +925,25 @@ class WhatsAppService
                     'length' => strlen($transcription['text'])
                 ]);
 
-                // Transcrição salva no histórico via content da mensagem
-                return $transcription['text'];
+                // Persistir transcrição no registro da mensagem (para UI e histórico)
+                $text = $transcription['text'];
+                try {
+                    $mensagem = Mensagem::find($mensagemId);
+                    if ($mensagem) {
+                        $update = ['transcription' => $text];
+                        if (empty($mensagem->content)) {
+                            $update['content'] = '[Áudio]';
+                        }
+                        $mensagem->update($update);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('⚠️ Falha ao salvar transcrição no banco', [
+                        'mensagem_id' => $mensagemId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                return $text;
             }
 
             Log::error('❌ Falha na transcrição', ['details' => $transcription]);
