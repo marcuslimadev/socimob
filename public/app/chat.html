@@ -433,8 +433,8 @@
             </div>
             
             <!-- Chat Individual -->
-            <div v-else style="display: flex; flex-direction: column; height: 100%;">
-                <div class="chat-header">
+            <div v-else style="display: flex; flex-direction: column; height: 100vh; max-height: -webkit-fill-available;">
+                <div class="chat-header" style="flex-shrink: 0;">
                     <i class="fas fa-arrow-left back-btn" @click="backToList"></i>
                     <div class="contact-info">
                         <div class="contact-avatar">{{ getInitials(currentLead?.nome) }}</div>
@@ -450,7 +450,7 @@
                     </button>
                 </div>
                 
-                <div class="messages-container" ref="messagesContainer">
+                <div class="messages-container" ref="messagesContainer" style="flex: 1; overflow-y: auto;">
                     <div v-if="loadingMessages" class="loading">
                         <div class="spinner"></div>
                     </div>
@@ -480,7 +480,7 @@
                     </div>
                 </div>
                 
-                <div class="message-input-container">
+                <div class="message-input-container" style="flex-shrink: 0;">
                     <textarea 
                         v-model="newMessage"
                         class="message-input" 
@@ -603,18 +603,35 @@
                 async loadMessages() {
                     if (!this.currentConversa) return;
                     
-                    this.loadingMessages = true;
+                    const isFirstLoad = this.mensagens.length === 0;
+                    if (isFirstLoad) {
+                        this.loadingMessages = true;
+                    }
+                    
                     try {
                         const response = await fetch(`/api/admin/conversas/${this.currentConversa.id}/mensagens`, {
                             headers: { 'Authorization': `Bearer ${this.token}` }
                         });
                         
                         const data = await response.json();
-                        this.mensagens = data.data || data;
+                        const novasMensagens = data.data || data;
                         
-                        this.$nextTick(() => {
-                            this.scrollToBottom();
+                        // Apenas adiciona mensagens novas (evita piscar)
+                        const existingIds = new Set(this.mensagens.map(m => m.id));
+                        let hasNewMessages = false;
+                        
+                        novasMensagens.forEach(msg => {
+                            if (!existingIds.has(msg.id)) {
+                                this.mensagens.push(msg);
+                                hasNewMessages = true;
+                            }
                         });
+                        
+                        if (hasNewMessages || isFirstLoad) {
+                            this.$nextTick(() => {
+                                this.scrollToBottom();
+                            });
+                        }
                     } catch (error) {
                         console.error('Erro ao carregar mensagens:', error);
                     } finally {
