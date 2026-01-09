@@ -552,6 +552,33 @@ class ConversasController extends BaseController
                     $conversa->telefone,
                     $request->content
                 );
+
+                if (empty($resultado['success'])) {
+                    // Twilio respondeu mas não aceitou o envio
+                    DB::table('mensagens')
+                        ->where('id', $mensagemId)
+                        ->update([
+                            'status' => 'failed',
+                            'updated_at' => Carbon::now()
+                        ]);
+
+                    \Illuminate\Support\Facades\Log::error('Falha ao enviar via Twilio (resposta)', [
+                        'mensagem_id' => $mensagemId,
+                        'to' => $conversa->telefone,
+                        'http_code' => $resultado['http_code'] ?? null,
+                        'error' => $resultado['error'] ?? null,
+                        'response' => $resultado['response'] ?? null,
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Falha ao enviar mensagem via Twilio',
+                        'twilio' => [
+                            'http_code' => $resultado['http_code'] ?? null,
+                            'error' => $resultado['error'] ?? null,
+                        ]
+                    ], 502);
+                }
                 
                 // Atualizar com message_sid e status
                 DB::table('mensagens')
@@ -576,6 +603,11 @@ class ConversasController extends BaseController
                     'mensagem_id' => $mensagemId,
                     'erro' => $e->getMessage()
                 ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erro ao enviar mensagem via Twilio'
+                ], 502);
             }
             
             // Atualizar última atividade da conversa
