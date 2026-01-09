@@ -856,6 +856,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
         $router->get('/conversas/fila/estatisticas', 'Admin\ConversasController@estatisticasFila');
         $router->post('/conversas/fila/pegar-proxima', 'Admin\ConversasController@pegarProxima');
         $router->post('/conversas/{id}/devolver-fila', 'Admin\ConversasController@devolverParaFila');
+        $router->post('/conversas/{id}/atribuir', 'Admin\ConversasController@atribuirCorretor');
         $router->get('/conversas/tempo-real', 'ConversasController@tempoReal');
         $router->get('/conversas/por-telefone/{telefone}', 'ConversasController@porTelefone');
         $router->get('/conversas/{id}', 'Admin\ConversasController@show');
