@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#10B981">
+    <title>SOCIMOB - Atendimento</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0F172A;
+        }
+        
+        [v-cloak] { display: none; }
+        
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-height: -webkit-fill-available;
+        }
+        
+        .chat-header {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        
+        .back-btn {
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px;
+        }
+        
+        .contact-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .contact-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .contact-details h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+        
+        .contact-details p {
+            margin: 2px 0 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .hamburger-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        
+        .hamburger-btn span {
+            width: 18px;
+            height: 2px;
+            background: white;
+            border-radius: 2px;
+        }
+        
+        .side-menu {
+            position: fixed;
+            top: 0;
+            right: -280px;
+            width: 280px;
+            height: 100vh;
+            background: #1E293B;
+            box-shadow: -4px 0 24px rgba(0,0,0,0.3);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            padding: 20px;
+        }
+        
+        .side-menu.active {
+            right: 0;
+        }
+        
+        .side-menu-item {
+            padding: 14px;
+            margin: 8px 0;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.2s;
+        }
+        
+        .side-menu-item:hover {
+            background: rgba(16, 185, 129, 0.2);
+        }
+        
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+            background: #0F172A;
+        }
+        
+        .conversation-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .conversation-item:hover {
+            background: rgba(16, 185, 129, 0.1);
+        }
+        
+        .conversation-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10B981, #059669);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .conversation-content {
+            flex: 1;
+            margin-left: 12px;
+            min-width: 0;
+        }
+        
+        .conversation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        
+        .conversation-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: white;
+        }
+        
+        .conversation-time {
+            font-size: 12px;
+            color: #94A3B8;
+        }
+        
+        .conversation-preview {
+            font-size: 14px;
+            color: #94A3B8;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: #10B981;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 12px;
+            margin-left: 8px;
+        }
+        
+        .badge.fila {
+            background: #F59E0B;
+        }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            background: #0F172A;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+        }
+        
+        .message {
+            display: flex;
+            margin-bottom: 12px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.outgoing {
+            justify-content: flex-end;
+        }
+        
+        .message-bubble {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 16px;
+            word-wrap: break-word;
+        }
+        
+        .message.incoming .message-bubble {
+            background: #1E293B;
+            color: white;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message.outgoing .message-bubble {
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .message-input-container {
+            padding: 12px 16px;
+            background: #1E293B;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        
+        .message-input {
+            flex: 1;
+            background: #0F172A;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 10px 16px;
+            color: white;
+            font-size: 15px;
+            resize: none;
+            max-height: 120px;
+            min-height: 40px;
+            outline: none;
+            font-family: inherit;
+        }
+        
+        .message-input::placeholder {
+            color: #64748B;
+        }
+        
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10B981, #059669);
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .send-btn:disabled {
+            opacity: 0.5;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: #94A3B8;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #10B981;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #64748B;
+            padding: 40px 20px;
+        }
+        
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak>
+        <!-- Menu lateral -->
+        <div class="side-menu" :class="{ active: menuOpen }">
+            <h3 style="color: white; margin-bottom: 20px;">Menu</h3>
+            <a href="/app/dashboard.html" class="side-menu-item" style="text-decoration: none;">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </a>
+            <div class="side-menu-item" @click="showStats">
+                <i class="fas fa-chart-bar"></i>
+                <span>Estatísticas da Fila</span>
+            </div>
+            <div class="side-menu-item" @click="logout">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Sair</span>
+            </div>
+        </div>
+        
+        <div class="chat-container" @click="menuOpen = false">
+            <!-- Lista de Conversas -->
+            <div v-if="!currentConversa">
+                <div class="chat-header">
+                    <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                        <button class="hamburger-btn" @click.stop="menuOpen = !menuOpen">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </button>
+                        <div class="contact-details">
+                            <h3>SOCIMOB Chat</h3>
+                            <p>{{ user?.name || 'Corretor' }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="conversations-list">
+                    <div v-if="loading" class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                    
+                    <div v-else-if="conversas.length === 0" class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>Nenhuma conversa no momento</p>
+                    </div>
+                    
+                    <div v-else>
+                        <div 
+                            v-for="conversa in conversas" 
+                            :key="conversa.id"
+                            class="conversation-item"
+                            @click="openChat(conversa)"
+                        >
+                            <div class="conversation-avatar">
+                                {{ getInitials(conversa.lead_nome) }}
+                            </div>
+                            <div class="conversation-content">
+                                <div class="conversation-header">
+                                    <span class="conversation-name">
+                                        {{ conversa.lead_nome || 'Cliente' }}
+                                        <span v-if="conversa.atribuida_a_mim" class="badge">MINHA</span>
+                                        <span v-else-if="conversa.em_fila" class="badge fila">FILA</span>
+                                    </span>
+                                    <span class="conversation-time">{{ formatTime(conversa.ultima_atividade) }}</span>
+                                </div>
+                                <div class="conversation-preview">
+                                    {{ conversa.ultima_mensagem || 'Sem mensagens' }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chat Individual -->
+            <div v-else style="display: flex; flex-direction: column; height: 100%;">
+                <div class="chat-header">
+                    <i class="fas fa-arrow-left back-btn" @click="backToList"></i>
+                    <div class="contact-info">
+                        <div class="contact-avatar">{{ getInitials(currentLead?.nome) }}</div>
+                        <div class="contact-details">
+                            <h3>{{ currentLead?.nome || 'Cliente' }}</h3>
+                            <p>{{ currentLead?.telefone || '---' }}</p>
+                        </div>
+                    </div>
+                    <button class="hamburger-btn" @click.stop="menuOpen = !menuOpen">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                </div>
+                
+                <div class="messages-container" ref="messagesContainer">
+                    <div v-if="loadingMessages" class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                    
+                    <div v-else-if="mensagens.length === 0" class="empty-state">
+                        <i class="fas fa-comment-dots"></i>
+                        <p>Nenhuma mensagem ainda</p>
+                    </div>
+                    
+                    <div v-else>
+                        <div 
+                            v-for="msg in mensagens" 
+                            :key="msg.id"
+                            class="message"
+                            :class="msg.direction"
+                        >
+                            <div class="message-bubble">
+                                <div>{{ msg.content || msg.body }}</div>
+                                <div class="message-time">
+                                    {{ formatTime(msg.created_at) }}
+                                    <i v-if="msg.direction === 'outgoing'" 
+                                       :class="['fas', msg.status === 'sent' ? 'fa-check-double' : 'fa-check']"
+                                    ></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="message-input-container">
+                    <textarea 
+                        v-model="newMessage"
+                        class="message-input" 
+                        placeholder="Digite sua mensagem..."
+                        rows="1"
+                        @keydown.enter.exact.prevent="sendMessage"
+                    ></textarea>
+                    <button 
+                        class="send-btn" 
+                        @click="sendMessage"
+                        :disabled="!newMessage.trim() || sending"
+                    >
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script>
+        const { createApp } = Vue;
+        
+        createApp({
+            data() {
+                return {
+                    user: null,
+                    token: localStorage.getItem('token'),
+                    conversas: [],
+                    mensagens: [],
+                    currentConversa: null,
+                    currentLead: null,
+                    newMessage: '',
+                    loading: false,
+                    loadingMessages: false,
+                    sending: false,
+                    menuOpen: false,
+                    pollingInterval: null
+                };
+            },
+            
+            async mounted() {
+                // Service Worker
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('/service-worker.js');
+                }
+                
+                // Verificar auth
+                if (!this.token) {
+                    window.location.href = '/app/login.html';
+                    return;
+                }
+                
+                await this.loadUser();
+                await this.loadConversations();
+            },
+            
+            beforeUnmount() {
+                this.stopPolling();
+            },
+            
+            methods: {
+                async loadUser() {
+                    try {
+                        const response = await fetch('/api/auth/me', {
+                            headers: { 'Authorization': `Bearer ${this.token}` }
+                        });
+                        
+                        if (response.status === 401) {
+                            window.location.href = '/app/login.html';
+                            return;
+                        }
+                        
+                        const data = await response.json();
+                        this.user = data.data || data;
+                    } catch (error) {
+                        console.error('Erro ao carregar usuário:', error);
+                    }
+                },
+                
+                async loadConversations() {
+                    this.loading = true;
+                    try {
+                        const response = await fetch('/api/admin/conversas', {
+                            headers: { 'Authorization': `Bearer ${this.token}` }
+                        });
+                        
+                        const data = await response.json();
+                        this.conversas = data.data || data;
+                    } catch (error) {
+                        console.error('Erro ao carregar conversas:', error);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                
+                async openChat(conversa) {
+                    this.currentConversa = conversa;
+                    this.mensagens = [];
+                    
+                    // Buscar lead
+                    try {
+                        const response = await fetch(`/api/leads/${conversa.lead_id}`, {
+                            headers: { 'Authorization': `Bearer ${this.token}` }
+                        });
+                        const data = await response.json();
+                        this.currentLead = data.data || data;
+                    } catch (error) {
+                        this.currentLead = { 
+                            id: conversa.lead_id, 
+                            nome: conversa.lead_nome || 'Cliente',
+                            telefone: conversa.lead_telefone || ''
+                        };
+                    }
+                    
+                    await this.loadMessages();
+                    this.startPolling();
+                },
+                
+                async loadMessages() {
+                    if (!this.currentConversa) return;
+                    
+                    this.loadingMessages = true;
+                    try {
+                        const response = await fetch(`/api/admin/conversas/${this.currentConversa.id}/mensagens`, {
+                            headers: { 'Authorization': `Bearer ${this.token}` }
+                        });
+                        
+                        const data = await response.json();
+                        this.mensagens = data.data || data;
+                        
+                        this.$nextTick(() => {
+                            this.scrollToBottom();
+                        });
+                    } catch (error) {
+                        console.error('Erro ao carregar mensagens:', error);
+                    } finally {
+                        this.loadingMessages = false;
+                    }
+                },
+                
+                async sendMessage() {
+                    if (!this.newMessage.trim() || this.sending) return;
+                    
+                    this.sending = true;
+                    const content = this.newMessage;
+                    this.newMessage = '';
+                    
+                    try {
+                        const response = await fetch(`/api/admin/conversas/${this.currentConversa.id}/mensagens`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${this.token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ content })
+                        });
+                        
+                        if (response.ok) {
+                            await this.loadMessages();
+                        } else {
+                            alert('Erro ao enviar mensagem');
+                            this.newMessage = content;
+                        }
+                    } catch (error) {
+                        console.error('Erro ao enviar:', error);
+                        this.newMessage = content;
+                    } finally {
+                        this.sending = false;
+                    }
+                },
+                
+                backToList() {
+                    this.stopPolling();
+                    this.currentConversa = null;
+                    this.currentLead = null;
+                    this.mensagens = [];
+                    this.loadConversations();
+                },
+                
+                startPolling() {
+                    this.stopPolling();
+                    this.pollingInterval = setInterval(() => {
+                        if (this.currentConversa) {
+                            this.loadMessages();
+                        }
+                    }, 3000);
+                },
+                
+                stopPolling() {
+                    if (this.pollingInterval) {
+                        clearInterval(this.pollingInterval);
+                        this.pollingInterval = null;
+                    }
+                },
+                
+                scrollToBottom() {
+                    const container = this.$refs.messagesContainer;
+                    if (container) {
+                        container.scrollTop = container.scrollHeight;
+                    }
+                },
+                
+                getInitials(nome) {
+                    return (nome || 'C')[0].toUpperCase();
+                },
+                
+                formatTime(datetime) {
+                    if (!datetime) return '';
+                    const date = new Date(datetime);
+                    const now = new Date();
+                    const diff = now - date;
+                    
+                    if (diff < 60000) return 'Agora';
+                    if (diff < 3600000) return Math.floor(diff / 60000) + 'm';
+                    if (diff < 86400000) return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                },
+                
+                showStats() {
+                    alert('Estatísticas em desenvolvimento');
+                },
+                
+                logout() {
+                    localStorage.removeItem('token');
+                    window.location.href = '/app/login.html';
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
