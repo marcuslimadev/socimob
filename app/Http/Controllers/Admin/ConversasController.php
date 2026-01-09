@@ -55,6 +55,46 @@ class ConversasController extends BaseController
                     ->where('conversas.corretor_id', $user->id)
                     ->orderBy('conversas.ultima_atividade', 'desc')
                     ->get();
+
+                // Preferir conversa de teste (se existir) para facilitar validação
+                $testDigits = '92992287144';
+                $testPatterns = [$testDigits, '55' . $testDigits];
+
+                $conversaTeste = DB::table('conversas')
+                    ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+                    ->leftJoin('users as corretor', 'conversas.corretor_id', '=', 'corretor.id')
+                    ->select(
+                        'conversas.*',
+                        'leads.nome as lead_nome',
+                        'leads.telefone as lead_telefone',
+                        'leads.email as lead_email',
+                        'corretor.name as corretor_nome'
+                    )
+                    ->where(function ($q) use ($tenantId, $testPatterns) {
+                        $q->where('conversas.tenant_id', $tenantId)
+                          ->orWhere('leads.tenant_id', $tenantId)
+                          ->orWhere(function ($q2) use ($tenantId, $testPatterns) {
+                              // Compat seguro: conversa sem tenant_id, mas existe lead do tenant com o mesmo telefone
+                              $q2->whereNull('conversas.tenant_id')
+                                 ->whereExists(function ($sub) use ($tenantId, $testPatterns) {
+                                     $sub->select(DB::raw(1))
+                                         ->from('leads')
+                                         ->where('leads.tenant_id', $tenantId)
+                                         ->where(function ($qq) use ($testPatterns) {
+                                             foreach ($testPatterns as $p) {
+                                                 $qq->orWhere('leads.telefone', 'like', '%' . $p . '%');
+                                             }
+                                         });
+                                 });
+                          });
+                    })
+                    ->where(function ($q) use ($testPatterns) {
+                        foreach ($testPatterns as $p) {
+                            $q->orWhere('conversas.telefone', 'like', '%' . $p . '%');
+                        }
+                    })
+                    ->orderBy('conversas.updated_at', 'desc')
+                    ->first();
                 
                 // Buscar UMA conversa da fila (FIFO - mais antiga primeiro)
                 $conversaDaFila = DB::table('conversas')
@@ -75,10 +115,21 @@ class ConversasController extends BaseController
                     ->where('conversas.status', 'ativa')
                     ->orderBy('conversas.created_at', 'asc') // FIFO
                     ->first();
+
+                if ($conversaTeste) {
+                    if (!empty($conversaTeste->corretor_id) && (int) $conversaTeste->corretor_id === (int) $user->id) {
+                        $already = $minhasConversas->firstWhere('id', $conversaTeste->id);
+                        if (!$already) {
+                            $minhasConversas->prepend($conversaTeste);
+                        }
+                    } elseif (empty($conversaTeste->corretor_id)) {
+                        $conversaDaFila = $conversaTeste;
+                    }
+                }
                 
                 // Juntar minhas conversas + 1 da fila
                 $conversas = $minhasConversas;
-                if ($conversaDaFila) {
+                if ($conversaDaFila && !$conversas->firstWhere('id', $conversaDaFila->id)) {
                     $conversas->push($conversaDaFila);
                 }
             } else {
