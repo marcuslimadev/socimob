@@ -43,14 +43,6 @@ class AuthController extends Controller
         if ($user->tenant_id) {
             $currentTenant = app('tenant');
             
-            \Log::info('Validação de tenant no login', [
-                'user_id' => $user->id,
-                'user_email' => $user->email,
-                'user_tenant_id' => $user->tenant_id,
-                'current_tenant_id' => $currentTenant ? $currentTenant->id : null,
-                'current_tenant_domain' => $currentTenant ? $currentTenant->domain : null,
-            ]);
-            
             if (!$currentTenant || $currentTenant->id !== $user->tenant_id) {
                 return response()->json([
                     'success' => false,

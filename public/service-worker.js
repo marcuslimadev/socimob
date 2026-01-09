@@ -1,12 +1,16 @@
-const CACHE_NAME = 'socimob-v1';
+// Bump this value to invalidate old caches.
+// NOTE: Do NOT aggressively cache HTML pages; we want latest UI after deploy.
+const CACHE_NAME = 'socimob-v20260109-1';
 const urlsToCache = [
-  '/app/chat.html',
-  '/app/login.html',
   '/js/login-utils.js',
-  '/manifest.json'
+  '/manifest.json',
+  '/favicon.ico',
+  '/images/icon-192.png',
+  '/images/icon-512.png'
 ];
 
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
@@ -14,16 +18,24 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
+  // Never cache API calls.
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  // For navigations (HTML), prefer network to avoid stale UI after deploy.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/app/login.html'))
+    );
+    return;
+  }
+
+  // For other assets, cache-first.
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
+    caches.match(event.request).then(response => response || fetch(event.request))
   );
 });
 
@@ -37,7 +49,7 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 

@@ -34,18 +34,11 @@ class ResolveTenant
         $tenant = Tenant::byDomain($host)->first();
 
         if (!$tenant) {
-            // Tentar usar o tenant padrão (primeiro da base) para desenvolvimento/produção inicial
-            $tenant = Tenant::first();
-            
-            if (!$tenant) {
-                return response()->json([
-                    'error' => 'Tenant not found',
-                    'message' => 'The requested domain is not registered.',
-                ], 404);
-            }
-            
-            // Log para debug
-            \Log::info("Usando tenant padrão para domínio: {$host}", ['tenant_id' => $tenant->id]);
+            return response()->json([
+                'error' => 'Tenant not found',
+                'message' => 'The requested domain is not registered.',
+                'host' => $host,
+            ], 404);
         }
 
         // Verificar se o tenant esta ativo
