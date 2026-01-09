@@ -29,7 +29,11 @@ class ConversasController extends BaseController
                     'leads.email as lead_email',
                     'corretor.name as corretor_nome'
                 )
-                ->where('conversas.tenant_id', $tenantId);
+                ->where(function ($q) use ($tenantId) {
+                    // Compat: alguns registros antigos podem ter conversas.tenant_id nulo
+                    $q->where('conversas.tenant_id', $tenantId)
+                      ->orWhere('leads.tenant_id', $tenantId);
+                });
             
             // Se for corretor, buscar suas conversas E uma da fila
             if ($user->role === 'corretor') {
@@ -44,7 +48,10 @@ class ConversasController extends BaseController
                         'leads.email as lead_email',
                         'corretor.name as corretor_nome'
                     )
-                    ->where('conversas.tenant_id', $tenantId)
+                    ->where(function ($q) use ($tenantId) {
+                        $q->where('conversas.tenant_id', $tenantId)
+                          ->orWhere('leads.tenant_id', $tenantId);
+                    })
                     ->where('conversas.corretor_id', $user->id)
                     ->orderBy('conversas.ultima_atividade', 'desc')
                     ->get();
@@ -60,8 +67,12 @@ class ConversasController extends BaseController
                         'leads.email as lead_email',
                         'corretor.name as corretor_nome'
                     )
-                    ->where('conversas.tenant_id', $tenantId)
+                    ->where(function ($q) use ($tenantId) {
+                        $q->where('conversas.tenant_id', $tenantId)
+                          ->orWhere('leads.tenant_id', $tenantId);
+                    })
                     ->whereNull('conversas.corretor_id')
+                    ->where('conversas.status', 'ativa')
                     ->orderBy('conversas.created_at', 'asc') // FIFO
                     ->first();
                 
