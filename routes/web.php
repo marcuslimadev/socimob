@@ -42,7 +42,7 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('/auth/login', 'AuthController@login');
     $router->post('/auth/google', 'AuthController@googleLogin');
     $router->post('/auth/logout', 'AuthController@logout');
-    $router->get('/auth/me', ['middleware' => 'auth', 'uses' => 'AuthController@me']);
+    $router->get('/auth/me', ['middleware' => 'simple-auth', 'uses' => 'AuthController@me']);
     
     // Configuração do tenant (público) - para homepage dinâmica
     $router->get('/tenant/config', function () {
