@@ -773,18 +773,13 @@
                         const data = await response.json();
                         const novasConversas = data.data || data;
                         
-                        // Renderização incremental - atualiza apenas conversas modificadas
-                        if (this.conversas.length === 0) {
-                            // Primeira carga - atribuir todas
+                        // Renderização incremental - NÃO atualiza se IDs são iguais
+                        const currentIds = this.conversas.map(c => c.id).join(',');
+                        const newIds = novasConversas.map(c => c.id).join(',');
+                        
+                        // Só atualiza se lista mudou
+                        if (currentIds !== newIds) {
                             this.conversas = novasConversas;
-                        } else {
-                            // Atualizar apenas se IDs ou ordem mudaram
-                            const currentIds = this.conversas.map(c => c.id).join(',');
-                            const newIds = novasConversas.map(c => c.id).join(',');
-                            
-                            if (currentIds !== newIds) {
-                                this.conversas = novasConversas;
-                            }
                         }
                         
                         // Após primeira carga, não mostrar mais spinner
