@@ -57,31 +57,63 @@ class ConversasController extends BaseController
                     ->get();
 
                 // Conversas disponíveis para todos os corretores: ainda não atendidas por humano (e nem pela IA)
-                // Regra simples e robusta: nenhuma mensagem outgoing registrada ainda.
-                $conversasNaoAtendidas = DB::table('conversas')
-                    ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
-                    ->leftJoin('users as corretor', 'conversas.corretor_id', '=', 'corretor.id')
-                    ->select(
-                        'conversas.*',
-                        'leads.nome as lead_nome',
-                        'leads.telefone as lead_telefone',
-                        'leads.email as lead_email',
-                        'corretor.name as corretor_nome'
-                    )
-                    ->where(function ($q) use ($tenantId) {
-                        $q->where('conversas.tenant_id', $tenantId)
-                          ->orWhere('leads.tenant_id', $tenantId);
-                    })
-                    ->whereNull('conversas.corretor_id')
-                    ->where('conversas.status', 'ativa')
-                    ->whereNotExists(function ($sub) {
-                        $sub->select(DB::raw(1))
-                            ->from('mensagens')
-                            ->whereColumn('mensagens.conversa_id', 'conversas.id')
-                            ->where('mensagens.direction', 'outgoing');
-                    })
-                    ->orderBy('conversas.created_at', 'asc')
-                    ->get();
+                // Regra: ainda não existe mensagem outgoing enviada por um usuário humano.
+                // Mensagens automáticas/IA não possuem user_id e NÃO removem do pool.
+                $hasUserIdColumn = Schema::hasColumn('mensagens', 'user_id');
+                if ($hasUserIdColumn) {
+                    // Novo comportamento: só tira do pool quando houver outgoing humano (mensagens.user_id preenchido).
+                    $conversasNaoAtendidas = DB::table('conversas')
+                        ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+                        ->leftJoin('users as corretor', 'conversas.corretor_id', '=', 'corretor.id')
+                        ->select(
+                            'conversas.*',
+                            'leads.nome as lead_nome',
+                            'leads.telefone as lead_telefone',
+                            'leads.email as lead_email',
+                            'corretor.name as corretor_nome'
+                        )
+                        ->where(function ($q) use ($tenantId) {
+                            $q->where('conversas.tenant_id', $tenantId)
+                              ->orWhere('leads.tenant_id', $tenantId);
+                        })
+                        ->whereNull('conversas.corretor_id')
+                        ->where('conversas.status', 'ativa')
+                        ->whereNotExists(function ($sub) {
+                            $sub->select(DB::raw(1))
+                                ->from('mensagens')
+                                ->whereColumn('mensagens.conversa_id', 'conversas.id')
+                                ->where('mensagens.direction', 'outgoing')
+                                ->whereNotNull('mensagens.user_id');
+                        })
+                        ->orderBy('conversas.created_at', 'asc')
+                        ->get();
+                } else {
+                    // Fallback antigo (se não houver coluna user_id): qualquer outgoing tira do pool.
+                    $conversasNaoAtendidas = DB::table('conversas')
+                        ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+                        ->leftJoin('users as corretor', 'conversas.corretor_id', '=', 'corretor.id')
+                        ->select(
+                            'conversas.*',
+                            'leads.nome as lead_nome',
+                            'leads.telefone as lead_telefone',
+                            'leads.email as lead_email',
+                            'corretor.name as corretor_nome'
+                        )
+                        ->where(function ($q) use ($tenantId) {
+                            $q->where('conversas.tenant_id', $tenantId)
+                              ->orWhere('leads.tenant_id', $tenantId);
+                        })
+                        ->whereNull('conversas.corretor_id')
+                        ->where('conversas.status', 'ativa')
+                        ->whereNotExists(function ($sub) {
+                            $sub->select(DB::raw(1))
+                                ->from('mensagens')
+                                ->whereColumn('mensagens.conversa_id', 'conversas.id')
+                                ->where('mensagens.direction', 'outgoing');
+                        })
+                        ->orderBy('conversas.created_at', 'asc')
+                        ->get();
+                }
 
                 // Minhas conversas primeiro; depois as não atendidas (pool)
                 $conversas = $minhasConversas
