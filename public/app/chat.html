@@ -541,16 +541,19 @@
                 </div>
                 
                 <div class="conversations-container">
-                    <div v-if="loading && initialLoad" class="loading">
+                    <!-- Loading só aparece na primeira vez -->
+                    <div v-show="loading && initialLoad" class="loading">
                         <div class="spinner"></div>
                     </div>
                     
-                    <div v-else-if="conversas.length === 0 && !loading" class="empty-state">
+                    <!-- Empty state -->
+                    <div v-show="!loading && conversas.length === 0" class="empty-state">
                         <i class="fas fa-inbox"></i>
                         <p>Nenhuma conversa no momento</p>
                     </div>
                     
-                    <div v-else>
+                    <!-- Lista - sempre no DOM, só esconde se loading inicial ou vazio -->
+                    <div v-show="conversas.length > 0">
                         <div 
                             v-for="conversa in conversas" 
                             :key="conversa.id"
