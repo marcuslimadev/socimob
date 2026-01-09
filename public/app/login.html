@@ -83,7 +83,6 @@
                     console.log('🔍 [LOGIN] User role:', parsed.role);
                     const redirectUrl = LoginUtils.getRedirectForRole(parsed.role);
                     console.log('🔍 [LOGIN] Redirect URL:', redirectUrl);
-                    alert(`DEBUG: Redirecionando ${parsed.role} para ${redirectUrl}`);
                     window.location.href = redirectUrl;
                     return;
                 } catch (error) {
@@ -136,9 +135,6 @@
                     console.log('🔍 [LOGIN] Redirect URL:', redirectUrl);
                     
                     LoginUtils.showFeedback(feedbackEl, 'success', `Bem-vindo(a), ${data.user.name}`);
-                    
-                    // Alert de debug temporário
-                    alert(`DEBUG LOGIN:\nNome: ${data.user.name}\nRole: ${data.user.role}\nRedirect: ${redirectUrl}`);
                     
                     setTimeout(() => {
                         window.location.href = redirectUrl;
