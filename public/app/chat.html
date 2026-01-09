@@ -623,7 +623,7 @@
                         <span></span>
                     </button>
                     <div class="contact-details">
-                        <h3>SOCIMOB Chat</h3>
+                        <h3>{{ tenantDisplayName || 'SOCIMOB' }}</h3>
                         <p>{{ user?.name || 'Corretor' }}</p>
                     </div>
                 </div>
@@ -778,6 +778,7 @@
             data() {
                 return {
                     user: null,
+                    tenantDisplayName: 'SOCIMOB',
                     token: localStorage.getItem('token'),
                     conversas: [],
                     mensagens: [],
@@ -819,6 +820,7 @@
                     return;
                 }
                 
+                await this.loadTenantConfig();
                 await this.loadUser();
                 await this.loadConversations();
                 this.startConversationsPolling();
@@ -831,6 +833,26 @@
             },
             
             methods: {
+                async loadTenantConfig() {
+                    try {
+                        const response = await fetch('/api/tenant/config', {
+                            cache: 'no-store'
+                        });
+
+                        if (!response.ok) {
+                            return;
+                        }
+
+                        const data = await response.json();
+                        const tenantName = data?.tenant?.name;
+
+                        if (tenantName && typeof tenantName === 'string') {
+                            this.tenantDisplayName = tenantName;
+                        }
+                    } catch (error) {
+                        // Fallback silencioso
+                    }
+                },
                 showToast(message, type = 'success') {
                     this.toast.message = message;
                     this.toast.type = type;
