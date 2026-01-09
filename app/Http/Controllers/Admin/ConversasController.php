@@ -584,7 +584,7 @@ class ConversasController extends BaseController
                 DB::table('mensagens')
                     ->where('id', $mensagemId)
                     ->update([
-                        'message_sid' => $resultado['sid'] ?? null,
+                        'message_sid' => $resultado['message_sid'] ?? null,
                         'status' => 'sent',
                         'sent_at' => Carbon::now(),
                         'updated_at' => Carbon::now()
