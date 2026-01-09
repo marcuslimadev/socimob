@@ -359,10 +359,50 @@
             margin-bottom: 16px;
             opacity: 0.5;
         }
+        
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1E293B;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 9999;
+            animation: slideUp 0.3s ease-out;
+            max-width: 90%;
+        }
+        
+        .toast.success {
+            background: linear-gradient(135deg, #10B981, #059669);
+        }
+        
+        .toast.error {
+            background: linear-gradient(135deg, #EF4444, #DC2626);
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
     <div id="app" v-cloak>
+        <!-- Toast Notifications -->
+        <div v-if="toast.show" :class="['toast', toast.type]">
+            {{ toast.message }}
+        </div>
+        
         <!-- Menu lateral -->
         <div class="side-menu" :class="{ active: menuOpen }">
             <h3 style="color: white; margin-bottom: 20px;">Menu</h3>
@@ -521,7 +561,12 @@
                     loadingMessages: false,
                     sending: false,
                     menuOpen: false,
-                    pollingInterval: null
+                    pollingInterval: null,
+                    toast: {
+                        show: false,
+                        message: '',
+                        type: 'success'
+                    }
                 };
             },
             
@@ -529,6 +574,11 @@
                 // Service Worker
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.register('/service-worker.js');
+                }
+                
+                // Pedir permissão para notificações
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission();
                 }
                 
                 // Verificar auth
@@ -546,6 +596,28 @@
             },
             
             methods: {
+                showToast(message, type = 'success') {
+                    this.toast.message = message;
+                    this.toast.type = type;
+                    this.toast.show = true;
+                    
+                    setTimeout(() => {
+                        this.toast.show = false;
+                    }, 3000);
+                },
+                
+                showPushNotification(title, body) {
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification(title, {
+                            body: body,
+                            icon: '/favicon.ico',
+                            badge: '/favicon.ico',
+                            tag: 'exclusiva-chat',
+                            requireInteraction: false
+                        });
+                    }
+                },
+                
                 async loadUser() {
                     try {
                         const response = await fetch('/api/auth/me', {
@@ -627,6 +699,14 @@
                             if (!existingIds.has(msg.id)) {
                                 this.mensagens.push(msg);
                                 hasNewMessages = true;
+                                
+                                // Push notification para mensagens incoming
+                                if (msg.direction === 'incoming' && document.hidden) {
+                                    this.showPushNotification(
+                                        this.currentLead?.nome || 'Cliente',
+                                        msg.content || msg.body
+                                    );
+                                }
                             }
                         });
                         
@@ -661,13 +741,16 @@
                         
                         if (response.ok) {
                             await this.loadMessages();
+                            this.showToast('Mensagem enviada', 'success');
                         } else {
                             console.error('Erro ao enviar mensagem');
                             this.newMessage = content;
+                            this.showToast('Erro ao enviar mensagem', 'error');
                         }
                     } catch (error) {
                         console.error('Erro ao enviar:', error);
                         this.newMessage = content;
+                        this.showToast('Erro ao enviar mensagem', 'error');
                     } finally {
                         this.sending = false;
                     }
