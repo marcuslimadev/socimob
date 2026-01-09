@@ -62,7 +62,7 @@ class AuthController extends Controller
      */
     public function me(Request $request)
     {
-        $user = $request->user; // Definido pelo middleware
+        $user = $request->user(); // Usar método user() para resolver via middleware
         
         if (!$user) {
             return response()->json([
@@ -73,7 +73,7 @@ class AuthController extends Controller
         
         return response()->json([
             'success' => true,
-            'user' => [
+            'data' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
