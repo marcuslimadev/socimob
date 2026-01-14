@@ -453,10 +453,10 @@
                         }
                     },
                     { data: 'email' },
-                    { 
+                    {
                         data: 'telefone',
                         render: function(data) {
-                            return `<span class="text-nowrap">${data}</span>`;
+                            return `<span class="text-nowrap">${data || '-'}</span>`;
                         }
                     },
                     { 
@@ -605,12 +605,14 @@
         }
 
         function getWhatsAppLink(telefone, nome) {
-            // Remove caracteres não numéricos
-            const numeroLimpo = telefone.replace(/\D/g, '');
+            // Garante que existe telefone antes de tentar formatar
+            const numeroLimpo = (telefone || '').replace(/\D/g, '');
+            if (!numeroLimpo) return '#';
+
             // Adiciona +55 se não tiver código do país
             const numeroCompleto = numeroLimpo.startsWith('55') ? numeroLimpo : '55' + numeroLimpo;
             // Mensagem pré-formatada
-            const mensagem = encodeURIComponent(`Olá ${nome}, tudo bem? Sou da equipe SOCIMOB e gostaria de conversar sobre sua solicitação.`);
+            const mensagem = encodeURIComponent(`Olá ${nome || 'cliente'}, tudo bem? Sou da equipe SOCIMOB e gostaria de conversar sobre sua solicitação.`);
             return `https://wa.me/${numeroCompleto}?text=${mensagem}`;
         }
     </script>
