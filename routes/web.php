@@ -21,14 +21,24 @@ $router->get('/api/health', function () use ($router) {
     ]);
 });
 
-// Home - servir portal do cliente inicialmente
+// Home - portal público do tenant
 $router->get('/', function () {
-    $path = base_path('public/index.html');
+    $path = base_path('public/portal/index.html');
     if (file_exists($path)) {
         return response(file_get_contents($path))
             ->header('Content-Type', 'text/html');
     }
-    return response('Portal do cliente nao encontrado', 404);
+    return response('Portal do cliente não encontrado', 404);
+});
+
+// Login do CRM (admin/corretor)
+$router->get('/login', function () {
+    $path = base_path('public/app/login.html');
+    if (file_exists($path)) {
+        return response(file_get_contents($path))
+            ->header('Content-Type', 'text/html');
+    }
+    return response('Login não encontrado', 404);
 });
 
 $router->post('/github/webhook', 'GitHubWebhookController@handle');
@@ -1220,4 +1230,3 @@ $router->get('/debug/force-fase2', function () use ($router) {
         ], 500);
     }
 });
-
