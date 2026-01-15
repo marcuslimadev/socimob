@@ -5,7 +5,7 @@
   import PropertyFilters from './components/PropertyFilters.svelte';
   import PropertyModal from './components/PropertyModal.svelte';
   import { auth } from './stores/auth';
-  import { properties, loadProperties, filters } from './stores/properties';
+  import { properties, loadProperties, loading } from './stores/properties';
 
   let selectedProperty = null;
   let showModal = false;
@@ -62,7 +62,7 @@
     <!-- Grid de Imóveis -->
     <PropertyGrid 
       properties={$properties} 
-      loading={false}
+      loading={$loading}
       on:propertyClick={handlePropertyClick}
     />
   </main>

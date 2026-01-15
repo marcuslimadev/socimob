@@ -103,28 +103,35 @@
 
         function loadImoveis() {
             const token = localStorage.getItem('token');
-            
+            setLoading(true);
             $.ajax({
                 url: API_URL + '/portal/imoveis',
                 method: 'GET',
-                                success: function(response) {
+                cache: false,
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Cache-Control': 'no-cache',
+                    Pragma: 'no-cache'
+                },
+                data: { _ts: Date.now() },
+                success: function(response) {
                     const raw = response.data || [];
                     imoveis = raw.map(normalizeImovel);
                     renderImoveis(imoveis);
                 },
                 error: function() {
-                    // Dados de exemplo
-                    imoveis = [
-                        { id: 1, titulo: 'Casa de Luxo no CondomÃ­nio', tipo: 'casa', finalidade: 'venda', preco: 850000, area: 250, quartos: 4, banheiros: 3, endereco: 'Rua das Flores, 123 - Bairro Jardim', status: 'disponivel', descricao: 'Linda casa em condomÃ­nio fechado com Ã¡rea de lazer completa' },
-                        { id: 2, titulo: 'Apartamento Centro', tipo: 'apartamento', finalidade: 'aluguel', preco: 3500, area: 80, quartos: 2, banheiros: 1, endereco: 'Av. Principal, 456 - Centro', status: 'disponivel', descricao: 'Apartamento bem localizado prÃ³ximo a tudo' },
-                        { id: 3, titulo: 'Terreno Comercial', tipo: 'terreno', finalidade: 'venda', preco: 450000, area: 500, quartos: 0, banheiros: 0, endereco: 'Rod. BR-101, km 45', status: 'disponivel', descricao: 'Terreno amplo em Ã¡rea comercial' },
-                        { id: 4, titulo: 'Cobertura Duplex', tipo: 'apartamento', finalidade: 'venda', preco: 1200000, area: 180, quartos: 3, banheiros: 2, endereco: 'Rua Vista Mar, 789 - Praia', status: 'disponivel', descricao: 'Cobertura com vista para o mar' },
-                        { id: 5, titulo: 'Casa em CondomÃ­nio', tipo: 'casa', finalidade: 'aluguel', preco: 4500, area: 150, quartos: 3, banheiros: 2, endereco: 'CondomÃ­nio Residencial, 321', status: 'disponivel', descricao: 'Casa moderna com quintal' },
-                        { id: 6, titulo: 'Sala Comercial', tipo: 'comercial', finalidade: 'aluguel', preco: 2800, area: 60, quartos: 0, banheiros: 1, endereco: 'Ed. Business Center, sala 501', status: 'disponivel', descricao: 'Sala comercial em prÃ©dio moderno' }
-                    ];
-                    renderImoveis(imoveis);
+                    imoveis = [];
+                    renderImoveis([]);
                 }
+            }).always(function() {
+                setLoading(false);
             });
+        }
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                $('#imoveisGrid').html('<div class="col-span-full text-center py-12 text-slate-500">Carregando imóveis em tempo real...</div>');
+            }
         }
 
 
@@ -338,7 +345,6 @@
 
         function getTipoIcon(tipo) {
             const icons = {
-                'casa': 'ð ',
                 'apartamento': 'ð¢',
                 'terreno': 'ðï¸',
                 'comercial': 'ðª'

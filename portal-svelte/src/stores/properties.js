@@ -32,7 +32,12 @@ export async function loadProperties() {
   try {
     const token = localStorage.getItem('token');
     const response = await axios.get('/api/portal/imoveis', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache'
+      },
+      params: { _ts: Date.now() }
     });
     
     if (response.data.success) {
@@ -40,43 +45,7 @@ export async function loadProperties() {
     }
   } catch (error) {
     console.error('Erro ao carregar imóveis:', error);
-    // Dados de exemplo para desenvolvimento
-    properties.set([
-      {
-        id: 1,
-        code: 'AP001',
-        title: 'Apartamento Moderno no Centro',
-        description: 'Lindo apartamento com 3 quartos, 2 banheiros e varanda gourmet.',
-        property_type: 'apartamento',
-        listing_type: 'venda',
-        price: 450000,
-        bedrooms: 3,
-        bathrooms: 2,
-        area: 85,
-        address: 'Rua das Flores, 123',
-        neighborhood: 'Centro',
-        city: 'São Paulo',
-        state: 'SP',
-        photos: ['/images/placeholder-property.jpg']
-      },
-      {
-        id: 2,
-        code: 'CS002',
-        title: 'Casa Confortável com Quintal',
-        description: 'Casa ampla com 4 quartos, piscina e churrasqueira.',
-        property_type: 'casa',
-        listing_type: 'venda',
-        price: 680000,
-        bedrooms: 4,
-        bathrooms: 3,
-        area: 200,
-        address: 'Av. Paulista, 456',
-        neighborhood: 'Jardins',
-        city: 'São Paulo',
-        state: 'SP',
-        photos: ['/images/placeholder-property.jpg']
-      }
-    ]);
+    properties.set([]);
   } finally {
     loading.set(false);
   }
