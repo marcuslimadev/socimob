@@ -151,7 +151,7 @@
     <section class="py-20">
         <div class="container mx-auto px-4 text-center">
             <h2 id="heroSlogan" class="glow-hero-title font-black mb-4">
-                Encon??o Imóvel dos Seus Sonhos
+                Encontre Imóvel dos Seus Sonhos
             </h2>
             <p class="text-xl mb-8 text-white max-w-3xl mx-auto">
                 As melhores opções de imóveis para você, com visual geométrico e cores primárias inspiradas na escola de arte Glow.
@@ -478,7 +478,7 @@
                     name: 'Exclusiva Lar Im\u00f3veis',
                     contact_phone: '(31) 97559-7278',
                     contact_email: 'contato@exclusivalarimoveis.com.br',
-                    slogan: 'Encon??o Im\u00f3vel dos Seus Sonhos',
+                    slogan: 'Encontre Imóvel dos Seus Sonhos',
                     primary_color: '#1e293b',
                     secondary_color: '#3b82f6',
                     logo_url: '',
@@ -490,7 +490,7 @@
 
         function aplicarConfiguracao() {
             const tenantName = fixText(tenantConfig.name || 'Portal de Im\u00f3veis');
-            const slogan = fixText(tenantConfig.slogan || 'Encon??o Im\u00f3vel dos Seus Sonhos');
+            const slogan = fixText(tenantConfig.slogan || 'Encontre Imóvel dos Seus Sonhos');
             const contactPhone = fixText(tenantConfig.contact_phone || '');
             const contactEmail = fixText(tenantConfig.contact_email || '');
             allowedFinalidades = Array.isArray(tenantConfig.portal_finalidades)
@@ -511,7 +511,7 @@
             }
 
             $('#empresaNome').text(tenantName);
-            $('#heroSlogan').text(slogan || 'Encon??o Im\u00f3vel dos Seus Sonhos');
+            $('#heroSlogan').text(slogan || 'Encontre Imóvel dos Seus Sonhos');
             $('#footerNome').text(tenantName);
             $('#footerTelefone').text(contactPhone);
             $('#footerEmail').text(contactEmail);
@@ -1365,7 +1365,6 @@
             let value = String(text || '');
             if (!value) return value;
 
-<<<<<<< Updated upstream
             const replacements = {
                 'Im\u00c3\u00b3veis': 'Im\u00f3veis',
                 'Im\u00c3\u00b3vel': 'Im\u00f3vel',
@@ -1381,7 +1380,8 @@
                 'Endere\u00c3\u00a7o': 'Endere\u00e7o',
                 'endere\u00c3\u00a7o': 'endere\u00e7o',
                 'Imveis': 'Im\u00f3veis',
-                'Imvel': 'Im\u00f3vel'
+                'Imvel': 'Im\u00f3vel',
+                'Encon??o': 'Encontre'
             };
 
             Object.keys(replacements).forEach(key => {
@@ -1395,22 +1395,6 @@
                     // Keep original value if decode fails.
                 }
             }
-=======
-            // Correções simples de encoding
-            value = value.replace(/ImÃ³veis/g, 'Imóveis');
-            value = value.replace(/ImÃ³vel/g, 'Imóvel');
-            value = value.replace(/imÃ³veis/g, 'imóveis');
-            value = value.replace(/imÃ³vel/g, 'imóvel');
-            value = value.replace(/opÃ§Ãµes/g, 'opções');
-            value = value.replace(/vocÃª/g, 'você');
-            value = value.replace(/DescriÃ§Ã£o/g, 'Descrição');
-            value = value.replace(/descriÃ§Ã£o/g, 'descrição');
-            value = value.replace(/ObservaÃ§Ãµes/g, 'Observações');
-            value = value.replace(/preÃ§o/g, 'preço');
-            value = value.replace(/PreÃ§o/g, 'Preço');
-            value = value.replace(/EndereÃ§o/g, 'Endereço');
-            value = value.replace(/endereÃ§o/g, 'endereço');
->>>>>>> Stashed changes
 
             return value;
         }
@@ -1738,7 +1722,6 @@
     </script>
 </body>
 </html>
-
 
 
 
