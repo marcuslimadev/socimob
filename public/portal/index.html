@@ -502,7 +502,24 @@
                     name: 'Exclusiva Lar Im\u00f3veis',
                     contact_phone: '(31) 97559-7278',
                     contact_email: 'contato@exclusivalarimoveis.com.br',
-                    slogan: 'Encontre Im\u00f3vel dos Seus Sonhos',
+            const replacements = {
+                'ImÃ³veis': 'Imóveis',
+                'ImÃ³vel': 'Imóvel',
+                'imÃ³veis': 'imóveis',
+                'imÃ³vel': 'imóvel',
+                'opÃ§Ãµes': 'opções',
+                'vocÃª': 'você',
+                'DescriÃ§Ã£o': 'Descrição',
+                'descriÃ§Ã£o': 'descrição',
+                'ObservaÃ§Ãµes': 'Observações',
+                'preÃ§o': 'preço',
+                'PreÃ§o': 'Preço',
+                'EndereÃ§o': 'Endereço',
+                'endereÃ§o': 'endereço',
+                'Imveis': 'Imóveis',
+                'Imvel': 'Imóvel',
+                'Encon??o': 'Encontre'
+            };
                     primary_color: '#1e293b',
                     secondary_color: '#3b82f6',
                     logo_url: '',
@@ -514,7 +531,24 @@
 
         function aplicarConfiguracao() {
             const tenantName = fixText(tenantConfig.name || 'Portal de Im\u00f3veis');
-            const slogan = fixText(tenantConfig.slogan || 'Encontre Im\u00f3vel dos Seus Sonhos');
+            const replacements = {
+                'ImÃ³veis': 'Imóveis',
+                'ImÃ³vel': 'Imóvel',
+                'imÃ³veis': 'imóveis',
+                'imÃ³vel': 'imóvel',
+                'opÃ§Ãµes': 'opções',
+                'vocÃª': 'você',
+                'DescriÃ§Ã£o': 'Descrição',
+                'descriÃ§Ã£o': 'descrição',
+                'ObservaÃ§Ãµes': 'Observações',
+                'preÃ§o': 'preço',
+                'PreÃ§o': 'Preço',
+                'EndereÃ§o': 'Endereço',
+                'endereÃ§o': 'endereço',
+                'Imveis': 'Imóveis',
+                'Imvel': 'Imóvel',
+                'Encon??o': 'Encontre'
+            };
             const contactPhone = fixText(tenantConfig.contact_phone || '');
             const contactEmail = fixText(tenantConfig.contact_email || '');
             allowedFinalidades = Array.isArray(tenantConfig.portal_finalidades)
@@ -535,7 +569,24 @@
             }
 
             $('#empresaNome').text(tenantName);
-            $('#heroSlogan').text(slogan || 'Encontre Im\u00f3vel dos Seus Sonhos');
+            const replacements = {
+                'ImÃ³veis': 'Imóveis',
+                'ImÃ³vel': 'Imóvel',
+                'imÃ³veis': 'imóveis',
+                'imÃ³vel': 'imóvel',
+                'opÃ§Ãµes': 'opções',
+                'vocÃª': 'você',
+                'DescriÃ§Ã£o': 'Descrição',
+                'descriÃ§Ã£o': 'descrição',
+                'ObservaÃ§Ãµes': 'Observações',
+                'preÃ§o': 'preço',
+                'PreÃ§o': 'Preço',
+                'EndereÃ§o': 'Endereço',
+                'endereÃ§o': 'endereço',
+                'Imveis': 'Imóveis',
+                'Imvel': 'Imóvel',
+                'Encon??o': 'Encontre'
+            };
             $('#footerNome').text(tenantName);
             $('#footerTelefone').text(contactPhone);
             $('#footerEmail').text(contactEmail);
@@ -1408,11 +1459,11 @@
             if (!value) return value;
 
             const replacements = {
+            const replacements = {
                 'ImÃ³veis': 'Imóveis',
                 'ImÃ³vel': 'Imóvel',
                 'imÃ³veis': 'imóveis',
                 'imÃ³vel': 'imóvel',
-                'Encon??o': 'Encontre',
                 'opÃ§Ãµes': 'opções',
                 'vocÃª': 'você',
                 'DescriÃ§Ã£o': 'Descrição',
@@ -1423,7 +1474,9 @@
                 'EndereÃ§o': 'Endereço',
                 'endereÃ§o': 'endereço',
                 'Imveis': 'Imóveis',
-                'Imvel': 'Imóvel'
+                'Imvel': 'Imóvel',
+                'Encon??o': 'Encontre'
+            };
             };
 
             Object.keys(replacements).forEach(key => {
@@ -1764,7 +1817,6 @@
     </script>
 </body>
 </html>
-
 
 
 
