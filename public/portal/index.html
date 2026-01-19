@@ -552,24 +552,7 @@
             }
 
             $('#empresaNome').text(tenantName);
-            const replacements = {
-                'ImÃ³veis': 'Imóveis',
-                'ImÃ³vel': 'Imóvel',
-                'imÃ³veis': 'imóveis',
-                'imÃ³vel': 'imóvel',
-                'opÃ§Ãµes': 'opções',
-                'vocÃª': 'você',
-                'DescriÃ§Ã£o': 'Descrição',
-                'descriÃ§Ã£o': 'descrição',
-                'ObservaÃ§Ãµes': 'Observações',
-                'preÃ§o': 'preço',
-                'PreÃ§o': 'Preço',
-                'EndereÃ§o': 'Endereço',
-                'endereÃ§o': 'endereço',
-                'Imveis': 'Imóveis',
-                'Imvel': 'Imóvel',
-                'Encon??o': 'Encontre'
-            };
+            
             $('#footerNome').text(tenantName);
             $('#footerTelefone').text(contactPhone);
             $('#footerEmail').text(contactEmail);
@@ -1442,7 +1425,6 @@
             if (!value) return value;
 
             const replacements = {
-            const replacements = {
                 'ImÃ³veis': 'Imóveis',
                 'ImÃ³vel': 'Imóvel',
                 'imÃ³veis': 'imóveis',
@@ -1459,7 +1441,6 @@
                 'Imveis': 'Imóveis',
                 'Imvel': 'Imóvel',
                 'Encon??o': 'Encontre'
-            };
             };
 
             Object.keys(replacements).forEach(key => {
