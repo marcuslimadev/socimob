@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
+use Carbon\Carbon;
 
 class PortalController extends Controller
 {
@@ -83,7 +84,7 @@ class PortalController extends Controller
         $hasFinalidade = in_array('finalidade_imovel', $columns, true);
 
         $cacheKey = "portal_imoveis_tenant_{$tenantId}";
-        $cacheTtl = now()->addMinutes(10);
+        $cacheTtl = Carbon::now()->addMinutes(10);
         $useCache = !$request->boolean('fresh');
         $cachedPayload = $useCache ? Cache::get($cacheKey) : null;
 
