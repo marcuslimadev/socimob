@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 
 class PortalController extends Controller
 {
@@ -70,7 +71,13 @@ class PortalController extends Controller
         $useCache = !$request->boolean('fresh');
         $cachedPayload = $useCache ? Cache::get($cacheKey) : null;
 
-        PropertyLikesTablesManager::ensurePropertyLikesTableExists();
+        try {
+            PropertyLikesTablesManager::ensurePropertyLikesTableExists();
+        } catch (\Throwable $e) {
+            \Log::warning('PortalController: nao foi possivel garantir tabela property_likes', [
+                'error' => $e->getMessage(),
+            ]);
+        }
         $tenant = Tenant::find($tenantId);
         $config = $tenant ? $tenant->config : null;
         $allowedFinalidades = $config && is_array($config->portal_finalidades)
@@ -104,11 +111,14 @@ class PortalController extends Controller
             $imoveis = $sharedQuery->get();
         }
 
-        $likesMap = DB::table('property_likes')
-            ->select('property_id', DB::raw('COUNT(*) as total'))
-            ->where('tenant_id', $tenantId)
-            ->groupBy('property_id')
-            ->pluck('total', 'property_id');
+        $likesMap = collect();
+        if (Schema::hasTable('property_likes')) {
+            $likesMap = DB::table('property_likes')
+                ->select('property_id', DB::raw('COUNT(*) as total'))
+                ->where('tenant_id', $tenantId)
+                ->groupBy('property_id')
+                ->pluck('total', 'property_id');
+        }
 
         $imoveis = $imoveis->map(function ($imovel) use ($likesMap) {
             $imovel->likes_count = (int) ($likesMap[$imovel->id] ?? 0);
@@ -145,7 +155,13 @@ class PortalController extends Controller
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
-        PropertyLikesTablesManager::ensurePropertyLikesTableExists();
+        try {
+            PropertyLikesTablesManager::ensurePropertyLikesTableExists();
+        } catch (\Throwable $e) {
+            \Log::warning('PortalController: nao foi possivel garantir tabela property_likes', [
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         $tenant = Tenant::find($tenantId);
         $config = $tenant ? $tenant->config : null;
@@ -171,10 +187,13 @@ class PortalController extends Controller
             }
         }
 
-        $likesCount = DB::table('property_likes')
-            ->where('tenant_id', $tenantId)
-            ->where('property_id', $imovel->id)
-            ->count();
+        $likesCount = 0;
+        if (Schema::hasTable('property_likes')) {
+            $likesCount = DB::table('property_likes')
+                ->where('tenant_id', $tenantId)
+                ->where('property_id', $imovel->id)
+                ->count();
+        }
 
         $imovel->likes_count = (int) $likesCount;
 

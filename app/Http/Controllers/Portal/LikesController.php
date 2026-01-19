@@ -8,6 +8,7 @@ use App\Models\Property;
 use App\Services\PropertyLikesTablesManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class LikesController extends Controller
 {
@@ -26,7 +27,16 @@ class LikesController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        PropertyLikesTablesManager::ensurePropertyLikesTableExists();
+        try {
+            PropertyLikesTablesManager::ensurePropertyLikesTableExists();
+        } catch (\Throwable $e) {
+            \Log::warning('LikesController: nao foi possivel garantir tabela property_likes', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+        if (!Schema::hasTable('property_likes')) {
+            return response()->json(['error' => 'Likes indisponiveis no momento'], 503);
+        }
 
         $property = Property::where('tenant_id', $tenantId)
             ->where('id', $propertyId)
@@ -84,7 +94,16 @@ class LikesController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        PropertyLikesTablesManager::ensurePropertyLikesTableExists();
+        try {
+            PropertyLikesTablesManager::ensurePropertyLikesTableExists();
+        } catch (\Throwable $e) {
+            \Log::warning('LikesController: nao foi possivel garantir tabela property_likes', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+        if (!Schema::hasTable('property_likes')) {
+            return response()->json(['error' => 'Likes indisponiveis no momento'], 503);
+        }
 
         $likes = DB::table('property_likes')
             ->where('tenant_id', $tenantId)
