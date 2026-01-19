@@ -26,25 +26,22 @@ class WebhookController extends Controller
      * Validar webhook (responde a requisições GET do Twilio)
      * GET /webhook/whatsapp
      */
-    public function webhookValidation(Request $request)
+    public function validateWebhook(Request $request)
     {
         Log::info('Webhook WhatsApp - Validação GET recebida', [
             'params' => $request->all(),
             'headers' => $request->headers->all()
         ]);
 
-        $tenant = $this->resolveTenantForWebhook($request, []);
-
-        $status = $this->buildWhatsappStatus($tenant);
-
-        return response()->json($status);
+        return response('OK', 200)
+            ->header('Content-Type', 'text/plain');
     }
     
     /**
      * Validar webhook de status (responde a requisições GET do Twilio)
      * GET /webhook/whatsapp/status
      */
-    public function validateStatus(Request $request)
+    public function validateStatusWebhook(Request $request)
     {
         Log::info('Webhook Status - Validação GET recebida', [
             'params' => $request->all(),
@@ -147,11 +144,10 @@ class WebhookController extends Controller
                 ]);
 
                 // Retornar 200 para evitar reenvio do Twilio
-                // Mesmo em erro, responder vazio para impedir reenvio e evitar eco
                 return response('', 200);
             }
         } catch (\Throwable $e) {
-            Log::error('ERRO NO WEBHOOK - FALHA NA NORMALIZAÇÃO', [
+            Log::error('❌ ERRO CRÍTICO NO WEBHOOK - FALHA NA NORMALIZAÇÃO', [
                 'error' => $e->getMessage(),
                 'exception' => get_class($e),
                 'file' => $e->getFile(),
@@ -163,6 +159,7 @@ class WebhookController extends Controller
             return response('', 200);
         }
     }
+
     
     /**
      * Detectar origem do webhook (Twilio)

@@ -33,3 +33,4 @@ storage/framework/views/*
 storage/logs/*.log
 .phpunit.cache
 validate_changes.php
+.bak
