@@ -623,12 +623,10 @@
                     }
                     return;
                 }
-                imoveis = [
-                    { id: 1, titulo: 'Casa de Luxo', tipo: 'casa', finalidade: 'venda', preco: 850000, area: 250, quartos: 4, banheiros: 3, endereco: 'Rua das Flores, 123 - Centro', status: 'disponivel', descricao: 'Linda casa com piscina, area gourmet e jardim amplo' },
-                    { id: 2, titulo: 'Apartamento Centro', tipo: 'apartamento', finalidade: 'aluguel', preco: 3500, area: 80, quartos: 2, banheiros: 1, endereco: 'Av. Principal, 456 - Centro', status: 'disponivel', descricao: 'Apartamento bem localizado proximo ao comercio' },
-                    { id: 3, titulo: 'Terreno Comercial', tipo: 'terreno', finalidade: 'venda', preco: 450000, area: 500, quartos: 0, banheiros: 0, endereco: 'Rod. BR-101, km 45', status: 'disponivel', descricao: 'Terreno amplo com otima localizacao' },
-                    { id: 4, titulo: 'Cobertura Premium', tipo: 'apartamento', finalidade: 'venda', preco: 1200000, area: 180, quartos: 3, banheiros: 3, endereco: 'Av. Beira Mar, 789 - Praia', status: 'disponivel', descricao: 'Cobertura com vista para o mar' }
-                ].map(normalizeImovel);
+                if (typeof showToast === 'function') {
+                    showToast('Nao foi possivel carregar os imoveis.', 'error');
+                }
+                imoveis = [];
                 atualizarListagem(imoveis);
             }
         }

@@ -106,29 +106,33 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
         }
     });
     
-    // Portal do Cliente - rotas públicas (sem autenticação)
+    // Portal do Cliente - rotas p£blicas (sem autentica‡Æo)
     $router->group(['prefix' => 'portal'], function () use ($router) {
-        // Configuração do tenant (público)
-        $router->get('/config', 'PortalController@config');
+        // Configura‡Æo do tenant (p£blico)
+        $router->get('/config', 'Portal\PortalController@getConfig');
         
-        // Listagem de imóveis (público)
-        $router->get('/imoveis', 'PortalController@imoveis');
+        // Listagem de im¢veis (p£blico)
+        $router->get('/imoveis', 'Portal\PortalController@getImoveis');
         
-        // Detalhes de imóvel (público)
-        $router->get('/imoveis/{id}', 'PortalController@imovel');
+        // Detalhes de im¢vel (p£blico)
+        $router->get('/imoveis/{id}', 'Portal\PortalController@getImovel');
         
         // Login do portal
-        $router->post('/auth/login', 'PortalController@login');
+        $router->post('/auth/login', 'Portal\ClientAuthController@login');
+        $router->post('/auth/register', 'Portal\ClientAuthController@register');
         
         // Rotas autenticadas do portal
-        $router->group(['middleware' => 'auth'], function () use ($router) {
-            $router->post('/interesse', 'PortalController@registrarInteresse');
-            $router->get('/favoritos', 'PortalController@favoritos');
-            $router->post('/favoritos/{id}', 'PortalController@adicionarFavorito');
-            $router->delete('/favoritos/{id}', 'PortalController@removerFavorito');
+        $router->group(['middleware' => 'simple-auth'], function () use ($router) {
+            $router->get('/auth/me', 'Portal\ClientAuthController@me');
+            $router->post('/interesse', 'Portal\PortalController@registrarInteresse');
+            $router->get('/likes', 'Portal\LikesController@list');
+            $router->post('/likes/{propertyId}', 'Portal\LikesController@like');
+            $router->post('/chat/start', 'Portal\ChatController@start');
+            $router->get('/chat/{id}', 'Portal\ChatController@show');
+            $router->get('/chat/{id}/mensagens', 'Portal\ChatController@mensagens');
+            $router->post('/chat/{id}/mensagens', 'Portal\ChatController@send');
         });
     });
-    
     // Dashboard routes
     $router->get('/dashboard/stats', 'DashboardController@stats');
     $router->get('/dashboard/atividades', 'DashboardController@atividades');
