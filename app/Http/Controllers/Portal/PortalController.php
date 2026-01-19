@@ -66,6 +66,22 @@ class PortalController extends Controller
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
+        $table = (new Property())->getTable();
+        if (!Schema::hasTable($table)) {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'total' => 0,
+                'cached' => false,
+            ]);
+        }
+
+        $columns = Schema::getColumnListing($table);
+        $hasTenantId = in_array('tenant_id', $columns, true);
+        $hasActive = in_array('active', $columns, true);
+        $hasExibir = in_array('exibir_imovel', $columns, true);
+        $hasFinalidade = in_array('finalidade_imovel', $columns, true);
+
         $cacheKey = "portal_imoveis_tenant_{$tenantId}";
         $cacheTtl = now()->addMinutes(10);
         $useCache = !$request->boolean('fresh');
@@ -87,24 +103,35 @@ class PortalController extends Controller
             ? array_map(fn ($value) => Str::lower($value), $allowedFinalidades)
             : null;
 
-        $imoveisQuery = Property::where('tenant_id', $tenantId)
-            ->where('active', true)
-            ->where('exibir_imovel', true)
-            ->orderBy('created_at', 'desc');
+        $imoveisQuery = Property::withoutTenant()->orderBy('created_at', 'desc');
+        if ($hasTenantId) {
+            $imoveisQuery->where('tenant_id', $tenantId);
+        }
+        if ($hasActive) {
+            $imoveisQuery->where('active', true);
+        }
+        if ($hasExibir) {
+            $imoveisQuery->where('exibir_imovel', true);
+        }
 
-        if ($normalizedFinalidades && count($normalizedFinalidades) > 0) {
+        if ($hasFinalidade && $normalizedFinalidades && count($normalizedFinalidades) > 0) {
             $imoveisQuery->whereIn(DB::raw('LOWER(finalidade_imovel)'), $normalizedFinalidades);
         }
 
         $imoveis = $imoveisQuery->get();
         $allowShared = filter_var(env('PORTAL_ALLOW_SHARED_PROPERTIES', true), FILTER_VALIDATE_BOOLEAN);
-        if ($imoveis->isEmpty() && $allowShared) {
-            $sharedQuery = Property::whereNull('tenant_id')
-                ->where('active', true)
-                ->where('exibir_imovel', true)
+        if ($imoveis->isEmpty() && $allowShared && $hasTenantId) {
+            $sharedQuery = Property::withoutTenant()
+                ->whereNull('tenant_id')
                 ->orderBy('created_at', 'desc');
+            if ($hasActive) {
+                $sharedQuery->where('active', true);
+            }
+            if ($hasExibir) {
+                $sharedQuery->where('exibir_imovel', true);
+            }
 
-            if ($normalizedFinalidades && count($normalizedFinalidades) > 0) {
+            if ($hasFinalidade && $normalizedFinalidades && count($normalizedFinalidades) > 0) {
                 $sharedQuery->whereIn(DB::raw('LOWER(finalidade_imovel)'), $normalizedFinalidades);
             }
 
@@ -155,6 +182,17 @@ class PortalController extends Controller
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
+        $table = (new Property())->getTable();
+        if (!Schema::hasTable($table)) {
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        $columns = Schema::getColumnListing($table);
+        $hasTenantId = in_array('tenant_id', $columns, true);
+        $hasActive = in_array('active', $columns, true);
+        $hasExibir = in_array('exibir_imovel', $columns, true);
+        $hasFinalidade = in_array('finalidade_imovel', $columns, true);
+
         try {
             PropertyLikesTablesManager::ensurePropertyLikesTableExists();
         } catch (\Throwable $e) {
@@ -172,16 +210,22 @@ class PortalController extends Controller
             ? array_map(fn ($value) => Str::lower($value), $allowedFinalidades)
             : null;
 
-        $imovel = Property::where('tenant_id', $tenantId)
-            ->where('id', $id)
-            ->where('active', true)
-            ->where('exibir_imovel', true)
-            ->first();
+        $imovelQuery = Property::withoutTenant()->where('id', $id);
+        if ($hasTenantId) {
+            $imovelQuery->where('tenant_id', $tenantId);
+        }
+        if ($hasActive) {
+            $imovelQuery->where('active', true);
+        }
+        if ($hasExibir) {
+            $imovelQuery->where('exibir_imovel', true);
+        }
+        $imovel = $imovelQuery->first();
 
         if (!$imovel) {
             return response()->json(['error' => 'Property not found'], 404);
         }
-        if ($normalizedFinalidades && count($normalizedFinalidades) > 0) {
+        if ($hasFinalidade && $normalizedFinalidades && count($normalizedFinalidades) > 0) {
             if (!in_array(Str::lower($imovel->finalidade_imovel), $normalizedFinalidades, true)) {
                 return response()->json(['error' => 'Property not found'], 404);
             }
