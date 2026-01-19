@@ -436,6 +436,20 @@ class TenantSettingsController extends Controller
     }
 
     /**
+     * Atualizar chaves de API
+     * PUT /api/admin/settings/api-keys
+     * 
+     * @deprecated As chaves de API agora são gerenciadas via variáveis de ambiente (.env)
+     */
+    public function updateApiKeys(Request $request)
+    {
+        return response()->json([
+            'error' => 'Forbidden',
+            'message' => 'As configurações de API agora são gerenciadas via variáveis de ambiente. Entre em contato com o desenvolvedor para atualizar estas configurações.',
+        ], 403);
+    }
+
+    /**
      * Obter configurações de email/SMTP
      * GET /api/admin/settings/email
      */
@@ -472,48 +486,15 @@ class TenantSettingsController extends Controller
     /**
      * Atualizar configurações de email/SMTP
      * PUT /api/admin/settings/email
+     * 
+     * @deprecated As configurações de SMTP agora são gerenciadas via variáveis de ambiente (.env)
      */
     public function updateEmailSettings(Request $request)
     {
-        $tenantId = $request->attributes->get('tenant_id');
-
-        if (!$tenantId) {
-            return response()->json(['error' => 'No tenant context'], 400);
-        }
-
-        $tenant = Tenant::find($tenantId);
-
-        if (!$tenant) {
-            return response()->json(['error' => 'Tenant not found'], 404);
-        }
-
-        // Verificar se o usuário é admin do tenant
-        if (!$request->user()->isAdmin() || $request->user()->tenant_id !== $tenantId) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $validated = $request->validate([
-            'smtp_host' => 'required|string|max:255',
-            'smtp_port' => 'required|integer|min:1|max:65535',
-            'smtp_username' => 'required|string|max:255',
-            'smtp_password' => 'required|string',
-            'smtp_from_email' => 'required|email|max:255',
-            'smtp_from_name' => 'required|string|max:255',
-        ]);
-
-        $config = $tenant->config;
-
-        if (!$config) {
-            $config = TenantConfig::create([
-                'tenant_id' => $tenantId,
-            ]);
-        }
-
-        $config->update($validated);
-
         return response()->json([
-            'message' => 'Email settings updated successfully',
-        ]);
+            'error' => 'Forbidden',
+            'message' => 'As configurações de SMTP agora são gerenciadas via variáveis de ambiente. Entre em contato com o desenvolvedor para atualizar estas configurações.',
+        ], 403);
     }
 
     /**
