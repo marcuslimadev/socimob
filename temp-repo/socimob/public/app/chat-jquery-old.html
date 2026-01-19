@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#10B981">
+    <title>SOCIMOB - Atendimento</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SOCIMOB">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #0F172A;
+        }
+        
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-height: -webkit-fill-available;
+        }
+        
+        #conversationsView,
+        #chatView {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            flex: 1;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Header */
+        .chat-header {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 10;
+        }
+        
+        .back-btn {
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px;
+        }
+        
+        .contact-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .contact-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .contact-details h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .contact-details p {
+            margin: 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        /* Lista de conversas */
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+            background: #1E293B;
+        }
+        
+        .conversation-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .conversation-item:hover,
+        .conversation-item:active {
+            background: rgba(16, 185, 129, 0.1);
+        }
+        
+        .conversation-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10B981, #059669);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 600;
+            color: white;
+            flex-shrink: 0;
+        }
+        
+        .conversation-content {
+            flex: 1;
+            margin-left: 12px;
+            min-width: 0;
+        }
+        
+        .conversation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        
+        .conversation-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: white;
+        }
+        
+        .conversation-time {
+            font-size: 12px;
+            color: #94A3B8;
+        }
+        
+        .conversation-preview {
+            font-size: 14px;
+            color: #94A3B8;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .unread-badge {
+            background: #10B981;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        /* Mensagens */
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            background: #0F172A;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+        }
+        
+        .message {
+            display: flex;
+            margin-bottom: 12px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.outgoing {
+            justify-content: flex-end;
+        }
+        
+        .message-bubble {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            position: relative;
+            word-wrap: break-word;
+        }
+        
+        .message.incoming .message-bubble {
+            background: #1E293B;
+            color: white;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message.outgoing .message-bubble {
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+            text-align: right;
+        }
+        
+        .message-status {
+            display: inline-block;
+            margin-left: 4px;
+        }
+        
+        /* Input área */
+        .message-input-container {
+            padding: 12px 16px;
+            background: #1E293B;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        
+        .message-input {
+            flex: 1;
+            background: #0F172A;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 10px 16px;
+            color: white;
+            font-size: 15px;
+            resize: none;
+            max-height: 120px;
+            min-height: 40px;
+            outline: none;
+        }
+        
+        .message-input::placeholder {
+            color: #64748B;
+        }
+        
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10B981, #059669);
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            flex-shrink: 0;
+        }
+        
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Loading */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: #94A3B8;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #10B981;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Empty state */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #64748B;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+        }
+        
+        /* Menu Hamburguer */
+        .hamburger-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .hamburger-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .hamburger-btn span {
+            width: 20px;
+            height: 2px;
+            background: white;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+        
+        .hamburger-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        
+        .hamburger-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+        
+        .hamburger-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(6px, -6px);
+        }
+        
+        /* Side Menu */
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 300px;
+            height: 100vh;
+            background: #1E293B;
+            box-shadow: 2px 0 20px rgba(0,0,0,0.3);
+            transition: left 0.3s ease;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .side-menu.active {
+            left: 0;
+        }
+        
+        .side-menu-header {
+            padding: 24px 20px;
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white;
+        }
+        
+        .side-menu-header h2 {
+            margin: 0 0 4px 0;
+            font-size: 20px;
+        }
+        
+        .side-menu-header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .side-menu-items {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+        
+        .side-menu-item {
+            padding: 16px 20px;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        
+        .side-menu-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .side-menu-item i {
+            width: 20px;
+            text-align: center;
+            opacity: 0.8;
+        }
+        
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .menu-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* PWA App-like */
+        @media (display-mode: standalone) {
+            body {
+                padding-top: env(safe-area-inset-top);
+            }
+        }
+        
+        /* Utility */
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- Menu Lateral -->
+    <div class="menu-overlay" onclick="toggleMenu()"></div>
+    <div class="side-menu" id="sideMenu">
+        <div class="side-menu-header">
+            <h2 id="menuUserName">Corretor</h2>
+            <p id="menuUserEmail">corretor@exclusiva.com</p>
+        </div>
+        <div class="side-menu-items">
+            <a href="/app/chat.html" class="side-menu-item">
+                <i class="fas fa-comments"></i>
+                <span>Conversas</span>
+            </a>
+            <a href="/app/dashboard.html" class="side-menu-item" id="dashboardLink">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/app/leads.html" class="side-menu-item" id="leadsLink">
+                <i class="fas fa-users"></i>
+                <span>Leads</span>
+            </a>
+            <a href="/app/imoveis.html" class="side-menu-item" id="imoveisLink">
+                <i class="fas fa-home"></i>
+                <span>Imóveis</span>
+            </a>
+            <div class="side-menu-item" onclick="showStats()">
+                <i class="fas fa-chart-bar"></i>
+                <span>Estatísticas da Fila</span>
+            </div>
+            <div class="side-menu-item" onclick="showProfile()">
+                <i class="fas fa-user-circle"></i>
+                <span>Meu Perfil</span>
+            </div>
+            <div class="side-menu-item" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Sair</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="chat-container">
+        <!-- View: Lista de Conversas -->
+        <div id="conversationsView">
+            <div class="chat-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="hamburger-btn" onclick="toggleMenu()">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <div class="contact-details">
+                        <h3>SOCIMOB Chat</h3>
+                        <p id="userRole">Corretor</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button id="statsBtn" onclick="showStats()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer;">
+                        <i class="fas fa-chart-bar"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Botão Pegar Próximo Cliente (apenas corretor) -->
+            <div id="filaControls" class="hidden" style="padding: 12px 16px; background: rgba(16, 185, 129, 0.1); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <button onclick="pegarProximo()" style="width: 100%; background: linear-gradient(135deg, #10B981, #059669); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Pegar Próximo Cliente da Fila</span>
+                    <span id="filaCount" class="badge" style="background: rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 12px; font-size: 12px;">0</span>
+                </button>
+            </div>
+            
+            <div class="conversations-list" id="conversationsList">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- View: Chat Individual -->
+        <div id="chatView" class="hidden">
+            <div class="chat-header">
+                <i class="fas fa-arrow-left back-btn" onclick="showConversations()"></i>
+                <div class="contact-info">
+                    <div class="contact-avatar" id="chatAvatar">A</div>
+                    <div class="contact-details">
+                        <h3 id="chatContactName">Carregando...</h3>
+                        <p id="chatContactPhone">---</p>
+                    </div>
+                </div>
+                <button class="hamburger-btn" onclick="toggleMenu()">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+            
+            <div class="messages-container" id="messagesContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+            
+            <div class="message-input-container">
+                <textarea 
+                    id="messageInput" 
+                    class="message-input" 
+                    placeholder="Digite sua mensagem..."
+                    rows="1"
+                ></textarea>
+                <button id="sendBtn" class="send-btn" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/login-utils.js"></script>
+    <script>
+        let currentConversaId = null;
+        let currentLead = null;
+        let messagePolling = null;
+        let user = null;
+
+        // Verificar autenticação
+        $(document).ready(function() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/app/login.html';
+                return;
+            }
+
+            // Carregar informações do usuário
+            user = JSON.parse(localStorage.getItem('user') || '{}');
+            $('#userRole').text(user.role === 'admin' ? 'Administrador' : 'Corretor');
+            
+            // Mostrar controles de fila apenas para corretores
+            if (user.role === 'corretor') {
+                $('#filaControls').removeClass('hidden');
+            }
+
+            loadConversations();
+            loadStats();
+            
+            // Auto-atualizar stats a cada 10 segundos
+            setInterval(loadStats, 10000);
+            
+            // Auto-resize textarea
+            $('#messageInput').on('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+
+            // Enter para enviar (Shift+Enter para nova linha)
+            $('#messageInput').on('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // Registrar service worker para PWA
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registrado'))
+                    .catch(err => console.log('Service Worker erro:', err));
+            }
+        });
+
+        function loadStats() {
+            if (user.role !== 'corretor') return;
+            
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: '/api/admin/conversas/fila/estatisticas',
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                success: function(response) {
+                    const stats = response.data;
+                    $('#filaCount').text(stats.em_fila || 0);
+                }
+            });
+        }
+
+        function pegarProximo() {
+            const token = localStorage.getItem('token');
+            
+            const btn = event.target.closest('button');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procurando...';
+            
+            $.ajax({
+                url: '/api/admin/conversas/fila/pegar-proxima',
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Recarregar lista e abrir conversa
+                        loadConversations();
+                        loadStats();
+                        
+                        // Abrir conversa automaticamente
+                        setTimeout(() => {
+                            openChat(response.data.id, response.data.lead_id);
+                        }, 500);
+                    }
+                },
+                error: function(xhr) {
+                    if (xhr.status === 404) {
+                        alert('Não há clientes na fila no momento');
+                    } else {
+                        alert('Erro ao pegar cliente: ' + (xhr.responseJSON?.message || 'Erro desconhecido'));
+                    }
+                },
+                complete: function() {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-user-plus"></i><span>Pegar Próximo Cliente da Fila</span><span id="filaCount" class="badge" style="background: rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 12px; font-size: 12px;">0</span>';
+                    loadStats();
+                }
+            });
+        }
+
+        function showStats() {
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: '/api/admin/conversas/fila/estatisticas',
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                success: function(response) {
+                    const stats = response.data;
+                    
+                    let porCorretor = '';
+                    if (stats.por_corretor && stats.por_corretor.length > 0) {
+                        porCorretor = '<h4 style="margin-top: 16px; font-weight: 600;">Por Corretor:</h4><ul style="margin-top: 8px;">';
+                        stats.por_corretor.forEach(c => {
+                            porCorretor += `<li>${c.name}: ${c.total} conversas</li>`;
+                        });
+                        porCorretor += '</ul>';
+                    }
+                    
+                    const html = `
+                        <div style="background: #1E293B; color: white; padding: 20px; border-radius: 12px; max-width: 400px;">
+                            <h3 style="margin: 0 0 16px 0; font-weight: 600;">📊 Estatísticas da Fila</h3>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <div style="background: rgba(16, 185, 129, 0.1); padding: 12px; border-radius: 8px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #10B981;">${stats.em_fila || 0}</div>
+                                    <div style="font-size: 14px; color: #94A3B8;">Clientes na Fila</div>
+                                </div>
+                                <div style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #3B82F6;">${stats.atribuidas || 0}</div>
+                                    <div style="font-size: 14px; color: #94A3B8;">Conversas Atribuídas</div>
+                                </div>
+                                <div style="background: rgba(168, 85, 247, 0.1); padding: 12px; border-radius: 8px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #A855F7;">${stats.total_ativas || 0}</div>
+                                    <div style="font-size: 14px; color: #94A3B8;">Total Ativas</div>
+                                </div>
+                                ${porCorretor}
+                            </div>
+                            <button onclick="closeModal()" style="margin-top: 20px; width: 100%; background: #10B981; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer;">
+                                Fechar
+                            </button>
+                        </div>
+                    `;
+                    
+                    showModal(html);
+                }
+            });
+        }
+
+        function showModal(content) {
+            const modal = $('<div class="modal-overlay"></div>').html(content);
+            $('body').append(modal);
+            setTimeout(() => modal.addClass('active'), 10);
+        }
+
+        function closeModal() {
+            $('.modal-overlay').removeClass('active');
+            setTimeout(() => $('.modal-overlay').remove(), 300);
+        }
+
+        function loadConversations() {
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: '/api/admin/conversas',
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                success: function(response) {
+                    const conversas = response.data || response;
+                    renderConversations(conversas);
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/app/login.html';
+                    } else {
+                        $('#conversationsList').html(`
+                            <div class="empty-state">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <p>Erro ao carregar conversas</p>
+                                <button onclick="loadConversations()" style="margin-top: 16px; background: #10B981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                                    Tentar novamente
+                                </button>
+                            </div>
+                        `);
+                    }
+                }
+            });
+        }
+
+        function renderConversations(conversas) {
+            if (!conversas || conversas.length === 0) {
+                $('#conversationsList').html(`
+                    <div class="empty-state">
+                        <i class="fas fa-comments"></i>
+                        <h3>Nenhuma conversa ativa</h3>
+                        <p>As conversas com clientes aparecerão aqui</p>
+                    </div>
+                `);
+                return;
+            }
+
+            const html = conversas.map(conv => {
+                const initials = (conv.lead_nome || 'C')[0].toUpperCase();
+                const lastMessage = conv.ultima_mensagem || 'Sem mensagens';
+                const time = formatTime(conv.ultima_atividade || conv.created_at);
+                const unread = conv.mensagens_nao_lidas > 0 
+                    ? `<span class="unread-badge">${conv.mensagens_nao_lidas}</span>` 
+                    : '';
+                
+                // Badges de status da fila
+                let statusBadge = '';
+                if (conv.em_fila) {
+                    statusBadge = '<span style="background: #10B981; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">FILA</span>';
+                } else if (conv.atribuida_a_mim) {
+                    statusBadge = '<span style="background: #3B82F6; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">MINHA</span>';
+                }
+                
+                const corretor = conv.corretor_name ? `<div style="font-size: 11px; color: #64748B; margin-top: 2px;">👤 ${conv.corretor_name}</div>` : '';
+
+                return `
+                    <div class="conversation-item" onclick="openChat(${conv.id}, ${conv.lead_id})">
+                        <div class="conversation-avatar">${initials}</div>
+                        <div class="conversation-content">
+                            <div class="conversation-header">
+                                <span class="conversation-name">${conv.lead_nome || 'Cliente'}${statusBadge}</span>
+                                <span class="conversation-time">${time}${unread}</span>
+                            </div>
+                            ${corretor}
+                            <div class="conversation-preview">${lastMessage}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            $('#conversationsList').html(html);
+        }
+
+        function openChat(conversaId, leadId) {
+            currentConversaId = conversaId;
+            lastMessageIds.clear(); // Limpar cache de mensagens
+            
+            // Buscar informações do lead
+            const token = localStorage.getItem('token');
+            $.ajax({
+                url: `/api/leads/${leadId}`,
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                success: function(response) {
+                    currentLead = response.data || response;
+                    showChatView();
+                    loadMessages();
+                    startPolling();
+                },
+                error: function(xhr) {
+                    console.error('Erro ao buscar lead:', xhr);
+                    // Mesmo com erro, abrir o chat
+                    currentLead = { id: leadId, nome: 'Cliente', telefone: '' };
+                    showChatView();
+                    loadMessages();
+                    startPolling();
+                }
+            });
+        }
+
+        function showChatView() {
+            const initials = (currentLead.nome || 'C')[0].toUpperCase();
+            $('#chatAvatar').text(initials);
+            $('#chatContactName').text(currentLead.nome || 'Cliente');
+            $('#chatContactPhone').text(currentLead.telefone || '');
+            
+            // Limpar mensagens antigas
+            $('#messagesContainer').empty();
+            
+            $('#conversationsView').addClass('hidden');
+            $('#chatView').removeClass('hidden');
+        }
+
+        function showConversations() {
+            stopPolling();
+            $('#chatView').addClass('hidden');
+            $('#conversationsView').removeClass('hidden');
+            loadConversations();
+        }
+
+        function loadMessages() {
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: `/api/admin/conversas/${currentConversaId}/mensagens`,
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                success: function(response) {
+                    const mensagens = response.data || response;
+                    renderMessages(mensagens);
+                }
+            });
+        }
+
+        let lastMessageIds = new Set();
+
+        function renderMessages(mensagens) {
+            if (!mensagens || mensagens.length === 0) {
+                if ($('#messagesContainer .message').length === 0) {
+                    $('#messagesContainer').html(`
+                        <div class="empty-state">
+                            <i class="fas fa-comment-dots"></i>
+                            <p>Nenhuma mensagem ainda</p>
+                        </div>
+                    `);
+                }
+                return;
+            }
+
+            // Remover empty state se existir
+            $('#messagesContainer .empty-state').remove();
+
+            const container = $('#messagesContainer');
+            let shouldScroll = false;
+
+            mensagens.forEach(msg => {
+                // Só adiciona se for nova
+                if (!lastMessageIds.has(msg.id)) {
+                    lastMessageIds.add(msg.id);
+                    
+                    const type = msg.direction === 'outgoing' ? 'outgoing' : 'incoming';
+                    const time = formatTime(msg.created_at);
+                    const status = msg.direction === 'outgoing' 
+                        ? `<span class="message-status"><i class="fas fa-check${msg.status === 'sent' ? '-double' : ''}"></i></span>`
+                        : '';
+
+                    const html = `
+                        <div class="message ${type}" data-msg-id="${msg.id}">
+                            <div class="message-bubble">
+                                <div>${msg.content || msg.body}</div>
+                                <div class="message-time">${time}${status}</div>
+                            </div>
+                        </div>
+                    `;
+
+                    container.append(html);
+                    shouldScroll = true;
+                }
+            });
+
+            if (shouldScroll) {
+                scrollToBottom();
+            }
+        }
+
+        function sendMessage() {
+            const input = $('#messageInput');
+            const message = input.val().trim();
+            
+            if (!message || !currentConversaId) return;
+            
+            const token = localStorage.getItem('token');
+            $('#sendBtn').prop('disabled', true);
+            
+            $.ajax({
+                url: `/api/admin/conversas/${currentConversaId}/mensagens`,
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify({
+                    content: message,
+                    direction: 'outgoing'
+                }),
+                success: function() {
+                    input.val('').css('height', 'auto');
+                    loadMessages();
+                },
+                error: function(xhr) {
+                    alert('Erro ao enviar mensagem: ' + (xhr.responseJSON?.message || 'Erro desconhecido'));
+                },
+                complete: function() {
+                    $('#sendBtn').prop('disabled', false);
+                    input.focus();
+                }
+            });
+        }
+
+        function startPolling() {
+            messagePolling = setInterval(() => {
+                if (currentConversaId) {
+                    loadMessages();
+                }
+            }, 3000); // Atualiza a cada 3 segundos
+        }
+
+        function stopPolling() {
+            if (messagePolling) {
+                clearInterval(messagePolling);
+                messagePolling = null;
+            }
+        }
+
+        function scrollToBottom() {
+            const container = $('#messagesContainer');
+            container.scrollTop(container[0].scrollHeight);
+        }
+
+        function formatTime(datetime) {
+            if (!datetime) return '';
+            
+            const date = new Date(datetime);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins < 1) return 'Agora';
+            if (diffMins < 60) return `${diffMins}m`;
+            
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours}h`;
+            
+            const diffDays = Math.floor(diffHours / 24);
+            if (diffDays < 7) return `${diffDays}d`;
+            
+            return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        }
+
+        function logout() {
+            if (confirm('Deseja sair do aplicativo?')) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/app/login.html';
+            }
+        }
+
+        // Toggle menu lateral
+        function toggleMenu() {
+            const menu = document.getElementById('sideMenu');
+            const overlay = document.querySelector('.menu-overlay');
+            const hamburger = document.querySelector('.hamburger-btn');
+            
+            menu.classList.toggle('active');
+            overlay.classList.toggle('active');
+            if (hamburger) hamburger.classList.toggle('active');
+        }
+
+        // Mostrar perfil
+        function showProfile() {
+            toggleMenu();
+            alert('Tela de perfil em desenvolvimento');
+        }
+
+        // Inicializar informações do menu
+        function initMenu() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            
+            // Atualizar informações no menu
+            document.getElementById('menuUserName').textContent = user.name || 'Usuário';
+            document.getElementById('menuUserEmail').textContent = user.email || '';
+            
+            // Esconder links de admin se for corretor
+            if (user.role === 'corretor') {
+                const dashboardLink = document.getElementById('dashboardLink');
+                const leadsLink = document.getElementById('leadsLink');
+                const imoveisLink = document.getElementById('imoveisLink');
+                
+                if (dashboardLink) dashboardLink.style.display = 'none';
+                if (leadsLink) leadsLink.style.display = 'none';
+                if (imoveisLink) imoveisLink.style.display = 'none';
+            }
+        }
+
+        // Inicializar menu ao carregar
+        $(document).ready(function() {
+            // ... código existente ...
+            initMenu();
+        });
+
+        // Cleanup ao sair
+        window.addEventListener('beforeunload', () => {
+            stopPolling();
+        });
+    </script>
+</body>
+</html>

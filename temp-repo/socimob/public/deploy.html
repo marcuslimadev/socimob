@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deploy Manual - SOCIMOB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .terminal { background: #1e1e1e; color: #d4d4d4; font-family: 'Courier New', monospace; }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        .warning { color: #fbbf24; }
+        .info { color: #60a5fa; }
+    </style>
+</head>
+<body class="flex items-center justify-center p-6">
+    <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full p-8">
+        <div class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">🚀 Deploy Manual</h1>
+            <p class="text-gray-600">Execute deploy com um clique</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Projeto</label>
+                <select id="project" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    <option value="default">Projeto Atual (default)</option>
+                    <option value="lojadaesquina">Loja da Esquina</option>
+                    <option value="exclusiva">Exclusiva Lar Imóveis</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Secret Token</label>
+                <input type="password" id="secret" value="ULqVBREGLgTL2cDw/WauzXgGuNxGLIG4/HcG3CdXwf8=" 
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Token secreto">
+            </div>
+        </div>
+
+        <div class="flex gap-3 mb-6">
+            <button onclick="deploy()" id="btnDeploy"
+                class="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-lg font-bold text-lg hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg">
+                🚀 Executar Deploy
+            </button>
+            <button onclick="getInfo()" id="btnInfo"
+                class="bg-gray-600 text-white px-6 py-4 rounded-lg font-bold hover:bg-gray-700 transition-all shadow-lg">
+                ℹ️ Info
+            </button>
+        </div>
+
+        <div id="terminal" class="terminal rounded-lg p-6 min-h-[400px] max-h-[600px] overflow-auto hidden">
+            <div id="output"></div>
+        </div>
+
+        <div id="loading" class="hidden text-center py-12">
+            <div class="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-purple-600 border-r-transparent"></div>
+            <p class="mt-4 text-gray-600 font-medium">Executando deploy...</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/deploy';
+        
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const colors = {
+                success: 'success',
+                error: 'error',
+                warning: 'warning',
+                info: 'info'
+            };
+            
+            const line = document.createElement('div');
+            line.className = colors[type] || 'info';
+            line.textContent = message;
+            output.appendChild(line);
+            
+            // Auto-scroll
+            const terminal = document.getElementById('terminal');
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function showTerminal() {
+            document.getElementById('terminal').classList.remove('hidden');
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('output').innerHTML = '';
+        }
+
+        function showLoading() {
+            document.getElementById('terminal').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        async function deploy() {
+            const project = document.getElementById('project').value;
+            const secret = document.getElementById('secret').value;
+
+            if (!secret || secret === 'change-me-in-production') {
+                alert('⚠️ Configure um token secreto válido!');
+                return;
+            }
+
+            showTerminal();
+            log('═══════════════════════════════════════════════');
+            log('🚀 INICIANDO DEPLOY', 'info');
+            log('═══════════════════════════════════════════════');
+            log(`📦 Projeto: ${project}`);
+            log(`🕐 ${new Date().toLocaleString('pt-BR')}`);
+            log('');
+
+            const btnDeploy = document.getElementById('btnDeploy');
+            btnDeploy.disabled = true;
+            btnDeploy.textContent = '⏳ Executando...';
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'X-Deploy-Secret': secret,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ project })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    log('');
+                    log('❌ ERRO: ' + data.message, 'error');
+                    return;
+                }
+
+                log('');
+                log('📊 RESULTADO:', 'info');
+                log(`   Status: ${data.success ? '✅ Sucesso' : '⚠️ Com erros'}`, data.success ? 'success' : 'warning');
+                log(`   Duração: ${data.duration}`);
+                log('');
+
+                // Git Pull
+                if (data.output.git_pull) {
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    log('🔄 GIT PULL', 'info');
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    data.output.git_pull.output.forEach(line => log('   ' + line, 'info'));
+                    log(`   Exit Code: ${data.output.git_pull.exit_code}`, data.output.git_pull.exit_code === 0 ? 'success' : 'error');
+                    log('');
+                }
+
+                // Composer Install
+                if (data.output.composer_install) {
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    log('📦 COMPOSER INSTALL', 'info');
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    data.output.composer_install.output.slice(0, 10).forEach(line => log('   ' + line, 'info'));
+                    if (data.output.composer_install.output.length > 10) {
+                        log(`   ... (${data.output.composer_install.output.length - 10} linhas omitidas)`, 'warning');
+                    }
+                    log(`   Exit Code: ${data.output.composer_install.exit_code}`, data.output.composer_install.exit_code === 0 ? 'success' : 'error');
+                    log('');
+                }
+
+                // Svelte Build
+                if (data.output.svelte_build) {
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    log('🎨 SVELTE BUILD', 'info');
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    
+                    if (data.output.svelte_build.available === false) {
+                        log(`   ${data.output.svelte_build.message || 'Não disponível'}`, 'warning');
+                    } else {
+                        // npm install
+                        if (data.output.svelte_build.npm_install && data.output.svelte_build.npm_install.length > 0) {
+                            log('   📦 npm install:', 'info');
+                            data.output.svelte_build.npm_install.slice(-5).forEach(line => log('      ' + line, 'info'));
+                            log(`   Exit Code: ${data.output.svelte_build.npm_install_code}`, data.output.svelte_build.npm_install_code === 0 ? 'success' : 'error');
+                        }
+                        
+                        // npm build
+                        if (data.output.svelte_build.npm_build && data.output.svelte_build.npm_build.length > 0) {
+                            log('   🔨 npm run build:', 'info');
+                            data.output.svelte_build.npm_build.slice(-5).forEach(line => log('      ' + line, 'info'));
+                            log(`   Exit Code: ${data.output.svelte_build.npm_build_code}`, data.output.svelte_build.npm_build_code === 0 ? 'success' : 'error');
+                        }
+                    }
+                    log('');
+                }
+
+                // Artisan Commands
+                if (data.output.artisan_commands) {
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    log('🔧 ARTISAN COMMANDS', 'info');
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    data.output.artisan_commands.commands.forEach(cmd => log('   ' + cmd, 'info'));
+                    log(`   Exit Code: ${data.output.artisan_commands.exit_code}`, data.output.artisan_commands.exit_code === 0 ? 'success' : 'error');
+                    log('');
+                }
+
+                // Errors
+                if (data.errors && data.errors.length > 0) {
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    log('⚠️ ERROS ENCONTRADOS', 'error');
+                    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    data.errors.forEach(err => log('   • ' + err, 'error'));
+                    log('');
+                }
+
+                log('═══════════════════════════════════════════════');
+                log(data.success ? '✅ DEPLOY CONCLUÍDO COM SUCESSO!' : '⚠️ DEPLOY CONCLUÍDO COM ERROS', data.success ? 'success' : 'warning');
+                log('═══════════════════════════════════════════════');
+                log(`🕐 ${new Date().toLocaleString('pt-BR')}`);
+
+            } catch (error) {
+                log('');
+                log('❌ ERRO DE CONEXÃO:', 'error');
+                log('   ' + error.message, 'error');
+                log('');
+                log('💡 Verifique se o backend está rodando', 'warning');
+            } finally {
+                btnDeploy.disabled = false;
+                btnDeploy.textContent = '🚀 Executar Deploy';
+            }
+        }
+
+        async function getInfo() {
+            const secret = document.getElementById('secret').value;
+
+            if (!secret) {
+                alert('⚠️ Configure um token secreto!');
+                return;
+            }
+
+            showTerminal();
+            log('═══════════════════════════════════════════════');
+            log('ℹ️ INFORMAÇÕES DO SISTEMA', 'info');
+            log('═══════════════════════════════════════════════');
+            log('');
+
+            try {
+                const response = await fetch(API_URL + '/info', {
+                    method: 'GET',
+                    headers: {
+                        'X-Deploy-Secret': secret
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    log('❌ ERRO: ' + (data.error || 'Unauthorized'), 'error');
+                    return;
+                }
+
+                log('📋 PHP:', 'info');
+                log(`   Versão: ${data.php_version}`);
+                log(`   Path: ${data.php_path}`);
+                log('');
+
+                log('📦 Composer:', 'info');
+                log(`   Path: ${data.composer_path}`);
+                log('');
+
+                log('📁 Paths:', 'info');
+                log(`   Base: ${data.base_path}`);
+                log('');
+
+                log('🖥️ Servidor:', 'info');
+                log(`   OS: ${data.server.os}`);
+                log(`   Software: ${data.server.server_software}`);
+                log(`   User: ${data.server.user}`);
+                log('');
+
+                log('🔧 Git:', 'info');
+                log(`   Disponível: ${data.git.available ? 'Sim' : 'Não'}`);
+                log(`   Versão: ${data.git.version}`);
+                log('');
+
+                log('═══════════════════════════════════════════════');
+                log('✅ Informações coletadas', 'success');
+                log('═══════════════════════════════════════════════');
+
+            } catch (error) {
+                log('❌ ERRO: ' + error.message, 'error');
+            }
+        }
+
+        // Atalho: Enter para deploy
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('btnDeploy').disabled) {
+                deploy();
+            }
+        });
+    </script>
+</body>
+</html>

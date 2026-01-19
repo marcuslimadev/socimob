@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Tenant Config</title>
+</head>
+<body>
+    <h1>Teste de Configuração do Tenant</h1>
+    <button onclick="testar()">Testar /api/tenant/config</button>
+    <pre id="resultado"></pre>
+
+    <script>
+        async function testar() {
+            const resultado = document.getElementById('resultado');
+            resultado.textContent = 'Carregando...';
+            
+            try {
+                const response = await fetch('/api/tenant/config');
+                const data = await response.json();
+                resultado.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultado.textContent = 'Erro: ' + error.message;
+            }
+        }
+        
+        // Testar automaticamente ao carregar
+        testar();
+    </script>
+</body>
+</html>

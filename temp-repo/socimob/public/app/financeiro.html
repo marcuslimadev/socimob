@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financeiro - Pagamento de Comissões</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            padding: 2rem;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 1.5rem;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .valor-destaque {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #28a745;
+            text-align: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+        }
+        .btn-pagar {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        .btn-pagar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+        .historico-item {
+            border-left: 3px solid #667eea;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: white;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        .historico-item:hover {
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            transform: translateX(5px);
+        }
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .status-pendente { background: #ffc107; color: #000; }
+        .status-pago { background: #28a745; color: #fff; }
+        .status-cancelado { background: #dc3545; color: #fff; }
+        .qrcode-container {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="text-white mb-0">
+                    <i class="bi bi-cash-coin me-2"></i>Financeiro
+                </h1>
+                <p class="text-white-50 mb-0">Pagamento de Comissões</p>
+            </div>
+            <div>
+                <a href="dashboard.html" class="btn btn-light">
+                    <i class="bi bi-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Formulário de Pagamento -->
+            <div class="col-lg-7">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">
+                            <i class="bi bi-calculator me-2"></i>Nova Comissão
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="formComissao">
+                            <!-- Seleção de Corretor -->
+                            <div class="mb-4">
+                                <label for="corretor_id" class="form-label">
+                                    <i class="bi bi-person-badge me-2"></i>Selecione o Corretor
+                                </label>
+                                <select class="form-select form-select-lg" id="corretor_id" required>
+                                    <option value="">Carregando corretores...</option>
+                                </select>
+                            </div>
+
+                            <!-- Dados da Venda -->
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label for="valor_venda" class="form-label">
+                                        <i class="bi bi-currency-dollar me-2"></i>Valor Total da Venda
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text">R$</span>
+                                        <input type="text" class="form-control" id="valor_venda" 
+                                               placeholder="0,00" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="percentual" class="form-label">
+                                        <i class="bi bi-percent me-2"></i>Percentual de Comissão
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <input type="number" class="form-control" id="percentual" 
+                                               placeholder="0" min="0" max="100" step="0.1" required>
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Valor da Comissão Calculado -->
+                            <div class="mb-4">
+                                <label class="form-label">Valor da Comissão</label>
+                                <div class="valor-destaque" id="valor_comissao">
+                                    R$ 0,00
+                                </div>
+                            </div>
+
+                            <!-- Dados Bancários do Corretor -->
+                            <div class="info-box" id="dadosBancarios" style="display: none;">
+                                <h6 class="fw-bold mb-3">
+                                    <i class="bi bi-bank me-2"></i>Dados Bancários
+                                </h6>
+                                <div id="infoBancaria"></div>
+                            </div>
+
+                            <!-- Observações -->
+                            <div class="mb-4">
+                                <label for="observacoes" class="form-label">
+                                    <i class="bi bi-chat-left-text me-2"></i>Observações
+                                </label>
+                                <textarea class="form-control" id="observacoes" rows="3" 
+                                          placeholder="Digite observações sobre esta comissão (opcional)"></textarea>
+                            </div>
+
+                            <!-- Botões -->
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-pagar btn-success">
+                                    <i class="bi bi-credit-card me-2"></i>Pagar via PIX - Mercado Pago
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Painel Lateral -->
+            <div class="col-lg-5">
+                <!-- Status do Pagamento -->
+                <div class="card" id="cardPagamento" style="display: none;">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-qr-code me-2"></i>Pagamento PIX
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="qrcode-container">
+                            <div id="qrcodeImage"></div>
+                            <p class="mt-3 mb-2 fw-bold">Copie e Cole o Código PIX:</p>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="pixCopiaECola" readonly>
+                                <button class="btn btn-primary" onclick="copiarPix()">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Aguardando pagamento...</strong>
+                            <div id="statusPagamento" class="mt-2">
+                                <div class="spinner-border spinner-border-sm me-2"></div>
+                                Verificando status...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumo -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-info-circle me-2"></i>Como Funciona
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ol class="mb-0">
+                            <li class="mb-2">Selecione o corretor</li>
+                            <li class="mb-2">Digite o valor da venda</li>
+                            <li class="mb-2">Informe o percentual</li>
+                            <li class="mb-2">Confira os dados bancários</li>
+                            <li class="mb-2">Realize o pagamento via PIX</li>
+                            <li class="mb-2">NFSe gerada automaticamente</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Histórico de Comissões -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="bi bi-clock-history me-2"></i>Histórico de Comissões
+                </h4>
+                <div>
+                    <select class="form-select" id="filtroStatus">
+                        <option value="">Todos</option>
+                        <option value="pendente">Pendentes</option>
+                        <option value="pago">Pagos</option>
+                        <option value="cancelado">Cancelados</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="historicoComissoes">
+                    <p class="text-muted text-center">Carregando histórico...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Comprovante -->
+    <div class="modal fade" id="modalComprovante" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-check-circle me-2"></i>Pagamento Confirmado!
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                        <h3 class="mt-3">Comissão Paga com Sucesso!</h3>
+                    </div>
+                    <div id="dadosComprovante"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="baixarComprovante()">
+                        <i class="bi bi-download me-2"></i>Baixar Comprovante PDF
+                    </button>
+                    <button class="btn btn-info" onclick="baixarNFSe()">
+                        <i class="bi bi-file-earmark-text me-2"></i>Baixar NFSe
+                    </button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script>
+        const API_URL = '/api/admin';
+        let token = localStorage.getItem('token');
+        let pagamentoInterval = null;
+
+        // Verificar autenticação
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        $(document).ready(function() {
+            carregarCorretores();
+            carregarHistorico();
+            setupCalculadora();
+        });
+
+        // Carregar lista de corretores
+        function carregarCorretores() {
+            $.ajax({
+                url: `${API_URL}/corretores`,
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function(response) {
+                    const select = $('#corretor_id');
+                    select.empty().append('<option value="">Selecione um corretor</option>');
+                    
+                    response.corretores.forEach(corretor => {
+                        select.append(`
+                            <option value="${corretor.id}" 
+                                    data-pix="${corretor.pix_key || ''}"
+                                    data-pix-type="${corretor.pix_type || ''}"
+                                    data-banco="${corretor.banco || ''}"
+                                    data-agencia="${corretor.agencia || ''}"
+                                    data-conta="${corretor.conta || ''}">
+                                ${corretor.name} - ${corretor.email}
+                            </option>
+                        `);
+                    });
+                },
+                error: function(xhr) {
+                    console.error('Erro ao carregar corretores:', xhr);
+                    alert('Erro ao carregar lista de corretores');
+                }
+            });
+        }
+
+        // Configurar calculadora automática
+        function setupCalculadora() {
+            $('#valor_venda, #percentual').on('input', calcularComissao);
+            $('#corretor_id').on('change', mostrarDadosBancarios);
+        }
+
+        // Calcular comissão automaticamente
+        function calcularComissao() {
+            const valorVenda = parseFloat($('#valor_venda').val().replace(/\./g, '').replace(',', '.')) || 0;
+            const percentual = parseFloat($('#percentual').val()) || 0;
+            const comissao = (valorVenda * percentual) / 100;
+            
+            $('#valor_comissao').text('R$ ' + comissao.toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }));
+        }
+
+        // Mostrar dados bancários do corretor
+        function mostrarDadosBancarios() {
+            const select = $('#corretor_id');
+            const option = select.find('option:selected');
+            
+            if (!option.val()) {
+                $('#dadosBancarios').hide();
+                return;
+            }
+
+            const pixKey = option.data('pix');
+            const pixType = option.data('pix-type');
+            const banco = option.data('banco');
+            const agencia = option.data('agencia');
+            const conta = option.data('conta');
+
+            let html = '';
+            
+            if (pixKey) {
+                html += `
+                    <div class="mb-2">
+                        <strong>Chave PIX (${pixType || 'N/A'}):</strong> 
+                        <span class="badge bg-primary">${pixKey}</span>
+                    </div>
+                `;
+            }
+
+            if (banco) {
+                html += `
+                    <div class="mb-2">
+                        <strong>Banco:</strong> ${banco}<br>
+                        <strong>Agência:</strong> ${agencia || 'N/A'} | 
+                        <strong>Conta:</strong> ${conta || 'N/A'}
+                    </div>
+                `;
+            }
+
+            if (!html) {
+                html = '<div class="alert alert-warning mb-0">⚠️ Corretor sem dados bancários cadastrados</div>';
+            }
+
+            $('#infoBancaria').html(html);
+            $('#dadosBancarios').show();
+        }
+
+        // Submeter formulário de comissão
+        $('#formComissao').on('submit', function(e) {
+            e.preventDefault();
+
+            const valorVendaRaw = $('#valor_venda').val().replace(/\./g, '').replace(',', '.');
+            const data = {
+                corretor_id: $('#corretor_id').val(),
+                valor_venda: parseFloat(valorVendaRaw),
+                percentual: parseFloat($('#percentual').val()),
+                observacoes: $('#observacoes').val()
+            };
+
+            if (!data.corretor_id || !data.valor_venda || !data.percentual) {
+                alert('Preencha todos os campos obrigatórios');
+                return;
+            }
+
+            // Desabilitar botão
+            $(this).find('button[type="submit"]').prop('disabled', true).html(
+                '<span class="spinner-border spinner-border-sm me-2"></span>Processando...'
+            );
+
+            $.ajax({
+                url: `${API_URL}/comissoes`,
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify(data),
+                success: function(response) {
+                    console.log('Comissão criada:', response);
+                    mostrarPagamentoPix(response);
+                },
+                error: function(xhr) {
+                    console.error('Erro ao criar comissão:', xhr);
+                    alert(xhr.responseJSON?.error || 'Erro ao processar pagamento');
+                    $('#formComissao button[type="submit"]')
+                        .prop('disabled', false)
+                        .html('<i class="bi bi-credit-card me-2"></i>Pagar via PIX - Mercado Pago');
+                }
+            });
+        });
+
+        // Mostrar QR Code PIX
+        function mostrarPagamentoPix(dados) {
+            $('#cardPagamento').show();
+            
+            // Gerar QR Code
+            $('#qrcodeImage').empty();
+            QRCode.toCanvas(dados.qrcode_base64, {
+                width: 250,
+                margin: 2
+            }, function(error, canvas) {
+                if (error) console.error(error);
+                $('#qrcodeImage').append(canvas);
+            });
+
+            $('#pixCopiaECola').val(dados.qrcode);
+            
+            // Iniciar polling de status
+            if (pagamentoInterval) clearInterval(pagamentoInterval);
+            pagamentoInterval = setInterval(() => verificarStatusPagamento(dados.comissao_id), 3000);
+        }
+
+        // Verificar status do pagamento
+        function verificarStatusPagamento(comissaoId) {
+            $.ajax({
+                url: `${API_URL}/comissoes/${comissaoId}/status`,
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function(response) {
+                    $('#statusPagamento').html(`
+                        <i class="bi bi-clock me-2"></i>
+                        Status: <strong>${response.status}</strong>
+                    `);
+
+                    if (response.status === 'pago' || response.status === 'approved') {
+                        clearInterval(pagamentoInterval);
+                        pagamentoConfirmado(comissaoId);
+                    }
+                }
+            });
+        }
+
+        // Pagamento confirmado
+        function pagamentoConfirmado(comissaoId) {
+            $('#cardPagamento').hide();
+            
+            $.ajax({
+                url: `${API_URL}/comissoes/${comissaoId}`,
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function(comissao) {
+                    mostrarComprovante(comissao);
+                    carregarHistorico();
+                    $('#formComissao')[0].reset();
+                    $('#valor_comissao').text('R$ 0,00');
+                    $('#dadosBancarios').hide();
+                }
+            });
+        }
+
+        // Mostrar comprovante
+        function mostrarComprovante(comissao) {
+            const html = `
+                <table class="table table-bordered">
+                    <tr><th>Corretor:</th><td>${comissao.corretor_nome}</td></tr>
+                    <tr><th>Valor da Venda:</th><td>R$ ${comissao.valor_venda.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td></tr>
+                    <tr><th>Percentual:</th><td>${comissao.percentual}%</td></tr>
+                    <tr><th>Comissão:</th><td class="fw-bold text-success">R$ ${comissao.valor_comissao.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td></tr>
+                    <tr><th>Data:</th><td>${new Date(comissao.created_at).toLocaleString('pt-BR')}</td></tr>
+                    <tr><th>NFSe:</th><td>${comissao.nfse_numero || 'Aguardando emissão...'}</td></tr>
+                </table>
+            `;
+            $('#dadosComprovante').html(html);
+            new bootstrap.Modal($('#modalComprovante')).show();
+        }
+
+        // Copiar código PIX
+        function copiarPix() {
+            const input = document.getElementById('pixCopiaECola');
+            input.select();
+            document.execCommand('copy');
+            alert('Código PIX copiado!');
+        }
+
+        // Baixar comprovante PDF
+        function baixarComprovante() {
+            // Implementar download do PDF
+            alert('Comprovante será baixado em breve');
+        }
+
+        // Baixar NFSe
+        function baixarNFSe() {
+            // Implementar download da NFSe
+            alert('NFSe será baixada em breve');
+        }
+
+        // Carregar histórico
+        function carregarHistorico() {
+            $.ajax({
+                url: `${API_URL}/comissoes`,
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+                success: function(response) {
+                    renderizarHistorico(response.comissoes || []);
+                },
+                error: function(xhr) {
+                    console.error('Erro ao carregar histórico:', xhr);
+                    $('#historicoComissoes').html('<p class="text-danger">Erro ao carregar histórico</p>');
+                }
+            });
+        }
+
+        // Renderizar histórico
+        function renderizarHistorico(comissoes) {
+            if (comissoes.length === 0) {
+                $('#historicoComissoes').html('<p class="text-muted text-center">Nenhuma comissão registrada</p>');
+                return;
+            }
+
+            let html = '';
+            comissoes.forEach(c => {
+                const statusClass = c.status === 'pago' ? 'status-pago' : 
+                                  c.status === 'cancelado' ? 'status-cancelado' : 'status-pendente';
+                
+                html += `
+                    <div class="historico-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">${c.corretor_nome}</h6>
+                                <p class="mb-1 text-muted">
+                                    <small>
+                                        <i class="bi bi-calendar me-1"></i>
+                                        ${new Date(c.created_at).toLocaleDateString('pt-BR')}
+                                    </small>
+                                </p>
+                                <p class="mb-0">
+                                    Venda: <strong>R$ ${c.valor_venda.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong> | 
+                                    Comissão: <strong class="text-success">R$ ${c.valor_comissao.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+                                </p>
+                            </div>
+                            <div class="text-end">
+                                <span class="status-badge ${statusClass}">${c.status.toUpperCase()}</span>
+                                ${c.nfse_numero ? `<div class="mt-2"><small>NFSe: ${c.nfse_numero}</small></div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            $('#historicoComissoes').html(html);
+        }
+
+        // Filtrar por status
+        $('#filtroStatus').on('change', function() {
+            // Implementar filtro
+        });
+
+        // Formatar input de valor
+        $('#valor_venda').on('input', function() {
+            let val = $(this).val().replace(/\D/g, '');
+            val = (val / 100).toFixed(2);
+            $(this).val(val.replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.'));
+            calcularComissao();
+        });
+    </script>
+</body>
+</html>

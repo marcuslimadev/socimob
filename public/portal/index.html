@@ -137,8 +137,7 @@
                 </div>
                 <div class="hidden md:flex gap-6 items-center">
                     <a href="#imoveis" class="glow-link">Imóveis</a>
-                    <a href="#sobre" class="glow-link">Sobre</a>
-                    <a href="#contato" class="glow-link">WhatsApp</a>
+                    <a href="#" class="glow-link" data-whatsapp-link data-whatsapp-message="Ola! Vim pelo portal de imoveis.">WhatsApp</a>
                     <a id="linkPerfil" href="/portal/perfil.html" class="hidden glow-link font-bold">Meu Perfil</a>
                     <button id="btnLogin" class="glow-button ghost">Entrar</button>
                     <button id="btnLogoutPortal" class="hidden glow-button">Sair</button>
@@ -153,9 +152,7 @@
             <h2 id="heroSlogan" class="glow-hero-title font-black mb-4">
                 Encontre Imóvel dos Seus Sonhos
             </h2>
-            <p class="text-xl mb-8 text-white max-w-3xl mx-auto">
-                As melhores opções de imóveis para você, com visual geométrico e cores primárias inspiradas na escola de arte Glow.
-            </p>
+            <p class="text-xl mb-8 text-white max-w-3xl mx-auto"></p>
 
             <!-- Filtros de Busca -->
             <div class="max-w-5xl mx-auto glow-panel text-[var(--glow-black)]">
@@ -245,7 +242,7 @@
                 X
             </button>
             <div class="h-full grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr]">
-                <div class="relative bg-gray-300 h-full">
+                <div class="relative bg-white h-full">
                     <div id="modalCarousel" class="relative h-full overflow-hidden">
                         <img id="modalFotoImg" alt="Foto do imovel" class="hidden w-full h-full object-cover">
                         <div id="modalFotoFallback" class="h-full w-full flex items-center justify-center">
@@ -397,14 +394,6 @@
                     <p id="footerTelefone" class="text-white/80 mb-2"></p>
                     <p id="footerEmail" class="text-white/80"></p>
                 </div>
-                <div>
-                    <h4 class="text-xl font-bold mb-4">Redes Sociais</h4>
-                    <div class="flex gap-4 text-sm">
-                        <a href="#" class="hover:text-[var(--glow-yellow)] transition">Facebook</a>
-                        <a href="#" class="hover:text-[var(--glow-yellow)] transition">Instagram</a>
-                        <a href="#" class="hover:text-[var(--glow-yellow)] transition">WhatsApp</a>
-                    </div>
-                </div>
             </div>
             <div class="border-t-4 border-[var(--glow-yellow)] mt-8 pt-8 text-center text-white/80">
                 <p>&copy; 2025 <span id="footerCopyright"></span> - Todos os direitos reservados</p>
@@ -483,6 +472,11 @@
             $('#btnChat').on('click', abrirChat);
             $('#chatForm').on('submit', enviarMensagemChat);
             $('#btnResetTableFilters').on('click', resetTableFilters);
+            $('[data-whatsapp-link]').on('click', function(event) {
+                event.preventDefault();
+                const mensagem = $(this).data('whatsappMessage') || '';
+                abrirWhatsApp(mensagem);
+            });
 
             initPortalAuth();
         });
@@ -548,7 +542,7 @@
             if (tenantConfig.logo_url) {
                 $('#logoImg').attr('src', tenantConfig.logo_url).removeClass('hidden');
             } else {
-                $('#logoImg').attr('src', '/assets/logo.png').removeClass('hidden');
+                $('#logoImg').addClass('hidden').attr('src', '');
             }
 
             $('#empresaNome').text(tenantName);
@@ -648,7 +642,7 @@
                 const endereco = escapeHtml(imovel.endereco || '');
                 const finalidade = escapeHtml(imovel.finalidade || '');
                 const liked = likedIds.has(imovel.id);
-                const likeIcon = liked ? '❤️' : '🤍';
+                const likeIcon = liked ? '❤️' : '❤️';
                 const imagemHtml = imagem
                     ? `<img src="${imagem}" alt="Foto do im\u00f3vel" class="w-full h-full object-cover">`
                     : `<div class="h-64 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center"><span class="text-8xl">${getTipoIcon(imovel.tipo)}</span></div>`;
@@ -662,7 +656,7 @@
                             <div class="flex justify-between items-start mb-3 gap-2">
                                 <h4 class="text-xl font-bold text-white">${titulo}</h4>
                                 <div class="flex flex-col items-end gap-2">
-                                    <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full uppercase">${finalidade}</span>
+                                    <span class="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-full uppercase">${finalidade}</span>
                                     <button onclick="event.stopPropagation(); toggleLike(${imovel.id});" class="text-2xl hover:scale-110 transition-transform">
                                         ${likeIcon}
                                     </button>
@@ -717,7 +711,7 @@
 
             const rows = lista.map(imovel => {
                 const liked = likedIds.has(imovel.id);
-                const likeIcon = liked ? '❤️' : '🤍';
+                const likeIcon = liked ? '❤️' : '❤️';
                 return [
                     escapeHtml(imovel.titulo || 'Im\u00f3vel'),
                     escapeHtml(imovel.tipo || ''),
@@ -732,6 +726,25 @@
                     `<button class="text-slate-900 font-bold" onclick="toggleLike(${imovel.id})">${likeIcon}</button>`
                 ];
             });
+
+            const headerTitles = [
+                'Título',
+                'Tipo',
+                'Finalidade',
+                'Endereço',
+                'Quartos',
+                'Banheiros',
+                'Área',
+                'Likes',
+                'Preço',
+                'Ações'
+            ];
+            const headerRow = headerTitles.map(title => `<th>${title}</th>`).join('');
+            const filterRow = headerTitles.map((title, index) => {
+                const disabled = title === 'Ações';
+                return `<th>${disabled ? '' : '<input type="text" class="w-full text-sm border border-slate-300 px-2 py-1 text-slate-900 placeholder:text-slate-500" placeholder="Filtrar">'}</th>`;
+            }).join('');
+            $('#imoveisTabela').html(`<thead><tr>${headerRow}</tr><tr class="table-filter-row">${filterRow}</tr></thead><tbody></tbody>`);
 
             dataTableInstance = $('#imoveisTabela').DataTable({
                 data: rows,
@@ -763,38 +776,17 @@
                         next: 'Pr\u00f3ximo',
                         previous: 'Anterior'
                     }
-                },
-                initComplete: function() {
-                    setupTableFilters(this.api());
                 }
             });
-        }
 
-        function setupTableFilters(api) {
-            const $table = $(api.table().node());
-            const $thead = $table.find('thead');
-            $thead.find('tr.table-filter-row').remove();
-
-            const $filterRow = $('<tr class="table-filter-row"></tr>');
-            // Adiciona um campo de filtro no cabeçalho de cada coluna
-            api.columns().every(function () {
-                const column = this;
-                const $header = $(column.header());
-                const title = $header.text();
-
-                // Adiciona classes de cor ao input
-                const $input = $('<input type="text" class="w-full text-sm border border-slate-300 px-2 py-1 text-slate-900 placeholder:text-slate-500" placeholder="Filtrar">');
-                
-                $input.on('keyup change clear', function () {
-                    if (column.search() !== this.value) {
-                        column.search(this.value).draw();
+            const api = dataTableInstance;
+            $('#imoveisTabela thead .table-filter-row input').each(function (index) {
+                $(this).on('keyup change clear', function () {
+                    if (api.column(index).search() !== this.value) {
+                        api.column(index).search(this.value).draw();
                     }
                 });
-
-                $header.append($input);
             });
-
-            $thead.append($filterRow);
         }
 
         function resetTableFilters() {
@@ -1096,7 +1088,7 @@
 
         function renderLikeButton(imovel) {
             const liked = likedIds.has(imovel.id);
-            const likeIcon = liked ? '❤️' : '🤍';
+            const likeIcon = liked ? '❤️' : '❤️';
             const count = Number(imovel.likes_count || 0);
             return `
                 <button class="like-btn flex items-center gap-2 px-2 py-1 border-2 border-slate-300 text-slate-900 font-bold text-xs" onclick="event.stopPropagation(); toggleLike(${imovel.id});">
@@ -1153,7 +1145,7 @@
             if (!imovelSelecionado) return;
             const count = Number(imovelSelecionado.likes_count || 0);
             const liked = likedIds.has(imovelSelecionado.id);
-            const likeIcon = liked ? '❤️' : '🤍';
+            const likeIcon = liked ? '❤️' : '❤️';
             $('#modalLikeCount').text(count);
             $('#modalLikeIcon').text(likeIcon);
             $('#modalLikeBtn').off('click').on('click', function(e) {
@@ -1335,7 +1327,7 @@
                 ${imovelSelecionado.area ? `<span class="font-bold">Área: ${imovelSelecionado.area}m2</span>` : ''}
                 ${imovelSelecionado.quartos ? `<span class="font-bold">Quartos: ${imovelSelecionado.quartos}</span>` : ''}
                 ${imovelSelecionado.banheiros ? `<span class="font-bold">Banheiros: ${imovelSelecionado.banheiros}</span>` : ''}
-                <span class="font-bold uppercase px-3 py-1 bg-blue-100 text-blue-700 rounded">${imovelSelecionado.finalidade || ''}</span>
+                <span class="font-bold uppercase px-3 py-1 bg-white text-blue-700 rounded">${imovelSelecionado.finalidade || ''}</span>
             `;
             $('#modalDetalhes').html(detalhes);
             $('#modalDescricao').html(formatDescricaoTopicos(imovelSelecionado.descricao));
@@ -1347,22 +1339,39 @@
             imovelSelecionado = null;
         }
 
-                function entrarEmContato() {
+        function normalizeWhatsappNumber(value) {
+            const digits = String(value || '').replace(/\D/g, '');
+            if (!digits) return '';
+            return digits.startsWith('55') ? digits : `55${digits}`;
+        }
+
+        function buildWhatsappLink(message) {
+            const whatsapp = normalizeWhatsappNumber(tenantConfig.contact_phone);
+            if (!whatsapp) return '';
+            const text = message ? `?text=${encodeURIComponent(message)}` : '';
+            return `https://wa.me/${whatsapp}${text}`;
+        }
+
+        function abrirWhatsApp(message) {
+            const link = buildWhatsappLink(message);
+            if (!link) {
+                if (typeof showToast === 'function') {
+                    showToast('Telefone de contato n\u00e3o configurado.', 'error');
+                }
+                return;
+            }
+            window.open(link, '_blank');
+        }
+
+        function entrarEmContato() {
             if (!imovelSelecionado) {
                 if (typeof showToast === 'function') {
                     showToast('Selecione um im\u00f3vel primeiro.', 'warning');
                 }
                 return;
             }
-            if (!tenantConfig.contact_phone) {
-                if (typeof showToast === 'function') {
-                    showToast('Telefone de contato n\u00e3o configurado.', 'error');
-                }
-                return;
-            }
             const mensagem = `Ol\u00e1! Tenho interesse no im\u00f3vel: ${imovelSelecionado.titulo}`;
-            const whatsapp = String(tenantConfig.contact_phone).replace(/\D/g, '');
-            window.open(`https://wa.me/55${whatsapp}?text=${encodeURIComponent(mensagem)}`, '_blank');
+            abrirWhatsApp(mensagem);
         }
         function agendarVisita() {
             if (!imovelSelecionado) {

@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment variables
+.env
+.env.*
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Backend (Lumen/Laravel)
+vendor/
+node_modules/
+public/storage
+storage/*.key
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*.log
+.phpunit.cache

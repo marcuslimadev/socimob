@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leads - SOCIMOB</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="sidebar.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="theme-toggle.js"></script>
+    <script src="sidebar.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: rgba(30, 41, 59, 0.9);
+            --bg-tertiary: rgba(15, 23, 42, 0.8);
+            --text-primary: #f8fafc;
+            --text-secondary: rgba(255,255,255,0.7);
+            --border-color: rgba(255,255,255,0.1);
+            --accent-color: #3b82f6;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+
+        .page-container {
+            padding: 2rem;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 0;
+        }
+
+        /* CARDS SIMPLIFICADOS */
+        .lead-card {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .lead-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        .lead-card.selected {
+            border-color: var(--accent-color);
+            background: rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .lead-card-checkbox {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+        }
+
+        .lead-card-checkbox input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            accent-color: var(--accent-color);
+        }
+
+        .lead-card-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            padding-right: 2.5rem;
+        }
+
+        .lead-card-phone {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+        }
+
+        .lead-card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .lead-card-date {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        /* BARRA DE AÇÕES FIXA */
+        .action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(180deg, transparent, rgba(15, 23, 42, 0.98) 20%);
+            backdrop-filter: blur(10px);
+            border-top: 2px solid var(--accent-color);
+            padding: 1.25rem 2rem;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .action-bar.visible {
+            transform: translateY(0);
+        }
+
+        .action-bar-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .action-bar-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .action-bar-count {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        .action-bar-buttons {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .action-bar-buttons .btn {
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* BADGES */
+        .badge {
+            padding: 0.4rem 0.7rem;
+            font-weight: 600;
+            font-size: 0.75rem;
+            border-radius: 6px;
+        }
+
+        /* MODAL DE DETALHES */
+        .modal-content {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-footer {
+            border-top: 1px solid var(--border-color);
+        }
+
+        .detail-row {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-value {
+            font-size: 1rem;
+            color: var(--text-primary);
+            margin-top: 0.25rem;
+        }
+
+        /* FILTROS */
+        .filter-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* PAGINAÇÃO */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* SELEÇÃO RÁPIDA */
+        .quick-select {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .quick-select .btn {
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container"></div>
+
+    <div class="page-container">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Leads</h1>
+                <p class="text-muted mb-0">Gerencie seus contatos e oportunidades</p>
+            </div>
+            <button class="btn btn-primary" onclick="openNewLeadModal()">
+                <i class="bi bi-plus-lg me-2"></i>Novo Lead
+            </button>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filter-card">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <input type="text" id="filterSearch" class="form-control" placeholder="Buscar por nome ou telefone...">
+                </div>
+                <div class="col-md-2">
+                    <select id="filterStatus" class="form-select">
+                        <option value="">Todos os Status</option>
+                        <option value="novo">Novo</option>
+                        <option value="em_atendimento">Em Atendimento</option>
+                        <option value="interesse">Interesse</option>
+                        <option value="qualificado">Qualificado</option>
+                        <option value="proposta">Proposta</option>
+                        <option value="fechado">Fechado</option>
+                        <option value="perdido">Perdido</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select id="filterOrigem" class="form-select">
+                        <option value="">Todas as Origens</option>
+                        <option value="ia">IA</option>
+                        <option value="chaves_na_mao">Chaves na Mão</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select id="filterAssigned" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="free">Livres</option>
+                        <option value="mine">Meus</option>
+                        <option value="others">Outros</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button class="btn btn-outline-primary w-100" onclick="applyFilters()">
+                        <i class="bi bi-funnel me-2"></i>Filtrar
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seleção Rápida -->
+        <div class="quick-select">
+            <button class="btn btn-sm btn-outline-secondary" onclick="selectAll()">
+                <i class="bi bi-check-all me-1"></i>Selecionar Todos
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="deselectAll()">
+                <i class="bi bi-x-lg me-1"></i>Desmarcar Todos
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="invertSelection()">
+                <i class="bi bi-arrow-left-right me-1"></i>Inverter Seleção
+            </button>
+        </div>
+
+        <!-- Grid de Leads -->
+        <div class="row g-3" id="leadsGrid">
+            <!-- Cards serão renderizados aqui via JavaScript -->
+        </div>
+
+        <!-- Paginação -->
+        <div class="pagination-container">
+            <div class="text-muted">
+                Mostrando <span id="showingCount">0</span> de <span id="totalCount">0</span> leads
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" id="btnPrev" onclick="prevPage()">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                </button>
+                <button class="btn btn-outline-primary" id="btnNext" onclick="nextPage()">
+                    Próximo <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de Ações Fixa -->
+    <div class="action-bar" id="actionBar">
+        <div class="action-bar-content">
+            <div class="action-bar-info">
+                <span class="action-bar-count">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <span id="selectedCount">0</span> selecionado(s)
+                </span>
+                <button class="btn btn-sm btn-outline-light" onclick="deselectAll()">
+                    <i class="bi bi-x-lg"></i> Limpar
+                </button>
+            </div>
+            <div class="action-bar-buttons">
+                <button class="btn btn-success" onclick="bulkClaimLeads()">
+                    <i class="bi bi-hand-thumbs-up"></i> Assumir
+                </button>
+                <button class="btn btn-warning" onclick="bulkReleaseLeads()">
+                    <i class="bi bi-arrow-counterclockwise"></i> Liberar
+                </button>
+                <button class="btn btn-info" onclick="bulkStartAI()">
+                    <i class="bi bi-robot"></i> Iniciar IA
+                </button>
+                <button class="btn btn-primary" onclick="bulkChangeStatus()">
+                    <i class="bi bi-flag"></i> Alterar Status
+                </button>
+                <button class="btn btn-danger" onclick="bulkDelete()">
+                    <i class="bi bi-trash"></i> Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes do Lead -->
+    <div class="modal fade" id="leadDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="leadDetailName">Detalhes do Lead</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="leadDetailBody">
+                    <!-- Será preenchido via JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Novo Lead -->
+    <div class="modal fade" id="newLeadModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Novo Lead</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formNewLead">
+                        <div class="mb-3">
+                            <label class="form-label">Nome *</label>
+                            <input type="text" class="form-control" name="nome" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Telefone *</label>
+                            <input type="tel" class="form-control" name="telefone" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status">
+                                <option value="novo">Novo</option>
+                                <option value="em_atendimento">Em Atendimento</option>
+                                <option value="interesse">Interesse</option>
+                                <option value="qualificado">Qualificado</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveNewLead()">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = '/api/admin';
+        let leads = [];
+        let filteredLeads = [];
+        let selectedLeads = new Set();
+        let currentPage = 1;
+        let leadsPerPage = 20;
+        let currentUser = null;
+
+        const statusLabels = {
+            'novo': 'Novo',
+            'em_atendimento': 'Em Atendimento',
+            'interesse': 'Interesse',
+            'qualificado': 'Qualificado',
+            'proposta': 'Proposta',
+            'fechado': 'Fechado',
+            'perdido': 'Perdido'
+        };
+
+        const statusColors = {
+            'novo': 'primary',
+            'em_atendimento': 'info',
+            'interesse': 'warning',
+            'qualificado': 'success',
+            'proposta': 'purple',
+            'fechado': 'success',
+            'perdido': 'danger'
+        };
+
+        $(document).ready(function() {
+            checkAuth();
+            loadCurrentUser();
+            loadLeads();
+            updateActionBar();
+            
+            // Resetar modal ao fechar
+            $('#newLeadModal').on('hidden.bs.modal', function() {
+                $('#formNewLead')[0].reset();
+                $('#formNewLead').removeData('edit-id');
+                $('#newLeadModal .modal-title').text('Novo Lead');
+            });
+        });
+
+        function checkAuth() {
+            if (!localStorage.getItem('token')) {
+                window.location.href = 'login.html';
+            }
+        }
+
+        function loadCurrentUser() {
+            const userData = localStorage.getItem('user');
+            if (userData) {
+                try {
+                    currentUser = JSON.parse(userData);
+                } catch (e) {
+                    console.error('Erro ao parsear dados do usuário:', e);
+                }
+            }
+        }
+
+        function loadLeads() {
+            $.ajax({
+                url: API_URL + '/leads',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                success: function(response) {
+                    leads = response.data || [];
+                    leads.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    applyFilters();
+                },
+                error: function() {
+                    leads = buildMockLeads();
+                    applyFilters();
+                }
+            });
+        }
+
+        function buildMockLeads() {
+            return [
+                { id: 1, nome: 'João Silva', email: 'joao@email.com', telefone: '(11) 98765-4321', status: 'novo', created_at: '2025-12-28', origem: 'ia', assigned_user_id: null },
+                { id: 2, nome: 'Maria Santos', email: 'maria@email.com', telefone: '(11) 98765-4322', status: 'em_atendimento', created_at: '2025-12-27', origem: 'chaves_na_mao', assigned_user_id: 1, assigned_user_name: 'Admin Principal' },
+                { id: 3, nome: 'Pedro Costa', email: 'pedro@email.com', telefone: '(11) 98765-4323', status: 'qualificado', created_at: '2025-12-20', origem: 'ia', assigned_user_id: currentUser?.id, assigned_user_name: currentUser?.name },
+                { id: 4, nome: 'Ana Oliveira', email: 'ana@email.com', telefone: '(11) 98765-4324', status: 'proposta', created_at: '2025-12-21', origem: 'chaves_na_mao', assigned_user_id: null },
+                { id: 5, nome: 'Carlos Souza', email: 'carlos@email.com', telefone: '(11) 98765-4325', status: 'fechado', created_at: '2025-12-22', origem: 'ia', assigned_user_id: 2, assigned_user_name: 'Outro Corretor' },
+            ];
+        }
+
+        function applyFilters() {
+            const search = $('#filterSearch').val().toLowerCase();
+            const status = $('#filterStatus').val();
+            const origem = $('#filterOrigem').val();
+            const assigned = $('#filterAssigned').val();
+
+            filteredLeads = leads.filter(lead => {
+                // Busca por nome/telefone
+                if (search && !lead.nome.toLowerCase().includes(search) && !lead.telefone.includes(search)) {
+                    return false;
+                }
+
+                // Filtro de status
+                if (status && lead.status !== status) {
+                    return false;
+                }
+
+                // Filtro de origem
+                if (origem && lead.origem !== origem) {
+                    return false;
+                }
+
+                // Filtro de atribuição
+                if (assigned === 'free' && lead.assigned_user_id) return false;
+                if (assigned === 'mine' && (!currentUser || lead.assigned_user_id !== currentUser.id)) return false;
+                if (assigned === 'others' && (!lead.assigned_user_id || lead.assigned_user_id === currentUser?.id)) return false;
+
+                return true;
+            });
+
+            currentPage = 1;
+            renderLeadsGrid();
+        }
+
+        function clearFilters() {
+            $('#filterSearch').val('');
+            $('#filterStatus').val('');
+            $('#filterOrigem').val('');
+            $('#filterAssigned').val('');
+            applyFilters();
+        }
+
+        function renderLeadsGrid() {
+            const start = (currentPage - 1) * leadsPerPage;
+            const end = start + leadsPerPage;
+            const pageLeads = filteredLeads.slice(start, end);
+
+            const html = pageLeads.map(lead => renderLeadCard(lead)).join('');
+            $('#leadsGrid').html(html || '<div class="col-12 text-center text-muted py-5">Nenhum lead encontrado</div>');
+
+            // Atualizar contadores
+            const totalPages = Math.ceil(filteredLeads.length / leadsPerPage);
+            $('#showingCount').text(pageLeads.length);
+            $('#totalCount').text(filteredLeads.length);
+            $('#btnPrev').prop('disabled', currentPage === 1);
+            $('#btnNext').prop('disabled', currentPage >= totalPages || filteredLeads.length === 0);
+
+            // Marcar selecionados
+            selectedLeads.forEach(id => {
+                $(`#lead-checkbox-${id}`).prop('checked', true);
+                $(`#lead-card-${id}`).addClass('selected');
+            });
+        }
+
+        function renderLeadCard(lead) {
+            const statusColor = statusColors[lead.status] || 'secondary';
+            const statusLabel = statusLabels[lead.status] || lead.status;
+            const origem = lead.origem === 'ia' ? '<i class="bi bi-robot me-1"></i>IA' : 
+                           lead.origem === 'chaves_na_mao' ? '<i class="bi bi-house-door me-1"></i>Chaves na Mão' : '-';
+            const origemClass = lead.origem === 'ia' ? 'bg-info' : lead.origem === 'chaves_na_mao' ? 'bg-warning' : 'bg-secondary';
+            
+            const isFree = !lead.assigned_user_id;
+            const isMine = currentUser && currentUser.id && Number(lead.assigned_user_id) === Number(currentUser.id);
+            const assignedLabel = isFree ? 'Livre' : isMine ? 'Você' : (lead.assigned_user_name || 'Em atendimento');
+            const assignedColor = isFree ? 'secondary' : isMine ? 'success' : 'primary';
+
+            return `
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <div class="lead-card" id="lead-card-${lead.id}" onclick="toggleLeadSelection(${lead.id}, event)">
+                        <div class="lead-card-checkbox">
+                            <input type="checkbox" id="lead-checkbox-${lead.id}" onclick="event.stopPropagation(); toggleLeadSelection(${lead.id}, event);">
+                        </div>
+                        
+                        <div class="lead-card-name">${lead.nome}</div>
+                        
+                        <div class="lead-card-phone">
+                            <i class="bi bi-telephone"></i>
+                            ${lead.telefone}
+                        </div>
+                        
+                        <div class="lead-card-meta">
+                            <span class="badge bg-${statusColor}">${statusLabel}</span>
+                            <span class="badge bg-${assignedColor}">${assignedLabel}</span>
+                            <span class="badge ${origemClass}">${origem}</span>
+                        </div>
+                        
+                        <div class="lead-card-date mt-2">
+                            <i class="bi bi-calendar3"></i>
+                            ${formatDate(lead.created_at)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleLeadSelection(leadId, event) {
+            if (event.target.type === 'checkbox') {
+                // Click direto no checkbox
+                if (event.target.checked) {
+                    selectedLeads.add(leadId);
+                    $(`#lead-card-${leadId}`).addClass('selected');
+                } else {
+                    selectedLeads.delete(leadId);
+                    $(`#lead-card-${leadId}`).removeClass('selected');
+                }
+            } else {
+                // Click no card - abre detalhes
+                openLeadDetail(leadId);
+            }
+            
+            updateActionBar();
+        }
+
+        function selectAll() {
+            filteredLeads.forEach(lead => {
+                selectedLeads.add(lead.id);
+                $(`#lead-checkbox-${lead.id}`).prop('checked', true);
+                $(`#lead-card-${lead.id}`).addClass('selected');
+            });
+            updateActionBar();
+        }
+
+        function deselectAll() {
+            selectedLeads.clear();
+            $('.lead-card').removeClass('selected');
+            $('input[type="checkbox"]').prop('checked', false);
+            updateActionBar();
+        }
+
+        function invertSelection() {
+            const currentPage = filteredLeads.slice((currentPage - 1) * leadsPerPage, currentPage * leadsPerPage);
+            currentPage.forEach(lead => {
+                if (selectedLeads.has(lead.id)) {
+                    selectedLeads.delete(lead.id);
+                    $(`#lead-checkbox-${lead.id}`).prop('checked', false);
+                    $(`#lead-card-${lead.id}`).removeClass('selected');
+                } else {
+                    selectedLeads.add(lead.id);
+                    $(`#lead-checkbox-${lead.id}`).prop('checked', true);
+                    $(`#lead-card-${lead.id}`).addClass('selected');
+                }
+            });
+            updateActionBar();
+        }
+
+        function updateActionBar() {
+            const count = selectedLeads.size;
+            $('#selectedCount').text(count);
+            
+            if (count > 0) {
+                $('#actionBar').addClass('visible');
+            } else {
+                $('#actionBar').removeClass('visible');
+            }
+        }
+
+        function openLeadDetail(leadId) {
+            const lead = leads.find(l => l.id === leadId);
+            if (!lead) return;
+
+            const statusLabel = statusLabels[lead.status] || lead.status;
+            const origem = lead.origem === 'ia' ? 'IA' : lead.origem === 'chaves_na_mao' ? 'Chaves na Mão' : '-';
+            const isFree = !lead.assigned_user_id;
+            const isMine = currentUser && currentUser.id && Number(lead.assigned_user_id) === Number(currentUser.id);
+            const assignedLabel = isFree ? 'Livre' : isMine ? 'Você' : (lead.assigned_user_name || 'Em atendimento');
+
+            const html = `
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="detail-row">
+                            <div class="detail-label">Nome</div>
+                            <div class="detail-value">${lead.nome}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="detail-row">
+                            <div class="detail-label">Telefone</div>
+                            <div class="detail-value">${lead.telefone}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="detail-row">
+                            <div class="detail-label">Email</div>
+                            <div class="detail-value">${lead.email || '-'}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="detail-row">
+                            <div class="detail-label">Status</div>
+                            <div class="detail-value">${statusLabel}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="detail-row">
+                            <div class="detail-label">Origem</div>
+                            <div class="detail-value">${origem}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="detail-row">
+                            <div class="detail-label">Responsável</div>
+                            <div class="detail-value">${assignedLabel}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="detail-row">
+                            <div class="detail-label">Data de Criação</div>
+                            <div class="detail-value">${formatDate(lead.created_at)}</div>
+                        </div>
+                    </div>
+                    ${lead.valor_investimento ? `
+                        <div class="col-md-6">
+                            <div class="detail-row">
+                                <div class="detail-label">Valor Investimento</div>
+                                <div class="detail-value">R$ ${formatMoney(lead.valor_investimento)}</div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    <div class="col-12 mt-4">
+                        <div class="d-flex gap-2 flex-wrap">
+                            ${isFree ? `<button class="btn btn-success" onclick="claimLead(${lead.id})"><i class="bi bi-hand-thumbs-up me-2"></i>Assumir</button>` : ''}
+                            ${isMine ? `<button class="btn btn-warning" onclick="releaseLead(${lead.id})"><i class="bi bi-arrow-counterclockwise me-2"></i>Liberar</button>` : ''}
+                            <button class="btn btn-info" onclick="iniciarAtendimentoIA(${lead.id})"><i class="bi bi-robot me-2"></i>Iniciar IA</button>
+                            <a href="conversas.html?lead_id=${lead.id}&telefone=${encodeURIComponent(lead.telefone || '')}" class="btn btn-primary"><i class="bi bi-chat-dots me-2"></i>Conversa</a>
+                            <a href="${getWhatsAppLink(lead.telefone, lead.nome)}" target="_blank" class="btn btn-success"><i class="bi bi-whatsapp me-2"></i>WhatsApp</a>
+                            <button class="btn btn-outline-primary" onclick="editLead(${lead.id})"><i class="bi bi-pencil me-2"></i>Editar</button>
+                            <button class="btn btn-outline-danger" onclick="deleteLead(${lead.id})"><i class="bi bi-trash me-2"></i>Excluir</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            $('#leadDetailName').text(lead.nome);
+            $('#leadDetailBody').html(html);
+            new bootstrap.Modal(document.getElementById('leadDetailModal')).show();
+        }
+
+        // AÇÕES EM LOTE
+        function bulkClaimLeads() {
+            if (selectedLeads.size === 0) return;
+            if (!confirm(`Assumir ${selectedLeads.size} lead(s)?`)) return;
+            
+            let success = 0;
+            let errors = 0;
+            const total = selectedLeads.size;
+            const leadArray = Array.from(selectedLeads);
+            
+            const promises = leadArray.map(id => 
+                $.ajax({
+                    url: API_URL + '/leads/' + id + '/claim',
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                }).then(() => success++).catch(() => errors++)
+            );
+            
+            Promise.all(promises).finally(() => {
+                alert(`Concluído!\n✅ Assumidos: ${success}\n❌ Erros: ${errors}`);
+                deselectAll();
+                loadLeads();
+            });
+        }
+
+        function bulkReleaseLeads() {
+            if (selectedLeads.size === 0) return;
+            if (!confirm(`Liberar ${selectedLeads.size} lead(s)?`)) return;
+            
+            let success = 0;
+            let errors = 0;
+            const leadArray = Array.from(selectedLeads);
+            
+            const promises = leadArray.map(id => 
+                $.ajax({
+                    url: API_URL + '/leads/' + id + '/release',
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                }).then(() => success++).catch(() => errors++)
+            );
+            
+            Promise.all(promises).finally(() => {
+                alert(`Concluído!\n✅ Liberados: ${success}\n❌ Erros: ${errors}`);
+                deselectAll();
+                loadLeads();
+            });
+        }
+
+        function bulkStartAI() {
+            if (selectedLeads.size === 0) return;
+            if (!confirm(`Iniciar atendimento IA para ${selectedLeads.size} lead(s)?`)) return;
+            
+            const leadIds = Array.from(selectedLeads);
+            
+            $.ajax({
+                url: API_URL + '/leads/iniciar-atendimento-lote',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                contentType: 'application/json',
+                data: JSON.stringify({ lead_ids: leadIds }),
+                success: function(response) {
+                    alert(`Atendimento iniciado com sucesso!\n${response.message || ''}`);
+                    deselectAll();
+                    loadLeads();
+                },
+                error: function(xhr) {
+                    alert('Erro: ' + (xhr.responseJSON?.error || 'Não foi possível iniciar atendimento'));
+                }
+            });
+        }
+
+        function bulkChangeStatus() {
+            if (selectedLeads.size === 0) return;
+            
+            const statusOptions = ['novo', 'em_atendimento', 'interesse', 'qualificado', 'proposta', 'fechado', 'perdido'];
+            const newStatus = prompt('Digite o novo status:\n' + statusOptions.join(', '));
+            
+            if (!newStatus || !statusOptions.includes(newStatus)) {
+                alert('Status inválido!');
+                return;
+            }
+            
+            let success = 0;
+            let errors = 0;
+            const leadArray = Array.from(selectedLeads);
+            
+            const promises = leadArray.map(id => 
+                $.ajax({
+                    url: API_URL + '/leads/' + id,
+                    method: 'PATCH',
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                    contentType: 'application/json',
+                    data: JSON.stringify({ status: newStatus })
+                }).then(() => success++).catch(() => errors++)
+            );
+            
+            Promise.all(promises).finally(() => {
+                alert(`Status alterado!\n✅ Atualizados: ${success}\n❌ Erros: ${errors}`);
+                deselectAll();
+                loadLeads();
+            });
+        }
+
+        function bulkDelete() {
+            if (selectedLeads.size === 0) return;
+            if (!confirm(`ATENÇÃO: Deseja EXCLUIR ${selectedLeads.size} lead(s)? Esta ação não pode ser desfeita!`)) return;
+            
+            const leadArray = Array.from(selectedLeads);
+            
+            $.ajax({
+                url: API_URL + '/leads',
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                contentType: 'application/json',
+                data: JSON.stringify({ ids: leadArray }),
+                success: function(response) {
+                    alert(`✅ ${leadArray.length} lead(s) excluído(s) com sucesso!`);
+                    deselectAll();
+                    loadLeads();
+                },
+                error: function(xhr) {
+                    alert('❌ Erro ao excluir leads: ' + (xhr.responseJSON?.error || 'Erro desconhecido'));
+                }
+            });
+        }
+
+        // AÇÕES INDIVIDUAIS
+        function claimLead(id) {
+            $.ajax({
+                url: API_URL + '/leads/' + id + '/claim',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                success: function(response) {
+                    alert('✅ Lead assumido com sucesso!');
+                    loadLeads();
+                    bootstrap.Modal.getInstance(document.getElementById('leadDetailModal'))?.hide();
+                },
+                error: function(xhr) {
+                    alert('❌ Erro: ' + (xhr.responseJSON?.message || 'Não foi possível assumir o lead'));
+                }
+            });
+        }
+
+        function releaseLead(id) {
+            if (!confirm('Deseja liberar este lead?')) return;
+            
+            $.ajax({
+                url: API_URL + '/leads/' + id + '/release',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                success: function(response) {
+                    alert('✅ Lead liberado com sucesso!');
+                    loadLeads();
+                    bootstrap.Modal.getInstance(document.getElementById('leadDetailModal'))?.hide();
+                },
+                error: function(xhr) {
+                    alert('❌ Erro: ' + (xhr.responseJSON?.message || 'Não foi possível liberar o lead'));
+                }
+            });
+        }
+
+        function iniciarAtendimentoIA(leadId) {
+            if (!confirm('Iniciar atendimento IA para este lead?')) return;
+            
+            const $btn = event?.target?.closest('.btn');
+            if ($btn) {
+                const originalText = $btn.innerHTML;
+                $btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Iniciando...';
+                $btn.disabled = true;
+            }
+            
+            $.ajax({
+                url: API_URL + '/leads/' + leadId + '/iniciar-atendimento',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                success: function(response) {
+                    alert('Atendimento IA iniciado com sucesso!\n' + (response.message || ''));
+                    loadLeads();
+                    bootstrap.Modal.getInstance(document.getElementById('leadDetailModal'))?.hide();
+                },
+                error: function(xhr) {
+                    alert('Erro: ' + (xhr.responseJSON?.error || 'Não foi possível iniciar atendimento'));
+                },
+                complete: function() {
+                    if ($btn) {
+                        $btn.innerHTML = originalText;
+                        $btn.disabled = false;
+                    }
+                }
+            });
+        }
+
+        function editLead(id) {
+            const lead = leads.find(l => l.id === id);
+            if (!lead) return;
+            
+            // Preencher formulário
+            $('#formNewLead [name="nome"]').val(lead.nome);
+            $('#formNewLead [name="email"]').val(lead.email);
+            $('#formNewLead [name="telefone"]').val(lead.telefone);
+            $('#formNewLead [name="status"]').val(lead.status);
+            $('#formNewLead').data('edit-id', id);
+            
+            $('#newLeadModal .modal-title').text('Editar Lead');
+            bootstrap.Modal.getInstance(document.getElementById('leadDetailModal'))?.hide();
+            new bootstrap.Modal(document.getElementById('newLeadModal')).show();
+        }
+
+        function deleteLead(id) {
+            if (!confirm('ATENÇÃO: Deseja EXCLUIR este lead?\nEsta ação não pode ser desfeita!')) return;
+            
+            $.ajax({
+                url: API_URL + '/leads/' + id,
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                success: function(response) {
+                    alert('✅ Lead excluído com sucesso!');
+                    loadLeads();
+                    bootstrap.Modal.getInstance(document.getElementById('leadDetailModal'))?.hide();
+                },
+                error: function(xhr) {
+                    alert('❌ Erro ao excluir: ' + (xhr.responseJSON?.error || 'Erro desconhecido'));
+                }
+            });
+        }
+
+        function openNewLeadModal() {
+            new bootstrap.Modal(document.getElementById('newLeadModal')).show();
+        }
+
+        function saveNewLead() {
+            const form = $('#formNewLead');
+            const editId = form.data('edit-id');
+            
+            const data = {
+                nome: form.find('[name="nome"]').val(),
+                email: form.find('[name="email"]').val(),
+                telefone: form.find('[name="telefone"]').val(),
+                status: form.find('[name="status"]').val()
+            };
+            
+            if (!data.nome || !data.telefone) {
+                alert('Nome e telefone são obrigatórios!');
+                return;
+            }
+            
+            const isEdit = !!editId;
+            
+            $.ajax({
+                url: API_URL + '/leads' + (isEdit ? '/' + editId : ''),
+                method: isEdit ? 'PUT' : 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(response) {
+                    alert('✅ Lead ' + (isEdit ? 'atualizado' : 'criado') + ' com sucesso!');
+                    bootstrap.Modal.getInstance(document.getElementById('newLeadModal')).hide();
+                    form[0].reset();
+                    form.removeData('edit-id');
+                    $('#newLeadModal .modal-title').text('Novo Lead');
+                    loadLeads();
+                },
+                error: function(xhr) {
+                    alert('❌ Erro: ' + (xhr.responseJSON?.error || 'Não foi possível salvar'));
+                }
+            });
+        }
+
+        // PAGINAÇÃO
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderLeadsGrid();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredLeads.length / leadsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderLeadsGrid();
+            }
+        }
+
+        // UTILITÁRIOS
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        function formatMoney(value) {
+            return new Intl.NumberFormat('pt-BR').format(value);
+        }
+
+        function getWhatsAppLink(phone, name) {
+            const cleanPhone = phone.replace(/\D/g, '');
+            const message = encodeURIComponent(`Olá ${name}, tudo bem?`);
+            return `https://wa.me/55${cleanPhone}?text=${message}`;
+        }
+    </script>
+</body>
+</html>

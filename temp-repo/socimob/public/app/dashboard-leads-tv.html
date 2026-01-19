@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Leads - TV</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .new-lead {
+            animation: slideIn 0.5s ease-out;
+            border: 2px solid #22c55e !important;
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.4);
+        }
+        
+        .lead-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .lead-card:hover {
+            transform: scale(1.02);
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.3);
+        }
+        
+        .lead-card.claimed {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+        
+        .pulse-badge {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .btn-claim {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+        }
+        
+        .btn-claim:hover {
+            box-shadow: 0 6px 30px rgba(59, 130, 246, 0.6);
+        }
+        
+        .header-stat {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body class="p-6">
+    <!-- Header com Estatísticas -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-4xl font-bold text-white mb-2">📊 Dashboard de Leads</h1>
+                <p class="text-gray-400 text-lg" id="currentTime"></p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="header-stat text-center">
+                    <div class="text-5xl font-bold text-green-400" id="totalLeads">0</div>
+                    <div class="text-sm text-gray-400 uppercase tracking-wide mt-2">Total Leads</div>
+                </div>
+                <div class="header-stat text-center">
+                    <div class="text-5xl font-bold text-yellow-400" id="totalMessages">0</div>
+                    <div class="text-sm text-gray-400 uppercase tracking-wide mt-2">💬 Mensagens</div>
+                </div>
+                <div class="header-stat text-center">
+                    <div class="text-5xl font-bold text-blue-400" id="newLeadsCount">0</div>
+                    <div class="text-sm text-gray-400 uppercase tracking-wide mt-2">⚡ Novos</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid de Leads -->
+    <div id="leadsContainer" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <!-- Leads serão inseridos aqui -->
+    </div>
+
+    <!-- Áudio de Notificação -->
+    <audio id="notificationSound" preload="auto">
+        <source src="data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAFAAADhABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVaqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr///////////////////////////////////////////8AAAA5TEFNRTMuOTlyAc0AAAAAAAAAABSAJANGQgAAgAAAg4S+E+JEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQxAAP8AAAf4AAAAgAAA0gAAABAAAAAAAAAAAEINAABBMAQLAWPfyICAgICAQLggCAgICAQLg4CAgICAQLiQCAgICAQLjgCAgICAQLkgCAgICAQLl4CAgICAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const API_URL = '/api';
+        let leads = [];
+        let previousLeads = [];
+        let refreshInterval = null;
+        let currentUser = null;
+
+        $(document).ready(function() {
+            checkAuth();
+            loadLeads();
+            updateClock();
+            
+            // Atualizar a cada 2 segundos
+            refreshInterval = setInterval(loadLeads, 2000);
+            setInterval(updateClock, 1000);
+        });
+
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const userStr = localStorage.getItem('user');
+            if (!token || !userStr) {
+                window.location.href = 'login.html';
+                return;
+            }
+            currentUser = JSON.parse(userStr);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            };
+            $('#currentTime').text(now.toLocaleDateString('pt-BR', options));
+        }
+
+        function loadLeads() {
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: API_URL + '/leads',
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function(response) {
+                    previousLeads = [...leads];
+                    leads = response.data || [];
+                    
+                    // Ordenar por mensagem mais recente
+                    leads.sort((a, b) => {
+                        const dateA = new Date(a.updated_at || a.created_at);
+                        const dateB = new Date(b.updated_at || b.created_at);
+                        return dateB - dateA;
+                    });
+                    
+                    // Detectar novos leads
+                    const newLeadsIds = detectNewLeads();
+                    if (newLeadsIds.length > 0) {
+                        playNotificationSound();
+                    }
+                    
+                    renderLeads(newLeadsIds);
+                    updateStats();
+                },
+                error: function() {
+                    console.error('Erro ao carregar leads');
+                }
+            });
+        }
+
+        function detectNewLeads() {
+            const previousIds = previousLeads.map(l => l.id);
+            return leads.filter(l => !previousIds.includes(l.id)).map(l => l.id);
+        }
+
+        function playNotificationSound() {
+            const audio = document.getElementById('notificationSound');
+            audio.currentTime = 0;
+            audio.play().catch(e => {
+                console.log('Notificação bloqueada pelo navegador');
+            });
+        }
+
+        function updateStats() {
+            const total = leads.length;
+            const messages = leads.reduce((sum, lead) => sum + (lead.mensagens_count || 0), 0);
+            const newLeads = leads.filter(l => l.status === 'novo').length;
+            
+            $('#totalLeads').text(total);
+            $('#totalMessages').text(messages);
+            $('#newLeadsCount').text(newLeads);
+        }
+
+        function renderLeads(newLeadsIds = []) {
+            if (leads.length === 0) {
+                $('#leadsContainer').html(`
+                    <div class="col-span-full text-center py-20">
+                        <p class="text-3xl text-gray-500">Nenhum lead no momento</p>
+                        <p class="text-xl text-gray-600 mt-4">Aguardando novos contatos...</p>
+                    </div>
+                `);
+                return;
+            }
+
+            const html = leads.map(lead => renderLeadCard(lead, newLeadsIds.includes(lead.id))).join('');
+            $('#leadsContainer').html(html);
+        }
+
+        function renderLeadCard(lead, isNew) {
+            const isClaimed = lead.corretor_id && lead.corretor_id !== null;
+            const isMyLead = isClaimed && lead.corretor_id === currentUser.id;
+            const canClaim = !isClaimed || currentUser.is_admin || isMyLead;
+            
+            const messages = lead.mensagens_count || 0;
+            const budget = lead.budget_max || lead.valor_investimento;
+            
+            const corretorName = lead.corretor_nome || '';
+            const cardClass = isClaimed ? 'lead-card claimed' : 'lead-card';
+            const newClass = isNew ? 'new-lead' : '';
+            
+            return `
+                <div class="${cardClass} ${newClass} p-8">
+                    <!-- Nome em destaque -->
+                    <div class="mb-6">
+                        <h2 class="text-4xl font-bold text-white mb-3">${lead.nome}</h2>
+                        ${messages > 0 ? `
+                            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/20 border border-blue-500/40">
+                                <span class="text-3xl pulse-badge">💬</span>
+                                <span class="text-2xl font-bold text-blue-300">${messages} mensagens</span>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- Telefone (grande destaque) -->
+                    <div class="mb-4 p-6 bg-green-500/10 rounded-xl border border-green-500/30">
+                        <div class="flex items-center gap-3">
+                            <span class="text-4xl">📱</span>
+                            <div>
+                                <p class="text-sm text-gray-400 uppercase tracking-wide">Telefone</p>
+                                <a href="tel:${lead.telefone}" class="text-3xl font-bold text-green-400 hover:text-green-300 transition">
+                                    ${lead.telefone}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Valor a Investir (grande destaque) -->
+                    ${budget ? `
+                        <div class="mb-4 p-6 bg-yellow-500/10 rounded-xl border border-yellow-500/30">
+                            <div class="flex items-center gap-3">
+                                <span class="text-4xl">💰</span>
+                                <div>
+                                    <p class="text-sm text-gray-400 uppercase tracking-wide">Valor a Investir</p>
+                                    <p class="text-3xl font-bold text-yellow-400">R$ ${formatMoney(budget)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- Email -->
+                    <div class="mb-6">
+                        <div class="flex items-center gap-2 text-gray-300">
+                            <span class="text-xl">📧</span>
+                            <span class="text-lg truncate">${lead.email || 'Não informado'}</span>
+                        </div>
+                    </div>
+
+                    <!-- Status do Corretor -->
+                    ${isClaimed ? `
+                        <div class="mb-4 p-4 bg-green-500/20 rounded-xl border border-green-500/40">
+                            <div class="flex items-center gap-2">
+                                <span class="text-2xl">👤</span>
+                                <div>
+                                    <p class="text-xs text-gray-400 uppercase">Em atendimento por</p>
+                                    <p class="text-lg font-bold text-green-300">${corretorName}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- Botões de Ação -->
+                    <div class="mt-6 flex gap-3">
+                        ${!isClaimed ? `
+                            <button onclick="claimLead(${lead.id})" 
+                                class="btn-claim flex-1 text-white font-bold py-4 px-6 rounded-xl text-xl uppercase tracking-wide transition-all">
+                                ✋ Pegar Atendimento
+                            </button>
+                        ` : (currentUser.is_admin || isMyLead) ? `
+                            <button onclick="releaseLead(${lead.id})" 
+                                class="flex-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-white font-bold py-4 px-6 rounded-xl text-xl uppercase tracking-wide transition-all">
+                                🔓 Liberar Lead
+                            </button>
+                        ` : `
+                            <div class="flex-1 bg-gray-500/20 border border-gray-500/40 text-gray-400 font-bold py-4 px-6 rounded-xl text-xl uppercase tracking-wide text-center">
+                                🔒 Em Atendimento
+                            </div>
+                        `}
+                    </div>
+
+                    <!-- Footer com data -->
+                    <div class="mt-6 pt-4 border-t border-gray-700">
+                        <p class="text-sm text-gray-500">
+                            📅 ${formatDateTime(lead.updated_at || lead.created_at)}
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function claimLead(leadId) {
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: API_URL + '/leads/' + leadId + '/claim',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function() {
+                    loadLeads();
+                },
+                error: function(xhr) {
+                    alert('Erro ao pegar o atendimento: ' + (xhr.responseJSON?.message || 'Erro desconhecido'));
+                }
+            });
+        }
+
+        function releaseLead(leadId) {
+            if (!confirm('Deseja liberar este lead para outros corretores?')) {
+                return;
+            }
+            
+            const token = localStorage.getItem('token');
+            
+            $.ajax({
+                url: API_URL + '/leads/' + leadId + '/release',
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                success: function() {
+                    loadLeads();
+                },
+                error: function(xhr) {
+                    alert('Erro ao liberar o lead: ' + (xhr.responseJSON?.message || 'Erro desconhecido'));
+                }
+            });
+        }
+
+        function formatMoney(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(value);
+        }
+
+        function formatDateTime(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins < 1) return 'Agora mesmo';
+            if (diffMins < 60) return `Há ${diffMins} min`;
+            if (diffMins < 1440) return `Há ${Math.floor(diffMins / 60)}h`;
+            
+            return date.toLocaleDateString('pt-BR', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    </script>
+</body>
+</html>

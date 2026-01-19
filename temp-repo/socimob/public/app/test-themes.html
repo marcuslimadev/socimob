@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Temas - Bootswatch</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="bootswatch-themes.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-12 text-center mb-4">
+                <h1 class="display-4">
+                    <i class="bi bi-palette-fill text-primary"></i>
+                    Seletor de Temas Bootswatch
+                </h1>
+                <p class="lead text-muted">
+                    26 temas visuais diferentes para personalizar sua experiência
+                </p>
+            </div>
+        </div>
+
+        <div class="row justify-content-center mb-5">
+            <div class="col-auto">
+                <button class="btn btn-primary btn-lg" onclick="window.openThemeSelector()">
+                    <i class="bi bi-palette-fill me-2"></i>
+                    Abrir Seletor de Temas
+                </button>
+            </div>
+        </div>
+
+        <!-- Demo de componentes Bootstrap -->
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Componentes Bootstrap</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6>Botões</h6>
+                        <div class="mb-3">
+                            <button class="btn btn-primary me-2">Primary</button>
+                            <button class="btn btn-secondary me-2">Secondary</button>
+                            <button class="btn btn-success me-2">Success</button>
+                            <button class="btn btn-danger me-2">Danger</button>
+                            <button class="btn btn-warning me-2">Warning</button>
+                            <button class="btn btn-info me-2">Info</button>
+                        </div>
+
+                        <h6>Badges</h6>
+                        <div class="mb-3">
+                            <span class="badge bg-primary me-2">Primary</span>
+                            <span class="badge bg-secondary me-2">Secondary</span>
+                            <span class="badge bg-success me-2">Success</span>
+                            <span class="badge bg-danger me-2">Danger</span>
+                            <span class="badge bg-warning me-2">Warning</span>
+                            <span class="badge bg-info me-2">Info</span>
+                        </div>
+
+                        <h6>Alerts</h6>
+                        <div class="alert alert-success" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            Operação realizada com sucesso!
+                        </div>
+                        <div class="alert alert-warning" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            Atenção: verifique os dados antes de continuar.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Formulários</h5>
+                    </div>
+                    <div class="card-body">
+                        <form>
+                            <div class="mb-3">
+                                <label for="exampleInput" class="form-label">Nome completo</label>
+                                <input type="text" class="form-control" id="exampleInput" placeholder="Digite seu nome">
+                            </div>
+                            <div class="mb-3">
+                                <label for="exampleSelect" class="form-label">Selecione uma opção</label>
+                                <select class="form-select" id="exampleSelect">
+                                    <option selected>Escolha...</option>
+                                    <option value="1">Opção 1</option>
+                                    <option value="2">Opção 2</option>
+                                    <option value="3">Opção 3</option>
+                                </select>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="exampleCheck">
+                                <label class="form-check-label" for="exampleCheck">
+                                    Aceito os termos e condições
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Enviar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Tabela de Dados</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Nome</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>1</td>
+                                        <td>João Silva</td>
+                                        <td>joao@email.com</td>
+                                        <td><span class="badge bg-success">Ativo</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>2</td>
+                                        <td>Maria Santos</td>
+                                        <td>maria@email.com</td>
+                                        <td><span class="badge bg-warning">Pendente</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>3</td>
+                                        <td>Pedro Oliveira</td>
+                                        <td>pedro@email.com</td>
+                                        <td><span class="badge bg-danger">Inativo</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h4>
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            Como usar
+                        </h4>
+                        <ul class="mb-0">
+                            <li>Clique no botão "Abrir Seletor de Temas" acima</li>
+                            <li>Escolha um dos 26 temas disponíveis</li>
+                            <li>O tema será aplicado instantaneamente</li>
+                            <li>Sua preferência é salva automaticamente no navegador</li>
+                            <li>Todos os componentes Bootstrap são estilizados automaticamente</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

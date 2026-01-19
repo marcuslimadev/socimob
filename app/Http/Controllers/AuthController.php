@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 /**
  * Controller de Autenticação
@@ -17,13 +18,33 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
+        // Validação de inputs
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|max:255',
+            'password' => 'sometimes|string|min:6|max:255',
+            'senha' => 'sometimes|string|min:6|max:255',
+        ], [
+            'email.required' => 'Email é obrigatório',
+            'email.email' => 'Email deve ser válido',
+            'password.min' => 'Senha deve ter no mínimo 6 caracteres',
+            'senha.min' => 'Senha deve ter no mínimo 6 caracteres',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dados inválidos',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
         $email = $request->input('email');
         $password = $request->input('password') ?: $request->input('senha');
         
-        if (!$email || !$password) {
+        if (!$password) {
             return response()->json([
                 'success' => false,
-                'message' => 'Email e senha são obrigatórios'
+                'message' => 'Senha é obrigatória'
             ], 400);
         }
         
@@ -103,14 +124,23 @@ class AuthController extends Controller
     public function googleLogin(Request $request)
     {
         try {
-            $googleToken = $request->input('token');
-            
-            if (!$googleToken) {
+            // Validação do token
+            $validator = Validator::make($request->all(), [
+                'token' => 'required|string|min:10',
+            ], [
+                'token.required' => 'Token do Google é obrigatório',
+                'token.min' => 'Token inválido',
+            ]);
+
+            if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Token do Google não fornecido'
-                ], 400);
+                    'message' => 'Dados inválidos',
+                    'errors' => $validator->errors()
+                ], 422);
             }
+
+            $googleToken = $request->input('token');
 
             // Verificar o token do Google (simulado - implementar verificação real em produção)
             // Em produção, usar: https://developers.google.com/identity/sign-in/web/backend-auth

@@ -283,6 +283,10 @@ class WhatsAppService
             $conversa->update(['lead_id' => $lead->id]);
         }
 
+        if (empty($conversa->stage)) {
+            $conversa->update(['stage' => 'boas_vindas']);
+        }
+
         $this->saveMensagem($conversa->id, [
             'direction' => 'incoming',
             'message_type' => 'text',
@@ -694,6 +698,8 @@ class WhatsAppService
             'content_preview' => isset($aiResponse['content']) ? substr($aiResponse['content'], 0, 100) : 'N/A'
         ]);
         
+        $fallbackMessage = null;
+
         if ($aiResponse['success']) {
             // Enviar resposta
             $sendResult = $this->sendMessage($conversa->id, $conversa->telefone, $aiResponse['content']);
@@ -735,12 +741,15 @@ class WhatsAppService
             Log::error('❌ IA falhou ao processar mensagem', [
                 'error' => $aiResponse['error'] ?? 'Erro desconhecido'
             ]);
+
+            $fallbackMessage = 'Desculpe, tive um problema para responder agora. Pode repetir ou detalhar um pouco mais?';
+            $this->sendMessage($conversa->id, $conversa->telefone, $fallbackMessage);
         }
         
         return [
             'success' => true,
             'message' => 'Mensagem processada',
-            'ai_response' => $aiResponse['content'] ?? null,
+            'ai_response' => $aiResponse['content'] ?? $fallbackMessage,
             'current_stage' => $conversa->stage
         ];
     }

@@ -1,0 +1,171 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        // Adicionar tenant_id à tabela users
+        Schema::table('users', function (Blueprint $table) {
+            if (!Schema::hasColumn('users', 'tenant_id')) {
+                $table->unsignedBigInteger('tenant_id')->nullable()->after('id');
+                $table->foreign('tenant_id')
+                    ->references('id')
+                    ->on('tenants')
+                    ->onDelete('cascade');
+                $table->index('tenant_id');
+            }
+            
+            // Adicionar coluna de role se não existir
+            if (!Schema::hasColumn('users', 'role')) {
+                $table->enum('role', ['super_admin', 'admin', 'corretor', 'cliente'])
+                    ->default('cliente')
+                    ->after('tipo');
+            }
+            
+            // Adicionar índice único para email por tenant
+            if (!Schema::hasIndex('users', 'unique_email_tenant')) {
+                $table->unique(['email', 'tenant_id'], 'unique_email_tenant');
+            }
+        });
+
+        // Adicionar tenant_id à tabela imo_properties
+        Schema::table('imo_properties', function (Blueprint $table) {
+            if (!Schema::hasColumn('imo_properties', 'tenant_id')) {
+                $table->unsignedBigInteger('tenant_id')->nullable()->after('id');
+                $table->foreign('tenant_id')
+                    ->references('id')
+                    ->on('tenants')
+                    ->onDelete('cascade');
+                $table->index('tenant_id');
+            }
+        });
+
+        // Adicionar tenant_id à tabela leads
+        Schema::table('leads', function (Blueprint $table) {
+            if (!Schema::hasColumn('leads', 'tenant_id')) {
+                $table->unsignedBigInteger('tenant_id')->nullable()->after('id');
+                $table->foreign('tenant_id')
+                    ->references('id')
+                    ->on('tenants')
+                    ->onDelete('cascade');
+                $table->index('tenant_id');
+            }
+        });
+
+        // Adicionar tenant_id à tabela conversas
+        Schema::table('conversas', function (Blueprint $table) {
+            if (!Schema::hasColumn('conversas', 'tenant_id')) {
+                $table->unsignedBigInteger('tenant_id')->nullable()->after('id');
+                $table->foreign('tenant_id')
+                    ->references('id')
+                    ->on('tenants')
+                    ->onDelete('cascade');
+                $table->index('tenant_id');
+            }
+        });
+
+        // Adicionar tenant_id à tabela mensagens
+        Schema::table('mensagens', function (Blueprint $table) {
+            if (!Schema::hasColumn('mensagens', 'tenant_id')) {
+                $table->unsignedBigInteger('tenant_id')->nullable()->after('id');
+                $table->foreign('tenant_id')
+                    ->references('id')
+                    ->on('tenants')
+                    ->onDelete('cascade');
+                $table->index('tenant_id');
+            }
+        });
+
+        // Adicionar tenant_id à tabela atividades
+        Schema::table('atividades', function (Blueprint $table) {
+            if (!Schema::hasColumn('atividades', 'tenant_id')) {
+                $table->unsignedBigInteger('tenant_id')->nullable()->after('id');
+                $table->foreign('tenant_id')
+                    ->references('id')
+                    ->on('tenants')
+                    ->onDelete('cascade');
+                $table->index('tenant_id');
+            }
+        });
+
+        // Adicionar tenant_id à tabela lead_documents
+        Schema::table('lead_documents', function (Blueprint $table) {
+            if (!Schema::hasColumn('lead_documents', 'tenant_id')) {
+                $table->unsignedBigInteger('tenant_id')->nullable()->after('id');
+                $table->foreign('tenant_id')
+                    ->references('id')
+                    ->on('tenants')
+                    ->onDelete('cascade');
+                $table->index('tenant_id');
+            }
+        });
+
+        // Adicionar tenant_id à tabela lead_property_matches
+        Schema::table('lead_property_matches', function (Blueprint $table) {
+            if (!Schema::hasColumn('lead_property_matches', 'tenant_id')) {
+                $table->unsignedBigInteger('tenant_id')->nullable()->after('id');
+                $table->foreign('tenant_id')
+                    ->references('id')
+                    ->on('tenants')
+                    ->onDelete('cascade');
+                $table->index('tenant_id');
+            }
+        });
+
+        // Adicionar tenant_id à tabela app_settings
+        Schema::table('app_settings', function (Blueprint $table) {
+            if (!Schema::hasColumn('app_settings', 'tenant_id')) {
+                $table->unsignedBigInteger('tenant_id')->nullable()->after('id');
+                $table->foreign('tenant_id')
+                    ->references('id')
+                    ->on('tenants')
+                    ->onDelete('cascade');
+                $table->index('tenant_id');
+            }
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        // Remover tenant_id de todas as tabelas
+        $tables = [
+            'users', 'imo_properties', 'leads', 'conversas', 
+            'mensagens', 'atividades', 'lead_documents', 
+            'lead_property_matches', 'app_settings'
+        ];
+
+        foreach ($tables as $table) {
+            if (Schema::hasTable($table)) {
+                Schema::table($table, function (Blueprint $table_blueprint) {
+                    if (Schema::hasColumn($table, 'tenant_id')) {
+                        $table_blueprint->dropForeign(['tenant_id']);
+                        $table_blueprint->dropIndex(['tenant_id']);
+                        $table_blueprint->dropColumn('tenant_id');
+                    }
+                });
+            }
+        }
+
+        // Remover coluna role de users
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
+                if (Schema::hasColumn('users', 'role')) {
+                    $table->dropColumn('role');
+                }
+                if (Schema::hasIndex('users', 'unique_email_tenant')) {
+                    $table->dropUnique('unique_email_tenant');
+                }
+            });
+        }
+    }
+};

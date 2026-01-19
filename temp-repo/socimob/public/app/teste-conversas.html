@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste API Conversas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 2rem;
+            font-family: "Segoe UI", sans-serif;
+        }
+        .card {
+            background: #111c2d;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+        }
+        pre {
+            background: #0b1220;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            max-height: 70vh;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="mb-3">Teste API de Conversas</h1>
+    <p class="text-secondary">Este teste mostra o JSON bruto retornado pela API.</p>
+
+    <div class="card p-3 mb-3">
+        <div class="d-flex gap-2 mb-3">
+            <button class="btn btn-primary" id="btnLoad">Carregar /api/conversas</button>
+            <button class="btn btn-outline-light" id="btnLoadAll">Carregar /api/conversas?all=1</button>
+        </div>
+        <div id="status" class="text-secondary">Aguardando...</div>
+    </div>
+
+    <div class="card p-3">
+        <pre id="output">{}</pre>
+    </div>
+
+    <script>
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        function setStatus(text) {
+            document.getElementById('status').textContent = text;
+        }
+
+        async function loadConversas(all) {
+            const token = getToken();
+            if (!token) {
+                setStatus('Token não encontrado. Faça login primeiro.');
+                return;
+            }
+
+            const url = all ? '/api/conversas?all=1' : '/api/conversas';
+            setStatus('Carregando: ' + url);
+
+            try {
+                const res = await fetch(url, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+                setStatus('Status HTTP: ' + res.status);
+            } catch (err) {
+                setStatus('Erro ao carregar: ' + err.message);
+            }
+        }
+
+        document.getElementById('btnLoad').addEventListener('click', () => loadConversas(false));
+        document.getElementById('btnLoadAll').addEventListener('click', () => loadConversas(true));
+    </script>
+</body>
+</html>

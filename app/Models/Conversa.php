@@ -16,6 +16,7 @@ class Conversa extends Model
         'corretor_id',
         'telefone',
         'status',
+        'stage',
         'canal',
         'mensagens',
         'user_id',

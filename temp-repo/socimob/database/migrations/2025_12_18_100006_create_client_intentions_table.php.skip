@@ -1,0 +1,85 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create('client_intentions', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('tenant_id');
+            $table->unsignedBigInteger('client_id')->nullable();
+            $table->string('name');
+            $table->string('email');
+            $table->string('phone')->nullable();
+            $table->string('whatsapp')->nullable();
+            
+            // Tipo de intenção
+            $table->enum('type', ['venda', 'aluguel'])->default('venda');
+            
+            // Características do imóvel desejado
+            $table->integer('min_bedrooms')->nullable();
+            $table->integer('max_bedrooms')->nullable();
+            $table->integer('min_bathrooms')->nullable();
+            $table->integer('max_bathrooms')->nullable();
+            $table->decimal('min_price', 12, 2)->nullable();
+            $table->decimal('max_price', 12, 2)->nullable();
+            $table->integer('min_area')->nullable();
+            $table->integer('max_area')->nullable();
+            
+            // Localização
+            $table->string('city')->nullable();
+            $table->string('neighborhood')->nullable();
+            $table->json('neighborhoods')->nullable(); // Array de bairros
+            
+            // Características adicionais
+            $table->json('features')->nullable(); // ['piscina', 'garagem', 'churrasqueira', ...]
+            $table->text('observations')->nullable();
+            
+            // Status
+            $table->enum('status', ['ativa', 'pausada', 'concluida', 'cancelada'])->default('ativa');
+            $table->timestamp('paused_at')->nullable();
+            $table->timestamp('completed_at')->nullable();
+            $table->timestamp('canceled_at')->nullable();
+            
+            // Notificações
+            $table->boolean('notify_by_email')->default(true);
+            $table->boolean('notify_by_whatsapp')->default(false);
+            $table->boolean('notify_by_sms')->default(false);
+            
+            // Metadata
+            $table->json('metadata')->nullable();
+            
+            // Timestamps
+            $table->timestamps();
+            $table->softDeletes();
+            
+            // Índices
+            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
+            $table->foreign('client_id')->references('id')->on('users')->onDelete('set null');
+            $table->index('tenant_id');
+            $table->index('client_id');
+            $table->index('status');
+            $table->index('city');
+            $table->index('neighborhood');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::dropIfExists('client_intentions');
+    }
+};
