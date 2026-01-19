@@ -9,6 +9,7 @@ use App\Services\PropertyLikesTablesManager;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class PortalController extends Controller
 {
@@ -64,6 +65,11 @@ class PortalController extends Controller
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
+        $cacheKey = "portal_imoveis_tenant_{$tenantId}";
+        $cacheTtl = now()->addMinutes(10);
+        $useCache = !$request->boolean('fresh');
+        $cachedPayload = $useCache ? Cache::get($cacheKey) : null;
+
         PropertyLikesTablesManager::ensurePropertyLikesTableExists();
         $tenant = Tenant::find($tenantId);
         $config = $tenant ? $tenant->config : null;
@@ -84,6 +90,19 @@ class PortalController extends Controller
         }
 
         $imoveis = $imoveisQuery->get();
+        $allowShared = filter_var(env('PORTAL_ALLOW_SHARED_PROPERTIES', true), FILTER_VALIDATE_BOOLEAN);
+        if ($imoveis->isEmpty() && $allowShared) {
+            $sharedQuery = Property::whereNull('tenant_id')
+                ->where('active', true)
+                ->where('exibir_imovel', true)
+                ->orderBy('created_at', 'desc');
+
+            if ($normalizedFinalidades && count($normalizedFinalidades) > 0) {
+                $sharedQuery->whereIn(DB::raw('LOWER(finalidade_imovel)'), $normalizedFinalidades);
+            }
+
+            $imoveis = $sharedQuery->get();
+        }
 
         $likesMap = DB::table('property_likes')
             ->select('property_id', DB::raw('COUNT(*) as total'))
@@ -96,10 +115,21 @@ class PortalController extends Controller
             return $imovel;
         });
 
+        $payload = $imoveis->values()->toArray();
+        $fromCache = false;
+
+        if (empty($payload) && !empty($cachedPayload)) {
+            $payload = $cachedPayload;
+            $fromCache = true;
+        } elseif (!empty($payload) && $useCache) {
+            Cache::put($cacheKey, $payload, $cacheTtl);
+        }
+
         return response()->json([
             'success' => true,
-            'data' => $imoveis,
-            'total' => $imoveis->count()
+            'data' => $payload,
+            'total' => count($payload),
+            'cached' => $fromCache
         ]);
     }
 

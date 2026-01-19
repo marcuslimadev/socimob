@@ -15,6 +15,7 @@ class Kernel extends ConsoleKernel
     protected $commands = [
         Commands\ChavesNaMaoCommand::class,
         Commands\SyncPropertiesCommand::class,
+        Commands\EnsurePropertiesCommand::class,
     ];
 
     /**
@@ -27,6 +28,10 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('properties:sync')
             ->everyFourHours()
+            ->withoutOverlapping();
+
+        $schedule->command('properties:ensure')
+            ->hourly()
             ->withoutOverlapping();
     }
 }
