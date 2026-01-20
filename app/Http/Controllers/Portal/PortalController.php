@@ -40,10 +40,15 @@ class PortalController extends Controller
             $portalFinalidades = $config->portal_finalidades;
         }
 
+        // Priorizar WhatsApp do Twilio (usado para atendimento) sobre contact_phone
+        $whatsappNumber = $config && $config->twilio_whatsapp_from 
+            ? $config->twilio_whatsapp_from 
+            : $tenant->contact_phone;
+
         return response()->json([
             'tenant' => [
                 'name' => $tenant->name,
-                'contact_phone' => $tenant->contact_phone,
+                'contact_phone' => $whatsappNumber,
                 'contact_email' => $tenant->contact_email,
                 'domain' => $tenant->domain,
                 'slogan' => $tenant->slogan ?? 'Encontre o Imovel dos Seus Sonhos',
