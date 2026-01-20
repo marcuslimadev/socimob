@@ -6,337 +6,32 @@
     <title id="pageTitle">Detalhes do Imóvel</title>
     <link id="pageFavicon" rel="icon" href="/favicon.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/glow.css">
+    <link rel="stylesheet" href="/css/portal.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/app/js/toast.js"></script>
-    <style>
-        :root {
-            --primary-color: #3b82f6;
-            --secondary-color: #8b5cf6;
-            --dark-bg: #0f172a;
-            --card-bg: #1e293b;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            font-family: 'Roboto', sans-serif;
-        }
-        
-        .back-btn {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            z-index: 1000;
-            background: white;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            border: none;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-weight: 600;
-            transition: all 0.3s;
-            color: #1e293b;
-        }
-        
-        .back-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(0,0,0,0.2);
-        }
-        
-        .hero-section {
-            background: white;
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-            margin-top: 80px;
-        }
-        
-        .image-gallery {
-            position: relative;
-            height: 500px;
-            background: #f1f5f9;
-        }
-        
-        .main-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .thumbnail-strip {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 10px;
-            background: rgba(0,0,0,0.6);
-            padding: 10px;
-            border-radius: 12px;
-        }
-        
-        .thumbnail {
-            width: 80px;
-            height: 60px;
-            object-fit: cover;
-            border-radius: 8px;
-            cursor: pointer;
-            border: 3px solid transparent;
-            transition: all 0.3s;
-        }
-        
-        .thumbnail.active {
-            border-color: white;
-            transform: scale(1.1);
-        }
-        
-        .price-badge {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: 28px;
-            font-weight: 800;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        }
-        
-        .details-section {
-            padding: 40px;
-        }
-        
-        .detail-card {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 20px;
-            border-radius: 16px;
-            text-align: center;
-            border: 2px solid #e2e8f0;
-            transition: all 0.3s;
-        }
-        
-        .detail-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            border-color: var(--primary-color);
-        }
-        
-        .detail-icon {
-            font-size: 36px;
-            margin-bottom: 10px;
-        }
-        
-        .detail-label {
-            font-size: 14px;
-            color: #475569;
-            text-transform: uppercase;
-            font-weight: 600;
-            letter-spacing: 1px;
-        }
-        
-        .detail-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1e293b;
-        }
-        
-        .map-container {
-            height: 400px;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-        }
-        
-        .chat-widget {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 400px;
-            height: 600px;
-            background: white;
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            display: flex;
-            flex-direction: column;
-            z-index: 999;
-            transform: translateY(calc(100% + 30px));
-            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-        
-        .chat-widget.open {
-            transform: translateY(0);
-        }
-        
-        .chat-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 24px 24px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            background: #f8f9fa;
-        }
-        
-        .chat-input-area {
-            padding: 20px;
-            border-top: 1px solid #e2e8f0;
-            background: white;
-        }
-        
-        .chat-bubble {
-            max-width: 80%;
-            padding: 12px 18px;
-            border-radius: 18px;
-            margin-bottom: 10px;
-            word-wrap: break-word;
-        }
-        
-        .chat-bubble.user {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            margin-left: auto;
-            border-bottom-right-radius: 4px;
-        }
-        
-        .chat-bubble.bot {
-            background: white;
-            color: #1e293b;
-            border: 1px solid #e2e8f0;
-            border-bottom-left-radius: 4px;
-        }
-        
-        .chat-toggle {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            font-size: 28px;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-            cursor: pointer;
-            z-index: 1000;
-            transition: all 0.3s;
-        }
-        
-        .chat-toggle:hover {
-            transform: scale(1.1);
-            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-        }
-        
-        .action-btn {
-            flex: 1;
-            padding: 18px;
-            border-radius: 16px;
-            font-weight: 700;
-            font-size: 16px;
-            border: none;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .action-btn.primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        }
-        
-        .action-btn.primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
-        }
-        
-        .action-btn.secondary {
-            background: white;
-            color: #667eea;
-            border: 2px solid #667eea;
-        }
-        
-        .action-btn.secondary:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-3px);
-        }
-        
-        .description-box {
-            background: #f8f9fa;
-            padding: 30px;
-            border-radius: 16px;
-            margin-top: 30px;
-            border-left: 5px solid var(--primary-color);
-            color: #1e293b;
-        }
-        
-        .badge-tag {
-            display: inline-block;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 8px 20px;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 20px;
-        }
-        
-        @media (max-width: 768px) {
-            .chat-widget {
-                width: calc(100% - 40px);
-                left: 20px;
-                right: 20px;
-            }
-            
-            .hero-section {
-                margin-top: 70px;
-            }
-            
-            .image-gallery {
-                height: 300px;
-            }
-        }
-    </style>
 </head>
-<body>
+<body class="portal-body">
     <button class="back-btn" onclick="window.location.href='/portal/'">
         ← Voltar para Imóveis
     </button>
     
     <div class="container">
-        <div class="hero-section">
+        <div class="detail-hero">
             <!-- Galeria de Imagens -->
-            <div class="image-gallery">
-                <img id="mainImage" src="" alt="Imóvel" class="main-image">
-                <div class="price-badge">R$ <span id="priceValue">0</span></div>
+            <div class="detail-media">
+                <img id="mainImage" src="" alt="Imóvel">
+                <div class="detail-price">R$ <span id="priceValue">0</span></div>
                 <div id="thumbnailStrip" class="thumbnail-strip"></div>
             </div>
             
             <!-- Detalhes -->
-            <div class="details-section">
-                <span id="finalidadeBadge" class="badge-tag">VENDA</span>
-                <h1 id="imovelTitulo" class="display-4 fw-bold mb-3" style="color: #1e293b;">Carregando...</h1>
-                <p id="imovelEndereco" class="fs-5 mb-4" style="color: #475569;">
+            <div class="detail-section">
+                <span id="finalidadeBadge" class="detail-badge badge-sale">VENDA</span>
+                <h1 id="imovelTitulo" class="display-5 fw-bold mb-3">Carregando...</h1>
+                <p id="imovelEndereco" class="fs-5 mb-4 text-muted">
                     <i>📍</i> <span></span>
                 </p>
                 
@@ -344,29 +39,29 @@
                 <div class="row g-3 mb-4">
                     <div class="col-6 col-md-3">
                         <div class="detail-card">
-                            <div class="detail-icon">🏠</div>
-                            <div class="detail-label">Área</div>
+                            <div class="fs-3">🏠</div>
+                            <div class="text-muted text-uppercase small">Área</div>
                             <div class="detail-value"><span id="detailArea">--</span>m²</div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="detail-card">
-                            <div class="detail-icon">🛏️</div>
-                            <div class="detail-label">Quartos</div>
+                            <div class="fs-3">🛏️</div>
+                            <div class="text-muted text-uppercase small">Quartos</div>
                             <div class="detail-value" id="detailQuartos">--</div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="detail-card">
-                            <div class="detail-icon">🚿</div>
-                            <div class="detail-label">Banheiros</div>
+                            <div class="fs-3">🚿</div>
+                            <div class="text-muted text-uppercase small">Banheiros</div>
                             <div class="detail-value" id="detailBanheiros">--</div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="detail-card">
-                            <div class="detail-icon">🚗</div>
-                            <div class="detail-label">Vagas</div>
+                            <div class="fs-3">🚗</div>
+                            <div class="text-muted text-uppercase small">Vagas</div>
                             <div class="detail-value" id="detailVagas">--</div>
                         </div>
                     </div>
@@ -374,24 +69,24 @@
                 
                 <!-- Descrição -->
                 <div class="description-box">
-                    <h3 class="fw-bold mb-3" style="color: #1e293b;">📝 Descrição</h3>
-                    <div id="imovelDescricao" class="fs-6 lh-lg" style="color: #334155;">Carregando descrição...</div>
+                    <h3 class="fw-bold mb-3">📝 Descrição</h3>
+                    <div id="imovelDescricao" class="fs-6 lh-lg text-muted">Carregando descrição...</div>
                 </div>
                 
                 <!-- Mapa -->
                 <div class="row mt-4">
                     <div class="col-12">
-                        <h3 class="fw-bold mb-3" style="color: #1e293b;">📍 Localização</h3>
+                        <h3 class="fw-bold mb-3">📍 Localização</h3>
                         <div id="map" class="map-container"></div>
                     </div>
                 </div>
                 
                 <!-- Botões de Ação -->
                 <div class="action-buttons">
-                    <button class="action-btn secondary" onclick="compartilhar()">
+                    <button class="btn btn-portal-outline flex-grow-1" onclick="compartilhar()">
                         📤 Compartilhar
                     </button>
-                    <button class="action-btn primary" onclick="abrirChat()">
+                    <button class="btn btn-portal flex-grow-1" onclick="abrirChat()">
                         💬 Fale Conosco
                     </button>
                 </div>
@@ -403,7 +98,7 @@
     <button class="chat-toggle" onclick="toggleChat()">💬</button>
     
     <div id="chatWidget" class="chat-widget">
-        <div class="chat-header">
+        <div class="chat-header text-white p-3 d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="mb-0 fw-bold">Atendimento IA</h5>
                 <small>Online agora</small>
@@ -414,7 +109,7 @@
         <div class="chat-input-area">
             <form id="chatForm" onsubmit="enviarMensagem(event)" class="d-flex gap-2">
                 <input type="text" id="chatInput" class="form-control" placeholder="Digite sua mensagem..." required>
-                <button type="submit" class="btn btn-primary">Enviar</button>
+                <button type="submit" class="btn btn-portal">Enviar</button>
             </form>
         </div>
     </div>
@@ -455,7 +150,11 @@
             // Título e informações básicas
             $('#imovelTitulo').text(imovel.titulo || 'Imóvel');
             $('#imovelEndereco span').text(imovel.endereco || 'Endereço não informado');
-            $('#finalidadeBadge').text((imovel.finalidade || 'venda').toUpperCase());
+            const finalidade = (imovel.finalidade || 'venda').toLowerCase();
+            $('#finalidadeBadge')
+                .text(finalidade.toUpperCase())
+                .removeClass('badge-sale badge-rent')
+                .addClass(finalidade === 'aluguel' ? 'badge-rent' : 'badge-sale');
             $('#priceValue').text(formatPrice(imovel.preco));
             
             // Detalhes

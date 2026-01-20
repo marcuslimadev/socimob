@@ -3,69 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ImÃ³veis DisponÃ­veis - SOCIMOB</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/css/glow.css">
+    <title>Imóveis Disponíveis - SOCIMOB</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/portal.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
-<body class="glow-page">
+<body class="portal-body">
     <!-- Navbar -->
-    <nav class="glow-nav p-4 sticky top-0 z-50">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="glow-badge">ð  SOCIMOB</div>
-                <span class="glow-pill">Portal do Cliente</span>
+    <nav class="portal-nav py-3 sticky-top">
+        <div class="container d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="brand-badge">🏠 SOCIMOB</div>
+                <span class="brand-pill">Portal do Cliente</span>
             </div>
-            <div class="flex items-center gap-4">
-                <span id="userName" class="text-white"></span>
-                <button id="btnLogout" class="glow-button">Sair</button>
+            <div class="d-flex align-items-center gap-3">
+                <span id="userName" class="fw-semibold"></span>
+                <button id="btnLogout" class="btn btn-portal-outline">Sair</button>
             </div>
         </div>
     </nav>
 
-    <!-- ConteÃºdo -->
-    <div class="container mx-auto p-6">
+    <!-- Conteúdo -->
+    <div class="container py-4">
         <!-- Header -->
-        <div class="mb-8">
-            <div class="glow-tagline mb-3">CatÃ¡logo exclusivo</div>
-            <h2 class="text-3xl font-black text-[var(--glow-black)] mb-2">ImÃ³veis DisponÃ­veis</h2>
-            <p class="text-[var(--glow-black)]">Encontre o imÃ³vel perfeito para vocÃª</p>
+        <div class="portal-hero">
+            <div class="hero-tag">Catálogo exclusivo</div>
+            <h2 class="hero-title">Imóveis Disponíveis</h2>
+            <p class="hero-subtitle">Encontre o imóvel perfeito com detalhes claros e um visual de alto contraste.</p>
         </div>
 
         <!-- Filtros -->
-        <div class="glow-panel p-6 mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input type="text" id="searchImovel" placeholder="Buscar por localizaÃ§Ã£o..."
-                    class="glow-input">
-                <select id="filterTipo" class="glow-select">
+        <div class="filter-panel mb-4">
+            <div class="row g-3">
+                <div class="col-12 col-md-3">
+                    <input type="text" id="searchImovel" placeholder="Buscar por localização..."
+                        class="form-control">
+                </div>
+                <div class="col-12 col-md-3">
+                    <select id="filterTipo" class="form-select">
                     <option value="">Todos os tipos</option>
                     <option value="casa">Casa</option>
                     <option value="apartamento">Apartamento</option>
                     <option value="terreno">Terreno</option>
                     <option value="comercial">Comercial</option>
-                </select>
-                <select id="filterFinalidade" class="glow-select">
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <select id="filterFinalidade" class="form-select">
                     <option value="">Todas finalidades</option>
                     <option value="venda">Venda</option>
                     <option value="aluguel">Aluguel</option>
-                </select>
-                <button id="btnFiltrar" class="glow-button w-full justify-center">
-                    ð Buscar
-                </button>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3 d-grid">
+                    <button id="btnFiltrar" class="btn btn-portal">
+                        🔍 Buscar
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- Grid de ImÃ³veis -->
-        <div id="imoveisGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div class="col-span-full text-center py-12 text-slate-500">
-                Carregando imÃ³veis...
+        <!-- Grid de Imóveis -->
+        <div id="imoveisGrid" class="row g-4">
+            <div class="col-12">
+                <div class="empty-state">Carregando imóveis...</div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Detalhes do ImÃ³vel -->
-    <div id="modalImovel" class="hidden fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <!-- Modal Detalhes do Imóvel -->
+    <div id="modalImovel" class="modal-overlay d-none">
+        <div class="modal-card">
             <div id="modalContent"></div>
         </div>
     </div>
@@ -95,7 +103,7 @@
             const user = JSON.parse(userStr);
             $('#userName').text(user.name);
             
-            // Verificar se Ã© cliente
+            // Verificar se é cliente
             if (user.role !== 'client') {
                 window.location.href = '/app/dashboard.html';
             }
@@ -130,7 +138,7 @@
 
         function setLoading(isLoading) {
             if (isLoading) {
-                $('#imoveisGrid').html('<div class="col-span-full text-center py-12 text-slate-500">Carregando imóveis em tempo real...</div>');
+                $('#imoveisGrid').html('<div class="col-12"><div class="empty-state">Carregando imóveis em tempo real...</div></div>');
             }
         }
 
@@ -185,33 +193,31 @@
 
         function renderImoveis(data) {
             if (data.length === 0) {
-                $('#imoveisGrid').html('<div class="col-span-full text-center py-12 text-slate-500">Nenhum imÃ³vel encontrado</div>');
+                $('#imoveisGrid').html('<div class="col-12"><div class="empty-state">Nenhum imóvel encontrado</div></div>');
                 return;
             }
 
             const html = data.map(imovel => `
-                <div class="bg-white rounded-xl shadow-sm hover:shadow-lg transition overflow-hidden cursor-pointer" onclick="showDetails(${imovel.id})">
-                    <div class="h-48 bg-slate-200 flex items-center justify-center overflow-hidden">
-                        ${getImagemPrincipal(imovel) ? `<img src="${getImagemPrincipal(imovel)}" alt="${imovel.titulo}" class="w-full h-full object-cover">` : `<span class="text-6xl">${getTipoIcon(imovel.tipo)}</span>`}
-                    </div>
-                    <div class="p-5">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-bold text-lg text-slate-900">${imovel.titulo}</h3>
-                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full uppercase">${imovel.finalidade}</span>
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card property-card h-100" onclick="showDetails(${imovel.id})">
+                        <div class="property-media">
+                            ${getImagemPrincipal(imovel) ? `<img src="${getImagemPrincipal(imovel)}" alt="${imovel.titulo}">` : `<div class="d-flex h-100 align-items-center justify-content-center fs-1">${getTipoIcon(imovel.tipo)}</div>`}
                         </div>
-                        <p class="text-sm text-slate-600 mb-3 flex items-center">
-                            ð ${imovel.endereco}
-                        </p>
-                        <div class="flex gap-3 text-sm text-slate-600 mb-4">
-                            ${imovel.area ? `<span class="flex items-center">ð ${imovel.area}mÂ²</span>` : ''}
-                            ${imovel.quartos > 0 ? `<span class="flex items-center">ðï¸ ${imovel.quartos}</span>` : ''}
-                            ${imovel.banheiros > 0 ? `<span class="flex items-center">ð¿ ${imovel.banheiros}</span>` : ''}
-                        </div>
-                        <div class="flex justify-between items-center pt-3 border-t border-slate-100">
-                            <span class="text-2xl font-black text-blue-600">R$ ${formatPrice(imovel.preco)}</span>
-                            <button class="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                                Ver detalhes â
-                            </button>
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h3 class="h5 mb-0">${imovel.titulo}</h3>
+                                <span class="badge ${imovel.finalidade === 'venda' ? 'badge-sale' : 'badge-rent'}">${imovel.finalidade}</span>
+                            </div>
+                            <p class="property-location mb-3">📍 ${imovel.endereco}</p>
+                            <div class="property-features mb-3">
+                                ${imovel.area ? `<span>📐 ${imovel.area}m²</span>` : ''}
+                                ${imovel.quartos > 0 ? `<span>🛏️ ${imovel.quartos}</span>` : ''}
+                                ${imovel.banheiros > 0 ? `<span>🚿 ${imovel.banheiros}</span>` : ''}
+                            </div>
+                            <div class="mt-auto d-flex justify-content-between align-items-center pt-3 border-top">
+                                <span class="price">R$ ${formatPrice(imovel.preco)}</span>
+                                <span class="property-link">Ver detalhes →</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -244,62 +250,66 @@
             if (!imovelAtual) return;
 
             const content = `
-                <div class="relative">
-                    <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl z-10">
-                        â
-                    </button>
-                    <div class="h-80 bg-white flex items-center justify-center overflow-hidden">
-                        ${getImagemPrincipal(imovelAtual) ? `<img src="${getImagemPrincipal(imovelAtual)}" alt="${imovelAtual.titulo}" class="w-full h-full object-cover">` : `<span class="text-9xl">${getTipoIcon(imovelAtual.tipo)}</span>`}
-                    </div>
-                    <div class="p-8">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <h2 class="text-3xl font-black text-slate-900 mb-2">${imovelAtual.titulo}</h2>
-                                <p class="text-slate-600 flex items-center">ð ${imovelAtual.endereco}</p>
-                            </div>
-                            <span class="px-4 py-2 bg-green-100 text-green-800 text-sm font-bold rounded-full uppercase">${imovelAtual.finalidade}</span>
+                <div>
+                    <div class="modal-header d-flex align-items-start justify-content-between">
+                        <div>
+                            <div class="text-uppercase small text-muted">#${imovelAtual.id}</div>
+                            <h2 class="mb-2">${imovelAtual.titulo}</h2>
+                            <div class="text-muted">📍 ${imovelAtual.endereco}</div>
                         </div>
-                        
-                        <div class="mb-6">
-                            <span class="text-4xl font-black text-blue-600">R$ ${formatPrice(imovelAtual.preco)}</span>
-                            ${imovelAtual.finalidade === 'aluguel' ? '<span class="text-slate-600">/mÃªs</span>' : ''}
+                        <button onclick="closeModal()" class="btn btn-light">✕</button>
+                    </div>
+                    <div class="property-media">
+                        ${getImagemPrincipal(imovelAtual) ? `<img src="${getImagemPrincipal(imovelAtual)}" alt="${imovelAtual.titulo}">` : `<div class="d-flex h-100 align-items-center justify-content-center fs-1">${getTipoIcon(imovelAtual.tipo)}</div>`}
+                    </div>
+                    <div class="modal-body">
+                        <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+                            <span class="price">R$ ${formatPrice(imovelAtual.preco)}</span>
+                            ${imovelAtual.finalidade === 'aluguel' ? '<span class="text-muted">/mês</span>' : ''}
+                            <span class="badge ${imovelAtual.finalidade === 'venda' ? 'badge-sale' : 'badge-rent'}">${imovelAtual.finalidade}</span>
                         </div>
 
-                        <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="row g-3 mb-4">
                             ${imovelAtual.area ? `
-                                <div class="bg-slate-50 rounded-lg p-4 text-center">
-                                    <div class="text-2xl mb-1">ð</div>
-                                    <div class="text-sm text-slate-600">Ãrea</div>
-                                    <div class="text-lg font-bold">${imovelAtual.area}mÂ²</div>
+                                <div class="col-12 col-md-4">
+                                    <div class="detail-card">
+                                        <div class="fs-3">📐</div>
+                                        <div class="text-muted text-uppercase small">Área</div>
+                                        <div class="detail-value">${imovelAtual.area}m²</div>
+                                    </div>
                                 </div>
                             ` : ''}
                             ${imovelAtual.quartos > 0 ? `
-                                <div class="bg-slate-50 rounded-lg p-4 text-center">
-                                    <div class="text-2xl mb-1">ðï¸</div>
-                                    <div class="text-sm text-slate-600">Quartos</div>
-                                    <div class="text-lg font-bold">${imovelAtual.quartos}</div>
+                                <div class="col-12 col-md-4">
+                                    <div class="detail-card">
+                                        <div class="fs-3">🛏️</div>
+                                        <div class="text-muted text-uppercase small">Quartos</div>
+                                        <div class="detail-value">${imovelAtual.quartos}</div>
+                                    </div>
                                 </div>
                             ` : ''}
                             ${imovelAtual.banheiros > 0 ? `
-                                <div class="bg-slate-50 rounded-lg p-4 text-center">
-                                    <div class="text-2xl mb-1">ð¿</div>
-                                    <div class="text-sm text-slate-600">Banheiros</div>
-                                    <div class="text-lg font-bold">${imovelAtual.banheiros}</div>
+                                <div class="col-12 col-md-4">
+                                    <div class="detail-card">
+                                        <div class="fs-3">🚿</div>
+                                        <div class="text-muted text-uppercase small">Banheiros</div>
+                                        <div class="detail-value">${imovelAtual.banheiros}</div>
+                                    </div>
                                 </div>
                             ` : ''}
                         </div>
 
-                        <div class="mb-6">
-                            <h3 class="text-lg font-bold text-slate-900 mb-2">DescriÃ§Ã£o</h3>
-                            <p class="text-slate-600 leading-relaxed">${imovelAtual.descricao}</p>
+                        <div class="mb-4">
+                            <h3 class="h5 mb-2">Descrição</h3>
+                            <p class="text-muted">${imovelAtual.descricao || 'Descrição não disponível.'}</p>
                         </div>
 
-                        <div class="flex gap-4">
-                            <button onclick="demonstrarInteresse()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-lg font-bold text-lg">
-                                ð¬ Tenho Interesse
+                        <div class="action-buttons">
+                            <button onclick="demonstrarInteresse()" class="btn btn-portal flex-grow-1">
+                                💬 Tenho Interesse
                             </button>
-                            <button onclick="compartilhar()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-4 rounded-lg font-bold">
-                                ð Compartilhar
+                            <button onclick="compartilhar()" class="btn btn-portal-outline flex-grow-1">
+                                🔗 Compartilhar
                             </button>
                         </div>
                     </div>
@@ -307,11 +317,11 @@
             `;
 
             $('#modalContent').html(content);
-            $('#modalImovel').removeClass('hidden');
+            $('#modalImovel').removeClass('d-none');
         }
 
         function closeModal() {
-            $('#modalImovel').addClass('hidden');
+            $('#modalImovel').addClass('d-none');
         }
 
         function demonstrarInteresse() {
@@ -324,14 +334,14 @@
                                 contentType: 'application/json',
                 data: JSON.stringify({
                     property_id: imovelAtual.id,
-                    mensagem: 'Tenho interesse neste imÃ³vel'
+                    mensagem: 'Tenho interesse neste imóvel'
                 }),
                 success: function() {
-                    alert('â Interesse registrado! Em breve um corretor entrarÃ¡ em contato.');
+                    alert('✅ Interesse registrado! Em breve um corretor entrará em contato.');
                     closeModal();
                 },
                 error: function() {
-                    alert('â Interesse registrado! (simulado)');
+                    alert('✅ Interesse registrado! (simulado)');
                     closeModal();
                 }
             });
@@ -340,16 +350,16 @@
         function compartilhar() {
             const url = window.location.href;
             navigator.clipboard.writeText(url);
-            alert('ð Link copiado para a Ã¡rea de transferÃªncia!');
+            alert('🔗 Link copiado para a área de transferência!');
         }
 
         function getTipoIcon(tipo) {
             const icons = {
-                'apartamento': 'ð¢',
-                'terreno': 'ðï¸',
-                'comercial': 'ðª'
+                'apartamento': '🏢',
+                'terreno': '🏞️',
+                'comercial': '🏪'
             };
-            return icons[tipo] || 'ðï¸';
+            return icons[tipo] || '🏘️';
         }
 
         function formatPrice(price) {
