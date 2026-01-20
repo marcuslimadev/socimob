@@ -12,18 +12,6 @@
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="/app/js/toast.js"></script>
     <style>
-        .magazine-book {
-            background: var(--glow-cream);
-            border: 4px solid var(--glow-border);
-            padding: 32px;
-            border-radius: 18px;
-            min-height: 520px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            perspective: 1200px;
-            box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.1);
-        }
         .glow-select {
             background: rgba(15, 23, 42, 0.9);
             border: 1px solid rgba(148, 163, 184, 0.35);
@@ -57,71 +45,6 @@
         .imovel-card .card-actions button:hover {
             transform: translateY(-1px);
             box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
-        }
-        .magazine-page {
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 14px 14px 0 rgba(0, 0, 0, 0.16);
-            width: min(100%, 980px);
-            min-height: 460px;
-            display: grid;
-            grid-template-columns: 1.2fr 1fr;
-            gap: 24px;
-            padding: 28px;
-            transform-origin: left center;
-            transition: transform 0.6s ease;
-            border: 4px solid var(--glow-border);
-        }
-        .magazine-page.flip {
-            transform: rotateY(-180deg);
-        }
-        .magazine-photo {
-            background: #e2e8f0;
-            border-radius: 12px;
-            overflow: hidden;
-            min-height: 360px;
-            border: 3px solid var(--glow-border);
-        }
-        .magazine-photo img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
-        .magazine-details {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .magazine-details h4 {
-            font-size: 28px;
-            font-weight: 800;
-            color: var(--glow-black);
-        }
-        .magazine-details .magazine-meta {
-            color: var(--glow-ink);
-            font-size: 14px;
-        }
-        .magazine-details .magazine-price {
-            font-size: 26px;
-            font-weight: 800;
-            color: var(--glow-blue);
-        }
-        .magazine-scroll-card {
-            background: #fff;
-            border: 4px solid var(--glow-border);
-            border-radius: 14px;
-            box-shadow: 8px 8px 0 rgba(0,0,0,0.1);
-        }
-        @media (max-width: 900px) {
-            .magazine-page {
-                grid-template-columns: 1fr;
-            }
-        }
-        @media (max-width: 768px) {
-            body.mobile-revista { font-size: 18px; }
-            .magazine-book { display: none; }
-            #magazineScrollWrapper { display: block !important; }
         }
     </style>
     <style id="customStyles"></style>
@@ -197,8 +120,6 @@
                 <div class="flex flex-wrap gap-3 justify-center md:justify-end">
                     <button id="btnViewCards" class="glow-button secondary">Ver cards</button>
                     <button id="btnViewTable" class="glow-button ghost">Ver como tabela</button>
-                    <button id="btnViewMagazine" class="glow-button ghost">Ver como revista</button>
-                    <a id="btnOpenRevista" href="/revista/index.html" class="glow-button ghost" target="_blank" rel="noopener">Revista fullscreen</a>
                 </div>
             </div>
             
@@ -218,23 +139,7 @@
             </div>
             <div id="imoveisMagazineWrapper" class="hidden">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <div class="text-sm uppercase tracking-wide text-[var(--glow-black)]">Revista de imóveis</div>
-                    <div class="flex items-center gap-2">
-                        <button id="magazinePrev" class="glow-button ghost">Anterior</button>
-                        <span id="magazineCounter" class="text-sm text-[var(--glow-black)]">1 / 1</span>
-                        <button id="magazineNext" class="glow-button ghost">Próximo</button>
-                    </div>
-                </div>
-                <div id="magazineBookWrapper" class="magazine-book">
-                    <div id="magazinePage" class="magazine-page"></div>
-                </div>
-                <div id="magazineScrollWrapper" class="hidden">
-                    <div class="space-y-4" id="magazineScrollList"></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
+        
         <!-- Modal Detalhes do Imovel -->
     <div id="modalImovel" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 overflow-y-auto flex items-center justify-center p-4">
         <div class="relative w-full max-w-6xl bg-white rounded-2xl border-4 border-[var(--glow-border)] shadow-2xl max-h-[90vh] overflow-hidden">
@@ -257,24 +162,24 @@
                         <div id="carouselDots" class="absolute bottom-3 left-0 right-0 flex flex-nowrap items-center justify-center gap-2 px-4 overflow-x-auto"></div>
                     </div>
                 </div>
-                <div class="p-8 overflow-y-auto bg-white">
+                <div class="p-8 overflow-y-auto" style="background-color: #ffffff;">
                     <div class="flex flex-col gap-3 mb-4">
                         <div class="flex items-center justify-between gap-3">
-                            <h3 id="modalTitulo" class="text-3xl font-black text-slate-900"></h3>
+                            <h3 id="modalTitulo" class="text-3xl font-black" style="color: #0f172a;"></h3>
                             <button id="modalLikeBtn" class="glow-button ghost">
                                 <span id="modalLikeIcon">?</span>
                                 <span id="modalLikeCount">0</span>
                             </button>
                         </div>
-                        <span id="modalPreco" class="text-3xl font-black text-blue-600"></span>
+                        <span id="modalPreco" class="text-3xl font-black" style="color: #2563eb;"></span>
                     </div>
-                    <p id="modalEndereco" class="text-slate-700 mb-4"></p>
-                    <div id="modalDetalhes" class="flex flex-wrap gap-4 text-slate-700 mb-6">
+                    <p id="modalEndereco" class="mb-4" style="color: #334155;"></p>
+                    <div id="modalDetalhes" class="flex flex-wrap gap-4 mb-6" style="color: #334155;">
                         <!-- Detalhes aqui -->
                     </div>
-                    <div class="border-t border-slate-200 pt-6">
-                        <h4 class="font-bold text-lg mb-2 text-slate-900">Descricao</h4>
-                        <div id="modalDescricao" class="text-slate-700 leading-relaxed"></div>
+                    <div class="border-t pt-6" style="border-color: #e2e8f0;">
+                        <h4 class="font-bold text-lg mb-2" style="color: #0f172a;">Descricao</h4>
+                        <div id="modalDescricao" class="leading-relaxed" style="color: #334155;"></div>
                     </div>
                     <div class="mt-8 flex flex-col sm:flex-row gap-4">
                         <button onclick="entrarEmContato()" class="flex-1 glow-button secondary justify-center">
@@ -459,9 +364,6 @@
             $('#filterTipo, #filterFinalidade, #filterLocal, #filterTexto, #sortBy').on('change input', filtrarImoveis);
             $('#btnViewCards').on('click', () => setViewMode('cards'));
             $('#btnViewTable').on('click', () => setViewMode('table'));
-            $('#btnViewMagazine').on('click', () => setViewMode('magazine'));
-            $('#magazinePrev').on('click', () => changeMagazine(-1));
-            $('#magazineNext').on('click', () => changeMagazine(1));
             $('#formVisita').on('submit', enviarVisita);
             $('#carouselPrev').on('click', () => moveCarousel(-1));
             $('#carouselNext').on('click', () => moveCarousel(1));
@@ -926,28 +828,14 @@
 
         function aplicarViewMode() {
             const isTable = viewMode === 'table';
-            const isMagazine = viewMode === 'magazine';
-            const isMobileMagazine = isMagazine && mobileQuery.matches;
-            $('#imoveisGrid').toggleClass('hidden', isTable || isMagazine);
+            $('#imoveisGrid').toggleClass('hidden', isTable);
             $('#imoveisTabelaWrapper').toggleClass('hidden', !isTable);
-            $('#imoveisMagazineWrapper').toggleClass('hidden', !isMagazine);
-            $('#magazineBookWrapper').toggleClass('hidden', isMobileMagazine);
-            $('#magazineScrollWrapper').toggleClass('hidden', !isMobileMagazine);
             if (isTable) {
                 $('#btnViewCards').removeClass('secondary').addClass('ghost');
                 $('#btnViewTable').removeClass('ghost').addClass('secondary');
-                $('#btnViewMagazine').removeClass('secondary').addClass('ghost');
-            } else if (isMagazine) {
-                $('#btnViewCards').removeClass('secondary').addClass('ghost');
-                $('#btnViewTable').removeClass('secondary').addClass('ghost');
-                $('#btnViewMagazine').removeClass('ghost').addClass('secondary');
             } else {
                 $('#btnViewCards').removeClass('ghost').addClass('secondary');
                 $('#btnViewTable').removeClass('secondary').addClass('ghost');
-                $('#btnViewMagazine').removeClass('secondary').addClass('ghost');
-            }
-            if (isMagazine) {
-                renderMagazine(listaAtual);
             }
         }
 
