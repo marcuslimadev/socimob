@@ -38,6 +38,7 @@
             border-radius: 50px;
             font-weight: 600;
             transition: all 0.3s;
+            color: #1e293b;
         }
         
         .back-btn:hover {
@@ -131,7 +132,7 @@
         
         .detail-label {
             font-size: 14px;
-            color: #64748b;
+            color: #475569;
             text-transform: uppercase;
             font-weight: 600;
             letter-spacing: 1px;
@@ -284,6 +285,7 @@
             border-radius: 16px;
             margin-top: 30px;
             border-left: 5px solid var(--primary-color);
+            color: #1e293b;
         }
         
         .badge-tag {
@@ -333,8 +335,8 @@
             <!-- Detalhes -->
             <div class="details-section">
                 <span id="finalidadeBadge" class="badge-tag">VENDA</span>
-                <h1 id="imovelTitulo" class="display-4 fw-bold mb-3">Carregando...</h1>
-                <p id="imovelEndereco" class="text-muted fs-5 mb-4">
+                <h1 id="imovelTitulo" class="display-4 fw-bold mb-3" style="color: #1e293b;">Carregando...</h1>
+                <p id="imovelEndereco" class="fs-5 mb-4" style="color: #475569;">
                     <i>📍</i> <span></span>
                 </p>
                 
@@ -372,14 +374,14 @@
                 
                 <!-- Descrição -->
                 <div class="description-box">
-                    <h3 class="fw-bold mb-3">📝 Descrição</h3>
-                    <div id="imovelDescricao" class="fs-6 lh-lg">Carregando descrição...</div>
+                    <h3 class="fw-bold mb-3" style="color: #1e293b;">📝 Descrição</h3>
+                    <div id="imovelDescricao" class="fs-6 lh-lg" style="color: #334155;">Carregando descrição...</div>
                 </div>
                 
                 <!-- Mapa -->
                 <div class="row mt-4">
                     <div class="col-12">
-                        <h3 class="fw-bold mb-3">📍 Localização</h3>
+                        <h3 class="fw-bold mb-3" style="color: #1e293b;">📍 Localização</h3>
                         <div id="map" class="map-container"></div>
                     </div>
                 </div>
