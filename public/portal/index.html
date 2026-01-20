@@ -574,7 +574,7 @@
                                 <div class="flex items-center justify-between gap-4">
                                     <span class="text-2xl font-black text-blue-400">R$ ${formatPrice(imovel.preco)}</span>
                                     <div class="flex items-center gap-2">
-                                        <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-all duration-200">
+                                        <button onclick="abrirModal(${imovel.id})" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-all duration-200">
                                             Ver Detalhes
                                         </button>
                                         <button class="text-slate-100 font-bold py-2 px-4 rounded border border-slate-600 hover:bg-slate-700 transition-all duration-200" onclick="event.stopPropagation(); toggleLike(${imovel.id});">
