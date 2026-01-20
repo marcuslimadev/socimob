@@ -24,36 +24,9 @@
             font-weight: 700;
             margin-bottom: 0.5rem;
         }
-        .form-control, .form-select {
-            border-radius: 8px;
-            padding: 0.75rem;
-        }
         .form-label { font-weight: 500; margin-bottom: 0.5rem; }
-        .modal-content {
-            border-radius: 16px;
-        }
         .modal-title { font-weight: 700; }
         
-        /* DataTable Styles */
-        table.dataTable {
-            border-collapse: separate;
-            border-spacing: 0 0.5rem;
-        }
-        table.dataTable thead th {
-            font-weight: 600;
-            border: none;
-            padding: 1rem;
-        }
-        table.dataTable tbody td {
-            border: none;
-            padding: 1rem;
-            vertical-align: middle;
-        }
-        .badge {
-            padding: 0.5rem 0.75rem;
-            font-weight: 600;
-            font-size: 0.75rem;
-        }
         .user-avatar {
             width: 40px;
             height: 40px;
@@ -67,7 +40,8 @@
     </style>
 </head>
 <body>
-    <div class="page-container">
+    <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
+    <div id="main-content" class="page-container">
         <div class="page-header d-flex justify-content-between align-items-start">
             <div>
                 <h1 class="page-title">Equipe</h1>
@@ -78,20 +52,20 @@
             </button>
         </div>
 
-        <div class="card">
-            <div class="card-body">
-                <table id="usuariosTable" class="table table-hover" style="width:100%">
-                    <thead>
+        <div class="table-container">
+            <div class="table-wrapper">
+                <table id="usuariosTable" class="table" style="width:100%">
+                    <thead class="table-thead">
                         <tr>
-                            <th>Usuário</th>
-                            <th>Email</th>
-                            <th>Perfil</th>
-                            <th>Status</th>
-                            <th>Data Criação</th>
-                            <th>Ações</th>
+                            <th class="table-th">Usuário</th>
+                            <th class="table-th">Email</th>
+                            <th class="table-th">Perfil</th>
+                            <th class="table-th">Status</th>
+                            <th class="table-th">Data Criação</th>
+                            <th class="table-th table-th-actions">Ações</th>
                         </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody class="table-tbody"></tbody>
                 </table>
             </div>
         </div>
@@ -100,7 +74,7 @@
     <!-- Modal Novo/Editar Usuário -->
     <div class="modal fade" id="modalUsuario" tabindex="-1">
         <div class="modal-dialog modal-lg">
-            <div class="modal-content">
+            <div class="modal-content ds-modal">
                 <div class="modal-header">
                     <h5 class="modal-title">Novo Usuário</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -110,37 +84,39 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Nome Completo *</label>
-                                <input type="text" name="name" class="form-control" required>
+                                <input type="text" name="name" class="form-input" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Email *</label>
-                                <input type="email" name="email" class="form-control" required>
+                                <input type="email" name="email" class="form-input" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Perfil *</label>
-                                <select name="role" class="form-select" required>
-                                    <option value="">Selecione...</option>
-                                    <option value="admin">Administrador</option>
-                                    <option value="corretor">Corretor</option>
-                                </select>
+                                <div class="form-select-wrapper">
+                                    <select name="role" class="form-select" required>
+                                        <option value="">Selecione...</option>
+                                        <option value="admin">Administrador</option>
+                                        <option value="corretor">Corretor</option>
+                                    </select>
+                                    <i class="bi bi-chevron-down form-select-icon" aria-hidden="true"></i>
+                                </div>
                                 <small class="text-muted">Administrador tem acesso total. Corretor vê apenas seus leads.</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Senha *</label>
-                                <input type="password" name="password" class="form-control" required minlength="6">
+                                <input type="password" name="password" class="form-input" required minlength="6">
                                 <small class="text-muted">Mínimo 6 caracteres</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Confirmar Senha *</label>
-                                <input type="password" name="password_confirmation" class="form-control" required minlength="6">
+                                <input type="password" name="password_confirmation" class="form-input" required minlength="6">
                             </div>
                             <div class="col-12">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="ativo" id="ativo" checked>
-                                    <label class="form-check-label" for="ativo">
-                                        Usuário ativo (pode fazer login)
-                                    </label>
-                                </div>
+                                <label class="form-checkbox" for="ativo">
+                                    <input class="form-checkbox-input" type="checkbox" name="ativo" id="ativo" checked>
+                                    <span class="form-checkbox-box"></span>
+                                    <span class="form-checkbox-label">Usuário ativo (pode fazer login)</span>
+                                </label>
                             </div>
                         </div>
                     </form>
@@ -156,7 +132,7 @@
     <!-- Modal de Confirmação de Exclusão -->
     <div class="modal fade" id="modalConfirmDelete" tabindex="-1">
         <div class="modal-dialog">
-            <div class="modal-content">
+            <div class="modal-content ds-modal">
                 <div class="modal-header">
                     <h5 class="modal-title">Confirmar Exclusão</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -175,7 +151,7 @@
     <!-- Modal de Mensagens -->
     <div class="modal fade" id="modalMessage" tabindex="-1">
         <div class="modal-dialog">
-            <div class="modal-content">
+            <div class="modal-content ds-modal">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalMessageTitle">Aviso</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -324,7 +300,11 @@
                 pageLength: 25,
                 order: [[4, 'desc']],
                 responsive: true,
-                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip'
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
+                createdRow: function(row) {
+                    $(row).addClass('table-tr');
+                    $('td', row).addClass('table-td');
+                }
             });
         }
 

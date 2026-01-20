@@ -24,37 +24,11 @@
             font-weight: 700;
             margin-bottom: 0.5rem;
         }
-        table.dataTable {
-            border-collapse: separate;
-            border-spacing: 0 0.5rem;
-        }
-        table.dataTable tbody tr td:first-child {
-            border-top-left-radius: 12px;
-            border-bottom-left-radius: 12px;
-        }
-        table.dataTable tbody tr td:last-child {
-            border-top-right-radius: 12px;
-            border-bottom-right-radius: 12px;
-        }
-        table.dataTable thead th {
-            font-weight: 600;
-            border: none;
-            padding: 1rem;
-        }
-        table.dataTable tbody td {
-            border: none;
-            padding: 1rem;
-            vertical-align: middle;
-        }
-        .badge {
-            padding: 0.5rem 0.75rem;
-            font-weight: 600;
-            font-size: 0.75rem;
-        }
     </style>
 </head>
 <body>
-    <div class="page-container">
+    <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
+    <div id="main-content" class="page-container">
         <div class="page-header d-flex justify-content-between align-items-start">
             <div>
                 <h1 class="page-title">Clientes</h1>
@@ -65,20 +39,20 @@
             </button>
         </div>
 
-        <div class="card">
-            <div class="card-body">
-                <table id="clientesTable" class="table table-hover" style="width:100%">
-                    <thead>
+        <div class="table-container">
+            <div class="table-wrapper">
+                <table id="clientesTable" class="table" style="width:100%">
+                    <thead class="table-thead">
                         <tr>
-                            <th>Cliente</th>
-                            <th>Email</th>
-                            <th>Telefone</th>
-                            <th>Status Lead</th>
-                            <th>Atualizado</th>
-                            <th>Acoes</th>
+                            <th class="table-th">Cliente</th>
+                            <th class="table-th">Email</th>
+                            <th class="table-th">Telefone</th>
+                            <th class="table-th">Status Lead</th>
+                            <th class="table-th">Atualizado</th>
+                            <th class="table-th table-th-actions">Acoes</th>
                         </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody class="table-tbody"></tbody>
                 </table>
             </div>
         </div>
@@ -198,7 +172,11 @@
                 pageLength: 25,
                 order: [[4, 'desc']],
                 responsive: true,
-                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip'
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
+                createdRow: function(row) {
+                    $(row).addClass('table-tr');
+                    $('td', row).addClass('table-td');
+                }
             });
         }
 
@@ -294,8 +272,8 @@
 
     <div class="modal fade" id="modalCliente" tabindex="-1">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 16px;">
-                <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+            <div class="modal-content ds-modal">
+                <div class="modal-header">
                     <h5 class="modal-title">Detalhes do Cliente</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -375,7 +353,7 @@
                         <div>Atualizado em: <span id="detailUpdatedAt"></span></div>
                     </div>
                 </div>
-                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
