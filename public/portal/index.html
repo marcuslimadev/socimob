@@ -13,58 +13,241 @@
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="/app/js/toast.js"></script>
     <style>
-        .glow-select {
-            background: rgba(15, 23, 42, 0.9);
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            color: #f8fafc;
-            padding: 0.5rem 0.9rem;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .glow-nav {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .glow-select {
+            background: white;
+            border: 2px solid #e2e8f0;
+            color: #1e293b;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
         .glow-select:focus {
             outline: none;
-            border-color: rgba(59, 130, 246, 0.8);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
+        
         .glow-select option {
-            background: #0f172a;
-            color: #f8fafc;
+            background: white;
+            color: #1e293b;
         }
+        
+        .glow-input {
+            background: white;
+            border: 2px solid #e2e8f0;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+        
+        .glow-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .glow-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .glow-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
+        }
+        
+        .glow-button.ghost {
+            background: transparent;
+            border: 2px solid white;
+            color: white;
+            box-shadow: none;
+        }
+        
+        .glow-button.ghost:hover {
+            background: white;
+            color: #667eea;
+        }
+        
+        .glow-hero-title {
+            color: white;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-size: 3.5rem;
+            font-weight: 900;
+        }
+        
+        .glow-panel {
+            background: white;
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        
         .imovel-card {
-            border: 1px solid rgba(148, 163, 184, 0.25);
-            background: linear-gradient(140deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.9));
-            box-shadow: 0 25px 50px rgba(2, 6, 23, 0.65);
-            color: #f8fafc;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            border: none;
         }
-        .imovel-card .card-meta {
-            color: rgba(226, 232, 240, 0.9);
+        
+        .imovel-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
         }
-        .imovel-card .card-actions button {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        
+        .imovel-card .card-image {
+            height: 250px;
+            background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+            position: relative;
+            overflow: hidden;
         }
-        .imovel-card .card-actions button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        
+        .imovel-card .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s;
+        }
+        
+        .imovel-card:hover .card-image img {
+            transform: scale(1.1);
+        }
+        
+        .card-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+        
+        .card-content {
+            padding: 1.5rem;
+        }
+        
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+        
+        .card-location {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        
+        .card-details {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        
+        .card-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.85rem;
+            color: #475569;
+            font-weight: 600;
+        }
+        
+        .card-price {
+            font-size: 1.75rem;
+            font-weight: 900;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+        
+        .card-action {
+            width: 100%;
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .card-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .filter-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            margin-bottom: 3rem;
+        }
+        
+        @media (max-width: 768px) {
+            .glow-hero-title {
+                font-size: 2rem;
+            }
         }
     </style>
     <style id="customStyles"></style>
 </head>
 <body class="glow-page">
     <!-- Navbar -->
-    <nav id="mainNav" class="glow-nav">
-        <div class="container py-4">
+    <nav id="mainNav" class="glow-nav fixed-top">
+        <div class="container py-3">
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-3">
                     <img id="logoImg" src="" alt="Logo" class="d-none" style="height: 48px;">
-                    <h1 id="empresaNome" class="fs-4 fw-bold text-uppercase mb-0">Carregando...</h1>
+                    <h1 id="empresaNome" class="fs-4 fw-bold mb-0" style="color: #1e293b;">Carregando...</h1>
                 </div>
                 <div class="d-none d-md-flex gap-3 align-items-center">
-                    <a href="#imoveis" class="glow-link scroll-link">Imóveis</a>
-                    <a href="#" class="glow-link" data-whatsapp-link data-whatsapp-message="Ola! Vim pelo portal de imoveis.">WhatsApp</a>
-                    <a id="linkPerfil" href="/portal/perfil.html" class="d-none glow-link fw-bold">Meu Perfil</a>
-                    <a id="linkVisitas" href="/portal/visitas.html" class="d-none glow-link fw-bold">Minhas Visitas</a>
-                    <button id="btnLogin" class="glow-button ghost">Entrar</button>
+                    <a href="#imoveis" class="scroll-link text-decoration-none fw-semibold" style="color: #475569;">Imóveis</a>
+                    <a href="#" data-whatsapp-link data-whatsapp-message="Ola! Vim pelo portal de imoveis." class="text-decoration-none fw-semibold" style="color: #475569;">WhatsApp</a>
+                    <a id="linkPerfil" href="/portal/perfil.html" class="d-none text-decoration-none fw-bold" style="color: #667eea;">Meu Perfil</a>
+                    <a id="linkVisitas" href="/portal/visitas.html" class="d-none text-decoration-none fw-bold" style="color: #667eea;">Minhas Visitas</a>
+                    <button id="btnLogin" class="glow-button ghost" style="background: white; color: #667eea; border: 2px solid #667eea;">Entrar</button>
                     <button id="btnLogoutPortal" class="d-none glow-button">Sair</button>
                 </div>
             </div>
@@ -72,12 +255,12 @@
     </nav>
 
     <!-- Hero Section -->
-    <section class="py-5">
+    <section class="py-5" style="margin-top: 80px;">
         <div class="container text-center">
             <h2 id="heroSlogan" class="glow-hero-title fw-black mb-4">
-                Encontre Imóvel dos Seus Sonhos
+                Encontre o Imóvel dos Seus Sonhos
             </h2>
-            <p class="fs-5 mb-4 text-white mx-auto" style="max-width: 48rem;"></p>
+            <p class="fs-5 mb-4 text-white mx-auto" style="max-width: 48rem;">Os melhores imóveis estão aqui</p>
 
             <!-- Filtros de Busca -->
             <div class="mx-auto glow-panel text-dark" style="max-width: 64rem;">
@@ -127,11 +310,11 @@
     <!-- Grid de Imóveis -->
     <section id="imoveis" class="py-5">
         <div class="container">
-            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-3 mb-4">
-                <h3 class="fs-3 fw-black text-secondary text-uppercase text-center text-md-start mb-0">Imóveis Disponíveis</h3>
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-3 mb-5">
+                <h3 class="fs-2 fw-black text-white text-center text-md-start mb-0">Imóveis Disponíveis</h3>
                 <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-end">
-                    <button id="btnViewCards" class="glow-button secondary">Ver cards</button>
-                    <button id="btnViewTable" class="glow-button ghost">Ver como tabela</button>
+                    <button id="btnViewCards" class="glow-button" style="background: white; color: #667eea;">📱 Cards</button>
+                    <button id="btnViewTable" class="glow-button ghost">📊 Tabela</button>
                 </div>
             </div>
             
@@ -568,50 +751,32 @@
 
             const html = lista.map(imovel => {
                 const imagem = getImagemPrincipal(imovel);
-                const titulo = escapeHtml(imovel.titulo || 'Im\u00f3vel');
+                const titulo = escapeHtml(imovel.titulo || 'Imóvel');
                 const endereco = escapeHtml(imovel.endereco || '');
                 const finalidade = escapeHtml(imovel.finalidade || '');
-                const liked = likedIds.has(imovel.id);
-                const likeIcon = liked ? '❤️' : '❤️';
                 const imagemHtml = imagem
-                    ? `<img src="${imagem}" alt="Foto do im\u00f3vel" class="w-100 h-100 object-fit-cover" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';" loading="lazy"><div class="h-100 bg-gradient d-flex align-items-center justify-content-center" style="display:none; background: linear-gradient(135deg, #e5e7eb, #d1d5db);"><span style="font-size: 6rem;">${getTipoIcon(imovel.tipo)}</span></div>`
-                    : `<div class="bg-gradient d-flex align-items-center justify-content-center" style="height: 16rem; background: linear-gradient(135deg, #e5e7eb, #d1d5db);"><span style="font-size: 6rem;">${getTipoIcon(imovel.tipo)}</span></div>`;
+                    ? `<img src="${imagem}" alt="Foto do imóvel" onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<div class=\\'d-flex align-items-center justify-content-center h-100\\'><span style=\\'font-size: 4rem;\\'>${getTipoIcon(imovel.tipo)}</span></div>';" loading="lazy">`
+                    : `<div class="d-flex align-items-center justify-content-center h-100"><span style="font-size: 4rem;">${getTipoIcon(imovel.tipo)}</span></div>`;
 
                 return `
                     <div class="col-12 col-md-6 col-lg-4">
-                        <div class="imovel-card rounded-3 overflow-hidden h-100 cursor-pointer" onclick="abrirModal(${imovel.id})" style="transition: transform 0.3s;">
-                            <div class="bg-secondary" style="height: 16rem;">
+                        <div class="imovel-card" onclick="window.location.href='/portal/imovel.html?id=${imovel.id}'">
+                            <div class="card-image">
                                 ${imagemHtml}
+                                <span class="card-badge">${finalidade}</span>
                             </div>
-                            <div class="p-4">
-                                <div class="d-flex justify-content-between align-items-start mb-3 gap-2">
-                                    <h4 class="fs-5 fw-bold text-white mb-0">${titulo}</h4>
-                                    <div class="d-flex flex-column align-items-end gap-2">
-                                        <span class="badge bg-success text-uppercase">${finalidade}</span>
-                                        <button onclick="event.stopPropagation(); toggleLike(${imovel.id});" class="btn btn-link p-0 fs-4" style="transition: transform 0.2s;">
-                                            ${likeIcon}
-                                        </button>
-                                    </div>
+                            <div class="card-content">
+                                <h4 class="card-title">${titulo}</h4>
+                                <p class="card-location">📍 ${endereco}</p>
+                                <div class="card-details">
+                                    ${imovel.area ? `<span class="card-detail-item">📐 ${imovel.area}m²</span>` : ''}
+                                    ${imovel.quartos ? `<span class="card-detail-item">🛏️ ${imovel.quartos}</span>` : ''}
+                                    ${imovel.banheiros ? `<span class="card-detail-item">🚿 ${imovel.banheiros}</span>` : ''}
                                 </div>
-                                <p class="text-light small mb-2">${endereco}</p>
-                                <div class="d-flex justify-content-between small text-light mb-3">
-                                    ${imovel.area ? `<span>Área: ${imovel.area}m²</span>` : '<span></span>'}
-                                    ${imovel.quartos ? `<span>Quartos: ${imovel.quartos}</span>` : '<span></span>'}
-                                    ${imovel.banheiros ? `<span>Banheiros: ${imovel.banheiros}</span>` : '<span></span>'}
-                                </div>
-                                <div class="border-top pt-3 card-actions" style="border-color: rgba(148, 163, 184, 0.3) !important;">
-                                    <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                                        <span class="fs-4 fw-black text-primary">R$ ${formatPrice(imovel.preco)}</span>
-                                        <div class="d-flex gap-2">
-                                            <button onclick="abrirModal(${imovel.id})" class="btn btn-primary btn-sm fw-bold">
-                                                Ver Detalhes
-                                            </button>
-                                            <button class="btn btn-outline-light btn-sm fw-bold" onclick="event.stopPropagation(); toggleLike(${imovel.id});">
-                                                ${liked ? 'Gostei' : 'Curtir'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div class="card-price">R$ ${formatPrice(imovel.preco)}</div>
+                                <button class="card-action" onclick="event.stopPropagation(); window.location.href='/portal/imovel.html?id=${imovel.id}'">
+                                    Ver Detalhes →
+                                </button>
                             </div>
                         </div>
                     </div>
