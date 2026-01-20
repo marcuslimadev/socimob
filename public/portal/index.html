@@ -747,7 +747,7 @@
         function createPropertyCard(property) {
             const imageUrl = property.imagens && property.imagens.length > 0
                 ? property.imagens[0].url
-                : 'https://via.placeholder.com/320x200/667eea/ffffff?text=Imagem+Indisponivel';
+                : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY3ZWVhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW0gSW5kaXNwb25pYmVsPC90ZXh0Pjwvc3ZnPg==';
 
             const badgeText = property.finalidade === 'venda' ? 'Venda' : 'Aluguel';
             const badgeClass = property.finalidade === 'venda' ? 'badge-sale' : 'badge-rent';
