@@ -236,13 +236,13 @@
     </section>
 
         <!-- Modal Detalhes do Imovel -->
-    <div id="modalImovel" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50">
-        <div class="relative w-full h-full bg-white border-4 border-[var(--glow-border)]">
-            <button onclick="fecharModal()" class="absolute top-4 right-4 glow-modal-close flex items-center justify-center text-lg z-20">
+    <div id="modalImovel" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 overflow-y-auto flex items-center justify-center p-4">
+        <div class="relative w-full max-w-6xl bg-white rounded-2xl border-4 border-[var(--glow-border)] shadow-2xl max-h-[90vh] overflow-hidden">
+            <button onclick="fecharModal()" class="absolute top-4 right-4 glow-modal-close flex items-center justify-center text-lg z-20 bg-white/90 hover:bg-white">
                 X
             </button>
-            <div class="h-full grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr]">
-                <div class="relative bg-white h-full">
+            <div class="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] max-h-[90vh]">
+                <div class="relative bg-slate-50 h-[400px] md:h-auto">
                     <div id="modalCarousel" class="relative h-full overflow-hidden">
                         <img id="modalFotoImg" alt="Foto do imovel" class="hidden w-full h-full object-cover">
                         <div id="modalFotoFallback" class="h-full w-full flex items-center justify-center">
@@ -257,24 +257,24 @@
                         <div id="carouselDots" class="absolute bottom-3 left-0 right-0 flex flex-nowrap items-center justify-center gap-2 px-4 overflow-x-auto"></div>
                     </div>
                 </div>
-                <div class="p-8 overflow-y-auto">
+                <div class="p-8 overflow-y-auto bg-white">
                     <div class="flex flex-col gap-3 mb-4">
                         <div class="flex items-center justify-between gap-3">
-                            <h3 id="modalTitulo" class="text-3xl font-black text-[var(--glow-black)]"></h3>
+                            <h3 id="modalTitulo" class="text-3xl font-black text-slate-900"></h3>
                             <button id="modalLikeBtn" class="glow-button ghost">
                                 <span id="modalLikeIcon">?</span>
                                 <span id="modalLikeCount">0</span>
                             </button>
                         </div>
-                        <span id="modalPreco" class="text-3xl font-black text-[var(--glow-blue)]"></span>
+                        <span id="modalPreco" class="text-3xl font-black text-blue-600"></span>
                     </div>
-                    <p id="modalEndereco" class="text-[var(--glow-black)] mb-4"></p>
-                    <div id="modalDetalhes" class="flex flex-wrap gap-4 text-[var(--glow-black)] mb-6">
+                    <p id="modalEndereco" class="text-slate-700 mb-4"></p>
+                    <div id="modalDetalhes" class="flex flex-wrap gap-4 text-slate-700 mb-6">
                         <!-- Detalhes aqui -->
                     </div>
-                    <div class="border-t pt-6">
-                        <h4 class="font-bold text-lg mb-2">Descricao</h4>
-                        <div id="modalDescricao" class="text-[var(--glow-black)]"></div>
+                    <div class="border-t border-slate-200 pt-6">
+                        <h4 class="font-bold text-lg mb-2 text-slate-900">Descricao</h4>
+                        <div id="modalDescricao" class="text-slate-700 leading-relaxed"></div>
                     </div>
                     <div class="mt-8 flex flex-col sm:flex-row gap-4">
                         <button onclick="entrarEmContato()" class="flex-1 glow-button secondary justify-center">
