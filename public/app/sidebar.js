@@ -126,13 +126,6 @@ class Sidebar {
                         badge: null // Pode ser preenchido dinamicamente
                     },
                     {
-                        id: 'leads-kanban',
-                        label: 'Funil de Leads',
-                        icon: 'bi-kanban',
-                        href: 'leads-kanban.html',
-                        roles: ['super_admin', 'admin', 'user']
-                    },
-                    {
                         id: 'visitas',
                         label: 'Visitas',
                         icon: 'bi-calendar-check',
