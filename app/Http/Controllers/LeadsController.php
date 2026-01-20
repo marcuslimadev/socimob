@@ -270,9 +270,13 @@ class LeadsController extends Controller
         try {
             $lead = $this->resolveLeadForTenant($id, $request);
 
-            $this->validate($request, [
+            $validator = Validator::make($request->all(), [
                 'status' => 'required|in:novo,em_atendimento,qualificado,proposta,fechado,perdido'
             ]);
+
+            if ($validator->fails()) {
+                return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+            }
 
             $lead->status = $request->status;
             $lead->updated_at = now();
@@ -326,10 +330,16 @@ class LeadsController extends Controller
      */
     public function bulkDestroy(Request $request)
     {
-        $data = $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'ids' => 'required|array|min:1',
             'ids.*' => 'integer|distinct'
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
 
         $tenantId = $this->resolveTenantId($request);
 
