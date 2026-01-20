@@ -3,320 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="pageTitle">Detalhes do Imóvel</title>
-    <link id="pageFavicon" rel="icon" href="/favicon.ico">
+    <title>Detalhes do Imóvel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/portal.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/app/js/toast.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1e293b}
+        .back-btn{position:fixed;top:20px;left:20px;background:#fff;color:#1e293b;border:none;padding:12px 24px;border-radius:50px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:1000;transition:all .2s;cursor:pointer}
+        .back-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.15);color:#0ea5e9}
+        .detail-container{max-width:1400px;margin:0 auto;padding:100px 20px 60px}
+        .image-gallery{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,.07);margin-bottom:30px}
+        .main-image{width:100%;height:500px;object-fit:cover;background:#f1f5f9}
+        .thumbnail-row{display:flex;gap:10px;padding:15px;background:#f8fafc;overflow-x:auto}
+        .thumbnail{width:100px;height:70px;object-fit:cover;border-radius:8px;cursor:pointer;border:3px solid transparent;transition:all .2s;flex-shrink:0}
+        .thumbnail:hover{border-color:#0ea5e9}
+        .thumbnail.active{border-color:#0ea5e9}
+        .property-header{background:#fff;padding:40px;border-radius:20px;box-shadow:0 4px 6px rgba(0,0,0,.07);margin-bottom:30px}
+        .property-badge{display:inline-block;background:#0ea5e9;color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:20px}
+        .property-badge.rent{background:#8b5cf6}
+        .property-title{font-size:2.5rem;font-weight:800;color:#0f172a;margin-bottom:15px;line-height:1.2}
+        .property-location{font-size:1.125rem;color:#64748b;margin-bottom:30px;display:flex;align-items:center;gap:8px}
+        .property-price{font-size:3rem;font-weight:800;color:#0ea5e9;margin-bottom:30px}
+        .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:30px}
+        .feature-card{background:#f8fafc;padding:30px;border-radius:16px;text-align:center;transition:all .3s}
+        .feature-card:hover{background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.08);transform:translateY(-4px)}
+        .feature-icon{font-size:2.5rem;margin-bottom:15px}
+        .feature-label{font-size:.875rem;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+        .feature-value{font-size:1.5rem;font-weight:700;color:#0f172a}
+        .description-section{background:#fff;padding:40px;border-radius:20px;box-shadow:0 4px 6px rgba(0,0,0,.07);margin-bottom:30px}
+        .section-title{font-size:1.75rem;font-weight:700;color:#0f172a;margin-bottom:20px}
+        .description-text{font-size:1.125rem;line-height:1.8;color:#475569}
+        .map-section{background:#fff;padding:40px;border-radius:20px;box-shadow:0 4px 6px rgba(0,0,0,.07);margin-bottom:30px}
+        .map-container{height:400px;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+        .action-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-top:30px}
+        .btn-action{padding:18px 32px;border-radius:12px;font-weight:600;font-size:1.125rem;border:none;transition:all .3s;cursor:pointer}
+        .btn-primary-action{background:linear-gradient(135deg,#0ea5e9 0%,#06b6d4 100%);color:#fff}
+        .btn-primary-action:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(14,165,233,.3)}
+        .btn-secondary-action{background:#fff;color:#0f172a;border:2px solid #e2e8f0}
+        .btn-secondary-action:hover{border-color:#0ea5e9;color:#0ea5e9}
+        .chat-toggle{position:fixed;bottom:30px;right:30px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#0ea5e9 0%,#06b6d4 100%);border:none;color:#fff;font-size:24px;box-shadow:0 4px 20px rgba(14,165,233,.4);cursor:pointer;z-index:999;transition:all .3s}
+        .chat-toggle:hover{transform:scale(1.1)}
+        .chat-widget{position:fixed;bottom:100px;right:30px;width:380px;height:500px;background:#fff;border-radius:20px;box-shadow:0 10px 40px rgba(0,0,0,.2);display:none;flex-direction:column;z-index:999}
+        .chat-widget.open{display:flex}
+        .chat-header{background:linear-gradient(135deg,#0ea5e9 0%,#06b6d4 100%);color:#fff;padding:20px;border-radius:20px 20px 0 0}
+        .chat-messages{flex:1;padding:20px;overflow-y:auto;background:#f8fafc}
+        .chat-message{margin-bottom:15px;display:flex;gap:10px}
+        .message-bubble{max-width:70%;padding:12px 16px;border-radius:16px;line-height:1.5}
+        .message-bubble.bot{background:#fff;color:#1e293b;border:1px solid #e2e8f0}
+        .message-bubble.user{background:#0ea5e9;color:#fff;margin-left:auto}
+        .chat-input{padding:20px;border-top:1px solid #e2e8f0;display:flex;gap:10px}
+        .chat-input input{flex:1;border:2px solid #e2e8f0;border-radius:12px;padding:12px 16px;font-size:15px}
+        .chat-input input:focus{outline:none;border-color:#0ea5e9}
+        .chat-input button{background:#0ea5e9;color:#fff;border:none;padding:12px 24px;border-radius:12px;font-weight:600;cursor:pointer}
+        @media (max-width:768px){.property-title{font-size:1.75rem}.property-price{font-size:2rem}.main-image{height:300px}.chat-widget{width:calc(100% - 40px);right:20px;left:20px}}
+    </style>
 </head>
-<body class="portal-body">
-    <button class="back-btn" onclick="window.location.href='/portal/'">
-        ← Voltar para Imóveis
-    </button>
+<body>
+    <button class="back-btn" onclick="window.location.href='/portal/'">← Voltar</button>
     
-    <div class="container">
-        <div class="detail-hero">
-            <!-- Galeria de Imagens -->
-            <div class="detail-media">
-                <img id="mainImage" src="" alt="Imóvel">
-                <div class="detail-price">R$ <span id="priceValue">0</span></div>
-                <div id="thumbnailStrip" class="thumbnail-strip"></div>
+    <div class="detail-container">
+        <div class="image-gallery">
+            <img id="mainImage" class="main-image" src="" alt="Imóvel">
+            <div id="thumbnailRow" class="thumbnail-row"></div>
+        </div>
+        <div class="property-header">
+            <span id="finalidadeBadge" class="property-badge">VENDA</span>
+            <h1 id="imovelTitulo" class="property-title">Carregando...</h1>
+            <div class="property-location"><i class="bi bi-geo-alt-fill"></i><span id="imovelEndereco">...</span></div>
+            <div class="property-price">R$ <span id="priceValue">0,00</span></div>
+            <div class="features-grid">
+                <div class="feature-card"><div class="feature-icon">📐</div><div class="feature-label">Área</div><div class="feature-value"><span id="detailArea">--</span>m²</div></div>
+                <div class="feature-card"><div class="feature-icon">🛏️</div><div class="feature-label">Quartos</div><div class="feature-value" id="detailQuartos">--</div></div>
+                <div class="feature-card"><div class="feature-icon">🚿</div><div class="feature-label">Banheiros</div><div class="feature-value" id="detailBanheiros">--</div></div>
+                <div class="feature-card"><div class="feature-icon">🚗</div><div class="feature-label">Vagas</div><div class="feature-value" id="detailVagas">--</div></div>
             </div>
-            
-            <!-- Detalhes -->
-            <div class="detail-section">
-                <span id="finalidadeBadge" class="detail-badge badge-sale">VENDA</span>
-                <h1 id="imovelTitulo" class="display-5 fw-bold mb-3">Carregando...</h1>
-                <p id="imovelEndereco" class="fs-5 mb-4 text-muted">
-                    <i>📍</i> <span></span>
-                </p>
-                
-                <!-- Cards de Detalhes -->
-                <div class="row g-3 mb-4">
-                    <div class="col-6 col-md-3">
-                        <div class="detail-card">
-                            <div class="fs-3">🏠</div>
-                            <div class="text-muted text-uppercase small">Área</div>
-                            <div class="detail-value"><span id="detailArea">--</span>m²</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="detail-card">
-                            <div class="fs-3">🛏️</div>
-                            <div class="text-muted text-uppercase small">Quartos</div>
-                            <div class="detail-value" id="detailQuartos">--</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="detail-card">
-                            <div class="fs-3">🚿</div>
-                            <div class="text-muted text-uppercase small">Banheiros</div>
-                            <div class="detail-value" id="detailBanheiros">--</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="detail-card">
-                            <div class="fs-3">🚗</div>
-                            <div class="text-muted text-uppercase small">Vagas</div>
-                            <div class="detail-value" id="detailVagas">--</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Descrição -->
-                <div class="description-box">
-                    <h3 class="fw-bold mb-3">📝 Descrição</h3>
-                    <div id="imovelDescricao" class="fs-6 lh-lg text-muted">Carregando descrição...</div>
-                </div>
-                
-                <!-- Mapa -->
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <h3 class="fw-bold mb-3">📍 Localização</h3>
-                        <div id="map" class="map-container"></div>
-                    </div>
-                </div>
-                
-                <!-- Botões de Ação -->
-                <div class="action-buttons">
-                    <button class="btn btn-portal-outline flex-grow-1" onclick="compartilhar()">
-                        📤 Compartilhar
-                    </button>
-                    <button class="btn btn-portal flex-grow-1" onclick="abrirChat()">
-                        💬 Fale Conosco
-                    </button>
-                </div>
+            <div class="action-buttons">
+                <button class="btn-action btn-primary-action" onclick="abrirChat()">💬 Fale Conosco</button>
+                <button class="btn-action btn-secondary-action" onclick="compartilhar()">📤 Compartilhar</button>
             </div>
         </div>
+        <div class="description-section"><h2 class="section-title">📝 Descrição</h2><div id="imovelDescricao" class="description-text">...</div></div>
+        <div class="map-section"><h2 class="section-title">📍 Localização</h2><div id="map" class="map-container"></div></div>
     </div>
-    
-    <!-- Chat Widget -->
     <button class="chat-toggle" onclick="toggleChat()">💬</button>
-    
     <div id="chatWidget" class="chat-widget">
-        <div class="chat-header text-white p-3 d-flex justify-content-between align-items-center">
-            <div>
-                <h5 class="mb-0 fw-bold">Atendimento IA</h5>
-                <small>Online agora</small>
-            </div>
-            <button class="btn btn-link text-white" onclick="toggleChat()">✕</button>
-        </div>
+        <div class="chat-header"><h5 class="mb-0 fw-bold">Atendimento IA</h5><small>Online</small></div>
         <div id="chatMessages" class="chat-messages"></div>
-        <div class="chat-input-area">
-            <form id="chatForm" onsubmit="enviarMensagem(event)" class="d-flex gap-2">
-                <input type="text" id="chatInput" class="form-control" placeholder="Digite sua mensagem..." required>
-                <button type="submit" class="btn btn-portal">Enviar</button>
-            </form>
-        </div>
+        <div class="chat-input"><input type="text" id="chatInput" placeholder="Digite..."/><button onclick="enviarMensagem()">Enviar</button></div>
     </div>
-    
     <script>
-        const API_URL = '/api';
-        let imovelData = null;
-        let conversaId = null;
-        let map = null;
-        
-        // Pegar ID do imóvel da URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const imovelId = urlParams.get('id');
-        
-        if (!imovelId) {
-            window.location.href = '/portal/';
-        }
-        
-        // Carregar dados do imóvel
-        async function carregarImovel() {
-            try {
-                const response = await $.ajax({
-                    url: `${API_URL}/portal/imoveis/${imovelId}`,
-                    method: 'GET'
-                });
-                
-                imovelData = response.data || response;
-                renderizarImovel(imovelData);
-                inicializarMapa(imovelData);
-            } catch (error) {
-                console.error('Erro ao carregar imóvel:', error);
-                showToast('Erro ao carregar imóvel', 'error');
-                setTimeout(() => window.location.href = '/portal/', 2000);
-            }
-        }
-        
-        function renderizarImovel(imovel) {
-            // Título e informações básicas
-            $('#imovelTitulo').text(imovel.titulo || 'Imóvel');
-            $('#imovelEndereco span').text(imovel.endereco || 'Endereço não informado');
-            const finalidade = (imovel.finalidade || 'venda').toLowerCase();
-            $('#finalidadeBadge')
-                .text(finalidade.toUpperCase())
-                .removeClass('badge-sale badge-rent')
-                .addClass(finalidade === 'aluguel' ? 'badge-rent' : 'badge-sale');
-            $('#priceValue').text(formatPrice(imovel.preco));
-            
-            // Detalhes
-            $('#detailArea').text(imovel.area || '--');
-            $('#detailQuartos').text(imovel.quartos || '--');
-            $('#detailBanheiros').text(imovel.banheiros || '--');
-            $('#detailVagas').text(imovel.vagas || '--');
-            
-            // Descrição
-            $('#imovelDescricao').html(imovel.descricao || 'Descrição não disponível.');
-            
-            // Imagens
-            const imagens = getImagens(imovel);
-            if (imagens.length > 0) {
-                $('#mainImage').attr('src', imagens[0]);
-                
-                if (imagens.length > 1) {
-                    const thumbsHtml = imagens.map((img, idx) => 
-                        `<img src="${img}" class="thumbnail ${idx === 0 ? 'active' : ''}" onclick="trocarImagem(${idx})">`
-                    ).join('');
-                    $('#thumbnailStrip').html(thumbsHtml);
-                } else {
-                    $('#thumbnailStrip').hide();
-                }
-            } else {
-                $('#mainImage').attr('src', 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect fill="%23e2e8f0" width="800" height="600"/><text x="50%" y="50%" text-anchor="middle" fill="%2364748b" font-size="48">Sem imagem</text></svg>');
-                $('#thumbnailStrip').hide();
-            }
-        }
-        
-        window.trocarImagem = function(index) {
-            const imagens = getImagens(imovelData);
-            $('#mainImage').attr('src', imagens[index]);
-            $('.thumbnail').removeClass('active').eq(index).addClass('active');
-        };
-        
-        function getImagens(imovel) {
-            const imgs = [];
-            if (imovel.fotos && Array.isArray(imovel.fotos)) {
-                imgs.push(...imovel.fotos);
-            }
-            if (imovel.imagem_principal) imgs.push(imovel.imagem_principal);
-            if (imovel.imagem1) imgs.push(imovel.imagem1);
-            if (imovel.imagem2) imgs.push(imovel.imagem2);
-            if (imovel.imagem3) imgs.push(imovel.imagem3);
-            return [...new Set(imgs)].filter(Boolean);
-        }
-        
-        function inicializarMapa(imovel) {
-            // Coordenadas padrão (centro do Brasil) se não houver lat/lng
-            const lat = imovel.latitude || imovel.lat || -15.7801;
-            const lng = imovel.longitude || imovel.lng || -47.9292;
-            
-            map = L.map('map').setView([lat, lng], 15);
-            
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-            
-            L.marker([lat, lng]).addTo(map)
-                .bindPopup(`<b>${imovel.titulo}</b><br>${imovel.endereco}`)
-                .openPopup();
-        }
-        
-        function formatPrice(price) {
-            if (!price) return '0,00';
-            return Number(price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-        
-        window.toggleChat = function() {
-            $('#chatWidget').toggleClass('open');
-            if (!conversaId) {
-                iniciarConversa();
-            }
-        };
-        
-        window.abrirChat = function() {
-            $('#chatWidget').addClass('open');
-            if (!conversaId) {
-                iniciarConversa();
-            }
-        };
-        
-        async function iniciarConversa() {
-            const token = localStorage.getItem('portal_token');
-            if (!token) {
-                adicionarMensagem('bot', 'Olá! Como posso ajudar com este imóvel?');
-                return;
-            }
-            
-            try {
-                const response = await $.ajax({
-                    url: `${API_URL}/portal/chat/iniciar`,
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + token },
-                    data: JSON.stringify({ imovel_id: imovelId }),
-                    contentType: 'application/json'
-                });
-                
-                conversaId = response.conversa_id;
-                adicionarMensagem('bot', response.mensagem || 'Olá! Como posso ajudar?');
-            } catch (error) {
-                console.error('Erro ao iniciar conversa:', error);
-                adicionarMensagem('bot', 'Olá! Como posso ajudar com este imóvel?');
-            }
-        }
-        
-        window.enviarMensagem = async function(e) {
-            e.preventDefault();
-            const input = $('#chatInput');
-            const mensagem = input.val().trim();
-            
-            if (!mensagem) return;
-            
-            adicionarMensagem('user', mensagem);
-            input.val('');
-            
-            const token = localStorage.getItem('portal_token');
-            
-            try {
-                const response = await $.ajax({
-                    url: `${API_URL}/portal/chat/mensagem`,
-                    method: 'POST',
-                    headers: token ? { 'Authorization': 'Bearer ' + token } : {},
-                    data: JSON.stringify({ 
-                        conversa_id: conversaId,
-                        mensagem: mensagem,
-                        imovel_id: imovelId
-                    }),
-                    contentType: 'application/json'
-                });
-                
-                adicionarMensagem('bot', response.resposta || 'Desculpe, não entendi.');
-            } catch (error) {
-                console.error('Erro ao enviar mensagem:', error);
-                adicionarMensagem('bot', 'Desculpe, ocorreu um erro. Tente novamente.');
-            }
-        };
-        
-        function adicionarMensagem(tipo, texto) {
-            const bubble = $('<div>').addClass(`chat-bubble ${tipo}`).text(texto);
-            $('#chatMessages').append(bubble);
-            $('#chatMessages').scrollTop($('#chatMessages')[0].scrollHeight);
-        }
-        
-        window.compartilhar = function() {
-            if (navigator.share) {
-                navigator.share({
-                    title: imovelData.titulo,
-                    text: `Confira este imóvel: ${imovelData.titulo}`,
-                    url: window.location.href
-                });
-            } else {
-                navigator.clipboard.writeText(window.location.href);
-                showToast('Link copiado!', 'success');
-            }
-        };
-        
-        // Carregar imóvel ao iniciar
-        $(document).ready(() => {
-            carregarImovel();
-        });
+        const API_URL="/api";let imovelData=null;let map=null;const urlParams=new URLSearchParams(window.location.search);const imovelId=urlParams.get("id");if(!imovelId)window.location.href="/portal/";async function carregarImovel(){try{const r=await $.ajax({url:`${API_URL}/portal/imoveis/${imovelId}`,method:"GET"});imovelData=r.data||r;renderizarImovel(imovelData);inicializarMapa(imovelData)}catch(e){console.error(e);showToast("Erro ao carregar","error");setTimeout(()=>window.location.href="/portal/",2e3)}}function renderizarImovel(i){$("#imovelTitulo").text(i.titulo||"Imóvel");$("#imovelEndereco").text(i.endereco||"...");const f=(i.finalidade||"venda").toLowerCase();$("#finalidadeBadge").text(f.toUpperCase()).toggleClass("rent",f==="aluguel");$("#priceValue").text(formatPrice(i.preco));$("#detailArea").text(i.area||"--");$("#detailQuartos").text(i.quartos||"--");$("#detailBanheiros").text(i.banheiros||"--");$("#detailVagas").text(i.vagas||"--");$("#imovelDescricao").html(i.descricao||"...");const imgs=getImagens(i);if(imgs.length>0){$("#mainImage").attr("src",imgs[0]);if(imgs.length>1)$("#thumbnailRow").html(imgs.map((img,idx)=>`<img src="${img}" class="thumbnail ${idx===0?"active":""}" onclick="trocarImagem(${idx})">`).join(""))}else $("#mainImage").attr("src","data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><rect fill='%23f1f5f9' width='800' height='600'/><text x='50%' y='50%' text-anchor='middle' fill='%2364748b' font-size='32'>Sem imagem</text></svg>")}window.trocarImagem=function(idx){const imgs=getImagens(imovelData);$("#mainImage").attr("src",imgs[idx]);$(".thumbnail").removeClass("active").eq(idx).addClass("active")};function getImagens(i){const imgs=[];if(i.fotos&&Array.isArray(i.fotos))imgs.push(...i.fotos);if(i.imagem_principal)imgs.push(i.imagem_principal);if(i.imagem1)imgs.push(i.imagem1);if(i.imagem2)imgs.push(i.imagem2);if(i.imagem3)imgs.push(i.imagem3);return[...new Set(imgs)].filter(Boolean)}function inicializarMapa(i){const lat=i.latitude||i.lat||-15.7801;const lng=i.longitude||i.lng||-47.9292;map=L.map("map").setView([lat,lng],15);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(map);L.marker([lat,lng]).addTo(map).bindPopup(`<b>${i.titulo}</b><br>${i.endereco}`).openPopup()}function formatPrice(p){if(!p)return"0,00";return Number(p).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}window.toggleChat=function(){$("#chatWidget").toggleClass("open")};window.abrirChat=function(){$("#chatWidget").addClass("open");adicionarMensagem("bot",`Olá! Tenho interesse em ${imovelData?.titulo}. Como posso agendar uma visita?`)};window.enviarMensagem=function(){const input=$("#chatInput");const msg=input.val().trim();if(!msg)return;adicionarMensagem("user",msg);input.val("");setTimeout(()=>adicionarMensagem("bot","Obrigado! Nossa equipe responderá em breve."),1e3)};function adicionarMensagem(tipo,texto){const html=`<div class="chat-message"><div class="message-bubble ${tipo}">${texto}</div></div>`;$("#chatMessages").append(html);$("#chatMessages").scrollTop($("#chatMessages")[0].scrollHeight)}window.compartilhar=async function(){const data={title:imovelData?.titulo||"Imóvel",text:`Confira: ${imovelData?.titulo}`,url:window.location.href};try{if(navigator.share)await navigator.share(data);else{navigator.clipboard.writeText(window.location.href);showToast("Link copiado!","success")}}catch(e){console.log(e)}};$(document).ready(()=>{carregarImovel()});
     </script>
 </body>
 </html>

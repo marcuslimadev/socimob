@@ -13,221 +13,276 @@
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="/app/js/toast.js"></script>
     <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --card-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
         
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            background: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: #1e293b;
+            line-height: 1.6;
         }
         
+        /* Navbar */
         .glow-nav {
-            background: rgba(255, 255, 255, 0.95) !important;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            background: white !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-bottom: 1px solid #e2e8f0;
         }
         
-        .glow-select {
-            background: white;
-            border: 2px solid #e2e8f0;
-            color: #1e293b;
-            padding: 0.75rem 1rem;
-            border-radius: 12px;
+        .nav-link-custom {
+            color: #64748b;
             font-weight: 500;
-            transition: all 0.3s;
+            transition: color 0.2s;
+            text-decoration: none;
         }
         
-        .glow-select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        .nav-link-custom:hover {
+            color: #0ea5e9;
         }
         
-        .glow-select option {
-            background: white;
-            color: #1e293b;
+        /* Hero */
+        .hero-section {
+            background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+            padding: 80px 0 60px;
+            margin-top: 72px;
         }
         
-        .glow-input {
-            background: white;
-            border: 2px solid #e2e8f0;
-            padding: 0.75rem 1rem;
-            border-radius: 12px;
-            transition: all 0.3s;
-        }
-        
-        .glow-input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        .glow-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
             color: white;
-            padding: 0.75rem 2rem;
-            border-radius: 50px;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 2rem;
+        }
+        
+        /* Filtros */
+        .filter-box {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            margin-top: -40px;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .form-control, .form-select {
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 4px rgba(14,165,233,0.1);
+            outline: none;
+        }
+        
+        .btn-search {
+            background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 10px;
             font-weight: 600;
             transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
         
-        .glow-button:hover {
+        .btn-search:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
+            box-shadow: 0 8px 16px rgba(14,165,233,0.3);
         }
         
-        .glow-button.ghost {
-            background: transparent;
-            border: 2px solid white;
-            color: white;
-            box-shadow: none;
-        }
-        
-        .glow-button.ghost:hover {
+        /* Cards de Imóveis */
+        .property-card {
             background: white;
-            color: #667eea;
-        }
-        
-        .glow-hero-title {
-            color: white;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            font-size: 3.5rem;
-            font-weight: 900;
-        }
-        
-        .glow-panel {
-            background: white;
-            border-radius: 24px;
-            padding: 2rem;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-        }
-        
-        .imovel-card {
-            background: white;
-            border-radius: 20px;
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: var(--card-shadow);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            cursor: pointer;
-            border: none;
+            transition: all 0.3s;
+            border: 1px solid #e2e8f0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
         
-        .imovel-card:hover {
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        .property-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+            border-color: #0ea5e9;
         }
         
-        .imovel-card .card-image {
-            height: 250px;
-            background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+        .property-image {
+            height: 240px;
+            background: #f1f5f9;
             position: relative;
             overflow: hidden;
         }
         
-        .imovel-card .card-image img {
+        .property-image img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             transition: transform 0.4s;
         }
         
-        .imovel-card:hover .card-image img {
-            transform: scale(1.1);
+        .property-card:hover .property-image img {
+            transform: scale(1.05);
         }
         
-        .card-badge {
+        .property-badge {
             position: absolute;
-            top: 15px;
-            right: 15px;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 8px 20px;
-            border-radius: 50px;
+            top: 12px;
+            right: 12px;
+            background: white;
+            color: #0ea5e9;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
             font-weight: 700;
-            font-size: 12px;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
         
-        .card-content {
+        .property-content {
             padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
         
-        .card-title {
+        .property-title {
             font-size: 1.25rem;
             font-weight: 700;
-            color: #1e293b;
+            color: #0f172a;
             margin-bottom: 0.5rem;
+            line-height: 1.4;
         }
         
-        .card-location {
-            color: #475569;
+        .property-location {
+            color: #64748b;
             font-size: 0.9rem;
             margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
         
-        .card-details {
+        .property-features {
             display: flex;
             gap: 1rem;
             margin-bottom: 1rem;
             padding: 0.75rem;
-            background: #f8f9fa;
-            border-radius: 12px;
+            background: #f8fafc;
+            border-radius: 8px;
         }
         
-        .card-detail-item {
+        .feature-item {
             display: flex;
             align-items: center;
-            gap: 0.25rem;
-            font-size: 0.85rem;
-            color: #334155;
-            font-weight: 600;
+            gap: 4px;
+            font-size: 0.875rem;
+            color: #475569;
+            font-weight: 500;
         }
         
-        .card-price {
+        .property-price {
             font-size: 1.75rem;
-            font-weight: 900;
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-weight: 800;
+            color: #0ea5e9;
+            margin-top: auto;
             margin-bottom: 1rem;
         }
         
-        .card-action {
-            width: 100%;
-            background: var(--primary-gradient);
+        .btn-view {
+            background: #0f172a;
             color: white;
             border: none;
-            padding: 0.75rem;
-            border-radius: 12px;
+            padding: 12px;
+            border-radius: 10px;
             font-weight: 600;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            transition: all 0.2s;
+            text-align: center;
         }
         
-        .card-action:hover {
+        .btn-view:hover {
+            background: #1e293b;
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
         }
         
-        .filter-section {
+        /* Section Title */
+        .section-title {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 2rem;
+        }
+        
+        /* View Toggle */
+        .btn-toggle {
             background: white;
-            padding: 2rem;
-            border-radius: 24px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-            margin-bottom: 3rem;
+            border: 2px solid #e2e8f0;
+            color: #64748b;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .btn-toggle.active {
+            background: #0ea5e9;
+            border-color: #0ea5e9;
+            color: white;
+        }
+        
+        .btn-toggle:hover:not(.active) {
+            border-color: #0ea5e9;
+            color: #0ea5e9;
+        }
+        
+        /* Footer */
+        footer {
+            background: #0f172a;
+            color: #94a3b8;
+            padding: 3rem 0 1.5rem;
+            margin-top: 4rem;
+        }
+        
+        footer h5 {
+            color: white;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        
+        footer a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        footer a:hover {
+            color: #0ea5e9;
         }
         
         @media (max-width: 768px) {
-            .glow-hero-title {
+            .hero-title {
                 font-size: 2rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1rem;
             }
         }
     </style>
@@ -235,38 +290,40 @@
 </head>
 <body class="glow-page">
     <!-- Navbar -->
-    <nav id="mainNav" class="glow-nav fixed-top">
+    <nav class="glow-nav fixed-top">
         <div class="container py-3">
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-3">
-                    <img id="logoImg" src="" alt="Logo" class="d-none" style="height: 48px;">
-                    <h1 id="empresaNome" class="fs-4 fw-bold mb-0" style="color: #1e293b;">Carregando...</h1>
+                    <img id="logoImg" src="" alt="Logo" class="d-none" style="height: 40px;">
+                    <h1 id="empresaNome" class="fs-5 fw-bold mb-0" style="color: #0f172a;">Carregando...</h1>
                 </div>
-                <div class="d-none d-md-flex gap-3 align-items-center">
-                    <a href="#imoveis" class="scroll-link text-decoration-none fw-semibold" style="color: #1e293b;">Imóveis</a>
-                    <a href="#" data-whatsapp-link data-whatsapp-message="Ola! Vim pelo portal de imoveis." class="text-decoration-none fw-semibold" style="color: #1e293b;">WhatsApp</a>
-                    <a id="linkPerfil" href="/portal/perfil.html" class="d-none text-decoration-none fw-bold" style="color: #667eea;">Meu Perfil</a>
-                    <a id="linkVisitas" href="/portal/visitas.html" class="d-none text-decoration-none fw-bold" style="color: #667eea;">Minhas Visitas</a>
-                    <button id="btnLogin" class="glow-button ghost" style="background: white; color: #667eea; border: 2px solid #667eea;">Entrar</button>
-                    <button id="btnLogoutPortal" class="d-none glow-button">Sair</button>
+                <div class="d-none d-md-flex gap-4 align-items-center">
+                    <a href="#imoveis" class="nav-link-custom scroll-link">Imóveis</a>
+                    <a href="#" class="nav-link-custom" data-whatsapp-link data-whatsapp-message="Olá! Vim pelo portal de imóveis.">WhatsApp</a>
+                    <a id="linkPerfil" href="/portal/perfil.html" class="d-none nav-link-custom fw-semibold" style="color: #0ea5e9;">Perfil</a>
+                    <a id="linkVisitas" href="/portal/visitas.html" class="d-none nav-link-custom fw-semibold" style="color: #0ea5e9;">Visitas</a>
+                    <button id="btnLogin" class="btn btn-outline-primary" style="border-radius: 20px; padding: 8px 24px;">Entrar</button>
+                    <button id="btnLogoutPortal" class="d-none btn btn-primary" style="border-radius: 20px; padding: 8px 24px;">Sair</button>
                 </div>
             </div>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <section class="py-5" style="margin-top: 80px;">
+    <section class="hero-section">
         <div class="container text-center">
-            <h2 id="heroSlogan" class="glow-hero-title fw-black mb-4">
-                Encontre o Imóvel dos Seus Sonhos
-            </h2>
-            <p class="fs-5 mb-4 text-white mx-auto" style="max-width: 48rem;">Os melhores imóveis estão aqui</p>
-
-            <!-- Filtros de Busca -->
-            <div class="mx-auto glow-panel text-dark" style="max-width: 64rem;">
+            <h1 id="heroSlogan" class="hero-title">Encontre Seu Imóvel Ideal</h1>
+            <p class="hero-subtitle">Milhares de imóveis para venda e locação</p>
+        </div>
+    </section>
+    
+    <!-- Filtros -->
+    <section>
+        <div class="container">
+            <div class="filter-box">
                 <div class="row g-3">
-                    <div class="col-12 col-md">
-                        <select id="filterTipo" class="glow-select form-select">
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <select id="filterTipo" class="form-select">
                             <option value="">Tipo de Imóvel</option>
                             <option value="casa">Casa</option>
                             <option value="apartamento">Apartamento</option>
@@ -274,33 +331,25 @@
                             <option value="comercial">Comercial</option>
                         </select>
                     </div>
-                    <div class="col-12 col-md">
-                        <select id="filterFinalidade" class="glow-select form-select">
+                    <div class="col-12 col-md-6 col-lg-2">
+                        <select id="filterFinalidade" class="form-select">
                             <option value="">Finalidade</option>
                             <option value="venda">Venda</option>
                             <option value="aluguel">Aluguel</option>
                         </select>
                     </div>
-                    <div class="col-12 col-md">
-                        <input type="text" id="filterLocal" placeholder="Bairro, Cidade..." class="glow-input form-control">
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <input type="text" id="filterLocal" placeholder="Cidade, bairro..." class="form-control">
                     </div>
-                    <div class="col-12 col-md">
-                        <input type="text" id="filterTexto" placeholder="Ex: casa 3 quartos com quintal" class="glow-input form-control">
-                    </div>
-                    <div class="col-12 col-md">
-                        <button id="btnBuscar" class="glow-button w-100">
-                            Buscar
-                        </button>
-                    </div>
-                </div>
-                <div class="mt-3 row g-3">
-                    <div class="col-12 col-md-auto">
-                        <select id="sortBy" class="glow-select form-select">
-                            <option value="">Ordenar por</option>
+                    <div class="col-12 col-md-6 col-lg-2">
+                        <select id="sortBy" class="form-select">
+                            <option value="">Ordenar</option>
                             <option value="preco_asc">Menor preço</option>
                             <option value="preco_desc">Maior preço</option>
-                            <option value="avaliacao_desc">Melhor avaliada</option>
                         </select>
+                    </div>
+                    <div class="col-12 col-lg-2">
+                        <button id="btnBuscar" class="btn-search w-100">Buscar</button>
                     </div>
                 </div>
             </div>
@@ -316,31 +365,22 @@
                     <button id="btnViewCards" class="glow-button" style="background: white; color: #667eea;">📱 Cards</button>
                     <button id="btnViewTable" class="glow-button ghost">📊 Tabela</button>
                 </div>
+            </div>justify-content-between align-items-center mb-4">
+                <h2 class="section-title mb-0">Imóveis Disponíveis</h2>
+                <div class="d-flex gap-2">
+                    <button id="btnViewCards" class="btn-toggle active">
+                        <i class="bi bi-grid-3x3-gap-fill"></i> Cards
+                    </button>
+                    <button id="btnViewTable" class="btn-toggle">
+                        <i class="bi bi-list-ul"></i> Lista
+                    </button>
+                </div>
             </div>
             
-            <div id="imoveisGrid" class="row g-4">
-                <!-- Cards serão inseridos aqui -->
-                <div class="col-12 text-center py-5 text-secondary">
-                    <div class="spinner-border" role="status">
-                        <span class="visually-hidden">Carregando Imóveis...</span>
-                    </div>
-                </div>
-            </div>
-
-            <div id="imoveisTabelaWrapper" class="d-none glow-table-wrapper">
-                <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-                    <span class="small text-dark fw-semibold text-uppercase">Filtros por coluna</span>
-                    <button id="btnResetTableFilters" class="small glow-button ghost">Limpar filtros</button>
-                </div>
-                <table id="imoveisTabela" class="display w-100"></table>
-            </div>
-            <div id="imoveisMagazineWrapper" class="d-none">
-                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-        
-        <!-- Modal Detalhes do Imovel -->
-    <div id="modalImovel" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 overflow-y-auto flex items-center justify-center p-4">
-        <div class="relative w-full max-w-6xl bg-white rounded-2xl border-4 border-[var(--glow-border)] shadow-2xl max-h-[90vh] overflow-hidden">
-            <button onclick="fecharModal()" class="absolute top-4 right-4 glow-modal-close flex items-center justify-center text-lg z-20 bg-white/90 hover:bg-white">
+            <div id="imoveisGrid" class="row g-4"></div>
+            <div id="imoveisTabelaWrapper" class="d-none"></div>
+        </div>
+    </section top-4 right-4 glow-modal-close flex items-center justify-center text-lg z-20 bg-white/90 hover:bg-white">
                 X
             </button>
             <div class="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] max-h-[90vh]">
@@ -769,22 +809,22 @@
                                 <h4 class="card-title">${titulo}</h4>
                                 <p class="card-location">📍 ${endereco}</p>
                                 <div class="card-details">
-                                    ${imovel.area ? `<span class="card-detail-item">📐 ${imovel.area}m²</span>` : ''}
-                                    ${imovel.quartos ? `<span class="card-detail-item">🛏️ ${imovel.quartos}</span>` : ''}
-                                    ${imovel.banheiros ? `<span class="card-detail-item">🚿 ${imovel.banheiros}</span>` : ''}
-                                </div>
-                                <div class="card-price">R$ ${formatPrice(imovel.preco)}</div>
-                                <button class="card-action" onclick="event.stopPropagation(); window.location.href='/portal/imovel.html?id=${imovel.id}'">
-                                    Ver Detalhes →
-                                </button>
+                                    property-card" onclick="window.location.href='/portal/imovel.html?id=${imovel.id}'">
+                            <div class="property-image">
+                                ${imagemHtml}
+                                <span class="property-badge">${finalidade}</span>
                             </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            $('#imoveisGrid').html(html);
-        }
+                            <div class="property-content">
+                                <h3 class="property-title">${titulo}</h3>
+                                <p class="property-location">📍 ${endereco}</p>
+                                <div class="property-features">
+                                    ${imovel.area ? `<span class="feature-item">📐 ${imovel.area}m²</span>` : ''}
+                                    ${imovel.quartos ? `<span class="feature-item">🛏️ ${imovel.quartos}</span>` : ''}
+                                    ${imovel.banheiros ? `<span class="feature-item">🚿 ${imovel.banheiros}</span>` : ''}
+                                </div>
+                                <div class="property-price">R$ ${formatPrice(imovel.preco)}</div>
+                                <button class="btn-view" onclick="event.stopPropagation(); window.location.href='/portal/imovel.html?id=${imovel.id}'">
+                                    Ver Detalhes
 
                 function renderTabela(lista) {
             if (!$('#imoveisTabela').length) {
