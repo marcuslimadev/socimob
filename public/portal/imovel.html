@@ -983,7 +983,7 @@
             showLoading($('#agent-info'));
 
             try {
-                const response = await fetch(`${API_BASE}/portal/imoveis/${propertyId}`);
+                const response = await fetch(`${API_BASE}/api/portal/imoveis/${propertyId}`);
                 const data = await response.json();
 
                 if (data.success) {

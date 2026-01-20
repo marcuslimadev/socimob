@@ -747,7 +747,7 @@
         function createPropertyCard(property) {
             const imageUrl = property.imagens && property.imagens.length > 0
                 ? property.imagens[0].url
-                : 'https://via.placeholder.com/320x200/667eea/white?text=Imagem+Indisponível';
+                : 'https://via.placeholder.com/320x200/667eea/ffffff?text=Imagem+Indisponivel';
 
             const badgeText = property.finalidade === 'venda' ? 'Venda' : 'Aluguel';
             const badgeClass = property.finalidade === 'venda' ? 'badge-sale' : 'badge-rent';
@@ -798,7 +798,7 @@
                     if (value) params.append(key, value);
                 });
 
-                const response = await fetch(`${API_BASE}/portal/imoveis?${params}`);
+                const response = await fetch(`${API_BASE}/api/portal/imoveis?${params}`);
                 const data = await response.json();
 
                 if (data.success) {
@@ -817,7 +817,7 @@
 
         async function loadStats() {
             try {
-                const response = await fetch(`${API_BASE}/portal/config`);
+                const response = await fetch(`${API_BASE}/api/portal/config`);
                 const data = await response.json();
 
                 if (data.success) {
