@@ -149,7 +149,8 @@ async function renderPdf(url) {
 function clearCanvas() {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#f6f3eb';
+    const isFullscreen = elements.canvasWrapper.classList.contains('fullscreen-mode');
+    ctx.fillStyle = isFullscreen ? '#1a1a1a' : '#f6f3eb';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
 }
@@ -252,6 +253,12 @@ function updateCounter() {
     const current = clamp(viewerState.current + 1, 1, total);
     elements.counter.textContent = `${current} / ${total}`;
     elements.goTo.value = current;
+    
+    // Atualizar indicador fullscreen
+    const indicator = document.getElementById('pageIndicator');
+    if (indicator) {
+        indicator.textContent = `Página ${current} de ${total}`;
+    }
 }
 
 function nextPage() {
@@ -312,10 +319,61 @@ function renderScrollMode() {
 function handleFullScreen() {
     const el = elements.canvasWrapper;
     if (!el) return;
-    if (!document.fullscreenElement) {
-        el.requestFullscreen?.();
+    
+    // Modo fullscreen customizado (não usa API fullscreen nativa)
+    if (!el.classList.contains('fullscreen-mode')) {
+        enterFullscreenMode();
     } else {
-        document.exitFullscreen?.();
+        exitFullscreenMode();
+    }
+}
+
+function enterFullscreenMode() {
+    const el = elements.canvasWrapper;
+    el.classList.add('fullscreen-mode');
+    
+    // Redimensionar canvas para fullscreen
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // Redesenhar com novo tamanho
+    drawPage(viewerState.current, true);
+    
+    // Ocultar toolbar
+    document.querySelector('.revista-toolbar')?.classList.add('hidden');
+    document.querySelector('nav')?.classList.add('hidden');
+}
+
+function exitFullscreenMode() {
+    const el = elements.canvasWrapper;
+    el.classList.remove('fullscreen-mode');
+    
+    // Restaurar tamanho original
+    canvas.width = 1920;
+    canvas.height = 1080;
+    
+    // Redesenhar
+    drawPage(viewerState.current, true);
+    
+    // Mostrar toolbar
+    document.querySelector('.revista-toolbar')?.classList.remove('hidden');
+    document.querySelector('nav')?.classList.remove('hidden');
+}
+
+function handleCanvasClick(event) {
+    // Navegar por clique apenas em fullscreen
+    if (!elements.canvasWrapper.classList.contains('fullscreen-mode')) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const clickZone = rect.width / 3;
+    
+    if (x < clickZone) {
+        // Clique à esquerda - página anterior
+        prevPage();
+    } else if (x > rect.width - clickZone) {
+        // Clique à direita - próxima página
+        nextPage();
     }
 }
 
@@ -327,25 +385,50 @@ function bindEvents() {
     elements.go.addEventListener('click', () => goToPage(elements.goTo.value));
     elements.goTo.addEventListener('change', (e) => goToPage(e.target.value));
     elements.fullscreen.addEventListener('click', handleFullScreen);
+    
+    // Botão de sair do fullscreen
+    const btnExit = document.getElementById('btnExitFullscreen');
+    if (btnExit) {
+        btnExit.addEventListener('click', (e) => {
+            e.stopPropagation();
+            exitFullscreenMode();
+        });
+    }
+    
+    // Navegação por clique no canvas
+    canvas.addEventListener('click', handleCanvasClick);
 
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'ArrowRight') nextPage();
-        if (event.key === 'ArrowLeft') prevPage();
+        if (event.key === 'ArrowRight' || event.key === 'PageDown') nextPage();
+        if (event.key === 'ArrowLeft' || event.key === 'PageUp') prevPage();
+        if (event.key === 'Escape' && elements.canvasWrapper.classList.contains('fullscreen-mode')) {
+            exitFullscreenMode();
+        }
+        if (event.key === 'f' || event.key === 'F') {
+            handleFullScreen();
+        }
     });
 
     window.addEventListener('resize', () => {
         if (window.matchMedia('(max-width: 768px)').matches && viewerState.mode !== 'scroll') {
             viewerState.mode = 'scroll';
             renderScrollMode();
+        } else if (elements.canvasWrapper.classList.contains('fullscreen-mode')) {
+            // Redimensionar canvas em fullscreen
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            drawPage(viewerState.current, true);
         }
     });
 
-    // API mÃ­nima exportada
+    // API mínima exportada
     window.magazineViewer = {
         next: nextPage,
         prev: prevPage,
         goToPage,
-        zoom: setZoom
+        zoom: setZoom,
+        enterFullscreen: enterFullscreenMode,
+        exitFullscreen: exitFullscreenMode
     };
 }
 
