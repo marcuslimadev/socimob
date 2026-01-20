@@ -75,6 +75,7 @@ $app->routeMiddleware([
     'auth:api' => App\Http\Middleware\SimpleTokenAuth::class,
     'validate-tenant-auth' => App\Http\Middleware\ValidateTenantAuth::class,
     'resolve-tenant' => App\Http\Middleware\ResolveTenant::class,
+    'throttle' => Illuminate\Routing\Middleware\ThrottleRequests::class, // ⚡ Rate limiting
 ]);
 
 /*

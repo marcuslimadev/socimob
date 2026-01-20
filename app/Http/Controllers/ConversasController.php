@@ -29,28 +29,32 @@ class ConversasController extends Controller
     public function index(Request $request)
     {
         try {
-            $db = app('db');
             $tenantId = $this->resolveTenantId($request);
 
-        $userMessages = DB::raw("(SELECT COUNT(*) FROM mensagens WHERE mensagens.conversa_id = conversas.id AND mensagens.direction = 'incoming') as user_messages_count");
-        $totalMessages = DB::raw("(SELECT COUNT(*) FROM mensagens WHERE mensagens.conversa_id = conversas.id) as total_messages");
-        $lastMessageSnippet = DB::raw("(SELECT content FROM mensagens WHERE mensagens.conversa_id = conversas.id ORDER BY sent_at DESC LIMIT 1) as ultima_mensagem_text");
+            // ⚡ Usar Eloquent com eager loading ao invés de Query Builder
+            $conversas = Conversa::where('tenant_id', $tenantId)
+                ->with(['lead', 'corretor', 'mensagens' => function($query) {
+                    $query->orderBy('created_at', 'desc')->limit(1);
+                }]) // ⚡ Eager loading para evitar N+1
+                ->when($request->status, function($query, $status) {
+                    return $query->where('status', $status);
+                })
+                ->when(!$request->has('all'), function($query) {
+                    return $query->where(function ($q) {
+                        $q->where('status', '!=', 'encerrada')
+                          ->orWhereNull('status');
+                    });
+                })
+                ->orderBy('ultima_atividade', 'desc')
+                ->get();
 
-        $query = $db->table('conversas')
-            ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
-            ->select(
-                'conversas.*',
-                'leads.nome as lead_nome',
-                'leads.email as lead_email',
-                'leads.whatsapp_name as lead_whatsapp_name',
-                'leads.telefone as lead_telefone',
-                'leads.status as lead_status',
-                'leads.budget_min as lead_budget_min',
-                'leads.budget_max as lead_budget_max',
-                $userMessages,
-                $totalMessages,
-                $lastMessageSnippet
-            );
+            // Adicionar contadores
+            $conversas = $conversas->map(function($conversa) {
+                $conversa->user_messages_count = $conversa->mensagens()->where('direction', 'incoming')->count();
+                $conversa->total_messages = $conversa->mensagens()->count();
+                $conversa->ultima_mensagem_text = $conversa->mensagens->first()->content ?? null;
+                return $conversa;
+            });
 
             if ($tenantId) {
                 $query->where(function ($q) use ($tenantId) {

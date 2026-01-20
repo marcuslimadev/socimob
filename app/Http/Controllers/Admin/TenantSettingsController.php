@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\TenantConfig;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class TenantSettingsController extends Controller
 {
@@ -89,7 +90,7 @@ class TenantSettingsController extends Controller
         }
 
         // Validação no estilo Lumen
-        $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'name' => 'nullable|string|max:255',
             'contact_email' => 'nullable|email|max:255',
             'contact_phone' => 'nullable|string|max:20',
@@ -105,6 +106,10 @@ class TenantSettingsController extends Controller
             'portal_finalidades' => 'nullable|array',
             'portal_finalidades.*' => 'in:venda,aluguel',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
 
         $metadataUpdates = [];
         foreach (['razao_social', 'cnpj', 'endereco'] as $metadataKey) {
@@ -177,10 +182,17 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
-        $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'logo' => 'nullable|file|mimes:jpg,jpeg,png,webp,svg|max:2048',
             'favicon' => 'nullable|file|mimes:ico,png,svg|max:512',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'messages' => $validator->errors()
+            ], 422);
+        }
 
         if (!$request->hasFile('logo') && !$request->hasFile('favicon')) {
             return response()->json(['error' => 'Nenhum arquivo enviado'], 400);
@@ -254,7 +266,7 @@ class TenantSettingsController extends Controller
         }
 
         // Validação
-        $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'sistema_nome' => 'nullable|string|max:255',
             'razao_social' => 'nullable|string|max:255',
             'cnpj' => 'nullable|string|max:18',
@@ -263,6 +275,10 @@ class TenantSettingsController extends Controller
             'endereco' => 'nullable|string|max:500',
             'logo_url' => 'nullable|string', // base64 ou URL
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
 
         // Preparar updates
         $updates = [];
@@ -607,9 +623,13 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
         }
 
-        $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'prompt' => 'nullable|string|max:2000',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
 
         $prompt = $request->input('prompt', '');
         
@@ -687,9 +707,13 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
         }
 
-        $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'ativo' => 'required|boolean',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
 
         $ativo = $request->input('ativo');
         
@@ -737,9 +761,13 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
         }
 
-        $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'enabled' => 'required|boolean',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
 
         $enabled = $request->input('enabled', true);
         

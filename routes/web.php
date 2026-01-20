@@ -49,8 +49,9 @@ $router->post('/webhook/chaves-na-mao', 'ChavesNaMaoWebhookController@receive');
 
 // Auth API routes
 $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function () use ($router) {
-    $router->post('/auth/login', 'AuthController@login');
-    $router->post('/auth/google', 'AuthController@googleLogin');
+    // ⚡ Rate limiting: 5 tentativas por minuto em login
+    $router->post('/auth/login', ['middleware' => 'throttle:5,1', 'uses' => 'AuthController@login']);
+    $router->post('/auth/google', ['middleware' => 'throttle:5,1', 'uses' => 'AuthController@googleLogin']);
     $router->post('/auth/logout', 'AuthController@logout');
     $router->get('/auth/me', ['middleware' => 'simple-auth', 'uses' => 'AuthController@me']);
     

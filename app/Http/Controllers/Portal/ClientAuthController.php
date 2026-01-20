@@ -22,11 +22,18 @@ class ClientAuthController extends Controller
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
+        // ✅ Validação aprimorada com password confirmation
         $data = $this->validate($request, [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'password' => 'required|string|min:6',
-            'telefone' => 'nullable|string|max:50',
+            'name' => 'required|string|max:255|regex:/^[\pL\s\-]+$/u',
+            'email' => 'required|email:rfc,dns|max:255',
+            'password' => 'required|string|min:6|max:255|confirmed',
+            'telefone' => 'nullable|string|max:20|regex:/^[\d\s\(\)\-\+]+$/',
+        ], [
+            'name.regex' => 'Nome deve conter apenas letras',
+            'email.email' => 'Email deve ser válido',
+            'password.min' => 'Senha deve ter no mínimo 6 caracteres',
+            'password.confirmed' => 'Confirmação de senha não confere',
+            'telefone.regex' => 'Telefone deve conter apenas números',
         ]);
 
         $existing = User::where('email', $data['email'])->first();
@@ -61,11 +68,18 @@ class ClientAuthController extends Controller
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
+        // ✅ Validação de inputs
+        $this->validate($request, [
+            'email' => 'required|email|max:255',
+            'password' => 'sometimes|string|min:6|max:255',
+            'senha' => 'sometimes|string|min:6|max:255',
+        ]);
+
         $email = $request->input('email');
         $password = $request->input('password') ?: $request->input('senha');
 
-        if (!$email || !$password) {
-            return response()->json(['success' => false, 'message' => 'Email e senha sao obrigatorios'], 400);
+        if (!$password) {
+            return response()->json(['success' => false, 'message' => 'Senha é obrigatória'], 400);
         }
 
         $user = User::where('email', $email)
