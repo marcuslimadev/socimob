@@ -59,9 +59,10 @@
                     <h1 id="empresaNome" class="text-2xl font-bold uppercase tracking-tight">Carregando...</h1>
                 </div>
                 <div class="hidden md:flex gap-6 items-center">
-                    <a href="#imoveis" class="glow-link">Imóveis</a>
+                    <a href="#imoveis" class="glow-link scroll-link">Imóveis</a>
                     <a href="#" class="glow-link" data-whatsapp-link data-whatsapp-message="Ola! Vim pelo portal de imoveis.">WhatsApp</a>
                     <a id="linkPerfil" href="/portal/perfil.html" class="hidden glow-link font-bold">Meu Perfil</a>
+                    <a id="linkVisitas" href="/portal/visitas.html" class="hidden glow-link font-bold">Minhas Visitas</a>
                     <button id="btnLogin" class="glow-button ghost">Entrar</button>
                     <button id="btnLogoutPortal" class="hidden glow-button">Sair</button>
                 </div>
@@ -378,6 +379,20 @@
                 event.preventDefault();
                 const mensagem = $(this).data('whatsappMessage') || '';
                 abrirWhatsApp(mensagem);
+            });
+
+            // Scroll suave para âncoras
+            $('.scroll-link').on('click', function(e) {
+                e.preventDefault();
+                const target = $(this).attr('href');
+                if (target && target.startsWith('#')) {
+                    const $target = $(target);
+                    if ($target.length) {
+                        $('html, body').animate({
+                            scrollTop: $target.offset().top - 80
+                        }, 500);
+                    }
+                }
             });
 
             initPortalAuth();
@@ -856,7 +871,8 @@
                         fetchUserLikes();
                     } else {
                         logoutPortal();
-                    }
+                linkVisitas').toggleClass('hidden', !logged);
+            $('#    }
                     updateAuthUI();
                 },
                 error: function() {
