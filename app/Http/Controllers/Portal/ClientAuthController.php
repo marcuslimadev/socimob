@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Carbon;
 use App\Services\LeadService;
 
@@ -23,7 +24,7 @@ class ClientAuthController extends Controller
         }
 
         // ✅ Validação aprimorada com password confirmation
-        $data = $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|regex:/^[\pL\s\-]+$/u',
             'email' => 'required|email:rfc,dns|max:255',
             'password' => 'required|string|min:6|max:255|confirmed',
@@ -35,6 +36,12 @@ class ClientAuthController extends Controller
             'password.confirmed' => 'Confirmação de senha não confere',
             'telefone.regex' => 'Telefone deve conter apenas números',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
 
         $existing = User::where('email', $data['email'])->first();
         if ($existing) {
@@ -69,11 +76,15 @@ class ClientAuthController extends Controller
         }
 
         // ✅ Validação de inputs
-        $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'email' => 'required|email|max:255',
             'password' => 'sometimes|string|min:6|max:255',
             'senha' => 'sometimes|string|min:6|max:255',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
 
         $email = $request->input('email');
         $password = $request->input('password') ?: $request->input('senha');

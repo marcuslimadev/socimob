@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class PortalController extends Controller
 {
@@ -131,10 +132,14 @@ class PortalController extends Controller
     public function login(Request $request)
     {
         try {
-            $this->validate($request, [
+            $validator = Validator::make($request->all(), [
                 'email' => 'required|email',
                 'password' => 'required'
             ]);
+
+            if ($validator->fails()) {
+                return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+            }
 
             // Buscar usuário
             $user = DB::table('users')
@@ -261,10 +266,14 @@ class PortalController extends Controller
     public function registrarInteresse(Request $request)
     {
         try {
-            $this->validate($request, [
+            $validator = Validator::make($request->all(), [
                 'property_id' => 'required|integer',
                 'mensagem' => 'nullable|string'
             ]);
+
+            if ($validator->fails()) {
+                return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+            }
 
             $user = $request->user();
             

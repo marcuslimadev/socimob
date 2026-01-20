@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\LeadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 class ProfileController extends Controller
 {
@@ -68,7 +69,7 @@ class ProfileController extends Controller
             return response()->json(['success' => false, 'message' => 'Usuario nao encontrado'], 404);
         }
 
-        $data = $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'name' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
             'telefone' => 'nullable|string|max:50',
@@ -83,6 +84,12 @@ class ProfileController extends Controller
             'caracteristicas_desejadas' => 'nullable|string',
             'observacoes_cliente' => 'nullable|string',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
 
         if (!empty($data['email']) && $data['email'] !== $targetUser->email) {
             $emailExists = User::where('email', $data['email'])

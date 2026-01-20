@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use App\Models\Atividade;
 use App\Models\Conversa;
@@ -143,7 +144,7 @@ class LeadsController extends Controller
             ]);
         }
 
-        $data = $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'nome' => 'sometimes|string|max:191',
             'email' => 'nullable|email|max:191',
             'status' => 'sometimes|in:novo,em_atendimento,qualificado,convertido,proposta,fechado,perdido',
@@ -176,6 +177,12 @@ class LeadsController extends Controller
             'observacoes_cliente' => 'nullable|string',
             'caracteristicas_desejadas' => 'nullable|string',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
 
         $lead->update($data);
 
@@ -230,9 +237,13 @@ class LeadsController extends Controller
         try {
             $lead = $this->resolveLeadForTenant($id, $request);
             
-            $this->validate($request, [
+            $validator = Validator::make($request->all(), [
                 'state' => 'required|string|max:2'
             ]);
+
+            if ($validator->fails()) {
+                return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+            }
             
             $lead->state = $request->state;
             $lead->save();

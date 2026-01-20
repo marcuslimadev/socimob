@@ -8,6 +8,7 @@ use App\Models\Lead;
 use App\Models\Mensagem;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class ChatController extends Controller
 {
@@ -131,9 +132,15 @@ class ChatController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        $data = $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'content' => 'required|string|max:2000',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
 
         $conversa = $this->resolveConversa($tenantId, $user, $id);
         if (!$conversa) {

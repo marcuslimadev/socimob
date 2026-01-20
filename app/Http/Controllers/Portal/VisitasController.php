@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\VisitasTablesManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class VisitasController extends Controller
 {
@@ -21,7 +22,7 @@ class VisitasController extends Controller
 
         VisitasTablesManager::ensureVisitasTableExists();
 
-        $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'property_id' => 'nullable|integer',
             'property_titulo' => 'nullable|string|max:255',
             'nome' => 'required|string|max:255',
@@ -30,6 +31,10 @@ class VisitasController extends Controller
             'data_hora' => 'required|date',
             'observacoes' => 'nullable|string|max:1000',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
 
         $dataHora = $request->input('data_hora');
         $now = date('Y-m-d H:i:s');

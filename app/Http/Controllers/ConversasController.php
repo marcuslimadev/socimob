@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use App\Models\Conversa;
 use App\Models\LeadDocument;
 use App\Models\LeadPropertyMatch;
@@ -208,9 +209,13 @@ class ConversasController extends Controller
      */
     public function sendMessage(Request $request, $id)
     {
-        $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'content' => 'required|string'
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
 
         $conversa = $this->resolveConversaForTenant($id, $request);
 
@@ -492,10 +497,16 @@ class ConversasController extends Controller
      */
     public function bulkDestroy(Request $request)
     {
-        $data = $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'lead_ids' => 'required|array|min:1',
             'lead_ids.*' => 'integer|distinct'
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
 
         $tenantId = $this->resolveTenantId($request);
 

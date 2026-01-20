@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
 class PortalController extends Controller
@@ -260,13 +261,17 @@ class PortalController extends Controller
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
-        $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'property_id' => 'required|exists:properties,id',
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'phone' => 'required|string|max:20',
             'message' => 'nullable|string|max:1000'
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
 
         // Criar lead (você pode criar uma tabela 'leads' depois)
         // Por enquanto, retornar sucesso

@@ -7,6 +7,7 @@ use App\Models\LeadDocument;
 use App\Services\LeadDocumentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class LeadDocumentsController extends Controller
@@ -33,12 +34,16 @@ class LeadDocumentsController extends Controller
     {
         $lead = $this->resolveLeadForTenant($leadId, $request);
 
-        $this->validate($request, [
+        $validator = Validator::make($request->all(), [
             'arquivo' => 'required|file|mimes:pdf,jpg,jpeg,png,doc,docx',
             'tipo' => 'nullable|string|max:191',
             'nome' => 'nullable|string|max:191',
             'status' => 'nullable|string|max:50',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
 
         $file = $request->file('arquivo');
 
