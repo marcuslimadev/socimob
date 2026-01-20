@@ -1,14 +1,15 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="pageTitle">Portal de Imóveis</title>
     <link id="pageFavicon" rel="icon" href="/favicon.ico">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/glow.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="/app/js/toast.js"></script>
     <style>
@@ -52,93 +53,105 @@
 <body class="glow-page">
     <!-- Navbar -->
     <nav id="mainNav" class="glow-nav">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center gap-4">
-                    <img id="logoImg" src="" alt="Logo" class="h-12 hidden">
-                    <h1 id="empresaNome" class="text-2xl font-bold uppercase tracking-tight">Carregando...</h1>
+        <div class="container py-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <img id="logoImg" src="" alt="Logo" class="d-none" style="height: 48px;">
+                    <h1 id="empresaNome" class="fs-4 fw-bold text-uppercase mb-0">Carregando...</h1>
                 </div>
-                <div class="hidden md:flex gap-6 items-center">
+                <div class="d-none d-md-flex gap-3 align-items-center">
                     <a href="#imoveis" class="glow-link scroll-link">Imóveis</a>
                     <a href="#" class="glow-link" data-whatsapp-link data-whatsapp-message="Ola! Vim pelo portal de imoveis.">WhatsApp</a>
-                    <a id="linkPerfil" href="/portal/perfil.html" class="hidden glow-link font-bold">Meu Perfil</a>
-                    <a id="linkVisitas" href="/portal/visitas.html" class="hidden glow-link font-bold">Minhas Visitas</a>
+                    <a id="linkPerfil" href="/portal/perfil.html" class="d-none glow-link fw-bold">Meu Perfil</a>
+                    <a id="linkVisitas" href="/portal/visitas.html" class="d-none glow-link fw-bold">Minhas Visitas</a>
                     <button id="btnLogin" class="glow-button ghost">Entrar</button>
-                    <button id="btnLogoutPortal" class="hidden glow-button">Sair</button>
+                    <button id="btnLogoutPortal" class="d-none glow-button">Sair</button>
                 </div>
             </div>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <section class="py-20">
-        <div class="container mx-auto px-4 text-center">
-            <h2 id="heroSlogan" class="glow-hero-title font-black mb-4">
+    <section class="py-5">
+        <div class="container text-center">
+            <h2 id="heroSlogan" class="glow-hero-title fw-black mb-4">
                 Encontre Imóvel dos Seus Sonhos
             </h2>
-            <p class="text-xl mb-8 text-white max-w-3xl mx-auto"></p>
+            <p class="fs-5 mb-4 text-white mx-auto" style="max-width: 48rem;"></p>
 
             <!-- Filtros de Busca -->
-            <div class="max-w-5xl mx-auto glow-panel text-[var(--glow-black)]">
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <select id="filterTipo" class="glow-select">
-                        <option value="">Tipo de Imóvel</option>
-                        <option value="casa">Casa</option>
-                        <option value="apartamento">Apartamento</option>
-                        <option value="terreno">Terreno</option>
-                        <option value="comercial">Comercial</option>
-                    </select>
-                    <select id="filterFinalidade" class="glow-select">
-                        <option value="">Finalidade</option>
-                        <option value="venda">Venda</option>
-                        <option value="aluguel">Aluguel</option>
-                    </select>
-                    <input type="text" id="filterLocal" placeholder="Bairro, Cidade..."
-                        class="glow-input">
-                    <input type="text" id="filterTexto" placeholder="Ex: casa 3 quartos com quintal"
-                        class="glow-input">
-                    <button id="btnBuscar" class="glow-button w-full justify-center">
-                        Buscar
-                    </button>
+            <div class="mx-auto glow-panel text-dark" style="max-width: 64rem;">
+                <div class="row g-3">
+                    <div class="col-12 col-md">
+                        <select id="filterTipo" class="glow-select form-select">
+                            <option value="">Tipo de Imóvel</option>
+                            <option value="casa">Casa</option>
+                            <option value="apartamento">Apartamento</option>
+                            <option value="terreno">Terreno</option>
+                            <option value="comercial">Comercial</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md">
+                        <select id="filterFinalidade" class="glow-select form-select">
+                            <option value="">Finalidade</option>
+                            <option value="venda">Venda</option>
+                            <option value="aluguel">Aluguel</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md">
+                        <input type="text" id="filterLocal" placeholder="Bairro, Cidade..." class="glow-input form-control">
+                    </div>
+                    <div class="col-12 col-md">
+                        <input type="text" id="filterTexto" placeholder="Ex: casa 3 quartos com quintal" class="glow-input form-control">
+                    </div>
+                    <div class="col-12 col-md">
+                        <button id="btnBuscar" class="glow-button w-100">
+                            Buscar
+                        </button>
+                    </div>
                 </div>
-                <div class="mt-4 flex flex-col md:flex-row gap-4">
-                    <select id="sortBy" class="glow-select md:w-64">
-                        <option value="">Ordenar por</option>
-                        <option value="preco_asc">Menor preço</option>
-                        <option value="preco_desc">Maior preço</option>
-                        <option value="avaliacao_desc">Melhor avaliada</option>
-                    </select>
+                <div class="mt-3 row g-3">
+                    <div class="col-12 col-md-auto">
+                        <select id="sortBy" class="glow-select form-select">
+                            <option value="">Ordenar por</option>
+                            <option value="preco_asc">Menor preço</option>
+                            <option value="preco_desc">Maior preço</option>
+                            <option value="avaliacao_desc">Melhor avaliada</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Grid de Imóveis -->
-    <section id="imoveis" class="py-16">
-        <div class="container mx-auto px-4">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                <h3 class="text-3xl font-black text-gray-500 uppercase text-center md:text-left">Imóveis Disponíveis</h3>
-                <div class="flex flex-wrap gap-3 justify-center md:justify-end">
+    <section id="imoveis" class="py-5">
+        <div class="container">
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-3 mb-4">
+                <h3 class="fs-3 fw-black text-secondary text-uppercase text-center text-md-start mb-0">Imóveis Disponíveis</h3>
+                <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-end">
                     <button id="btnViewCards" class="glow-button secondary">Ver cards</button>
                     <button id="btnViewTable" class="glow-button ghost">Ver como tabela</button>
                 </div>
             </div>
             
-            <div id="imoveisGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div id="imoveisGrid" class="row g-4">
                 <!-- Cards serão inseridos aqui -->
-                <div class="col-span-full text-center py-12 text-gray-500">
-                    <div class="animate-pulse">Carregando Imóveis...</div>
+                <div class="col-12 text-center py-5 text-secondary">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Carregando Imóveis...</span>
+                    </div>
                 </div>
             </div>
 
-            <div id="imoveisTabelaWrapper" class="hidden glow-table-wrapper">
-                <div class="mb-4 flex flex-wrap gap-3 items-center">
-                    <span class="text-sm text-[var(--glow-black)] font-semibold uppercase tracking-wide">Filtros por coluna</span>
-                    <button id="btnResetTableFilters" class="text-sm glow-button ghost">Limpar filtros</button>
+            <div id="imoveisTabelaWrapper" class="d-none glow-table-wrapper">
+                <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+                    <span class="small text-dark fw-semibold text-uppercase">Filtros por coluna</span>
+                    <button id="btnResetTableFilters" class="small glow-button ghost">Limpar filtros</button>
                 </div>
-                <table id="imoveisTabela" class="display w-full"></table>
+                <table id="imoveisTabela" class="display w-100"></table>
             </div>
-            <div id="imoveisMagazineWrapper" class="hidden">
+            <div id="imoveisMagazineWrapper" class="d-none">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         
         <!-- Modal Detalhes do Imovel -->
@@ -172,21 +185,21 @@
                                 <span id="modalLikeCount">0</span>
                             </button>
                         </div>
-                        <span id="modalPreco" class="text-3xl font-black" style="color: #2563eb;"></span>
+                        <span id="modalPreco" class="fs-3 fw-black" style="color: #2563eb;"></span>
                     </div>
                     <p id="modalEndereco" class="mb-4" style="color: #334155;"></p>
-                    <div id="modalDetalhes" class="flex flex-wrap gap-4 mb-6" style="color: #334155;">
+                    <div id="modalDetalhes" class="d-flex flex-wrap gap-3 mb-4" style="color: #334155;">
                         <!-- Detalhes aqui -->
                     </div>
-                    <div class="border-t pt-6" style="border-color: #e2e8f0;">
-                        <h4 class="font-bold text-lg mb-2" style="color: #0f172a;">Descricao</h4>
-                        <div id="modalDescricao" class="leading-relaxed" style="color: #334155;"></div>
+                    <div class="border-top pt-4" style="border-color: #e2e8f0;">
+                        <h4 class="fw-bold fs-5 mb-2" style="color: #0f172a;">Descricao</h4>
+                        <div id="modalDescricao" style="color: #334155;"></div>
                     </div>
-                    <div class="mt-8 flex flex-col sm:flex-row gap-4">
-                        <button onclick="entrarEmContato()" class="flex-1 glow-button secondary justify-center">
+                    <div class="mt-4 d-flex flex-column flex-sm-row gap-3">
+                        <button onclick="entrarEmContato()" class="flex-fill glow-button secondary">
                             Entrar em Contato
                         </button>
-                        <button onclick="agendarVisita()" class="flex-1 glow-button justify-center">
+                        <button onclick="agendarVisita()" class="flex-fill glow-button">
                             Agendar Visita
                         </button>
                     </div>
@@ -195,35 +208,35 @@
         </div>
     </div>
 <!-- Modal Agendar Visita -->
-    <div id="modalVisita" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-        <div class="bg-white glow-panel max-w-xl w-full p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-2xl font-black text-[var(--glow-black)] uppercase">Agendar Visita</h3>
-                <button onclick="fecharModalVisita()" class="glow-modal-close flex items-center justify-center text-lg">x</button>
+    <div id="modalVisita" class="d-none position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-4" style="background: rgba(0, 0, 0, 0.6); z-index: 1050;">
+        <div class="bg-white glow-panel w-100 p-4" style="max-width: 36rem;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="fs-4 fw-black text-dark text-uppercase mb-0">Agendar Visita</h3>
+                <button onclick="fecharModalVisita()" class="glow-modal-close d-flex align-items-center justify-content-center fs-5">x</button>
             </div>
-            <p id="visitaImovelTitulo" class="text-sm text-[var(--glow-black)] mb-4"></p>
-            <form id="formVisita" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Nome *</label>
-                    <input type="text" id="visitaNome" required class="w-full glow-input">
+            <p id="visitaImovelTitulo" class="small text-dark mb-3"></p>
+            <form id="formVisita">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Nome *</label>
+                    <input type="text" id="visitaNome" required class="form-control glow-input">
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Telefone *</label>
-                    <input type="tel" id="visitaTelefone" required class="w-full glow-input">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Telefone *</label>
+                    <input type="tel" id="visitaTelefone" required class="form-control glow-input">
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Email</label>
-                    <input type="email" id="visitaEmail" class="w-full glow-input">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Email</label>
+                    <input type="email" id="visitaEmail" class="form-control glow-input">
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Data e hora *</label>
-                    <input type="datetime-local" id="visitaDataHora" required class="w-full glow-input">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Data e hora *</label>
+                    <input type="datetime-local" id="visitaDataHora" required class="form-control glow-input">
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Observações</label>
-                    <textarea id="visitaObservacoes" rows="3" class="w-full glow-input"></textarea>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Observações</label>
+                    <textarea id="visitaObservacoes" rows="3" class="form-control glow-input"></textarea>
                 </div>
-                <div class="flex gap-3 justify-end pt-2">
+                <div class="d-flex gap-2 justify-content-end">
                     <button type="button" onclick="fecharModalVisita()" class="glow-button ghost">Cancelar</button>
                     <button type="submit" class="glow-button">Enviar</button>
                 </div>
@@ -232,56 +245,56 @@
     </div>
 
     <!-- Modal Login/Cadastro -->
-    <div id="modalAuth" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-        <div class="bg-white glow-panel max-w-md w-full p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 id="authTitle" class="text-2xl font-black text-[var(--glow-black)] uppercase">Entrar</h3>
-                <button onclick="fecharModalAuth()" class="glow-modal-close flex items-center justify-center text-lg">x</button>
+    <div id="modalAuth" class="d-none position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-4" style="background: rgba(0, 0, 0, 0.6); z-index: 1050;">
+        <div class="bg-white glow-panel w-100 p-4" style="max-width: 28rem;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 id="authTitle" class="fs-4 fw-black text-dark text-uppercase mb-0">Entrar</h3>
+                <button onclick="fecharModalAuth()" class="glow-modal-close d-flex align-items-center justify-content-center fs-5">x</button>
             </div>
-            <form id="formAuth" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Nome</label>
-                    <input type="text" id="authNome" class="w-full glow-input">
+            <form id="formAuth">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Nome</label>
+                    <input type="text" id="authNome" class="form-control glow-input">
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Email *</label>
-                    <input type="email" id="authEmail" required class="w-full glow-input">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Email *</label>
+                    <input type="email" id="authEmail" required class="form-control glow-input">
                 </div>
-                <div>
-                    <input type="tel" id="authTelefone" class="w-full glow-input">
+                <div class="mb-3">
+                    <input type="tel" id="authTelefone" class="form-control glow-input">
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-[var(--glow-black)] mb-2">Senha *</label>
-                    <input type="password" id="authSenha" required class="w-full glow-input">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark">Senha *</label>
+                    <input type="password" id="authSenha" required class="form-control glow-input">
                 </div>
-                <div class="flex gap-3 justify-end pt-2">
+                <div class="d-flex gap-2 justify-content-end">
                     <button type="button" onclick="fecharModalAuth()" class="glow-button ghost">Cancelar</button>
                     <button type="submit" class="glow-button">Continuar</button>
                 </div>
             </form>
-            <div class="mt-4 text-sm text-center text-[var(--glow-black)]">
-                <button id="btnToggleAuthMode" class="font-bold glow-link">Criar conta</button>
+            <div class="mt-3 small text-center text-dark">
+                <button id="btnToggleAuthMode" class="fw-bold glow-link">Criar conta</button>
             </div>
         </div>
     </div>
 
     <!-- Chat do Portal -->
-    <button id="btnChat" class="hidden fixed bottom-6 right-6 glow-button shadow-lg z-40 rounded-full px-5 py-3">
+    <button id="btnChat" class="d-none position-fixed glow-button shadow-lg rounded-circle" style="bottom: 1.5rem; right: 1.5rem; z-index: 1040; padding: 0.75rem 1.25rem;">
         Chat com IA
     </button>
 
-    <div id="modalChat" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-        <div class="bg-white glow-panel w-full max-w-2xl h-[80vh] flex flex-col">
-            <div class="flex justify-between items-center p-4 border-b border-[var(--glow-border)]">
+    <div id="modalChat" class="d-none position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-4" style="background: rgba(0, 0, 0, 0.6); z-index: 1050;">
+        <div class="bg-white glow-panel w-100 d-flex flex-column" style="max-width: 48rem; height: 80vh;">
+            <div class="d-flex justify-content-between align-items-center p-4 border-bottom">
                 <div>
-                    <h3 class="text-xl font-black text-[var(--glow-black)] uppercase">Atendimento</h3>
-                    <p id="chatStatus" class="text-xs text-[var(--glow-black)]">IA ativa</p>
+                    <h3 class="fs-5 fw-black text-dark text-uppercase mb-0">Atendimento</h3>
+                    <p id="chatStatus" class="small text-dark mb-0">IA ativa</p>
                 </div>
-                <button onclick="fecharChat()" class="glow-modal-close flex items-center justify-center text-lg">x</button>
+                <button onclick="fecharChat()" class="glow-modal-close d-flex align-items-center justify-content-center fs-5">x</button>
             </div>
-            <div id="chatMensagens" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[var(--glow-cream)]"></div>
-            <form id="chatForm" class="p-4 border-t border-[var(--glow-border)] flex gap-3">
-                <input type="text" id="chatInput" placeholder="Escreva sua mensagem..." class="flex-1 glow-input">
+            <div id="chatMensagens" class="flex-fill overflow-auto p-4" style="background: var(--glow-cream);"></div>
+            <form id="chatForm" class="p-4 border-top d-flex gap-2">
+                <input type="text" id="chatInput" placeholder="Escreva sua mensagem..." class="flex-fill glow-input form-control">
                 <button type="submit" class="glow-button">Enviar</button>
             </form>
         </div>
@@ -289,21 +302,21 @@
 
     <!-- Footer -->
     <footer class="glow-nav text-white py-12 mt-16">
-        <div class="container mx-auto px-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div>
-                    <h4 id="footerNome" class="text-xl font-bold mb-4">Empresa</h4>
-                    <p id="footerEndereco" class="text-white/80"></p>
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-12 col-md-4">
+                    <h4 id="footerNome" class="fs-5 fw-bold mb-3">Empresa</h4>
+                    <p id="footerEndereco" class="text-white-50"></p>
                 </div>
-                <div>
-                    <h4 class="text-xl font-bold mb-4">Contato</h4>
-                    <p id="footerTelefone" class="text-white/80 mb-2"></p>
-                    <p id="footerEmail" class="text-white/80"></p>
+                <div class="col-12 col-md-4">
+                    <h4 class="fs-5 fw-bold mb-3">Contato</h4>
+                    <p id="footerTelefone" class="text-white-50 mb-2"></p>
+                    <p id="footerEmail" class="text-white-50"></p>
                 </div>
             </div>
-            <div class="border-t-4 border-[var(--glow-yellow)] mt-8 pt-8 text-center text-white/80">
+            <div class="border-top pt-4 mt-4 text-center text-white-50" style="border-color: var(--glow-yellow) !important; border-width: 4px !important;">
                 <p>&copy; 2025 <span id="footerCopyright"></span> - Todos os direitos reservados</p>
-                <p class="text-sm mt-2">Powered by <strong>SOCIMOB</strong></p>
+                <p class="small mt-2">Powered by <strong>SOCIMOB</strong></p>
             </div>
         </div>
     </footer>
@@ -457,9 +470,9 @@
 
                         
             if (tenantConfig.logo_url) {
-                $('#logoImg').attr('src', tenantConfig.logo_url).removeClass('hidden');
+                $('#logoImg').attr('src', tenantConfig.logo_url).removeClass('d-none');
             } else {
-                $('#logoImg').addClass('hidden').attr('src', '');
+                $('#logoImg').addClass('d-none').attr('src', '');
             }
 
             $('#empresaNome').text(tenantName);
@@ -561,40 +574,42 @@
                 const liked = likedIds.has(imovel.id);
                 const likeIcon = liked ? '❤️' : '❤️';
                 const imagemHtml = imagem
-                    ? `<img src="${imagem}" alt="Foto do im\u00f3vel" class="w-full h-full object-cover" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';" loading="lazy"><div class="h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center" style="display:none;"><span class="text-8xl">${getTipoIcon(imovel.tipo)}</span></div>`
-                    : `<div class="h-64 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center"><span class="text-8xl">${getTipoIcon(imovel.tipo)}</span></div>`;
+                    ? `<img src="${imagem}" alt="Foto do im\u00f3vel" class="w-100 h-100 object-fit-cover" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';" loading="lazy"><div class="h-100 bg-gradient d-flex align-items-center justify-content-center" style="display:none; background: linear-gradient(135deg, #e5e7eb, #d1d5db);"><span style="font-size: 6rem;">${getTipoIcon(imovel.tipo)}</span></div>`
+                    : `<div class="bg-gradient d-flex align-items-center justify-content-center" style="height: 16rem; background: linear-gradient(135deg, #e5e7eb, #d1d5db);"><span style="font-size: 6rem;">${getTipoIcon(imovel.tipo)}</span></div>`;
 
                 return `
-                    <div class="imovel-card bg-slate-900 rounded-2xl overflow-hidden hover:-translate-y-1 transition-all duration-300 cursor-pointer" onclick="abrirModal(${imovel.id})">
-                        <div class="h-64 bg-slate-800">
-                            ${imagemHtml}
-                        </div>
-                        <div class="p-6 space-y-3">
-                            <div class="flex justify-between items-start mb-3 gap-2">
-                                <h4 class="text-xl font-bold text-white">${titulo}</h4>
-                                <div class="flex flex-col items-end gap-2">
-                                    <span class="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded-full uppercase">${finalidade}</span>
-                                    <button onclick="event.stopPropagation(); toggleLike(${imovel.id});" class="text-2xl hover:scale-110 transition-transform">
-                                        ${likeIcon}
-                                    </button>
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="imovel-card rounded-3 overflow-hidden h-100 cursor-pointer" onclick="abrirModal(${imovel.id})" style="transition: transform 0.3s;">
+                            <div class="bg-secondary" style="height: 16rem;">
+                                ${imagemHtml}
+                            </div>
+                            <div class="p-4">
+                                <div class="d-flex justify-content-between align-items-start mb-3 gap-2">
+                                    <h4 class="fs-5 fw-bold text-white mb-0">${titulo}</h4>
+                                    <div class="d-flex flex-column align-items-end gap-2">
+                                        <span class="badge bg-success text-uppercase">${finalidade}</span>
+                                        <button onclick="event.stopPropagation(); toggleLike(${imovel.id});" class="btn btn-link p-0 fs-4" style="transition: transform 0.2s;">
+                                            ${likeIcon}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                            <p class="text-slate-300 text-sm mb-1">${endereco}</p>
-                            <div class="flex justify-between text-sm text-slate-300 mb-4">
-                                ${imovel.area ? `<span>\u00c1rea: ${imovel.area}m²</span>` : '<span></span>'}
-                                ${imovel.quartos ? `<span>Quartos: ${imovel.quartos}</span>` : '<span></span>'}
-                                ${imovel.banheiros ? `<span>Banheiros: ${imovel.banheiros}</span>` : '<span></span>'}
-                            </div>
-                            <div class="border-t border-slate-700/50 pt-4 card-actions">
-                                <div class="flex items-center justify-between gap-4">
-                                    <span class="text-2xl font-black text-blue-400">R$ ${formatPrice(imovel.preco)}</span>
-                                    <div class="flex items-center gap-2">
-                                        <button onclick="abrirModal(${imovel.id})" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-all duration-200">
-                                            Ver Detalhes
-                                        </button>
-                                        <button class="text-slate-100 font-bold py-2 px-4 rounded border border-slate-600 hover:bg-slate-700 transition-all duration-200" onclick="event.stopPropagation(); toggleLike(${imovel.id});">
-                                            ${liked ? 'Gostei' : 'Curtir'}
-                                        </button>
+                                <p class="text-light small mb-2">${endereco}</p>
+                                <div class="d-flex justify-content-between small text-light mb-3">
+                                    ${imovel.area ? `<span>Área: ${imovel.area}m²</span>` : '<span></span>'}
+                                    ${imovel.quartos ? `<span>Quartos: ${imovel.quartos}</span>` : '<span></span>'}
+                                    ${imovel.banheiros ? `<span>Banheiros: ${imovel.banheiros}</span>` : '<span></span>'}
+                                </div>
+                                <div class="border-top pt-3 card-actions" style="border-color: rgba(148, 163, 184, 0.3) !important;">
+                                    <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                                        <span class="fs-4 fw-black text-primary">R$ ${formatPrice(imovel.preco)}</span>
+                                        <div class="d-flex gap-2">
+                                            <button onclick="abrirModal(${imovel.id})" class="btn btn-primary btn-sm fw-bold">
+                                                Ver Detalhes
+                                            </button>
+                                            <button class="btn btn-outline-light btn-sm fw-bold" onclick="event.stopPropagation(); toggleLike(${imovel.id});">
+                                                ${liked ? 'Gostei' : 'Curtir'}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -843,8 +858,8 @@
 
         function aplicarViewMode() {
             const isTable = viewMode === 'table';
-            $('#imoveisGrid').toggleClass('hidden', isTable);
-            $('#imoveisTabelaWrapper').toggleClass('hidden', !isTable);
+            $('#imoveisGrid').toggleClass('d-none', isTable);
+            $('#imoveisTabelaWrapper').toggleClass('d-none', !isTable);
             if (isTable) {
                 $('#btnViewCards').removeClass('secondary').addClass('ghost');
                 $('#btnViewTable').removeClass('ghost').addClass('secondary');
@@ -882,21 +897,21 @@
 
         function updateAuthUI() {
             const logged = !!portalToken;
-            $('#btnLogin').toggleClass('hidden', logged);
-            $('#btnLogoutPortal').toggleClass('hidden', !logged);
-            $('#linkPerfil').toggleClass('hidden', !logged);
-            $('#linkVisitas').toggleClass('hidden', !logged);
-            $('#btnChat').toggleClass('hidden', !logged);
+            $('#btnLogin').toggleClass('d-none', logged);
+            $('#btnLogoutPortal').toggleClass('d-none', !logged);
+            $('#linkPerfil').toggleClass('d-none', !logged);
+            $('#linkVisitas').toggleClass('d-none', !logged);
+            $('#btnChat').toggleClass('d-none', !logged);
         }
 
         function abrirModalAuth() {
             authMode = 'login';
             ajustarAuthMode();
-            $('#modalAuth').removeClass('hidden');
+            $('#modalAuth').removeClass('d-none');
         }
 
         function fecharModalAuth() {
-            $('#modalAuth').addClass('hidden');
+            $('#modalAuth').addClass('d-none');
             $('#formAuth')[0].reset();
             pendingLikeId = null;
         }
@@ -909,8 +924,8 @@
         function ajustarAuthMode() {
             const isRegister = authMode === 'register';
             $('#authTitle').text(isRegister ? 'Criar conta' : 'Entrar');
-            $('#authNome').closest('div').toggleClass('hidden', !isRegister);
-            $('#authTelefone').closest('div').toggleClass('hidden', !isRegister);
+            $('#authNome').closest('div').toggleClass('d-none', !isRegister);
+            $('#authTelefone').closest('div').toggleClass('d-none', !isRegister);
             $('#btnToggleAuthMode').text(isRegister ? 'Ja tenho conta' : 'Criar conta');
         }
 
@@ -1063,12 +1078,12 @@
                 abrirModalAuth();
                 return;
             }
-            $('#modalChat').removeClass('hidden');
+            $('#modalChat').removeClass('d-none');
             iniciarChat();
         }
 
         function fecharChat() {
-            $('#modalChat').addClass('hidden');
+            $('#modalChat').addClass('d-none');
             pararChat();
         }
 
@@ -1235,11 +1250,11 @@
             `;
             $('#modalDetalhes').html(detalhes);
             $('#modalDescricao').html(formatDescricaoTopicos(imovelSelecionado.descricao));
-            $('#modalImovel').removeClass('hidden');
+            $('#modalImovel').removeClass('d-none');
         }
 
         function fecharModal() {
-            $('#modalImovel').addClass('hidden');
+            $('#modalImovel').addClass('d-none');
             imovelSelecionado = null;
         }
 
@@ -1285,11 +1300,11 @@
                 return;
             }
             $('#visitaImovelTitulo').text(imovelSelecionado.titulo || '');
-            $('#modalVisita').removeClass('hidden');
+            $('#modalVisita').removeClass('d-none');
         }
 
         function fecharModalVisita() {
-            $('#modalVisita').addClass('hidden');
+            $('#modalVisita').addClass('d-none');
             const form = document.getElementById('formVisita');
             if (form) {
                 form.reset();
@@ -1606,11 +1621,11 @@
             const hasImages = carouselImages.length > 0;
             const showControls = carouselImages.length > 1;
 
-            $('#modalFotoImg').toggleClass('hidden', !hasImages);
-            $('#modalFotoFallback').toggleClass('hidden', hasImages);
-            $('#carouselPrev').toggleClass('hidden', !showControls);
-            $('#carouselNext').toggleClass('hidden', !showControls);
-            $('#carouselDots').toggleClass('hidden', !showControls);
+            $('#modalFotoImg').toggleClass('d-none', !hasImages);
+            $('#modalFotoFallback').toggleClass('d-none', hasImages);
+            $('#carouselPrev').toggleClass('d-none', !showControls);
+            $('#carouselNext').toggleClass('d-none', !showControls);
+            $('#carouselDots').toggleClass('d-none', !showControls);
 
             if (hasImages) {
                 updateCarousel();
@@ -1639,11 +1654,11 @@
             
             // Adicionar tratamento de erro para imagem do carousel
             img.off('error').on('error', function() {
-                $(this).addClass('hidden');
-                $('#modalFotoFallback').removeClass('hidden');
+                $(this).addClass('d-none');
+                $('#modalFotoFallback').removeClass('d-none');
             }).on('load', function() {
-                $(this).removeClass('hidden');
-                $('#modalFotoFallback').addClass('hidden');
+                $(this).removeClass('d-none');
+                $('#modalFotoFallback').addClass('d-none');
             });
             
             const dots = carouselImages.map((_, idx) => {
