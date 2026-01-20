@@ -561,7 +561,7 @@
                 const liked = likedIds.has(imovel.id);
                 const likeIcon = liked ? '❤️' : '❤️';
                 const imagemHtml = imagem
-                    ? `<img src="${imagem}" alt="Foto do im\u00f3vel" class="w-full h-full object-cover">`
+                    ? `<img src="${imagem}" alt="Foto do im\u00f3vel" class="w-full h-full object-cover" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';" loading="lazy"><div class="h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center" style="display:none;"><span class="text-8xl">${getTipoIcon(imovel.tipo)}</span></div>`
                     : `<div class="h-64 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center"><span class="text-8xl">${getTipoIcon(imovel.tipo)}</span></div>`;
 
                 return `
@@ -1634,7 +1634,18 @@
 
         function updateCarousel() {
             if (!carouselImages.length) return;
-            $('#modalFotoImg').attr('src', carouselImages[carouselIndex]);
+            const img = $('#modalFotoImg');
+            img.attr('src', carouselImages[carouselIndex]);
+            
+            // Adicionar tratamento de erro para imagem do carousel
+            img.off('error').on('error', function() {
+                $(this).addClass('hidden');
+                $('#modalFotoFallback').removeClass('hidden');
+            }).on('load', function() {
+                $(this).removeClass('hidden');
+                $('#modalFotoFallback').addClass('hidden');
+            });
+            
             const dots = carouselImages.map((_, idx) => {
                 const active = idx === carouselIndex ? 'bg-white' : 'bg-white/60';
                 return `<button class="w-2.5 h-2.5 rounded-full ${active}" onclick="setCarouselIndex(${idx})"></button>`;
