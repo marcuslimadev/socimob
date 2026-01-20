@@ -871,8 +871,7 @@
                         fetchUserLikes();
                     } else {
                         logoutPortal();
-                linkVisitas').toggleClass('hidden', !logged);
-            $('#    }
+                    }
                     updateAuthUI();
                 },
                 error: function() {
@@ -886,6 +885,7 @@
             $('#btnLogin').toggleClass('hidden', logged);
             $('#btnLogoutPortal').toggleClass('hidden', !logged);
             $('#linkPerfil').toggleClass('hidden', !logged);
+            $('#linkVisitas').toggleClass('hidden', !logged);
             $('#btnChat').toggleClass('hidden', !logged);
         }
 
