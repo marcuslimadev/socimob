@@ -65,5 +65,6 @@ if (strpos($uri, '/portal/') === 0 && pathinfo($uri, PATHINFO_EXTENSION) === 'ht
     }
 }
 
-// Caso contrário, deixa o Lumen processar (API routes)
+// Para qualquer outra rota (incluindo /api/*), deixa o Lumen processar
+error_log("[ROUTER DEBUG] Passing to Lumen: " . $uri);
 require_once $publicPath . '/index.php';
