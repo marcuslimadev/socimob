@@ -25,7 +25,8 @@ class PortalController extends Controller
         $tenantId = $request->attributes->get('tenant_id');
 
         if (!$tenantId) {
-            return response()->json(['error' => 'Tenant not found'], 404);
+            // Fallback para desenvolvimento - usar tenant ID 1
+            $tenantId = 1;
         }
 
         $tenant = Tenant::find($tenantId);
@@ -70,7 +71,8 @@ class PortalController extends Controller
         $tenantId = $request->attributes->get('tenant_id');
 
         if (!$tenantId) {
-            return response()->json(['error' => 'Tenant not found'], 404);
+            // Fallback para desenvolvimento - usar tenant ID 1
+            $tenantId = 1;
         }
 
         $table = (new Property())->getTable();

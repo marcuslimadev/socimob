@@ -29,7 +29,7 @@ class ResolveTenant
 
         // Se for localhost, IP ou ngrok, usar tenant de teste quando configurado
         if ($this->isDevelopment($host) || $this->isNgrok($host)) {
-            $tenant = $this->resolveWebhookTenant($request) ?? Tenant::first();
+            $tenant = $this->resolveWebhookTenant($request) ?? Tenant::find(1);
             if ($tenant) {
                 app()->instance('tenant', $tenant);
                 $request->attributes->set('tenant_id', $tenant->id);
