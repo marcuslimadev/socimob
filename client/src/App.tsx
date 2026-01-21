@@ -11,6 +11,7 @@ import Chat from "./pages/Chat";
 import NotificationCenter from "./pages/NotificationCenter";
 import Login from "./pages/Login";
 import ClientPortal from "./pages/ClientPortal";
+import PropertyDetail from "./pages/PropertyDetail";
 import Settings from "./pages/Settings";
 
 
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/chat" component={Chat} />
       <Route path="/notifications" component={NotificationCenter} />
       <Route path="/login" component={Login} />
+      <Route path="/portal/imovel/:id" component={PropertyDetail} />
       <Route path="/portal" component={ClientPortal} />
       <Route path="/settings" component={Settings} />
       <Route path={"/404"} component={NotFound} />

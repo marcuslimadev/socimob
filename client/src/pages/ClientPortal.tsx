@@ -1,76 +1,72 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, MapPin, Bed, Bath, Ruler, Heart, Share2, Eye, Filter, Grid, List } from 'lucide-react';
+import { Search, MapPin, Bed, Bath, Ruler, Heart, Share2, Eye, Filter, Grid, List, AlertCircle } from 'lucide-react';
+import { useLocation } from 'wouter';
+import api from '@/lib/api';
 
 interface Property {
-  id: string;
-  title: string;
-  price: number;
-  location: string;
-  bedrooms: number;
-  bathrooms: number;
-  area: number;
-  image: string;
-  featured: boolean;
+  id: number;
+  titulo: string;
+  tipo_negocio?: string;
+  tipo_imovel: string;
+  valor_venda?: number;
+  valor_aluguel?: number;
+  preco?: string;
+  cidade: string;
+  bairro: string;
+  estado: string;
+  quartos?: number;
+  dormitorios?: number;
+  banheiros?: number;
+  area_total?: number;
+  area_util?: number;
+  area_privativa?: number;
+  descricao?: string;
+  destaque?: boolean;
+  active?: boolean;
+  fotos?: Array<{url: string; destaque: boolean}>;
+  imagens?: string[];
+  finalidade_imovel?: string;
 }
 
 export default function ClientPortal() {
+  const [, navigate] = useLocation();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [priceRange, setPriceRange] = useState([0, 2000000]);
   const [selectedBedrooms, setSelectedBedrooms] = useState<number | null>(null);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const properties: Property[] = [
-    {
-      id: '1',
-      title: 'Apartamento Moderno 2 Quartos',
-      price: 450000,
-      location: 'Pinheiros, São Paulo',
-      bedrooms: 2,
-      bathrooms: 2,
-      area: 75,
-      image: '🏢',
-      featured: true,
-    },
-    {
-      id: '2',
-      title: 'Casa Térrea 3 Quartos',
-      price: 850000,
-      location: 'Vila Madalena, São Paulo',
-      bedrooms: 3,
-      bathrooms: 3,
-      area: 180,
-      image: '🏠',
-      featured: true,
-    },
-    {
-      id: '3',
-      title: 'Apartamento Studio',
-      price: 250000,
-      location: 'Itaim Bibi, São Paulo',
-      bedrooms: 1,
-      bathrooms: 1,
-      area: 45,
-      image: '🏢',
-      featured: false,
-    },
-    {
-      id: '4',
-      title: 'Apartamento Luxo 4 Quartos',
-      price: 1200000,
-      location: 'Jardins, São Paulo',
-      bedrooms: 4,
-      bathrooms: 4,
-      area: 200,
-      image: '🏢',
-      featured: true,
-    },
-  ];
+  // Carregar imóveis da API
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        // A rota correta é /api/portal/imoveis
+        const response = await api.get('/api/portal/imoveis');
+        console.log('API Response:', response.data);
+        setProperties(response.data.data || response.data || []);
+      } catch (err: any) {
+        console.error('Erro ao carregar imóveis:', err);
+        setError(err.message || 'Erro ao carregar imóveis');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, []);
 
   const filteredProperties = properties.filter((prop) => {
-    const matchSearch = prop.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchPrice = prop.price >= priceRange[0] && prop.price <= priceRange[1];
-    const matchBedrooms = selectedBedrooms === null || prop.bedrooms === selectedBedrooms;
+    const matchSearch = prop.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                       prop.bairro?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       prop.cidade?.toLowerCase().includes(searchTerm.toLowerCase());
+    const price = prop.valor_venda || prop.valor_aluguel || 0;
+    const matchPrice = price >= priceRange[0] && price <= priceRange[1];
+    const matchBedrooms = selectedBedrooms === null || (prop.quartos && prop.quartos >= selectedBedrooms);
     return matchSearch && matchPrice && matchBedrooms;
   });
 
@@ -266,103 +262,176 @@ export default function ClientPortal() {
               </div>
             </div>
 
-            {/* Properties */}
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-4'}
-            >
-              {filteredProperties.map((property, index) => (
-                <motion.div
-                  key={property.id}
-                  variants={itemVariants}
-                  transition={{ delay: 0.3 + index * 0.05 }}
-                  whileHover={{ y: -4 }}
-                  className="glass-panel rounded-2xl overflow-hidden group cursor-pointer"
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Carregando imóveis...</p>
+                </div>
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && !loading && (
+              <div className="glass-panel rounded-xl p-8 text-center">
+                <p className="text-red-500 mb-4">❌ {error}</p>
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white"
                 >
-                  {/* Image */}
-                  <div className="relative h-48 bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-6xl overflow-hidden">
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      transition={{ type: 'spring', stiffness: 200 }}
-                    >
-                      {property.image}
-                    </motion.div>
+                  Tentar Novamente
+                </button>
+              </div>
+            )}
 
-                    {property.featured && (
-                      <div className="absolute top-4 right-4">
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-yellow-500 to-orange-500"
-                        >
-                          ⭐ Destaque
-                        </motion.div>
-                      </div>
-                    )}
-
-                    <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-md transition-all"
-                      >
-                        <Heart size={18} className="text-red-400" />
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-md transition-all"
-                      >
-                        <Share2 size={18} className="text-blue-400" />
-                      </motion.button>
-                    </div>
+            {/* Properties */}
+            {!loading && !error && (
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-4'}
+              >
+                {filteredProperties.length === 0 ? (
+                  <div className="col-span-2 glass-panel rounded-xl p-8 text-center">
+                    <p className="text-muted-foreground">Nenhum imóvel encontrado com os filtros selecionados.</p>
                   </div>
+                ) : (
+                  filteredProperties.map((property, index) => {
+                    const firstImage = property.fotos?.[0]?.url;
+                    console.log('Property:', property.id, 'fotos:', property.fotos, 'firstImage:', firstImage);
+                    const price = property.valor_venda || property.valor_aluguel || 0;
+                    const location = `${property.bairro || ''}, ${property.cidade || ''}`.trim();
 
-                  {/* Content */}
-                  <div className="p-6">
-                    <h3 className="text-lg font-bold text-foreground mb-2 line-clamp-2">{property.title}</h3>
+                    return (
+                      <motion.div
+                        key={property.id}
+                        variants={itemVariants}
+                        transition={{ delay: 0.3 + index * 0.05 }}
+                        whileHover={{ y: -4 }}
+                        className="glass-panel rounded-2xl overflow-hidden group cursor-pointer"
+                      >
+                        {/* Image */}
+                        <div className="relative h-48 bg-gradient-to-br from-blue-500/20 to-purple-500/20 overflow-hidden">
+                          {firstImage ? (
+                            <img 
+                              src={firstImage} 
+                              alt={property.titulo}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                              onError={(e) => {
+                                console.error('Erro ao carregar imagem:', firstImage);
+                                e.currentTarget.style.display = 'none';
+                                const parent = e.currentTarget.parentElement;
+                                if (parent) {
+                                  const fallback = document.createElement('div');
+                                  fallback.className = 'w-full h-full flex flex-col items-center justify-center text-muted-foreground';
+                                  fallback.innerHTML = `<div class="text-6xl mb-2">${property.tipo_imovel?.includes('Casa') ? '🏠' : '🏢'}</div><div class="text-xs flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Imagem não disponível</div>`;
+                                  parent.appendChild(fallback);
+                                }
+                              }}
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                              <div className="text-6xl mb-2">
+                                {property.tipo_imovel?.includes('Casa') ? '🏠' : '🏢'}
+                              </div>
+                              <div className="text-xs">Sem imagem</div>
+                            </div>
+                          )}
 
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                      <MapPin size={16} />
-                      <span>{property.location}</span>
-                    </div>
+                          {property.destaque && (
+                            <div className="absolute top-4 right-4">
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-yellow-500 to-orange-500"
+                              >
+                                ⭐ Destaque
+                              </motion.div>
+                            </div>
+                          )}
 
-                    <div className="mb-4 p-3 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg">
-                      <p className="text-xs text-muted-foreground mb-1">Preço</p>
-                      <p className="text-2xl font-bold gradient-text">
-                        R$ {property.price.toLocaleString('pt-BR')}
-                      </p>
-                    </div>
+                          <div className="absolute top-4 left-4">
+                            <div className="px-3 py-1 rounded-full text-xs font-bold text-white bg-black/50 backdrop-blur-md">
+                              {property.tipo_negocio}
+                            </div>
+                          </div>
 
-                    <div className="flex gap-4 mb-6 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Bed size={16} />
-                        <span>{property.bedrooms}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Bath size={16} />
-                        <span>{property.bathrooms}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Ruler size={16} />
-                        <span>{property.area}m²</span>
-                      </div>
-                    </div>
+                          <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}
+                              className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-md transition-all"
+                            >
+                              <Heart size={18} className="text-red-400" />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}
+                              className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-md transition-all"
+                            >
+                              <Share2 size={18} className="text-blue-400" />
+                            </motion.button>
+                          </div>
+                        </div>
 
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold text-white transition-all glow-sm hover:glow-md"
-                    >
-                      <Eye size={16} />
-                      Ver Detalhes
-                    </motion.button>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
+                        {/* Content */}
+                        <div className="p-6">
+                          <h3 className="text-lg font-bold text-foreground mb-2 line-clamp-2">{property.titulo}</h3>
+
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                            <MapPin size={16} />
+                            <span>{location || 'Localização não informada'}</span>
+                          </div>
+
+                          <div className="mb-4 p-3 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg">
+                            <p className="text-xs text-muted-foreground mb-1">
+                              {property.tipo_negocio === 'Venda' ? 'Preço' : 'Aluguel'}
+                            </p>
+                            <p className="text-2xl font-bold gradient-text">
+                              R$ {price.toLocaleString('pt-BR')}
+                            </p>
+                          </div>
+
+                          <div className="flex gap-4 mb-6 text-sm text-muted-foreground">
+                            {property.quartos && (
+                              <div className="flex items-center gap-1">
+                                <Bed size={16} />
+                                <span>{property.quartos}</span>
+                              </div>
+                            )}
+                            {property.banheiros && (
+                              <div className="flex items-center gap-1">
+                                <Bath size={16} />
+                                <span>{property.banheiros}</span>
+                              </div>
+                            )}
+                            {(property.area_util || property.area_total) && (
+                              <div className="flex items-center gap-1">
+                                <Ruler size={16} />
+                                <span>{property.area_util || property.area_total}m²</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <motion.button
+                            onClick={() => navigate(`/portal/imovel/${property.id}`)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold text-white transition-all glow-sm hover:glow-md"
+                          >
+                            <Eye size={16} />
+                            Ver Detalhes
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    );
+                  })
+                )}
+              </motion.div>
+            )}
           </motion.div>
         </motion.div>
       </div>

@@ -51,4 +51,9 @@ class Property extends Model
     {
         return $this->hasMany(LeadPropertyMatch::class, 'property_id');
     }
+
+    public function fotos()
+    {
+        return $this->hasMany(ImovelImagem::class, 'codigo', 'codigo');
+    }
 }

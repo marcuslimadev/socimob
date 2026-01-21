@@ -116,7 +116,7 @@ class PortalController extends Controller
             ? array_map(fn ($value) => Str::lower($value), $allowedFinalidades)
             : null;
 
-        $imoveisQuery = Property::withoutTenant()->orderBy('created_at', 'desc');
+        $imoveisQuery = Property::withoutTenant()->with('fotos')->orderBy('created_at', 'desc');
         if ($hasTenantId) {
             $imoveisQuery->where('tenant_id', $tenantId);
         }
@@ -190,6 +190,7 @@ class PortalController extends Controller
         $allowShared = filter_var(env('PORTAL_ALLOW_SHARED_PROPERTIES', true), FILTER_VALIDATE_BOOLEAN);
         if ($imoveis->isEmpty() && $allowShared && $hasTenantId) {
             $sharedQuery = Property::withoutTenant()
+                ->with('fotos')
                 ->whereNull('tenant_id')
                 ->orderBy('created_at', 'desc');
 
@@ -333,7 +334,7 @@ class PortalController extends Controller
             ? array_map(fn ($value) => Str::lower($value), $allowedFinalidades)
             : null;
 
-        $imovelQuery = Property::withoutTenant()->where('id', $id);
+        $imovelQuery = Property::withoutTenant()->with('fotos')->where('id', $id);
         if ($hasTenantId) {
             $imovelQuery->where('tenant_id', $tenantId);
         }
