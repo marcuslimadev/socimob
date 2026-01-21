@@ -48,11 +48,21 @@ if ($uri !== '/' && file_exists($publicPath . $uri)) {
     ];
     
     if (isset($mimeTypes[$ext])) {
-        header('Content-Type: ' . $mimeTypes[$ext]);
+        header('Content-Type: ' . $mimeTypes[$ext] . '; charset=UTF-8');
     }
     
     readfile($publicPath . $uri);
     return true;
+}
+
+// Tratamento especial para arquivos HTML no portal com query parameters
+if (strpos($uri, '/portal/') === 0 && pathinfo($uri, PATHINFO_EXTENSION) === 'html') {
+    $filePath = $publicPath . $uri;
+    if (file_exists($filePath)) {
+        header('Content-Type: text/html; charset=UTF-8');
+        readfile($filePath);
+        return true;
+    }
 }
 
 // Caso contrário, deixa o Lumen processar (API routes)

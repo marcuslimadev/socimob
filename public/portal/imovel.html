@@ -11,8 +11,151 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+            color: #1a202c;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .property-header {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .error {
+            text-align: center;
+            padding: 2rem;
+            color: #e53e3e;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="/portal/">
+                <i class="fas fa-home text-primary"></i>
+                Exclusiva Imóveis
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/portal/">Voltar ao Portal</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="property-header">
+            <h1 id="property-title">Carregando imóvel...</h1>
+            <div id="property-info" class="loading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-2">Carregando detalhes do imóvel...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        function getPropertyId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('id');
+        }
+
+        async function loadProperty() {
+            const propertyId = getPropertyId();
+
+            if (!propertyId) {
+                document.getElementById('property-info').innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i><p>ID do imóvel não encontrado na URL.</p></div>';
+                document.getElementById('property-title').textContent = 'Erro';
+                return;
+            }
+
+            try {
+                console.log('Carregando imóvel ID:', propertyId);
+                const response = await fetch(`${API_BASE}/api/portal/imoveis/${propertyId}`);
+                const data = await response.json();
+
+                console.log('Resposta da API:', data);
+
+                if (data.success && data.data) {
+                    displayProperty(data.data);
+                } else {
+                    document.getElementById('property-info').innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i><p>Imóvel não encontrado.</p></div>';
+                    document.getElementById('property-title').textContent = 'Imóvel não encontrado';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar imóvel:', error);
+                document.getElementById('property-info').innerHTML = '<div class="error"><i class="fas fa-exclamation-circle"></i><p>Erro ao carregar imóvel. Verifique o console para mais detalhes.</p></div>';
+                document.getElementById('property-title').textContent = 'Erro de carregamento';
+            }
+        }
+
+        function displayProperty(property) {
+            console.log('Exibindo imóvel:', property);
+
+            document.getElementById('property-title').textContent = property.titulo || 'Título não disponível';
+
+            const infoHtml = `
+                <div class="row">
+                    <div class="col-md-8">
+                        <h3>R$ ${property.valor_venda ? property.valor_venda.toLocaleString('pt-BR') : 'Preço não informado'}</h3>
+                        <p><i class="fas fa-map-marker-alt"></i> ${property.endereco || ''}, ${property.bairro || ''}, ${property.cidade || ''} - ${property.estado || ''}</p>
+                        <p>${property.descricao || 'Descrição não disponível.'}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5>Características</h5>
+                                <p><strong>Quartos:</strong> ${property.dormitorios || 'N/A'}</p>
+                                <p><strong>Banheiros:</strong> ${property.banheiros || 'N/A'}</p>
+                                <p><strong>Área:</strong> ${property.area_total || 'N/A'} m²</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('property-info').innerHTML = infoHtml;
+        }
+
+        // Carregar quando a página estiver pronta
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Página carregada, iniciando carregamento do imóvel...');
+            loadProperty();
+        });
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
 
     <style>
         :root {
@@ -116,51 +259,59 @@
         /* Gallery */
         .gallery-section {
             position: relative;
-            height: 500px;
+            padding: 2rem 0;
             overflow: hidden;
         }
 
         .gallery-container {
             position: relative;
-            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .gallery-track {
+            display: flex;
+            transition: transform 0.5s ease;
+            width: calc(100% / 3 * var(--total-images, 1));
+        }
+
+        .gallery-item {
+            flex: 0 0 calc(100% / 3);
+            padding: 0 0.5rem;
+            box-sizing: border-box;
         }
 
         .gallery-image {
-            position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
-            height: 100%;
+            height: 300px;
             object-fit: cover;
-            opacity: 0;
-            transition: opacity 0.5s ease;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
         }
 
-        .gallery-image.active {
-            opacity: 1;
+        .gallery-image:hover {
+            transform: scale(1.05);
         }
 
         .gallery-nav {
-            position: absolute;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
             display: flex;
+            justify-content: center;
             gap: 0.5rem;
-            z-index: 10;
+            margin-top: 1rem;
         }
 
         .gallery-dot {
             width: 12px;
             height: 12px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.5);
+            background: rgba(102, 126, 234, 0.3);
             cursor: pointer;
             transition: var(--transition);
         }
 
         .gallery-dot.active {
-            background: white;
+            background: var(--primary-color, #667eea);
         }
 
         .gallery-arrows {
@@ -178,6 +329,7 @@
             cursor: pointer;
             transition: var(--transition);
             z-index: 10;
+            box-shadow: var(--shadow-md);
         }
 
         .gallery-arrows:hover {
@@ -185,24 +337,17 @@
             transform: translateY(-50%) scale(1.1);
         }
 
+        .gallery-arrows:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .gallery-prev {
-            left: 2rem;
+            left: 1rem;
         }
 
         .gallery-next {
-            right: 2rem;
-        }
-
-        .gallery-counter {
-            position: absolute;
-            top: 2rem;
-            right: 2rem;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            z-index: 10;
+            right: 1rem;
         }
 
         /* Property Info */
@@ -427,6 +572,10 @@
             height: 300px;
             border-radius: var(--border-radius);
             overflow: hidden;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         /* Chat Widget */
@@ -576,8 +725,16 @@
                 gap: 2rem;
             }
 
-            .gallery-section {
-                height: 300px;
+            .gallery-item {
+                flex: 0 0 100%;
+            }
+
+            .gallery-track {
+                width: calc(100% * var(--total-images, 1));
+            }
+
+            .gallery-image {
+                height: 250px;
             }
 
             .chat-widget {
@@ -606,12 +763,11 @@
             }
 
             .gallery-nav {
-                bottom: 1rem;
+                margin-top: 0.5rem;
             }
 
-            .gallery-counter {
-                top: 1rem;
-                right: 1rem;
+            .gallery-image {
+                height: 200px;
             }
         }
 
@@ -662,17 +818,18 @@
 
     <!-- Gallery -->
     <section class="gallery-section">
-        <div class="gallery-container" id="gallery-container">
-            <!-- Images will be loaded here -->
+        <div class="container">
+            <div class="gallery-container" id="gallery-container">
+                <!-- Images will be loaded here -->
+            </div>
+            <button class="gallery-arrows gallery-prev" id="gallery-prev">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="gallery-arrows gallery-next" id="gallery-next">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <div class="gallery-nav" id="gallery-nav"></div>
         </div>
-        <button class="gallery-arrows gallery-prev" id="gallery-prev">
-            <i class="fas fa-chevron-left"></i>
-        </button>
-        <button class="gallery-arrows gallery-next" id="gallery-next">
-            <i class="fas fa-chevron-right"></i>
-        </button>
-        <div class="gallery-nav" id="gallery-nav"></div>
-        <div class="gallery-counter" id="gallery-counter">1 / 1</div>
     </section>
 
     <!-- Property Info -->
@@ -738,7 +895,6 @@
         const API_BASE = window.location.origin;
         let currentProperty = null;
         let currentImages = [];
-        let currentImageIndex = 0;
         let map = null;
 
         // Utility Functions
@@ -759,59 +915,106 @@
         }
 
         // Gallery Functions
+        let currentSlideIndex = 0;
+        let totalSlides = 0;
+        let currentImages = [];
+
         function createGallery(images) {
             if (!images || images.length === 0) {
-                $('#gallery-container').html('<div class="gallery-image active" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-image"></i> Imagem não disponível</div>');
+                $('#gallery-container').html('<div class="text-center p-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px;"><i class="fas fa-image fa-3x mb-3"></i><h4>Imagem não disponível</h4></div>');
+                $('#gallery-nav').hide();
+                $('#gallery-prev, #gallery-next').hide();
                 return;
             }
 
             currentImages = images;
-            const galleryHtml = images.map((image, index) => `
-                <img src="${image.url}" alt="Imagem ${index + 1}" class="gallery-image ${index === 0 ? 'active' : ''}" loading="lazy">
-            `).join('');
+            totalSlides = Math.ceil(images.length / 3); // Cada slide mostra 3 imagens
+            currentSlideIndex = 0;
+
+            // Criar estrutura do carrossel
+            const galleryHtml = `
+                <div class="gallery-track" id="gallery-track" style="--total-images: ${images.length}">
+                    ${images.map((image, index) => `
+                        <div class="gallery-item">
+                            <img src="${image}" alt="Imagem ${index + 1}" class="gallery-image" loading="lazy" onclick="openImageModal(${index})">
+                        </div>
+                    `).join('')}
+                </div>
+            `;
 
             $('#gallery-container').html(galleryHtml);
             updateGalleryNav();
-            updateGalleryCounter();
+            updateArrowStates();
+
+            // Mostrar controles apenas se houver mais de 3 imagens
+            if (images.length > 3) {
+                $('#gallery-nav').show();
+                $('#gallery-prev, #gallery-next').show();
+            } else {
+                $('#gallery-nav').hide();
+                $('#gallery-prev, #gallery-next').hide();
+            }
         }
 
         function updateGalleryNav() {
-            const navHtml = currentImages.map((_, index) => `
-                <div class="gallery-dot ${index === currentImageIndex ? 'active' : ''}" data-index="${index}"></div>
+            if (totalSlides <= 1) {
+                $('#gallery-nav').hide();
+                return;
+            }
+
+            const navHtml = Array.from({length: totalSlides}, (_, index) => `
+                <div class="gallery-dot ${index === currentSlideIndex ? 'active' : ''}" data-slide="${index}"></div>
             `).join('');
 
-            $('#gallery-nav').html(navHtml);
+            $('#gallery-nav').html(navHtml).show();
         }
 
-        function updateGalleryCounter() {
-            $('#gallery-counter').text(`${currentImageIndex + 1} / ${currentImages.length}`);
+        function updateArrowStates() {
+            $('#gallery-prev').prop('disabled', currentSlideIndex === 0);
+            $('#gallery-next').prop('disabled', currentSlideIndex === totalSlides - 1);
         }
 
-        function showImage(index) {
-            $('.gallery-image').removeClass('active');
-            $('.gallery-image').eq(index).addClass('active');
-            $('.gallery-dot').removeClass('active');
-            $('.gallery-dot').eq(index).addClass('active');
-            currentImageIndex = index;
-            updateGalleryCounter();
+        function goToSlide(slideIndex) {
+            if (slideIndex < 0 || slideIndex >= totalSlides) return;
+
+            currentSlideIndex = slideIndex;
+            const track = document.getElementById('gallery-track');
+            const translateX = -(slideIndex * (100 / 3)); // Mover 33.33% por slide (1/3)
+            track.style.transform = `translateX(${translateX}%)`;
+
+            updateGalleryNav();
+            updateArrowStates();
         }
 
-        function nextImage() {
-            const nextIndex = (currentImageIndex + 1) % currentImages.length;
-            showImage(nextIndex);
+        function nextSlide() {
+            if (currentSlideIndex < totalSlides - 1) {
+                goToSlide(currentSlideIndex + 1);
+            }
         }
 
-        function prevImage() {
-            const prevIndex = currentImageIndex === 0 ? currentImages.length - 1 : currentImageIndex - 1;
-            showImage(prevIndex);
+        function prevSlide() {
+            if (currentSlideIndex > 0) {
+                goToSlide(currentSlideIndex - 1);
+            }
+        }
+
+        function openImageModal(imageIndex) {
+            // Implementar modal de imagem se necessário
+            console.log('Abrir modal para imagem:', imageIndex);
         }
 
         // Property Display
         function displayProperty(property) {
+            if (!property) {
+                console.error('Property data is undefined');
+                $('#property-main-info').html('<div class="text-center p-4"><p class="text-danger">Dados do imóvel não encontrados.</p></div>');
+                return;
+            }
+            
             currentProperty = property;
 
             const mainInfoHtml = `
-                <div class="property-price">${formatPrice(property.preco)}</div>
+                <div class="property-price">${formatPrice(property.valor_venda || property.preco)}</div>
                 <h1 class="property-title">${property.titulo}</h1>
                 <div class="property-location">
                     <i class="fas fa-map-marker-alt"></i>
@@ -819,10 +1022,10 @@
                 </div>
 
                 <div class="property-features">
-                    ${property.quartos ? `
+                    ${property.dormitorios ? `
                         <div class="feature-item">
                             <div class="feature-icon"><i class="fas fa-bed"></i></div>
-                            <div class="feature-value">${property.quartos}</div>
+                            <div class="feature-value">${property.dormitorios}</div>
                             <div class="feature-label">Quartos</div>
                         </div>
                     ` : ''}
@@ -840,10 +1043,10 @@
                             <div class="feature-label">Vagas</div>
                         </div>
                     ` : ''}
-                    ${property.area ? `
+                    ${property.area_total ? `
                         <div class="feature-item">
                             <div class="feature-icon"><i class="fas fa-ruler-combined"></i></div>
-                            <div class="feature-value">${property.area}</div>
+                            <div class="feature-value">${property.area_total}</div>
                             <div class="feature-label">m²</div>
                         </div>
                     ` : ''}
@@ -871,11 +1074,18 @@
 
             // Initialize map if coordinates available
             if (property.latitude && property.longitude) {
-                initializeMap(property.latitude, property.longitude);
+                // Small delay to ensure DOM is ready
+                setTimeout(() => {
+                    initializeMap(property.latitude, property.longitude);
+                }, 100);
             }
         }
 
         function displayAgent(agent) {
+            if (!agent) {
+                agent = {};
+            }
+            
             const agentHtml = `
                 <div class="agent-avatar">
                     <i class="fas fa-user"></i>
@@ -897,19 +1107,36 @@
 
         // Map Functions
         function initializeMap(lat, lng) {
-            if (map) {
-                map.remove();
+            try {
+                // Validate coordinates
+                lat = parseFloat(lat);
+                lng = parseFloat(lng);
+                
+                if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                    console.warn('Invalid coordinates for map:', lat, lng);
+                    $('#map-container').html('<div class="text-center p-4" style="background: #f8f9fa; border-radius: 12px;"><i class="fas fa-map-marked-alt text-muted" style="font-size: 2rem;"></i><p class="mt-2 text-muted">Localização não disponível</p></div>');
+                    return;
+                }
+
+                if (map) {
+                    map.remove();
+                }
+
+                map = L.map('map-container').setView([lat, lng], 15);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+
+                L.marker([lat, lng]).addTo(map)
+                    .bindPopup(currentProperty.titulo)
+                    .openPopup();
+                    
+                console.log('Map initialized successfully for coordinates:', lat, lng);
+            } catch (error) {
+                console.error('Error initializing map:', error);
+                $('#map-container').html('<div class="text-center p-4" style="background: #f8f9fa; border-radius: 12px;"><i class="fas fa-exclamation-triangle text-warning" style="font-size: 2rem;"></i><p class="mt-2 text-muted">Erro ao carregar mapa</p></div>');
             }
-
-            map = L.map('map-container').setView([lat, lng], 15);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-
-            L.marker([lat, lng]).addTo(map)
-                .bindPopup(currentProperty.titulo)
-                .openPopup();
         }
 
         // Chat Functions
@@ -987,7 +1214,7 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    displayProperty(data.data.imovel);
+                    displayProperty(data.data);
                     displayAgent(data.data.corretor || {});
                 } else {
                     $('#property-main-info').html('<div class="text-center p-4"><p class="text-danger">Imóvel não encontrado.</p></div>');
@@ -1003,12 +1230,12 @@
             loadProperty();
 
             // Gallery navigation
-            $('#gallery-prev').on('click', prevImage);
-            $('#gallery-next').on('click', nextImage);
+            $('#gallery-prev').on('click', prevSlide);
+            $('#gallery-next').on('click', nextSlide);
 
             $(document).on('click', '.gallery-dot', function() {
-                const index = $(this).data('index');
-                showImage(index);
+                const slideIndex = $(this).data('slide');
+                goToSlide(slideIndex);
             });
 
             // Chat functionality

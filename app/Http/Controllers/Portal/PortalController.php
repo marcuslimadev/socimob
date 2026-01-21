@@ -91,7 +91,11 @@ class PortalController extends Controller
 
         $cacheKey = "portal_imoveis_tenant_{$tenantId}";
         $cacheTtl = Carbon::now()->addMinutes(10);
-        $useCache = !$request->boolean('fresh');
+        
+        // Desabilitar cache quando há filtros aplicados
+        $hasFilters = $request->hasAny(['localizacao', 'tipo', 'finalidade', 'preco']);
+        $useCache = !$request->boolean('fresh') && !$hasFilters;
+        
         $cachedPayload = $useCache ? Cache::get($cacheKey) : null;
 
         try {
@@ -114,6 +118,23 @@ class PortalController extends Controller
         if ($hasTenantId) {
             $imoveisQuery->where('tenant_id', $tenantId);
         }
+
+        // Aplicar ordenação
+        if ($request->has('ordenar') && $request->ordenar) {
+            $sortOrder = $request->ordenar;
+            switch ($sortOrder) {
+                case 'valor_venda_asc':
+                    $imoveisQuery->orderBy('valor_venda', 'asc');
+                    break;
+                case 'valor_venda_desc':
+                    $imoveisQuery->orderBy('valor_venda', 'desc');
+                    break;
+                case 'created_at_desc':
+                default:
+                    $imoveisQuery->orderBy('created_at', 'desc');
+                    break;
+            }
+        }
         if ($hasActive) {
             $imoveisQuery->where('active', true);
         }
@@ -125,12 +146,67 @@ class PortalController extends Controller
             $imoveisQuery->whereIn(DB::raw('LOWER(finalidade_imovel)'), $normalizedFinalidades);
         }
 
+        // Aplicar filtros do frontend
+        if ($request->has('localizacao') && $request->localizacao) {
+            $localizacao = $request->localizacao;
+            $imoveisQuery->where(function ($query) use ($localizacao) {
+                $query->where('endereco', 'LIKE', "%{$localizacao}%")
+                      ->orWhere('bairro', 'LIKE', "%{$localizacao}%")
+                      ->orWhere('cidade', 'LIKE', "%{$localizacao}%")
+                      ->orWhere('estado', 'LIKE', "%{$localizacao}%");
+            });
+        }
+
+        if ($request->has('tipo') && $request->tipo) {
+            $tipo = $request->tipo;
+            $imoveisQuery->where('tipo_imovel', 'LIKE', "%{$tipo}%");
+        }
+
+        if ($request->has('finalidade') && $request->finalidade) {
+            $finalidade = $request->finalidade;
+            if ($finalidade === 'venda') {
+                $imoveisQuery->where('finalidade_imovel', 'LIKE', '%venda%');
+            } elseif ($finalidade === 'aluguel') {
+                $imoveisQuery->where('finalidade_imovel', 'LIKE', '%aluguel%');
+            }
+        }
+
+        if ($request->has('preco') && $request->preco) {
+            $precoRange = $request->preco;
+            if (strpos($precoRange, '-') !== false) {
+                [$min, $max] = explode('-', $precoRange);
+                $min = (float) $min;
+                $max = (float) $max;
+                $imoveisQuery->whereBetween('valor_venda', [$min, $max]);
+            } elseif (strpos($precoRange, '+') !== false) {
+                $min = (float) str_replace('+', '', $precoRange);
+                $imoveisQuery->where('valor_venda', '>=', $min);
+            }
+        }
+
         $imoveis = $imoveisQuery->get();
         $allowShared = filter_var(env('PORTAL_ALLOW_SHARED_PROPERTIES', true), FILTER_VALIDATE_BOOLEAN);
         if ($imoveis->isEmpty() && $allowShared && $hasTenantId) {
             $sharedQuery = Property::withoutTenant()
                 ->whereNull('tenant_id')
                 ->orderBy('created_at', 'desc');
+
+            // Aplicar ordenação para propriedades compartilhadas
+            if ($request->has('ordenar') && $request->ordenar) {
+                $sortOrder = $request->ordenar;
+                switch ($sortOrder) {
+                    case 'valor_venda_asc':
+                        $sharedQuery->orderBy('valor_venda', 'asc');
+                        break;
+                    case 'valor_venda_desc':
+                        $sharedQuery->orderBy('valor_venda', 'desc');
+                        break;
+                    case 'created_at_desc':
+                    default:
+                        $sharedQuery->orderBy('created_at', 'desc');
+                        break;
+                }
+            }
             if ($hasActive) {
                 $sharedQuery->where('active', true);
             }
@@ -140,6 +216,44 @@ class PortalController extends Controller
 
             if ($hasFinalidade && $normalizedFinalidades && count($normalizedFinalidades) > 0) {
                 $sharedQuery->whereIn(DB::raw('LOWER(finalidade_imovel)'), $normalizedFinalidades);
+            }
+
+            // Aplicar os mesmos filtros do frontend para propriedades compartilhadas
+            if ($request->has('localizacao') && $request->localizacao) {
+                $localizacao = $request->localizacao;
+                $sharedQuery->where(function ($query) use ($localizacao) {
+                    $query->where('endereco', 'LIKE', "%{$localizacao}%")
+                          ->orWhere('bairro', 'LIKE', "%{$localizacao}%")
+                          ->orWhere('cidade', 'LIKE', "%{$localizacao}%")
+                          ->orWhere('estado', 'LIKE', "%{$localizacao}%");
+                });
+            }
+
+            if ($request->has('tipo') && $request->tipo) {
+                $tipo = $request->tipo;
+                $sharedQuery->where('tipo_imovel', 'LIKE', "%{$tipo}%");
+            }
+
+            if ($request->has('finalidade') && $request->finalidade) {
+                $finalidade = $request->finalidade;
+                if ($finalidade === 'venda') {
+                    $sharedQuery->where('finalidade_imovel', 'LIKE', '%venda%');
+                } elseif ($finalidade === 'aluguel') {
+                    $sharedQuery->where('finalidade_imovel', 'LIKE', '%aluguel%');
+                }
+            }
+
+            if ($request->has('preco') && $request->preco) {
+                $precoRange = $request->preco;
+                if (strpos($precoRange, '-') !== false) {
+                    [$min, $max] = explode('-', $precoRange);
+                    $min = (float) $min;
+                    $max = (float) $max;
+                    $sharedQuery->whereBetween('valor_venda', [$min, $max]);
+                } elseif (strpos($precoRange, '+') !== false) {
+                    $min = (float) str_replace('+', '', $precoRange);
+                    $sharedQuery->where('valor_venda', '>=', $min);
+                }
             }
 
             $imoveis = $sharedQuery->get();

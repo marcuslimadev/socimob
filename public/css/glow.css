@@ -2,7 +2,7 @@
 
 :root {
     --glow-red: var(--error, #ff4f4f);
-    --glow-blue: var(--primary-500, #3d5afe);
+    --glow-blue: #2e449f;
     --glow-yellow: var(--warning, #ffd449);
     --glow-black: var(--bg-dark, #0b1524);
     --glow-border: rgba(255, 255, 255, 0.2);
@@ -12,6 +12,9 @@
     --glow-glass: rgba(18, 24, 43, 0.6);
     --glow-glass-strong: rgba(16, 23, 34, 0.8);
     --glow-glow: 0 10px 50px rgba(31, 50, 78, 0.65);
+    --primary-500: #2e449f;
+    --primary-400: #4a5fb8;
+    --accent-500: #5a6fd1;
 }
 
 body, input, button, select, textarea {
@@ -34,7 +37,7 @@ body.glow-page * {
 
 body.glow-page {
     background: radial-gradient(circle at 25% 15%, rgba(255, 212, 73, 0.14), transparent 42%),
-                radial-gradient(circle at 85% 10%, rgba(61, 90, 255, 0.2), transparent 40%),
+                radial-gradient(circle at 85% 10%, rgba(46, 68, 159, 0.2), transparent 40%),
                 linear-gradient(140deg, #02050f 0%, #060b1c 35%, #111831 65%, #060a1f 100%);
     color: var(--glow-ink);
     min-height: 100vh;
@@ -143,7 +146,7 @@ body.glow-page::before {
 }
 
 .glow-button.secondary {
-    background: linear-gradient(135deg, var(--glow-blue), #5669ff);
+    background: linear-gradient(135deg, var(--glow-blue), #5a6fd1);
 }
 
 .glow-button.ghost {

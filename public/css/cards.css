@@ -26,7 +26,7 @@
 .stat-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-xl);
-  border-color: rgba(59, 130, 246, 0.3);
+  border-color: rgba(46, 68, 159, 0.3);
 }
 
 .stat-card:hover::before {
@@ -44,7 +44,7 @@
 }
 
 .stat-card-icon--primary {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.05));
+  background: linear-gradient(135deg, rgba(46, 68, 159, 0.2), rgba(46, 68, 159, 0.05));
   color: var(--primary-400);
 }
 
@@ -128,7 +128,7 @@
 .entity-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
-  border-color: rgba(59, 130, 246, 0.2);
+  border-color: rgba(46, 68, 159, 0.2);
 }
 
 .entity-card-header {

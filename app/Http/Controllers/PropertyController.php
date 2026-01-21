@@ -126,7 +126,6 @@ class PropertyController extends Controller
                 // Valores
                 'valores' => [
                     'valor_venda' => $imovel->valor_venda ?? null,
-                    'valor_aluguel' => $imovel->valor_aluguel ?? null,
                     'condominio' => $imovel->condominio ?? null,
                     'valor_condominio' => $imovel->valor_condominio ?? null,
                     'iptu' => $imovel->iptu ?? null,

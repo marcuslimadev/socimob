@@ -11,6 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
     <style>
         :root {
@@ -41,11 +43,89 @@
             line-height: 1.6;
         }
 
+        /* Header */
+        .site-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1rem 0;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-placeholder {
+            width: 50px;
+            height: 50px;
+            background: var(--primary-gradient);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .tenant-logo {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .brand-info h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .brand-info .brand-tagline {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin: 0.25rem 0 0 0;
+            font-weight: 400;
+        }
+
+        .main-nav {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-link:hover {
+            color: #667eea;
+        }
+
         /* Hero Section */
         .hero-section {
             background: var(--primary-gradient);
             color: white;
-            padding: 80px 0;
+            padding: 120px 0 80px;
             position: relative;
             overflow: hidden;
         }
@@ -83,31 +163,6 @@
             opacity: 0.9;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 2rem;
-            margin-top: 3rem;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            display: block;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            font-size: 0.875rem;
-            opacity: 0.8;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
         /* Search Section */
         .search-section {
             background: var(--bg-white);
@@ -135,7 +190,7 @@
 
         .search-form {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
             gap: 1rem;
             align-items: end;
         }
@@ -183,6 +238,28 @@
         .btn-search:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-lg);
+        }
+
+        .btn-search:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #clear-filters {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #clear-filters:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         /* Properties Grid */
@@ -477,8 +554,21 @@
 
         /* Responsive Design */
         @media (max-width: 768px) {
+            .site-header {
+                padding: 0.75rem 0;
+            }
+
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .main-nav {
+                gap: 1rem;
+            }
+
             .hero-section {
-                padding: 60px 0;
+                padding: 100px 0 60px;
             }
 
             .hero-title {
@@ -488,11 +578,6 @@
             .search-form {
                 grid-template-columns: 1fr;
                 gap: 1rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1.5rem;
             }
 
             .properties-grid {
@@ -547,33 +632,33 @@
     </style>
 </head>
 <body>
+    <!-- Header -->
+    <header class="site-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section" id="logo-section">
+                    <div class="logo-placeholder">
+                        <i class="fas fa-home"></i>
+                    </div>
+                    <div class="brand-info">
+                        <h1 class="brand-name">Carregando...</h1>
+                        <p class="brand-tagline">Portal Imobiliário</p>
+                    </div>
+                </div>
+                <nav class="main-nav">
+                    <a href="#search" class="nav-link">Buscar Imóveis</a>
+                    <a href="#about" class="nav-link">Sobre</a>
+                    <a href="#contact" class="nav-link">Contato</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
     <!-- Hero Section -->
     <section class="hero-section">
         <div class="container">
             <div class="hero-content">
                 <h1 class="hero-title">Encontre seu imóvel ideal</h1>
-                <p class="hero-subtitle">
-                    Descubra milhares de imóveis disponíveis para venda e locação em nossa plataforma exclusiva
-                </p>
-
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <span class="stat-number" id="total-properties">0</span>
-                        <span class="stat-label">Imóveis</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number" id="active-properties">0</span>
-                        <span class="stat-label">Ativos</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number" id="total-locations">0</span>
-                        <span class="stat-label">Localidades</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number" id="happy-clients">0</span>
-                        <span class="stat-label">Clientes</span>
-                    </div>
-                </div>
             </div>
         </div>
     </section>
@@ -620,9 +705,22 @@
                             </select>
                         </div>
 
+                        <div class="form-group">
+                            <label class="form-label" for="sort-order">Ordenar por</label>
+                            <select class="form-control" id="sort-order">
+                                <option value="created_at_desc">Mais recentes</option>
+                                <option value="valor_venda_asc">Preço: Menor para Maior</option>
+                                <option value="valor_venda_desc">Preço: Maior para Menor</option>
+                            </select>
+                        </div>
+
                         <button type="submit" class="btn-search">
                             <i class="fas fa-search"></i>
                             Buscar
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="clear-filters">
+                            <i class="fas fa-times"></i>
+                            Limpar
                         </button>
                     </form>
                 </div>
@@ -746,7 +844,7 @@
 
         function createPropertyCard(property) {
             const imageUrl = property.imagens && property.imagens.length > 0
-                ? property.imagens[0].url
+                ? property.imagens[0]
                 : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY3ZWVhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW0gSW5kaXNwb25pYmVsPC90ZXh0Pjwvc3ZnPg==';
 
             const badgeText = property.finalidade === 'venda' ? 'Venda' : 'Aluguel';
@@ -762,16 +860,17 @@
                         </div>
                     </div>
                     <div class="property-content">
-                        <div class="property-price">${formatPrice(property.preco)}</div>
+                        <div class="property-price">${formatPrice(property.valor_venda || property.preco)}</div>
                         <h3 class="property-title">${property.titulo}</h3>
                         <div class="property-location">
                             <i class="fas fa-map-marker-alt"></i>
                             ${property.cidade}, ${property.bairro}
                         </div>
                         <div class="property-features">
-                            ${property.quartos ? `<span class="property-feature"><i class="fas fa-bed"></i> ${property.quartos} quartos</span>` : ''}
+                            ${property.dormitorios ? `<span class="property-feature"><i class="fas fa-bed"></i> ${property.dormitorios} quartos</span>` : ''}
                             ${property.banheiros ? `<span class="property-feature"><i class="fas fa-bath"></i> ${property.banheiros} banheiros</span>` : ''}
-                            ${property.area ? `<span class="property-feature"><i class="fas fa-ruler-combined"></i> ${property.area}m²</span>` : ''}
+                            ${property.area_total ? `<span class="property-feature"><i class="fas fa-ruler-combined"></i> ${property.area_total}m²</span>` : ''}
+                            ${property.vagas ? `<span class="property-feature"><i class="fas fa-car"></i> ${property.vagas} vagas</span>` : ''}
                         </div>
                         <div class="property-actions">
                             <a href="imovel.html?id=${property.id}" class="btn-property btn-view">
@@ -786,11 +885,45 @@
             `;
         }
 
+        async function loadTenantInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/api/portal/config`);
+                const data = await response.json();
+
+                if (data.success && data.tenant) {
+                    const tenant = data.tenant;
+                    
+                    // Atualizar logo e nome
+                    const logoSection = $('#logo-section');
+                    const logoHtml = tenant.logo_url 
+                        ? `<img src="${tenant.logo_url}" alt="${tenant.name}" class="tenant-logo">`
+                        : `<div class="logo-placeholder"><i class="fas fa-home"></i></div>`;
+                    
+                    logoSection.html(`
+                        ${logoHtml}
+                        <div class="brand-info">
+                            <h1 class="brand-name">${tenant.name}</h1>
+                            <p class="brand-tagline">${tenant.slogan || 'Portal Imobiliário'}</p>
+                        </div>
+                    `);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar informações do tenant:', error);
+            }
+        }
+
         // API Functions
         async function loadProperties(filters = {}) {
             if (isLoading) return;
 
             showLoading();
+
+            // Atualizar botão de busca para mostrar que está filtrando
+            const searchBtn = $('.btn-search');
+            const originalText = searchBtn.html();
+            if (Object.values(filters).some(v => v)) {
+                searchBtn.html('<i class="fas fa-spinner fa-spin"></i> Filtrando...').prop('disabled', true);
+            }
 
             try {
                 const params = new URLSearchParams();
@@ -805,29 +938,15 @@
                     const propertiesHtml = data.data.map(createPropertyCard).join('');
                     $('#properties-container').html(propertiesHtml);
                 } else {
-                    $('#properties-container').html('<p class="text-center">Nenhum imóvel encontrado.</p>');
+                    $('#properties-container').html('<div class="text-center p-4"><div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> Nenhum imóvel encontrado com os filtros aplicados.</div></div>');
                 }
             } catch (error) {
                 console.error('Erro ao carregar imóveis:', error);
-                $('#properties-container').html('<p class="text-center text-danger">Erro ao carregar imóveis. Tente novamente.</p>');
+                $('#properties-container').html('<div class="text-center p-4"><div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Erro ao carregar imóveis. Tente novamente.</div></div>');
             } finally {
                 hideLoading();
-            }
-        }
-
-        async function loadStats() {
-            try {
-                const response = await fetch(`${API_BASE}/api/portal/config`);
-                const data = await response.json();
-
-                if (data.success) {
-                    $('#total-properties').text(formatNumber(data.data.total_imoveis || 0));
-                    $('#active-properties').text(formatNumber(data.data.imoveis_ativos || 0));
-                    $('#total-locations').text(formatNumber(data.data.total_localidades || 0));
-                    $('#happy-clients').text(formatNumber(data.data.clientes_satisfeitos || 0));
-                }
-            } catch (error) {
-                console.error('Erro ao carregar estatísticas:', error);
+                // Restaurar botão
+                searchBtn.html(originalText).prop('disabled', false);
             }
         }
 
@@ -850,16 +969,51 @@
                 localizacao: $('#location').val(),
                 tipo: $('#property-type').val(),
                 finalidade: $('#purpose').val(),
-                preco: $('#price-range').val()
+                preco: $('#price-range').val(),
+                ordenar: $('#sort-order').val()
             };
 
             currentFilters = filters;
             loadProperties(filters);
         });
 
+        // Filtros automáticos - aplicar quando qualquer campo mudar
+        $('#location, #property-type, #purpose, #price-range, #sort-order').on('input change', function() {
+            const filters = {
+                localizacao: $('#location').val(),
+                tipo: $('#property-type').val(),
+                finalidade: $('#purpose').val(),
+                preco: $('#price-range').val(),
+                ordenar: $('#sort-order').val()
+            };
+
+            // Verificar se pelo menos um filtro está preenchido
+            const hasFilters = Object.values(filters).some(value => value && value.trim() !== '');
+
+            currentFilters = filters;
+            
+            if (hasFilters) {
+                loadProperties(filters);
+            } else {
+                // Se nenhum filtro estiver aplicado, recarregar todos os imóveis
+                loadProperties();
+            }
+        });
+
+        // Limpar filtros
+        $('#clear-filters').on('click', function() {
+            $('#location').val('');
+            $('#property-type').val('');
+            $('#purpose').val('');
+            $('#price-range').val('');
+            
+            currentFilters = {};
+            loadProperties();
+        });
+
         // Initialize
         $(document).ready(function() {
-            loadStats();
+            loadTenantInfo();
             loadProperties();
         });
 
