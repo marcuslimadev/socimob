@@ -1,17 +1,16 @@
 <?php
-/**
- * Router script for PHP built-in server
- * Handles static files and directs API requests to index.php
- */
+// Router for PHP built-in server
 
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 $publicPath = __DIR__ . '/public';
 
-// Log de debug para diagnóstico 404
-error_log("[ROUTER DEBUG] " . date('Y-m-d H:i:s') . " - " . $_SERVER['REQUEST_METHOD'] . " " . $uri);
+// Serve static files directly
+if ($uri !== '/' && is_file($publicPath . $uri)) {
+    return false; // Let PHP's built-in server serve the file
+}
 
-// Se for a raiz e não tiver query string, serve index.html
-if ($uri === '/' && empty($_SERVER['QUERY_STRING'])) {
+// Serve index.html for root
+if ($uri === '/' || $uri === '/index.html') {
     $indexFile = $publicPath . '/index.html';
     if (file_exists($indexFile)) {
         header('Content-Type: text/html; charset=UTF-8');
@@ -20,9 +19,9 @@ if ($uri === '/' && empty($_SERVER['QUERY_STRING'])) {
     }
 }
 
-// Se for um diretório, servir index.html
-if ($uri !== '/' && is_dir($publicPath . $uri)) {
-    $indexFile = rtrim($publicPath . $uri, DIRECTORY_SEPARATOR) . '/index.html';
+// Serve index.html for directories
+if (is_dir($publicPath . $uri)) {
+    $indexFile = rtrim($publicPath . $uri, '/') . '/index.html';
     if (file_exists($indexFile)) {
         header('Content-Type: text/html; charset=UTF-8');
         readfile($indexFile);
@@ -30,41 +29,9 @@ if ($uri !== '/' && is_dir($publicPath . $uri)) {
     }
 }
 
-// Se for um arquivo estático, serve diretamente
-if ($uri !== '/' && file_exists($publicPath . $uri)) {
-    // Detecta o tipo MIME
-    $ext = pathinfo($uri, PATHINFO_EXTENSION);
-    $mimeTypes = [
-        'html' => 'text/html',
-        'css' => 'text/css',
-        'js' => 'application/javascript',
-        'json' => 'application/json',
-        'png' => 'image/png',
-        'jpg' => 'image/jpeg',
-        'jpeg' => 'image/jpeg',
-        'gif' => 'image/gif',
-        'svg' => 'image/svg+xml',
-        'ico' => 'image/x-icon',
-    ];
-    
-    if (isset($mimeTypes[$ext])) {
-        header('Content-Type: ' . $mimeTypes[$ext] . '; charset=UTF-8');
-    }
-    
-    readfile($publicPath . $uri);
-    return true;
-}
-
-// Tratamento especial para arquivos HTML no portal com query parameters
-if (strpos($uri, '/portal/') === 0 && pathinfo($uri, PATHINFO_EXTENSION) === 'html') {
-    $filePath = $publicPath . $uri;
-    if (file_exists($filePath)) {
-        header('Content-Type: text/html; charset=UTF-8');
-        readfile($filePath);
-        return true;
-    }
-}
-
-// Para qualquer outra rota (incluindo /api/*), deixa o Lumen processar
-error_log("[ROUTER DEBUG] Passing to Lumen: " . $uri);
+// For all other requests (including API), pass to Lumen
+$_SERVER['SCRIPT_NAME'] = '/index.php';
+$_SERVER['SCRIPT_FILENAME'] = $publicPath . '/index.php';
+$_SERVER['DOCUMENT_ROOT'] = $publicPath;
+chdir($publicPath);
 require_once $publicPath . '/index.php';

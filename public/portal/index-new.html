@@ -1,16 +1,12 @@
 <!DOCTYPE HTML>
-<!--
-	Ethereal by HTML5 UP
-	html5up.net | @ajlkn
-	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
--->
-<html>
+<html lang="pt-BR">
 	<head>
 		<title id="page-title">Portal de Imóveis</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 		<link rel="stylesheet" href="assets/css/main.css" />
 		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+		<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 	</head>
 	<body class="is-preload">
 
@@ -34,69 +30,29 @@
 								</div>
 							</section>
 
-						<!-- Panel (Spotlight) -->
-							<section class="panel spotlight medium right" id="first">
-								<div class="content span-7">
-									<h2 class="major">Imóveis em Destaque</h2>
-									<p id="featured-description">Confira nossa seleção exclusiva de imóveis premium. Trabalhamos com as melhores opções do mercado para você encontrar o lar perfeito para sua família.</p>
-								</div>
-								<div class="image filtered tinted" data-position="top left">
-									<img src="ethereal-images/pic02.jpg" alt="" id="featured-image" />
-								</div>
-							</section>
-
-						<!-- Panel -->
-							<section class="panel color1">
-								<div class="intro joined">
-									<h2 class="major">Nossos Serviços</h2>
-									<p>Oferecemos soluções completas em gestão imobiliária com tecnologia de ponta e atendimento personalizado.</p>
-								</div>
-								<div class="inner">
-									<ul class="grid-icons three connected">
-										<li><span class="icon solid fa-home"><span class="label">Venda</span></span></li>
-										<li><span class="icon solid fa-key"><span class="label">Locação</span></span></li>
-										<li><span class="icon solid fa-handshake"><span class="label">Consultoria</span></span></li>
-										<li><span class="icon solid fa-file-contract"><span class="label">Documentação</span></span></li>
-										<li><span class="icon solid fa-chart-line"><span class="label">Avaliação</span></span></li>
-										<li><span class="icon solid fa-headset"><span class="label">Suporte</span></span></li>
-									</ul>
-								</div>
-							</section>
-
-						<!-- Panel (Spotlight) -->
-							<section class="panel spotlight large left">
-								<div class="content span-5">
-									<h2 class="major">Tecnologia e Inovação</h2>
-									<p>Utilizamos as mais modernas ferramentas de gestão imobiliária para oferecer a melhor experiência. Nosso portal permite que você explore imóveis com fotos em alta qualidade, tours virtuais e informações completas sobre cada propriedade.</p>
-								</div>
-								<div class="image filtered tinted" data-position="top right">
-									<img src="ethereal-images/pic03.jpg" alt="" />
-								</div>
-							</section>
-
-						<!-- Panel -->
-							<section class="panel">
+						<!-- Panel (Properties Grid) -->
+							<section class="panel" id="first">
 								<div class="intro color2">
-									<h2 class="major">Galeria de Imóveis</h2>
-									<p>Navegue por nossa coleção completa de imóveis. Clique em qualquer imagem para ver detalhes completos.</p>
+									<h2 class="major">Imóveis Disponíveis</h2>
+									<p>Explore nossa seleção de imóveis exclusivos</p>
 								</div>
 								<div class="gallery" id="properties-gallery">
-									<!-- Properties will be loaded here dynamically -->
+									<!-- Properties will be loaded here -->
 									<div class="intro joined">
 										<p>Carregando imóveis...</p>
 									</div>
 								</div>
 							</section>
 
-						<!-- Panel -->
+						<!-- Panel (Contact) -->
 							<section class="panel color4-alt">
 								<div class="intro color4">
 									<h2 class="major">Entre em Contato</h2>
-									<p>Envie sua mensagem e nossa equipe entrará em contato em breve. Estamos prontos para ajudá-lo a encontrar o imóvel ideal.</p>
+									<p>Tem dúvidas? Nossa equipe está pronta para atendê-lo</p>
 								</div>
 								<div class="inner columns divided">
 									<div class="span-3-25">
-										<form method="post" action="#" id="contact-form">
+										<form id="contact-form">
 											<div class="fields">
 												<div class="field half">
 													<label for="name">Nome</label>
@@ -105,6 +61,14 @@
 												<div class="field half">
 													<label for="email">Email</label>
 													<input type="email" name="email" id="email" required />
+												</div>
+												<div class="field half">
+													<label for="phone">Telefone</label>
+													<input type="tel" name="phone" id="phone" />
+												</div>
+												<div class="field half">
+													<label for="subject">Assunto</label>
+													<input type="text" name="subject" id="subject" />
 												</div>
 												<div class="field">
 													<label for="message">Mensagem</label>
@@ -126,7 +90,7 @@
 
 						<!-- Copyright -->
 							<div class="copyright" id="copyright">
-								&copy; <span id="current-year"></span> <span id="footer-tenant-name"></span>. Template: <a href="https://html5up.net">HTML5 UP</a>.
+								&copy; <span id="current-year"></span> <span id="footer-tenant-name"></span>
 							</div>
 
 					</div>
@@ -134,12 +98,10 @@
 			</div>
 
 		<!-- Scripts -->
-			<script src="assets/js/jquery.min.js"></script>
 			<script src="assets/js/browser.min.js"></script>
 			<script src="assets/js/breakpoints.min.js"></script>
 			<script src="assets/js/main.js"></script>
-
-			<!-- Custom Portal Script -->
+			
 			<script>
 				const API_BASE = window.location.origin;
 				let tenantConfig = null;
@@ -187,19 +149,14 @@
 						
 						if (data.success && data.data) {
 							properties = data.data;
-							displayProperties(properties.slice(0, 9)); // Show first 9 to match Ethereal pattern
+							displayProperties(properties.slice(0, 12)); // Show first 12
 						}
 					} catch (error) {
 						console.error('Error loading properties:', error);
-						document.getElementById('properties-gallery').innerHTML = `
-							<div class="intro joined">
-								<p>Erro ao carregar imóveis. Tente novamente mais tarde.</p>
-							</div>
-						`;
 					}
 				}
 
-				// Display properties in Ethereal gallery pattern
+				// Display properties
 				function displayProperties(items) {
 					if (!items || items.length === 0) {
 						document.getElementById('properties-gallery').innerHTML = `
@@ -210,40 +167,41 @@
 						return;
 					}
 
-					// Ethereal template exact pattern structure
-					let html = `
-						<div class="group span-3">
-							${createPropertyCard(items[0], 'span-3')}
-							${createPropertyCard(items[1], 'span-1-5')}
-							${createPropertyCard(items[2], 'span-1-5')}
-						</div>
-						${createPropertyCard(items[3], 'span-2-5')}
-						<div class="group span-4-5">
-							${createPropertyCard(items[4], 'span-3')}
-							${createPropertyCard(items[5], 'span-1-5')}
-							${createPropertyCard(items[6], 'span-1-5')}
-							${createPropertyCard(items[7], 'span-3')}
-						</div>
-						${createPropertyCard(items[8], 'span-2-5')}
-					`;
+					const galleryHtml = items.map((property, index) => {
+						const image = property.imagens && property.imagens.length > 0 
+							? property.imagens[0] 
+							: 'ethereal-images/pic01.jpg';
+						
+						const price = property.valor_venda 
+							? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(property.valor_venda)
+							: 'Consulte';
+						
+						const spans = [
+							'span-3', 'span-1-5', 'span-1-5', 'span-2-5',
+							'span-3', 'span-1-5', 'span-1-5', 'span-3',
+							'span-2-5', 'span-3', 'span-1-5', 'span-1-5'
+						];
+						
+						return `
+							<a href="imovel.html?id=${property.id}" class="image filtered ${spans[index % spans.length]}" data-position="center">
+								<img src="${image}" alt="${property.titulo}" onerror="this.src='ethereal-images/pic01.jpg'" />
+								<div class="property-overlay">
+									<h3>${property.titulo}</h3>
+									<p class="price">${price}</p>
+									<p class="location">${property.cidade || ''} - ${property.estado || ''}</p>
+								</div>
+							</a>
+						`;
+					}).join('');
 
-					document.getElementById('properties-gallery').innerHTML = html;
+					document.getElementById('properties-gallery').innerHTML = galleryHtml;
 				}
 
-				// Create property card
-				function createPropertyCard(property, spanClass) {
-					if (!property) return '';
-					
-					const image = property.imagens && property.imagens.length > 0 
-						? property.imagens[0] 
-						: 'ethereal-images/gallery/thumbs/01.jpg';
-					
-					return `
-						<a href="imovel.html?id=${property.id}" class="image filtered ${spanClass}" data-position="center" title="${property.titulo}">
-							<img src="${image}" alt="${property.titulo}" onerror="this.src='ethereal-images/gallery/thumbs/01.jpg'" />
-						</a>
-					`;
-				}
+				// Load data on page load
+				document.addEventListener('DOMContentLoaded', function() {
+					loadTenantConfig();
+					loadProperties();
+				});
 
 				// Handle contact form
 				document.getElementById('contact-form').addEventListener('submit', function(e) {
@@ -251,32 +209,48 @@
 					alert('Mensagem enviada com sucesso! Entraremos em contato em breve.');
 					this.reset();
 				});
-
-				// Load data on page load
-				document.addEventListener('DOMContentLoaded', function() {
-					loadTenantConfig();
-					loadProperties();
-				});
 			</script>
+
+			<style>
+				/* Custom styles for property overlays */
+				.property-overlay {
+					position: absolute;
+					bottom: 0;
+					left: 0;
+					right: 0;
+					background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
+					padding: 2rem 1.5rem;
+					color: white;
+					opacity: 0;
+					transition: opacity 0.3s ease;
+				}
+
+				.image:hover .property-overlay {
+					opacity: 1;
+				}
+
+				.property-overlay h3 {
+					font-size: 1rem;
+					margin-bottom: 0.5rem;
+					text-transform: none;
+					font-weight: 600;
+					letter-spacing: 0.025em;
+				}
+
+				.property-overlay .price {
+					font-size: 1.25rem;
+					font-weight: 700;
+					margin-bottom: 0.25rem;
+					color: #fff;
+				}
+
+				.property-overlay .location {
+					font-size: 0.75rem;
+					opacity: 0.8;
+					text-transform: uppercase;
+					letter-spacing: 0.1em;
+				}
+			</style>
 
 	</body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
