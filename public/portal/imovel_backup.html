@@ -13,149 +13,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f8fafc;
-            color: #1a202c;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .property-header {
-            background: white;
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-        }
-
-        .loading {
-            text-align: center;
-            padding: 2rem;
-        }
-
-        .error {
-            text-align: center;
-            padding: 2rem;
-            color: #e53e3e;
-        }
-    </style>
-</head>
-<body>
-    <!-- Header -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-        <div class="container">
-            <a class="navbar-brand" href="/portal/">
-                <i class="fas fa-home text-primary"></i>
-                Exclusiva Imóveis
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/portal/">Voltar ao Portal</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container">
-        <div class="property-header">
-            <h1 id="property-title">Carregando imóvel...</h1>
-            <div id="property-info" class="loading">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Carregando...</span>
-                </div>
-                <p class="mt-2">Carregando detalhes do imóvel...</p>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const API_BASE = window.location.origin;
-
-        function getPropertyId() {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('id');
-        }
-
-        async function loadProperty() {
-            const propertyId = getPropertyId();
-
-            if (!propertyId) {
-                document.getElementById('property-info').innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i><p>ID do imóvel não encontrado na URL.</p></div>';
-                document.getElementById('property-title').textContent = 'Erro';
-                return;
-            }
-
-            try {
-                console.log('Carregando imóvel ID:', propertyId);
-                const response = await fetch(`${API_BASE}/api/portal/imoveis/${propertyId}`);
-                const data = await response.json();
-
-                console.log('Resposta da API:', data);
-
-                if (data.success && data.data) {
-                    displayProperty(data.data);
-                } else {
-                    document.getElementById('property-info').innerHTML = '<div class="error"><i class="fas fa-exclamation-triangle"></i><p>Imóvel não encontrado.</p></div>';
-                    document.getElementById('property-title').textContent = 'Imóvel não encontrado';
-                }
-            } catch (error) {
-                console.error('Erro ao carregar imóvel:', error);
-                document.getElementById('property-info').innerHTML = '<div class="error"><i class="fas fa-exclamation-circle"></i><p>Erro ao carregar imóvel. Verifique o console para mais detalhes.</p></div>';
-                document.getElementById('property-title').textContent = 'Erro de carregamento';
-            }
-        }
-
-        function displayProperty(property) {
-            console.log('Exibindo imóvel:', property);
-
-            document.getElementById('property-title').textContent = property.titulo || 'Título não disponível';
-
-            const infoHtml = `
-                <div class="row">
-                    <div class="col-md-8">
-                        <h3>R$ ${property.valor_venda ? property.valor_venda.toLocaleString('pt-BR') : 'Preço não informado'}</h3>
-                        <p><i class="fas fa-map-marker-alt"></i> ${property.endereco || ''}, ${property.bairro || ''}, ${property.cidade || ''} - ${property.estado || ''}</p>
-                        <p>${property.descricao || 'Descrição não disponível.'}</p>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-body text-center">
-                                <h5>Características</h5>
-                                <p><strong>Quartos:</strong> ${property.dormitorios || 'N/A'}</p>
-                                <p><strong>Banheiros:</strong> ${property.banheiros || 'N/A'}</p>
-                                <p><strong>Área:</strong> ${property.area_total || 'N/A'} m²</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById('property-info').innerHTML = infoHtml;
-        }
-
-        // Carregar quando a página estiver pronta
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Página carregada, iniciando carregamento do imóvel...');
-            loadProperty();
-        });
-    </script>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         :root {
@@ -917,6 +778,7 @@
         // Gallery Functions
         let currentSlideIndex = 0;
         let totalSlides = 0;
+        let currentImages = [];
 
         function createGallery(images) {
             if (!images || images.length === 0) {
