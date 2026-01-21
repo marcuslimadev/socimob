@@ -9,6 +9,23 @@ echo ""
 echo "=== GIT PULL ==="
 git pull origin master
 echo ""
+
+# Verificar se pnpm está instalado
+if ! command -v pnpm &> /dev/null; then
+    echo "=== INSTALAR PNPM ==="
+    npm install -g pnpm 2>/dev/null || echo "AVISO: Não foi possível instalar pnpm globalmente"
+fi
+
+# Build do frontend React
+if [ -f "package.json" ]; then
+    echo "=== INSTALAR DEPENDENCIAS NODE ==="
+    pnpm install --frozen-lockfile 2>/dev/null || npm install 2>/dev/null || echo "AVISO: Falha ao instalar dependências Node"
+    echo ""
+    echo "=== BUILD FRONTEND REACT ==="
+    pnpm build 2>/dev/null || npm run build 2>/dev/null || echo "AVISO: Falha no build do frontend"
+    echo ""
+fi
+
 echo "=== LOCALIZAR COMPOSER ==="
 which composer || command -v composer || echo "Composer nao encontrado no PATH"
 echo ""
@@ -17,6 +34,8 @@ php composer.phar dump-autoload --optimize 2>/dev/null || composer dump-autoload
 echo ""
 echo "=== AJUSTAR PERMISSOES ==="
 chmod -R 755 storage bootstrap/cache public 2>/dev/null || echo "Permissoes ajustadas conforme possivel"
+# Garantir permissões de escrita para storage
+chmod -R 775 storage 2>/dev/null || echo "Storage já com permissões corretas"
 echo ""
 echo "=== DEPLOY CONCLUIDO ==="
 date
