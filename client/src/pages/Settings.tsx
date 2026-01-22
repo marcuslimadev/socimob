@@ -98,6 +98,11 @@ export default function Settings() {
 
                 <div className="border-t border-white/10 pt-4 mt-4">
                   <motion.button
+                    onClick={() => {
+                      localStorage.removeItem('token');
+                      localStorage.removeItem('user');
+                      window.location.href = '/login';
+                    }}
                     whileHover={{ x: 4 }}
                     whileTap={{ scale: 0.98 }}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-destructive hover:bg-destructive/10 transition-all"

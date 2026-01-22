@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useLocation } from 'wouter';
 import {
   BarChart3,
   Users,
@@ -155,6 +156,11 @@ const Sidebar = () => {
           </motion.button>
 
           <motion.button
+            onClick={() => {
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              window.location.href = '/login';
+            }}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-all duration-300"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -201,7 +207,14 @@ const Sidebar = () => {
             ))}
           </nav>
 
-          <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 w-full">
+          <button 
+            onClick={() => {
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              window.location.href = '/login';
+            }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 w-full"
+          >
             <LogOut size={20} />
             <span className="font-medium">Sair</span>
           </button>
