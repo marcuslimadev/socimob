@@ -807,6 +807,24 @@ $router->group(['prefix' => 'webhook'], function () use ($router) {
     $router->post('/whatsapp/status', 'WebhookController@status');
 });
 
+// TEMPORARY: Migration Runner (Run once then remove)
+$router->get('/migrate-now-please', function () {
+    try {
+        Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Migration executed!',
+            'output' => Illuminate\Support\Facades\Artisan::output()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
 // ===========================
 // DEPLOY WEBHOOK (SEM AUTENTICAÇÃO, MAS COM SECRET TOKEN)
 // ===========================
