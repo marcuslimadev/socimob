@@ -5,7 +5,7 @@ interface LeadCardProps {
   name: string;
   phone: string;
   email?: string;
-  status: 'novo' | 'contato' | 'interesse' | 'negociacao' | 'fechado';
+  status: 'novo' | 'em_atendimento' | 'qualificado' | 'proposta' | 'fechado' | 'perdido' | 'contato' | 'interesse' | 'negociacao';
   value?: number;
   lastContact?: string;
   delay?: number;
@@ -18,22 +18,22 @@ const statusConfig = {
     label: 'Novo',
     color: 'text-blue-400',
   },
-  contato: {
+  em_atendimento: {
     bg: 'from-cyan-500/20 to-cyan-600/20',
     border: 'border-cyan-500/30',
-    label: 'Contato',
+    label: 'Em Atendimento',
     color: 'text-cyan-400',
   },
-  interesse: {
+  qualificado: {
     bg: 'from-purple-500/20 to-purple-600/20',
     border: 'border-purple-500/30',
-    label: 'Interesse',
+    label: 'Qualificado',
     color: 'text-purple-400',
   },
-  negociacao: {
+  proposta: {
     bg: 'from-orange-500/20 to-orange-600/20',
     border: 'border-orange-500/30',
-    label: 'Negociação',
+    label: 'Proposta',
     color: 'text-orange-400',
   },
   fechado: {
@@ -41,6 +41,31 @@ const statusConfig = {
     border: 'border-green-500/30',
     label: 'Fechado',
     color: 'text-green-400',
+  },
+  perdido: {
+    bg: 'from-red-500/20 to-red-600/20',
+    border: 'border-red-500/30',
+    label: 'Perdido',
+    color: 'text-red-400',
+  },
+  // Fallbacks for compatibility
+  contato: {
+    bg: 'from-cyan-500/20 to-cyan-600/20',
+    border: 'border-cyan-500/30',
+    label: 'Em Atendimento',
+    color: 'text-cyan-400',
+  },
+  interesse: {
+    bg: 'from-purple-500/20 to-purple-600/20',
+    border: 'border-purple-500/30',
+    label: 'Qualificado',
+    color: 'text-purple-400',
+  },
+  negociacao: {
+    bg: 'from-orange-500/20 to-orange-600/20',
+    border: 'border-orange-500/30',
+    label: 'Proposta',
+    color: 'text-orange-400',
   },
 };
 

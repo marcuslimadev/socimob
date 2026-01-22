@@ -1,22 +1,68 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, Plus, Download, Zap } from 'lucide-react';
+import { toast } from 'sonner';
+import { api } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import LeadCard from '@/components/LeadCard';
+
+interface Lead {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  status: 'novo' | 'em_atendimento' | 'qualificado' | 'proposta' | 'fechado' | 'perdido';
+  value?: number;
+  lastContact?: string;
+}
 
 export default function Leads() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('todos');
   const [selectedSort, setSelectedSort] = useState('recente');
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const leads = [
-    { id: '1', name: 'João Silva', phone: '(11) 98765-4321', email: 'joao@email.com', status: 'novo' as const },
-    { id: '2', name: 'Maria Santos', phone: '(11) 98765-4322', status: 'contato' as const, value: 450000 },
-    { id: '3', name: 'Pedro Costa', phone: '(11) 98765-4323', status: 'interesse' as const, value: 180000, lastContact: 'Há 2 horas' },
-    { id: '4', name: 'Ana Oliveira', phone: '(11) 98765-4324', status: 'negociacao' as const, value: 320000 },
-    { id: '5', name: 'Carlos Souza', phone: '(11) 98765-4325', status: 'fechado' as const, value: 520000, lastContact: 'Ontem' },
-    { id: '6', name: 'Lucia Mendes', phone: '(11) 98765-4326', status: 'novo' as const },
-  ];
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  const fetchLeads = async () => {
+    try {
+      const response = await api.get('/leads');
+      if (response.data.success) {
+        // Map backend data to frontend interface
+        const mappedLeads = response.data.data.map((item: any) => ({
+          id: item.id.toString(),
+          name: item.nome || 'Sem nome',
+          phone: item.telefone || '',
+          email: item.email || '',
+          status: item.status || 'novo',
+          value: parseFloat(item.budget_max || item.budget_min || '0'),
+          lastContact: formatDate(item.updated_at)
+        }));
+        setLeads(mappedLeads);
+      }
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+      toast.error('Erro ao carregar leads');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.abs(now.getTime() - date.getTime()) / 36e5;
+
+    if (diffInHours < 24) {
+      if (diffInHours < 1) return 'Há menos de 1 hora';
+      return `Há ${Math.floor(diffInHours)} horas`;
+    }
+    return date.toLocaleDateString('pt-BR');
+  };
 
   const filteredLeads = leads.filter((lead) => {
     const matchSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -86,10 +132,11 @@ export default function Leads() {
               >
                 <option value="todos">Todos os Status</option>
                 <option value="novo">Novo</option>
-                <option value="contato">Primeiro Contato</option>
-                <option value="interesse">Interesse</option>
-                <option value="negociacao">Negociação</option>
+                <option value="em_atendimento">Em Atendimento</option>
+                <option value="qualificado">Qualificado</option>
+                <option value="proposta">Proposta</option>
                 <option value="fechado">Fechado</option>
+                <option value="perdido">Perdido</option>
               </select>
 
               <select
@@ -125,9 +172,9 @@ export default function Leads() {
           <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
             {[
               { label: 'Total', value: leads.length, color: 'from-blue-500 to-blue-600' },
-              { label: 'Novo', value: leads.filter(l => l.status === 'novo').length, color: 'from-cyan-500 to-cyan-600' },
-              { label: 'Contato', value: leads.filter(l => l.status === 'contato').length, color: 'from-purple-500 to-purple-600' },
-              { label: 'Interesse', value: leads.filter(l => l.status === 'interesse').length, color: 'from-orange-500 to-orange-600' },
+              { label: 'Novo', value: leads.filter(l => l.status === 'novo').length, color: 'from-blue-500/50 to-blue-600/50' },
+              { label: 'Em Atend.', value: leads.filter(l => l.status === 'em_atendimento').length, color: 'from-cyan-500 to-cyan-600' },
+              { label: 'Qualificado', value: leads.filter(l => l.status === 'qualificado').length, color: 'from-purple-500 to-purple-600' },
               { label: 'Fechado', value: leads.filter(l => l.status === 'fechado').length, color: 'from-green-500 to-green-600' },
             ].map((stat, index) => (
               <motion.div
@@ -143,40 +190,46 @@ export default function Leads() {
             ))}
           </motion.div>
 
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            {filteredLeads.length === 0 ? (
-              <motion.div
-                variants={itemVariants}
-                className="col-span-full text-center py-12"
-              >
-                <Zap size={48} className="mx-auto mb-4 text-muted-foreground opacity-50" />
-                <p className="text-lg font-semibold text-foreground mb-2">Nenhum lead encontrado</p>
-                <p className="text-muted-foreground">Tente ajustar seus filtros de busca</p>
-              </motion.div>
-            ) : (
-              filteredLeads.map((lead, index) => (
+          {isLoading ? (
+            <div className="flex justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {filteredLeads.length === 0 ? (
                 <motion.div
-                  key={lead.id}
                   variants={itemVariants}
-                  transition={{ delay: 0.3 + index * 0.05 }}
+                  className="col-span-full text-center py-12"
                 >
-                  <LeadCard
-                    name={lead.name}
-                    phone={lead.phone}
-                    email={lead.email}
-                    status={lead.status}
-                    value={lead.value}
-                    lastContact={lead.lastContact}
-                  />
+                  <Zap size={48} className="mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <p className="text-lg font-semibold text-foreground mb-2">Nenhum lead encontrado</p>
+                  <p className="text-muted-foreground">Tente ajustar seus filtros de busca</p>
                 </motion.div>
-              ))
-            )}
-          </motion.div>
+              ) : (
+                filteredLeads.map((lead, index) => (
+                  <motion.div
+                    key={lead.id}
+                    variants={itemVariants}
+                    transition={{ delay: 0.3 + index * 0.05 }}
+                  >
+                    <LeadCard
+                      name={lead.name}
+                      phone={lead.phone}
+                      email={lead.email}
+                      status={lead.status}
+                      value={lead.value}
+                      lastContact={lead.lastContact}
+                    />
+                  </motion.div>
+                ))
+              )}
+            </motion.div>
+          )}
         </motion.div>
       </div>
     </div>

@@ -10,7 +10,10 @@ import Properties from "./pages/Properties";
 import Chat from "./pages/Chat";
 import NotificationCenter from "./pages/NotificationCenter";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import ClientPortal from "./pages/ClientPortal";
+
 import PropertyDetail from "./pages/PropertyDetail";
 import Settings from "./pages/Settings";
 
@@ -25,6 +28,8 @@ function Router() {
       <Route path="/chat" component={Chat} />
       <Route path="/notifications" component={NotificationCenter} />
       <Route path="/login" component={Login} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/portal/imovel/:id" component={PropertyDetail} />
       <Route path="/portal" component={ClientPortal} />
       <Route path="/settings" component={Settings} />
@@ -45,7 +50,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider
         defaultTheme="dark"
-        // switchable
+      // switchable
       >
         <TooltipProvider>
           <Toaster />

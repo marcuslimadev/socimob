@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, Plus, MapPin, Bed, Bath, Ruler, Heart, Share2, Eye } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
+import { api } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface Property {
   id: string;
@@ -17,48 +19,42 @@ interface Property {
 }
 
 export default function Properties() {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('todos');
   const [selectedStatus, setSelectedStatus] = useState('todos');
 
-  const properties: Property[] = [
-    {
-      id: '1',
-      title: 'Apartamento Moderno 2 Quartos',
-      price: 450000,
-      type: 'apartamento',
-      status: 'venda',
-      location: 'Pinheiros, São Paulo',
-      bedrooms: 2,
-      bathrooms: 2,
-      area: 75,
-      image: '🏢',
-    },
-    {
-      id: '2',
-      title: 'Casa Térrea 3 Quartos',
-      price: 850000,
-      type: 'casa',
-      status: 'venda',
-      location: 'Vila Madalena, São Paulo',
-      bedrooms: 3,
-      bathrooms: 3,
-      area: 180,
-      image: '🏠',
-    },
-    {
-      id: '3',
-      title: 'Apartamento Studio',
-      price: 2500,
-      type: 'apartamento',
-      status: 'aluguel',
-      location: 'Itaim Bibi, São Paulo',
-      bedrooms: 1,
-      bathrooms: 1,
-      area: 45,
-      image: '🏢',
-    },
-  ];
+  useEffect(() => {
+    fetchProperties();
+  }, []);
+
+  const fetchProperties = async () => {
+    try {
+      setIsLoading(true);
+      const response = await api.get('/properties');
+      if (response.data.success) {
+        const mappedProperties = response.data.data.map((item: any) => ({
+          id: item.id.toString(),
+          title: item.titulo || 'Sem título',
+          price: parseFloat(item.valor_venda) || 0,
+          type: (item.tipo_imovel || 'outros').toLowerCase(),
+          status: (item.finalidade_imovel || 'venda').toLowerCase().includes('aluguel') ? 'aluguel' : 'venda',
+          location: `${item.bairro || ''}, ${item.cidade || ''}`.replace(/^, /, '').replace(/, $/, '') || 'Localização não informada',
+          bedrooms: parseInt(item.dormitorios) || 0,
+          bathrooms: parseInt(item.banheiros) || 0,
+          area: parseFloat(item.area_total) || 0,
+          image: Array.isArray(item.imagens) && item.imagens.length > 0 ? item.imagens[0] : (item.foto_capa || '🏢'),
+        }));
+        setProperties(mappedProperties);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar imóveis:', error);
+      toast.error('Erro ao carregar imóveis');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredProperties = properties.filter((prop) => {
     const matchSearch = prop.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -160,115 +156,125 @@ export default function Properties() {
             </div>
           </motion.div>
 
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            {filteredProperties.map((property, index) => (
-              <motion.div
-                key={property.id}
-                variants={itemVariants}
-                transition={{ delay: 0.3 + index * 0.05 }}
-                whileHover={{ y: -4 }}
-                className="glass-panel rounded-2xl overflow-hidden group cursor-pointer"
-              >
-                <div className="relative h-48 bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-6xl overflow-hidden">
-                  <motion.div
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ type: 'spring', stiffness: 200 }}
-                  >
-                    {property.image}
-                  </motion.div>
-
-                  <div className="absolute top-4 right-4">
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className={`px-3 py-1 rounded-full text-xs font-bold text-white ${
-                        property.status === 'venda'
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600'
-                          : 'bg-gradient-to-r from-green-500 to-emerald-600'
-                      }`}
-                    >
-                      {property.status === 'venda' ? 'Venda' : 'Aluguel'}
-                    </motion.div>
-                  </div>
-
-                  <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-md transition-all"
-                    >
-                      <Heart size={18} className="text-red-400" />
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-md transition-all"
-                    >
-                      <Share2 size={18} className="text-blue-400" />
-                    </motion.button>
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  <h3 className="text-lg font-bold text-foreground mb-2 line-clamp-2">{property.title}</h3>
-
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                    <MapPin size={16} />
-                    <span>{property.location}</span>
-                  </div>
-
-                  <div className="mb-4 p-3 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg">
-                    <p className="text-xs text-muted-foreground mb-1">Preço</p>
-                    <p className="text-2xl font-bold gradient-text">
-                      {formatPrice(property.price, property.status === 'aluguel')}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-4 mb-6 text-sm text-muted-foreground">
-                    {property.bedrooms > 0 && (
-                      <div className="flex items-center gap-1">
-                        <Bed size={16} />
-                        <span>{property.bedrooms}</span>
-                      </div>
+          {isLoading ? (
+            <div className="flex justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {filteredProperties.map((property, index) => (
+                <motion.div
+                  key={property.id}
+                  variants={itemVariants}
+                  transition={{ delay: 0.3 + index * 0.05 }}
+                  whileHover={{ y: -4 }}
+                  className="glass-panel rounded-2xl overflow-hidden group cursor-pointer"
+                >
+                  <div className="relative h-48 bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-6xl overflow-hidden">
+                    {/* Placeholder for real image since I am not sure about image URL format yet, assuming URL or emoji for now if text */}
+                    {property.image.length > 5 ? (
+                      <img src={property.image} alt={property.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <motion.div
+                        whileHover={{ scale: 1.1 }}
+                        transition={{ type: 'spring', stiffness: 200 }}
+                      >
+                        {property.image}
+                      </motion.div>
                     )}
-                    {property.bathrooms > 0 && (
-                      <div className="flex items-center gap-1">
-                        <Bath size={16} />
-                        <span>{property.bathrooms}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1">
-                      <Ruler size={16} />
-                      <span>{property.area}m²</span>
+
+                    <div className="absolute top-4 right-4">
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className={`px-3 py-1 rounded-full text-xs font-bold text-white ${property.status === 'venda'
+                            ? 'bg-gradient-to-r from-blue-500 to-blue-600'
+                            : 'bg-gradient-to-r from-green-500 to-emerald-600'
+                          }`}
+                      >
+                        {property.status === 'venda' ? 'Venda' : 'Aluguel'}
+                      </motion.div>
+                    </div>
+
+                    <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-md transition-all"
+                      >
+                        <Heart size={18} className="text-red-400" />
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-md transition-all"
+                      >
+                        <Share2 size={18} className="text-blue-400" />
+                      </motion.button>
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold text-white transition-all"
-                    >
-                      <Eye size={16} />
-                      Ver
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold text-foreground transition-all"
-                    >
-                      Editar
-                    </motion.button>
+                  <div className="p-6">
+                    <h3 className="text-lg font-bold text-foreground mb-2 line-clamp-2">{property.title}</h3>
+
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                      <MapPin size={16} />
+                      <span>{property.location}</span>
+                    </div>
+
+                    <div className="mb-4 p-3 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-1">Preço</p>
+                      <p className="text-2xl font-bold gradient-text">
+                        {formatPrice(property.price, property.status === 'aluguel')}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-4 mb-6 text-sm text-muted-foreground">
+                      {property.bedrooms > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Bed size={16} />
+                          <span>{property.bedrooms}</span>
+                        </div>
+                      )}
+                      {property.bathrooms > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Bath size={16} />
+                          <span>{property.bathrooms}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Ruler size={16} />
+                        <span>{property.area}m²</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold text-white transition-all"
+                      >
+                        <Eye size={16} />
+                        Ver
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold text-foreground transition-all"
+                      >
+                        Editar
+                      </motion.button>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
         </motion.div>
       </div>
     </div>

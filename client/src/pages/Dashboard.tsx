@@ -1,11 +1,76 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, Users, TrendingUp, MessageSquare, Calendar, Zap } from 'lucide-react';
+import { BarChart3, Users, TrendingUp, MessageSquare, Calendar, Zap, Activity } from 'lucide-react';
+import { toast } from 'sonner';
+import { api } from '@/lib/api';
 import MetricCard from '@/components/MetricCard';
 import LeadCard from '@/components/LeadCard';
 import KanbanBoard from '@/components/KanbanBoard';
 import Sidebar from '@/components/Sidebar';
 
+interface DashboardStats {
+  leads: {
+    total: number;
+    novos: number;
+    em_atendimento: number;
+    qualificados: number;
+    fechados_mes: number;
+  };
+  conversas: {
+    ativas: number;
+    hoje: number;
+    aguardando: number;
+  };
+  imoveis: {
+    total: number;
+    ativos: number;
+  };
+}
+
+interface RecentActivity {
+  tipo: string;
+  descricao: string;
+  timestamp: string;
+  data: any;
+}
+
 export default function Dashboard() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentLeads, setRecentLeads] = useState<any[]>([]);
+  const [activities, setActivities] = useState<RecentActivity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [statsRes, leadsRes, activitiesRes] = await Promise.all([
+        api.get('/dashboard/stats'),
+        api.get('/leads'), // Getting all leads and slicing the top 3
+        api.get('/dashboard/atividades')
+      ]);
+
+      if (statsRes.data.success) {
+        setStats(statsRes.data.data);
+      }
+
+      if (leadsRes.data.success) {
+        setRecentLeads(leadsRes.data.data.slice(0, 3));
+      }
+
+      if (activitiesRes.data.success) {
+        setActivities(activitiesRes.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('Erro ao carregar dados do dashboard');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -20,6 +85,12 @@ export default function Dashboard() {
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -48,35 +119,35 @@ export default function Dashboard() {
           >
             <MetricCard
               title="Total de Leads"
-              value="1,234"
+              value={stats?.leads.total.toString() || "0"}
               unit="leads"
-              trend={12.5}
+              trend={0} // TODO: Calculate trend
               icon={<Users size={24} />}
               gradient="from-blue-500 to-blue-600"
               delay={0}
             />
             <MetricCard
-              title="Conversão"
-              value="28.5%"
-              trend={5.2}
+              title="Conversas Ativas"
+              value={stats?.conversas.ativas.toString() || "0"}
+              trend={0}
               icon={<TrendingUp size={24} />}
               gradient="from-green-500 to-emerald-600"
               delay={0.1}
             />
             <MetricCard
               title="Imóveis Ativos"
-              value="89"
+              value={stats?.imoveis.ativos.toString() || "0"}
               unit="propriedades"
-              trend={-2.1}
+              trend={0}
               icon={<BarChart3 size={24} />}
               gradient="from-purple-500 to-pink-600"
               delay={0.2}
             />
             <MetricCard
-              title="Mensagens"
-              value="342"
-              unit="não lidas"
-              trend={8.3}
+              title="Aguardando"
+              value={stats?.conversas.aguardando.toString() || "0"}
+              unit="conversas"
+              trend={0}
               icon={<MessageSquare size={24} />}
               gradient="from-cyan-500 to-blue-600"
               delay={0.3}
@@ -91,11 +162,11 @@ export default function Dashboard() {
               </h2>
               <div className="space-y-4">
                 {[
-                  { label: 'Leads', value: 1234, percent: 100, color: 'from-blue-500 to-blue-600' },
-                  { label: 'Contato', value: 856, percent: 69, color: 'from-cyan-500 to-cyan-600' },
-                  { label: 'Interesse', value: 542, percent: 44, color: 'from-purple-500 to-purple-600' },
-                  { label: 'Negociação', value: 234, percent: 19, color: 'from-orange-500 to-orange-600' },
-                  { label: 'Fechado', value: 89, percent: 7, color: 'from-green-500 to-green-600' },
+                  { label: 'Leads', value: stats?.leads.total || 0, percent: 100, color: 'from-blue-500 to-blue-600' },
+                  { label: 'Novos', value: stats?.leads.novos || 0, percent: stats ? Math.round((stats.leads.novos / (stats.leads.total || 1)) * 100) : 0, color: 'from-cyan-500 to-cyan-600' },
+                  { label: 'Em Atendimento', value: stats?.leads.em_atendimento || 0, percent: stats ? Math.round((stats.leads.em_atendimento / (stats.leads.total || 1)) * 100) : 0, color: 'from-purple-500 to-purple-600' },
+                  { label: 'Qualificados', value: stats?.leads.qualificados || 0, percent: stats ? Math.round((stats.leads.qualificados / (stats.leads.total || 1)) * 100) : 0, color: 'from-orange-500 to-orange-600' },
+                  { label: 'Fechados (Mês)', value: stats?.leads.fechados_mes || 0, percent: stats ? Math.round((stats.leads.fechados_mes / (stats.leads.total || 1)) * 100) : 0, color: 'from-green-500 to-green-600' },
                 ].map((stage, index) => (
                   <motion.div
                     key={stage.label}
@@ -127,27 +198,26 @@ export default function Dashboard() {
               className="glass-panel p-6 rounded-2xl"
             >
               <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
-                <Calendar size={24} className="text-pink-400" />
-                Próximas Visitas
+                <Activity size={24} className="text-pink-400" />
+                Atividades Recentes
               </h2>
               <div className="space-y-4">
-                {[
-                  { name: 'João Silva', time: 'Hoje, 14:00', property: 'Apt. Pinheiros' },
-                  { name: 'Maria Santos', time: 'Amanhã, 10:00', property: 'Casa Vila Madalena' },
-                  { name: 'Pedro Costa', time: 'Amanhã, 15:30', property: 'Apt. Itaim' },
-                ].map((visit, index) => (
-                  <motion.div
-                    key={visit.name}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 + index * 0.1 }}
-                    className="p-3 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all"
-                  >
-                    <p className="font-semibold text-foreground text-sm">{visit.name}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{visit.time}</p>
-                    <p className="text-xs text-cyan-400 mt-1">{visit.property}</p>
-                  </motion.div>
-                ))}
+                {activities.length > 0 ? (
+                  activities.map((activity, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5 + index * 0.1 }}
+                      className="p-3 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all"
+                    >
+                      <p className="font-semibold text-foreground text-sm">{activity.descricao}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{formatDate(activity.timestamp)}</p>
+                    </motion.div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground text-sm">Nenhuma atividade recente</p>
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -155,28 +225,18 @@ export default function Dashboard() {
           <motion.div variants={itemVariants} className="mb-8">
             <h2 className="text-2xl font-bold text-foreground mb-6">Leads Recentes</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <LeadCard
-                name="João Silva"
-                phone="(11) 98765-4321"
-                email="joao@email.com"
-                status="novo"
-                delay={0.5}
-              />
-              <LeadCard
-                name="Maria Santos"
-                phone="(11) 98765-4322"
-                status="contato"
-                value={450000}
-                delay={0.6}
-              />
-              <LeadCard
-                name="Pedro Costa"
-                phone="(11) 98765-4323"
-                status="interesse"
-                value={180000}
-                lastContact="Há 2 horas"
-                delay={0.7}
-              />
+              {recentLeads.map((lead, index) => (
+                <LeadCard
+                  key={lead.id}
+                  name={lead.nome || 'Sem nome'}
+                  phone={lead.telefone || ''}
+                  email={lead.email}
+                  status={lead.status}
+                  value={parseFloat(lead.budget_max || lead.budget_min || '0')}
+                  lastContact={formatDate(lead.updated_at)}
+                  delay={0.5 + index * 0.1}
+                />
+              ))}
             </div>
           </motion.div>
 

@@ -82,11 +82,10 @@ export default function Settings() {
                     whileHover={{ x: 4 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                      activeSection === section.id
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeSection === section.id
                         ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 text-white border border-blue-500/30'
                         : 'text-muted-foreground hover:bg-white/10'
-                    }`}
+                      }`}
                   >
                     {section.icon}
                     <div className="flex-1 text-left">
@@ -129,8 +128,8 @@ export default function Settings() {
                     <div className="space-y-6">
                       {/* Avatar */}
                       <div className="flex items-center gap-6">
-                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white">
-                          JD
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white uppercase">
+                          {JSON.parse(localStorage.getItem('user') || '{}').name?.substring(0, 2) || 'US'}
                         </div>
                         <motion.button
                           whileHover={{ scale: 1.05 }}
@@ -143,10 +142,9 @@ export default function Settings() {
 
                       {/* Form Fields */}
                       {[
-                        { label: 'Nome Completo', value: 'João da Silva' },
-                        { label: 'Email', value: 'joao@example.com' },
-                        { label: 'Telefone', value: '(11) 98765-4321' },
-                        { label: 'Empresa', value: 'Silva Imóveis' },
+                        { label: 'Nome Completo', value: JSON.parse(localStorage.getItem('user') || '{}').name || '' },
+                        { label: 'Email', value: JSON.parse(localStorage.getItem('user') || '{}').email || '' },
+                        { label: 'Função', value: JSON.parse(localStorage.getItem('user') || '{}').role || 'Usuário' },
                       ].map((field) => (
                         <div key={field.label}>
                           <label className="block text-sm font-semibold text-foreground mb-2">
@@ -155,7 +153,8 @@ export default function Settings() {
                           <input
                             type="text"
                             defaultValue={field.value}
-                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            readOnly
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all opacity-70 cursor-not-allowed"
                           />
                         </div>
                       ))}
@@ -163,9 +162,9 @@ export default function Settings() {
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg"
+                        className="w-full px-6 py-3 bg-white/10 text-muted-foreground rounded-lg font-semibold transition-all cursor-not-allowed"
                       >
-                        Salvar Alterações
+                        Salvar Alterações (Indisponível)
                       </motion.button>
                     </div>
                   </div>

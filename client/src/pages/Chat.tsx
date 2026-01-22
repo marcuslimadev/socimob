@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Send, Phone, Video, Search, MoreVertical, Smile, Paperclip } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
+import { api } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface Message {
   id: string;
@@ -19,51 +21,142 @@ interface Contact {
   timestamp: string;
   unread: number;
   online: boolean;
+  leadId: number;
+  phone: string;
 }
 
 export default function Chat() {
-  const [selectedContactId, setSelectedContactId] = useState('1');
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [messageText, setMessageText] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    { id: '1', sender: 'contact', text: 'Olá! Tudo bem?', timestamp: '10:30', read: true },
-    { id: '2', sender: 'user', text: 'Oi! Tudo certo! Como posso ajudar?', timestamp: '10:31', read: true },
-    { id: '3', sender: 'contact', text: 'Gostaria de saber mais sobre o apartamento em Pinheiros', timestamp: '10:32', read: true },
-    { id: '4', sender: 'user', text: 'Claro! É um apartamento de 2 quartos, muito bem localizado 🏠', timestamp: '10:33', read: true },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const contacts: Contact[] = [
-    { id: '1', name: 'João Silva', avatar: '👨‍💼', lastMessage: 'Claro! É um apartamento de 2 quartos...', timestamp: 'Agora', unread: 0, online: true },
-    { id: '2', name: 'Maria Santos', avatar: '👩‍💼', lastMessage: 'Obrigada pela informação!', timestamp: 'Há 5m', unread: 2, online: true },
-    { id: '3', name: 'Pedro Costa', avatar: '👨‍💻', lastMessage: 'Posso agendar uma visita?', timestamp: 'Há 1h', unread: 0, online: false },
-    { id: '4', name: 'Ana Oliveira', avatar: '👩‍🎓', lastMessage: 'Qual o valor do aluguel?', timestamp: 'Ontem', unread: 1, online: false },
-  ];
+  useEffect(() => {
+    fetchContacts();
+  }, []);
 
-  const selectedContact = contacts.find(c => c.id === selectedContactId);
+  useEffect(() => {
+    if (selectedContactId) {
+      fetchMessages(selectedContactId);
+      // Optional: Set up polling
+      const interval = setInterval(() => fetchMessages(selectedContactId), 10000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedContactId]);
 
-  const handleSendMessage = () => {
-    if (messageText.trim()) {
-      const newMessage: Message = {
-        id: String(messages.length + 1),
-        sender: 'user',
-        text: messageText,
-        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        read: false,
-      };
-      setMessages([...messages, newMessage]);
-      setMessageText('');
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
-      setTimeout(() => {
-        const replyMessage: Message = {
-          id: String(messages.length + 2),
-          sender: 'contact',
-          text: 'Entendi! Deixe-me verificar e retorno em breve.',
-          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-          read: false,
-        };
-        setMessages(prev => [...prev, replyMessage]);
-      }, 1000);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const fetchContacts = async () => {
+    try {
+      setIsLoadingContacts(true);
+      const response = await api.get('/admin/conversas');
+      if (response.data.success) {
+        const mappedContacts = response.data.data.map((item: any) => ({
+          id: item.id.toString(),
+          name: item.lead_nome || item.lead_telefone || 'Sem nome',
+          avatar: getAvatar(item.lead_nome || item.lead_telefone),
+          lastMessage: item.ultima_mensagem || 'Sem mensagens',
+          timestamp: formatTime(item.ultima_atividade || item.created_at),
+          unread: item.mensagens_nao_lidas || 0,
+          online: false, // Not supported by API yet
+          leadId: item.lead_id,
+          phone: item.lead_telefone,
+        }));
+        setContacts(mappedContacts);
+        if (mappedContacts.length > 0 && !selectedContactId) {
+          // Optional: Select first contact automatically
+          // setSelectedContactId(mappedContacts[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar conversas:', error);
+      toast.error('Erro ao carregar conversas');
+    } finally {
+      setIsLoadingContacts(false);
     }
   };
+
+  const fetchMessages = async (contactId: string) => {
+    try {
+      // Don't set loading on every poll to avoid sticky UI
+      // setIsLoadingMessages(true); 
+      const response = await api.get(`/admin/conversas/${contactId}/mensagens`);
+      if (response.data.success) {
+        const mappedMessages = response.data.data.map((item: any) => ({
+          id: item.id.toString(),
+          sender: item.direction === 'outgoing' ? 'user' : 'contact',
+          text: item.content,
+          timestamp: formatTime(item.created_at),
+          read: !!item.read_at,
+        }));
+        setMessages(mappedMessages);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar mensagens:', error);
+      // Don't toast on polling errors to avoid spam
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim() || !selectedContactId) return;
+
+    try {
+      const tempId = Date.now().toString();
+      const newMessage: Message = {
+        id: tempId,
+        sender: 'user',
+        text: messageText,
+        timestamp: formatTime(new Date().toISOString()),
+        read: false,
+      };
+
+      // Optimistic update
+      setMessages((prev) => [...prev, newMessage]);
+      setMessageText('');
+      scrollToBottom();
+
+      const response = await api.post(`/admin/conversas/${selectedContactId}/mensagens`, {
+        content: newMessage.text,
+      });
+
+      if (!response.data.success) {
+        throw new Error('Falha ao enviar');
+      }
+
+      // Update with real ID from server if needed, or just re-fetch
+      // For now, simpler to just refetch or assume success
+      fetchMessages(selectedContactId);
+
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
+      toast.error('Erro ao enviar mensagem');
+      // Revert optimistic update ideally, but for now just letting user know
+    }
+  };
+
+  const getAvatar = (name: string) => {
+    // Simple avatar based on initials or emoji
+    return '👤';
+  };
+
+  const formatTime = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const selectedContact = contacts.find(c => c.id === selectedContactId);
 
   return (
     <div className="flex">
@@ -85,52 +178,57 @@ export default function Chat() {
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {contacts.map((contact, index) => (
-              <motion.button
-                key={contact.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => setSelectedContactId(contact.id)}
-                className={`w-full p-4 border-b border-white/10 transition-all hover:bg-white/5 ${
-                  selectedContactId === contact.id ? 'bg-white/10' : ''
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl">
-                      {contact.avatar}
+            {isLoadingContacts ? (
+              <div className="flex justify-center p-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              contacts.map((contact, index) => (
+                <motion.button
+                  key={contact.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  onClick={() => setSelectedContactId(contact.id)}
+                  className={`w-full p-4 border-b border-white/10 transition-all hover:bg-white/5 ${selectedContactId === contact.id ? 'bg-white/10' : ''
+                    }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="relative">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl">
+                        {contact.avatar}
+                      </div>
+                      {contact.online && (
+                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+                      )}
                     </div>
-                    {contact.online && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+
+                    <div className="flex-1 text-left">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-foreground">{contact.name}</h3>
+                        <span className="text-xs text-muted-foreground">{contact.timestamp}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-1">{contact.lastMessage}</p>
+                    </div>
+
+                    {contact.unread > 0 && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                      >
+                        {contact.unread}
+                      </motion.div>
                     )}
                   </div>
-
-                  <div className="flex-1 text-left">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-semibold text-foreground">{contact.name}</h3>
-                      <span className="text-xs text-muted-foreground">{contact.timestamp}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-1">{contact.lastMessage}</p>
-                  </div>
-
-                  {contact.unread > 0 && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                    >
-                      {contact.unread}
-                    </motion.div>
-                  )}
-                </div>
-              </motion.button>
-            ))}
+                </motion.button>
+              ))
+            )}
           </div>
         </div>
 
         {/* Chat Area */}
-        {selectedContact && (
+        {selectedContact ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -145,7 +243,7 @@ export default function Chat() {
                 <div>
                   <h3 className="font-semibold text-foreground">{selectedContact.name}</h3>
                   <p className="text-xs text-muted-foreground">
-                    {selectedContact.online ? 'Online' : 'Offline'}
+                    {selectedContact.phone}
                   </p>
                 </div>
               </div>
@@ -186,11 +284,10 @@ export default function Chat() {
                   className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-xs px-4 py-2 rounded-2xl ${
-                      message.sender === 'user'
+                    className={`max-w-xs px-4 py-2 rounded-2xl ${message.sender === 'user'
                         ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-none'
                         : 'bg-white/10 text-foreground rounded-bl-none'
-                    }`}
+                      }`}
                   >
                     <p className="text-sm">{message.text}</p>
                     <p className={`text-xs mt-1 ${message.sender === 'user' ? 'text-blue-100' : 'text-muted-foreground'}`}>
@@ -199,6 +296,7 @@ export default function Chat() {
                   </div>
                 </motion.div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Input Area */}
@@ -241,6 +339,11 @@ export default function Chat() {
               </div>
             </div>
           </motion.div>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
+            <p className="text-xl font-semibold mb-2">Selecione uma conversa</p>
+            <p>Escolha um contato para iniciar o chat</p>
+          </div>
         )}
       </div>
     </div>

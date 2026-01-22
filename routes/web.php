@@ -821,6 +821,8 @@ $router->group(['prefix' => 'api/deploy'], function () use ($router) {
 // ===========================
 $router->group(['prefix' => 'api/auth'], function () use ($router) {
     $router->post('/login', 'AuthController@login');
+    $router->post('/forgot-password', 'PasswordResetController@sendResetLink');
+    $router->post('/reset-password', 'PasswordResetController@reset');
 });
 
 // ===========================
