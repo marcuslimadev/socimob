@@ -86,6 +86,9 @@ class ChavesNaMaoWebhookController extends Controller
                 'message' => $conversa?->mensagens()->where('direction', 'incoming')->value('content')
             ]);
             $this->leadCustomerService->ensureClientForLead($lead);
+            
+            // Enviar template de boas-vindas aprovado pela Meta
+            $this->sendWelcomeTemplate($lead);
 
             Log::info('✅ Lead processado com sucesso', [
                 'internal_id' => $lead->id,
@@ -260,5 +263,48 @@ class ChavesNaMaoWebhookController extends Controller
         }
 
         return implode("\n", $obs);
+    }
+    
+    /**
+     * Envia template de boas-vindas aprovado pela Meta
+     */
+    private function sendWelcomeTemplate(Lead $lead): void
+    {
+        try {
+            if (empty($lead->telefone)) {
+                Log::warning('Lead sem telefone, não é possível enviar template', [
+                    'lead_id' => $lead->id
+                ]);
+                return;
+            }
+
+            $twilioService = app(\App\Services\TwilioService::class);
+            
+            // Template aprovado pela Meta: "contatoinicial"
+            // Nome do template no Twilio Content API (você precisa obter o ContentSid do template configurado)
+            // Para obter o SID: https://console.twilio.com/us1/develop/sms/content-editor
+            $contentSid = env('TWILIO_TEMPLATE_WELCOME_SID', 'HX...');
+            
+            // Enviar template
+            $result = $twilioService->sendTemplate($lead->telefone, $contentSid);
+            
+            if ($result['success']) {
+                Log::info('✅ Template de boas-vindas enviado', [
+                    'lead_id' => $lead->id,
+                    'message_sid' => $result['message_sid']
+                ]);
+            } else {
+                Log::error('❌ Erro ao enviar template de boas-vindas', [
+                    'lead_id' => $lead->id,
+                    'error' => $result['error'] ?? 'Unknown',
+                    'response' => $result['response'] ?? null
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('❌ Exceção ao enviar template', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }
