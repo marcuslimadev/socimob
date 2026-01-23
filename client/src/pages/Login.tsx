@@ -169,37 +169,7 @@ export default function Login() {
             </motion.button>
           </form>
 
-          {/* Divider */}
-          <motion.div variants={itemVariants} className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gradient-to-br from-background to-background/80 text-muted-foreground">
-                ou continue com
-              </span>
-            </div>
-          </motion.div>
 
-          {/* Social Buttons */}
-          <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-foreground transition-all"
-            >
-              <span className="text-xl">🔵</span>
-              <span className="text-sm font-semibold">Google</span>
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-foreground transition-all"
-            >
-              <span className="text-xl">💼</span>
-              <span className="text-sm font-semibold">LinkedIn</span>
-            </motion.button>
-          </motion.div>
         </motion.div>
 
         {/* Sign Up Link */}

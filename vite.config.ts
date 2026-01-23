@@ -184,17 +184,5 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
-    proxy: {
-      '/api': {
-        target: 'https://exclusivalarimoveis.com',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/storage': {
-        target: 'https://exclusivalarimoveis.com',
-        changeOrigin: true,
-        secure: false,
-      }
-    },
   },
 });
