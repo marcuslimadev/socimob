@@ -18,8 +18,11 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
+        // Parse JSON se Content-Type for application/json
+        $data = $request->isJson() ? $request->json()->all() : $request->all();
+        
         // Validação de inputs
-        $validator = Validator::make($request->all(), [
+        $validator = Validator::make($data, [
             'email' => 'required|email|max:255',
             'password' => 'sometimes|string|min:6|max:255',
             'senha' => 'sometimes|string|min:6|max:255',
@@ -38,8 +41,8 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $email = $request->input('email');
-        $password = $request->input('password') ?: $request->input('senha');
+        $email = $data['email'] ?? null;
+        $password = $data['password'] ?? $data['senha'] ?? null;
         
         if (!$password) {
             return response()->json([
