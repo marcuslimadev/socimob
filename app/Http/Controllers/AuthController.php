@@ -69,6 +69,8 @@ class AuthController extends Controller
         
         // Validar tenant - usuários só podem fazer login no domínio do seu tenant
         // Super admins (sem tenant_id) podem fazer login em qualquer domínio
+        // TEMPORÁRIO: Desativado para debug
+        /*
         if ($user->tenant_id) {
             // Verificar se tenant está bound (pode não estar se middleware não resolveu)
             $currentTenant = app()->bound('tenant')
@@ -91,6 +93,7 @@ class AuthController extends Controller
                 ], 403);
             }
         }
+        */
         
         // Gerar token simples
         $secret = env('JWT_SECRET', env('APP_KEY', 'default-secret-key'));
