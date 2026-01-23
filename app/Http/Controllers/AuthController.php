@@ -62,7 +62,8 @@ class AuthController extends Controller
         // Validar tenant - usuários só podem fazer login no domínio do seu tenant
         // Super admins (sem tenant_id) podem fazer login em qualquer domínio
         if ($user->tenant_id) {
-            $currentTenant = app('tenant');
+            // Verificar se tenant está bound (pode não estar se middleware não resolveu)
+            $currentTenant = app()->bound('tenant') ? app('tenant') : null;
             
             if (!$currentTenant || $currentTenant->id !== $user->tenant_id) {
                 return response()->json([
