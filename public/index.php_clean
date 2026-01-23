@@ -1,0 +1,9 @@
+<?php
+
+/**
+ * SOCIMOB - Entry Point
+ */
+
+$app = require __DIR__ . '/../bootstrap/app.php';
+
+$app->run();

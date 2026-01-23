@@ -24,6 +24,19 @@ if [ -f "package.json" ]; then
     echo "=== BUILD FRONTEND REACT ==="
     pnpm build 2>/dev/null || npm run build 2>/dev/null || echo "AVISO: Falha no build do frontend"
     echo ""
+    
+    # Copiar build do React (dist/public) para public/
+    if [ -d "dist/public" ]; then
+        echo "=== COPIAR BUILD REACT PARA PUBLIC ==="
+        # Preservar public/index.php (backend Lumen) e public/app/ (admin HTML antigo se existir)
+        cp -r dist/public/* public/ 2>/dev/null || echo "AVISO: Falha ao copiar build"
+        echo "Build React copiado para public/"
+        ls -lh public/index.html 2>/dev/null && echo "✓ Frontend React instalado" || echo "✗ Frontend não encontrado"
+        echo ""
+    else
+        echo "AVISO: Pasta dist/public não encontrada após build"
+        echo ""
+    fi
 fi
 
 echo "=== LOCALIZAR COMPOSER ==="
