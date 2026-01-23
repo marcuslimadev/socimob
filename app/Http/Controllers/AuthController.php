@@ -76,6 +76,15 @@ class AuthController extends Controller
                 : $this->resolveTenantFromRequest($request);
             
             if (!$currentTenant || $currentTenant->id !== $user->tenant_id) {
+                // Log para debug
+                \Log::warning('Login tenant mismatch', [
+                    'user_id' => $user->id,
+                    'user_tenant_id' => $user->tenant_id,
+                    'current_tenant_id' => $currentTenant ? $currentTenant->id : null,
+                    'host' => request()->getHost(),
+                    'current_tenant_bound' => app()->bound('tenant'),
+                ]);
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'Este usuário não tem acesso a este domínio. Acesse pelo domínio correto da sua imobiliária.'
