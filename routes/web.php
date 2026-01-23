@@ -23,7 +23,7 @@ $router->get('/api/health', function () use ($router) {
 
 // Home - portal público do tenant
 $router->get('/', function () {
-    $path = base_path('public/portal/index.html');
+    $path = base_path('public/index.html');
     if (file_exists($path)) {
         return response(file_get_contents($path))
             ->header('Content-Type', 'text/html');
@@ -33,7 +33,7 @@ $router->get('/', function () {
 
 // Login do CRM (admin/corretor)
 $router->get('/login', function () {
-    $path = base_path('public/app/login.html');
+    $path = base_path('public/index.html');
     if (file_exists($path)) {
         return response(file_get_contents($path))
             ->header('Content-Type', 'text/html');
