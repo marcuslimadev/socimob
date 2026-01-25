@@ -52,7 +52,10 @@ class AuthController extends Controller
         }
         
         $user = User::where('email', $email)
-            ->where('is_active', 1)
+            ->where(function ($query) {
+                $query->where('is_active', 1)
+                    ->orWhereNull('is_active');
+            })
             ->first();
         
         if (!$user || !Hash::check($password, $user->password)) {
