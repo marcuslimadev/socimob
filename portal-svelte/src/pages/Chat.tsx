@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Phone, Video, Search, MoreVertical, Smile, Paperclip } from 'lucide-react';
+import { Send, Phone, Video, Search, MoreVertical, Smile, Paperclip, Menu, X } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 
 interface Message {
@@ -24,6 +24,7 @@ interface Contact {
 export default function Chat() {
   const [selectedContactId, setSelectedContactId] = useState('1');
   const [messageText, setMessageText] = useState('');
+  const [isContactsOpen, setIsContactsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', sender: 'contact', text: 'Olá! Tudo bem?', timestamp: '10:30', read: true },
     { id: '2', sender: 'user', text: 'Oi! Tudo certo! Como posso ajudar?', timestamp: '10:31', read: true },
@@ -39,6 +40,11 @@ export default function Chat() {
   ];
 
   const selectedContact = contacts.find(c => c.id === selectedContactId);
+
+  const handleSelectContact = (contactId: string) => {
+    setSelectedContactId(contactId);
+    setIsContactsOpen(false);
+  };
 
   const handleSendMessage = () => {
     if (messageText.trim()) {
@@ -69,7 +75,7 @@ export default function Chat() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen bg-gradient-to-b from-background to-background/80 flex">
+      <div className="flex-1 md:ml-80 min-h-screen bg-gradient-to-b from-background to-background/80 flex pt-20 md:pt-0">
         {/* Contacts List */}
         <div className="hidden md:flex w-80 flex-col border-r border-white/10">
           <div className="p-4 border-b border-white/10">
@@ -91,7 +97,7 @@ export default function Chat() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
-                onClick={() => setSelectedContactId(contact.id)}
+                onClick={() => handleSelectContact(contact.id)}
                 className={`w-full p-4 border-b border-white/10 transition-all hover:bg-white/5 ${
                   selectedContactId === contact.id ? 'bg-white/10' : ''
                 }`}
@@ -139,6 +145,14 @@ export default function Chat() {
             {/* Chat Header */}
             <div className="p-4 border-b border-white/10 flex items-center justify-between bg-glass-panel">
               <div className="flex items-center gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsContactsOpen(true)}
+                  className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-all"
+                >
+                  <Menu size={20} className="text-muted-foreground" />
+                </motion.button>
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-lg">
                   {selectedContact.avatar}
                 </div>
@@ -186,7 +200,7 @@ export default function Chat() {
                   className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-xs px-4 py-2 rounded-2xl ${
+                    className={`max-w-[80%] md:max-w-xs px-4 py-2 rounded-2xl ${
                       message.sender === 'user'
                         ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-none'
                         : 'bg-white/10 text-foreground rounded-bl-none'
@@ -243,6 +257,82 @@ export default function Chat() {
           </motion.div>
         )}
       </div>
+
+      {isContactsOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsContactsOpen(false)}
+            className="md:hidden fixed inset-0 bg-black/60 z-30"
+          />
+          <motion.div
+            initial={{ x: -280 }}
+            animate={{ x: 0 }}
+            exit={{ x: -280 }}
+            className="md:hidden fixed inset-y-0 left-0 w-72 max-w-[85%] bg-slate-900/95 border-r border-white/10 z-40 flex flex-col"
+          >
+            <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-foreground">Conversas</h2>
+              <button
+                type="button"
+                onClick={() => setIsContactsOpen(false)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-all"
+              >
+                <X size={18} className="text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-4 border-b border-white/10">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                <input
+                  type="text"
+                  placeholder="Buscar conversa..."
+                  className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {contacts.map((contact) => (
+                <button
+                  key={contact.id}
+                  type="button"
+                  onClick={() => handleSelectContact(contact.id)}
+                  className={`w-full p-4 border-b border-white/10 transition-all hover:bg-white/5 ${
+                    selectedContactId === contact.id ? 'bg-white/10' : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-lg">
+                        {contact.avatar}
+                      </div>
+                      {contact.online && (
+                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+                      )}
+                    </div>
+
+                    <div className="flex-1 text-left">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-foreground">{contact.name}</h3>
+                        <span className="text-xs text-muted-foreground">{contact.timestamp}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-1">{contact.lastMessage}</p>
+                    </div>
+
+                    {contact.unread > 0 && (
+                      <span className="w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                        {contact.unread}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        </>
+      )}
     </div>
   );
 }

@@ -42,7 +42,7 @@ export default function Leads() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="flex-1 md:ml-80 min-h-screen px-4 pb-6 pt-20 md:p-8">
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -50,7 +50,7 @@ export default function Leads() {
           className="max-w-7xl mx-auto"
         >
           <motion.div variants={itemVariants} className="mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
               <div>
                 <h1 className="text-4xl font-bold gradient-text mb-2">Leads</h1>
                 <p className="text-muted-foreground">Gerencie e acompanhe todos os seus leads</p>
@@ -58,7 +58,7 @@ export default function Leads() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg sm:self-auto"
               >
                 <Plus size={20} />
                 Novo Lead

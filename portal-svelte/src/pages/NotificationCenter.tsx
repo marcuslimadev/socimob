@@ -103,7 +103,7 @@ export default function NotificationCenter() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="flex-1 md:ml-80 min-h-screen px-4 pb-6 pt-20 md:p-8">
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -111,7 +111,7 @@ export default function NotificationCenter() {
           className="max-w-4xl mx-auto"
         >
           <motion.div variants={itemVariants} className="mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
               <div>
                 <h1 className="text-4xl font-bold gradient-text mb-2 flex items-center gap-3">
                   <Bell size={40} />
@@ -126,7 +126,7 @@ export default function NotificationCenter() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={markAllAsRead}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg"
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg sm:self-auto"
                 >
                   Marcar todas como lidas
                 </motion.button>
@@ -135,7 +135,7 @@ export default function NotificationCenter() {
           </motion.div>
 
           <motion.div variants={itemVariants} className="glass-panel p-6 rounded-2xl mb-8">
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               {['todos', 'nao-lidas', 'lidas'].map((option) => (
                 <motion.button
                   key={option}
