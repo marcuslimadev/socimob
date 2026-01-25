@@ -13,6 +13,8 @@ import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ClientPortal from "./pages/ClientPortal";
+import Agenda from "./pages/Agenda";
+import Financeiro from "./pages/Financeiro";
 
 import PropertyDetail from "./pages/PropertyDetail";
 import Settings from "./pages/Settings";
@@ -21,7 +23,7 @@ import Settings from "./pages/Settings";
 function Router() {
   return (
     <Switch>
-      <Route path={"/"} component={Dashboard} />
+      <Route path={"/"} component={ClientPortal} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/leads" component={Leads} />
       <Route path="/properties" component={Properties} />
@@ -32,6 +34,8 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/portal/imovel/:id" component={PropertyDetail} />
       <Route path="/portal" component={ClientPortal} />
+      <Route path="/agenda" component={Agenda} />
+      <Route path="/financeiro" component={Financeiro} />
       <Route path="/settings" component={Settings} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
