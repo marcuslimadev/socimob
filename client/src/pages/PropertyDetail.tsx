@@ -51,13 +51,16 @@ export default function PropertyDetail() {
         setLoading(true);
         setError(null);
         const response = await api.get(`/api/portal/imoveis/${params.id}`);
-        console.log('Property Details:', response.data);
         const propertyData = response.data.data || response.data;
         setProperty(propertyData);
         
         // Set first image as selected
-        if (propertyData.fotos && propertyData.fotos.length > 0) {
-          setSelectedImage(propertyData.fotos[0].url);
+        const imagens = propertyData.fotos?.length
+          ? propertyData.fotos
+          : propertyData.imagens?.map((url: string) => ({ url, destaque: false }));
+
+        if (imagens && imagens.length > 0) {
+          setSelectedImage(imagens[0].url);
         }
       } catch (err: any) {
         console.error('Erro ao carregar imóvel:', err);
@@ -97,9 +100,17 @@ export default function PropertyDetail() {
     );
   }
 
-  const price = property.valor_venda || property.valor_aluguel || 0;
-  const images = property.fotos || [];
+  const priceFromString = property.preco
+    ? Number(property.preco.replace(/[^\d]/g, ''))
+    : 0;
+  const price = property.valor_venda || property.valor_aluguel || priceFromString || 0;
+  const images = property.fotos?.length
+    ? property.fotos
+    : property.imagens?.map((url) => ({ url, destaque: false })) || [];
   const displayImage = selectedImage || images[0]?.url;
+  const bedrooms = property.quartos ?? property.dormitorios;
+  const area = property.area_util || property.area_privativa || property.area_total;
+  const locationParts = [property.bairro, property.cidade, property.estado].filter(Boolean);
 
   return (
     <div className="min-h-screen bg-background">
@@ -126,7 +137,7 @@ export default function PropertyDetail() {
               animate={{ opacity: 1, y: 0 }}
               className="glass-panel rounded-2xl overflow-hidden"
             >
-              <div className="relative h-96 bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+              <div className="relative h-64 sm:h-80 lg:h-96 bg-gradient-to-br from-blue-500/20 to-purple-500/20">
                 {displayImage ? (
                   <img
                     src={displayImage}
@@ -171,7 +182,7 @@ export default function PropertyDetail() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="grid grid-cols-4 gap-2"
+                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"
               >
                 {images.slice(0, 8).map((foto, index) => (
                   <button
@@ -223,13 +234,13 @@ export default function PropertyDetail() {
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="glass-panel rounded-2xl p-6 sticky top-4"
+              className="glass-panel rounded-2xl p-6 lg:sticky lg:top-4"
             >
-              <h1 className="text-2xl font-bold mb-4">{property.titulo}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold mb-4 break-words">{property.titulo}</h1>
 
-              <div className="flex items-center gap-2 text-muted-foreground mb-6">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-6">
                 <MapPin size={18} />
-                <span>{property.bairro}, {property.cidade} - {property.estado}</span>
+                <span>{locationParts.length > 0 ? locationParts.join(', ') : 'Localização não informada'}</span>
               </div>
 
               <div className="mb-6 p-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg">
@@ -243,12 +254,12 @@ export default function PropertyDetail() {
 
               {/* Features */}
               <div className="grid grid-cols-2 gap-4 mb-6">
-                {property.quartos && (
+                {bedrooms && (
                   <div className="flex items-center gap-2">
                     <Bed size={20} className="text-blue-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">Quartos</p>
-                      <p className="font-semibold">{property.quartos}</p>
+                      <p className="font-semibold">{bedrooms}</p>
                     </div>
                   </div>
                 )}
@@ -261,12 +272,12 @@ export default function PropertyDetail() {
                     </div>
                   </div>
                 )}
-                {(property.area_util || property.area_total) && (
+                {area && (
                   <div className="flex items-center gap-2">
                     <Ruler size={20} className="text-blue-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">Área</p>
-                      <p className="font-semibold">{property.area_util || property.area_total}m²</p>
+                      <p className="font-semibold">{area}m²</p>
                     </div>
                   </div>
                 )}
@@ -276,6 +287,15 @@ export default function PropertyDetail() {
                     <div>
                       <p className="text-xs text-muted-foreground">Garagem</p>
                       <p className="font-semibold">{property.vagas_garagem} vagas</p>
+                    </div>
+                  </div>
+                )}
+                {property.suites && (
+                  <div className="flex items-center gap-2">
+                    <Bath size={20} className="text-blue-500" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Suítes</p>
+                      <p className="font-semibold">{property.suites}</p>
                     </div>
                   </div>
                 )}

@@ -109,8 +109,9 @@ class LeadAutomationService
             // 4. Gerar mensagem personalizada com contexto do lead
             $mensagemIA = $this->gerarMensagemInicial($lead);
 
-            // 5. Enviar mensagem via WhatsApp
-            $enviado = $this->enviarMensagemWhatsApp($lead, $mensagemIA, $conversa, $telefone);
+            // 5. Enviar template Twilio (quando configurado) com fallback para mensagem
+            $templateEnviado = $this->enviarTemplateWhatsApp($lead, $telefone);
+            $enviado = $templateEnviado || $this->enviarMensagemWhatsApp($lead, $mensagemIA, $conversa, $telefone);
 
             if (!$enviado) {
                 Log::error('[LeadAutomation] Falha ao enviar mensagem WhatsApp', [
@@ -343,6 +344,63 @@ Gere a mensagem de primeiro contato:";
     }
 
     /**
+     * Enviar template aprovado via Twilio (quando configurado)
+     *
+     * @param Lead $lead
+     * @param string|null $telefone
+     * @return bool
+     */
+    private function enviarTemplateWhatsApp(Lead $lead, ?string $telefone): bool
+    {
+        $contentSid = trim((string) env('TWILIO_TEMPLATE_WELCOME_SID', ''));
+
+        if ($contentSid === '' || str_starts_with($contentSid, 'HX...')) {
+            return false;
+        }
+
+        if (empty($telefone)) {
+            Log::warning('[LeadAutomation] Template não enviado (telefone vazio)', [
+                'lead_id' => $lead->id
+            ]);
+            return false;
+        }
+
+        try {
+            $telefoneFormatado = $this->formatarTelefone($telefone);
+            $variaveis = $this->obterVariaveisTemplate($lead);
+
+            $resultado = $this->twilioService->sendTemplate($telefoneFormatado, $contentSid, $variaveis);
+
+            if (empty($resultado['success'])) {
+                Log::error('[LeadAutomation] Falha ao enviar template WhatsApp', [
+                    'lead_id' => $lead->id,
+                    'telefone' => $telefoneFormatado,
+                    'content_sid' => $contentSid,
+                    'http_code' => $resultado['http_code'] ?? null,
+                    'response' => $resultado['response'] ?? null,
+                    'error' => $resultado['error'] ?? null
+                ]);
+                return false;
+            }
+
+            Log::info('[LeadAutomation] Template WhatsApp enviado', [
+                'lead_id' => $lead->id,
+                'telefone' => $telefoneFormatado,
+                'sid' => $resultado['message_sid'] ?? null
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('[LeadAutomation] Erro ao enviar template WhatsApp', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
      * Montar contexto completo do lead
      * 
      * @param Lead $lead
@@ -412,6 +470,23 @@ Gere a mensagem de primeiro contato:";
         $msg .= "Quando seria um bom momento para conversarmos?";
 
         return $msg;
+    }
+
+    /**
+     * Montar variáveis do template do WhatsApp.
+     *
+     * @param Lead $lead
+     * @return array
+     */
+    private function obterVariaveisTemplate(Lead $lead): array
+    {
+        $nome = $lead->nome ?: 'Cliente';
+        $interesse = $lead->tipo_interesse ?: 'imóveis';
+
+        return [
+            '1' => $nome,
+            '2' => $interesse,
+        ];
     }
 
     /**
