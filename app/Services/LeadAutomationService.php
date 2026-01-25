@@ -106,12 +106,29 @@ class LeadAutomationService
             // 3. Criar ou reutilizar conversa
             $conversa = $conversaExistente ?? $this->criarConversa($lead, $telefone);
 
-            // 4. Gerar mensagem personalizada com contexto do lead
-            $mensagemIA = $this->gerarMensagemInicial($lead);
+            $mensagemIA = null;
+            $mensagemRegistrada = null;
 
-            // 5. Enviar template Twilio (quando configurado) com fallback para mensagem
-            $templateEnviado = $this->enviarTemplateWhatsApp($lead, $telefone);
-            $enviado = $templateEnviado || $this->enviarMensagemWhatsApp($lead, $mensagemIA, $conversa, $telefone);
+            // 4. Enviar template Twilio para leads de integração
+            $usarTemplate = $this->deveUsarTemplateInicial($lead);
+            $templateEnviado = false;
+            if ($usarTemplate) {
+                $templateEnviado = $this->enviarTemplateWhatsApp($lead, $telefone);
+                if ($templateEnviado) {
+                    $mensagemRegistrada = $this->mensagemTemplateRegistro();
+                }
+            }
+
+            // 5. Gerar e enviar mensagem personalizada se template não foi enviado
+            if ($usarTemplate) {
+                $enviado = $templateEnviado;
+            } else {
+                $mensagemIA = $this->gerarMensagemInicial($lead);
+                $enviado = $this->enviarMensagemWhatsApp($lead, $mensagemIA, $conversa, $telefone);
+                if ($enviado) {
+                    $mensagemRegistrada = $mensagemIA;
+                }
+            }
 
             if (!$enviado) {
                 Log::error('[LeadAutomation] Falha ao enviar mensagem WhatsApp', [
@@ -132,7 +149,9 @@ class LeadAutomationService
             }
 
             // 6. Registrar mensagem no banco
-            $this->registrarMensagem($conversa, $mensagemIA, 'outgoing');
+            if ($mensagemRegistrada) {
+                $this->registrarMensagem($conversa, $mensagemRegistrada, 'outgoing');
+            }
 
             // 7. Atualizar status do lead
             $lead->status = 'em_atendimento';
@@ -162,7 +181,7 @@ class LeadAutomationService
                 'success' => true,
                 'lead_id' => $lead->id,
                 'conversa_id' => $conversa->id,
-                'mensagem' => $mensagemIA
+                'mensagem' => $mensagemRegistrada
             ];
 
         } catch (\Exception $e) {
@@ -341,6 +360,16 @@ Gere a mensagem de primeiro contato:";
 
             return $this->mensagemInicialPadrao($lead);
         }
+    }
+
+    private function deveUsarTemplateInicial(Lead $lead): bool
+    {
+        return $lead->isFromIntegration();
+    }
+
+    private function mensagemTemplateRegistro(): string
+    {
+        return 'Template inicial aprovado (Meta) enviado automaticamente.';
     }
 
     /**

@@ -83,4 +83,19 @@ class Lead extends Model
     {
         return $this->hasMany(LeadPropertyMatch::class);
     }
+
+    public function isFromIntegration(): bool
+    {
+        $observacoes = mb_strtolower($this->observacoes ?? '');
+
+        if ($observacoes === '') {
+            return false;
+        }
+
+        $hasOrigem = str_contains($observacoes, 'origem:');
+        $hasChaves = str_contains($observacoes, 'chaves na mão') || str_contains($observacoes, 'chaves na mao');
+        $hasIntegracao = str_contains($observacoes, 'integração') || str_contains($observacoes, 'integracao');
+
+        return ($hasOrigem && ($hasChaves || $hasIntegracao)) || $hasChaves;
+    }
 }

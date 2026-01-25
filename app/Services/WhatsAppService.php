@@ -321,7 +321,12 @@ class WhatsAppService
         return $this->handleRegularMessage($conversa, $body, false);
     }
 
-    public function initiateAiConversation(Conversa $conversa, Lead $lead, ?string $mensagemInicial = null): array
+    public function initiateAiConversation(
+        Conversa $conversa,
+        Lead $lead,
+        ?string $mensagemInicial = null,
+        array $options = []
+    ): array
     {
         if (!$conversa->telefone) {
             return ['success' => false, 'message' => 'Conversa sem telefone'];
@@ -336,6 +341,35 @@ class WhatsAppService
 
         $this->updateLeadStatusFromStage($lead, $stage);
 
+        $usarTemplate = (bool) ($options['usar_template'] ?? false);
+        $contentSid = $usarTemplate ? $this->getWelcomeTemplateSid() : '';
+        if ($usarTemplate && $contentSid === '') {
+            Log::warning('Template inicial não configurado para lead de integração', [
+                'lead_id' => $lead->id,
+                'conversa_id' => $conversa->id,
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Template inicial não configurado',
+            ];
+        }
+
+        if ($contentSid !== '') {
+            $resultadoTemplate = $this->sendTemplateMessage($conversa->id, $conversa->telefone, $contentSid);
+            if (!empty($resultadoTemplate['success'])) {
+                return [
+                    'success' => true,
+                    'message' => 'Atendimento iniciado com template aprovado',
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Falha ao enviar template aprovado',
+            ];
+        }
+
         $assistantName = $this->getAssistantName();
         $nomePreferido = $this->extractPreferredName($lead->nome ?? $conversa->lead->nome ?? null);
         $property = $mensagemInicial ? $this->findPropertyFromMessage($mensagemInicial) : null;
@@ -349,6 +383,17 @@ class WhatsAppService
             'success' => true,
             'message' => 'Atendimento iniciado pela IA',
         ];
+    }
+
+    private function getWelcomeTemplateSid(): string
+    {
+        $contentSid = trim((string) env('TWILIO_TEMPLATE_WELCOME_SID', ''));
+
+        if ($contentSid === '' || str_starts_with($contentSid, 'HX...')) {
+            return '';
+        }
+
+        return $contentSid;
     }
     
     /**
@@ -1618,6 +1663,36 @@ class WhatsAppService
         return $result;
     }
 
+    private function sendTemplateMessage($conversaId, $telefone, string $contentSid, array $contentVariables = []): array
+    {
+        $conversa = Conversa::find($conversaId);
+        $isPortal = $this->isPortalChannel($telefone, $conversa);
+        $conteudoRegistro = 'Template inicial aprovado (Meta)';
+
+        if ($isPortal) {
+            $this->saveMensagem($conversaId, [
+                'direction' => 'outgoing',
+                'message_type' => 'text',
+                'content' => $conteudoRegistro,
+                'status' => 'sent'
+            ]);
+
+            return ['success' => true, 'message_sid' => null];
+        }
+
+        $result = $this->twilio->sendTemplate($telefone, $contentSid, $contentVariables);
+
+        $this->saveMensagem($conversaId, [
+            'message_sid' => $result['message_sid'] ?? null,
+            'direction' => 'outgoing',
+            'message_type' => 'text',
+            'content' => $conteudoRegistro,
+            'status' => !empty($result['success']) ? 'sent' : 'failed'
+        ]);
+
+        return $result;
+    }
+
     private function sendMediaMessage($conversaId, $telefone, $body, $mediaUrl)
     {
         $conversa = Conversa::find($conversaId);
@@ -1813,8 +1888,6 @@ class WhatsAppService
         return 'document';
     }
 }
-
-
 
 
 

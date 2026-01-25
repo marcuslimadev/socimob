@@ -89,8 +89,11 @@ class LeadConversationService
         }
 
         $mensagemInicial = $options['message'] ?? $this->extractMensagemFromObservacoes($lead->observacoes);
+        $usarTemplate = $options['usar_template'] ?? $lead->isFromIntegration();
 
-        $result = $this->whatsappService->initiateAiConversation($conversa, $lead, $mensagemInicial);
+        $result = $this->whatsappService->initiateAiConversation($conversa, $lead, $mensagemInicial, [
+            'usar_template' => $usarTemplate,
+        ]);
 
         return [
             'success' => $result['success'] ?? false,
