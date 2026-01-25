@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Tenant;
+use App\Services\DomainService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -69,7 +71,9 @@ class AuthController extends Controller
         // Super admins (sem tenant_id) podem fazer login em qualquer domínio
         if ($user->tenant_id) {
             // Verificar se tenant está bound (pode não estar se middleware não resolveu)
-            $currentTenant = app()->bound('tenant') ? app('tenant') : null;
+            $currentTenant = app()->bound('tenant')
+                ? app('tenant')
+                : $this->resolveTenantFromRequest($request);
             
             if (!$currentTenant || $currentTenant->id !== $user->tenant_id) {
                 return response()->json([
@@ -95,6 +99,32 @@ class AuthController extends Controller
             ],
             'message' => 'Login realizado com sucesso!'
         ]);
+    }
+
+    private function resolveTenantFromRequest(Request $request): ?Tenant
+    {
+        $tenantId = $request->header('X-Tenant-Id') ?: $request->query('tenant_id');
+        if (!empty($tenantId)) {
+            return Tenant::find($tenantId);
+        }
+
+        $domainService = app(DomainService::class);
+        $tenantDomain = $request->header('X-Tenant-Domain') ?: $request->query('tenant_domain');
+        if (!empty($tenantDomain)) {
+            return $domainService->findByDomain($tenantDomain);
+        }
+
+        $tenantSlug = $request->header('X-Tenant-Slug') ?: $request->query('tenant_slug');
+        if (!empty($tenantSlug)) {
+            return Tenant::where('slug', $tenantSlug)->first();
+        }
+
+        $host = $request->getHost();
+        if (!empty($host)) {
+            return $domainService->findByDomain($host);
+        }
+
+        return null;
     }
     
     /**
