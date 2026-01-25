@@ -45,8 +45,7 @@ export default function ClientPortal() {
       try {
         setLoading(true);
         setError(null);
-        // A rota correta é /api/portal/imoveis
-        const response = await api.get('/api/portal/imoveis');
+        const response = await api.get('/portal/imoveis');
         console.log('API Response:', response.data);
         setProperties(response.data.data || response.data || []);
       } catch (err: any) {
@@ -101,6 +100,7 @@ export default function ClientPortal() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => navigate('/login')}
             className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg"
           >
             Entrar

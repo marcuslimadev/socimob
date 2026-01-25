@@ -12,6 +12,8 @@ import {
   X,
   Bell,
   ChevronRight,
+  CalendarClock,
+  Wallet,
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -33,6 +35,8 @@ const Sidebar = () => {
     { icon: <Home size={24} />, label: 'Imóveis', href: '/properties' },
     { icon: <MessageSquare size={24} />, label: 'Chat', href: '/chat', badge: 3 },
     { icon: <Bell size={24} />, label: 'Notificações', href: '/notifications', badge: 5 },
+    { icon: <CalendarClock size={24} />, label: 'Agenda', href: '/agenda' },
+    { icon: <Wallet size={24} />, label: 'Financeiro', href: '/financeiro' },
     { icon: <Settings size={24} />, label: 'Configurações', href: '/settings' },
   ];
 
