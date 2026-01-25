@@ -26,6 +26,19 @@ class ResolveTenant
 
         // Obter o dominio da requisicao
         $host = $request->getHost();
+        $tenant = $this->resolveTenantFromRequest($request);
+        if ($tenant) {
+            if (!$tenant->isActive()) {
+                return response()->json([
+                    'error' => 'Tenant inactive',
+                    'message' => 'This tenant is currently inactive.',
+                ], 403);
+            }
+
+            app()->instance('tenant', $tenant);
+            $request->attributes->set('tenant_id', $tenant->id);
+            return $next($request);
+        }
 
         // Se for localhost, IP ou ngrok, usar tenant de teste quando configurado
         if ($this->isDevelopment($host) || $this->isNgrok($host)) {
@@ -39,7 +52,10 @@ class ResolveTenant
         }
 
         // Buscar tenant pelo dominio
-        $tenant = Tenant::byDomain($host)->first();
+        $normalizedHost = $this->normalizeHost($host);
+        $tenant = Tenant::where('domain', $normalizedHost)
+            ->orWhere('domain', 'www.' . $normalizedHost)
+            ->first();
 
         if (!$tenant) {
             return response()->json([
@@ -84,6 +100,37 @@ class ResolveTenant
     private function isNgrok(string $host): bool
     {
         return str_ends_with($host, '.ngrok-free.app') || str_ends_with($host, '.ngrok.io');
+    }
+
+    private function resolveTenantFromRequest(Request $request): ?Tenant
+    {
+        $tenantId = $request->header('X-Tenant-Id') ?: $request->query('tenant_id');
+        if (!empty($tenantId)) {
+            return Tenant::find($tenantId);
+        }
+
+        $tenantDomain = $request->header('X-Tenant-Domain') ?: $request->query('tenant_domain');
+        if (!empty($tenantDomain)) {
+            $normalizedDomain = $this->normalizeHost($tenantDomain);
+            return Tenant::where('domain', $normalizedDomain)
+                ->orWhere('domain', 'www.' . $normalizedDomain)
+                ->first();
+        }
+
+        $tenantSlug = $request->header('X-Tenant-Slug') ?: $request->query('tenant_slug');
+        if (!empty($tenantSlug)) {
+            return Tenant::where('slug', $tenantSlug)->first();
+        }
+        
+        return null;
+    }
+
+    private function normalizeHost(string $host): string
+    {
+        $normalized = strtolower(trim($host));
+        return str_starts_with($normalized, 'www.')
+            ? substr($normalized, 4)
+            : $normalized;
     }
 
     private function resolveWebhookTenant(Request $request): ?Tenant
