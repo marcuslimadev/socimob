@@ -57,7 +57,7 @@ export default function Settings() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="flex-1 md:ml-80 min-h-screen px-4 pb-6 pt-20 md:p-8">
         <motion.div
           variants={containerVariants}
           initial="hidden"
