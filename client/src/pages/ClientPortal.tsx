@@ -291,7 +291,7 @@ export default function ClientPortal() {
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
-                className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-4'}
+                className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 gap-6' : 'space-y-4'}
               >
                 {filteredProperties.length === 0 ? (
                   <div className="col-span-2 glass-panel rounded-xl p-8 text-center">
@@ -299,10 +299,12 @@ export default function ClientPortal() {
                   </div>
                 ) : (
                   filteredProperties.map((property, index) => {
-                    const firstImage = property.fotos?.[0]?.url;
-                    console.log('Property:', property.id, 'fotos:', property.fotos, 'firstImage:', firstImage);
+                    const firstImage = property.fotos?.[0]?.url || property.imagens?.[0];
                     const price = property.valor_venda || property.valor_aluguel || 0;
-                    const location = `${property.bairro || ''}, ${property.cidade || ''}`.trim();
+                    const locationParts = [property.bairro, property.cidade].filter(Boolean);
+                    const location = locationParts.length > 0 ? locationParts.join(', ') : 'Localização não informada';
+                    const bedrooms = property.quartos ?? property.dormitorios;
+                    const area = property.area_util || property.area_total;
 
                     return (
                       <motion.div
@@ -396,10 +398,10 @@ export default function ClientPortal() {
                           </div>
 
                           <div className="flex gap-4 mb-6 text-sm text-muted-foreground">
-                            {property.quartos && (
+                            {bedrooms && (
                               <div className="flex items-center gap-1">
                                 <Bed size={16} />
-                                <span>{property.quartos}</span>
+                                <span>{bedrooms}</span>
                               </div>
                             )}
                             {property.banheiros && (
@@ -408,10 +410,10 @@ export default function ClientPortal() {
                                 <span>{property.banheiros}</span>
                               </div>
                             )}
-                            {(property.area_util || property.area_total) && (
+                            {area && (
                               <div className="flex items-center gap-1">
                                 <Ruler size={16} />
-                                <span>{property.area_util || property.area_total}m²</span>
+                                <span>{area}m²</span>
                               </div>
                             )}
                           </div>
