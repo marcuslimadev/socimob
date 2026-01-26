@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(ping:*)",
+      "Bash(git config:*)",
+      "Bash(gh --version:*)",
+      "Bash(git checkout:*)",
+      "Bash(git rm:*)",
+      "Bash(git filter-branch:*)"
+    ]
+  }
+}
