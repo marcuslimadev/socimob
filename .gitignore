@@ -121,3 +121,4 @@ storage/logs/*
 # Downloaded assets
 ethereal/
 html5up-*.zip
+.env_prod_fixed
