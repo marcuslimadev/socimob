@@ -21,25 +21,31 @@ $router->get('/api/health', function () use ($router) {
     ]);
 });
 
-// Home - portal público do tenant
-$router->get('/', function () {
-    $path = base_path('public/portal/index.html');
-    if (file_exists($path)) {
-        return response(file_get_contents($path))
-            ->header('Content-Type', 'text/html');
-    }
-    return response('Portal do cliente não encontrado', 404);
-});
+// ===========================
+// FRONTEND ANTIGO - ARQUIVADO
+// O frontend React (novo) é servido pelo servidor Express em server/index.ts
+// As rotas abaixo foram desativadas pois agora usamos o frontend React
+// ===========================
 
-// Login do CRM (admin/corretor)
-$router->get('/login', function () {
-    $path = base_path('public/app/index.html');
-    if (file_exists($path)) {
-        return response(file_get_contents($path))
-            ->header('Content-Type', 'text/html');
-    }
-    return response('Login não encontrado', 404);
-});
+// // Home - portal público do tenant
+// $router->get('/', function () {
+//     $path = base_path('public/portal/index.html');
+//     if (file_exists($path)) {
+//         return response(file_get_contents($path))
+//             ->header('Content-Type', 'text/html');
+//     }
+//     return response('Portal do cliente não encontrado', 404);
+// });
+
+// // Login do CRM (admin/corretor)
+// $router->get('/login', function () {
+//     $path = base_path('public/app/index.html');
+//     if (file_exists($path)) {
+//         return response(file_get_contents($path))
+//             ->header('Content-Type', 'text/html');
+//     }
+//     return response('Login não encontrado', 404);
+// });
 
 $router->post('/github/webhook', 'GitHubWebhookController@handle');
 
@@ -139,15 +145,15 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
     $router->get('/dashboard/atividades', 'DashboardController@atividades');
 });
 
-// Landing Page Pública
-$router->get('/imoveis', function () {
-    $path = base_path('public/imoveis.html');
-    if (file_exists($path)) {
-        return response(file_get_contents($path))
-            ->header('Content-Type', 'text/html');
-    }
-    return response('Landing page não encontrada. Path: ' . $path, 404);
-});
+// Landing Page Pública - DESATIVADA (agora usa frontend React)
+// $router->get('/imoveis', function () {
+//     $path = base_path('public/imoveis.html');
+//     if (file_exists($path)) {
+//         return response(file_get_contents($path))
+//             ->header('Content-Type', 'text/html');
+//     }
+//     return response('Landing page não encontrada. Path: ' . $path, 404);
+// });
 
 // Database test
 $router->get('/db-test', function () {
