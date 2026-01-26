@@ -35,6 +35,7 @@ export default function ClientPortal() {
   const [searchTerm, setSearchTerm] = useState('');
   const [priceRange, setPriceRange] = useState([0, 2000000]);
   const [selectedBedrooms, setSelectedBedrooms] = useState<number | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null); // Venda/Aluguel
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,13 +61,28 @@ export default function ClientPortal() {
   }, []);
 
   const filteredProperties = properties.filter((prop) => {
-    const matchSearch = prop.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    // Filtro de busca textual
+    const matchSearch = searchTerm === '' ||
+                       prop.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        prop.bairro?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       prop.cidade?.toLowerCase().includes(searchTerm.toLowerCase());
-    const price = prop.valor_venda || prop.valor_aluguel || 0;
+                       prop.cidade?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       prop.tipo_imovel?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filtro de preço
+    const price = prop.valor_venda || prop.valor_aluguel ||
+                  (prop.preco ? parseFloat(prop.preco.replace(/[^\d]/g, '')) : 0);
     const matchPrice = price >= priceRange[0] && price <= priceRange[1];
-    const matchBedrooms = selectedBedrooms === null || (prop.quartos && prop.quartos >= selectedBedrooms);
-    return matchSearch && matchPrice && matchBedrooms;
+
+    // Filtro de quartos (considera tanto quartos quanto dormitorios)
+    const bedrooms = prop.quartos ?? prop.dormitorios ?? 0;
+    const matchBedrooms = selectedBedrooms === null || bedrooms >= selectedBedrooms;
+
+    // Filtro de tipo de negócio (Venda/Aluguel)
+    const matchType = selectedType === null ||
+                     prop.tipo_negocio?.toLowerCase() === selectedType.toLowerCase() ||
+                     prop.finalidade_imovel?.toLowerCase() === selectedType.toLowerCase();
+
+    return matchSearch && matchPrice && matchBedrooms && matchType;
   });
 
   const containerVariants = {
@@ -162,28 +178,97 @@ export default function ClientPortal() {
           {/* Sidebar Filters */}
           <motion.div variants={itemVariants} className="lg:col-span-1">
             <div className="glass-panel p-6 rounded-2xl sticky top-24">
-              <h3 className="text-lg font-bold text-foreground mb-6 flex items-center gap-2">
-                <Filter size={20} />
-                Filtros
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <Filter size={20} />
+                  Filtros
+                </h3>
+                {(searchTerm || selectedType || selectedBedrooms !== null || priceRange[0] > 0 || priceRange[1] < 2000000) && (
+                  <div className="px-2 py-1 bg-blue-500 text-white text-xs rounded-full font-semibold">
+                    Ativos
+                  </div>
+                )}
+              </div>
+
+              {/* Tipo de Negócio */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-foreground mb-3">
+                  Tipo
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setSelectedType(selectedType === 'venda' ? null : 'venda')}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                      selectedType === 'venda'
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                        : 'bg-white/10 text-foreground hover:bg-white/20'
+                    }`}
+                  >
+                    Venda
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setSelectedType(selectedType === 'aluguel' ? null : 'aluguel')}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                      selectedType === 'aluguel'
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                        : 'bg-white/10 text-foreground hover:bg-white/20'
+                    }`}
+                  >
+                    Aluguel
+                  </motion.button>
+                </div>
+              </div>
 
               {/* Price Range */}
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-foreground mb-3">
-                  Preço
+                  Faixa de Preço
                 </label>
-                <div className="space-y-2">
-                  <input
-                    type="range"
-                    min="0"
-                    max="2000000"
-                    value={priceRange[1]}
-                    onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-                    className="w-full"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Até R$ {priceRange[1].toLocaleString('pt-BR')}
-                  </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Mínimo</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="2000000"
+                      step="50000"
+                      value={priceRange[0]}
+                      onChange={(e) => {
+                        const newMin = parseInt(e.target.value);
+                        if (newMin < priceRange[1]) {
+                          setPriceRange([newMin, priceRange[1]]);
+                        }
+                      }}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      R$ {priceRange[0].toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Máximo</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="2000000"
+                      step="50000"
+                      value={priceRange[1]}
+                      onChange={(e) => {
+                        const newMax = parseInt(e.target.value);
+                        if (newMax > priceRange[0]) {
+                          setPriceRange([priceRange[0], newMax]);
+                        }
+                      }}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      R$ {priceRange[1].toLocaleString('pt-BR')}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -219,6 +304,7 @@ export default function ClientPortal() {
                   setSearchTerm('');
                   setPriceRange([0, 2000000]);
                   setSelectedBedrooms(null);
+                  setSelectedType(null);
                 }}
                 className="w-full px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-semibold text-foreground transition-all"
               >

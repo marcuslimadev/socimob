@@ -18,8 +18,15 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Send Requests To Front Controller...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME} !-f
+    # Serve existing files/directories directly
+    RewriteCond %{REQUEST_FILENAME} -d [OR]
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Backend routes go to Lumen
+    RewriteCond %{REQUEST_URI} ^/(api|api-public|webhook|github|debug|test|db-test|migrate-now-please|sync) [NC]
     RewriteRule ^ index.php [L]
+
+    # SPA fallback for React routes
+    RewriteRule ^ index.html [L]
 </IfModule>
