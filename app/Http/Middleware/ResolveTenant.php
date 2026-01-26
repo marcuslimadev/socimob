@@ -51,8 +51,20 @@ class ResolveTenant
             return $next($request);
         }
 
+        // Mapeamento de domínios alternativos para o domínio principal
+        $domainAliases = [
+            'lojadaesquina.store' => 'exclusivalarimoveis.com',
+            'www.lojadaesquina.store' => 'exclusivalarimoveis.com',
+        ];
+
         // Buscar tenant pelo dominio
         $normalizedHost = $this->normalizeHost($host);
+        
+        // Se for um domínio alternativo, usar o domínio principal
+        if (isset($domainAliases[$normalizedHost])) {
+            $normalizedHost = $domainAliases[$normalizedHost];
+        }
+        
         $tenant = Tenant::where('domain', $normalizedHost)
             ->orWhere('domain', 'www.' . $normalizedHost)
             ->first();
