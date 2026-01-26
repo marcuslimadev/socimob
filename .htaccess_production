@@ -1,18 +1,32 @@
 <IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
     RewriteEngine On
-    
-    RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
-    RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
-    
+
+    # Exceção para Portal Svelte (servir arquivos estáticos)
+    RewriteCond %{REQUEST_URI} ^/portal/svelte/
+    RewriteRule ^ - [L]
+
+    # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-    
-    RewriteCond %{REQUEST_FILENAME} -f [OR]
-    RewriteCond %{REQUEST_FILENAME} -d
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Serve existing files/directories directly
+    RewriteCond %{REQUEST_FILENAME} -d [OR]
+    RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
-    
-    RewriteCond %{REQUEST_URI} ^/(api|webhook|debug|test) [NC]
+
+    # Backend routes go to Lumen
+    RewriteCond %{REQUEST_URI} ^/(api|api-public|webhook|github|debug|test|db-test|migrate-now-please|sync) [NC]
     RewriteRule ^ index.php [L]
-    
+
+    # SPA fallback for React routes
     RewriteRule ^ index.html [L]
 </IfModule>
