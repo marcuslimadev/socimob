@@ -4,6 +4,8 @@
 - **Último atualizado**: 26 de Janeiro de 2026
 - **Versão**: 2.0 (React 19 + Lumen 10)
 - **Ambiente**: Desenvolvimento Local + Produção (lojadaesquina.store)
+- **Deploy**: ✅ Padrão estabelecido - Build Local + Git Commit + SSH Deploy
+  - Ver: [`DEPLOY_PADRAO.md`](DEPLOY_PADRAO.md) para instruções completas
 
 ---
 
