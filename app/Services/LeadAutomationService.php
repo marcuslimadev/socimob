@@ -115,7 +115,7 @@ class LeadAutomationService
             if ($usarTemplate) {
                 $templateEnviado = $this->enviarTemplateWhatsApp($lead, $telefone);
                 if ($templateEnviado) {
-                    $mensagemRegistrada = $this->mensagemTemplateRegistro();
+                    $mensagemRegistrada = $this->mensagemTemplateRegistro($lead);
                 }
             }
 
@@ -367,9 +367,29 @@ Gere a mensagem de primeiro contato:";
         return $lead->isFromIntegration();
     }
 
-    private function mensagemTemplateRegistro(): string
+    /**
+     * Obter mensagem expandida do template para registro na conversa
+     * 
+     * @param Lead $lead
+     * @return string
+     */
+    private function mensagemTemplateRegistro(Lead $lead): string
     {
-        return 'Template inicial aprovado (Meta) enviado automaticamente.';
+        $tenant = \App\Models\Tenant::find($lead->tenant_id);
+        
+        if (!$tenant || !$tenant->whatsapp_template_message) {
+            return 'Olá! Somos da ' . ($tenant->nome ?? 'nossa imobiliária') . '. Como podemos ajudar você?';
+        }
+        
+        $mensagem = $tenant->whatsapp_template_message;
+        $variaveis = $this->obterVariaveisTemplate($lead);
+        
+        // Substituir placeholders {{1}}, {{2}}, etc pelos valores
+        foreach ($variaveis as $key => $value) {
+            $mensagem = str_replace('{{' . $key . '}}', $value, $mensagem);
+        }
+        
+        return $mensagem;
     }
 
     /**

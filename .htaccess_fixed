@@ -1,0 +1,33 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    # Priorizar index.html sobre index.php
+    DirectoryIndex index.html index.php
+
+    RewriteEngine On
+
+    # Redirecionar www para sem www
+    RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+    RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Serve arquivos estáticos diretamente (assets, imagens, etc)
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Serve diretórios diretamente
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Backend API routes vão para index.php
+    RewriteCond %{REQUEST_URI} ^/(api|api-public|webhook|github|debug|test|db-test|migrate-now-please|sync) [NC]
+    RewriteRule ^ index.php [L]
+
+    # SPA fallback - tudo que não for API vai para index.html (React)
+    RewriteRule ^ index.html [L]
+</IfModule>

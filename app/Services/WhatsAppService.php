@@ -1667,7 +1667,9 @@ class WhatsAppService
     {
         $conversa = Conversa::find($conversaId);
         $isPortal = $this->isPortalChannel($telefone, $conversa);
-        $conteudoRegistro = 'Template inicial aprovado (Meta)';
+        
+        // Obter mensagem do template configurada no tenant
+        $conteudoRegistro = $this->expandirMensagemTemplate($conversa->tenant_id, $contentVariables);
 
         if ($isPortal) {
             $this->saveMensagem($conversaId, [
@@ -1691,6 +1693,31 @@ class WhatsAppService
         ]);
 
         return $result;
+    }
+
+    /**
+     * Expandir variáveis do template com os valores reais
+     * 
+     * @param int $tenantId
+     * @param array $variables ['1' => 'João', '2' => 'apartamentos']
+     * @return string Mensagem expandida
+     */
+    private function expandirMensagemTemplate(int $tenantId, array $variables): string
+    {
+        $tenant = \App\Models\Tenant::find($tenantId);
+        
+        if (!$tenant || !$tenant->whatsapp_template_message) {
+            return 'Olá! Somos da ' . ($tenant->nome ?? 'nossa imobiliária') . '. Como podemos ajudar você?';
+        }
+        
+        $mensagem = $tenant->whatsapp_template_message;
+        
+        // Substituir placeholders {{1}}, {{2}}, etc pelos valores
+        foreach ($variables as $key => $value) {
+            $mensagem = str_replace('{{' . $key . '}}', $value, $mensagem);
+        }
+        
+        return $mensagem;
     }
 
     private function sendMediaMessage($conversaId, $telefone, $body, $mediaUrl)

@@ -2,10 +2,10 @@
 **/node_modules
 .pnpm-store/
 
-# Build outputs
-dist/
-build/
-*.dist
+# Build outputs (commitamos o build para produção)
+# dist/           # ← COMENTADO: build é commitado para deploy
+# build/          # ← COMENTADO: build é commitado para deploy
+# *.dist
 
 # Environment variables
 .env
