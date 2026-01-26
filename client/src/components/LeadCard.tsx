@@ -9,6 +9,9 @@ interface LeadCardProps {
   value?: number;
   lastContact?: string;
   delay?: number;
+  onChat?: () => void;
+  onAI?: () => void;
+  onCall?: () => void;
 }
 
 const statusConfig = {
@@ -77,6 +80,9 @@ const LeadCard = ({
   value,
   lastContact,
   delay = 0,
+  onChat,
+  onAI,
+  onCall,
 }: LeadCardProps) => {
   const config = statusConfig[status];
 
@@ -145,6 +151,10 @@ const LeadCard = ({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onChat?.();
+            }}
             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold text-white transition-all glow-sm hover:glow-md"
           >
             <MessageSquare size={14} />
@@ -154,6 +164,10 @@ const LeadCard = ({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAI?.();
+            }}
             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold text-white transition-all"
           >
             <Zap size={14} />
@@ -163,6 +177,10 @@ const LeadCard = ({
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCall?.();
+            }}
             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold text-white transition-all"
           >
             <Phone size={14} />

@@ -22,6 +22,7 @@ export default function Leads() {
   const [selectedSort, setSelectedSort] = useState('recente');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showNewLeadModal, setShowNewLeadModal] = useState(false);
 
   useEffect(() => {
     fetchLeads();
@@ -64,11 +65,76 @@ export default function Leads() {
     return date.toLocaleDateString('pt-BR');
   };
 
+  const handleExportCSV = () => {
+    try {
+      const csvContent = [
+        ['Nome', 'Telefone', 'Email', 'Status', 'Valor', 'Último Contato'],
+        ...sortedLeads.map(lead => [
+          lead.name,
+          lead.phone,
+          lead.email || '',
+          lead.status,
+          lead.value ? `R$ ${lead.value.toLocaleString('pt-BR')}` : '',
+          lead.lastContact || ''
+        ])
+      ].map(row => row.join(';')).join('\n');
+
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `leads_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+
+      toast.success('CSV exportado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao exportar CSV');
+    }
+  };
+
+  const handleNewLead = () => {
+    toast.info('Funcionalidade em desenvolvimento');
+    // TODO: Implementar modal de novo lead
+  };
+
+  const handleOpenChat = (leadId: string, leadName: string) => {
+    toast.info(`Abrindo chat com ${leadName}`);
+    // TODO: Navegar para página de chat
+  };
+
+  const handleCallAI = (leadId: string, leadName: string) => {
+    toast.info(`Iniciando atendimento IA para ${leadName}`);
+    // TODO: Iniciar atendimento IA
+  };
+
+  const handleCall = (phone: string, leadName: string) => {
+    if (phone) {
+      window.open(`tel:${phone}`);
+      toast.success(`Ligando para ${leadName}`);
+    } else {
+      toast.error('Telefone não disponível');
+    }
+  };
+
   const filteredLeads = leads.filter((lead) => {
     const matchSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.phone.includes(searchTerm);
     const matchStatus = selectedStatus === 'todos' || lead.status === selectedStatus;
     return matchSearch && matchStatus;
+  });
+
+  // Aplicar ordenação
+  const sortedLeads = [...filteredLeads].sort((a, b) => {
+    switch (selectedSort) {
+      case 'valor-alto':
+        return (b.value || 0) - (a.value || 0);
+      case 'valor-baixo':
+        return (a.value || 0) - (b.value || 0);
+      case 'nome':
+        return a.name.localeCompare(b.name);
+      case 'recente':
+      default:
+        return 0; // Já vem ordenado do backend
+    }
   });
 
   const containerVariants = {
@@ -104,6 +170,7 @@ export default function Leads() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                onClick={handleNewLead}
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg"
               >
                 <Plus size={20} />
@@ -161,6 +228,8 @@ export default function Leads() {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  onClick={handleExportCSV}
+                  title="Exportar para CSV"
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-foreground transition-all"
                 >
                   <Download size={20} />
@@ -201,7 +270,7 @@ export default function Leads() {
               animate="visible"
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
-              {filteredLeads.length === 0 ? (
+              {sortedLeads.length === 0 ? (
                 <motion.div
                   variants={itemVariants}
                   className="col-span-full text-center py-12"
@@ -211,7 +280,7 @@ export default function Leads() {
                   <p className="text-muted-foreground">Tente ajustar seus filtros de busca</p>
                 </motion.div>
               ) : (
-                filteredLeads.map((lead, index) => (
+                sortedLeads.map((lead, index) => (
                   <motion.div
                     key={lead.id}
                     variants={itemVariants}
@@ -224,6 +293,9 @@ export default function Leads() {
                       status={lead.status}
                       value={lead.value}
                       lastContact={lead.lastContact}
+                      onChat={() => handleOpenChat(lead.id, lead.name)}
+                      onAI={() => handleCallAI(lead.id, lead.name)}
+                      onCall={() => handleCall(lead.phone, lead.name)}
                     />
                   </motion.div>
                 ))

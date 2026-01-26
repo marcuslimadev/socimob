@@ -565,7 +565,7 @@ class ImportacaoController extends Controller
         $bairro = $imovel['endereco']['bairro'] ?? '';
         $cidade = $imovel['endereco']['cidade'] ?? '';
         $titulo = "$tipo no $bairro - $cidade";
-        
+
         // Extrair URLs das imagens
         $fotos = [];
         if (isset($imovel['imagens']) && is_array($imovel['imagens'])) {
@@ -576,13 +576,28 @@ class ImportacaoController extends Controller
 
         // Área: priorizar área total, depois construída
         $area = floatval($imovel['area']['total']['valor'] ?? $imovel['area']['construida']['valor'] ?? 0);
-        
+
+        // Determinar finalidade corretamente
+        $finalidade = $imovel['finalidadeImovel']
+            ?? $imovel['tipoContrato']
+            ?? $imovel['tipoNegocio']
+            ?? $imovel['finalidade']
+            ?? null;
+
+        // Log para debug
+        if (!$finalidade) {
+            Log::warning('Imóvel sem finalidade definida', [
+                'codigo' => $imovel['codigoImovel'] ?? null,
+                'campos_disponiveis' => array_keys($imovel)
+            ]);
+        }
+
         return [
             'external_id' => strval($imovel['codigoImovel'] ?? ''),
             'codigo' => strval($imovel['codigoImovel'] ?? ''),
             'titulo' => $titulo,
             'tipo_imovel' => $this->mapearTipo($imovel['descricaoTipoImovel'] ?? 'Casa'),
-            'finalidade_imovel' => $this->mapearFinalidade($imovel['finalidadeImovel'] ?? 'Venda'),
+            'finalidade_imovel' => $this->mapearFinalidade($finalidade),
             'valor_venda' => floatval($imovel['valorEsperado'] ?? 0),  // Campo correto da tabela
             'area_total' => $area,
             'dormitorios' => intval($imovel['dormitorios'] ?? 0),  // Campo correto da tabela
@@ -899,11 +914,27 @@ class ImportacaoController extends Controller
 
     private function mapearFinalidade($finalidade)
     {
-        $finalidade = strtolower($finalidade);
-        
-        if (strpos($finalidade, 'vend') !== false) return 'venda';
-        if (strpos($finalidade, 'alug') !== false) return 'aluguel';
-        
+        if (!$finalidade) {
+            Log::warning('mapearFinalidade: finalidade vazia, usando venda como padrão');
+            return 'venda';
+        }
+
+        $finalidade = strtolower(trim($finalidade));
+
+        // Venda e variações
+        if (strpos($finalidade, 'vend') !== false ||
+            strpos($finalidade, 'compra') !== false) {
+            return 'venda';
+        }
+
+        // Aluguel e variações
+        if (strpos($finalidade, 'alug') !== false ||
+            strpos($finalidade, 'loca') !== false ||
+            strpos($finalidade, 'rent') !== false) {
+            return 'aluguel';
+        }
+
+        Log::warning('mapearFinalidade: valor não reconhecido', ['finalidade' => $finalidade]);
         return 'venda';
     }
 }

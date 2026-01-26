@@ -10,7 +10,18 @@
       "Bash(gh --version:*)",
       "Bash(git checkout:*)",
       "Bash(git rm:*)",
-      "Bash(git filter-branch:*)"
+      "Bash(git filter-branch:*)",
+      "Bash(scp:*)",
+      "Bash(where ssh:*)",
+      "Bash(ssh:*)",
+      "Bash(where:*)",
+      "Bash(plink -P 65002 -pw \"MundoMelhor@10\" u815655858@145.223.105.168 \"cat domains/lojadaesquina.store/public_html/bootstrap/app.php\")",
+      "Bash(plink -P 65002 -pw \"MundoMelhor@10\" u815655858@145.223.105.168 \"cd domains/lojadaesquina.store/public_html && rm -rf storage/framework/cache/* && rm -rf storage/framework/views/* && rm -rf bootstrap/cache/*\")",
+      "Bash(plink:*)",
+      "Bash(findstr:*)",
+      "Bash(npm run build:*)",
+      "Bash(tar:*)",
+      "Bash(pscp:*)"
     ]
   }
 }
