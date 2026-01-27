@@ -1914,6 +1914,241 @@ class WhatsAppService
 
         return 'document';
     }
+
+    /**
+     * Executar operação com retry automático
+     *
+     * @param callable $operation
+     * @param int $maxAttempts
+     * @param int $delaySeconds
+     * @param string $operationName
+     * @return mixed
+     */
+    private function retryOperation(callable $operation, int $maxAttempts = 3, int $delaySeconds = 2, string $operationName = 'operation')
+    {
+        $attempt = 1;
+        $lastException = null;
+
+        while ($attempt <= $maxAttempts) {
+            try {
+                Log::info("🔄 Tentativa {$attempt}/{$maxAttempts} de {$operationName}");
+
+                $result = $operation();
+
+                if ($result !== null && $result !== false) {
+                    if ($attempt > 1) {
+                        Log::info("✅ {$operationName} bem-sucedida após {$attempt} tentativas");
+                    }
+                    return $result;
+                }
+
+                if ($attempt === $maxAttempts) {
+                    Log::warning("⚠️ {$operationName} retornou null/false após {$maxAttempts} tentativas");
+                    return $result;
+                }
+
+            } catch (\Exception $e) {
+                $lastException = $e;
+
+                Log::warning("⚠️ Tentativa {$attempt}/{$maxAttempts} de {$operationName} falhou", [
+                    'error' => $e->getMessage(),
+                    'exception' => get_class($e)
+                ]);
+
+                if ($attempt === $maxAttempts) {
+                    Log::error("❌ {$operationName} falhou após {$maxAttempts} tentativas", [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+
+                    // Notificar admin sobre falha crítica
+                    $this->notifyAdminOfFailure($operationName, $e);
+
+                    throw $e;
+                }
+
+                // Aguardar antes de tentar novamente
+                sleep($delaySeconds * $attempt);
+            }
+
+            $attempt++;
+        }
+
+        if ($lastException) {
+            throw $lastException;
+        }
+
+        return null;
+    }
+
+    /**
+     * Notificar admin sobre falha crítica
+     *
+     * @param string $operationName
+     * @param \Exception $exception
+     * @return void
+     */
+    private function notifyAdminOfFailure(string $operationName, \Exception $exception): void
+    {
+        try {
+            $tenantId = app('tenant')?->id ?? 1;
+
+            // Buscar admin do tenant
+            $admin = \App\Models\User::where('tenant_id', $tenantId)
+                ->where('role', 'admin')
+                ->where('is_active', true)
+                ->first();
+
+            if (!$admin) {
+                Log::warning('Nenhum admin encontrado para notificar sobre falha', [
+                    'tenant_id' => $tenantId
+                ]);
+                return;
+            }
+
+            // Criar notificação
+            \App\Models\Notification::create([
+                'tenant_id' => $tenantId,
+                'user_id' => $admin->id,
+                'type' => 'system_error',
+                'title' => 'Erro Crítico no WhatsApp Service',
+                'message' => "A operação '{$operationName}' falhou: {$exception->getMessage()}",
+                'channel' => 'in_app',
+                'data' => json_encode([
+                    'operation' => $operationName,
+                    'error' => $exception->getMessage(),
+                    'file' => $exception->getFile(),
+                    'line' => $exception->getLine(),
+                ]),
+                'is_read' => false,
+                'is_sent' => true,
+                'sent_at' => Carbon::now(),
+            ]);
+
+            Log::info('✉️ Admin notificado sobre falha crítica', [
+                'admin_id' => $admin->id,
+                'operation' => $operationName
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Falha ao notificar admin sobre erro', [
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Log estruturado de operação
+     *
+     * @param string $level (info, warning, error)
+     * @param string $message
+     * @param array $context
+     * @return void
+     */
+    private function logStructured(string $level, string $message, array $context = []): void
+    {
+        $structuredContext = array_merge([
+            'timestamp' => Carbon::now()->toIso8601String(),
+            'service' => 'WhatsAppService',
+            'tenant_id' => app('tenant')?->id ?? null,
+        ], $context);
+
+        Log::{$level}($message, $structuredContext);
+    }
+
+    /**
+     * Executar operação com tratamento de erro robusto
+     *
+     * @param callable $operation
+     * @param string $operationName
+     * @param mixed $defaultValue
+     * @return mixed
+     */
+    private function safeExecute(callable $operation, string $operationName, $defaultValue = null)
+    {
+        try {
+            $result = $operation();
+
+            if ($result === null) {
+                $this->logStructured('warning', "{$operationName} retornou null", [
+                    'operation' => $operationName
+                ]);
+            }
+
+            return $result ?? $defaultValue;
+
+        } catch (\Exception $e) {
+            $this->logStructured('error', "{$operationName} falhou", [
+                'operation' => $operationName,
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return $defaultValue;
+        }
+    }
+
+    /**
+     * Validar dados críticos antes de processar
+     *
+     * @param array $data
+     * @param array $requiredFields
+     * @param string $context
+     * @return bool
+     */
+    private function validateCriticalData(array $data, array $requiredFields, string $context = 'operation'): bool
+    {
+        $missing = [];
+
+        foreach ($requiredFields as $field) {
+            if (empty($data[$field])) {
+                $missing[] = $field;
+            }
+        }
+
+        if (!empty($missing)) {
+            $this->logStructured('error', "Dados críticos ausentes em {$context}", [
+                'context' => $context,
+                'missing_fields' => $missing,
+                'provided_data' => array_keys($data)
+            ]);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Processar com queue (preparação para implementação futura)
+     *
+     * @param string $jobClass
+     * @param array $data
+     * @return bool
+     */
+    private function queueJob(string $jobClass, array $data): bool
+    {
+        try {
+            // TODO: Implementar sistema de queue (Redis, Database, SQS, etc.)
+            // Por enquanto, apenas registrar no log
+            $this->logStructured('info', 'Job adicionado à queue (não implementado)', [
+                'job_class' => $jobClass,
+                'data_keys' => array_keys($data)
+            ]);
+
+            return true;
+
+        } catch (\Exception $e) {
+            $this->logStructured('error', 'Falha ao adicionar job à queue', [
+                'job_class' => $jobClass,
+                'error' => $e->getMessage()
+            ]);
+
+            return false;
+        }
+    }
 }
 
 

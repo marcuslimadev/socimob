@@ -238,4 +238,23 @@ class Tenant extends Model
     {
         $this->update(['is_active' => true]);
     }
+
+    /**
+     * Retorna configuração pública do tenant para o portal
+     *
+     * @return array
+     */
+    public function getPublicConfig(): array
+    {
+        return [
+            'name' => $this->name,
+            'contact_phone' => $this->contact_phone,
+            'contact_email' => $this->contact_email,
+            'slogan' => $this->slogan ?? 'Encontre o Imóvel dos Seus Sonhos',
+            'primary_color' => $this->primary_color ?? '#1e293b',
+            'secondary_color' => $this->secondary_color ?? '#3b82f6',
+            'logo_url' => $this->logo_url ?? '/images/logo.png',
+            'favicon_url' => $this->favicon_url ?? '/favicon.ico',
+        ];
+    }
 }
