@@ -108,33 +108,33 @@ class LeadAutomationService
 
             $mensagemIA = null;
             $mensagemRegistrada = null;
+            $messageSid = null;
 
             // 4. Enviar template Twilio para leads de integração
             $usarTemplate = $this->deveUsarTemplateInicial($lead);
-            $templateEnviado = false;
+            $resultadoEnvio = null;
+
             if ($usarTemplate) {
-                $templateEnviado = $this->enviarTemplateWhatsApp($lead, $telefone);
-                if ($templateEnviado) {
+                $resultadoEnvio = $this->enviarTemplateWhatsApp($lead, $telefone);
+                if ($resultadoEnvio['success']) {
                     $mensagemRegistrada = $this->mensagemTemplateRegistro($lead);
+                    $messageSid = $resultadoEnvio['message_sid'];
                 }
-            }
-
-            // 5. Gerar e enviar mensagem personalizada se template não foi enviado
-            if ($usarTemplate) {
-                $enviado = $templateEnviado;
             } else {
+                // 5. Gerar e enviar mensagem personalizada se template não foi enviado
                 $mensagemIA = $this->gerarMensagemInicial($lead);
-                $enviado = $this->enviarMensagemWhatsApp($lead, $mensagemIA, $conversa, $telefone);
-                if ($enviado) {
+                $resultadoEnvio = $this->enviarMensagemWhatsApp($lead, $mensagemIA, $conversa, $telefone);
+                if ($resultadoEnvio['success']) {
                     $mensagemRegistrada = $mensagemIA;
+                    $messageSid = $resultadoEnvio['message_sid'];
                 }
             }
 
-            if (!$enviado) {
+            if (!$resultadoEnvio || !$resultadoEnvio['success']) {
                 Log::error('[LeadAutomation] Falha ao enviar mensagem WhatsApp', [
                     'tenant_id' => $lead->tenant_id,
                     'lead_id' => $lead->id
-                ]);                
+                ]);
                 \App\Models\SystemLog::error(
                     \App\Models\SystemLog::CATEGORY_TWILIO,
                     'envio_falhou',
@@ -148,9 +148,9 @@ class LeadAutomationService
                 ];
             }
 
-            // 6. Registrar mensagem no banco
+            // 6. Registrar mensagem no banco COM message_sid
             if ($mensagemRegistrada) {
-                $this->registrarMensagem($conversa, $mensagemRegistrada, 'outgoing');
+                $this->registrarMensagem($conversa, $mensagemRegistrada, 'outgoing', $messageSid);
             }
 
             // 7. Atualizar status do lead
@@ -372,7 +372,7 @@ Gere a mensagem de primeiro contato:";
         $contentSid = $this->getTemplateSidForTenant($lead->tenant_id);
 
         // Se tiver template configurado, usar sempre
-        if (!empty($contentSid) && !str_starts_with($contentSid, 'HX...')) {
+        if (!empty($contentSid)) {
             return true;
         }
 
@@ -410,26 +410,25 @@ Gere a mensagem de primeiro contato:";
      *
      * @param Lead $lead
      * @param string|null $telefone
-     * @return bool
+     * @return array ['success' => bool, 'message_sid' => string|null]
      */
-    private function enviarTemplateWhatsApp(Lead $lead, ?string $telefone): bool
+    private function enviarTemplateWhatsApp(Lead $lead, ?string $telefone): array
     {
         // Buscar template SID específico do tenant
         $contentSid = $this->getTemplateSidForTenant($lead->tenant_id);
 
-        if (empty($contentSid) || str_starts_with($contentSid, 'HX...')) {
-            Log::info('[LeadAutomation] Template SID não configurado ou inválido para tenant', [
-                'tenant_id' => $lead->tenant_id,
-                'content_sid' => $contentSid
+        if (empty($contentSid)) {
+            Log::info('[LeadAutomation] Template SID não configurado para tenant', [
+                'tenant_id' => $lead->tenant_id
             ]);
-            return false;
+            return ['success' => false, 'message_sid' => null];
         }
 
         if (empty($telefone)) {
             Log::warning('[LeadAutomation] Template não enviado (telefone vazio)', [
                 'lead_id' => $lead->id
             ]);
-            return false;
+            return ['success' => false, 'message_sid' => null];
         }
 
         try {
@@ -447,7 +446,7 @@ Gere a mensagem de primeiro contato:";
                     'response' => $resultado['response'] ?? null,
                     'error' => $resultado['error'] ?? null
                 ]);
-                return false;
+                return ['success' => false, 'message_sid' => null];
             }
 
             Log::info('[LeadAutomation] Template WhatsApp enviado', [
@@ -456,14 +455,17 @@ Gere a mensagem de primeiro contato:";
                 'sid' => $resultado['message_sid'] ?? null
             ]);
 
-            return true;
+            return [
+                'success' => true,
+                'message_sid' => $resultado['message_sid'] ?? null
+            ];
         } catch (\Exception $e) {
             Log::error('[LeadAutomation] Erro ao enviar template WhatsApp', [
                 'lead_id' => $lead->id,
                 'error' => $e->getMessage()
             ]);
 
-            return false;
+            return ['success' => false, 'message_sid' => null];
         }
     }
 
@@ -576,11 +578,12 @@ Gere a mensagem de primeiro contato:";
 
     /**
      * Enviar mensagem via WhatsApp (Twilio)
-     * 
+     *
      * @param Lead $lead
      * @param string $mensagem
      * @param Conversa $conversa
-     * @return bool Sucesso
+     * @param string $telefone
+     * @return array ['success' => bool, 'message_sid' => string|null]
      */
     private function enviarMensagemWhatsApp(Lead $lead, $mensagem, Conversa $conversa, $telefone)
     {
@@ -597,7 +600,7 @@ Gere a mensagem de primeiro contato:";
                     'response' => $resultado['response'] ?? null,
                     'error' => $resultado['error'] ?? null
                 ]);
-                return false;
+                return ['success' => false, 'message_sid' => null];
             }
 
             Log::info('[LeadAutomation] Mensagem WhatsApp enviada', [
@@ -606,7 +609,10 @@ Gere a mensagem de primeiro contato:";
                 'sid' => $resultado['message_sid'] ?? null
             ]);
 
-            return true;
+            return [
+                'success' => true,
+                'message_sid' => $resultado['message_sid'] ?? null
+            ];
 
         } catch (\Exception $e) {
             Log::error('[LeadAutomation] Erro ao enviar WhatsApp', [
@@ -614,28 +620,30 @@ Gere a mensagem de primeiro contato:";
                 'error' => $e->getMessage()
             ]);
 
-            return false;
+            return ['success' => false, 'message_sid' => null];
         }
     }
 
     /**
      * Registrar mensagem no banco de dados
-     * 
+     *
      * @param Conversa $conversa
      * @param string $texto
      * @param string $direction sent|received
+     * @param string|null $messageSid SID da mensagem do Twilio
      * @return Mensagem
      */
-    private function registrarMensagem(Conversa $conversa, $texto, $direction = 'outgoing')
+    private function registrarMensagem(Conversa $conversa, $texto, $direction = 'outgoing', $messageSid = null)
     {
         $mensagem = new Mensagem();
         $mensagem->tenant_id = $conversa->tenant_id;
         $mensagem->conversa_id = $conversa->id;
         $mensagem->direction = $direction;
         $mensagem->content = $texto;
-        $mensagem->status = 'sent';
+        $mensagem->message_sid = $messageSid;  // Agora salva o SID do Twilio
+        $mensagem->status = $messageSid ? 'sent' : 'pending';  // sent só se tiver SID
         $mensagem->message_type = 'text';
-        $mensagem->sent_at = Carbon::now();
+        $mensagem->sent_at = $messageSid ? Carbon::now() : null;  // sent_at só se enviou
         $mensagem->save();
 
         return $mensagem;
