@@ -52,12 +52,12 @@ class ChavesNaMaoWebhookController extends Controller
         try {
             // Capturar dados do lead
             $rawData = $request->json()->all();
-            
+
             // Fallback para dados do body se json() retornar vazio
             if (empty($rawData)) {
                 $rawData = json_decode($request->getContent(), true) ?? [];
             }
-            
+
             // Adaptar para formato do Chaves na Mão: eles enviam o lead como string JSON na chave "lead"
             if (isset($rawData['lead']) && is_string($rawData['lead'])) {
                 $leadData = json_decode($rawData['lead'], true);
@@ -77,18 +77,13 @@ class ChavesNaMaoWebhookController extends Controller
             ]);
 
             // Processar e salvar lead
+            // O LeadObserver irá automaticamente:
+            // 1. Iniciar atendimento IA com template WhatsApp
+            // 2. Criar conversa no sistema
+            // 3. Criar usuário cliente se tiver email
             $lead = $this->processLead($leadData);
-            $conversa = $this->leadConversationService->ensureConversaForLead($lead, [
-                'canal' => 'chaves_na_mao'
-            ]);
-            $this->leadConversationService->startAiForLead($lead, [
-                'canal' => 'chaves_na_mao',
-                'message' => $conversa?->mensagens()->where('direction', 'incoming')->value('content'),
-                'usar_template' => true,
-            ]);
-            $this->leadCustomerService->ensureClientForLead($lead);
 
-            Log::info('✅ Lead processado com sucesso', [
+            Log::info('✅ Lead processado com sucesso (Observer irá iniciar atendimento)', [
                 'internal_id' => $lead->id,
                 'external_id' => $leadData['id'] ?? null
             ]);

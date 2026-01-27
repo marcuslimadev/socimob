@@ -47,7 +47,8 @@ class PortalController extends Controller
             : $tenant->contact_phone;
 
         return response()->json([
-            'tenant' => [
+            'success' => true,
+            'data' => [
                 'name' => $tenant->name,
                 'contact_phone' => $whatsappNumber,
                 'contact_email' => $tenant->contact_email,
@@ -55,6 +56,7 @@ class PortalController extends Controller
                 'slogan' => $tenant->slogan ?? 'Encontre o Imovel dos Seus Sonhos',
                 'primary_color' => $tenant->primary_color ?? '#1e293b',
                 'secondary_color' => $tenant->secondary_color ?? '#3b82f6',
+                'logo' => $tenant->logo_url,
                 'logo_url' => $tenant->logo_url,
                 'favicon_url' => $tenant->favicon_url,
                 'portal_finalidades' => $portalFinalidades,
