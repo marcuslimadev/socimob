@@ -67,12 +67,25 @@ class LeadObserver
      */
     public function updated(Lead $lead): void
     {
-        if ($this->isFromChavesNaMao($lead)) {
-            return;
+        // 1. Verificar se precisa iniciar atendimento (mesmo que seja update)
+        // Se o lead não tem conversas ainda, iniciar atendimento automático
+        if ($this->deveIniciarAtendimento($lead) && !$this->leadTemConversas($lead)) {
+            Log::info('[LeadObserver] Lead atualizado sem conversas, iniciando atendimento', [
+                'lead_id' => $lead->id,
+                'nome' => $lead->nome
+            ]);
+            $this->iniciarAtendimentoIA($lead);
         }
 
+        // 2. Criar usuário cliente se tiver email
         if (!$lead->user_id && !empty($lead->email)) {
             $this->leadCustomerService->ensureClientForLead($lead);
+        }
+
+        // 3. Enviar para Chaves na Mão se não for DE lá e não foi enviado ainda
+        if ($this->isFromChavesNaMao($lead)) {
+            // Não enviar de volta para Chaves na Mão se veio de lá
+            return;
         }
 
         // Verificar se já foi enviado antes
@@ -240,6 +253,36 @@ class LeadObserver
             );
 
             return true; // ATIVO por padrão
+        }
+    }
+
+    /**
+     * Verificar se o lead já tem conversas criadas
+     */
+    private function leadTemConversas(Lead $lead): bool
+    {
+        try {
+            // Carregar conversas se não estiver carregado
+            if (!$lead->relationLoaded('conversas')) {
+                $lead->load('conversas');
+            }
+
+            $temConversas = $lead->conversas()->exists();
+
+            Log::info('[LeadObserver] Verificando conversas do lead', [
+                'lead_id' => $lead->id,
+                'tem_conversas' => $temConversas
+            ]);
+
+            return $temConversas;
+        } catch (\Exception $e) {
+            Log::error('[LeadObserver] Erro ao verificar conversas do lead', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage()
+            ]);
+
+            // Em caso de erro, assume que não tem conversas (tenta iniciar atendimento)
+            return false;
         }
     }
 }

@@ -1265,3 +1265,4 @@ $router->get('/debug/force-fase2', function () use ($router) {
 // Rotas temporárias para limpeza de leads
 $router->get('/api/temp/leads/list', 'TempLeadCleanupController@listByPhone');
 $router->post('/api/temp/leads/delete', 'TempLeadCleanupController@deleteByPhone');
+$router->post('/api/temp/leads/{id}/iniciar-atendimento', 'TempLeadCleanupController@iniciarAtendimento');
