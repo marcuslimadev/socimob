@@ -21,7 +21,30 @@
       "Bash(findstr:*)",
       "Bash(npm run build:*)",
       "Bash(tar:*)",
-      "Bash(pscp:*)"
+      "Bash(pscp:*)",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u738323131@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && git pull origin master\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && pwd && git status\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && git pull origin master\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && git log --oneline -5\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && ls -la app/Services/ | grep -E ''Notification|WebSocket''\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && git diff HEAD~1 client/src/pages/ClientPortal.tsx | head -50\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && bash deploy.sh\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && ls -lh dist/public/index.html 2>/dev/null || echo ''dist/public não existe''\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && command -v pnpm || command -v npm || echo ''Node tools not found''\")",
+      "Bash(pnpm build:*)",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\pscp.exe\" -r -P 65002 -pw MundoMelhor@10 dist/public/* u815655858@145.223.105.168:/home/u815655858/domains/lojadaesquina.store/public_html/public/)",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && ls -lh public/ | head -20\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && ls -lh public/index.html public/assets/\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && rm -f bootstrap/cache/*.php && /opt/alt/php83/usr/bin/php composer.phar dump-autoload --optimize && echo ''Cache limpo e autoload recarregado''\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && curl -s http://lojadaesquina.store/ | grep -o ''<title>[^<]*</title>''\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && curl -s -I http://lojadaesquina.store/ | head -10\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && curl -k -s https://lojadaesquina.store/ | head -20\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && head -25 public/index.html | grep -E ''script|link.*css''\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && curl -k -s -H ''Cache-Control: no-cache'' https://lojadaesquina.store/ | head -20\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store && ls -lh public_html/index.html public_html/public/index.html 2>&1\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && cp -f public/index.html index.html && cp -rf public/assets/* assets/ 2>/dev/null || mkdir -p assets && cp -rf public/assets/* assets/ && ls -lh index.html assets/ | head -10\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && curl -k -s https://lojadaesquina.store/api/health\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd ~/domains/lojadaesquina.store/public_html && /opt/alt/php83/usr/bin/php -r ''require \"\"vendor/autoload.php\"\"; echo \"\"NotificationService: \"\" . \\(class_exists\\(\"\"App\\\\\\\\Services\\\\\\\\NotificationService\"\"\\) ? \"\"OK\"\" : \"\"ERRO\"\"\\) . \"\"\\\\n\"\"; echo \"\"WebSocketService: \"\" . \\(class_exists\\(\"\"App\\\\\\\\Services\\\\\\\\WebSocketService\"\"\\) ? \"\"OK\"\" : \"\"ERRO\"\"\\) . \"\"\\\\n\"\";''\")"
     ]
   }
 }

@@ -362,9 +362,22 @@ Gere a mensagem de primeiro contato:";
         }
     }
 
+    /**
+     * Verificar se deve usar template inicial
+     * SEMPRE usar template se estiver configurado
+     */
     private function deveUsarTemplateInicial(Lead $lead): bool
     {
-        return $lead->isFromIntegration();
+        // Verificar se há template configurado para o tenant
+        $contentSid = $this->getTemplateSidForTenant($lead->tenant_id);
+
+        // Se tiver template configurado, usar sempre
+        if (!empty($contentSid) && !str_starts_with($contentSid, 'HX...')) {
+            return true;
+        }
+
+        // Caso contrário, cai no fallback de mensagem IA personalizada
+        return false;
     }
 
     /**
@@ -401,9 +414,14 @@ Gere a mensagem de primeiro contato:";
      */
     private function enviarTemplateWhatsApp(Lead $lead, ?string $telefone): bool
     {
-        $contentSid = trim((string) env('TWILIO_TEMPLATE_WELCOME_SID', ''));
+        // Buscar template SID específico do tenant
+        $contentSid = $this->getTemplateSidForTenant($lead->tenant_id);
 
-        if ($contentSid === '' || str_starts_with($contentSid, 'HX...')) {
+        if (empty($contentSid) || str_starts_with($contentSid, 'HX...')) {
+            Log::info('[LeadAutomation] Template SID não configurado ou inválido para tenant', [
+                'tenant_id' => $lead->tenant_id,
+                'content_sid' => $contentSid
+            ]);
             return false;
         }
 
@@ -644,5 +662,59 @@ Gere a mensagem de primeiro contato:";
     private function getLeadTelefone(Lead $lead): ?string
     {
         return $lead->telefone ?: $lead->whatsapp;
+    }
+
+    /**
+     * Obter Template SID específico do tenant
+     *
+     * @param int $tenantId
+     * @return string|null
+     */
+    private function getTemplateSidForTenant(int $tenantId): ?string
+    {
+        // Buscar tenant para obter o alias/slug
+        $tenant = \App\Models\Tenant::find($tenantId);
+
+        if (!$tenant) {
+            Log::warning('[LeadAutomation] Tenant não encontrado', ['tenant_id' => $tenantId]);
+            return null;
+        }
+
+        // Tentar buscar variável específica do tenant usando diferentes formatos
+        $possiveisChaves = [
+            strtoupper($tenant->slug) . '_TENANT_TWILIO_TEMPLATE_WELCOME_SID',
+            'TENANT_' . $tenantId . '_TWILIO_TEMPLATE_WELCOME_SID',
+            strtoupper(str_replace(['-', ' ', '.'], '_', $tenant->slug)) . '_TWILIO_TEMPLATE_WELCOME_SID',
+        ];
+
+        foreach ($possiveisChaves as $chave) {
+            $valor = env($chave);
+            if (!empty($valor) && !str_starts_with($valor, 'HX...')) {
+                Log::info('[LeadAutomation] Template SID encontrado', [
+                    'tenant_id' => $tenantId,
+                    'chave' => $chave,
+                    'sid' => $valor
+                ]);
+                return $valor;
+            }
+        }
+
+        // Fallback para template global se não tiver específico do tenant
+        $globalSid = env('TWILIO_TEMPLATE_WELCOME_SID');
+        if (!empty($globalSid) && !str_starts_with($globalSid, 'HX...')) {
+            Log::info('[LeadAutomation] Usando template SID global (fallback)', [
+                'tenant_id' => $tenantId,
+                'sid' => $globalSid
+            ]);
+            return $globalSid;
+        }
+
+        Log::warning('[LeadAutomation] Nenhum template SID configurado', [
+            'tenant_id' => $tenantId,
+            'tenant_slug' => $tenant->slug,
+            'chaves_tentadas' => $possiveisChaves
+        ]);
+
+        return null;
     }
 }

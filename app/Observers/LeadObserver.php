@@ -15,7 +15,7 @@ class LeadObserver
     private LeadAutomationService $leadAutomationService;
 
     public function __construct(
-        ChavesNaMaoService $chavesNaMaoService, 
+        ChavesNaMaoService $chavesNaMaoService,
         LeadCustomerService $leadCustomerService,
         LeadAutomationService $leadAutomationService
     ) {
@@ -26,39 +26,40 @@ class LeadObserver
 
     /**
      * Handle the Lead "created" event.
+     * SEMPRE iniciar atendimento IA automaticamente para TODOS os leads
      */
     public function created(Lead $lead): void
     {
-        if ($this->isFromChavesNaMao($lead)) {
-            Log::info('[LeadObserver] Lead recebido do Chaves na Mao, ignorando envio de retorno', [
-                'lead_id' => $lead->id,
-                'nome' => $lead->nome
-            ]);
-            
-            // MAS iniciar atendimento IA automaticamente (se configurado)!
-            if ($this->isAtendimentoAutomaticoAtivo($lead->tenant_id)) {
-                $this->iniciarAtendimentoIA($lead);
-            } else {
-                Log::info('[LeadObserver] Atendimento automático DESATIVADO para este tenant', [
-                    'tenant_id' => $lead->tenant_id,
-                    'lead_id' => $lead->id
-                ]);
-            }
-            
-            return;
+        Log::info('[LeadObserver] Novo lead criado', [
+            'lead_id' => $lead->id,
+            'nome' => $lead->nome,
+            'tenant_id' => $lead->tenant_id,
+            'origem' => $this->isFromChavesNaMao($lead) ? 'Chaves na Mão' : 'Outro'
+        ]);
+
+        // 1. SEMPRE iniciar atendimento IA automaticamente para TODOS os leads
+        if ($this->deveIniciarAtendimento($lead)) {
+            $this->iniciarAtendimentoIA($lead);
         }
 
+        // 2. Criar usuário cliente se tiver email
         if (!$lead->user_id && !empty($lead->email)) {
             $this->leadCustomerService->ensureClientForLead($lead);
         }
 
-        Log::info('ÐYÅ Novo lead criado, enviando para Chaves na MÇœo', [
-            'lead_id' => $lead->id,
-            'nome' => $lead->nome
-        ]);
-
-        // Enviar para Chaves na MÇœo de forma assÇðncrona (se possÇðvel) ou sÇðncrona
-        $this->sendToChavesNaMao($lead);
+        // 3. Se NÃO for do Chaves na Mão, enviar PARA o Chaves na Mão
+        if (!$this->isFromChavesNaMao($lead)) {
+            Log::info('[LeadObserver] Lead não é do Chaves na Mão, enviando para integração', [
+                'lead_id' => $lead->id,
+                'nome' => $lead->nome
+            ]);
+            $this->sendToChavesNaMao($lead);
+        } else {
+            Log::info('[LeadObserver] Lead recebido do Chaves na Mão, ignorando envio de retorno', [
+                'lead_id' => $lead->id,
+                'nome' => $lead->nome
+            ]);
+        }
     }
 
     /**
@@ -74,18 +75,18 @@ class LeadObserver
             $this->leadCustomerService->ensureClientForLead($lead);
         }
 
-        // Verificar se jÇ­ foi enviado antes
+        // Verificar se já foi enviado antes
         if ($lead->chaves_na_mao_sent_at) {
-            Log::debug('ƒ"û‹÷? Lead jÇ­ sincronizado com Chaves na MÇœo', [
+            Log::debug('[LeadObserver] Lead já sincronizado com Chaves na Mão', [
                 'lead_id' => $lead->id,
                 'sent_at' => $lead->chaves_na_mao_sent_at
             ]);
             return;
         }
 
-        // Se nÇœo foi enviado ainda, enviar agora
+        // Se não foi enviado ainda, enviar agora
         if ($this->isReadyToSend($lead)) {
-            Log::info('ÐY"? Lead atualizado e pronto para envio', [
+            Log::info('[LeadObserver] Lead atualizado e pronto para envio', [
                 'lead_id' => $lead->id,
                 'nome' => $lead->nome
             ]);
@@ -94,7 +95,7 @@ class LeadObserver
     }
 
     /**
-     * Verifica se o lead estÇ­ pronto para ser enviado
+     * Verificar se o lead está pronto para ser enviado
      */
     private function isReadyToSend(Lead $lead): bool
     {
@@ -103,7 +104,7 @@ class LeadObserver
     }
 
     /**
-     * Envia lead para Chaves na MÇœo
+     * Envia lead para Chaves na Mão
      */
     private function sendToChavesNaMao(Lead $lead): void
     {
@@ -115,19 +116,19 @@ class LeadObserver
             $result = $this->chavesNaMaoService->sendLead($lead);
 
             if ($result['success']) {
-                Log::info('ƒo. Lead enviado com sucesso para Chaves na MÇœo', [
+                Log::info('[LeadObserver] Lead enviado com sucesso para Chaves na Mão', [
                     'lead_id' => $lead->id,
                     'status_code' => $result['status_code'] ?? null
                 ]);
             } else {
-                Log::warning('ƒsÿ‹÷? Falha ao enviar lead para Chaves na MÇœo', [
+                Log::warning('[LeadObserver] Falha ao enviar lead para Chaves na Mão', [
                     'lead_id' => $lead->id,
                     'error' => $result['error'] ?? 'Erro desconhecido',
                     'retry' => $result['retry'] ?? false
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error('ƒ?O ExceÇõÇœo ao enviar lead para Chaves na MÇœo', [
+            Log::error('[LeadObserver] Exceção ao enviar lead para Chaves na Mão', [
                 'lead_id' => $lead->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -147,6 +148,31 @@ class LeadObserver
     }
 
     /**
+     * Verificar se deve iniciar atendimento para o lead
+     */
+    private function deveIniciarAtendimento(Lead $lead): bool
+    {
+        // Não iniciar se não tiver telefone
+        if (empty($lead->telefone) && empty($lead->whatsapp)) {
+            Log::info('[LeadObserver] Lead sem telefone, atendimento não iniciado', [
+                'lead_id' => $lead->id
+            ]);
+            return false;
+        }
+
+        // Verificar se atendimento automático está desativado para o tenant
+        if (!$this->isAtendimentoAutomaticoAtivo($lead->tenant_id)) {
+            Log::info('[LeadObserver] Atendimento automático DESATIVADO para este tenant', [
+                'tenant_id' => $lead->tenant_id,
+                'lead_id' => $lead->id
+            ]);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Iniciar atendimento IA automaticamente
      */
     private function iniciarAtendimentoIA(Lead $lead): void
@@ -157,14 +183,6 @@ class LeadObserver
                 'nome' => $lead->nome,
                 'telefone' => $lead->telefone
             ]);
-
-            // Verificar se tem telefone
-            if (empty($lead->telefone) && empty($lead->whatsapp)) {
-                Log::warning('[LeadObserver] Lead sem telefone, atendimento IA não iniciado', [
-                    'lead_id' => $lead->id
-                ]);
-                return;
-            }
 
             // Iniciar atendimento via LeadAutomationService
             $resultado = $this->leadAutomationService->iniciarAtendimento($lead);
@@ -190,28 +208,29 @@ class LeadObserver
 
     /**
      * Verificar se atendimento automático está ativo para o tenant
+     * PADRÃO: ATIVO (true) - diferente da implementação antiga que era desativado por padrão
      */
     private function isAtendimentoAutomaticoAtivo($tenantId): bool
     {
         try {
-            // DESATIVADO por padrão - Admin precisa ativar no painel
-            $ativo = \App\Models\AppSetting::getValue('atendimento_automatico_ativo', false, $tenantId);
-            
+            // ATIVO por padrão - Admin pode desativar no painel se necessário
+            $ativo = \App\Models\AppSetting::getValue('atendimento_automatico_ativo', true, $tenantId);
+
             \App\Models\SystemLog::debug(
                 \App\Models\SystemLog::CATEGORY_AUTOMATION,
                 'check_auto_attendance',
                 'Verificando se atendimento automático está ativo',
                 ['tenant_id' => $tenantId, 'ativo' => $ativo]
             );
-            
+
             return (bool) $ativo;
         } catch (\Exception $e) {
-            // Se houver erro, retorna false (desativado por padrão)
-            Log::warning('[LeadObserver] Erro ao verificar config atendimento automático, usando padrão (desativado)', [
+            // Se houver erro, retorna true (ativo por padrão)
+            Log::info('[LeadObserver] Erro ao verificar config atendimento automático, usando padrão (ATIVO)', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage()
             ]);
-            
+
             \App\Models\SystemLog::warning(
                 \App\Models\SystemLog::CATEGORY_AUTOMATION,
                 'check_auto_attendance_error',
@@ -219,8 +238,8 @@ class LeadObserver
                 ['tenant_id' => $tenantId],
                 $e
             );
-            
-            return false;
+
+            return true; // ATIVO por padrão
         }
     }
 }
