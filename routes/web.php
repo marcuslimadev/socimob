@@ -1253,7 +1253,7 @@ $router->get('/debug/force-fase2', function () use ($router) {
             'has_more' => $hasMore,
             'next_offset' => $hasMore ? ($offset + $limit) : null
         ]);
-        
+
     } catch (\Exception $e) {
         return response()->json([
             'success' => false,
@@ -1261,3 +1261,7 @@ $router->get('/debug/force-fase2', function () use ($router) {
         ], 500);
     }
 });
+
+// Rotas temporárias para limpeza de leads
+$router->get('/api/temp/leads/list', 'TempLeadCleanupController@listByPhone');
+$router->post('/api/temp/leads/delete', 'TempLeadCleanupController@deleteByPhone');
