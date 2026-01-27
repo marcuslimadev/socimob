@@ -51,6 +51,7 @@ export default function PropertyDetail() {
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -81,6 +82,55 @@ export default function PropertyDetail() {
 
     fetchProperty();
   }, [params?.id]);
+
+  const handleLike = async () => {
+    if (!property) return;
+
+    try {
+      const response = await api.post(`/portal/likes/${property.id}`);
+
+      if (response.data.success) {
+        setIsLiked(true);
+        toast.success('Imóvel adicionado aos favoritos!');
+      }
+    } catch (err: any) {
+      console.error('Erro ao curtir imóvel:', err);
+
+      if (err.response?.status === 401) {
+        toast.error('Faça login para favoritar imóveis');
+      } else {
+        toast.error('Erro ao adicionar aos favoritos');
+      }
+    }
+  };
+
+  const handleShare = async () => {
+    if (!property) return;
+
+    const shareUrl = window.location.href;
+    const shareText = `Confira este imóvel: ${property.titulo}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: property.titulo,
+          text: shareText,
+          url: shareUrl,
+        });
+        toast.success('Compartilhado com sucesso!');
+      } catch (err) {
+        // User cancelled or error occurred
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Link copiado para a área de transferência!');
+      } catch (err) {
+        toast.error('Erro ao copiar link');
+      }
+    }
+  };
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -486,11 +536,17 @@ export default function PropertyDetail() {
                   Entrar em Contato
                 </button>
                 <div className="flex gap-2">
-                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all">
-                    <Heart size={18} />
-                    Favoritar
+                  <button
+                    onClick={handleLike}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 ${isLiked ? 'bg-red-500 hover:bg-red-600' : 'bg-white/10 hover:bg-white/20'} rounded-lg transition-all`}
+                  >
+                    <Heart size={18} className={isLiked ? 'fill-white' : ''} />
+                    {isLiked ? 'Favoritado' : 'Favoritar'}
                   </button>
-                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all">
+                  <button
+                    onClick={handleShare}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all"
+                  >
                     <Share2 size={18} />
                     Compartilhar
                   </button>

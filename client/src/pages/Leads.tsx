@@ -115,6 +115,25 @@ export default function Leads() {
     }
   };
 
+  const handleDelete = async (leadId: string, leadName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir o lead ${leadName}? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    try {
+      const response = await api.delete(`/leads/${leadId}`);
+
+      if (response.data.success) {
+        toast.success(`Lead ${leadName} excluído com sucesso`);
+        // Remove lead from local state
+        setLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId));
+      }
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+      toast.error('Erro ao excluir lead');
+    }
+  };
+
   const filteredLeads = leads.filter((lead) => {
     const matchSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.phone.includes(searchTerm);
@@ -296,6 +315,7 @@ export default function Leads() {
                       onChat={() => handleOpenChat(lead.id, lead.name)}
                       onAI={() => handleCallAI(lead.id, lead.name)}
                       onCall={() => handleCall(lead.phone, lead.name)}
+                      onDelete={() => handleDelete(lead.id, lead.name)}
                     />
                   </motion.div>
                 ))

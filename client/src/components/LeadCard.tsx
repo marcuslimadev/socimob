@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { Phone, MessageSquare, Mail, MoreVertical, Zap } from 'lucide-react';
+import { useState } from 'react';
+import { Phone, MessageSquare, Mail, MoreVertical, Zap, Trash2 } from 'lucide-react';
 
 interface LeadCardProps {
   name: string;
@@ -12,6 +13,7 @@ interface LeadCardProps {
   onChat?: () => void;
   onAI?: () => void;
   onCall?: () => void;
+  onDelete?: () => void;
 }
 
 const statusConfig = {
@@ -83,8 +85,10 @@ const LeadCard = ({
   onChat,
   onAI,
   onCall,
+  onDelete,
 }: LeadCardProps) => {
   const config = statusConfig[status];
+  const [showMenu, setShowMenu] = useState(false);
 
   return (
     <motion.div
@@ -105,13 +109,42 @@ const LeadCard = ({
             </div>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-          >
-            <MoreVertical size={16} className="text-muted-foreground" />
-          </motion.button>
+          <div className="relative">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu(!showMenu);
+              }}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+            >
+              <MoreVertical size={16} className="text-muted-foreground" />
+            </motion.button>
+
+            {showMenu && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="absolute right-0 top-10 z-20 bg-black/90 backdrop-blur-lg border border-white/20 rounded-lg shadow-xl overflow-hidden"
+                style={{ minWidth: '150px' }}
+              >
+                {onDelete && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      onDelete();
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors text-left"
+                  >
+                    <Trash2 size={14} />
+                    <span className="text-sm">Excluir</span>
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </div>
         </div>
 
         <div className="space-y-2 mb-4">

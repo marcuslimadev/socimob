@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, MapPin, Bed, Bath, Ruler, Heart, Share2, Eye, Filter, Grid, List, AlertCircle } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { toast } from 'sonner';
 import api from '@/lib/api';
 
 interface Property {
@@ -39,6 +40,7 @@ export default function ClientPortal() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [likedProperties, setLikedProperties] = useState<Set<number>>(new Set());
 
   // Carregar imóveis da API
   useEffect(() => {
@@ -59,6 +61,55 @@ export default function ClientPortal() {
 
     fetchProperties();
   }, []);
+
+  const handleLike = async (propertyId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    try {
+      const response = await api.post(`/portal/likes/${propertyId}`);
+
+      if (response.data.success) {
+        setLikedProperties(prev => new Set([...prev, propertyId]));
+        toast.success('Imóvel adicionado aos favoritos!');
+      }
+    } catch (err: any) {
+      console.error('Erro ao curtir imóvel:', err);
+
+      if (err.response?.status === 401) {
+        toast.error('Faça login para favoritar imóveis');
+      } else {
+        toast.error('Erro ao adicionar aos favoritos');
+      }
+    }
+  };
+
+  const handleShare = async (property: Property, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const shareUrl = `${window.location.origin}/portal/imovel/${property.id}`;
+    const shareText = `Confira este imóvel: ${property.titulo}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: property.titulo,
+          text: shareText,
+          url: shareUrl,
+        });
+        toast.success('Compartilhado com sucesso!');
+      } catch (err) {
+        // User cancelled or error occurred
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Link copiado para a área de transferência!');
+      } catch (err) {
+        toast.error('Erro ao copiar link');
+      }
+    }
+  };
 
   const filteredProperties = properties.filter((prop) => {
     // Filtro de busca textual
@@ -451,13 +502,15 @@ export default function ClientPortal() {
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.95 }}
-                              className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-md transition-all"
+                              onClick={(e) => handleLike(property.id, e)}
+                              className={`p-2 ${likedProperties.has(property.id) ? 'bg-red-500' : 'bg-white/20 hover:bg-white/30'} rounded-lg backdrop-blur-md transition-all`}
                             >
-                              <Heart size={18} className="text-red-400" />
+                              <Heart size={18} className={likedProperties.has(property.id) ? 'text-white fill-white' : 'text-red-400'} />
                             </motion.button>
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.95 }}
+                              onClick={(e) => handleShare(property, e)}
                               className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-md transition-all"
                             >
                               <Share2 size={18} className="text-blue-400" />
