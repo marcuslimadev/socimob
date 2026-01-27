@@ -768,4 +768,342 @@ class PropertySyncService
             return htmlspecialchars_decode($descricao, ENT_QUOTES | ENT_HTML5);
         }
     }
+
+    /**
+     * Validar se imóvel tem dados mínimos necessários
+     *
+     * @param array $propertyData
+     * @return array ['valid' => bool, 'missing' => array]
+     */
+    private function validateMinimalData(array $propertyData): array
+    {
+        $requiredFields = [
+            'codigo' => 'Código do imóvel',
+            'titulo' => 'Título',
+            'finalidade_imovel' => 'Finalidade',
+            'tipo_imovel' => 'Tipo',
+        ];
+
+        $missing = [];
+
+        foreach ($requiredFields as $field => $label) {
+            if (empty($propertyData[$field])) {
+                $missing[] = $label;
+            }
+        }
+
+        // Validar se tem pelo menos um valor (venda ou aluguel)
+        if (empty($propertyData['valor_venda']) && empty($propertyData['valor_aluguel'])) {
+            $missing[] = 'Valor (venda ou aluguel)';
+        }
+
+        return [
+            'valid' => empty($missing),
+            'missing' => $missing
+        ];
+    }
+
+    /**
+     * Processar e validar imagens do imóvel
+     *
+     * @param array $imagens
+     * @return array Imagens processadas e validadas
+     */
+    private function processPropertyImages(array $imagens): array
+    {
+        $processed = [];
+
+        foreach ($imagens as $img) {
+            $url = $img['url'] ?? null;
+
+            if (!$url) {
+                continue;
+            }
+
+            // Validar se URL é acessível (simplificado - não faz request real para não sobrecarregar)
+            if (!filter_var($url, FILTER_VALIDATE_URL)) {
+                Log::warning('URL de imagem inválida', ['url' => $url]);
+                continue;
+            }
+
+            // Validar extensão da imagem
+            $extension = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
+            $validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+            if (!in_array($extension, $validExtensions)) {
+                Log::warning('Extensão de imagem não suportada', ['url' => $url, 'extension' => $extension]);
+                continue;
+            }
+
+            $processed[] = [
+                'url' => $url,
+                'titulo' => $img['titulo'] ?? '',
+                'destaque' => $img['destaque'] ?? false,
+                'ordem' => $img['ordem'] ?? 999,
+            ];
+        }
+
+        // Ordenar por destaque e depois por ordem
+        usort($processed, function($a, $b) {
+            if ($a['destaque'] != $b['destaque']) {
+                return $b['destaque'] - $a['destaque']; // Destaque primeiro
+            }
+            return $a['ordem'] - $b['ordem'];
+        });
+
+        return $processed;
+    }
+
+    /**
+     * Encontrar e remover imóveis duplicados
+     *
+     * @param int|null $tenantId
+     * @return array Estatísticas de deduplicação
+     */
+    public function deduplicateProperties(?int $tenantId = null): array
+    {
+        Log::info('🔄 Iniciando deduplicação de imóveis', ['tenant_id' => $tenantId]);
+
+        $query = Property::query();
+
+        if ($tenantId) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        $properties = $query->get();
+        $duplicates = [];
+        $processed = [];
+
+        foreach ($properties as $property) {
+            if (in_array($property->id, $processed)) {
+                continue;
+            }
+
+            // Buscar duplicatas por código
+            $sameCodigo = $properties->where('codigo', $property->codigo)
+                ->where('id', '!=', $property->id)
+                ->pluck('id')
+                ->toArray();
+
+            if (!empty($sameCodigo)) {
+                $duplicates[] = [
+                    'master_id' => $property->id,
+                    'master_codigo' => $property->codigo,
+                    'duplicate_ids' => $sameCodigo,
+                    'reason' => 'same_codigo'
+                ];
+
+                $processed[] = $property->id;
+                $processed = array_merge($processed, $sameCodigo);
+            }
+        }
+
+        // Remover duplicatas (manter o mais recente)
+        $removed = 0;
+        foreach ($duplicates as $duplicate) {
+            foreach ($duplicate['duplicate_ids'] as $dupId) {
+                try {
+                    $dup = Property::find($dupId);
+                    if ($dup) {
+                        // Transferir matches antes de deletar
+                        \App\Models\LeadPropertyMatch::where('property_id', $dupId)
+                            ->update(['property_id' => $duplicate['master_id']]);
+
+                        $dup->delete();
+                        $removed++;
+
+                        Log::info('Duplicata removida', [
+                            'duplicate_id' => $dupId,
+                            'master_id' => $duplicate['master_id'],
+                            'codigo' => $duplicate['master_codigo']
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Erro ao remover duplicata', [
+                        'duplicate_id' => $dupId,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+        }
+
+        Log::info('✅ Deduplicação concluída', [
+            'total_duplicates' => count($duplicates),
+            'removed' => $removed
+        ]);
+
+        return [
+            'success' => true,
+            'total_duplicates' => count($duplicates),
+            'removed' => $removed,
+            'details' => $duplicates
+        ];
+    }
+
+    /**
+     * Sincronizar um imóvel específico com retry
+     *
+     * @param string $codigo
+     * @param int $maxRetries
+     * @return array|null
+     */
+    public function syncSingleProperty(string $codigo, int $maxRetries = 3): ?array
+    {
+        $attempt = 0;
+
+        while ($attempt < $maxRetries) {
+            try {
+                $attempt++;
+
+                Log::info("Sincronizando imóvel {$codigo} (tentativa {$attempt}/{$maxRetries})");
+
+                $response = $this->callApi("/dados/{$codigo}");
+
+                if (!isset($response['resultSet'])) {
+                    throw new \Exception("Dados não encontrados para imóvel {$codigo}");
+                }
+
+                $imovel = $response['resultSet'];
+
+                // Validar dados mínimos
+                $mappedData = $this->mapPropertyData($imovel);
+                $validation = $this->validateMinimalData($mappedData);
+
+                if (!$validation['valid']) {
+                    Log::warning('Imóvel com dados incompletos', [
+                        'codigo' => $codigo,
+                        'missing' => $validation['missing']
+                    ]);
+
+                    // Continuar mesmo com dados incompletos, mas registrar
+                }
+
+                // Verificar se já existe
+                $existing = Property::where('codigo', $codigo)->first();
+
+                if ($existing) {
+                    $existing->update($mappedData);
+                    Log::info("✏️ Imóvel {$codigo} atualizado");
+
+                    return [
+                        'success' => true,
+                        'action' => 'updated',
+                        'property_id' => $existing->id,
+                        'codigo' => $codigo
+                    ];
+                } else {
+                    $property = Property::create($mappedData);
+                    Log::info("➕ Imóvel {$codigo} criado");
+
+                    return [
+                        'success' => true,
+                        'action' => 'created',
+                        'property_id' => $property->id,
+                        'codigo' => $codigo
+                    ];
+                }
+
+            } catch (\Exception $e) {
+                Log::warning("Tentativa {$attempt} falhou para imóvel {$codigo}", [
+                    'error' => $e->getMessage()
+                ]);
+
+                if ($attempt >= $maxRetries) {
+                    Log::error("❌ Falha definitiva ao sincronizar imóvel {$codigo}", [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+
+                    return null;
+                }
+
+                // Aguardar antes de retry
+                sleep($attempt);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Validar e corrigir coordenadas geográficas
+     *
+     * @param int|null $tenantId
+     * @return array
+     */
+    public function validateAndFixCoordinates(?int $tenantId = null): array
+    {
+        Log::info('🗺️ Validando coordenadas geográficas');
+
+        $query = Property::query();
+
+        if ($tenantId) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        $properties = $query->whereNotNull('logradouro')
+            ->whereNotNull('cidade')
+            ->get();
+
+        $stats = [
+            'total' => $properties->count(),
+            'valid' => 0,
+            'invalid' => 0,
+            'fixed' => 0,
+            'failed' => 0
+        ];
+
+        foreach ($properties as $property) {
+            $lat = $property->latitude;
+            $lng = $property->longitude;
+
+            if ($this->validCoordinates($lat, $lng)) {
+                $stats['valid']++;
+                continue;
+            }
+
+            $stats['invalid']++;
+
+            // Tentar obter coordenadas
+            try {
+                $endereco = trim(implode(', ', array_filter([
+                    $property->logradouro,
+                    $property->bairro,
+                    $property->cidade,
+                    $property->estado
+                ])));
+
+                [$newLat, $newLng] = $this->geocode($endereco);
+
+                if ($this->validCoordinates($newLat, $newLng)) {
+                    $property->update([
+                        'latitude' => $newLat,
+                        'longitude' => $newLng
+                    ]);
+
+                    $stats['fixed']++;
+                    Log::debug("Coordenadas corrigidas para {$property->codigo}");
+                } else {
+                    $stats['failed']++;
+                }
+
+            } catch (\Exception $e) {
+                $stats['failed']++;
+                Log::error("Erro ao corrigir coordenadas", [
+                    'property_id' => $property->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            // Respeitar rate limit
+            usleep(500000); // 0.5 segundos
+        }
+
+        Log::info('✅ Validação de coordenadas concluída', $stats);
+
+        return [
+            'success' => true,
+            'stats' => $stats
+        ];
+    }
 }
