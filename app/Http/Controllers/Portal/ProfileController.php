@@ -100,6 +100,9 @@ class ProfileController extends Controller
             }
         }
 
+        /** @var LeadService $leadService */
+        $leadService = app(LeadService::class);
+
         $userPayload = array_filter([
             'name' => $data['name'] ?? null,
             'email' => $data['email'] ?? null,

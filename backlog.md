@@ -28,8 +28,8 @@ Este backlog consolida tudo que precisa ser **aprimorado ou desenvolvido** no si
   - Dashboard atualizado com cards/atalhos dos novos módulos (Vistoria, Assinatura, Pessoas, Imóveis)
 - **RF-004 Notificações** — OK
   - Integração preparada para eventos de Vistoria e Assinatura (serviço e UI)
-- **RF-005 Gestão de Perfil** — PENDENTE
-  - Ajustar campos e permissões conforme o módulo Pessoas
+- **RF-005 Gestão de Perfil** — OK
+  - Campos ampliados e salvamento integrado ao perfil (com preferências do cliente)
 
 ---
 
