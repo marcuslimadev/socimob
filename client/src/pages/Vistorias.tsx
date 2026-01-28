@@ -52,6 +52,25 @@ export default function Vistorias() {
     fetchVistorias();
   }, [page]);
 
+  const getFilterParams = () => {
+    const params: Record<string, string | number | undefined> = {};
+
+    if (filters.codigo) params.codigo = filters.codigo;
+    if (filters.status !== 'todos') params.status = filters.status;
+    if (filters.cliente) params.cliente = filters.cliente;
+    if (filters.tipo !== 'todos') params.tipo = filters.tipo;
+    if (filters.imovel_id) params.imovel_id = filters.imovel_id;
+    if (filters.vistoriador) params.vistoriador = filters.vistoriador;
+    if (filters.pessoa) params.pessoa = filters.pessoa;
+    if (filters.metragem_min) params.metragem_min = filters.metragem_min;
+    if (filters.metragem_max) params.metragem_max = filters.metragem_max;
+    if (filters.mobiliado !== 'todos') params.mobiliado = filters.mobiliado === 'sim';
+    if (filters.data_inicio) params.data_inicio = filters.data_inicio;
+    if (filters.data_fim) params.data_fim = filters.data_fim;
+
+    return params;
+  };
+
   const fetchVistorias = async () => {
     try {
       setIsLoading(true);
@@ -60,18 +79,7 @@ export default function Vistorias() {
         per_page: 10,
       };
 
-      if (filters.codigo) params.codigo = filters.codigo;
-      if (filters.status !== 'todos') params.status = filters.status;
-      if (filters.cliente) params.cliente = filters.cliente;
-      if (filters.tipo !== 'todos') params.tipo = filters.tipo;
-      if (filters.imovel_id) params.imovel_id = filters.imovel_id;
-      if (filters.vistoriador) params.vistoriador = filters.vistoriador;
-      if (filters.pessoa) params.pessoa = filters.pessoa;
-      if (filters.metragem_min) params.metragem_min = filters.metragem_min;
-      if (filters.metragem_max) params.metragem_max = filters.metragem_max;
-      if (filters.mobiliado !== 'todos') params.mobiliado = filters.mobiliado === 'sim';
-      if (filters.data_inicio) params.data_inicio = filters.data_inicio;
-      if (filters.data_fim) params.data_fim = filters.data_fim;
+      Object.assign(params, getFilterParams());
 
       const response = await api.get('/vistorias', { params });
       setVistorias(response.data.data || []);
@@ -111,6 +119,27 @@ export default function Vistorias() {
     });
     setPage(1);
     fetchVistorias();
+  };
+
+  const handleExport = async () => {
+    try {
+      const response = await api.get('/vistorias/export', {
+        params: getFilterParams(),
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `vistorias_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erro ao exportar vistorias:', error);
+      toast.error('Erro ao exportar vistorias');
+    }
   };
 
   const formatDate = (dateString?: string | null) => {
@@ -284,8 +313,18 @@ export default function Vistorias() {
                 <ClipboardCheck size={22} />
                 Listagem de Vistorias
               </h2>
-              <div className="text-sm text-muted-foreground">
-                Pagina {page} de {lastPage}
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">
+                  Pagina {page} de {lastPage}
+                </span>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleExport}
+                  className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-foreground text-sm font-semibold"
+                >
+                  Exportar CSV
+                </motion.button>
               </div>
             </div>
 

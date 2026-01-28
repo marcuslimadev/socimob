@@ -47,9 +47,8 @@ Este backlog consolida tudo que precisa ser **aprimorado ou desenvolvido** no si
 - **RF-102 Visualização de Detalhes** — OK
   - API `GET /api/vistorias/{id}` e UI detalhada inicial
 
-- **RF-103 Exportação de Dados**
-  - API export CSV/XLS
-  - Botão de exportação na UI
+- **RF-103 Exportação de Dados** — OK
+  - API CSV e botao de exportacao na UI
 
 #### Solicitações de Vistoria
 - **RF-110 Criação de Solicitação**
