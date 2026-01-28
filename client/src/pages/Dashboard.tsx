@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, Users, TrendingUp, MessageSquare, Calendar, Zap, Activity } from 'lucide-react';
+import { BarChart3, Users, TrendingUp, MessageSquare, Zap, Activity, ClipboardCheck, FileSignature, UserRound, Home } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import MetricCard from '@/components/MetricCard';
 import LeadCard from '@/components/LeadCard';
 import KanbanBoard from '@/components/KanbanBoard';
 import Sidebar from '@/components/Sidebar';
+import QuickAccessCard from '@/components/QuickAccessCard';
 
 interface DashboardStats {
   leads: {
@@ -93,6 +94,41 @@ export default function Dashboard() {
     return date.toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const quickAccessItems = [
+    {
+      title: 'Vistorias',
+      description: 'Solicitações, agendas e laudos',
+      href: '/vistorias',
+      icon: <ClipboardCheck size={20} />,
+      badge: 'Em desenvolvimento',
+      gradient: 'from-amber-500 to-orange-600',
+    },
+    {
+      title: 'Assinaturas',
+      description: 'Documentos e status de assinatura',
+      href: '/assinaturas',
+      icon: <FileSignature size={20} />,
+      badge: 'Em desenvolvimento',
+      gradient: 'from-indigo-500 to-sky-600',
+    },
+    {
+      title: 'Pessoas',
+      description: 'Clientes, proprietários e contatos',
+      href: '/pessoas',
+      icon: <UserRound size={20} />,
+      badge: 'Em desenvolvimento',
+      gradient: 'from-rose-500 to-pink-600',
+    },
+    {
+      title: 'Imóveis',
+      description: 'Cadastro e portfólio imobiliário',
+      href: '/properties',
+      icon: <Home size={20} />,
+      badge: 'Ativo',
+      gradient: 'from-blue-500 to-cyan-600',
+    },
+  ];
+
   return (
     <div className="flex">
       <Sidebar />
@@ -152,6 +188,18 @@ export default function Dashboard() {
               gradient="from-cyan-500 to-blue-600"
               delay={0.3}
             />
+          </motion.div>
+
+          <motion.div variants={itemVariants} className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-foreground">Acessos rápidos</h2>
+              <span className="text-sm text-muted-foreground">Novos módulos em construção</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {quickAccessItems.map((item, index) => (
+                <QuickAccessCard key={item.title} {...item} delay={0.2 + index * 0.1} />
+              ))}
+            </div>
           </motion.div>
 
           <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

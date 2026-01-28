@@ -15,6 +15,9 @@ import ResetPassword from "./pages/ResetPassword";
 import ClientPortal from "./pages/ClientPortal";
 import Agenda from "./pages/Agenda";
 import Financeiro from "./pages/Financeiro";
+import Vistorias from "./pages/Vistorias";
+import Assinaturas from "./pages/Assinaturas";
+import Pessoas from "./pages/Pessoas";
 
 import PropertyDetail from "./pages/PropertyDetail";
 import Settings from "./pages/Settings";
@@ -36,6 +39,9 @@ function Router() {
       <Route path="/portal" component={ClientPortal} />
       <Route path="/agenda" component={Agenda} />
       <Route path="/financeiro" component={Financeiro} />
+      <Route path="/vistorias" component={Vistorias} />
+      <Route path="/assinaturas" component={Assinaturas} />
+      <Route path="/pessoas" component={Pessoas} />
       <Route path="/settings" component={Settings} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
