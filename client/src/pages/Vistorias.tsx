@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Link } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 
@@ -309,6 +310,7 @@ export default function Vistorias() {
                       <th className="pb-3">Metragem</th>
                       <th className="pb-3">Mobiliado</th>
                       <th className="pb-3">Data</th>
+                      <th className="pb-3 text-right">Acoes</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -336,6 +338,17 @@ export default function Vistorias() {
                           )}
                         </td>
                         <td className="py-3 text-foreground">{formatDate(vistoria.data_vistoria)}</td>
+                        <td className="py-3 text-right">
+                          <Link to={`/vistorias/${vistoria.id}`}>
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-foreground text-xs font-semibold"
+                            >
+                              Ver
+                            </motion.button>
+                          </Link>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

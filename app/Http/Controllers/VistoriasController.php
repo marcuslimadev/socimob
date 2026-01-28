@@ -74,4 +74,25 @@ class VistoriasController extends Controller
 
         return response()->json($vistorias);
     }
+
+    /**
+     * Detalhes da vistoria
+     * GET /api/vistorias/{id}
+     */
+    public function show(Request $request, $id)
+    {
+        $query = Vistoria::query();
+
+        if ($request->attributes->has('tenant_id')) {
+            $query->forTenant($request->attributes->get('tenant_id'));
+        }
+
+        $vistoria = $query->find($id);
+
+        if (!$vistoria) {
+            return response()->json(['error' => 'Vistoria not found'], 404);
+        }
+
+        return response()->json($vistoria);
+    }
 }

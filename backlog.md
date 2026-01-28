@@ -44,9 +44,8 @@ Este backlog consolida tudo que precisa ser **aprimorado ou desenvolvido** no si
 - **RF-101 Filtros de Vistoria** — OK
   - Filtros implementados na API e UI (Codigo, Status, Cliente, Imovel, Tipo, Vistoriadores, Pessoas, Metragem, Mobiliado)
 
-- **RF-102 Visualização de Detalhes**
-  - API `GET /api/vistorias/{id}`
-  - UI detalhada com histórico, fotos, pessoas relacionadas
+- **RF-102 Visualização de Detalhes** — OK
+  - API `GET /api/vistorias/{id}` e UI detalhada inicial
 
 - **RF-103 Exportação de Dados**
   - API export CSV/XLS
