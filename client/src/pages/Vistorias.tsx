@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ClipboardCheck, Loader2, Check, X } from 'lucide-react';
+import {
+  ClipboardCheck,
+  Filter,
+  Search,
+  Loader2,
+  Calendar,
+  Check,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -12,6 +20,8 @@ interface Vistoria {
   cliente_nome: string | null;
   imovel_id: number | null;
   tipo: string | null;
+  vistoriadores?: string[] | null;
+  pessoas?: string[] | null;
   metragem?: string | null;
   mobiliado?: boolean | null;
   data_vistoria?: string | null;
@@ -22,6 +32,20 @@ export default function Vistorias() {
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [filters, setFilters] = useState({
+    codigo: '',
+    status: 'todos',
+    cliente: '',
+    tipo: 'todos',
+    imovel_id: '',
+    vistoriador: '',
+    pessoa: '',
+    metragem_min: '',
+    metragem_max: '',
+    mobiliado: 'todos',
+    data_inicio: '',
+    data_fim: '',
+  });
 
   useEffect(() => {
     fetchVistorias();
@@ -30,9 +54,25 @@ export default function Vistorias() {
   const fetchVistorias = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get('/vistorias', {
-        params: { page, per_page: 10 },
-      });
+      const params: Record<string, string | number | undefined> = {
+        page,
+        per_page: 10,
+      };
+
+      if (filters.codigo) params.codigo = filters.codigo;
+      if (filters.status !== 'todos') params.status = filters.status;
+      if (filters.cliente) params.cliente = filters.cliente;
+      if (filters.tipo !== 'todos') params.tipo = filters.tipo;
+      if (filters.imovel_id) params.imovel_id = filters.imovel_id;
+      if (filters.vistoriador) params.vistoriador = filters.vistoriador;
+      if (filters.pessoa) params.pessoa = filters.pessoa;
+      if (filters.metragem_min) params.metragem_min = filters.metragem_min;
+      if (filters.metragem_max) params.metragem_max = filters.metragem_max;
+      if (filters.mobiliado !== 'todos') params.mobiliado = filters.mobiliado === 'sim';
+      if (filters.data_inicio) params.data_inicio = filters.data_inicio;
+      if (filters.data_fim) params.data_fim = filters.data_fim;
+
+      const response = await api.get('/vistorias', { params });
       setVistorias(response.data.data || []);
       setPage(response.data.current_page || 1);
       setLastPage(response.data.last_page || 1);
@@ -42,6 +82,34 @@ export default function Vistorias() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleFilterChange = (field: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const applyFilters = () => {
+    setPage(1);
+    fetchVistorias();
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      codigo: '',
+      status: 'todos',
+      cliente: '',
+      tipo: 'todos',
+      imovel_id: '',
+      vistoriador: '',
+      pessoa: '',
+      metragem_min: '',
+      metragem_max: '',
+      mobiliado: 'todos',
+      data_inicio: '',
+      data_fim: '',
+    });
+    setPage(1);
+    fetchVistorias();
   };
 
   const formatDate = (dateString?: string | null) => {
@@ -74,6 +142,139 @@ export default function Vistorias() {
           <div className="mb-8">
             <h1 className="text-4xl font-bold gradient-text mb-2">Vistorias</h1>
             <p className="text-muted-foreground">Gerencie solicitacoes e inspecoes do portifolio.</p>
+          </div>
+
+          <div className="glass-panel p-6 rounded-2xl mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                <input
+                  type="text"
+                  placeholder="Codigo"
+                  value={filters.codigo}
+                  onChange={(e) => handleFilterChange('codigo', e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="Cliente"
+                value={filters.cliente}
+                onChange={(e) => handleFilterChange('cliente', e.target.value)}
+                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
+              <input
+                type="text"
+                placeholder="Imovel ID"
+                value={filters.imovel_id}
+                onChange={(e) => handleFilterChange('imovel_id', e.target.value)}
+                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+              <select
+                value={filters.status}
+                onChange={(e) => handleFilterChange('status', e.target.value)}
+                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              >
+                <option value="todos">Status</option>
+                <option value="solicitada">Solicitada</option>
+                <option value="designada">Designada</option>
+                <option value="andamento">Em andamento</option>
+                <option value="concluida">Concluida</option>
+                <option value="cancelada">Cancelada</option>
+              </select>
+              <select
+                value={filters.tipo}
+                onChange={(e) => handleFilterChange('tipo', e.target.value)}
+                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              >
+                <option value="todos">Tipo</option>
+                <option value="entrada">Entrada</option>
+                <option value="saida">Saida</option>
+                <option value="periodica">Periodica</option>
+              </select>
+              <select
+                value={filters.mobiliado}
+                onChange={(e) => handleFilterChange('mobiliado', e.target.value)}
+                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              >
+                <option value="todos">Mobiliado</option>
+                <option value="sim">Sim</option>
+                <option value="nao">Nao</option>
+              </select>
+              <div className="flex gap-2">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={applyFilters}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-white font-semibold"
+                >
+                  <Filter size={18} />
+                  Filtrar
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={resetFilters}
+                  className="px-4 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-foreground"
+                >
+                  <X size={18} />
+                </motion.button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-4">
+              <input
+                type="text"
+                placeholder="Vistoriador"
+                value={filters.vistoriador}
+                onChange={(e) => handleFilterChange('vistoriador', e.target.value)}
+                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
+              <input
+                type="text"
+                placeholder="Pessoa"
+                value={filters.pessoa}
+                onChange={(e) => handleFilterChange('pessoa', e.target.value)}
+                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
+              <input
+                type="number"
+                placeholder="Metragem min"
+                value={filters.metragem_min}
+                onChange={(e) => handleFilterChange('metragem_min', e.target.value)}
+                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
+              <input
+                type="number"
+                placeholder="Metragem max"
+                value={filters.metragem_max}
+                onChange={(e) => handleFilterChange('metragem_max', e.target.value)}
+                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                  <input
+                    type="date"
+                    value={filters.data_inicio}
+                    onChange={(e) => handleFilterChange('data_inicio', e.target.value)}
+                    className="w-full pl-9 pr-3 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                  <input
+                    type="date"
+                    value={filters.data_fim}
+                    onChange={(e) => handleFilterChange('data_fim', e.target.value)}
+                    className="w-full pl-9 pr-3 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="glass-panel p-6 rounded-2xl">

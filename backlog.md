@@ -41,9 +41,8 @@ Este backlog consolida tudo que precisa ser **aprimorado ou desenvolvido** no si
 - **RF-100 Listagem de Vistorias** — OK
   - Tabela `vistorias`, API paginada e UI de listagem prontas
 
-- **RF-101 Filtros de Vistoria** — PENDENTE
-  - Filtros: Código, Status, Cliente, Imóvel, Tipo, Vistoriadores, Pessoas, Metragem, Mobiliado
-  - Implementar filtros na API e UI
+- **RF-101 Filtros de Vistoria** — OK
+  - Filtros implementados na API e UI (Codigo, Status, Cliente, Imovel, Tipo, Vistoriadores, Pessoas, Metragem, Mobiliado)
 
 - **RF-102 Visualização de Detalhes**
   - API `GET /api/vistorias/{id}`
