@@ -65,7 +65,7 @@ Este backlog consolida tudo que precisa ser **aprimorado ou desenvolvido** no si
 - **RF-113 Visualização em Lista**
   - UI lista detalhada com colunas definidas
 
-- **RF-114 Formulário de Solicitação (Abas)** — PENDENTE
+- **RF-114 Formulário de Solicitação (Abas)** — OK
   - **RF-114.1 Solicitação:** Cliente, Tipo (obrigatorios)
   - **RF-114.2 Observações:** Texto livre
   - **RF-114.3 Pessoas:** Vinculacao a pessoas adicionais
