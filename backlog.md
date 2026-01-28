@@ -38,12 +38,10 @@ Este backlog consolida tudo que precisa ser **aprimorado ou desenvolvido** no si
 **Status:** Faltando (apenas agenda de visitas existe)
 
 #### Gestão de Vistorias
-- **RF-100 Listagem de Vistorias**
-  - Criar tabela `vistorias`
-  - Criar API `GET /api/vistorias` (com paginação)
-  - Criar UI de listagem
+- **RF-100 Listagem de Vistorias** — OK
+  - Tabela `vistorias`, API paginada e UI de listagem prontas
 
-- **RF-101 Filtros de Vistoria**
+- **RF-101 Filtros de Vistoria** — PENDENTE
   - Filtros: Código, Status, Cliente, Imóvel, Tipo, Vistoriadores, Pessoas, Metragem, Mobiliado
   - Implementar filtros na API e UI
 

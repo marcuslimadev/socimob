@@ -873,6 +873,9 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     $router->get('/dashboard/stats', 'DashboardController@stats');
     $router->get('/dashboard/chart/atendimentos', 'DashboardController@chartAtendimentos');
     $router->get('/dashboard/atividades', 'DashboardController@atividades');
+
+    // Vistorias
+    $router->get('/vistorias', 'VistoriasController@index');
     
     // Leads
     $router->get('/leads', 'LeadsController@index');
