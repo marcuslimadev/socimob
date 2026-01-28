@@ -180,6 +180,12 @@ class Notification extends Model
             'status_change' => 'Alteração de Status',
             'message' => 'Mensagem',
             'system' => 'Sistema',
+            'vistoria_solicitada' => 'Vistoria Solicitada',
+            'vistoria_designada' => 'Vistoria Designada',
+            'vistoria_concluida' => 'Vistoria Concluída',
+            'assinatura_enviada' => 'Assinatura Enviada',
+            'assinatura_assinada' => 'Assinatura Concluída',
+            'assinatura_recusada' => 'Assinatura Recusada',
             default => $this->type,
         };
     }

@@ -524,4 +524,132 @@ class NotificationService
 
         return $this->sendToTenantAdmins($tenantId, $notificationData, ['in_app']);
     }
+
+    /**
+     * Criar notificacao de nova solicitacao de vistoria
+     *
+     * @param int $vistoriaId
+     * @param int $tenantId
+     * @param array $context
+     * @return array
+     */
+    public function notifyVistoriaRequested(int $vistoriaId, int $tenantId, array $context = []): array
+    {
+        $cliente = $context['cliente'] ?? null;
+        $imovel = $context['imovel'] ?? null;
+        $descricao = trim(($cliente ? $cliente : '') . ($imovel ? ($cliente ? ' - ' : '') . $imovel : ''));
+
+        $notificationData = [
+            'tenant_id' => $tenantId,
+            'type' => 'vistoria_solicitada',
+            'title' => 'Nova solicitacao de vistoria',
+            'message' => $descricao ? "Nova solicitacao de vistoria: {$descricao}" : "Nova solicitacao de vistoria #{$vistoriaId}",
+            'action_url' => "/vistorias/{$vistoriaId}",
+            'data' => array_merge(['vistoria_id' => $vistoriaId], $context),
+        ];
+
+        return $this->sendToTenantAdmins($tenantId, $notificationData, ['in_app']);
+    }
+
+    /**
+     * Criar notificacao de vistoria designada
+     *
+     * @param int $vistoriaId
+     * @param int $tenantId
+     * @param int $userId
+     * @param array $context
+     * @param array $channels
+     * @return array
+     */
+    public function notifyVistoriaAssigned(
+        int $vistoriaId,
+        int $tenantId,
+        int $userId,
+        array $context = [],
+        array $channels = ['in_app']
+    ): array {
+        $notificationData = [
+            'tenant_id' => $tenantId,
+            'type' => 'vistoria_designada',
+            'title' => 'Vistoria designada',
+            'message' => $context['message'] ?? "Voce foi designado para a vistoria #{$vistoriaId}",
+            'action_url' => "/vistorias/{$vistoriaId}",
+            'data' => array_merge(['vistoria_id' => $vistoriaId], $context),
+        ];
+
+        return $this->sendToUser($userId, $notificationData, $channels);
+    }
+
+    /**
+     * Criar notificacao de vistoria concluida
+     *
+     * @param int $vistoriaId
+     * @param int $tenantId
+     * @param array $context
+     * @return array
+     */
+    public function notifyVistoriaCompleted(int $vistoriaId, int $tenantId, array $context = []): array
+    {
+        $notificationData = [
+            'tenant_id' => $tenantId,
+            'type' => 'vistoria_concluida',
+            'title' => 'Vistoria concluida',
+            'message' => $context['message'] ?? "A vistoria #{$vistoriaId} foi concluida",
+            'action_url' => "/vistorias/{$vistoriaId}",
+            'data' => array_merge(['vistoria_id' => $vistoriaId], $context),
+        ];
+
+        return $this->sendToTenantAdmins($tenantId, $notificationData, ['in_app']);
+    }
+
+    /**
+     * Criar notificacao de assinatura enviada
+     *
+     * @param int $documentId
+     * @param int $tenantId
+     * @param int $userId
+     * @param array $context
+     * @param array $channels
+     * @return array
+     */
+    public function notifySignatureRequested(
+        int $documentId,
+        int $tenantId,
+        int $userId,
+        array $context = [],
+        array $channels = ['in_app']
+    ): array {
+        $notificationData = [
+            'tenant_id' => $tenantId,
+            'type' => 'assinatura_enviada',
+            'title' => 'Assinatura solicitada',
+            'message' => $context['message'] ?? "Documento #{$documentId} aguardando assinatura",
+            'action_url' => "/assinaturas/{$documentId}",
+            'data' => array_merge(['documento_id' => $documentId], $context),
+        ];
+
+        return $this->sendToUser($userId, $notificationData, $channels);
+    }
+
+    /**
+     * Criar notificacao de assinatura concluida
+     *
+     * @param int $documentId
+     * @param int $tenantId
+     * @param array $context
+     * @return array
+     */
+    public function notifySignatureCompleted(int $documentId, int $tenantId, array $context = []): array
+    {
+        $notificationData = [
+            'tenant_id' => $tenantId,
+            'type' => 'assinatura_assinada',
+            'title' => 'Assinatura concluida',
+            'message' => $context['message'] ?? "Documento #{$documentId} foi assinado",
+            'action_url' => "/assinaturas/{$documentId}",
+            'data' => array_merge(['documento_id' => $documentId], $context),
+        ];
+
+        return $this->sendToTenantAdmins($tenantId, $notificationData, ['in_app']);
+    }
 }

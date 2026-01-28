@@ -26,8 +26,8 @@ Este backlog consolida tudo que precisa ser **aprimorado ou desenvolvido** no si
 - **RF-002 Recuperação de Senha** — OK
 - **RF-003 Dashboard/Acessos Rápidos** — OK
   - Dashboard atualizado com cards/atalhos dos novos módulos (Vistoria, Assinatura, Pessoas, Imóveis)
-- **RF-004 Notificações** — PENDENTE
-  - Integrar notificações com eventos de Vistoria e Assinatura
+- **RF-004 Notificações** — OK
+  - Integração preparada para eventos de Vistoria e Assinatura (serviço e UI)
 - **RF-005 Gestão de Perfil** — PENDENTE
   - Ajustar campos e permissões conforme o módulo Pessoas
 

@@ -47,6 +47,7 @@ const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   // Carregar dados do tenant e usuário
   useEffect(() => {
@@ -63,6 +64,8 @@ const Sidebar = () => {
         if (response.data.success && response.data.data) {
           setTenant(response.data.data);
         }
+        const unreadResponse = await api.get('/notifications/unread/count');
+        setNotificationCount(unreadResponse.data.unread_count || 0);
       } catch (error) {
         console.error('Erro ao carregar dados do tenant:', error);
       }
@@ -76,7 +79,7 @@ const Sidebar = () => {
     { icon: <Users size={20} />, label: 'Leads', href: '/leads', badge: 12 },
     { icon: <Home size={20} />, label: 'Imóveis', href: '/properties' },
     { icon: <MessageSquare size={20} />, label: 'Chat', href: '/chat', badge: 3 },
-    { icon: <Bell size={20} />, label: 'Notificações', href: '/notifications', badge: 5 },
+    { icon: <Bell size={20} />, label: 'Notificações', href: '/notifications', badge: notificationCount || undefined },
     { icon: <CalendarClock size={20} />, label: 'Agenda', href: '/agenda' },
     { icon: <Wallet size={20} />, label: 'Financeiro', href: '/financeiro' },
     { icon: <Settings size={20} />, label: 'Configurações', href: '/settings' },
