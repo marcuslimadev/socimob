@@ -173,6 +173,16 @@ class LeadObserver
             return false;
         }
 
+        // Não iniciar atendimento automático se o lead veio do WhatsApp
+        // O WhatsAppService já cuida do fluxo de atendimento quando o cliente inicia a conversa
+        if ($lead->isFromWhatsApp()) {
+            Log::info('[LeadObserver] Lead veio do WhatsApp, atendimento será gerenciado pelo WhatsAppService', [
+                'lead_id' => $lead->id,
+                'origem' => $lead->origem
+            ]);
+            return false;
+        }
+
         // Verificar se atendimento automático está desativado para o tenant
         if (!$this->isAtendimentoAutomaticoAtivo($lead->tenant_id)) {
             Log::info('[LeadObserver] Atendimento automático DESATIVADO para este tenant', [

@@ -36,6 +36,7 @@ class Tenant extends Model
         'api_token',
         'contact_email',
         'contact_phone',
+        'whatsapp_template_message',
         'description',
         'is_active',
         'max_users',

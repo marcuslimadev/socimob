@@ -19,6 +19,7 @@ class Lead extends Model
         'whatsapp_name',
         'status',
         'observacoes',
+        'origem',
         'user_id',
         'corretor_id',
         'budget_min',
@@ -97,5 +98,13 @@ class Lead extends Model
         $hasIntegracao = str_contains($observacoes, 'integração') || str_contains($observacoes, 'integracao');
 
         return ($hasOrigem && ($hasChaves || $hasIntegracao)) || $hasChaves;
+    }
+
+    /**
+     * Verificar se o lead veio do WhatsApp (cliente iniciou a conversa)
+     */
+    public function isFromWhatsApp(): bool
+    {
+        return $this->origem === 'whatsapp';
     }
 }
