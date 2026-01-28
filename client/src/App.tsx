@@ -19,6 +19,7 @@ import Vistorias from "./pages/Vistorias";
 import Assinaturas from "./pages/Assinaturas";
 import Pessoas from "./pages/Pessoas";
 import VistoriaDetail from "./pages/VistoriaDetail";
+import VistoriaSolicitacaoNova from "./pages/VistoriaSolicitacaoNova";
 
 import PropertyDetail from "./pages/PropertyDetail";
 import Settings from "./pages/Settings";
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/agenda" component={Agenda} />
       <Route path="/financeiro" component={Financeiro} />
       <Route path="/vistorias" component={Vistorias} />
+      <Route path="/vistorias/solicitacoes/nova" component={VistoriaSolicitacaoNova} />
       <Route path="/vistorias/:id" component={VistoriaDetail} />
       <Route path="/assinaturas" component={Assinaturas} />
       <Route path="/pessoas" component={Pessoas} />

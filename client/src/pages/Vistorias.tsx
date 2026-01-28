@@ -169,9 +169,20 @@ export default function Vistorias() {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-7xl mx-auto"
         >
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold gradient-text mb-2">Vistorias</h1>
-            <p className="text-muted-foreground">Gerencie solicitacoes e inspecoes do portifolio.</p>
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold gradient-text mb-2">Vistorias</h1>
+              <p className="text-muted-foreground">Gerencie solicitacoes e inspecoes do portifolio.</p>
+            </div>
+            <Link to="/vistorias/solicitacoes/nova">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-white font-semibold"
+              >
+                Nova solicitacao
+              </motion.button>
+            </Link>
           </div>
 
           <div className="glass-panel p-6 rounded-2xl mb-8">

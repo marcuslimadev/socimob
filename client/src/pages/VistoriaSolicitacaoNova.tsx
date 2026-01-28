@@ -1,0 +1,142 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { ClipboardCheck, Save, ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
+import { Link, useLocation } from 'wouter';
+import Sidebar from '@/components/Sidebar';
+import { api } from '@/lib/api';
+
+export default function VistoriaSolicitacaoNova() {
+  const [, setLocation] = useLocation();
+  const [isSaving, setIsSaving] = useState(false);
+  const [form, setForm] = useState({
+    cliente_nome: '',
+    tipo: '',
+    imovel_id: '',
+    observacoes: '',
+  });
+
+  const handleChange = (field: string, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async () => {
+    if (!form.cliente_nome || !form.tipo) {
+      toast.error('Cliente e tipo sao obrigatorios');
+      return;
+    }
+    try {
+      setIsSaving(true);
+      const payload = {
+        cliente_nome: form.cliente_nome,
+        tipo: form.tipo,
+        imovel_id: form.imovel_id || null,
+        observacoes: form.observacoes || null,
+      };
+      const response = await api.post('/vistorias/solicitacoes', payload);
+      if (response.data?.success) {
+        toast.success('Solicitacao criada com sucesso');
+        setLocation('/vistorias');
+      } else {
+        toast.error('Nao foi possivel criar a solicitacao');
+      }
+    } catch (error: any) {
+      console.error('Erro ao criar solicitacao:', error);
+      toast.error(error?.response?.data?.message || 'Erro ao criar solicitacao');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex">
+      <Sidebar />
+
+      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-4xl mx-auto"
+        >
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold gradient-text mb-2">Nova Solicitacao</h1>
+              <p className="text-muted-foreground">Cadastro de solicitacao de vistoria.</p>
+            </div>
+            <Link to="/vistorias">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground"
+              >
+                <ArrowLeft size={16} />
+                Voltar
+              </motion.button>
+            </Link>
+          </div>
+
+          <div className="glass-panel p-6 rounded-2xl">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Cliente *</label>
+                <input
+                  type="text"
+                  value={form.cliente_nome}
+                  onChange={(e) => handleChange('cliente_nome', e.target.value)}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Tipo *</label>
+                  <input
+                    type="text"
+                    value={form.tipo}
+                    onChange={(e) => handleChange('tipo', e.target.value)}
+                    placeholder="Entrada, saida, periodica..."
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Imovel ID</label>
+                  <input
+                    type="text"
+                    value={form.imovel_id}
+                    onChange={(e) => handleChange('imovel_id', e.target.value)}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Observacoes</label>
+                <textarea
+                  rows={5}
+                  value={form.observacoes}
+                  onChange={(e) => handleChange('observacoes', e.target.value)}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <ClipboardCheck size={18} />
+                Campos obrigatorios: cliente, tipo.
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleSubmit}
+                disabled={isSaving}
+                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white font-semibold flex items-center gap-2 disabled:opacity-60"
+              >
+                <Save size={18} />
+                {isSaving ? 'Salvando...' : 'Salvar solicitacao'}
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
