@@ -115,8 +115,8 @@ Este backlog consolida tudo que precisa ser **aprimorado ou desenvolvido** no si
 **Status:** Parcial (listagem e detalhes existem; criação/edição faltando)
 
 - **RF-300 Listagem de Imóveis** — OK
-- **RF-301 Pesquisa de Imóveis** — PENDENTE
-  - Filtros avançados e paginação consistente
+- **RF-301 Pesquisa de Imóveis** — OK
+  - Filtros avançados e paginação consistente (front-end)
 
 - **RF-302 Criação de Imóvel** — PENDENTE
   - API `POST /api/imoveis`
