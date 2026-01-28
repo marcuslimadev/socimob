@@ -878,6 +878,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     $router->get('/vistorias', 'VistoriasController@index');
     $router->get('/vistorias/export', 'VistoriasController@export');
     $router->get('/vistorias/{id}', 'VistoriasController@show');
+    $router->post('/vistorias/solicitacoes', 'VistoriaSolicitacoesController@store');
     
     // Leads
     $router->get('/leads', 'LeadsController@index');

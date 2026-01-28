@@ -51,10 +51,9 @@ Este backlog consolida tudo que precisa ser **aprimorado ou desenvolvido** no si
   - API CSV e botao de exportacao na UI
 
 #### Solicitações de Vistoria
-- **RF-110 Criação de Solicitação**
-  - Tabela `vistoria_solicitacoes`
-  - API `POST /api/vistorias/solicitacoes`
-  - UI formulário multi-abas
+- **RF-110 Criação de Solicitação** — PARCIAL
+  - Tabela `vistoria_solicitacoes` e API `POST /api/vistorias/solicitacoes` prontas
+  - UI formulário multi-abas pendente
 
 - **RF-111 Visualização em Kanban**
   - Colunas: Solicitada, Designada, Em Andamento, Concluída, Cancelada
