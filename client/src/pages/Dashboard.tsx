@@ -26,6 +26,25 @@ interface DashboardStats {
     total: number;
     ativos: number;
   };
+  vistorias: {
+    total: number;
+    solicitacoes_pendentes: number;
+    em_andamento: number;
+  };
+  pessoas: {
+    total: number;
+    fisicas: number;
+    juridicas: number;
+  };
+  contestacoes: {
+    total: number;
+    apontadas: number;
+  };
+  assinaturas: {
+    total: number;
+    pendentes: number;
+    assinados: number;
+  };
 }
 
 interface RecentActivity {
@@ -157,7 +176,7 @@ export default function Dashboard() {
               title="Total de Leads"
               value={stats?.leads.total.toString() || "0"}
               unit="leads"
-              trend={0} // TODO: Calculate trend
+              trend={0}
               icon={<Users size={24} />}
               gradient="from-blue-500 to-blue-600"
               delay={0}
@@ -187,6 +206,48 @@ export default function Dashboard() {
               icon={<MessageSquare size={24} />}
               gradient="from-cyan-500 to-blue-600"
               delay={0.3}
+            />
+          </motion.div>
+
+          <motion.div
+            variants={itemVariants}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          >
+            <MetricCard
+              title="Vistorias Pendentes"
+              value={stats?.vistorias.solicitacoes_pendentes.toString() || "0"}
+              unit="solicitações"
+              trend={0}
+              icon={<ClipboardCheck size={24} />}
+              gradient="from-orange-500 to-red-600"
+              delay={0.4}
+            />
+            <MetricCard
+              title="Total de Pessoas"
+              value={stats?.pessoas.total.toString() || "0"}
+              unit="cadastros"
+              trend={0}
+              icon={<UserRound size={24} />}
+              gradient="from-pink-500 to-rose-600"
+              delay={0.5}
+            />
+            <MetricCard
+              title="Contestações Ativas"
+              value={stats?.contestacoes.apontadas.toString() || "0"}
+              unit="apontadas"
+              trend={0}
+              icon={<Activity size={24} />}
+              gradient="from-yellow-500 to-orange-600"
+              delay={0.6}
+            />
+            <MetricCard
+              title="Assinaturas Pendentes"
+              value={stats?.assinaturas.pendentes.toString() || "0"}
+              unit="documentos"
+              trend={0}
+              icon={<FileSignature size={24} />}
+              gradient="from-indigo-500 to-purple-600"
+              delay={0.7}
             />
           </motion.div>
 

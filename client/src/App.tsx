@@ -20,8 +20,13 @@ import Assinaturas from "./pages/Assinaturas";
 import Pessoas from "./pages/Pessoas";
 import VistoriaDetail from "./pages/VistoriaDetail";
 import VistoriaSolicitacaoNova from "./pages/VistoriaSolicitacaoNova";
+import VistoriaSolicitacoes from "./pages/VistoriaSolicitacoes";
+import VistoriaSolicitacoesKanban from "./pages/VistoriaSolicitacoesKanban";
+import VistoriaSolicitacoesCalendario from "./pages/VistoriaSolicitacoesCalendario";
+import VistoriaContestacoes from "./pages/VistoriaContestacoes";
 
 import PropertyDetail from "./pages/PropertyDetail";
+import ImovelForm from "./pages/ImovelForm";
 import Settings from "./pages/Settings";
 
 
@@ -32,6 +37,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/leads" component={Leads} />
       <Route path="/properties" component={Properties} />
+      <Route path="/properties/novo" component={ImovelForm} />
       <Route path="/chat" component={Chat} />
       <Route path="/notifications" component={NotificationCenter} />
       <Route path="/login" component={Login} />
@@ -42,7 +48,11 @@ function Router() {
       <Route path="/agenda" component={Agenda} />
       <Route path="/financeiro" component={Financeiro} />
       <Route path="/vistorias" component={Vistorias} />
+      <Route path="/vistorias/solicitacoes" component={VistoriaSolicitacoes} />
+      <Route path="/vistorias/solicitacoes/kanban" component={VistoriaSolicitacoesKanban} />
+      <Route path="/vistorias/solicitacoes/calendario" component={VistoriaSolicitacoesCalendario} />
       <Route path="/vistorias/solicitacoes/nova" component={VistoriaSolicitacaoNova} />
+      <Route path="/vistorias/contestacoes" component={VistoriaContestacoes} />
       <Route path="/vistorias/:id" component={VistoriaDetail} />
       <Route path="/assinaturas" component={Assinaturas} />
       <Route path="/pessoas" component={Pessoas} />

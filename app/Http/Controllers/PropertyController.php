@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Property;
 use App\Services\PropertySyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class PropertyController extends Controller
 {
@@ -188,6 +190,205 @@ class PropertyController extends Controller
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => array_slice($e->getTrace(), 0, 5)
+            ], 500);
+        }
+    }
+
+    /**
+     * Criar novo imóvel
+     * POST /api/imoveis
+     */
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'codigo_imovel' => 'required|string|max:50|unique:imo_properties,codigo_imovel',
+            'referencia_imovel' => 'nullable|string|max:50',
+            'tipo_imovel' => 'required|string|max:100',
+            'finalidade_imovel' => 'nullable|string|in:venda,aluguel,temporada',
+            'valor_venda' => 'nullable|numeric',
+            'valor_condominio' => 'nullable|numeric',
+            'valor_iptu' => 'nullable|numeric',
+            'dormitorios' => 'nullable|integer',
+            'suites' => 'nullable|integer',
+            'banheiros' => 'nullable|integer',
+            'garagem' => 'nullable|integer',
+            'area_total' => 'nullable|numeric',
+            'area_privativa' => 'nullable|numeric',
+            'area_terreno' => 'nullable|numeric',
+            'cep' => 'nullable|string|max:20',
+            'estado' => 'nullable|string|max:2',
+            'cidade' => 'nullable|string|max:100',
+            'bairro' => 'nullable|string|max:100',
+            'logradouro' => 'nullable|string|max:255',
+            'numero' => 'nullable|string|max:50',
+            'complemento' => 'nullable|string|max:255',
+            'em_condominio' => 'nullable|boolean',
+            'nome_condominio' => 'nullable|string|max:255',
+            'descricao' => 'nullable|string',
+            'active' => 'nullable|boolean',
+            'exibir_imovel' => 'nullable|boolean',
+            'exclusividade' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'messages' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $validator->validated();
+        $data['active'] = $data['active'] ?? true;
+        $data['exibir_imovel'] = $data['exibir_imovel'] ?? true;
+
+        $property = Property::create($data);
+
+        return response()->json([
+            'success' => true,
+            'data' => $property,
+        ], 201);
+    }
+
+    /**
+     * Atualizar imóvel
+     * PUT /api/imoveis/{id}
+     */
+    public function update(Request $request, $id)
+    {
+        $property = Property::find($id);
+
+        if (!$property) {
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'codigo_imovel' => 'nullable|string|max:50|unique:imo_properties,codigo_imovel,' . $id,
+            'referencia_imovel' => 'nullable|string|max:50',
+            'tipo_imovel' => 'nullable|string|max:100',
+            'finalidade_imovel' => 'nullable|string|in:venda,aluguel,temporada',
+            'valor_venda' => 'nullable|numeric',
+            'valor_condominio' => 'nullable|numeric',
+            'valor_iptu' => 'nullable|numeric',
+            'dormitorios' => 'nullable|integer',
+            'suites' => 'nullable|integer',
+            'banheiros' => 'nullable|integer',
+            'garagem' => 'nullable|integer',
+            'area_total' => 'nullable|numeric',
+            'area_privativa' => 'nullable|numeric',
+            'area_terreno' => 'nullable|numeric',
+            'cep' => 'nullable|string|max:20',
+            'estado' => 'nullable|string|max:2',
+            'cidade' => 'nullable|string|max:100',
+            'bairro' => 'nullable|string|max:100',
+            'logradouro' => 'nullable|string|max:255',
+            'numero' => 'nullable|string|max:50',
+            'complemento' => 'nullable|string|max:255',
+            'em_condominio' => 'nullable|boolean',
+            'nome_condominio' => 'nullable|string|max:255',
+            'descricao' => 'nullable|string',
+            'active' => 'nullable|boolean',
+            'exibir_imovel' => 'nullable|boolean',
+            'exclusividade' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'messages' => $validator->errors(),
+            ], 422);
+        }
+
+        $property->update($validator->validated());
+
+        return response()->json([
+            'success' => true,
+            'data' => $property,
+        ]);
+    }
+
+    /**
+     * Exportar imóveis para CSV
+     * GET /api/imoveis/export
+     */
+    public function export()
+    {
+        try {
+            $properties = DB::table('imo_properties')
+                ->select([
+                    'codigo_imovel',
+                    'referencia_imovel',
+                    'tipo_imovel',
+                    'finalidade_imovel',
+                    'valor_venda',
+                    'cidade',
+                    'bairro',
+                    'dormitorios',
+                    'suites',
+                    'banheiros',
+                    'garagem',
+                    'area_total',
+                    'active',
+                    'created_at'
+                ])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            $csv = [];
+            $csv[] = [
+                'Código',
+                'Referência',
+                'Tipo',
+                'Finalidade',
+                'Valor',
+                'Cidade',
+                'Bairro',
+                'Dormitórios',
+                'Suítes',
+                'Banheiros',
+                'Garagem',
+                'Área Total',
+                'Ativo',
+                'Data Cadastro'
+            ];
+
+            foreach ($properties as $property) {
+                $csv[] = [
+                    $property->codigo_imovel,
+                    $property->referencia_imovel ?? '',
+                    $property->tipo_imovel ?? '',
+                    $property->finalidade_imovel ?? '',
+                    $property->valor_venda ?? '',
+                    $property->cidade ?? '',
+                    $property->bairro ?? '',
+                    $property->dormitorios ?? '',
+                    $property->suites ?? '',
+                    $property->banheiros ?? '',
+                    $property->garagem ?? '',
+                    $property->area_total ?? '',
+                    $property->active ? 'Sim' : 'Não',
+                    $property->created_at ?? ''
+                ];
+            }
+
+            $filename = 'imoveis_' . date('Y-m-d_His') . '.csv';
+            $handle = fopen('php://temp', 'r+');
+
+            foreach ($csv as $row) {
+                fputcsv($handle, $row, ';');
+            }
+
+            rewind($handle);
+            $content = stream_get_contents($handle);
+            fclose($handle);
+
+            return response($content)
+                ->header('Content-Type', 'text/csv; charset=UTF-8')
+                ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
             ], 500);
         }
     }

@@ -50,7 +50,40 @@ class DashboardController extends Controller
                     'total' => $db->table('users')->where('role', 'admin')->where('is_active', true)->count(),
                     'online' => 0
                 ],
-                'imoveis' => $imoveis
+                'imoveis' => $imoveis,
+                'vistorias' => [
+                    'total' => Schema::hasTable('vistorias') ? $db->table('vistorias')->count() : 0,
+                    'solicitacoes_pendentes' => Schema::hasTable('vistoria_solicitacoes')
+                        ? $db->table('vistoria_solicitacoes')->where('status', 'solicitada')->count()
+                        : 0,
+                    'em_andamento' => Schema::hasTable('vistoria_solicitacoes')
+                        ? $db->table('vistoria_solicitacoes')->where('status', 'andamento')->count()
+                        : 0,
+                ],
+                'pessoas' => [
+                    'total' => Schema::hasTable('pessoas') ? $db->table('pessoas')->where('ativo', true)->count() : 0,
+                    'fisicas' => Schema::hasTable('pessoas')
+                        ? $db->table('pessoas')->where('tipo', 'fisica')->where('ativo', true)->count()
+                        : 0,
+                    'juridicas' => Schema::hasTable('pessoas')
+                        ? $db->table('pessoas')->where('tipo', 'juridica')->where('ativo', true)->count()
+                        : 0,
+                ],
+                'contestacoes' => [
+                    'total' => Schema::hasTable('vistoria_contestacoes') ? $db->table('vistoria_contestacoes')->count() : 0,
+                    'apontadas' => Schema::hasTable('vistoria_contestacoes')
+                        ? $db->table('vistoria_contestacoes')->where('status', 'apontada')->count()
+                        : 0,
+                ],
+                'assinaturas' => [
+                    'total' => Schema::hasTable('documentos_assinatura') ? $db->table('documentos_assinatura')->count() : 0,
+                    'pendentes' => Schema::hasTable('documentos_assinatura')
+                        ? $db->table('documentos_assinatura')->where('status', 'pendente')->count()
+                        : 0,
+                    'assinados' => Schema::hasTable('documentos_assinatura')
+                        ? $db->table('documentos_assinatura')->where('status', 'assinado')->count()
+                        : 0,
+                ],
             ];
             
             return response()->json([

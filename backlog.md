@@ -62,7 +62,7 @@ Este backlog consolida tudo que precisa ser **aprimorado ou desenvolvido** no si
   - UI calendário + filtro por período
   - API por intervalo de datas
 
-- **RF-113 Visualização em Lista**
+- **RF-113 Visualização em Lista** — OK
   - UI lista detalhada com colunas definidas
 
 - **RF-114 Formulário de Solicitação (Abas)** — OK

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Plus, MapPin, Bed, Bath, Ruler, Heart, Share2, Eye, X } from 'lucide-react';
+import { Search, Filter, Plus, MapPin, Bed, Bath, Ruler, Heart, Share2, Eye, X, Download } from 'lucide-react';
+import { useLocation } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
@@ -19,8 +20,10 @@ interface Property {
 }
 
 export default function Properties() {
+  const [, setLocation] = useLocation();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('todos');
   const [selectedStatus, setSelectedStatus] = useState('todos');
@@ -134,6 +137,31 @@ export default function Properties() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const response = await api.get('/imoveis/export', {
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `imoveis_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Imóveis exportados com sucesso!');
+    } catch (error) {
+      console.error('Erro ao exportar imóveis:', error);
+      toast.error('Erro ao exportar imóveis');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="flex">
       <Sidebar />
@@ -151,14 +179,27 @@ export default function Properties() {
                 <h1 className="text-4xl font-bold gradient-text mb-2">Imóveis</h1>
                 <p className="text-muted-foreground">Gerencie seu portfólio de propriedades</p>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg"
-              >
-                <Plus size={20} />
-                Novo Imóvel
-              </motion.button>
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleExport}
+                  disabled={isExporting}
+                  className="flex items-center gap-2 px-6 py-3 bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg font-semibold text-foreground transition-all disabled:opacity-50"
+                >
+                  <Download size={20} />
+                  {isExporting ? 'Exportando...' : 'Exportar'}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setLocation('/properties/novo')}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg"
+                >
+                  <Plus size={20} />
+                  Novo Imóvel
+                </motion.button>
+              </div>
             </div>
           </motion.div>
 

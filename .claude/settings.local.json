@@ -77,7 +77,9 @@
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd domains/lojadaesquina.store/public_html && php artisan tinker --execute=''echo json_encode\\(App\\\\Models\\\\Lead::find\\(98\\)\\);''\")",
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"which php8.3 || which php83 || ls -la /usr/bin/php* 2>/dev/null | grep ''8.3'' || ls -la /opt/alt/php*/usr/bin/php 2>/dev/null\")",
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\pscp.exe\" -P 65002 -pw MundoMelhor@10 delete_marcus_leads.php u815655858@145.223.105.168:/home/u815655858/domains/lojadaesquina.store/public_html/)",
-      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\pscp.exe\" -P 65002 -pw MundoMelhor@10 check_leads.php u815655858@145.223.105.168:/home/u815655858/domains/lojadaesquina.store/public_html/)"
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\pscp.exe\" -P 65002 -pw MundoMelhor@10 check_leads.php u815655858@145.223.105.168:/home/u815655858/domains/lojadaesquina.store/public_html/)",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd domains/lojadaesquina.store/public_html && rm -f delete_marcus_leads.php check_leads.php && git pull origin master\")",
+      "Bash(curl:*)"
     ]
   }
 }

@@ -877,9 +877,35 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     // Vistorias
     $router->get('/vistorias', 'VistoriasController@index');
     $router->get('/vistorias/export', 'VistoriasController@export');
-    $router->get('/vistorias/{id}', 'VistoriasController@show');
+    $router->get('/vistorias/solicitacoes', 'VistoriaSolicitacoesController@index');
     $router->post('/vistorias/solicitacoes', 'VistoriaSolicitacoesController@store');
-    
+    $router->put('/vistorias/solicitacoes/{id}/status', 'VistoriaSolicitacoesController@updateStatus');
+    $router->get('/vistorias/contestacoes', 'VistoriaContestacoesController@index');
+    $router->post('/vistorias/contestacoes', 'VistoriaContestacoesController@store');
+    $router->get('/vistorias/contestacoes/{id}', 'VistoriaContestacoesController@show');
+    $router->put('/vistorias/contestacoes/{id}/status', 'VistoriaContestacoesController@updateStatus');
+    $router->delete('/vistorias/contestacoes/{id}', 'VistoriaContestacoesController@destroy');
+    $router->get('/vistorias/{id}', 'VistoriasController@show');
+
+    // Pessoas
+    $router->get('/pessoas', 'PessoasController@index');
+    $router->post('/pessoas', 'PessoasController@store');
+    $router->get('/pessoas/{id}', 'PessoasController@show');
+    $router->put('/pessoas/{id}', 'PessoasController@update');
+    $router->delete('/pessoas/{id}', 'PessoasController@destroy');
+
+    // Assinaturas Eletrônicas
+    $router->get('/assinaturas/documentos', 'AssinaturasController@index');
+    $router->post('/assinaturas/documentos', 'AssinaturasController@store');
+    $router->get('/assinaturas/documentos/{id}', 'AssinaturasController@show');
+    $router->put('/assinaturas/documentos/{id}/status', 'AssinaturasController@updateStatus');
+    $router->delete('/assinaturas/documentos/{id}', 'AssinaturasController@destroy');
+
+    // Imóveis - CRUD
+    $router->get('/imoveis/export', 'PropertyController@export');
+    $router->post('/imoveis', 'PropertyController@store');
+    $router->put('/imoveis/{id}', 'PropertyController@update');
+
     // Leads
     $router->get('/leads', 'LeadsController@index');
     $router->get('/leads/stats', 'LeadsController@stats');
