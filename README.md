@@ -17,6 +17,29 @@ SOCIMOB combina um backend Lumen com um frontend HTML/jQuery leve para entregar 
    - Admin/corretor: `admin@exclusiva.com` / `password`
    - Cliente: cadastre via Google OAuth ou use um cadastro existente
 
+## 📦 Deploy Automático
+
+Para fazer deploy completo (build + commit + push + servidor SSH):
+
+```cmd
+# Windows CMD (duplo clique ou terminal)
+deploy.cmd
+
+# PowerShell (recomendado)
+.\deploy.ps1
+
+# Com mensagem customizada
+.\deploy.ps1 "feat: adicionar nova funcionalidade"
+```
+
+**O script automatiza:**
+- ✅ Build do frontend React (`npm run build`)
+- ✅ Commit e push para GitHub
+- ✅ Deploy no servidor SSH (pull + copy)
+- ✅ Verificação de saúde da API
+
+📖 Ver documentação completa: [DEPLOY.md](DEPLOY.md)
+
 ## 📁 Estrutura do projeto
 - `app/`, `routes/`, `database/`, `config/` – Lógica PHP, rotas, migrações e configurações
 - `public/` – Frontend público, assets e ponto de entrada HTTP
