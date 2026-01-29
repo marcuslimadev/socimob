@@ -4,6 +4,10 @@
  * Execução simples sem prompts interativos
  */
 
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
 require __DIR__ . '/vendor/autoload.php';
 
 use App\Services\TwilioService;
@@ -29,8 +33,13 @@ echo "- Remetente: " . env('EXCLUSIVA_TWILIO_WHATSAPP_FROM') . "\n\n";
 echo "Iniciando envio...\n\n";
 
 try {
+    echo "[DEBUG] Criando instância do TwilioService...\n";
     $twilioService = new TwilioService();
+    echo "[DEBUG] TwilioService criado com sucesso.\n";
+
+    echo "[DEBUG] Chamando sendTemplate()...\n";
     $resultado = $twilioService->sendTemplate($destinatario, $templateSid, []);
+    echo "[DEBUG] sendTemplate() retornou.\n";
 
     echo "===================================================================\n";
     echo "                      RESULTADO DO ENVIO                           \n";
@@ -65,10 +74,11 @@ try {
         }
     }
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     echo "\n===================================================================\n";
     echo "                        EXCEÇÃO                                     \n";
     echo "===================================================================\n\n";
+    echo "Tipo: " . get_class($e) . "\n";
     echo "Mensagem: " . $e->getMessage() . "\n";
     echo "Arquivo: " . $e->getFile() . ":" . $e->getLine() . "\n\n";
     echo "Stack trace:\n" . $e->getTraceAsString() . "\n";
