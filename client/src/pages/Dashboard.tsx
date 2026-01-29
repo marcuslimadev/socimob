@@ -1,3 +1,4 @@
+// Dashboard Principal - SOCIMOB v2 - Deploy Automatico
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart3, Users, TrendingUp, MessageSquare, Zap, Activity, ClipboardCheck, FileSignature, UserRound, Home } from 'lucide-react';
