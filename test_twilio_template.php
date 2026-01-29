@@ -22,12 +22,13 @@ $templateSid = 'HX4f61c2b07ceef4afc402a9c4753300df';
 $templateName = 'contatoinicial';
 
 // Número de destino - Marcus André
-// Se você passar um número como argumento: php test_twilio_template.php +5592992287144
+// Se você passar um número como argumento: php test_twilio_template.php +5592992287144 --yes
 $destinatario = $argv[1] ?? null;
+$autoConfirm = in_array('--yes', $argv) || in_array('-y', $argv);
 
 if (!$destinatario) {
     echo "ERRO: Informe o número de destino como argumento\n";
-    echo "Uso: php test_twilio_template.php +5592992287144\n";
+    echo "Uso: php test_twilio_template.php +5592992287144 [--yes|-y]\n";
     echo "\nOu se preferir, digite o número agora: ";
     $destinatario = trim(fgets(STDIN));
 
@@ -43,12 +44,16 @@ echo "- SID: $templateSid\n";
 echo "- Destinatário: $destinatario\n";
 echo "- Remetente: " . env('EXCLUSIVA_TWILIO_WHATSAPP_FROM') . "\n\n";
 
-echo "Deseja enviar a mensagem? (s/n): ";
-$confirmacao = trim(fgets(STDIN));
+if (!$autoConfirm) {
+    echo "Deseja enviar a mensagem? (s/n): ";
+    $confirmacao = trim(fgets(STDIN));
 
-if (strtolower($confirmacao) !== 's') {
-    echo "Envio cancelado pelo usuário.\n";
-    exit(0);
+    if (strtolower($confirmacao) !== 's') {
+        echo "Envio cancelado pelo usuário.\n";
+        exit(0);
+    }
+} else {
+    echo "Modo automático ativado (--yes). Prosseguindo...\n\n";
 }
 
 echo "\n--- Iniciando envio ---\n\n";
