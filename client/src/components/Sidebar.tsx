@@ -80,10 +80,10 @@ const Sidebar = () => {
   const menuItems: SidebarItem[] = [
     { icon: <BarChart3 size={20} />, label: 'Dashboard', href: '/dashboard' },
     { icon: <Users size={20} />, label: 'Leads', href: '/leads', badge: 12 },
-    { icon: <ClipboardCheck size={20} />, label: 'Vistorias', href: '/vistorias' },
-    { icon: <FileSignature size={20} />, label: 'Assinaturas', href: '/assinaturas' },
-    { icon: <UserRound size={20} />, label: 'Pessoas', href: '/pessoas' },
     { icon: <Home size={20} />, label: 'Imóveis', href: '/properties' },
+    { icon: <ClipboardCheck size={20} />, label: 'Vistorias', href: '/vistorias' },
+    { icon: <UserRound size={20} />, label: 'Pessoas', href: '/pessoas' },
+    { icon: <FileSignature size={20} />, label: 'Assinaturas', href: '/assinaturas' },
     { icon: <MessageSquare size={20} />, label: 'Chat', href: '/chat', badge: 3 },
     { icon: <Bell size={20} />, label: 'Notificações', href: '/notifications', badge: notificationCount || undefined },
     { icon: <CalendarClock size={20} />, label: 'Agenda', href: '/agenda' },
