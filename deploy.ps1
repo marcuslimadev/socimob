@@ -3,18 +3,19 @@
 # Uso: .\deploy.ps1 [mensagem-do-commit]
 
 param(
-    [string]$CommitMessage = "build: update frontend build"
+    [string]$CommitMessage = "build: update frontend build",
+    [switch]$Force
 )
 
 $ErrorActionPreference = "Stop"
 
 # Cores
 function Write-Step { param($msg) Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
-function Write-Success { param($msg) Write-Host "✓ $msg" -ForegroundColor Green }
-function Write-Error { param($msg) Write-Host "✗ $msg" -ForegroundColor Red }
-function Write-Warning { param($msg) Write-Host "⚠ $msg" -ForegroundColor Yellow }
+function Write-Success { param($msg) Write-Host "V $msg" -ForegroundColor Green }
+function Write-Error { param($msg) Write-Host "X $msg" -ForegroundColor Red }
+function Write-Warning { param($msg) Write-Host "! $msg" -ForegroundColor Yellow }
 
-# Configurações SSH
+# Configuracoes SSH
 $SSH_HOST = "145.223.105.168"
 $SSH_PORT = "65002"
 $SSH_USER = "u815655858"
@@ -23,9 +24,9 @@ $DEPLOY_PATH = "~/domains/lojadaesquina.store/public_html"
 
 try {
     Write-Host "`n" -NoNewline
-    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║          DEPLOY AUTOMÁTICO - SOCIMOB v2                    ║" -ForegroundColor Cyan
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Host "===============================================================" -ForegroundColor Cyan
+    Write-Host "          DEPLOY AUTOMATICO - SOCIMOB v2                       " -ForegroundColor Cyan
+    Write-Host "===============================================================" -ForegroundColor Cyan
     Write-Host ""
 
     # 1. BUILD DO FRONTEND
@@ -34,23 +35,27 @@ try {
     try {
         npm run build
         if ($LASTEXITCODE -ne 0) { throw "Build falhou" }
-        Write-Success "Build do frontend concluído"
+        Write-Success "Build do frontend concluido"
     } finally {
         Pop-Location
     }
 
-    # 2. VERIFICAR MUDANÇAS
-    Write-Step "VERIFICAR MUDANÇAS NO BUILD"
+    # 2. VERIFICAR MUDANCAS
+    Write-Step "VERIFICAR MUDANCAS NO BUILD"
     $gitStatus = git status --porcelain dist/public
     if ([string]::IsNullOrWhiteSpace($gitStatus)) {
-        Write-Warning "Nenhuma mudança no build detectada"
-        $continue = Read-Host "Continuar mesmo assim? (s/N)"
-        if ($continue -ne 's' -and $continue -ne 'S') {
-            Write-Host "Deploy cancelado pelo usuário" -ForegroundColor Yellow
-            exit 0
+        Write-Warning "Nenhuma mudanca no build detectada"
+        if (-not $Force) {
+            $continue = Read-Host "Continuar mesmo assim? (s/N)"
+            if ($continue -ne 's' -and $continue -ne 'S') {
+                Write-Host "Deploy cancelado pelo usuario" -ForegroundColor Yellow
+                exit 0
+            }
+        } else {
+            Write-Host "Modo -Force ativado, continuando deploy..." -ForegroundColor Yellow
         }
     } else {
-        Write-Success "Mudanças detectadas no build:"
+        Write-Success "Mudancas detectadas no build:"
         git status dist/public --short
     }
 
@@ -68,12 +73,12 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
     if ($LASTEXITCODE -eq 0) {
         Write-Success "Commit criado com sucesso"
     } else {
-        Write-Warning "Nenhuma mudança para commitar ou commit falhou"
+        Write-Warning "Nenhuma mudanca para commitar ou commit falhou"
     }
 
     git push origin master
     if ($LASTEXITCODE -eq 0) {
-        Write-Success "Push para origin/master concluído"
+        Write-Success "Push para origin/master concluido"
     } else {
         throw "Push falhou"
     }
@@ -96,27 +101,27 @@ echo '=== VERIFICAR BUILD ===' && \
 ls -lh public/index.html && \
 ls -lh public/assets/*.js public/assets/*.css 2>/dev/null | tail -3 && \
 echo '' && \
-echo '=== DEPLOY CONCLUÍDO ===' && \
+echo '=== DEPLOY CONCLUIDO ===' && \
 date
 "@
 
-    # Verificar se plink está disponível
+    # Verificar se plink esta disponivel
     if (Get-Command plink -ErrorAction SilentlyContinue) {
         Write-Host "Conectando via plink..." -ForegroundColor Gray
         echo $deployCommands | plink -P $SSH_PORT -pw $SSH_PASS -batch $SSH_USER@$SSH_HOST
 
         if ($LASTEXITCODE -eq 0) {
-            Write-Success "Deploy SSH concluído com sucesso"
+            Write-Success "Deploy SSH concluido com sucesso"
         } else {
-            Write-Warning "Deploy SSH completou com avisos (código: $LASTEXITCODE)"
+            Write-Warning "Deploy SSH completou com avisos (codigo: $LASTEXITCODE)"
         }
     } elseif (Get-Command ssh -ErrorAction SilentlyContinue) {
         Write-Host "Conectando via ssh..." -ForegroundColor Gray
-        Write-Warning "Você precisará digitar a senha: $SSH_PASS"
+        Write-Warning "Voce precisara digitar a senha: $SSH_PASS"
         echo $deployCommands | ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "bash -s"
 
         if ($LASTEXITCODE -eq 0) {
-            Write-Success "Deploy SSH concluído com sucesso"
+            Write-Success "Deploy SSH concluido com sucesso"
         } else {
             Write-Warning "Deploy SSH completou com avisos"
         }
@@ -141,28 +146,26 @@ date
         Write-Host "  App: $($health.app)" -ForegroundColor Gray
         Write-Host "  Version: $($health.version)" -ForegroundColor Gray
     } catch {
-        Write-Warning "Não foi possível verificar API health"
+        Write-Warning "Nao foi possivel verificar API health"
     }
 
     # SUCESSO
     Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║              DEPLOY CONCLUÍDO COM SUCESSO!                 ║" -ForegroundColor Green
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+    Write-Host "===============================================================" -ForegroundColor Green
+    Write-Host "              DEPLOY CONCLUIDO COM SUCESSO!                    " -ForegroundColor Green
+    Write-Host "===============================================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "🌐 Frontend: " -NoNewline -ForegroundColor White
-    Write-Host "https://lojadaesquina.store" -ForegroundColor Cyan
-    Write-Host "🔌 API:      " -NoNewline -ForegroundColor White
-    Write-Host "https://lojadaesquina.store/api/health" -ForegroundColor Cyan
+    Write-Host "Frontend: https://lojadaesquina.store" -ForegroundColor Cyan
+    Write-Host "API:      https://lojadaesquina.store/api/health" -ForegroundColor Cyan
     Write-Host ""
 
 } catch {
     Write-Host ""
-    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Red
-    Write-Host "║                   ERRO NO DEPLOY!                          ║" -ForegroundColor Red
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Red
+    Write-Host "===============================================================" -ForegroundColor Red
+    Write-Host "                   ERRO NO DEPLOY!                             " -ForegroundColor Red
+    Write-Host "===============================================================" -ForegroundColor Red
     Write-Host ""
-    Write-Error "Erro: $_"
+    Write-Host "Erro: $_" -ForegroundColor Red
     Write-Host ""
     Write-Host "Stack trace:" -ForegroundColor Gray
     Write-Host $_.ScriptStackTrace -ForegroundColor DarkGray
