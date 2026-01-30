@@ -433,7 +433,10 @@ Gere a mensagem de primeiro contato:";
 
         try {
             $telefoneFormatado = $this->formatarTelefone($telefone);
-            $variaveis = $this->obterVariaveisTemplate($lead);
+            
+            // Template HX4f61c2b07ceef4afc402a9c4753300df não tem variáveis
+            // Enviar array vazio ao invés de variáveis
+            $variaveis = [];
 
             $resultado = $this->twilioService->sendTemplate($telefoneFormatado, $contentSid, $variaveis);
 
@@ -659,8 +662,10 @@ Gere a mensagem de primeiro contato:";
     {
         $telefone = preg_replace('/[^0-9]/', '', $telefone);
 
-        // Adicionar código do país se não tiver
-        if (strlen($telefone) <= 11 && !str_starts_with($telefone, '55')) {
+        // Adicionar código do país (55) se não tiver
+        // Números brasileiros: DDD (2 dígitos) + telefone (8-9 dígitos) = 10-11 dígitos
+        // Com DDI 55: 12-13 dígitos
+        if (!str_starts_with($telefone, '55')) {
             $telefone = '55' . $telefone;
         }
 
