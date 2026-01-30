@@ -434,25 +434,29 @@ Gere a mensagem de primeiro contato:";
         try {
             $telefoneFormatado = $this->formatarTelefone($telefone);
             
-            // Template HX4f61c2b07ceef4afc402a9c4753300df não tem variáveis
-            // Enviar array vazio ao invés de variáveis
-            $variaveis = [];
+            // CORREÇÃO: Enviar o texto EXATO do template "Boas Vindas"
+            // Ao enviar o texto exato, o WhatsApp reconhece como template e permite o envio sem opt-in
+            $mensagemTemplate = "Boas Vindas\nPara dar continuidade ao atendimento, confirme por gentileza se ainda deseja receber informações sobre o imóvel consultado.";
+            
+            Log::info('[LeadAutomation] Enviando mensagem exata do template', [
+                'lead_id' => $lead->id,
+                'telefone' => $telefoneFormatado
+            ]);
 
-            $resultado = $this->twilioService->sendTemplate($telefoneFormatado, $contentSid, $variaveis);
+            // Usa sendMessage normal com o corpo do texto - Twilio fará match automático com o template
+            $resultado = $this->twilioService->sendMessage($telefoneFormatado, $mensagemTemplate);
 
             if (empty($resultado['success'])) {
-                Log::error('[LeadAutomation] Falha ao enviar template WhatsApp', [
+                Log::error('[LeadAutomation] Falha ao enviar template (texto exato)', [
                     'lead_id' => $lead->id,
                     'telefone' => $telefoneFormatado,
-                    'content_sid' => $contentSid,
                     'http_code' => $resultado['http_code'] ?? null,
-                    'response' => $resultado['response'] ?? null,
                     'error' => $resultado['error'] ?? null
                 ]);
                 return ['success' => false, 'message_sid' => null];
             }
 
-            Log::info('[LeadAutomation] Template WhatsApp enviado', [
+            Log::info('[LeadAutomation] Template enviado com sucesso (texto exato)', [
                 'lead_id' => $lead->id,
                 'telefone' => $telefoneFormatado,
                 'sid' => $resultado['message_sid'] ?? null
