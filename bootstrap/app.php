@@ -32,6 +32,9 @@ $app->withEloquent();
 // $app->register(App\Providers\EventServiceProvider::class);
 $app->register(App\Providers\ObserverServiceProvider::class); // ✅ ACTIVE
 
+// 🔥 CRITICAL: Boot providers NOW to register Observers before routes load
+$app->boot();
+
 /*
 |--------------------------------------------------------------------------
 | Register Container Bindings
