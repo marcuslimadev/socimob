@@ -29,15 +29,15 @@ try {
     Write-Host "===============================================================" -ForegroundColor Cyan
     Write-Host ""
 
-    # 1. BUILD DO FRONTEND
+    # 1. BUILD DO FRONTEND (já gera em dist/public/)
     Write-Step "BUILD DO FRONTEND REACT"
-    Push-Location client
-    try {
-        npm run build
-        if ($LASTEXITCODE -ne 0) { throw "Build falhou" }
-        Write-Success "Build do frontend concluido"
-    } finally {
-        Pop-Location
+    pnpm run build
+    if ($LASTEXITCODE -ne 0) { throw "Build falhou" }
+    Write-Success "Build do frontend concluido em dist/public/"
+    
+    # Verificar se build foi gerado
+    if (-not (Test-Path "dist/public/index.html")) {
+        throw "Build nao gerou dist/public/index.html - verifique vite.config.ts"
     }
 
     # 2. VERIFICAR MUDANCAS
@@ -83,7 +83,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
         throw "Push falhou"
     }
 
-    # 4. DEPLOY NO SERVIDOR SSH
+    # 4. DEPLOY NO SERVIDOR SSH (apenas pull e copy)
     Write-Step "DEPLOY NO SERVIDOR SSH"
     Write-Host "Servidor: $SSH_USER@$SSH_HOST`:$SSH_PORT" -ForegroundColor Yellow
     Write-Host "Caminho: $DEPLOY_PATH" -ForegroundColor Yellow
@@ -94,12 +94,18 @@ cd $DEPLOY_PATH && \
 echo '=== GIT PULL ===' && \
 git pull origin master && \
 echo '' && \
+echo '=== LIMPAR PUBLIC COMPLETO ===' && \
+rm -rf public/* && \
+echo '' && \
 echo '=== COPIAR BUILD ===' && \
 cp -rf dist/public/* public/ && \
 echo '' && \
+echo '=== LIMPAR CACHE (touch .htaccess) ===' && \
+touch public/.htaccess && \
+echo '' && \
 echo '=== VERIFICAR BUILD ===' && \
 ls -lh public/index.html && \
-ls -lh public/assets/*.js public/assets/*.css 2>/dev/null | tail -3 && \
+ls -lh public/assets/ | head -5 && \
 echo '' && \
 echo '=== DEPLOY CONCLUIDO ===' && \
 date
@@ -108,7 +114,9 @@ date
     # Verificar se plink esta disponivel
     if (Get-Command plink -ErrorAction SilentlyContinue) {
         Write-Host "Conectando via plink..." -ForegroundColor Gray
-        echo $deployCommands | plink -P $SSH_PORT -pw $SSH_PASS -batch $SSH_USER@$SSH_HOST
+        # -batch: non-interactive mode (no prompts)
+        # Pipe commands to plink stdin
+        $deployCommands | plink -P $SSH_PORT -pw $SSH_PASS -batch $SSH_USER@$SSH_HOST
 
         if ($LASTEXITCODE -eq 0) {
             Write-Success "Deploy SSH concluido com sucesso"
@@ -117,8 +125,13 @@ date
         }
     } elseif (Get-Command ssh -ErrorAction SilentlyContinue) {
         Write-Host "Conectando via ssh..." -ForegroundColor Gray
-        Write-Warning "Voce precisara digitar a senha: $SSH_PASS"
-        echo $deployCommands | ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "bash -s"
+        # Use sshpass if available, otherwise manual password entry
+        if (Get-Command sshpass -ErrorAction SilentlyContinue) {
+            $deployCommands | sshpass -p $SSH_PASS ssh -p $SSH_PORT -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "bash -s"
+        } else {
+            Write-Warning "Voce precisara digitar a senha manualmente: $SSH_PASS"
+            $deployCommands | ssh -p $SSH_PORT -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "bash -s"
+        }
 
         if ($LASTEXITCODE -eq 0) {
             Write-Success "Deploy SSH concluido com sucesso"

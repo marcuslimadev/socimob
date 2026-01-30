@@ -10,6 +10,7 @@
 - **Auth**: Custom base64 token format `user_id|timestamp|secret` (not JWT)
 - **Critical**: `router.php` enables PHP built-in server for unified backend+frontend delivery
 - **Deployment**: Vite build copies to `public/`, then entire project deployed via SSH/FTP
+- **Services**: 31+ services in `app/Services/` for business logic (AI, payments, integrations)
 
 ## 🚀 Quick Start (Local Development)
 
@@ -45,6 +46,15 @@ php create_superadmin.php    # Create test admin
 ### Credentials
 - **Super Admin**: `admin@exclusiva.com` / `password`
 - Test scripts in root: `check_*.php`, `test_*.php`, `create_*.php`
+
+### Environment Variables (`.env`)
+**Critical Keys**:
+- `EXCLUSIVA_OPENAI_API_KEY` → OpenAI for AI automation
+- `EXCLUSIVA_TWILIO_ACCOUNT_SID`, `EXCLUSIVA_TWILIO_AUTH_TOKEN` → Twilio WhatsApp
+- `EXCLUSIVA_TWILIO_WHATSAPP_FROM` → Twilio sender number (format: `whatsapp:+5531XXXXX`)
+- `WEBHOOK_TENANT_ID` → Default tenant for localhost/ngrok webhooks
+- `VITE_API_BASE_URL` → Frontend API proxy (dev only, removed in production for relative paths)
+- `DB_DATABASE=exclusiva` → Default database name
 
 ## 🏗️ Architecture & Patterns
 
@@ -178,15 +188,30 @@ pnpm dev             # Dev server at http://localhost:3000
 pnpm build           # Production build → dist/public/
 ```
 
+**Project Structure**:
+```
+client/src/
+├── components/       # Reusable UI components
+├── pages/           # Route pages
+├── contexts/        # React contexts (auth, theme)
+├── hooks/           # Custom hooks
+├── lib/             # Utilities
+└── const.ts         # Constants
+```
+
 **Key Pattern**: Always use relative paths in API calls (never hardcode `localhost:3000`):
 ```javascript
-// Correct (relative)
+// Correct (relative) - works both dev and production
 fetch('/api/leads', {
   headers: { 'Authorization': `Bearer ${token}` }
 });
+
+// WRONG - breaks in production
+fetch('http://localhost:3000/api/leads', ...);
 ```
 
 **Vite Config**: Proxies `/api` → backend on port 8000 (dev only)
+**Build Output**: `client/dist/public/` → copy to `public/` for deployment
 
 ### HTML/jQuery Frontend (Legacy - Being Replaced)
 **Location**: `public/app/` - served by same PHP server
@@ -223,6 +248,7 @@ public/app/
 ```bash
 # Start server
 php -S 127.0.0.1:8000 -t public router.php
+# or: START.bat (Windows)
 
 # Debug via helper scripts (100+ in root)
 php check_db.php              # Connection + schema
@@ -230,9 +256,14 @@ php check_tenant.php          # Current tenant
 php check_users_roles.php     # List users
 php test_login.php            # Auth flow
 php test_api_simples.php      # Basic endpoints
+php check_ia_results.php      # IA automation logs
+php check_webhook_tenant.php  # Webhook tenant resolution
+php create_superadmin.php     # Create admin user
+php diagnostico_marcus.php    # Full system diagnostic
 
 # View logs
-tail -f storage/logs/lumen-*.log
+tail -f storage/logs/lumen-*.log  # Linux/Mac
+Get-Content storage/logs/lumen-*.log -Wait  # PowerShell
 ```
 
 ### Frontend Development
@@ -288,3 +319,23 @@ php artisan migrate:rollback
 - Resolved by domain/subdomain in production
 - Verify with: `php check_tenant.php`
 - Override with: `Model::withoutTenant()->get()`
+
+## 📦 Deployment
+
+**Automated Deploy** (Windows):
+```bash
+deploy.cmd           # Full build + deploy
+deploy.ps1           # PowerShell version
+```
+
+**Manual Steps**:
+1. Build React: `cd client && pnpm build`
+2. Copy: `cp -r client/dist/public/* public/`
+3. Deploy via SSH/FTP entire root (excludes: `node_modules/`, `.git/`, `client/`)
+4. Production uses `.htaccess` for routing (no `router.php`)
+
+**Production URLs**:
+- Main: `https://lojadaesquina.store` or `https://exclusivalarimoveis.com`
+- All API calls use relative paths (`/api/*`)
+
+**Deploy Scripts**: 15+ scripts (`deploy*.sh`, `deploy*.ps1`) for various deployment scenarios
