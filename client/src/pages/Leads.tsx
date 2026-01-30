@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, Plus, Download, Zap } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLocation } from 'wouter';
 import { api } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import LeadCard from '@/components/LeadCard';
@@ -23,6 +24,7 @@ export default function Leads() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewLeadModal, setShowNewLeadModal] = useState(false);
+  const [_, setLocation] = useLocation();
 
   useEffect(() => {
     fetchLeads();
@@ -98,12 +100,21 @@ export default function Leads() {
 
   const handleOpenChat = (leadId: string, leadName: string) => {
     toast.info(`Abrindo chat com ${leadName}`);
-    // TODO: Navegar para página de chat
+    setLocation(`/chat?leadId=${leadId}`);
   };
 
-  const handleCallAI = (leadId: string, leadName: string) => {
+  const handleCallAI = async (leadId: string, leadName: string) => {
     toast.info(`Iniciando atendimento IA para ${leadName}`);
-    // TODO: Iniciar atendimento IA
+    try {
+      const response = await api.post(`/admin/leads/${leadId}/iniciar-atendimento`);
+      if (response.data.success || response.status === 200) {
+        toast.success(`Atendimento IA iniciado para ${leadName}`);
+        fetchLeads(); // Refresh status
+      }
+    } catch (error) {
+      console.error('Error starting AI:', error);
+      toast.error('Erro ao iniciar atendimento IA');
+    }
   };
 
   const handleCall = (phone: string, leadName: string) => {

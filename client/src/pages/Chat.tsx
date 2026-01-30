@@ -72,7 +72,22 @@ export default function Chat() {
           phone: item.lead_telefone,
         }));
         setContacts(mappedContacts);
-        if (mappedContacts.length > 0 && !selectedContactId) {
+        
+        // Auto-select contact from URL query param
+        const query = new URLSearchParams(window.location.search);
+        const targetLeadId = query.get('leadId');
+        
+        if (targetLeadId && !selectedContactId) {
+          const target = mappedContacts.find((c: Contact) => c.leadId.toString() === targetLeadId);
+          if (target) {
+            setSelectedContactId(target.id);
+          } else {
+            console.warn(`Lead ${targetLeadId} not found in contacts`);
+            // toast.warning('Conversa não encontrada para este lead.');
+          }
+        }
+        
+        if (mappedContacts.length > 0 && !selectedContactId && !targetLeadId) {
           // Optional: Select first contact automatically
           // setSelectedContactId(mappedContacts[0].id);
         }
