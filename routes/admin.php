@@ -49,6 +49,10 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     $router->get('/imoveis/importar/{jobId}', 'Admin\ImportacaoController@status');
     $router->post('/importacao/teste-api', 'Admin\ImportacaoController@testarAPI');
 
+    // System Logs
+    $router->get('/system-logs', 'Admin\SystemLogsController@index');
+    $router->delete('/system-logs/clear', 'Admin\SystemLogsController@clear');
+
     // Visitas
     $router->get('/visitas', 'Admin\\VisitasController@index');
     $router->patch('/visitas/{id}', 'Admin\\VisitasController@update');

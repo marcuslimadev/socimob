@@ -29,6 +29,7 @@ import VistoriaContestacoes from "./pages/VistoriaContestacoes";
 import PropertyDetail from "./pages/PropertyDetail";
 import ImovelForm from "./pages/ImovelForm";
 import Settings from "./pages/Settings";
+import SystemLogs from "./pages/SystemLogs";
 
 
 function Router() {
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/assinaturas" component={Assinaturas} />
       <Route path="/pessoas" component={Pessoas} />
       <Route path="/settings" component={Settings} />
+      <Route path="/system-logs" component={SystemLogs} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

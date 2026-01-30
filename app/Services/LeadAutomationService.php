@@ -426,23 +426,6 @@ Gere a mensagem de primeiro contato:";
      */
     private function enviarTemplateWhatsApp(Lead $lead, ?string $telefone): array
     {
-        // Se for Tenant 1, ignoramos a verificação do ContentSid
-        // pois estamos usando o método de envio de texto exato (bypass de ID)
-        $bypassCheck = ($lead->tenant_id === 1 || $lead->tenant_id === '1');
-        
-        $contentSid = null;
-        if (!$bypassCheck) {
-            // Buscar template SID específico do tenant apenas se não for bypass
-            $contentSid = $this->getTemplateSidForTenant($lead->tenant_id);
-
-            if (empty($contentSid)) {
-                Log::info('[LeadAutomation] Template SID não configurado para tenant', [
-                    'tenant_id' => $lead->tenant_id
-                ]);
-                return ['success' => false, 'message_sid' => null];
-            }
-        }
-
         if (empty($telefone)) {
             Log::warning('[LeadAutomation] Template não enviado (telefone vazio)', [
                 'lead_id' => $lead->id
@@ -452,39 +435,81 @@ Gere a mensagem de primeiro contato:";
 
         try {
             $telefoneFormatado = $this->formatarTelefone($telefone);
+            $contentSid = $this->getTemplateSidForTenant($lead->tenant_id);
+            $variaveis = $this->obterVariaveisTemplate($lead);
             
-            // CORREÇÃO: Enviar o texto EXATO do template "Boas Vindas"
-            // Ao enviar o texto exato, o WhatsApp reconhece como template e permite o envio sem opt-in
-            $mensagemTemplate = "Boas Vindas\nPara dar continuidade ao atendimento, confirme por gentileza se ainda deseja receber informações sobre o imóvel consultado.";
-            
-            Log::info('[LeadAutomation] Enviando mensagem exata do template', [
-                'lead_id' => $lead->id,
-                'telefone' => $telefoneFormatado
-            ]);
-
-            // Usa sendMessage normal com o corpo do texto - Twilio fará match automático com o template
-            $resultado = $this->twilioService->sendMessage($telefoneFormatado, $mensagemTemplate);
-
-            if (empty($resultado['success'])) {
-                Log::error('[LeadAutomation] Falha ao enviar template (texto exato)', [
+            if (!empty($contentSid)) {
+                Log::info('[LeadAutomation] Enviando template aprovado via ContentSid', [
                     'lead_id' => $lead->id,
                     'telefone' => $telefoneFormatado,
-                    'http_code' => $resultado['http_code'] ?? null,
-                    'error' => $resultado['error'] ?? null
+                    'content_sid' => $contentSid
                 ]);
-                return ['success' => false, 'message_sid' => null];
+
+                $resultado = $this->twilioService->sendTemplate($telefoneFormatado, $contentSid, $variaveis);
+
+                if (empty($resultado['success'])) {
+                    Log::error('[LeadAutomation] Falha ao enviar template (ContentSid)', [
+                        'lead_id' => $lead->id,
+                        'telefone' => $telefoneFormatado,
+                        'content_sid' => $contentSid,
+                        'http_code' => $resultado['http_code'] ?? null,
+                        'error' => $resultado['error'] ?? null
+                    ]);
+                    return ['success' => false, 'message_sid' => null];
+                }
+
+                Log::info('[LeadAutomation] Template enviado com sucesso (ContentSid)', [
+                    'lead_id' => $lead->id,
+                    'telefone' => $telefoneFormatado,
+                    'sid' => $resultado['message_sid'] ?? null
+                ]);
+
+                return [
+                    'success' => true,
+                    'message_sid' => $resultado['message_sid'] ?? null
+                ];
             }
 
-            Log::info('[LeadAutomation] Template enviado com sucesso (texto exato)', [
-                'lead_id' => $lead->id,
-                'telefone' => $telefoneFormatado,
-                'sid' => $resultado['message_sid'] ?? null
+            // Fallback somente quando não há ContentSid configurado
+            if ($lead->tenant_id === 1 || $lead->tenant_id === '1') {
+                // Enviar o texto EXATO do template "Boas Vindas" para match automático
+                $mensagemTemplate = "Boas Vindas\nPara dar continuidade ao atendimento, confirme por gentileza se ainda deseja receber informações sobre o imóvel consultado.";
+                
+                Log::info('[LeadAutomation] Enviando mensagem exata do template (fallback)', [
+                    'lead_id' => $lead->id,
+                    'telefone' => $telefoneFormatado
+                ]);
+
+                $resultado = $this->twilioService->sendMessage($telefoneFormatado, $mensagemTemplate);
+
+                if (empty($resultado['success'])) {
+                    Log::error('[LeadAutomation] Falha ao enviar template (texto exato fallback)', [
+                        'lead_id' => $lead->id,
+                        'telefone' => $telefoneFormatado,
+                        'http_code' => $resultado['http_code'] ?? null,
+                        'error' => $resultado['error'] ?? null
+                    ]);
+                    return ['success' => false, 'message_sid' => null];
+                }
+
+                Log::info('[LeadAutomation] Template enviado com sucesso (texto exato fallback)', [
+                    'lead_id' => $lead->id,
+                    'telefone' => $telefoneFormatado,
+                    'sid' => $resultado['message_sid'] ?? null
+                ]);
+
+                return [
+                    'success' => true,
+                    'message_sid' => $resultado['message_sid'] ?? null
+                ];
+            }
+
+            Log::info('[LeadAutomation] Template SID não configurado para tenant', [
+                'tenant_id' => $lead->tenant_id,
+                'lead_id' => $lead->id
             ]);
 
-            return [
-                'success' => true,
-                'message_sid' => $resultado['message_sid'] ?? null
-            ];
+            return ['success' => false, 'message_sid' => null];
         } catch (\Exception $e) {
             Log::error('[LeadAutomation] Erro ao enviar template WhatsApp', [
                 'lead_id' => $lead->id,

@@ -18,6 +18,7 @@ import {
   ClipboardCheck,
   FileSignature,
   UserRound,
+  FileText,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -90,6 +91,11 @@ const Sidebar = () => {
     { icon: <Wallet size={20} />, label: 'Financeiro', href: '/financeiro' },
     { icon: <Settings size={20} />, label: 'Configurações', href: '/settings' },
   ];
+
+  // Menu adicional para admin
+  const adminMenuItems: SidebarItem[] = user?.role === 'admin' || user?.role === 'super_admin' ? [
+    { icon: <FileText size={20} />, label: 'Logs do Sistema', href: '/system-logs' },
+  ] : [];
 
   const sidebarVariants = {
     expanded: { width: 280 },
@@ -219,7 +225,7 @@ const Sidebar = () => {
 
         {/* Navigation */}
         <nav className="flex-1 flex flex-col gap-1 px-2 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-          {menuItems.map((item, index) => {
+          {[...menuItems, ...adminMenuItems].map((item, index) => {
             const isActive = location === item.href || (item.href !== '/dashboard' && location.startsWith(item.href));
 
             return (
