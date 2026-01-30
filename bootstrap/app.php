@@ -23,12 +23,14 @@ $app->withEloquent();
 
 /*
 |--------------------------------------------------------------------------
-| Register Model Observers
+| Register Service Providers
 |--------------------------------------------------------------------------
 */
 
-// Observer para integração automática com Chaves na Mão
-App\Models\Lead::observe(App\Observers\LeadObserver::class);
+$app->register(App\Providers\AppServiceProvider::class);
+$app->register(App\Providers\AuthServiceProvider::class);
+$app->register(App\Providers\EventServiceProvider::class);
+$app->register(App\Providers\ObserverServiceProvider::class);
 
 /*
 |--------------------------------------------------------------------------
