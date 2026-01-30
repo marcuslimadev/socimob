@@ -181,6 +181,7 @@ class ChavesNaMaoWebhookController extends Controller
             'email' => $data['email'] ?? '',
             'telefone' => $data['phone'] ?? '00000000000', // Telefone obrigatório no banco
             'status' => 'novo',
+            'origem' => 'chaves_na_mao', // CRÍTICO: Identifica origem para LeadObserver
             'observacoes' => $this->buildObservacoes($data, $isVehicle),
         ];
 
