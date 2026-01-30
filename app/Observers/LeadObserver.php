@@ -34,12 +34,32 @@ class LeadObserver
             'lead_id' => $lead->id,
             'nome' => $lead->nome,
             'tenant_id' => $lead->tenant_id,
+            'telefone' => $lead->telefone,
+            'whatsapp' => $lead->whatsapp,
             'origem' => $this->isFromChavesNaMao($lead) ? 'Chaves na Mão' : 'Outro'
         ]);
+        
+        \App\Models\SystemLog::info(
+            \App\Models\SystemLog::CATEGORY_AUTOMATION,
+            'lead_created',
+            'LeadObserver - lead criado, verificando atendimento',
+            ['lead_id' => $lead->id, 'nome' => $lead->nome]
+        );
 
         // 1. SEMPRE iniciar atendimento IA automaticamente para TODOS os leads
         if ($this->deveIniciarAtendimento($lead)) {
+            Log::info('[LeadObserver] INICIANDO atendimento IA para lead criado', [
+                'lead_id' => $lead->id,
+                'nome' => $lead->nome
+            ]);
             $this->iniciarAtendimentoIA($lead);
+        } else {
+            Log::warning('[LeadObserver] Atendimento NÃO iniciado para lead criado', [
+                'lead_id' => $lead->id,
+                'nome' => $lead->nome,
+                'telefone' => $lead->telefone,
+                'whatsapp' => $lead->whatsapp
+            ]);
         }
 
         // 2. Criar usuário cliente se tiver email
@@ -67,6 +87,11 @@ class LeadObserver
      */
     public function updated(Lead $lead): void
     {
+        Log::info('🔄 [LeadObserver] Lead UPDATED disparado', [
+            'lead_id' => $lead->id,
+            'nome' => $lead->nome
+        ]);
+        
         // 1. Verificar se precisa iniciar atendimento (mesmo que seja update)
         // Se o lead não tem conversas ainda, iniciar atendimento automático
         if ($this->deveIniciarAtendimento($lead) && !$this->leadTemConversas($lead)) {
