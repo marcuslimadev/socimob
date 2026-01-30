@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
+import Sidebar from '@/components/Sidebar';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +27,26 @@ interface SystemLog {
 }
 
 export default function SystemLogs() {
+  const [, setLocation] = useLocation();
+  
+  // Verificar autenticação e permissão
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    
+    if (!token) {
+      setLocation('/login');
+      return;
+    }
+
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      if (user.role !== 'admin' && user.role !== 'super_admin') {
+        setLocation('/dashboard');
+        return;
+      }
+    }
+  }, [setLocation]);
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -109,12 +131,15 @@ export default function SystemLogs() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Logs do Sistema</h1>
-          <p className="text-gray-600 mt-1">Monitoramento e auditoria de eventos</p>
-        </div>
+    <div className="flex h-screen bg-background">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Logs do Sistema</h1>
+              <p className="text-gray-600 mt-1">Monitoramento e auditoria de eventos</p>
+            </div>
         <div className="flex gap-2">
           <Button onClick={exportLogs} variant="outline" size="sm">
             <Download className="w-4 h-4 mr-2" />
@@ -248,6 +273,8 @@ export default function SystemLogs() {
           </Button>
         </div>
       )}
+        </div>
+      </main>
     </div>
   );
 }
