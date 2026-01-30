@@ -116,7 +116,7 @@ date
         Write-Host "Conectando via plink..." -ForegroundColor Gray
         # -batch: non-interactive mode (no prompts)
         # Pipe commands to plink stdin
-        $deployCommands | plink -P $SSH_PORT -pw $SSH_PASS -batch $SSH_USER@$SSH_HOST
+        echo "exit" | plink -P $SSH_PORT -pw $SSH_PASS -batch $SSH_USER@$SSH_HOST $deployCommands
 
         if ($LASTEXITCODE -eq 0) {
             Write-Success "Deploy SSH concluido com sucesso"
