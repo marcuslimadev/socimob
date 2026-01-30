@@ -22,7 +22,7 @@ function fixPhoneNumber($phone) {
     $digits = preg_replace('/[^0-9]/', '', $phone);
     
     // Se já começa com 55, não mexer
-    if (str_starts_with($digits, '55')) {
+    if (substr($digits, 0, 2) === '55') {
         return $digits;
     }
     
