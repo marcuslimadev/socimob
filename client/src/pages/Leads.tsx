@@ -34,16 +34,18 @@ export default function Leads() {
     try {
       const response = await api.get('/leads');
       if (response.data.success) {
-        // Map backend data to frontend interface
-        const mappedLeads = response.data.data.map((item: any) => ({
-          id: item.id.toString(),
-          name: item.nome || 'Sem nome',
-          phone: item.telefone || '',
-          email: item.email || '',
-          status: item.status || 'novo',
-          value: parseFloat(item.budget_max || item.budget_min || '0'),
-          lastContact: formatDate(item.updated_at)
-        }));
+        // Map backend data to frontend interface - filter out invalid leads
+        const mappedLeads = response.data.data
+          .filter((item: any) => item && item.id != null) // Skip leads without ID
+          .map((item: any) => ({
+            id: item.id.toString(),
+            name: item.nome || 'Sem nome',
+            phone: item.telefone || '',
+            email: item.email || '',
+            status: item.status || 'novo',
+            value: parseFloat(item.budget_max || item.budget_min || '0'),
+            lastContact: formatDate(item.updated_at)
+          }));
         setLeads(mappedLeads);
       }
     } catch (error) {

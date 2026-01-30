@@ -690,6 +690,7 @@ Gere a mensagem de primeiro contato:";
 
         // Tentar buscar variável específica do tenant usando diferentes formatos
         $possiveisChaves = [
+            'EXCLUSIVA_TENANT_TWILIO_TEMPLATE_WELCOME_SID',
             strtoupper($tenant->slug) . '_TENANT_TWILIO_TEMPLATE_WELCOME_SID',
             'TENANT_' . $tenantId . '_TWILIO_TEMPLATE_WELCOME_SID',
             strtoupper(str_replace(['-', ' ', '.'], '_', $tenant->slug)) . '_TWILIO_TEMPLATE_WELCOME_SID',

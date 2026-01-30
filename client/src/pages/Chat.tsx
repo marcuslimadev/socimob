@@ -60,17 +60,19 @@ export default function Chat() {
       setIsLoadingContacts(true);
       const response = await api.get('/admin/conversas');
       if (response.data.success) {
-        const mappedContacts = response.data.data.map((item: any) => ({
-          id: item.id.toString(),
-          name: item.lead_nome || item.lead_telefone || 'Sem nome',
-          avatar: getAvatar(item.lead_nome || item.lead_telefone),
-          lastMessage: item.ultima_mensagem || 'Sem mensagens',
-          timestamp: formatTime(item.ultima_atividade || item.created_at),
-          unread: item.mensagens_nao_lidas || 0,
-          online: false, // Not supported by API yet
-          leadId: item.lead_id,
-          phone: item.lead_telefone,
-        }));
+        const mappedContacts = response.data.data
+          .filter((item: any) => item && item.id != null && item.lead_id != null) // Skip invalid conversations
+          .map((item: any) => ({
+            id: item.id.toString(),
+            name: item.lead_nome || item.lead_telefone || 'Sem nome',
+            avatar: getAvatar(item.lead_nome || item.lead_telefone),
+            lastMessage: item.ultima_mensagem || 'Sem mensagens',
+            timestamp: formatTime(item.ultima_atividade || item.created_at),
+            unread: item.mensagens_nao_lidas || 0,
+            online: false, // Not supported by API yet
+            leadId: item.lead_id,
+            phone: item.lead_telefone,
+          }));
         setContacts(mappedContacts);
         
         // Auto-select contact from URL query param
@@ -78,7 +80,7 @@ export default function Chat() {
         const targetLeadId = query.get('leadId');
         
         if (targetLeadId && !selectedContactId) {
-          const target = mappedContacts.find((c: Contact) => c.leadId.toString() === targetLeadId);
+          const target = mappedContacts.find((c: Contact) => c.leadId?.toString() === targetLeadId);
           if (target) {
             setSelectedContactId(target.id);
           } else {
@@ -106,13 +108,15 @@ export default function Chat() {
       // setIsLoadingMessages(true); 
       const response = await api.get(`/admin/conversas/${contactId}/mensagens`);
       if (response.data.success) {
-        const mappedMessages = response.data.data.map((item: any) => ({
-          id: item.id.toString(),
-          sender: item.direction === 'outgoing' ? 'user' : 'contact',
-          text: item.content,
-          timestamp: formatTime(item.created_at),
-          read: !!item.read_at,
-        }));
+        const mappedMessages = response.data.data
+          .filter((item: any) => item && item.id != null) // Skip messages without ID
+          .map((item: any) => ({
+            id: item.id.toString(),
+            sender: item.direction === 'outgoing' ? 'user' : 'contact',
+            text: item.content,
+            timestamp: formatTime(item.created_at),
+            read: !!item.read_at,
+          }));
         setMessages(mappedMessages);
       }
     } catch (error) {

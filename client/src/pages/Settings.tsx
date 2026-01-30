@@ -1,4 +1,22 @@
 import { useEffect, useState } from 'react';
+
+interface TenantConfig {
+  id: number;
+  name: string;
+  domain: string;
+  theme?: string;
+  logo_url?: string;
+  favicon_url?: string;
+  slogan?: string;
+  primary_color?: string;
+  secondary_color?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  metadata?: Record<string, any>;
+  razao_social?: string;
+  cnpj?: string;
+  endereco?: string;
+}
 import { motion } from 'framer-motion';
 import {
   Settings as SettingsIcon,
@@ -47,6 +65,9 @@ export default function Settings() {
   const [activeSection, setActiveSection] = useState('profile');
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [leadProfile, setLeadProfile] = useState<LeadProfile | null>(null);
+  const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
+  const [isLoadingTenant, setIsLoadingTenant] = useState(true);
+  const [tenantError, setTenantError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -109,7 +130,24 @@ export default function Settings() {
 
   useEffect(() => {
     fetchProfile();
+    fetchTenantConfig();
   }, []);
+  const fetchTenantConfig = async () => {
+    try {
+      setIsLoadingTenant(true);
+      setTenantError(null);
+      const response = await api.get('/api/admin/settings');
+      if (response.data?.tenant) {
+        setTenantConfig(response.data.tenant);
+      } else {
+        setTenantError('Configuração do tenant não encontrada.');
+      }
+    } catch (error: any) {
+      setTenantError(error?.response?.data?.message || 'Erro ao carregar informações da empresa.');
+    } finally {
+      setIsLoadingTenant(false);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -315,6 +353,54 @@ export default function Settings() {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-6"
                 >
+                  {/* Tenant/Company Info Section */}
+                  <div className="glass-panel p-6 rounded-2xl mb-6">
+                    <div className="flex items-center gap-6 mb-4">
+                      {isLoadingTenant ? (
+                        <div className="w-20 h-20 flex items-center justify-center">
+                          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : tenantError ? (
+                        <div className="text-destructive font-semibold">{tenantError}</div>
+                      ) : tenantConfig ? (
+                        <>
+                          {tenantConfig.logo_url ? (
+                            <img
+                              src={tenantConfig.logo_url}
+                              alt="Logo"
+                              className="w-20 h-20 rounded-full object-contain bg-white/10 border border-white/20"
+                            />
+                          ) : (
+                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white uppercase">
+                              {tenantConfig.name?.substring(0, 2) || 'EM'}
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-xl font-bold text-foreground">{tenantConfig.name}</p>
+                            {tenantConfig.slogan && (
+                              <p className="text-sm text-muted-foreground italic">{tenantConfig.slogan}</p>
+                            )}
+                            {tenantConfig.razao_social && (
+                              <p className="text-sm text-muted-foreground mt-1">Razão Social: {tenantConfig.razao_social}</p>
+                            )}
+                            {tenantConfig.cnpj && (
+                              <p className="text-sm text-muted-foreground">CNPJ: {tenantConfig.cnpj}</p>
+                            )}
+                            {tenantConfig.endereco && (
+                              <p className="text-sm text-muted-foreground">Endereço: {tenantConfig.endereco}</p>
+                            )}
+                            {tenantConfig.contact_email && (
+                              <p className="text-sm text-muted-foreground">Email: {tenantConfig.contact_email}</p>
+                            )}
+                            {tenantConfig.contact_phone && (
+                              <p className="text-sm text-muted-foreground">Telefone: {tenantConfig.contact_phone}</p>
+                            )}
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+
                   <div className="glass-panel p-6 rounded-2xl">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-2xl font-bold text-foreground">Informacoes Pessoais</h2>
