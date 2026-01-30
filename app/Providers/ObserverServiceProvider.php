@@ -25,6 +25,8 @@ class ObserverServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        \Log::info('🚀 ObserverServiceProvider::boot() chamado!');
         Lead::observe(LeadObserver::class);
+        \Log::info('✅ LeadObserver registrado com sucesso');
     }
 }
