@@ -267,6 +267,21 @@ class TwilioService
             $data['ContentVariables'] = json_encode($contentVariables);
         }
         
+        // LOG DETALHADO para debug do erro 63049
+        \App\Models\SystemLog::info(
+            \App\Models\SystemLog::CATEGORY_TWILIO,
+            'send_template_payload',
+            'Payload completo do template',
+            [
+                'From' => $this->whatsappFrom,
+                'To' => $to,
+                'ContentSid' => $contentSid,
+                'ContentVariables_RAW' => $contentVariables,
+                'ContentVariables_JSON' => json_encode($contentVariables),
+                'Payload_URLEncoded' => http_build_query($data)
+            ]
+        );
+        
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
@@ -296,12 +311,17 @@ class TwilioService
             \App\Models\SystemLog::error(
                 \App\Models\SystemLog::CATEGORY_TWILIO,
                 'send_template_error',
-                'Erro ao enviar template',
+                'Erro ao enviar template - Detalhes completos',
                 [
                     'to' => $to,
+                    'content_sid' => $contentSid,
                     'http_code' => $httpCode,
-                    'error' => $error,
-                    'response' => $responseData
+                    'curl_error' => $error,
+                    'twilio_error_code' => $responseData['error_code'] ?? $responseData['code'] ?? null,
+                    'twilio_error_message' => $responseData['error_message'] ?? $responseData['message'] ?? null,
+                    'twilio_more_info' => $responseData['more_info'] ?? null,
+                    'response_full' => $responseData,
+                    'sent_variables' => $contentVariables
                 ]
             );
         }
