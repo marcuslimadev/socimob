@@ -40,9 +40,18 @@ try {
         throw "Build nao gerou dist/public/index.html - verifique vite.config.ts"
     }
 
-    # 2. VERIFICAR MUDANCAS
+    # 2. COPIAR BUILD PARA public/
+    Write-Step "COPIAR BUILD PARA public/"
+    try {
+        Copy-Item -Path dist/public/* -Destination public/ -Recurse -Force
+        Write-Success "Build copiado para public/"
+    } catch {
+        throw "Erro ao copiar build: $_"
+    }
+
+    # 3. VERIFICAR MUDANCAS
     Write-Step "VERIFICAR MUDANCAS NO BUILD"
-    $gitStatus = git status --porcelain dist/public
+    $gitStatus = git status --porcelain dist/public public/index.html public/assets
     if ([string]::IsNullOrWhiteSpace($gitStatus)) {
         Write-Warning "Nenhuma mudanca no build detectada"
         if (-not $Force) {
@@ -94,18 +103,25 @@ cd $DEPLOY_PATH && \
 echo '=== GIT PULL ===' && \
 git pull origin master && \
 echo '' && \
-echo '=== LIMPAR PUBLIC COMPLETO ===' && \
-rm -rf public/* && \
+echo '=== BACKUP ARQUIVOS ANTIGOS ===' && \
+rm -f index.html.bak && \
+test -f index.html && cp index.html index.html.bak || echo 'Sem index.html para backup' && \
 echo '' && \
-echo '=== COPIAR BUILD ===' && \
-cp -rf dist/public/* public/ && \
+echo '=== LIMPAR BUILD ANTIGO ===' && \
+rm -f index.html && \
+rm -f assets/index-*.js assets/index-*.css && \
+echo '' && \
+echo '=== COPIAR BUILD PARA RAIZ ===' && \
+cp -rf dist/public/* ./ && \
 echo '' && \
 echo '=== LIMPAR CACHE (touch .htaccess) ===' && \
-touch public/.htaccess && \
+touch .htaccess 2>/dev/null || echo 'Sem .htaccess' && \
 echo '' && \
 echo '=== VERIFICAR BUILD ===' && \
-ls -lh public/index.html && \
-ls -lh public/assets/ | head -5 && \
+ls -lh index.html && \
+echo '' && \
+echo '=== ASSETS COPIADOS ===' && \
+ls -lh assets/index-*.js assets/index-*.css 2>&1 | head -5 && \
 echo '' && \
 echo '=== DEPLOY CONCLUIDO ===' && \
 date

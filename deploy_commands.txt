@@ -1,7 +1,0 @@
-cd ~/domains/lojadaesquina.store/public_html
-rm -f database/migrations/2026_02_01_000001_add_stage_to_conversas_table.php
-git pull
-/opt/alt/php83/usr/bin/php artisan migrate --force
-/opt/alt/php83/usr/bin/php artisan cache:clear
-chmod -R 775 storage bootstrap/cache
-curl -s https://lojadaesquina.store/api/health

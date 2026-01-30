@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Search, Filter, Download, AlertCircle, Info, AlertTriangle, CheckCircle } from 'lucide-react';
+import { RefreshCw, Search, Download, AlertCircle, Info, AlertTriangle, CheckCircle, FileText, X } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -101,10 +101,10 @@ export default function SystemLogs() {
 
   const getLevelColor = (level: string) => {
     switch (level) {
-      case 'error': return 'bg-red-100 text-red-800 border-red-300';
-      case 'warning': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'success': return 'bg-green-100 text-green-800 border-green-300';
-      default: return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'error': return 'bg-red-900/20 text-red-400 border-red-800';
+      case 'warning': return 'bg-yellow-900/20 text-yellow-400 border-yellow-800';
+      case 'success': return 'bg-green-900/20 text-green-400 border-green-800';
+      default: return 'bg-blue-900/20 text-blue-400 border-blue-800';
     }
   };
 
@@ -131,148 +131,222 @@ export default function SystemLogs() {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-[#0f0f0f]">
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
+        <div className="p-8 max-w-7xl mx-auto space-y-6">
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Logs do Sistema</h1>
-              <p className="text-gray-600 mt-1">Monitoramento e auditoria de eventos</p>
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-white" />
+                </div>
+                <h1 className="text-3xl font-bold text-white">Logs do Sistema</h1>
+              </div>
+              <p className="text-gray-400 ml-13">Monitoramento e auditoria de eventos em tempo real</p>
             </div>
-        <div className="flex gap-2">
-          <Button onClick={exportLogs} variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Exportar CSV
-          </Button>
-          <Button onClick={fetchLogs} variant="outline" size="sm">
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
-        </div>
-      </div>
-
-      {/* Filtros */}
-      <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Buscar mensagem ou ação..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && fetchLogs()}
-              className="pl-10"
-            />
+            <div className="flex gap-2">
+              <Button 
+                onClick={exportLogs} 
+                variant="outline" 
+                className="bg-[#1a1a1a] border-gray-800 text-gray-300 hover:bg-[#252525] hover:text-white"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Exportar
+              </Button>
+              <Button 
+                onClick={fetchLogs}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+            </div>
           </div>
 
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas Categorias</SelectItem>
-              <SelectItem value="automation">Automação IA</SelectItem>
-              <SelectItem value="twilio">Twilio/WhatsApp</SelectItem>
-              <SelectItem value="openai">OpenAI</SelectItem>
-              <SelectItem value="auth">Autenticação</SelectItem>
-              <SelectItem value="webhook">Webhooks</SelectItem>
-              <SelectItem value="system">Sistema</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={levelFilter} onValueChange={setLevelFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Nível" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos Níveis</SelectItem>
-              <SelectItem value="error">Erro</SelectItem>
-              <SelectItem value="warning">Aviso</SelectItem>
-              <SelectItem value="info">Info</SelectItem>
-              <SelectItem value="success">Sucesso</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button onClick={fetchLogs} className="w-full">
-            <Filter className="w-4 h-4 mr-2" />
-            Filtrar
-          </Button>
-        </div>
-      </Card>
-
-      {/* Lista de Logs */}
-      <div className="space-y-2">
-        {loading && logs.length === 0 ? (
-          <Card className="p-8 text-center text-gray-500">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2" />
-            Carregando logs...
-          </Card>
-        ) : logs.length === 0 ? (
-          <Card className="p-8 text-center text-gray-500">
-            Nenhum log encontrado
-          </Card>
-        ) : (
-          logs.map((log) => (
-            <Card key={log.id} className="p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-start gap-4">
-                <div className="pt-1">
-                  {getLevelIcon(log.level)}
+          {/* Filtros */}
+          <Card className="bg-[#1a1a1a] border-gray-800">
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
+                  <Input
+                    placeholder="Buscar em mensagens e ações..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && fetchLogs()}
+                    className="pl-10 bg-[#0f0f0f] border-gray-800 text-white placeholder:text-gray-500"
+                  />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline" className={getLevelColor(log.level)}>
-                      {log.level.toUpperCase()}
+
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="bg-[#0f0f0f] border-gray-800 text-white">
+                    <SelectValue placeholder="Todas Categorias" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white">
+                    <SelectItem value="all">Todas Categorias</SelectItem>
+                    <SelectItem value="automation">🤖 Automação IA</SelectItem>
+                    <SelectItem value="twilio">📱 Twilio/WhatsApp</SelectItem>
+                    <SelectItem value="openai">🧠 OpenAI</SelectItem>
+                    <SelectItem value="auth">🔐 Autenticação</SelectItem>
+                    <SelectItem value="webhook">🔗 Webhooks</SelectItem>
+                    <SelectItem value="system">⚙️ Sistema</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={levelFilter} onValueChange={setLevelFilter}>
+                  <SelectTrigger className="bg-[#0f0f0f] border-gray-800 text-white">
+                    <SelectValue placeholder="Todos Níveis" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a1a] border-gray-800 text-white">
+                    <SelectItem value="all">Todos Níveis</SelectItem>
+                    <SelectItem value="error">🔴 Erro</SelectItem>
+                    <SelectItem value="warning">🟡 Aviso</SelectItem>
+                    <SelectItem value="info">🔵 Info</SelectItem>
+                    <SelectItem value="success">🟢 Sucesso</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {(search || categoryFilter !== 'all' || levelFilter !== 'all') && (
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="text-sm text-gray-400">Filtros ativos:</span>
+                  {search && (
+                    <Badge className="bg-purple-600/20 text-purple-400 border-purple-600/50">
+                      Busca: {search}
+                      <X className="w-3 h-3 ml-1 cursor-pointer" onClick={() => setSearch('')} />
                     </Badge>
-                    <Badge variant="outline">{log.category}</Badge>
-                    <span className="text-xs text-gray-500">
-                      {new Date(log.created_at).toLocaleString('pt-BR')}
-                    </span>
-                    <span className="text-xs text-gray-400">#{log.id}</span>
-                  </div>
-                  <div className="font-medium text-gray-900 mb-1">{log.action}</div>
-                  <div className="text-sm text-gray-600 mb-2">{log.message}</div>
-                  {log.metadata && Object.keys(log.metadata).length > 0 && (
-                    <details className="text-xs">
-                      <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
-                        Ver detalhes técnicos
-                      </summary>
-                      <pre className="mt-2 p-3 bg-gray-50 rounded border overflow-x-auto">
-                        {JSON.stringify(log.metadata, null, 2)}
-                      </pre>
-                    </details>
+                  )}
+                  {categoryFilter !== 'all' && (
+                    <Badge className="bg-blue-600/20 text-blue-400 border-blue-600/50">
+                      {categoryFilter}
+                      <X className="w-3 h-3 ml-1 cursor-pointer" onClick={() => setCategoryFilter('all')} />
+                    </Badge>
+                  )}
+                  {levelFilter !== 'all' && (
+                    <Badge className="bg-orange-600/20 text-orange-400 border-orange-600/50">
+                      {levelFilter}
+                      <X className="w-3 h-3 ml-1 cursor-pointer" onClick={() => setLevelFilter('all')} />
+                    </Badge>
                   )}
                 </div>
-              </div>
-            </Card>
-          ))
-        )}
-      </div>
+              )}
+            </div>
+          </Card>
 
-      {/* Paginação */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2">
-          <Button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            variant="outline"
-          >
-            Anterior
-          </Button>
-          <div className="flex items-center gap-2 px-4">
-            <span className="text-sm text-gray-600">
-              Página {page} de {totalPages}
-            </span>
+          {/* Lista de Logs */}
+          <div className="space-y-3">
+            {loading && logs.length === 0 ? (
+              <Card className="bg-[#1a1a1a] border-gray-800">
+                <div className="p-12 text-center">
+                  <RefreshCw className="w-12 h-12 animate-spin mx-auto mb-4 text-purple-500" />
+                  <p className="text-gray-400 text-lg">Carregando logs...</p>
+                </div>
+              </Card>
+            ) : logs.length === 0 ? (
+              <Card className="bg-[#1a1a1a] border-gray-800">
+                <div className="p-12 text-center">
+                  <FileText className="w-16 h-16 mx-auto mb-4 text-gray-600" />
+                  <p className="text-gray-400 text-lg mb-2">Nenhum log encontrado</p>
+                  <p className="text-gray-600 text-sm">Tente ajustar os filtros ou aguarde novos eventos</p>
+                </div>
+              </Card>
+            ) : (
+              logs.map((log) => (
+                <Card 
+                  key={log.id} 
+                  className="bg-[#1a1a1a] border-gray-800 hover:border-gray-700 transition-all group"
+                >
+                  <div className="p-5">
+                    <div className="flex items-start gap-4">
+                      {/* Icon */}
+                      <div className="pt-0.5">
+                        {getLevelIcon(log.level)}
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 space-y-2">
+                        {/* Header */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge 
+                            variant="outline" 
+                            className={`${getLevelColor(log.level)} font-semibold`}
+                          >
+                            {log.level.toUpperCase()}
+                          </Badge>
+                          <Badge variant="outline" className="bg-gray-800/50 text-gray-300 border-gray-700">
+                            {log.category}
+                          </Badge>
+                          <span className="text-xs text-gray-500">
+                            {new Date(log.created_at).toLocaleString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit'
+                            })}
+                          </span>
+                          <span className="text-xs text-gray-600">ID: {log.id}</span>
+                        </div>
+                        
+                        {/* Action */}
+                        <div className="font-semibold text-white group-hover:text-purple-400 transition-colors">
+                          {log.action}
+                        </div>
+                        
+                        {/* Message */}
+                        <div className="text-sm text-gray-400 leading-relaxed">
+                          {log.message}
+                        </div>
+                        
+                        {/* Metadata */}
+                        {log.metadata && Object.keys(log.metadata).length > 0 && (
+                          <details className="text-xs">
+                            <summary className="cursor-pointer text-blue-400 hover:text-blue-300 inline-flex items-center gap-1">
+                              <span>Metadados técnicos</span>
+                              <span className="text-gray-600">({Object.keys(log.metadata).length} campos)</span>
+                            </summary>
+                            <pre className="mt-3 p-4 bg-[#0f0f0f] rounded-lg border border-gray-800 overflow-x-auto text-gray-300 font-mono text-xs">
+                              {JSON.stringify(log.metadata, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            )}
           </div>
-          <Button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            variant="outline"
-          >
-            Próxima
-          </Button>
-        </div>
-      )}
+
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-4 pt-4">
+              <Button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                variant="outline"
+                className="bg-[#1a1a1a] border-gray-800 text-gray-300 hover:bg-[#252525] disabled:opacity-50"
+              >
+                Anterior
+              </Button>
+              <div className="flex items-center gap-2 px-6 py-2 bg-[#1a1a1a] border border-gray-800 rounded-lg">
+                <span className="text-sm text-gray-400">
+                  Página <span className="text-white font-semibold">{page}</span> de <span className="text-white font-semibold">{totalPages}</span>
+                </span>
+              </div>
+              <Button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                variant="outline"
+                className="bg-[#1a1a1a] border-gray-800 text-gray-300 hover:bg-[#252525] disabled:opacity-50"
+              >
+                Próxima
+              </Button>
+            </div>
+          )}
         </div>
       </main>
     </div>
