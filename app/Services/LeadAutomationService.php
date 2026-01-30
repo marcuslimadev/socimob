@@ -368,6 +368,12 @@ Gere a mensagem de primeiro contato:";
      */
     private function deveUsarTemplateInicial(Lead $lead): bool
     {
+        // Se for o Tenant 1, forçar uso do template, pois estamos usando correspondência exata de texto
+        if ($lead->tenant_id === 1 || $lead->tenant_id === '1') {
+            Log::info('[LeadAutomation] Forçando uso de template para Tenant 1 (Envio de Texto Exato)', ['lead_id' => $lead->id]);
+            return true;
+        }
+
         // Verificar se há template configurado para o tenant
         $contentSid = $this->getTemplateSidForTenant($lead->tenant_id);
 
@@ -388,6 +394,12 @@ Gere a mensagem de primeiro contato:";
      */
     private function mensagemTemplateRegistro(Lead $lead): string
     {
+        // Se for o Tenant 1, usar o texto EXATO do template aprovado "Boas Vindas"
+        // Isso garante que o log da conversa mostre exatamente o que foi enviado via Twilio
+        if ($lead->tenant_id === 1 || $lead->tenant_id === '1') {
+            return "Boas Vindas\nPara dar continuidade ao atendimento, confirme por gentileza se ainda deseja receber informações sobre o imóvel consultado.";
+        }
+
         $tenant = \App\Models\Tenant::find($lead->tenant_id);
         
         if (!$tenant || !$tenant->whatsapp_template_message) {
@@ -414,14 +426,21 @@ Gere a mensagem de primeiro contato:";
      */
     private function enviarTemplateWhatsApp(Lead $lead, ?string $telefone): array
     {
-        // Buscar template SID específico do tenant
-        $contentSid = $this->getTemplateSidForTenant($lead->tenant_id);
+        // Se for Tenant 1, ignoramos a verificação do ContentSid
+        // pois estamos usando o método de envio de texto exato (bypass de ID)
+        $bypassCheck = ($lead->tenant_id === 1 || $lead->tenant_id === '1');
+        
+        $contentSid = null;
+        if (!$bypassCheck) {
+            // Buscar template SID específico do tenant apenas se não for bypass
+            $contentSid = $this->getTemplateSidForTenant($lead->tenant_id);
 
-        if (empty($contentSid)) {
-            Log::info('[LeadAutomation] Template SID não configurado para tenant', [
-                'tenant_id' => $lead->tenant_id
-            ]);
-            return ['success' => false, 'message_sid' => null];
+            if (empty($contentSid)) {
+                Log::info('[LeadAutomation] Template SID não configurado para tenant', [
+                    'tenant_id' => $lead->tenant_id
+                ]);
+                return ['success' => false, 'message_sid' => null];
+            }
         }
 
         if (empty($telefone)) {
