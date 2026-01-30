@@ -213,3 +213,52 @@ Already up to date.
 - API Health: https://lojadaesquina.store/api/health
 - hPanel (Hostinger): https://hpanel.hostinger.com/
 - Repositório: https://github.com/marcuslimadev/socimob
+
+---
+
+## ✅ Status Atual do Deploy
+
+### Última Atualização: 30/01/2026 - 19:41 UTC
+
+**Frontend Build:**
+- ✅ React 19 com Vite funcionando
+- ✅ Build otimizado em `dist/public/`
+- ✅ Assets: `index-D2oTfvb9.css` (154KB), `index-Ube58Nnf.js` (1.3MB)
+- ✅ Deploy automático via `deploy.ps1 -Force`
+
+**Backend (PHP/Lumen):**
+- ✅ API rodando em produção
+- ✅ LeadAutomationService corrigido (Tenant 1 força envio de template exato)
+- ✅ SystemLogsController implementado para admin
+- ✅ Rotas `/api/admin/system-logs` ativas
+
+**Funcionalidades Recentes:**
+- ✅ Painel de Logs do Sistema (acesso admin/super_admin)
+- ✅ Correção do envio de WhatsApp com texto exato de template "Boas Vindas"
+- ✅ Bypass de verificação de `ContentSid` para Tenant 1
+- ✅ Proteção de autenticação em todas as rotas admin
+
+**Servidor de Produção:**
+- Host: 145.223.105.168:65002
+- Path: ~/domains/lojadaesquina.store/public_html
+- Status: ✅ Online e funcional
+- Último deploy: 30/01/2026 19:41 UTC
+
+**Próximos Passos:**
+- Testar envio de WhatsApp em produção com novo lead
+- Validar logs no painel `/system-logs`
+- Monitorar erros no SystemLog
+
+---
+
+## 🎯 Checklist de Deploy Completo
+
+- [x] Build do frontend React sem erros
+- [x] Commit e push para GitHub
+- [x] Deploy SSH no servidor Hostinger
+- [x] Verificação de arquivos copiados
+- [x] API health check funcionando
+- [x] Backend com correções aplicadas
+- [x] Logs do sistema implementados
+- [x] Proteção de rotas admin ativa
+- [x] WhatsApp template fix deployado
