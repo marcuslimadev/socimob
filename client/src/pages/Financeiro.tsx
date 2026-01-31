@@ -227,20 +227,20 @@ export default function Financeiro() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="page-shell">
         <div className="max-w-6xl mx-auto space-y-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="page-header gap-4">
             <div>
-              <h1 className="text-4xl font-bold gradient-text mb-2 flex items-center gap-3">
+              <h1 className="page-title mb-2 flex items-center gap-3">
                 <Banknote size={32} className="text-emerald-300" />
                 Financeiro
               </h1>
-              <p className="text-muted-foreground">Controle de comissões e pagamento via PIX.</p>
+              <p className="page-subtitle">Controle de comissões e pagamento via PIX.</p>
             </div>
             <button
               type="button"
               onClick={carregarComissoes}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-sm font-semibold text-foreground hover:bg-white/20 transition"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-white/20 sm:w-auto"
             >
               <RefreshCcw size={16} />
               Atualizar histórico

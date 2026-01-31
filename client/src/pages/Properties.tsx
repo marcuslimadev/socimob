@@ -166,7 +166,7 @@ export default function Properties() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="page-shell">
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -174,18 +174,18 @@ export default function Properties() {
           className="max-w-7xl mx-auto"
         >
           <motion.div variants={itemVariants} className="mb-8">
-            <div className="flex items-center justify-between mb-4">
+            <div className="page-header mb-4">
               <div>
-                <h1 className="text-4xl font-bold gradient-text mb-2">Imóveis</h1>
-                <p className="text-muted-foreground">Gerencie seu portfólio de propriedades</p>
+                <h1 className="page-title mb-2">Imóveis</h1>
+                <p className="page-subtitle">Gerencie seu portfólio de propriedades</p>
               </div>
-              <div className="flex gap-3">
+              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleExport}
                   disabled={isExporting}
-                  className="flex items-center gap-2 px-6 py-3 bg-white/10 border border-white/20 hover:bg-white/20 rounded-lg font-semibold text-foreground transition-all disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-6 py-3 font-semibold text-foreground transition-all hover:bg-white/20 disabled:opacity-50 sm:w-auto"
                 >
                   <Download size={20} />
                   {isExporting ? 'Exportando...' : 'Exportar'}
@@ -194,7 +194,7 @@ export default function Properties() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setLocation('/properties/novo')}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-3 font-semibold text-white transition-all hover:from-blue-600 hover:to-blue-700 sm:w-auto glow-md hover:glow-lg"
                 >
                   <Plus size={20} />
                   Novo Imóvel

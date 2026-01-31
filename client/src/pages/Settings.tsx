@@ -281,7 +281,7 @@ export default function Settings() {
       client: 'Cliente',
       super_admin: 'Super Admin',
     };
-    if (!role) return 'Usuario';
+    if (!role) return 'Usuário';
     return roles[role] || role;
   };
 
@@ -291,7 +291,7 @@ export default function Settings() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="page-shell">
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -299,11 +299,11 @@ export default function Settings() {
           className="max-w-6xl mx-auto"
         >
           <motion.div variants={itemVariants} className="mb-8">
-            <h1 className="text-4xl font-bold gradient-text mb-2 flex items-center gap-3">
+            <h1 className="page-title mb-2 flex items-center gap-3">
               <SettingsIcon size={40} />
-              Configuracoes
+              Configurações
             </h1>
-            <p className="text-muted-foreground">Personalize sua experiencia no SOCIMOB</p>
+            <p className="page-subtitle">Personalize sua experiência no SOCIMOB</p>
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

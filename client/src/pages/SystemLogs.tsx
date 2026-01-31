@@ -131,12 +131,12 @@ export default function SystemLogs() {
   };
 
   return (
-    <div className="flex h-screen bg-[#0f0f0f]">
+    <div className="flex min-h-screen bg-[#0f0f0f]">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <main className="page-shell overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="page-header">
             <div className="space-y-1">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
@@ -146,18 +146,18 @@ export default function SystemLogs() {
               </div>
               <p className="text-gray-400 ml-13">Monitoramento e auditoria de eventos em tempo real</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <Button 
                 onClick={exportLogs} 
                 variant="outline" 
-                className="bg-[#1a1a1a] border-gray-800 text-gray-300 hover:bg-[#252525] hover:text-white"
+                className="w-full bg-[#1a1a1a] border-gray-800 text-gray-300 hover:bg-[#252525] hover:text-white sm:w-auto"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Exportar
               </Button>
               <Button 
                 onClick={fetchLogs}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 sm:w-auto"
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Atualizar

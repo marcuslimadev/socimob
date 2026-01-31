@@ -235,23 +235,23 @@ export default function VistoriaContestacoes() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="page-shell">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-7xl mx-auto"
         >
-          <div className="mb-8 flex items-center justify-between">
+          <div className="page-header mb-8">
             <div>
-              <h1 className="text-4xl font-bold gradient-text mb-2">Contestações</h1>
-              <p className="text-muted-foreground">Gerencie contestações de vistoria.</p>
+              <h1 className="page-title mb-2">Contestações</h1>
+              <p className="page-subtitle">Gerencie contestações de vistoria.</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setViewMode(viewMode === 'list' ? 'kanban' : 'list')}
-                className="px-5 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground font-semibold flex items-center gap-2"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-5 py-3 font-semibold text-foreground sm:w-auto"
               >
                 {viewMode === 'list' ? <LayoutGrid size={18} /> : <List size={18} />}
                 {viewMode === 'list' ? 'Ver Kanban' : 'Ver Lista'}
@@ -260,7 +260,7 @@ export default function VistoriaContestacoes() {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-5 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground font-semibold"
+                  className="w-full rounded-lg border border-white/20 bg-white/10 px-5 py-3 font-semibold text-foreground sm:w-auto"
                 >
                   Ver Vistorias
                 </motion.button>

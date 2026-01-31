@@ -612,22 +612,22 @@ export default function Pessoas() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="page-shell">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-7xl mx-auto"
         >
-          <div className="mb-8 flex items-center justify-between">
+          <div className="page-header mb-8">
             <div>
-              <h1 className="text-4xl font-bold gradient-text mb-2">Pessoas</h1>
-              <p className="text-muted-foreground">Cadastro completo de clientes, proprietários e contatos.</p>
+              <h1 className="page-title mb-2">Pessoas</h1>
+              <p className="page-subtitle">Cadastro completo de clientes, proprietários e contatos.</p>
             </div>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={openCreateModal}
-              className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white font-semibold"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-3 font-semibold text-white sm:w-auto"
             >
               <Plus size={18} />
               Nova Pessoa

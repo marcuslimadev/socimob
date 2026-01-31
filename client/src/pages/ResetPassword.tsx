@@ -101,13 +101,13 @@ export default function ResetPassword() {
                     >
                         <Lock size={32} />
                     </motion.div>
-                    <h1 className="text-3xl font-bold gradient-text mb-2">Nova Senha</h1>
-                    <p className="text-muted-foreground">Defina uma nova senha para sua conta</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold gradient-text mb-2">Nova Senha</h1>
+                    <p className="text-sm sm:text-base text-muted-foreground">Defina uma nova senha para sua conta</p>
                 </motion.div>
 
                 <motion.div
                     variants={itemVariants}
-                    className="glass-panel p-8 rounded-3xl mb-6"
+                    className="glass-panel p-6 sm:p-8 rounded-3xl mb-6"
                 >
                     <form onSubmit={handleSubmit}>
                         <motion.div variants={itemVariants} className="mb-6">
