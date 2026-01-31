@@ -76,16 +76,16 @@ export default function Login() {
           >
             S
           </motion.div>
-          <h1 className="text-3xl font-bold gradient-text mb-2">SOCIMOB</h1>
-          <p className="text-muted-foreground">Gestão Imobiliária Inteligente</p>
+          <h1 className="text-2xl sm:text-3xl font-bold gradient-text mb-2">SOCIMOB</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Gestão Imobiliária Inteligente</p>
         </motion.div>
 
         {/* Login Card */}
         <motion.div
           variants={itemVariants}
-          className="glass-panel p-8 rounded-3xl mb-6"
+          className="glass-panel p-6 sm:p-8 rounded-3xl mb-6"
         >
-          <h2 className="text-2xl font-bold text-foreground mb-6">Bem-vindo de volta</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-6">Bem-vindo de volta</h2>
 
           <form onSubmit={handleLogin}>
             {/* Email Input */}
@@ -137,7 +137,7 @@ export default function Login() {
             {/* Remember & Forgot */}
             <motion.div
               variants={itemVariants}
-              className="flex items-center justify-between mb-6"
+              className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6"
             >
               <label className="flex items-center gap-2 cursor-pointer">
                 <input

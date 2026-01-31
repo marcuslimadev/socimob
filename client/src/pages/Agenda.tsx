@@ -101,24 +101,24 @@ export default function Agenda() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="page-shell">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-6xl mx-auto"
         >
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+          <div className="page-header gap-4 mb-8">
             <div>
-              <h1 className="text-4xl font-bold gradient-text mb-2 flex items-center gap-3">
+              <h1 className="page-title mb-2 flex items-center gap-3">
                 <CalendarClock className="text-blue-300" size={32} />
                 Agenda de Visitas
               </h1>
-              <p className="text-muted-foreground">Acompanhe confirmações e prepare cada visita com antecedência.</p>
+              <p className="page-subtitle">Acompanhe confirmações e prepare cada visita com antecedência.</p>
             </div>
             <button
               type="button"
               onClick={carregarVisitas}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 text-sm font-semibold text-foreground hover:bg-white/20 transition"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-white/20 sm:w-auto"
             >
               <RefreshCcw size={16} />
               Atualizar

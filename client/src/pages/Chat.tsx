@@ -181,7 +181,7 @@ export default function Chat() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen bg-gradient-to-b from-background to-background/80 flex">
+      <div className="page-shell flex bg-gradient-to-b from-background to-background/80">
         {/* Contacts List */}
         <div className="hidden md:flex w-80 flex-col border-r border-white/10">
           <div className="p-4 border-b border-white/10">

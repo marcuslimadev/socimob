@@ -475,25 +475,25 @@ export default function ImovelForm() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="page-shell">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-4xl mx-auto"
         >
-          <div className="mb-8 flex items-center justify-between">
+          <div className="page-header mb-8">
             <div>
-              <h1 className="text-4xl font-bold gradient-text mb-2 flex items-center gap-3">
+              <h1 className="page-title mb-2 flex items-center gap-3">
                 <Home size={36} />
                 Novo Imóvel
               </h1>
-              <p className="text-muted-foreground">Cadastre um novo imóvel no sistema</p>
+              <p className="page-subtitle">Cadastre um novo imóvel no sistema</p>
             </div>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setLocation('/properties')}
-              className="px-5 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground font-semibold flex items-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-5 py-3 font-semibold text-foreground sm:w-auto"
             >
               <X size={18} />
               Cancelar

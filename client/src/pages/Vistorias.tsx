@@ -163,34 +163,34 @@ export default function Vistorias() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="page-shell">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-7xl mx-auto"
         >
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+          <div className="page-header mb-8">
             <div>
-              <h1 className="text-4xl font-bold gradient-text mb-2">Vistorias</h1>
-              <p className="text-muted-foreground">Gerencie solicitacoes e inspecoes do portifolio.</p>
+              <h1 className="page-title mb-2">Vistorias</h1>
+              <p className="page-subtitle">Gerencie solicitações e inspeções do portfólio.</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <Link to="/vistorias/solicitacoes">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground font-semibold"
+                  className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 font-semibold text-foreground sm:w-auto"
                 >
-                  Solicitacoes
+                  Solicitações
                 </motion.button>
               </Link>
               <Link to="/vistorias/solicitacoes/nova">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-white font-semibold"
+                  className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-3 font-semibold text-white hover:from-blue-600 hover:to-blue-700 sm:w-auto"
                 >
-                  Nova solicitacao
+                  Nova solicitação
                 </motion.button>
               </Link>
             </div>

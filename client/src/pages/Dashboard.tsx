@@ -153,7 +153,7 @@ export default function Dashboard() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="page-shell">
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -161,10 +161,10 @@ export default function Dashboard() {
           className="max-w-7xl mx-auto"
         >
           <motion.div variants={itemVariants} className="mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold gradient-text mb-2">
+            <h1 className="page-title mb-2">
               Bem-vindo de volta! 👋
             </h1>
-            <p className="text-muted-foreground text-lg">
+            <p className="page-subtitle">
               Aqui está um resumo do seu negócio imobiliário
             </p>
           </motion.div>

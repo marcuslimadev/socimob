@@ -157,7 +157,7 @@ export default function ClientPortal() {
         animate={{ opacity: 1, y: 0 }}
         className="sticky top-0 z-40 glass-panel border-b"
       >
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
               S
@@ -168,7 +168,7 @@ export default function ClientPortal() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate('/login')}
-            className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg"
+            className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-2 font-semibold text-white transition-all hover:from-blue-600 hover:to-blue-700 sm:w-auto glow-md hover:glow-lg"
           >
             Entrar
           </motion.button>
@@ -189,10 +189,10 @@ export default function ClientPortal() {
             transition={{ delay: 0.2 }}
             className="text-center mb-8"
           >
-            <h2 className="text-4xl md:text-5xl font-bold gradient-text mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold gradient-text mb-4">
               Encontre seu Imóvel Perfeito
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
               Explore nossa seleção de propriedades premium em São Paulo
             </p>
           </motion.div>
@@ -202,7 +202,7 @@ export default function ClientPortal() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="glass-panel p-6 rounded-2xl"
+            className="glass-panel p-4 sm:p-6 rounded-2xl"
           >
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={24} />
@@ -211,7 +211,7 @@ export default function ClientPortal() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar por localização, tipo de imóvel..."
-                className="w-full pl-14 pr-4 py-4 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-lg"
+                className="w-full pl-14 pr-4 py-4 bg-white/10 border border-white/20 rounded-lg text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all sm:text-lg"
               />
             </div>
           </motion.div>
@@ -367,7 +367,7 @@ export default function ClientPortal() {
           {/* Properties Grid */}
           <motion.div variants={itemVariants} className="lg:col-span-3">
             {/* View Mode & Count */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
               <p className="text-muted-foreground">
                 {filteredProperties.length} imóvel{filteredProperties.length !== 1 ? 's' : ''} encontrado{filteredProperties.length !== 1 ? 's' : ''}
               </p>

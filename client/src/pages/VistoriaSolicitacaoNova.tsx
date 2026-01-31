@@ -72,22 +72,22 @@ export default function VistoriaSolicitacaoNova() {
     <div className="flex">
       <Sidebar />
 
-      <div className="flex-1 md:ml-80 min-h-screen p-4 md:p-8">
+      <div className="page-shell">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-5xl mx-auto"
         >
-          <div className="mb-6 flex items-center justify-between">
+          <div className="page-header mb-6">
             <div>
-              <h1 className="text-4xl font-bold gradient-text mb-2">Nova Solicitacao</h1>
-              <p className="text-muted-foreground">Cadastro de solicitacao de vistoria.</p>
+              <h1 className="page-title mb-2">Nova Solicitação</h1>
+              <p className="page-subtitle">Cadastro de solicitação de vistoria.</p>
             </div>
             <Link to="/vistorias">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-foreground sm:w-auto"
               >
                 <ArrowLeft size={16} />
                 Voltar
@@ -98,10 +98,10 @@ export default function VistoriaSolicitacaoNova() {
           <div className="glass-panel p-6 rounded-2xl">
             <div className="flex flex-wrap gap-2 mb-6">
               {[
-                { key: 'solicitacao', label: 'Solicitacao' },
-                { key: 'observacoes', label: 'Observacoes' },
+                { key: 'solicitacao', label: 'Solicitação' },
+                { key: 'observacoes', label: 'Observações' },
                 { key: 'pessoas', label: 'Pessoas' },
-                { key: 'historico', label: 'Historico' },
+                { key: 'historico', label: 'Histórico' },
               ].map((tab) => (
                 <motion.button
                   key={tab.key}
