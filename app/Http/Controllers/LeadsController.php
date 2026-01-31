@@ -84,6 +84,82 @@ class LeadsController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Criar novo lead
+     * POST /api/leads
+     */
+    public function store(Request $request)
+    {
+        $tenantId = $this->resolveTenantId($request);
+
+        if ($request->has('cpf')) {
+            $request->merge([
+                'cpf' => $request->filled('cpf')
+                    ? preg_replace('/\D/', '', $request->input('cpf'))
+                    : null,
+            ]);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'nome' => 'required|string|max:191',
+            'email' => 'nullable|email|max:191',
+            'telefone' => 'required|string|max:50',
+            'whatsapp' => 'nullable|string|max:50',
+            'status' => 'nullable|in:novo,em_atendimento,qualificado,proposta,fechado,perdido',
+            'corretor_id' => 'nullable|integer',
+            'budget_min' => 'nullable|numeric|min:0',
+            'budget_max' => 'nullable|numeric|min:0',
+            'localizacao' => 'nullable|string|max:255',
+            'observacoes' => 'nullable|string',
+            'cpf' => [
+                'nullable',
+                'regex:/^\d{11}$/',
+                Rule::unique('leads')
+                    ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId)),
+            ],
+            'renda_mensal' => 'nullable|numeric|min:0',
+            'estado_civil' => 'nullable|string|max:100',
+            'composicao_familiar' => 'nullable|string|max:150',
+            'profissao' => 'nullable|string|max:150',
+            'fonte_renda' => 'nullable|string|max:150',
+            'financiamento_status' => 'nullable|string|max:100',
+            'prazo_compra' => 'nullable|string|max:100',
+            'objetivo_compra' => 'nullable|string|max:150',
+            'preferencia_tipo_imovel' => 'nullable|string|max:150',
+            'preferencia_bairro' => 'nullable|string|max:150',
+            'preferencia_lazer' => 'nullable|string',
+            'preferencia_seguranca' => 'nullable|string',
+            'observacoes_cliente' => 'nullable|string',
+            'caracteristicas_desejadas' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
+
+        if ($tenantId) {
+            $data['tenant_id'] = $tenantId;
+        }
+
+        if (!isset($data['status'])) {
+            $data['status'] = 'novo';
+        }
+
+        if ($request->user()) {
+            $data['user_id'] = $request->user()->id;
+        }
+
+        $lead = Lead::create($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lead criado com sucesso',
+            'data' => $lead
+        ], 201);
+    }
     
     /**
      * Detalhes do lead

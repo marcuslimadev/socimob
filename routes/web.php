@@ -908,6 +908,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
 
     // Leads
     $router->get('/leads', 'LeadsController@index');
+    $router->post('/leads', 'LeadsController@store');
     $router->get('/leads/stats', 'LeadsController@stats');
     $router->get('/leads/{id}', 'LeadsController@show');
     $router->put('/leads/{id}', 'LeadsController@update');

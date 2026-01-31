@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, Plus, Download, Zap } from 'lucide-react';
 import { toast } from 'sonner';
@@ -6,6 +6,10 @@ import { useLocation } from 'wouter';
 import { api } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import LeadCard from '@/components/LeadCard';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface Lead {
   id: string;
@@ -24,6 +28,17 @@ export default function Leads() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewLeadModal, setShowNewLeadModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newLead, setNewLead] = useState({
+    nome: '',
+    telefone: '',
+    email: '',
+    status: 'novo',
+    budget_min: '',
+    budget_max: '',
+    localizacao: '',
+    observacoes: '',
+  });
   const [_, setLocation] = useLocation();
 
   useEffect(() => {
@@ -96,8 +111,7 @@ export default function Leads() {
   };
 
   const handleNewLead = () => {
-    toast.info('Funcionalidade em desenvolvimento');
-    // TODO: Implementar modal de novo lead
+    setShowNewLeadModal(true);
   };
 
   const handleOpenChat = (leadId: string, leadName: string) => {
@@ -144,6 +158,78 @@ export default function Leads() {
     } catch (error) {
       console.error('Error deleting lead:', error);
       toast.error('Erro ao excluir lead');
+    }
+  };
+
+  const resetNewLeadForm = () => {
+    setNewLead({
+      nome: '',
+      telefone: '',
+      email: '',
+      status: 'novo',
+      budget_min: '',
+      budget_max: '',
+      localizacao: '',
+      observacoes: '',
+    });
+  };
+
+  const parseCurrencyValue = (value: string) => {
+    if (!value) return null;
+    const normalized = value.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.');
+    const parsed = Number.parseFloat(normalized);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
+  const handleCreateLead = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!newLead.nome.trim() || !newLead.telefone.trim()) {
+      toast.error('Nome e telefone são obrigatórios');
+      return;
+    }
+
+    const budgetMin = parseCurrencyValue(newLead.budget_min);
+    const budgetMax = parseCurrencyValue(newLead.budget_max);
+
+    if (budgetMin !== null && budgetMax !== null && budgetMax < budgetMin) {
+      toast.error('O orçamento máximo não pode ser menor que o mínimo');
+      return;
+    }
+
+    const payload: Record<string, string | number | null> = {
+      nome: newLead.nome.trim(),
+      telefone: newLead.telefone.trim(),
+      email: newLead.email.trim() || null,
+      status: newLead.status,
+      localizacao: newLead.localizacao.trim() || null,
+      observacoes: newLead.observacoes.trim() || null,
+    };
+
+    if (budgetMin !== null) {
+      payload.budget_min = budgetMin;
+    }
+    if (budgetMax !== null) {
+      payload.budget_max = budgetMax;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await api.post('/leads', payload);
+      if (response.data.success) {
+        toast.success('Lead criado com sucesso');
+        setShowNewLeadModal(false);
+        resetNewLeadForm();
+        fetchLeads();
+      } else {
+        toast.error(response.data.error || 'Erro ao criar lead');
+      }
+    } catch (error: any) {
+      console.error('Error creating lead:', error);
+      toast.error(error?.response?.data?.error || 'Erro ao criar lead');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -337,6 +423,138 @@ export default function Leads() {
           )}
         </motion.div>
       </div>
+
+      <Dialog
+        open={showNewLeadModal}
+        onOpenChange={(open) => {
+          setShowNewLeadModal(open);
+          if (!open) {
+            resetNewLeadForm();
+          }
+        }}
+      >
+        <DialogContent className="bg-[#0f0f0f] border border-white/10 text-foreground max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Novo Lead</DialogTitle>
+            <DialogDescription>
+              Cadastre um novo lead para iniciar o atendimento.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateLead} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="lead-nome">Nome *</Label>
+                <Input
+                  id="lead-nome"
+                  value={newLead.nome}
+                  onChange={(e) => setNewLead((prev) => ({ ...prev, nome: e.target.value }))}
+                  placeholder="Nome do lead"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lead-telefone">Telefone *</Label>
+                <Input
+                  id="lead-telefone"
+                  value={newLead.telefone}
+                  onChange={(e) => setNewLead((prev) => ({ ...prev, telefone: e.target.value }))}
+                  placeholder="(00) 00000-0000"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="lead-email">E-mail</Label>
+                <Input
+                  id="lead-email"
+                  type="email"
+                  value={newLead.email}
+                  onChange={(e) => setNewLead((prev) => ({ ...prev, email: e.target.value }))}
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lead-status">Status</Label>
+                <select
+                  id="lead-status"
+                  value={newLead.status}
+                  onChange={(e) => setNewLead((prev) => ({ ...prev, status: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-md border border-white/10 bg-transparent text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="novo">Novo</option>
+                  <option value="em_atendimento">Em Atendimento</option>
+                  <option value="qualificado">Qualificado</option>
+                  <option value="proposta">Proposta</option>
+                  <option value="fechado">Fechado</option>
+                  <option value="perdido">Perdido</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="lead-budget-min">Orçamento mínimo</Label>
+                <Input
+                  id="lead-budget-min"
+                  value={newLead.budget_min}
+                  onChange={(e) => setNewLead((prev) => ({ ...prev, budget_min: e.target.value }))}
+                  placeholder="R$ 300.000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lead-budget-max">Orçamento máximo</Label>
+                <Input
+                  id="lead-budget-max"
+                  value={newLead.budget_max}
+                  onChange={(e) => setNewLead((prev) => ({ ...prev, budget_max: e.target.value }))}
+                  placeholder="R$ 500.000"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lead-localizacao">Localização</Label>
+              <Input
+                id="lead-localizacao"
+                value={newLead.localizacao}
+                onChange={(e) => setNewLead((prev) => ({ ...prev, localizacao: e.target.value }))}
+                placeholder="Cidade ou bairro"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lead-observacoes">Observações</Label>
+              <Textarea
+                id="lead-observacoes"
+                value={newLead.observacoes}
+                onChange={(e) => setNewLead((prev) => ({ ...prev, observacoes: e.target.value }))}
+                placeholder="Observações sobre o lead"
+                rows={3}
+              />
+            </div>
+
+            <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowNewLeadModal(false)}
+                className="px-4 py-2 rounded-md border border-white/20 text-foreground hover:bg-white/10 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-60"
+              >
+                {isSubmitting ? 'Salvando...' : 'Salvar lead'}
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
