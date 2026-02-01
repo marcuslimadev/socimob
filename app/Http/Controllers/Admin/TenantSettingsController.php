@@ -105,6 +105,7 @@ class TenantSettingsController extends Controller
             'endereco' => 'nullable|string|max:255',
             'portal_finalidades' => 'nullable|array',
             'portal_finalidades.*' => 'in:venda,aluguel',
+            'api_key_openai' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -116,6 +117,11 @@ class TenantSettingsController extends Controller
             if ($request->exists($metadataKey)) {
                 $metadataUpdates[$metadataKey] = $request->input($metadataKey);
             }
+        }
+        
+        // API Key OpenAI vai no metadata também
+        if ($request->has('api_key_openai') && $request->input('api_key_openai')) {
+            $metadataUpdates['api_key_openai'] = $request->input('api_key_openai');
         }
 
         $tenantUpdates = $request->only([
@@ -154,6 +160,15 @@ class TenantSettingsController extends Controller
             'message' => 'Tenant updated successfully',
             'tenant' => $tenant,
         ]);
+    }
+
+    /**
+     * Método único para atualizar configurações (atalho para updateTenant)
+     * PUT /api/admin/settings
+     */
+    public function update(Request $request)
+    {
+        return $this->updateTenant($request);
     }
 
     /**
