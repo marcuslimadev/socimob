@@ -6,6 +6,7 @@ use App\Models\Lead;
 use App\Services\ChavesNaMaoService;
 use App\Services\LeadCustomerService;
 use App\Services\LeadAutomationService;
+use App\Services\LeadEmailService;
 use Illuminate\Support\Facades\Log;
 
 class LeadObserver
@@ -13,15 +14,18 @@ class LeadObserver
     private ChavesNaMaoService $chavesNaMaoService;
     private LeadCustomerService $leadCustomerService;
     private LeadAutomationService $leadAutomationService;
+    private LeadEmailService $leadEmailService;
 
     public function __construct(
         ChavesNaMaoService $chavesNaMaoService,
         LeadCustomerService $leadCustomerService,
-        LeadAutomationService $leadAutomationService
+        LeadAutomationService $leadAutomationService,
+        LeadEmailService $leadEmailService
     ) {
         $this->chavesNaMaoService = $chavesNaMaoService;
         $this->leadCustomerService = $leadCustomerService;
         $this->leadAutomationService = $leadAutomationService;
+        $this->leadEmailService = $leadEmailService;
     }
 
     /**
@@ -62,12 +66,21 @@ class LeadObserver
             ]);
         }
 
-        // 2. Criar usuário cliente se tiver email
+        // 2. Enviar email de boas-vindas se tiver email válido e for do Chaves na Mão
+        if ($this->isFromChavesNaMao($lead) && !empty($lead->email)) {
+            Log::info('[LeadObserver] Enviando email de boas-vindas para lead do Chaves na Mão', [
+                'lead_id' => $lead->id,
+                'email' => $lead->email
+            ]);
+            $this->leadEmailService->enviarEmailBoasVindas($lead);
+        }
+
+        // 3. Criar usuário cliente se tiver email
         if (!$lead->user_id && !empty($lead->email)) {
             $this->leadCustomerService->ensureClientForLead($lead);
         }
 
-        // 3. Se NÃO for do Chaves na Mão, enviar PARA o Chaves na Mão
+        // 4. Se NÃO for do Chaves na Mão, enviar PARA o Chaves na Mão
         if (!$this->isFromChavesNaMao($lead)) {
             Log::info('[LeadObserver] Lead não é do Chaves na Mão, enviando para integração', [
                 'lead_id' => $lead->id,
