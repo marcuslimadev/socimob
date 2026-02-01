@@ -27,8 +27,9 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'User has no tenant'], 400);
         }
 
-        if (!$user->isAdmin()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        // Apenas super_admin pode acessar
+        if ($user->role !== 'super_admin') {
+            return response()->json(['error' => 'Unauthorized - Super admin only'], 403);
         }
 
         $tenant = Tenant::find($user->tenant_id);
@@ -79,8 +80,9 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'User has no tenant'], 400);
         }
 
-        if (!$user->isAdmin()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        // Apenas super_admin pode atualizar
+        if ($user->role !== 'super_admin') {
+            return response()->json(['error' => 'Unauthorized - Super admin only'], 403);
         }
 
         $tenant = Tenant::find($user->tenant_id);

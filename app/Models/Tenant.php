@@ -42,6 +42,28 @@ class Tenant extends Model
         'max_properties',
         'max_leads',
         'metadata',
+        // Twilio
+        'twilio_account_sid',
+        'twilio_auth_token',
+        'twilio_whatsapp_from',
+        'twilio_template_welcome_sid',
+        // OpenAI
+        'openai_api_key',
+        'openai_model',
+        'ai_assistant_name',
+        // Email
+        'mail_driver',
+        'mail_host',
+        'mail_port',
+        'mail_username',
+        'mail_password',
+        'mail_encryption',
+        'mail_from_address',
+        'mail_from_name',
+        // Additional
+        'razao_social',
+        'cnpj',
+        'endereco',
     ];
 
     protected $casts = [
@@ -67,6 +89,9 @@ class Tenant extends Model
         'api_token',
         'pagar_me_customer_id',
         'pagar_me_subscription_id',
+        'twilio_auth_token',
+        'openai_api_key',
+        'mail_password',
     ];
 
     /**
@@ -179,33 +204,75 @@ class Tenant extends Model
             ->get();
     }
 
+    /**
+     * Obtém valor de configuração com fallback para .env
+     * Prioridade: 1. Banco de dados, 2. .env específico do tenant, 3. .env global, 4. default
+     */
     public function getIntegrationValue(string $key, $default = null)
     {
-        $envKey = 'TENANT_' . strtoupper($this->id . '_' . $key);
-        $valueFromEnv = env($envKey);
-
-        if ($valueFromEnv !== null) {
-            return $valueFromEnv;
-        }
-
-        $fallbackEnvKey = strtoupper($key);
-        $valueFromFallbackEnv = env($fallbackEnvKey);
-
-        if ($valueFromFallbackEnv !== null) {
-            return $valueFromFallbackEnv;
-        }
-
-        $config = $this->relationLoaded('config') ? $this->config : $this->config()->first();
-
-        if ($config && array_key_exists($key, $config->getAttributes()) && $config->{$key} !== null) {
-            return $config->{$key};
-        }
-
-        if (array_key_exists($key, $this->getAttributes()) && $this->{$key} !== null) {
+        // 1. Verificar se existe no banco de dados (prioridade)
+        if (array_key_exists($key, $this->getAttributes()) && $this->{$key} !== null && $this->{$key} !== '') {
             return $this->{$key};
         }
 
+        // 2. Verificar metadata
+        if (is_array($this->metadata) && isset($this->metadata[$key])) {
+            return $this->metadata[$key];
+        }
+
+        // 3. Verificar .env específico do tenant (ex: EXCLUSIVA_TWILIO_ACCOUNT_SID)
+        $tenantPrefix = strtoupper(str_replace('-', '_', $this->slug ?? ''));
+        $tenantEnvKey = $tenantPrefix . '_' . strtoupper($key);
+        $valueFromTenantEnv = env($tenantEnvKey);
+
+        if ($valueFromTenantEnv !== null && $valueFromTenantEnv !== '') {
+            return $valueFromTenantEnv;
+        }
+
+        // 4. Verificar .env global (ex: TWILIO_ACCOUNT_SID, OPENAI_API_KEY)
+        $globalEnvKey = strtoupper($key);
+        $valueFromGlobalEnv = env($globalEnvKey);
+
+        if ($valueFromGlobalEnv !== null && $valueFromGlobalEnv !== '') {
+            return $valueFromGlobalEnv;
+        }
+
+        // 5. Retornar default
         return $default;
+    }
+
+    /**
+     * Atalhos para configurações comuns
+     */
+    public function getTwilioAccountSid()
+    {
+        return $this->getIntegrationValue('twilio_account_sid');
+    }
+
+    public function getTwilioAuthToken()
+    {
+        return $this->getIntegrationValue('twilio_auth_token');
+    }
+
+    public function getTwilioWhatsappFrom()
+    {
+        return $this->getIntegrationValue('twilio_whatsapp_from');
+    }
+
+    public function getOpenAiApiKey()
+    {
+        return $this->getIntegrationValue('openai_api_key') 
+            ?? $this->getIntegrationValue('api_key_openai');
+    }
+
+    public function getOpenAiModel()
+    {
+        return $this->getIntegrationValue('openai_model', 'gpt-4o-mini');
+    }
+
+    public function getAiAssistantName()
+    {
+        return $this->getIntegrationValue('ai_assistant_name', 'Teresa');
     }
 
     public function suspendSubscription(string $reason = null): void
