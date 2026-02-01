@@ -392,4 +392,142 @@ class PropertyController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Gerar descrição de propaganda com IA para um imóvel
+     * 
+     * POST /api/properties/{id}/generate-ad-description
+     */
+    public function generateAdDescription($id)
+    {
+        try {
+            $property = Property::where('tenant_id', auth()->user()->tenant_id)
+                ->findOrFail($id);
+
+            // Buscar configuração do tenant para pegar a chave OpenAI
+            $tenantConfig = DB::table('tenant_config')
+                ->where('tenant_id', auth()->user()->tenant_id)
+                ->first();
+
+            $openaiKey = null;
+            
+            // Procurar chave OpenAI nas configurações
+            if ($tenantConfig) {
+                // Tentar nas configurações gerais
+                if ($tenantConfig->settings) {
+                    $settings = json_decode($tenantConfig->settings, true);
+                    $openaiKey = $settings['openai_api_key'] ?? null;
+                }
+                
+                // Se não encontrar, procurar no env específico do tenant
+                if (!$openaiKey) {
+                    $envKey = strtoupper($tenantConfig->slug ?? '') . '_OPENAI_API_KEY';
+                    $openaiKey = env($envKey);
+                }
+            }
+
+            // Fallback para chave global
+            if (!$openaiKey) {
+                $openaiKey = env('OPENAI_API_KEY');
+            }
+
+            if (!$openaiKey) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Chave da OpenAI não configurada para este tenant'
+                ], 400);
+            }
+
+            // Preparar informações do imóvel
+            $propertyInfo = [
+                'title' => $property->title ?? '',
+                'type' => $property->type ?? '',
+                'city' => $property->city ?? '',
+                'state' => $property->state ?? '',
+                'neighborhood' => $property->neighborhood ?? '',
+                'bedrooms' => $property->bedrooms ?? 0,
+                'bathrooms' => $property->bathrooms ?? 0,
+                'area' => $property->area ?? 0,
+                'price' => $property->price ?? 0,
+                'description' => $property->description ?? '',
+            ];
+
+            // Construir prompt para a IA
+            $prompt = "Crie uma descrição curta e atrativa para propaganda de imóvel nas redes sociais. 
+Máximo de 200 caracteres. Foque nos pontos fortes e localização.
+
+Imóvel: {$propertyInfo['title']}
+Tipo: {$propertyInfo['type']}
+Localização: {$propertyInfo['city']}, {$propertyInfo['state']}
+Quartos: {$propertyInfo['bedrooms']}
+Banheiros: {$propertyInfo['bathrooms']}
+Área: {$propertyInfo['area']}m²
+Valor: R$ " . number_format($propertyInfo['price'], 2, ',', '.') . "
+
+Responda APENAS com a descrição, sem aspas ou formatação adicional.";
+
+            // Fazer requisição para OpenAI
+            $ch = curl_init('https://api.openai.com/v1/chat/completions');
+            
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'Authorization: Bearer ' . $openaiKey
+                ],
+                CURLOPT_POSTFIELDS => json_encode([
+                    'model' => 'gpt-3.5-turbo',
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => 'Você é um especialista em marketing imobiliário que cria descrições curtas e atrativas para redes sociais.'
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => $prompt
+                        ]
+                    ],
+                    'max_tokens' => 100,
+                    'temperature' => 0.7
+                ])
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode !== 200) {
+                \Log::error('OpenAI API Error: ' . $response);
+                
+                // Fallback: criar descrição manual
+                $description = "{$propertyInfo['bedrooms']} quartos, {$propertyInfo['bathrooms']} banheiros, {$propertyInfo['area']}m² em {$propertyInfo['city']}. Excelente oportunidade!";
+                
+                return response()->json([
+                    'success' => true,
+                    'description' => substr($description, 0, 200),
+                    'fallback' => true
+                ]);
+            }
+
+            $result = json_decode($response, true);
+            $description = $result['choices'][0]['message']['content'] ?? '';
+            
+            // Garantir limite de 200 caracteres
+            $description = substr(trim($description), 0, 200);
+
+            return response()->json([
+                'success' => true,
+                'description' => $description
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error generating ad description: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Erro ao gerar descrição: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

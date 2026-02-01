@@ -7,7 +7,7 @@ import { api } from '@/lib/api';
 import MetricCard from '@/components/MetricCard';
 import LeadCard from '@/components/LeadCard';
 import KanbanBoard from '@/components/KanbanBoard';
-import Sidebar from '@/components/Sidebar';
+import PageLayout from '@/components/PageLayout';
 import QuickAccessCard from '@/components/QuickAccessCard';
 
 interface DashboardStats {
@@ -150,24 +150,21 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="flex">
-      <Sidebar />
-
-      <div className="page-shell">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="max-w-7xl mx-auto"
-        >
-          <motion.div variants={itemVariants} className="mb-8">
-            <h1 className="page-title mb-2">
-              Bem-vindo de volta! 👋
-            </h1>
-            <p className="page-subtitle">
-              Aqui está um resumo do seu negócio imobiliário
-            </p>
-          </motion.div>
+    <PageLayout>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="max-w-7xl mx-auto"
+      >
+        <motion.div variants={itemVariants} className="mb-6 md:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold gradient-text mb-1 sm:mb-2">
+            Bem-vindo de volta! 👋
+          </h1>
+          <p className="text-muted-foreground text-sm sm:text-base md:text-lg">
+            Aqui está um resumo do seu negócio imobiliário
+          </p>
+        </motion.div>
 
           <motion.div
             variants={itemVariants}
@@ -212,7 +209,7 @@ export default function Dashboard() {
 
           <motion.div
             variants={itemVariants}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 md:mb-8"
           >
             <MetricCard
               title="Vistorias Pendentes"
@@ -252,25 +249,25 @@ export default function Dashboard() {
             />
           </motion.div>
 
-          <motion.div variants={itemVariants} className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-foreground">Acessos rápidos</h2>
-              <span className="text-sm text-muted-foreground">Novos módulos em construção</span>
+          <motion.div variants={itemVariants} className="mb-6 md:mb-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 md:mb-6 gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground">Acessos rápidos</h2>
+              <span className="text-xs sm:text-sm text-muted-foreground">Novos módulos em construção</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               {quickAccessItems.map((item, index) => (
                 <QuickAccessCard key={item.title} {...item} delay={0.2 + index * 0.1} />
               ))}
             </div>
           </motion.div>
 
-          <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div className="lg:col-span-2 glass-panel p-6 rounded-2xl">
-              <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
-                <Zap size={24} className="text-yellow-400" />
+          <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+            <div className="lg:col-span-2 glass-panel p-4 sm:p-5 md:p-6 rounded-2xl">
+              <h2 className="text-lg sm:text-xl font-bold text-foreground mb-4 md:mb-6 flex items-center gap-2">
+                <Zap size={20} className="text-yellow-400 sm:w-6 sm:h-6" />
                 Funil de Vendas
               </h2>
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {[
                   { label: 'Leads', value: stats?.leads.total || 0, percent: 100, color: 'from-blue-500 to-blue-600' },
                   { label: 'Novos', value: stats?.leads.novos || 0, percent: stats ? Math.round((stats.leads.novos / (stats.leads.total || 1)) * 100) : 0, color: 'from-cyan-500 to-cyan-600' },
@@ -305,13 +302,13 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="glass-panel p-6 rounded-2xl"
+              className="glass-panel p-4 sm:p-5 md:p-6 rounded-2xl"
             >
-              <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
-                <Activity size={24} className="text-pink-400" />
+              <h2 className="text-lg sm:text-xl font-bold text-foreground mb-4 md:mb-6 flex items-center gap-2">
+                <Activity size={20} className="text-pink-400 sm:w-6 sm:h-6" />
                 Atividades Recentes
               </h2>
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {activities.length > 0 ? (
                   activities.map((activity, index) => (
                     <motion.div
@@ -319,10 +316,10 @@ export default function Dashboard() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.5 + index * 0.1 }}
-                      className="p-3 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all"
+                      className="p-2.5 sm:p-3 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all"
                     >
-                      <p className="font-semibold text-foreground text-sm">{activity.descricao}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{formatDate(activity.timestamp)}</p>
+                      <p className="font-semibold text-foreground text-xs sm:text-sm">{activity.descricao}</p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">{formatDate(activity.timestamp)}</p>
                     </motion.div>
                   ))
                 ) : (
@@ -332,9 +329,9 @@ export default function Dashboard() {
             </motion.div>
           </motion.div>
 
-          <motion.div variants={itemVariants} className="mb-8">
-            <h2 className="text-2xl font-bold text-foreground mb-6">Leads Recentes</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <motion.div variants={itemVariants} className="mb-6 md:mb-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 md:mb-6">Leads Recentes</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {recentLeads.map((lead, index) => (
                 <LeadCard
                   key={lead.id}
@@ -351,11 +348,10 @@ export default function Dashboard() {
           </motion.div>
 
           <motion.div variants={itemVariants}>
-            <h2 className="text-2xl font-bold text-foreground mb-6">Funil de Leads</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 md:mb-6">Funil de Leads</h2>
             <KanbanBoard />
           </motion.div>
         </motion.div>
-      </div>
-    </div>
+    </PageLayout>
   );
 }

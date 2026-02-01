@@ -19,8 +19,15 @@ import {
   FileSignature,
   UserRound,
   FileText,
+  Shield,
+  Image,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
 
 interface SidebarItem {
   icon: React.ReactNode;
@@ -37,6 +44,11 @@ interface TenantConfig {
   primary_color?: string;
 }
 
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
 interface UserData {
   id: number;
   name: string;
@@ -45,13 +57,17 @@ interface UserData {
   avatar?: string;
 }
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [location] = useLocation();
-  const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
   const [notificationCount, setNotificationCount] = useState(0);
+
+  // Use internal state if not controlled externally
+  const actualIsOpen = onClose ? isOpen : internalIsOpen;
+  const handleClose = onClose || (() => setInternalIsOpen(false));
 
   // Carregar dados do tenant e usuário
   useEffect(() => {
@@ -94,6 +110,8 @@ const Sidebar = () => {
 
   // Menu adicional para admin
   const adminMenuItems: SidebarItem[] = user?.role === 'admin' || user?.role === 'super_admin' ? [
+    { icon: <Shield size={20} />, label: 'Usuários', href: '/admin/users' },
+    { icon: <Image size={20} />, label: 'Propaganda', href: '/admin/property-ads' },
     { icon: <FileText size={20} />, label: 'Logs do Sistema', href: '/system-logs' },
   ] : [];
 
@@ -134,14 +152,16 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 glass-panel p-3 rounded-xl hover:bg-white/20 transition-all"
-        aria-label="Toggle menu"
-      >
-        {isOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
+      {/* Mobile Menu Button - Only show if not controlled externally */}
+      {!onClose && (
+        <button
+          onClick={() => setInternalIsOpen(!internalIsOpen)}
+          className="md:hidden fixed top-4 left-4 z-50 glass-panel p-3 rounded-xl hover:bg-white/20 transition-all"
+          aria-label="Toggle menu"
+        >
+          {internalIsOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      )}
 
       {/* Desktop Sidebar */}
       <motion.div
@@ -284,6 +304,34 @@ const Sidebar = () => {
         <div className="flex flex-col gap-2 px-2">
           <div className="blur-divider w-full" />
 
+          {/* Version Badge */}
+          {!isCollapsed && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="px-3 py-2 rounded-xl bg-white/5 border border-white/10"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-foreground">SOCIMOB v1.0.0</p>
+                  <p className="text-[10px] text-muted-foreground">Build {new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {isCollapsed && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex justify-center py-2"
+            >
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            </motion.div>
+          )}
+
           <motion.button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-muted-foreground hover:bg-white/10 transition-all duration-300"
@@ -308,14 +356,14 @@ const Sidebar = () => {
 
       {/* Mobile Sidebar */}
       <AnimatePresence>
-        {isOpen && (
+        {actualIsOpen && (
           <>
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
               className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
             />
 
@@ -325,60 +373,52 @@ const Sidebar = () => {
               animate={{ x: 0 }}
               exit={{ x: -300 }}
               transition={{ type: 'spring', damping: 25 }}
-              className="md:hidden fixed left-0 top-0 h-screen w-72 glass-panel z-40 flex flex-col py-6 px-4 safe-area-inset"
+              className={`md:hidden fixed left-0 ${onClose ? 'top-16' : 'top-0'} bottom-0 w-72 glass-panel z-40 flex flex-col py-6 px-4`}
             >
-              {/* Header */}
-              <div className="flex flex-col gap-4 mb-6">
-                <div className="flex items-center gap-3">
-                  {tenant?.logo ? (
-                    <img
-                      src={tenant.logo}
-                      alt={tenant.name}
-                      className="w-12 h-12 rounded-lg object-contain bg-white/5 p-1"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                      <Building2 size={24} />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h1 className="font-bold gradient-text text-base truncate">
-                      {tenant?.name || 'SOCIMOB'}
-                    </h1>
-                    {tenant?.slogan && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        {tenant.slogan}
-                      </p>
+              {/* Tenant Header - Only show if not controlled externally */}
+              {!onClose && tenant && (
+                <div className="flex flex-col gap-4 mb-6 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    {tenant?.logo ? (
+                      <img
+                        src={tenant.logo}
+                        alt={tenant.name}
+                        className="w-12 h-12 rounded-lg object-contain bg-white/5 p-1"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                        <Building2 size={24} />
+                      </div>
                     )}
+                    <div className="flex-1 min-w-0">
+                      <h1 className="font-bold gradient-text text-base truncate">
+                        {tenant?.name || 'SOCIMOB'}
+                      </h1>
+                      {tenant?.slogan && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {tenant.slogan}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* User Info Mobile */}
-                {user && (
-                  <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                    <div className="flex items-center gap-3">
-                      {user.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold">
-                          {getInitials(user.name)}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">
-                          {user.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {getRoleLabel(user.role)}
-                        </p>
-                      </div>
-                    </div>
+              {/* User Info */}
+              <div className="flex flex-col gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                    {user ? getInitials(user.name) : '?'}
                   </div>
-                )}
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-bold text-foreground text-sm truncate">
+                      {user?.name || 'Usuário'}
+                    </h2>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {user ? getRoleLabel(user.role) : 'Carregando...'}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Navigation */}
@@ -389,7 +429,7 @@ const Sidebar = () => {
                   return (
                     <Link key={item.label} to={item.href}>
                       <div
-                        onClick={() => setIsOpen(false)}
+                        onClick={handleClose}
                         className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
                           isActive
                             ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 text-white'
@@ -409,10 +449,21 @@ const Sidebar = () => {
                 })}
               </nav>
 
+              {/* Version Badge Mobile */}
+              <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 mt-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-foreground">SOCIMOB v1.0.0</p>
+                    <p className="text-[10px] text-muted-foreground">Build {new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Logout Button */}
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 w-full mt-4"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 w-full mt-2"
               >
                 <LogOut size={20} />
                 <span className="font-medium text-sm">Sair</span>
