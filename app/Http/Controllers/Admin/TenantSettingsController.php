@@ -32,7 +32,10 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'Unauthorized - Super admin only'], 403);
         }
 
-        $tenant = Tenant::find($user->tenant_id);
+        // Super admin pode visualizar qualquer tenant
+        $viewAsTenantId = $request->input('tenant_id') ?? $user->tenant_id;
+        
+        $tenant = Tenant::find($viewAsTenantId);
 
         if (!$tenant) {
             return response()->json(['error' => 'Tenant not found'], 404);
@@ -85,7 +88,10 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'Unauthorized - Super admin only'], 403);
         }
 
-        $tenant = Tenant::find($user->tenant_id);
+        // Super admin pode atualizar qualquer tenant
+        $tenantId = $request->input('tenant_id') ?? $user->tenant_id;
+        
+        $tenant = Tenant::find($tenantId);
 
         if (!$tenant) {
             return response()->json(['error' => 'Tenant not found'], 404);
