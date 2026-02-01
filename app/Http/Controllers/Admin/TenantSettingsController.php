@@ -108,6 +108,29 @@ class TenantSettingsController extends Controller
             'portal_finalidades' => 'nullable|array',
             'portal_finalidades.*' => 'in:venda,aluguel',
             'api_key_openai' => 'nullable|string',
+            // Tenant Config fields
+            'config.api_key_pagar_me' => 'nullable|string',
+            'config.api_key_apm_imoveis' => 'nullable|string',
+            'config.api_key_neca' => 'nullable|string',
+            'config.accent_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
+            'config.smtp_host' => 'nullable|string|max:255',
+            'config.smtp_port' => 'nullable|integer',
+            'config.smtp_username' => 'nullable|string|max:255',
+            'config.smtp_password' => 'nullable|string',
+            'config.smtp_from_email' => 'nullable|email|max:255',
+            'config.smtp_from_name' => 'nullable|string|max:255',
+            'config.notify_new_leads' => 'nullable|boolean',
+            'config.notify_new_properties' => 'nullable|boolean',
+            'config.notify_new_messages' => 'nullable|boolean',
+            'config.notification_email' => 'nullable|email|max:255',
+            'config.max_images_per_property' => 'nullable|integer|min:1|max:100',
+            'config.max_properties' => 'nullable|integer|min:1',
+            'config.require_approval_for_properties' => 'nullable|boolean',
+            'config.max_leads' => 'nullable|integer|min:1',
+            'config.auto_assign_leads' => 'nullable|boolean',
+            'config.twilio_account_sid' => 'nullable|string',
+            'config.twilio_auth_token' => 'nullable|string',
+            'config.twilio_whatsapp_from' => 'nullable|string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -147,7 +170,55 @@ class TenantSettingsController extends Controller
             $tenant->update($tenantUpdates);
         }
 
-        if ($request->has('portal_finalidades')) {
+        // Atualizar tenant_config
+        if ($request->has('config')) {
+            $config = $tenant->config;
+            if (!$config) {
+                $config = TenantConfig::create(['tenant_id' => $tenant->id]);
+            }
+            
+            $configUpdates = [];
+            $configData = $request->input('config', []);
+            
+            // Campos permitidos para atualização
+            $allowedConfigFields = [
+                'api_key_pagar_me',
+                'api_key_apm_imoveis',
+                'api_key_neca',
+                'accent_color',
+                'smtp_host',
+                'smtp_port',
+                'smtp_username',
+                'smtp_password',
+                'smtp_from_email',
+                'smtp_from_name',
+                'notify_new_leads',
+                'notify_new_properties',
+                'notify_new_messages',
+                'notification_email',
+                'max_images_per_property',
+                'max_properties',
+                'require_approval_for_properties',
+                'max_leads',
+                'auto_assign_leads',
+                'twilio_account_sid',
+                'twilio_auth_token',
+                'twilio_whatsapp_from',
+                'portal_finalidades',
+            ];
+            
+            foreach ($allowedConfigFields as $field) {
+                if (array_key_exists($field, $configData)) {
+                    $configUpdates[$field] = $configData[$field];
+                }
+            }
+            
+            if (!empty($configUpdates)) {
+                $config->update($configUpdates);
+            }
+        }
+
+        if ($request->has('portal_finalidades') && !$request->has('config.portal_finalidades')) {
             $config = $tenant->config;
             if (!$config) {
                 $config = TenantConfig::create(['tenant_id' => $tenant->id]);
