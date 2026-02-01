@@ -103,6 +103,16 @@ cd $DEPLOY_PATH && \
 echo '=== GIT PULL ===' && \
 git pull origin master && \
 echo '' && \
+echo '=== CONFIGURAR PHP 8.3 ===' && \
+sed -i '1s/^/AddHandler application\/x-httpd-php83 .php\n/' .htaccess 2>/dev/null && \
+grep -q 'AddHandler application/x-httpd-php83' .htaccess || sed -i '1iAddHandler application/x-httpd-php83 .php' .htaccess && \
+echo 'PHP 8.3 configurado' && \
+echo '' && \
+echo '=== COPIAR E AJUSTAR INDEX.PHP ===' && \
+cp -f public/index.php index.php && \
+sed -i 's|__DIR__ . '\''/../bootstrap/app.php'\''|__DIR__ . '\''/bootstrap/app.php'\''|' index.php && \
+echo 'index.php ajustado para raiz' && \
+echo '' && \
 echo '=== BACKUP ARQUIVOS ANTIGOS ===' && \
 rm -f index.html.bak && \
 test -f index.html && cp index.html index.html.bak || echo 'Sem index.html para backup' && \
