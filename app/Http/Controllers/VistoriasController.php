@@ -151,4 +151,106 @@ class VistoriasController extends Controller
 
         return $query;
     }
+
+    /**
+     * Criar nova vistoria
+     * POST /api/vistorias
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'codigo' => 'nullable|string|max:50',
+            'status' => 'required|string|in:pendente,agendada,concluida,cancelada',
+            'cliente_nome' => 'required|string|max:255',
+            'imovel_id' => 'nullable|integer|exists:imoveis,id',
+            'tipo' => 'required|string|in:entrada,saida,periodica',
+            'vistoriadores' => 'nullable|array',
+            'vistoriadores.*' => 'string',
+            'pessoas' => 'nullable|array',
+            'pessoas.*' => 'string',
+            'metragem' => 'nullable|numeric|min:0',
+            'mobiliado' => 'nullable|boolean',
+            'data_vistoria' => 'nullable|date',
+            'observacoes' => 'nullable|string',
+        ]);
+
+        $tenantId = $request->attributes->get('tenant_id');
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant not identified'], 400);
+        }
+
+        $validated['tenant_id'] = $tenantId;
+
+        // Gerar código automático se não fornecido
+        if (empty($validated['codigo'])) {
+            $validated['codigo'] = 'VIST-' . strtoupper(uniqid());
+        }
+
+        $vistoria = Vistoria::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Vistoria criada com sucesso',
+            'vistoria' => $vistoria,
+        ], 201);
+    }
+
+    /**
+     * Atualizar vistoria
+     * PUT /api/vistorias/{id}
+     */
+    public function update(Request $request, $id)
+    {
+        $query = $this->applyTenantScope(Vistoria::query(), $request);
+        $vistoria = $query->find($id);
+
+        if (!$vistoria) {
+            return response()->json(['error' => 'Vistoria not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'codigo' => 'nullable|string|max:50',
+            'status' => 'sometimes|required|string|in:pendente,agendada,concluida,cancelada',
+            'cliente_nome' => 'sometimes|required|string|max:255',
+            'imovel_id' => 'nullable|integer|exists:imoveis,id',
+            'tipo' => 'sometimes|required|string|in:entrada,saida,periodica',
+            'vistoriadores' => 'nullable|array',
+            'vistoriadores.*' => 'string',
+            'pessoas' => 'nullable|array',
+            'pessoas.*' => 'string',
+            'metragem' => 'nullable|numeric|min:0',
+            'mobiliado' => 'nullable|boolean',
+            'data_vistoria' => 'nullable|date',
+            'observacoes' => 'nullable|string',
+        ]);
+
+        $vistoria->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Vistoria atualizada com sucesso',
+            'vistoria' => $vistoria->fresh(),
+        ]);
+    }
+
+    /**
+     * Deletar vistoria
+     * DELETE /api/vistorias/{id}
+     */
+    public function destroy(Request $request, $id)
+    {
+        $query = $this->applyTenantScope(Vistoria::query(), $request);
+        $vistoria = $query->find($id);
+
+        if (!$vistoria) {
+            return response()->json(['error' => 'Vistoria not found'], 404);
+        }
+
+        $vistoria->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Vistoria deletada com sucesso',
+        ]);
+    }
 }
