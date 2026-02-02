@@ -56,7 +56,13 @@ class TenantController extends Controller
 
         $tenants = $query->paginate($perPage);
 
-        return response()->json($tenants);
+        return response()->json([
+            'tenants' => $tenants->items(),
+            'total' => $tenants->total(),
+            'current_page' => $tenants->currentPage(),
+            'per_page' => $tenants->perPage(),
+            'last_page' => $tenants->lastPage(),
+        ]);
     }
 
     /**
