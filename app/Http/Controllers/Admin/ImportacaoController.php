@@ -100,7 +100,7 @@ class ImportacaoController extends Controller
         
         try {
             $client = new \GuzzleHttp\Client([
-                'verify' => false,
+                'verify' => env('VERIFY_SSL_CERTIFICATES', true),
                 'timeout' => 10,
                 'http_errors' => false
             ]);
@@ -309,7 +309,7 @@ class ImportacaoController extends Controller
         try {
             // Criar cliente Guzzle customizado
             $client = new \GuzzleHttp\Client([
-                'verify' => false, // Desabilitar verificação SSL se necessário
+                'verify' => env('VERIFY_SSL_CERTIFICATES', true),
                 'timeout' => 30,
                 'http_errors' => false
             ]);
@@ -486,7 +486,7 @@ class ImportacaoController extends Controller
             $baseUrl = $this->normalizarBaseUrl($baseUrl);
             $token = $this->normalizarToken($token);
             $client = new \GuzzleHttp\Client([
-                'verify' => false,
+                'verify' => env('VERIFY_SSL_CERTIFICATES', true),
                 'timeout' => 30,
                 'http_errors' => false
             ]);

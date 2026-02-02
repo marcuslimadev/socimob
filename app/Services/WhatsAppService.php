@@ -2122,7 +2122,7 @@ class WhatsAppService
     }
 
     /**
-     * Processar com queue (preparação para implementação futura)
+     * Processar com queue
      *
      * @param string $jobClass
      * @param array $data
@@ -2131,11 +2131,32 @@ class WhatsAppService
     private function queueJob(string $jobClass, array $data): bool
     {
         try {
-            // TODO: Implementar sistema de queue (Redis, Database, SQS, etc.)
-            // Por enquanto, apenas registrar no log
-            $this->logStructured('info', 'Job adicionado à queue (não implementado)', [
+            // Verificar se queue está configurada (não é sync)
+            $queueConnection = env('QUEUE_CONNECTION', 'sync');
+
+            if ($queueConnection === 'sync') {
+                // Se sync, apenas loggar e executar imediatamente seria redundante
+                $this->logStructured('info', 'Queue em modo sync - job será executado imediatamente', [
+                    'job_class' => $jobClass,
+                    'data_keys' => array_keys($data)
+                ]);
+                return true;
+            }
+
+            // Dispatch job para a fila
+            $job = new \App\Jobs\SendWhatsAppMessageJob(
+                $data['to'] ?? '',
+                $data['message'] ?? '',
+                $data['type'] ?? 'text',
+                $data['extra'] ?? []
+            );
+
+            dispatch($job);
+
+            $this->logStructured('info', 'Job adicionado à queue com sucesso', [
                 'job_class' => $jobClass,
-                'data_keys' => array_keys($data)
+                'queue_connection' => $queueConnection,
+                'to' => $data['to'] ?? 'N/A'
             ]);
 
             return true;
@@ -2148,6 +2169,25 @@ class WhatsAppService
 
             return false;
         }
+    }
+
+    /**
+     * Enviar mensagem de forma assíncrona via queue
+     *
+     * @param string $to Número do destinatário
+     * @param string $message Mensagem a enviar
+     * @param string $type Tipo de mensagem (text, template, media)
+     * @param array $extra Dados extras para template ou media
+     * @return bool
+     */
+    public function queueMessage(string $to, string $message, string $type = 'text', array $extra = []): bool
+    {
+        return $this->queueJob('SendWhatsAppMessageJob', [
+            'to' => $to,
+            'message' => $message,
+            'type' => $type,
+            'extra' => $extra,
+        ]);
     }
 }
 

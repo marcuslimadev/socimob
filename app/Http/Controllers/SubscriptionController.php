@@ -332,11 +332,12 @@ class SubscriptionController extends Controller
         Log::info('Pagar.me webhook received', ['payload' => $payload]);
 
         try {
-            // Verificar assinatura do webhook (opcional, mas recomendado)
-            // $signature = $request->header('X-Hub-Signature');
-            // if (!$this->pagarMeService->verifyWebhookSignature(json_encode($payload), $signature)) {
-            //     return response()->json(['error' => 'Invalid signature'], 401);
-            // }
+            // Verificar assinatura do webhook
+            $signature = $request->header('X-Hub-Signature');
+            if ($signature && !$this->pagarMeService->verifyWebhookSignature(json_encode($payload), $signature)) {
+                Log::warning('Invalid webhook signature', ['signature' => $signature]);
+                return response()->json(['error' => 'Invalid signature'], 401);
+            }
 
             $this->pagarMeService->handleWebhook($payload);
 

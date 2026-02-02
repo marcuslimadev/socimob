@@ -364,4 +364,115 @@ class TwilioService
             'error' => 'Failed to download media'
         ];
     }
+
+    /**
+     * Enviar SMS via Twilio
+     *
+     * @param string $to Número de destino (formato: +5531987654321)
+     * @param string $body Texto da mensagem (max 160 caracteres recomendado)
+     * @return array Resultado do envio
+     */
+    public function sendSMS(string $to, string $body): array
+    {
+        \App\Models\SystemLog::info(
+            \App\Models\SystemLog::CATEGORY_TWILIO,
+            'send_sms_start',
+            'Iniciando envio de SMS via Twilio',
+            ['to' => $to, 'body_length' => strlen($body)]
+        );
+
+        $url = "https://api.twilio.com/2010-04-01/Accounts/{$this->accountSid}/Messages.json";
+
+        // Normalizar número (remover prefixo whatsapp: se houver)
+        $to = $this->normalizeTo((string) $to);
+        // Remover prefixo whatsapp: para SMS
+        if (stripos($to, 'whatsapp:') === 0) {
+            $to = substr($to, strlen('whatsapp:'));
+        }
+
+        // Verificar se há número de SMS configurado
+        $smsFrom = env('EXCLUSIVA_TWILIO_SMS_FROM', env('EXCLUSIVA_TWILIO_PHONE_NUMBER'));
+
+        if (empty($smsFrom)) {
+            \Log::error('Twilio Send SMS - Remetente não configurado');
+
+            \App\Models\SystemLog::error(
+                \App\Models\SystemLog::CATEGORY_TWILIO,
+                'sms_config_missing',
+                'Remetente SMS Twilio não configurado',
+                ['to' => $to]
+            );
+
+            return [
+                'success' => false,
+                'http_code' => null,
+                'message_sid' => null,
+                'status' => null,
+                'error' => 'TWILIO_SMS_FROM/TWILIO_PHONE_NUMBER não configurado',
+                'response' => null
+            ];
+        }
+
+        $data = [
+            'From' => $smsFrom,
+            'To' => $to,
+            'Body' => $body
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        curl_setopt($ch, CURLOPT_USERPWD, "{$this->accountSid}:{$this->authToken}");
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        $responseData = json_decode($response, true);
+
+        \Log::info('Twilio Send SMS', [
+            'to' => $to,
+            'http_code' => $httpCode,
+            'response' => $responseData,
+            'error' => $error
+        ]);
+
+        if ($httpCode === 201) {
+            \App\Models\SystemLog::info(
+                \App\Models\SystemLog::CATEGORY_TWILIO,
+                'send_sms_success',
+                'SMS enviado com sucesso via Twilio',
+                [
+                    'to' => $to,
+                    'message_sid' => $responseData['sid'] ?? null,
+                    'status' => $responseData['status'] ?? null
+                ]
+            );
+        } else {
+            \App\Models\SystemLog::error(
+                \App\Models\SystemLog::CATEGORY_TWILIO,
+                'send_sms_error',
+                'Erro ao enviar SMS via Twilio',
+                [
+                    'to' => $to,
+                    'http_code' => $httpCode,
+                    'error' => $error,
+                    'response' => $responseData
+                ]
+            );
+        }
+
+        return [
+            'success' => $httpCode === 201,
+            'http_code' => $httpCode,
+            'message_sid' => $responseData['sid'] ?? null,
+            'status' => $responseData['status'] ?? null,
+            'error' => $error ?: ($responseData['message'] ?? null),
+            'response' => $responseData
+        ];
+    }
 }

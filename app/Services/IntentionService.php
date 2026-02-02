@@ -2,14 +2,23 @@
 
 namespace App\Services;
 
+use App\Mail\PropertyMatchMail;
 use App\Models\ClientIntention;
 use App\Models\Notification;
 use App\Models\Property;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class IntentionService
 {
+    protected TwilioService $twilioService;
+
+    public function __construct(TwilioService $twilioService)
+    {
+        $this->twilioService = $twilioService;
+    }
+
     /**
      * Criar intenção
      */
@@ -225,13 +234,22 @@ class IntentionService
     private function sendEmailNotification(Notification $notification): void
     {
         try {
-            // TODO: Implementar envio de email
-            // Mail::send(new PropertyMatchMail($notification));
+            $intention = $notification->intention;
+
+            if (!$intention || !$intention->email) {
+                Log::warning('Email notification skipped - no email address', [
+                    'notification_id' => $notification->id,
+                ]);
+                return;
+            }
+
+            Mail::to($intention->email)->send(new PropertyMatchMail($notification));
 
             $notification->markAsSent();
 
             Log::info('Email notification sent', [
                 'notification_id' => $notification->id,
+                'email' => $intention->email,
             ]);
         } catch (\Exception $e) {
             $notification->recordSendAttempt($e->getMessage());
@@ -249,14 +267,33 @@ class IntentionService
     private function sendWhatsAppNotification(Notification $notification): void
     {
         try {
-            // TODO: Implementar envio de WhatsApp
-            // WhatsAppService::send($notification->intention->whatsapp, $notification->message);
+            $intention = $notification->intention;
 
-            $notification->markAsSent();
+            if (!$intention || !$intention->whatsapp) {
+                Log::warning('WhatsApp notification skipped - no WhatsApp number', [
+                    'notification_id' => $notification->id,
+                ]);
+                return;
+            }
 
-            Log::info('WhatsApp notification sent', [
-                'notification_id' => $notification->id,
-            ]);
+            $message = $notification->message;
+            if ($notification->action_url) {
+                $message .= "\n\n" . $notification->action_url;
+            }
+
+            $result = $this->twilioService->sendMessage($intention->whatsapp, $message);
+
+            if ($result['success']) {
+                $notification->markAsSent();
+
+                Log::info('WhatsApp notification sent', [
+                    'notification_id' => $notification->id,
+                    'whatsapp' => $intention->whatsapp,
+                    'message_sid' => $result['message_sid'],
+                ]);
+            } else {
+                throw new \Exception($result['error'] ?? 'Failed to send WhatsApp message');
+            }
         } catch (\Exception $e) {
             $notification->recordSendAttempt($e->getMessage());
 
@@ -273,14 +310,34 @@ class IntentionService
     private function sendSMSNotification(Notification $notification): void
     {
         try {
-            // TODO: Implementar envio de SMS
-            // SMSService::send($notification->intention->phone, $notification->message);
+            $intention = $notification->intention;
 
-            $notification->markAsSent();
+            if (!$intention || !$intention->phone) {
+                Log::warning('SMS notification skipped - no phone number', [
+                    'notification_id' => $notification->id,
+                ]);
+                return;
+            }
 
-            Log::info('SMS notification sent', [
-                'notification_id' => $notification->id,
-            ]);
+            // SMS tem limite de 160 caracteres, truncar se necessário
+            $message = $notification->message;
+            if (strlen($message) > 160) {
+                $message = substr($message, 0, 157) . '...';
+            }
+
+            $result = $this->twilioService->sendSMS($intention->phone, $message);
+
+            if ($result['success']) {
+                $notification->markAsSent();
+
+                Log::info('SMS notification sent', [
+                    'notification_id' => $notification->id,
+                    'phone' => $intention->phone,
+                    'message_sid' => $result['message_sid'],
+                ]);
+            } else {
+                throw new \Exception($result['error'] ?? 'Failed to send SMS');
+            }
         } catch (\Exception $e) {
             $notification->recordSendAttempt($e->getMessage());
 

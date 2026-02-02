@@ -165,6 +165,22 @@ class TenantSettingsController extends Controller
             'slogan',
             'primary_color',
             'secondary_color',
+            // Integration fields from migration
+            'twilio_account_sid',
+            'twilio_auth_token',
+            'twilio_whatsapp_from',
+            'twilio_template_welcome_sid',
+            'openai_api_key',
+            'openai_model',
+            'ai_assistant_name',
+            'mail_driver',
+            'mail_host',
+            'mail_port',
+            'mail_username',
+            'mail_password',
+            'mail_encryption',
+            'mail_from_address',
+            'mail_from_name',
         ]);
 
         if (!empty($metadataUpdates)) {
@@ -879,4 +895,187 @@ class TenantSettingsController extends Controller
             'enabled' => $enabled,
         ]);
     }
+
+    /**
+     * Atualizar configurações OpenAI
+     * PUT /api/admin/settings/openai
+     */
+    public function updateOpenAI(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'api_key' => 'required|string',
+            'model' => 'nullable|string',
+            'assistant_name' => 'nullable|string|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        $tenant = Tenant::find($user->tenant_id);
+        
+        if (!$tenant) {
+            return response()->json(['error' => 'Tenant not found'], 404);
+        }
+
+        $tenant->update([
+            'openai_api_key' => $request->input('api_key'),
+            'openai_model' => $request->input('model', 'gpt-4o-mini'),
+            'ai_assistant_name' => $request->input('assistant_name', 'Assistente Virtual'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Configurações OpenAI atualizadas com sucesso',
+        ]);
+    }
+
+    /**
+     * Atualizar configurações Twilio
+     * PUT /api/admin/settings/twilio
+     */
+    public function updateTwilio(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'account_sid' => 'required|string',
+            'auth_token' => 'required|string',
+            'whatsapp_from' => 'required|string',
+            'template_welcome_sid' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        $tenant = Tenant::find($user->tenant_id);
+        
+        if (!$tenant) {
+            return response()->json(['error' => 'Tenant not found'], 404);
+        }
+
+        $tenant->update([
+            'twilio_account_sid' => $request->input('account_sid'),
+            'twilio_auth_token' => $request->input('auth_token'),
+            'twilio_whatsapp_from' => $request->input('whatsapp_from'),
+            'twilio_template_welcome_sid' => $request->input('template_welcome_sid'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Configurações Twilio atualizadas com sucesso',
+        ]);
+    }
+
+    /**
+     * Atualizar configurações de Email/SMTP
+     * PUT /api/admin/settings/email
+     */
+    public function updateEmail(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'driver' => 'nullable|string|in:smtp,sendmail,mailgun,ses',
+            'host' => 'required_if:driver,smtp|nullable|string',
+            'port' => 'required_if:driver,smtp|nullable|integer',
+            'username' => 'nullable|string',
+            'password' => 'nullable|string',
+            'encryption' => 'nullable|string|in:tls,ssl',
+            'from_address' => 'required|email',
+            'from_name' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        $tenant = Tenant::find($user->tenant_id);
+        
+        if (!$tenant) {
+            return response()->json(['error' => 'Tenant not found'], 404);
+        }
+
+        $tenant->update([
+            'mail_driver' => $request->input('driver', 'smtp'),
+            'mail_host' => $request->input('host'),
+            'mail_port' => $request->input('port', 587),
+            'mail_username' => $request->input('username'),
+            'mail_password' => $request->input('password'),
+            'mail_encryption' => $request->input('encryption', 'tls'),
+            'mail_from_address' => $request->input('from_address'),
+            'mail_from_name' => $request->input('from_name'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Configurações de Email atualizadas com sucesso',
+        ]);
+    }
+
+    /**
+     * Atualizar configurações de Pagamento
+     * PUT /api/admin/settings/payment
+     */
+    public function updatePayment(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'gateway' => 'required|string|in:mercadopago,pagarme,stripe',
+            'api_key' => 'required|string',
+            'api_secret' => 'nullable|string',
+            'webhook_secret' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        $tenant = Tenant::find($user->tenant_id);
+        
+        if (!$tenant) {
+            return response()->json(['error' => 'Tenant not found'], 404);
+        }
+
+        // Store in metadata for flexibility
+        $metadata = $tenant->metadata ?? [];
+        $metadata['payment_gateway'] = $request->input('gateway');
+        $metadata['payment_api_key'] = $request->input('api_key');
+        
+        if ($request->filled('api_secret')) {
+            $metadata['payment_api_secret'] = $request->input('api_secret');
+        }
+        
+        if ($request->filled('webhook_secret')) {
+            $metadata['payment_webhook_secret'] = $request->input('webhook_secret');
+        }
+
+        $tenant->update(['metadata' => $metadata]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Configurações de Pagamento atualizadas com sucesso',
+        ]);
+    }
 }
+

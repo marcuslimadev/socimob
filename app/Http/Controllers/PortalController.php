@@ -2,13 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\NewClientInterestMail;
+use App\Services\TwilioService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class PortalController extends Controller
 {
+    protected TwilioService $twilioService;
+
+    public function __construct(TwilioService $twilioService)
+    {
+        $this->twilioService = $twilioService;
+    }
+
     /**
      * Configuração do tenant para o portal
      */
@@ -557,8 +567,48 @@ class PortalController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                // TODO: Enviar email ao corretor
-                // TODO: Enviar WhatsApp ao corretor (se configurado)
+                // Enviar email ao corretor
+                if ($corretor->email) {
+                    try {
+                        $appUrl = env('APP_URL', 'https://socimob.com');
+                        Mail::to($corretor->email)->send(new NewClientInterestMail([
+                            'client_name' => $leadData['nome'],
+                            'client_email' => $leadData['email'] ?? '',
+                            'client_phone' => $leadData['telefone'] ?? '',
+                            'property_title' => $property->titulo,
+                            'property_code' => $property->codigo,
+                            'match_score' => $matchScore,
+                            'lead_url' => "{$appUrl}/leads/{$leadId}",
+                            'tenant_name' => $tenant->name,
+                        ]));
+                        Log::info('Email de interesse enviado ao corretor', ['corretor_id' => $corretor->id]);
+                    } catch (\Exception $e) {
+                        Log::error('Erro ao enviar email ao corretor', ['error' => $e->getMessage()]);
+                    }
+                }
+
+                // Enviar WhatsApp ao corretor (se configurado)
+                $tenantSettings = json_decode($tenant->settings ?? '{}', true);
+                $notifyBrokerWhatsApp = $tenantSettings['notify_broker_whatsapp'] ?? false;
+
+                if ($notifyBrokerWhatsApp && isset($corretor->whatsapp) && $corretor->whatsapp) {
+                    try {
+                        $message = "Novo interesse em imóvel!\n\n";
+                        $message .= "Cliente: {$leadData['nome']}\n";
+                        if (!empty($leadData['telefone'])) {
+                            $message .= "Telefone: {$leadData['telefone']}\n";
+                        }
+                        $message .= "\nImóvel: {$property->titulo}\n";
+                        $message .= "Código: {$property->codigo}\n";
+                        $message .= "Score de conversão: {$matchScore}%\n";
+                        $message .= "\nAcesse o CRM para mais detalhes.";
+
+                        $this->twilioService->sendMessage($corretor->whatsapp, $message);
+                        Log::info('WhatsApp de interesse enviado ao corretor', ['corretor_id' => $corretor->id]);
+                    } catch (\Exception $e) {
+                        Log::error('Erro ao enviar WhatsApp ao corretor', ['error' => $e->getMessage()]);
+                    }
+                }
             }
 
             // Buscar sugestões baseadas no interesse

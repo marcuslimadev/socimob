@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Serviço de Otimização de Performance
@@ -250,16 +251,97 @@ class PerformanceOptimizationService
     }
 
     /**
-     * Gerar URL de thumbnail (placeholder para implementação futura)
+     * Gerar URL de thumbnail
      *
-     * @param string $imageURL
-     * @return string
+     * @param string $imageURL URL da imagem original
+     * @param int $width Largura do thumbnail (default: 300)
+     * @param int $quality Qualidade JPEG (default: 80)
+     * @return string URL do thumbnail ou URL original em caso de erro
      */
-    private function generateThumbnailURL(string $imageURL): string
+    private function generateThumbnailURL(string $imageURL, int $width = 300, int $quality = 80): string
     {
-        // TODO: Implementar geração de thumbnails real
-        // Por enquanto, retorna a URL original
-        return $imageURL;
+        try {
+            // Gerar hash único para o nome do arquivo
+            $hash = md5($imageURL . '_' . $width);
+            $thumbnailPath = 'thumbnails/' . $hash . '.jpg';
+
+            // Verificar se o thumbnail já existe em cache
+            if (Storage::disk('public')->exists($thumbnailPath)) {
+                return Storage::disk('public')->url($thumbnailPath);
+            }
+
+            // Baixar imagem original
+            $imageContent = @file_get_contents($imageURL, false, stream_context_create([
+                'http' => ['timeout' => 10],
+                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
+            ]));
+
+            if (!$imageContent) {
+                Log::warning('Failed to download image for thumbnail', ['url' => $imageURL]);
+                return $imageURL;
+            }
+
+            // Criar imagem a partir do conteúdo
+            $sourceImage = @imagecreatefromstring($imageContent);
+            if (!$sourceImage) {
+                Log::warning('Failed to create image from content', ['url' => $imageURL]);
+                return $imageURL;
+            }
+
+            // Obter dimensões originais
+            $originalWidth = imagesx($sourceImage);
+            $originalHeight = imagesy($sourceImage);
+
+            // Calcular nova altura mantendo proporção
+            $ratio = $originalWidth / $originalHeight;
+            $newWidth = $width;
+            $newHeight = (int) ($width / $ratio);
+
+            // Criar imagem redimensionada
+            $thumbnailImage = imagecreatetruecolor($newWidth, $newHeight);
+
+            // Preservar transparência para PNGs
+            imagealphablending($thumbnailImage, false);
+            imagesavealpha($thumbnailImage, true);
+
+            // Redimensionar
+            imagecopyresampled(
+                $thumbnailImage,
+                $sourceImage,
+                0, 0, 0, 0,
+                $newWidth, $newHeight,
+                $originalWidth, $originalHeight
+            );
+
+            // Salvar em buffer
+            ob_start();
+            imagejpeg($thumbnailImage, null, $quality);
+            $thumbnailContent = ob_get_clean();
+
+            // Liberar memória
+            imagedestroy($sourceImage);
+            imagedestroy($thumbnailImage);
+
+            // Garantir que o diretório existe
+            Storage::disk('public')->makeDirectory('thumbnails');
+
+            // Salvar thumbnail
+            Storage::disk('public')->put($thumbnailPath, $thumbnailContent);
+
+            Log::info('Thumbnail generated successfully', [
+                'original' => $imageURL,
+                'thumbnail' => $thumbnailPath,
+                'size' => strlen($thumbnailContent),
+            ]);
+
+            return Storage::disk('public')->url($thumbnailPath);
+        } catch (\Exception $e) {
+            Log::error('Error generating thumbnail', [
+                'url' => $imageURL,
+                'error' => $e->getMessage(),
+            ]);
+            return $imageURL;
+        }
     }
 
     /**
