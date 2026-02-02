@@ -23,6 +23,7 @@ import {
   Image,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import TenantSelector from './TenantSelector';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -80,12 +81,31 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         }
 
         // Carregar configuração do tenant da API
-        const response = await api.get('/portal/config');
+        const { default: axios } = await import('axios');
+        const response = await axios.get('/portal/config', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'X-Tenant-Domain': window.location.hostname,
+          },
+        });
         if (response.data.success && response.data.data) {
           setTenant(response.data.data);
         }
-        const unreadResponse = await api.get('/notifications/unread/count');
-        setNotificationCount(unreadResponse.data.unread_count || 0);
+        
+        // Try to get notification count (optional, fail silently)
+        try {
+          const unreadResponse = await api.get('/notifications/unread/count', {
+            validateStatus: (status) => status < 500, // Don't throw on 404
+          });
+          if (unreadResponse.status === 200) {
+            setNotificationCount(unreadResponse.data.unread_count || 0);
+          } else {
+            setNotificationCount(0);
+          }
+        } catch (notifError) {
+          // Notifications endpoint not implemented yet, ignore
+          setNotificationCount(0);
+        }
       } catch (error) {
         console.error('Erro ao carregar dados do tenant:', error);
       }
@@ -113,6 +133,11 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     { icon: <Shield size={20} />, label: 'Usuários', href: '/admin/users' },
     { icon: <Image size={20} />, label: 'Propaganda', href: '/admin/property-ads' },
     { icon: <FileText size={20} />, label: 'Logs do Sistema', href: '/system-logs' },
+  ] : [];
+
+  // Menu exclusivo para super_admin
+  const superAdminMenuItems: SidebarItem[] = user?.role === 'super_admin' ? [
+    { icon: <Building2 size={20} />, label: 'Tenants', href: '/tenants' },
   ] : [];
 
   const sidebarVariants = {
@@ -240,12 +265,24 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             </motion.div>
           )}
 
+          {/* Tenant Selector for Super Admin */}
+          {user?.role === 'super_admin' && !isCollapsed && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="w-full"
+            >
+              <TenantSelector isSuperAdmin={true} />
+            </motion.div>
+          )}
+
           <div className="blur-divider w-full" />
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 flex flex-col gap-1 px-2 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-          {[...menuItems, ...adminMenuItems].map((item, index) => {
+          {[...menuItems, ...adminMenuItems, ...superAdminMenuItems].map((item, index) => {
             const isActive = location === item.href || (item.href !== '/dashboard' && location.startsWith(item.href));
 
             return (

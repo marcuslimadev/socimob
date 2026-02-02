@@ -28,6 +28,7 @@ import {
   ChevronRight,
   Save,
   Loader2,
+  Building2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
@@ -87,6 +88,43 @@ export default function Settings() {
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [isSavingTenant, setIsSavingTenant] = useState(false);
+  const [tenantForm, setTenantForm] = useState({
+    name: '',
+    contact_email: '',
+    contact_phone: '',
+    api_key_openai: '',
+    primary_color: '',
+    secondary_color: '',
+    logo_url: '',
+  });
+  
+  const [tenantConfigForm, setTenantConfigForm] = useState({
+    api_key_pagar_me: '',
+    api_key_apm_imoveis: '',
+    api_key_neca: '',
+    accent_color: '#FF6B6B',
+    favicon_url: '',
+    smtp_host: '',
+    smtp_port: 587,
+    smtp_username: '',
+    smtp_password: '',
+    smtp_from_email: '',
+    smtp_from_name: '',
+    notify_new_leads: true,
+    notify_new_properties: true,
+    notify_new_messages: true,
+    notification_email: '',
+    max_images_per_property: 20,
+    max_properties: 1000,
+    require_approval_for_properties: false,
+    max_leads: 5000,
+    auto_assign_leads: false,
+    portal_finalidades: [] as string[],
+    twilio_account_sid: '',
+    twilio_auth_token: '',
+    twilio_whatsapp_from: '',
+  });
 
   const sections: SettingSection[] = [
     {
@@ -95,6 +133,12 @@ export default function Settings() {
       description: 'Gerencie suas informacoes pessoais',
       icon: <User size={24} />,
     },
+    ...(profileUser?.role === 'super_admin' ? [{
+      id: 'company',
+      title: 'Empresa',
+      description: 'Configuracoes da imobiliaria e integrações',
+      icon: <Building2 size={24} />,
+    }] : []),
     {
       id: 'notifications',
       title: 'Notificacoes',
@@ -132,13 +176,64 @@ export default function Settings() {
     fetchProfile();
     fetchTenantConfig();
   }, []);
+
+  useEffect(() => {
+    if (tenantConfig) {
+      setTenantForm({
+        name: tenantConfig.name || '',
+        contact_email: tenantConfig.contact_email || '',
+        contact_phone: tenantConfig.contact_phone || '',
+        api_key_openai: '',
+        primary_color: tenantConfig.primary_color || '#1e293b',
+        secondary_color: tenantConfig.secondary_color || '#3b82f6',
+        logo_url: tenantConfig.logo_url || '',
+      });
+    }
+  }, [tenantConfig]);
+
   const fetchTenantConfig = async () => {
     try {
       setIsLoadingTenant(true);
       setTenantError(null);
-      const response = await api.get('/api/admin/settings');
+      
+      // Se super_admin, pegar tenant_id do localStorage
+      const viewAsTenantId = localStorage.getItem('superadmin_view_as_tenant');
+      const params = viewAsTenantId ? { tenant_id: viewAsTenantId } : {};
+      
+      const response = await api.get('/admin/settings', { params });
       if (response.data?.tenant) {
         setTenantConfig(response.data.tenant);
+        
+        // Populate tenant config form
+        if (response.data?.config) {
+          const config = response.data.config;
+          setTenantConfigForm({
+            api_key_pagar_me: config.api_key_pagar_me || '',
+            api_key_apm_imoveis: config.api_key_apm_imoveis || '',
+            api_key_neca: config.api_key_neca || '',
+            accent_color: config.accent_color || '#FF6B6B',
+            favicon_url: config.favicon_url || '',
+            smtp_host: config.smtp_host || '',
+            smtp_port: config.smtp_port || 587,
+            smtp_username: config.smtp_username || '',
+            smtp_password: '',
+            smtp_from_email: config.smtp_from_email || '',
+            smtp_from_name: config.smtp_from_name || '',
+            notify_new_leads: config.notify_new_leads ?? true,
+            notify_new_properties: config.notify_new_properties ?? true,
+            notify_new_messages: config.notify_new_messages ?? true,
+            notification_email: config.notification_email || '',
+            max_images_per_property: config.max_images_per_property || 20,
+            max_properties: config.max_properties || 1000,
+            require_approval_for_properties: config.require_approval_for_properties ?? false,
+            max_leads: config.max_leads || 5000,
+            auto_assign_leads: config.auto_assign_leads ?? false,
+            portal_finalidades: config.portal_finalidades || [],
+            twilio_account_sid: config.twilio_account_sid || '',
+            twilio_auth_token: '',
+            twilio_whatsapp_from: config.twilio_whatsapp_from || '',
+          });
+        }
       } else {
         setTenantError('Configuração do tenant não encontrada.');
       }
@@ -152,45 +247,66 @@ export default function Settings() {
   const fetchProfile = async () => {
     try {
       setIsLoadingProfile(true);
-      const response = await api.get('/portal/profile');
-      if (response.data?.user) {
-        setProfileUser(response.data.user);
-        setLeadProfile(response.data.lead || null);
-        setForm((prev) => ({
-          ...prev,
-          name: response.data.user.name || '',
-          email: response.data.user.email || '',
-          telefone: response.data.lead?.telefone || '',
-          whatsapp: response.data.lead?.whatsapp || '',
-          budget_min: response.data.lead?.budget_min ?? '',
-          budget_max: response.data.lead?.budget_max ?? '',
-          localizacao: response.data.lead?.localizacao ?? '',
-          quartos: response.data.lead?.quartos ?? '',
-          suites: response.data.lead?.suites ?? '',
-          garagem: response.data.lead?.garagem ?? '',
-          caracteristicas_desejadas: response.data.lead?.caracteristicas_desejadas ?? '',
-          observacoes_cliente: response.data.lead?.observacoes_cliente ?? '',
-        }));
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        return;
+      
+      // Get user from localStorage to check role
+      const storedUser = localStorage.getItem('user');
+      const user = storedUser ? JSON.parse(storedUser) : null;
+      
+      // Admin and super_admin use /auth/me, clients use /portal/auth/me
+      if (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'corretor') {
+        const response = await api.get('/auth/me');
+        if (response.data?.success && response.data?.data) {
+          const userData = response.data.data;
+          setProfileUser(userData);
+          setForm((prev) => ({
+            ...prev,
+            name: userData.name || '',
+            email: userData.email || '',
+          }));
+          localStorage.setItem('user', JSON.stringify(userData));
+          return;
+        }
+      } else {
+        // Client users use portal endpoint
+        const { default: axios } = await import('axios');
+        const response = await axios.get('/portal/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'X-Tenant-Domain': window.location.hostname,
+          },
+        });
+        
+        // Portal returns { success: true, user: {...}, lead: {...} }
+        if (response.data?.success && response.data?.user) {
+          setProfileUser(response.data.user);
+          setLeadProfile(response.data.lead || null);
+          setForm((prev) => ({
+            ...prev,
+            name: response.data.user.name || '',
+            email: response.data.user.email || '',
+            telefone: response.data.lead?.telefone || '',
+            whatsapp: response.data.lead?.whatsapp || '',
+            budget_min: response.data.lead?.budget_min ?? '',
+            budget_max: response.data.lead?.budget_max ?? '',
+            localizacao: response.data.lead?.localizacao ?? '',
+            quartos: response.data.lead?.quartos ?? '',
+            suites: response.data.lead?.suites ?? '',
+            garagem: response.data.lead?.garagem ?? '',
+            caracteristicas_desejadas: response.data.lead?.caracteristicas_desejadas ?? '',
+            observacoes_cliente: response.data.lead?.observacoes_cliente ?? '',
+          }));
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+          return;
+        }
       }
+      
       throw new Error('Perfil nao retornado');
     } catch (error) {
       console.error('Erro ao carregar perfil:', error);
-      try {
-        const fallback = await api.get('/auth/me');
-        if (fallback.data?.user) {
-          setProfileUser(fallback.data.user);
-          setForm((prev) => ({
-            ...prev,
-            name: fallback.data.user.name || '',
-            email: fallback.data.user.email || '',
-          }));
-        }
-      } catch (fallbackError) {
-        console.error('Erro ao carregar perfil (fallback):', fallbackError);
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
+      // Try to load from localStorage as fallback
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
           const parsed = JSON.parse(storedUser);
           setProfileUser(parsed);
           setForm((prev) => ({
@@ -198,6 +314,8 @@ export default function Settings() {
             name: parsed.name || '',
             email: parsed.email || '',
           }));
+        } catch (parseError) {
+          console.error('Error parsing stored user:', parseError);
         }
       }
     } finally {
@@ -226,7 +344,8 @@ export default function Settings() {
         caracteristicas_desejadas: form.caracteristicas_desejadas || null,
         observacoes_cliente: form.observacoes_cliente || null,
       };
-      const response = await api.put('/portal/profile', payload);
+      // Use admin auth endpoint for profile update
+      const response = await api.put('/auth/me', payload);
       if (response.data?.success) {
         setProfileUser(response.data.user || profileUser);
         setLeadProfile(response.data.lead || leadProfile);
@@ -256,7 +375,8 @@ export default function Settings() {
     }
     try {
       setIsSavingPassword(true);
-      const response = await api.put('/portal/profile', { password });
+      // Use admin auth endpoint for password update
+      const response = await api.put('/auth/me', { password });
       if (response.data?.success) {
         setPassword('');
         setPasswordConfirm('');
@@ -271,6 +391,40 @@ export default function Settings() {
       setIsSavingPassword(false);
     }
   };
+
+  const handleTenantSave = async () => {
+    try {
+      setIsSavingTenant(true);
+      
+      // Se super_admin, incluir tenant_id do localStorage
+      const viewAsTenantId = localStorage.getItem('superadmin_view_as_tenant');
+      
+      const payload = {
+        ...tenantForm,
+        config: tenantConfigForm,
+        ...(viewAsTenantId ? { tenant_id: parseInt(viewAsTenantId) } : {}),
+      };
+      
+      const response = await api.put('/admin/settings', payload);
+      if (response.data?.success) {
+        setTenantConfig(response.data.tenant);
+        toast.success('Configurações da empresa atualizadas com sucesso');
+        fetchTenantConfig(); // Recarregar para pegar dados atualizados
+      } else {
+        toast.error(response.data?.message || 'Erro ao salvar configurações');
+      }
+    } catch (error: any) {
+      console.error('Erro ao salvar configurações:', error);
+      toast.error(error?.response?.data?.message || 'Erro ao salvar configurações da empresa');
+    } finally {
+      setIsSavingTenant(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+    fetchTenantConfig();
+  }, []);
 
   const getRoleLabel = (role?: string) => {
     const roles: Record<string, string> = {
@@ -546,6 +700,525 @@ export default function Settings() {
                       >
                         {isSavingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save size={18} />}
                         Salvar Alteracoes
+                      </motion.button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeSection === 'company' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  <div className="glass-panel p-6 rounded-2xl">
+                    <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+                      <Building2 size={24} />
+                      Configurações da Empresa
+                    </h2>
+
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-foreground mb-2">
+                            Nome da Empresa *
+                          </label>
+                          <input
+                            type="text"
+                            value={tenantForm.name}
+                            onChange={(e) => setTenantForm({ ...tenantForm, name: e.target.value })}
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            placeholder="Exclusiva Imóveis"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-foreground mb-2">
+                            Email de Contato *
+                          </label>
+                          <input
+                            type="email"
+                            value={tenantForm.contact_email}
+                            onChange={(e) => setTenantForm({ ...tenantForm, contact_email: e.target.value })}
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            placeholder="contato@empresa.com"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-foreground mb-2">
+                            WhatsApp (com DDD) *
+                          </label>
+                          <input
+                            type="tel"
+                            value={tenantForm.contact_phone}
+                            onChange={(e) => setTenantForm({ ...tenantForm, contact_phone: e.target.value })}
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            placeholder="11999999999"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Usado para enviar mensagens e no botão WhatsApp dos emails
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-semibold text-foreground mb-2">
+                            URL do Logo
+                          </label>
+                          <input
+                            type="text"
+                            value={tenantForm.logo_url}
+                            onChange={(e) => setTenantForm({ ...tenantForm, logo_url: e.target.value })}
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            placeholder="https://exemplo.com/logo.png"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-6 mt-6">
+                        <h3 className="text-lg font-bold text-foreground mb-4">Integração com IA (OpenAI)</h3>
+                        
+                        <div>
+                          <label className="block text-sm font-semibold text-foreground mb-2">
+                            API Key OpenAI
+                          </label>
+                          <input
+                            type="password"
+                            value={tenantForm.api_key_openai}
+                            onChange={(e) => setTenantForm({ ...tenantForm, api_key_openai: e.target.value })}
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                            placeholder="sk-proj-..."
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Chave da API OpenAI para gerar emails automáticos com IA. Deixe em branco para usar email padrão.
+                            {' '}
+                            <a 
+                              href="https://platform.openai.com/api-keys" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300 underline"
+                            >
+                              Obter API Key aqui
+                            </a>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-6 mt-6">
+                        <h3 className="text-lg font-bold text-foreground mb-4">Personalização Visual</h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Cor Primária
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="color"
+                                value={tenantForm.primary_color}
+                                onChange={(e) => setTenantForm({ ...tenantForm, primary_color: e.target.value })}
+                                className="w-16 h-12 rounded-lg cursor-pointer"
+                              />
+                              <input
+                                type="text"
+                                value={tenantForm.primary_color}
+                                onChange={(e) => setTenantForm({ ...tenantForm, primary_color: e.target.value })}
+                                className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                                placeholder="#1e293b"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Cor Secundária
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="color"
+                                value={tenantForm.secondary_color}
+                                onChange={(e) => setTenantForm({ ...tenantForm, secondary_color: e.target.value })}
+                                className="w-16 h-12 rounded-lg cursor-pointer"
+                              />
+                              <input
+                                type="text"
+                                value={tenantForm.secondary_color}
+                                onChange={(e) => setTenantForm({ ...tenantForm, secondary_color: e.target.value })}
+                                className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                                placeholder="#3b82f6"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-6 mt-6">
+                        <h3 className="text-lg font-bold text-foreground mb-4">Integrações de APIs Externas</h3>
+                        
+                        <div className="grid grid-cols-1 gap-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              API Key Pagar.me
+                            </label>
+                            <input
+                              type="password"
+                              value={tenantConfigForm.api_key_pagar_me}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, api_key_pagar_me: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                              placeholder="ak_..."
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              API Key APM Imóveis
+                            </label>
+                            <input
+                              type="password"
+                              value={tenantConfigForm.api_key_apm_imoveis}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, api_key_apm_imoveis: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                              placeholder="Chave de API"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              API Key NECA
+                            </label>
+                            <input
+                              type="password"
+                              value={tenantConfigForm.api_key_neca}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, api_key_neca: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                              placeholder="Chave de API"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-6 mt-6">
+                        <h3 className="text-lg font-bold text-foreground mb-4">Integração Twilio (WhatsApp)</h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Account SID
+                            </label>
+                            <input
+                              type="text"
+                              value={tenantConfigForm.twilio_account_sid}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, twilio_account_sid: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                              placeholder="AC..."
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Auth Token
+                            </label>
+                            <input
+                              type="password"
+                              value={tenantConfigForm.twilio_auth_token}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, twilio_auth_token: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                              placeholder="Token"
+                            />
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              WhatsApp From (número)
+                            </label>
+                            <input
+                              type="text"
+                              value={tenantConfigForm.twilio_whatsapp_from}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, twilio_whatsapp_from: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                              placeholder="whatsapp:+5511999999999"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-6 mt-6">
+                        <h3 className="text-lg font-bold text-foreground mb-4">Configurações de Email SMTP</h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Host SMTP
+                            </label>
+                            <input
+                              type="text"
+                              value={tenantConfigForm.smtp_host}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, smtp_host: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                              placeholder="smtp.gmail.com"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Porta SMTP
+                            </label>
+                            <input
+                              type="number"
+                              value={tenantConfigForm.smtp_port}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, smtp_port: parseInt(e.target.value) })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                              placeholder="587"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Usuário SMTP
+                            </label>
+                            <input
+                              type="text"
+                              value={tenantConfigForm.smtp_username}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, smtp_username: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                              placeholder="usuario@email.com"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Senha SMTP
+                            </label>
+                            <input
+                              type="password"
+                              value={tenantConfigForm.smtp_password}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, smtp_password: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                              placeholder="********"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Email Remetente
+                            </label>
+                            <input
+                              type="email"
+                              value={tenantConfigForm.smtp_from_email}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, smtp_from_email: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                              placeholder="noreply@empresa.com"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Nome Remetente
+                            </label>
+                            <input
+                              type="text"
+                              value={tenantConfigForm.smtp_from_name}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, smtp_from_name: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                              placeholder="Minha Empresa"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-6 mt-6">
+                        <h3 className="text-lg font-bold text-foreground mb-4">Notificações</h3>
+                        
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-foreground">Notificar Novos Leads</p>
+                              <p className="text-sm text-muted-foreground">Receba notificações quando novos leads chegarem</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={tenantConfigForm.notify_new_leads}
+                                onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, notify_new_leads: e.target.checked })}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-foreground">Notificar Novos Imóveis</p>
+                              <p className="text-sm text-muted-foreground">Receba notificações quando novos imóveis forem cadastrados</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={tenantConfigForm.notify_new_properties}
+                                onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, notify_new_properties: e.target.checked })}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-foreground">Notificar Novas Mensagens</p>
+                              <p className="text-sm text-muted-foreground">Receba notificações sobre novas mensagens</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={tenantConfigForm.notify_new_messages}
+                                onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, notify_new_messages: e.target.checked })}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Email para Notificações
+                            </label>
+                            <input
+                              type="email"
+                              value={tenantConfigForm.notification_email}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, notification_email: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                              placeholder="notificacoes@empresa.com"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-6 mt-6">
+                        <h3 className="text-lg font-bold text-foreground mb-4">Limites e Restrições</h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Máximo de Imagens por Imóvel
+                            </label>
+                            <input
+                              type="number"
+                              value={tenantConfigForm.max_images_per_property}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, max_images_per_property: parseInt(e.target.value) })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                              min="1"
+                              max="100"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Máximo de Imóveis
+                            </label>
+                            <input
+                              type="number"
+                              value={tenantConfigForm.max_properties}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, max_properties: parseInt(e.target.value) })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                              min="1"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Máximo de Leads
+                            </label>
+                            <input
+                              type="number"
+                              value={tenantConfigForm.max_leads}
+                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, max_leads: parseInt(e.target.value) })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                              min="1"
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between md:col-span-2">
+                            <div>
+                              <p className="font-semibold text-foreground">Aprovação Necessária para Imóveis</p>
+                              <p className="text-sm text-muted-foreground">Novos imóveis precisam de aprovação antes de serem publicados</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={tenantConfigForm.require_approval_for_properties}
+                                onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, require_approval_for_properties: e.target.checked })}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </div>
+
+                          <div className="flex items-center justify-between md:col-span-2">
+                            <div>
+                              <p className="font-semibold text-foreground">Atribuição Automática de Leads</p>
+                              <p className="text-sm text-muted-foreground">Distribuir leads automaticamente entre corretores</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={tenantConfigForm.auto_assign_leads}
+                                onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, auto_assign_leads: e.target.checked })}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-6 mt-6">
+                        <h3 className="text-lg font-bold text-foreground mb-4">Finalidades do Portal</h3>
+                        
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={tenantConfigForm.portal_finalidades.includes('venda')}
+                              onChange={(e) => {
+                                const newFinalidades = e.target.checked
+                                  ? [...tenantConfigForm.portal_finalidades, 'venda']
+                                  : tenantConfigForm.portal_finalidades.filter(f => f !== 'venda');
+                                setTenantConfigForm({ ...tenantConfigForm, portal_finalidades: newFinalidades });
+                              }}
+                              className="w-5 h-5 rounded border-white/20 bg-white/10 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                            />
+                            <span className="text-foreground font-semibold">Venda</span>
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={tenantConfigForm.portal_finalidades.includes('aluguel')}
+                              onChange={(e) => {
+                                const newFinalidades = e.target.checked
+                                  ? [...tenantConfigForm.portal_finalidades, 'aluguel']
+                                  : tenantConfigForm.portal_finalidades.filter(f => f !== 'aluguel');
+                                setTenantConfigForm({ ...tenantConfigForm, portal_finalidades: newFinalidades });
+                              }}
+                              className="w-5 h-5 rounded border-white/20 bg-white/10 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                            />
+                            <span className="text-foreground font-semibold">Aluguel</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleTenantSave}
+                        disabled={isSavingTenant}
+                        className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg flex items-center justify-center gap-2 disabled:opacity-60"
+                      >
+                        {isSavingTenant ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save size={18} />}
+                        Salvar Configurações da Empresa
                       </motion.button>
                     </div>
                   </div>
