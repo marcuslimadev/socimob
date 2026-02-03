@@ -106,7 +106,7 @@ const mockProperties = [
         finalidade: "aluguel",
         cidade: "Belo Horizonte",
         bairro: "Centro",
-        endereco: "Rua São Paulo, 200",
+        endereco: "Rua Belo Horizonte, 200",
         quartos: null,
         banheiros: 2,
         vagas: 0,
