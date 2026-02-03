@@ -277,7 +277,7 @@ export default function PropertyAds() {
 
       {/* Dialog de Propaganda Gerada */}
       <Dialog open={adDialog} onOpenChange={setAdDialog}>
-        <DialogContent className="bg-[#0f0f0f] border border-white/10 max-w-2xl">
+        <DialogContent className="bg-[#0f0f0f] border border-white/10 max-w-md sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="text-purple-400" size={20} />
@@ -295,18 +295,30 @@ export default function PropertyAds() {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Grid de até 6 imagens */}
               {adGeneration?.property.photos && adGeneration.property.photos.length > 0 && (
-                <div className="relative h-64 rounded-lg overflow-hidden">
-                  <img
-                    src={adGeneration.property.photos[0]}
-                    alt={adGeneration.property.title}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
+                  {adGeneration.property.photos.slice(0, 6).map((photo, index) => (
+                    <div 
+                      key={index}
+                      className={`relative ${
+                        adGeneration.property.photos.length === 1 ? 'col-span-3 h-64' : 
+                        index === 0 && adGeneration.property.photos.length > 1 ? 'col-span-2 row-span-2 h-48' : 
+                        'h-24'
+                      }`}
+                    >
+                      <img
+                        src={photo}
+                        alt={`${adGeneration.property.title} - Foto ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
                 </div>
               )}
               
               <div className="glass-panel p-4 rounded-lg">
-                <p className="text-foreground whitespace-pre-wrap">{adGeneration?.generatedText}</p>
+                <p className="text-foreground whitespace-pre-wrap text-sm leading-relaxed">{adGeneration?.generatedText}</p>
                 <p className="text-xs text-muted-foreground mt-2 text-right">
                   {adGeneration?.generatedText.length || 0} / 400 caracteres
                 </p>
