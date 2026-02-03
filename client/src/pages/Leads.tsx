@@ -139,6 +139,20 @@ export default function Leads() {
     }
   };
 
+  const handleSendSMS = async (leadId: string, leadName: string) => {
+    toast.info(`Enviando SMS para ${leadName}`);
+    try {
+      const response = await api.post(`/admin/leads/${leadId}/sms`);
+      if (response.data.success || response.status === 200) {
+        toast.success(`SMS enviado para ${leadName}`);
+        fetchLeads();
+      }
+    } catch (error) {
+      console.error('Error sending SMS:', error);
+      toast.error('Erro ao enviar SMS');
+    }
+  };
+
   const handleCall = (phone: string, leadName: string) => {
     if (phone) {
       window.open(`tel:${phone}`);
@@ -421,6 +435,7 @@ export default function Leads() {
                       lastContact={lead.lastContact}
                       onChat={() => handleOpenChat(lead.id, lead.name)}
                       onAI={() => handleCallAI(lead.id, lead.name)}
+                      onSMS={() => handleSendSMS(lead.id, lead.name)}
                       onCall={() => handleCall(lead.phone, lead.name)}
                       onDelete={() => handleDeleteClick(lead.id, lead.name)}
                     />

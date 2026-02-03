@@ -200,6 +200,78 @@ class LeadAutomationService
     }
 
     /**
+     * Enviar SMS de primeiro contato para um lead
+     *
+     * @param Lead $lead
+     * @param bool $forceCreateConversa
+     * @return array
+     */
+    public function enviarPrimeiroContatoSms(Lead $lead, bool $forceCreateConversa = false): array
+    {
+        try {
+            $telefone = $this->getLeadTelefone($lead);
+
+            if (!$this->validarTelefone($telefone)) {
+                return [
+                    'success' => false,
+                    'error' => 'Número de telefone inválido para SMS',
+                    'lead_id' => $lead->id
+                ];
+            }
+
+            $lead->loadMissing('tenant');
+
+            $conversaExistente = Conversa::where('lead_id', $lead->id)
+                ->where('tenant_id', $lead->tenant_id)
+                ->first();
+
+            $conversa = $conversaExistente;
+            if (!$conversaExistente || $forceCreateConversa) {
+                $conversa = $this->criarConversa($lead, $telefone);
+            }
+
+            $mensagemIA = $this->gerarMensagemInicial($lead);
+            $mensagemSMS = $this->montarMensagemPrimeiroContatoSms($lead, $mensagemIA);
+
+            $resultadoEnvio = $this->enviarMensagemSMS($lead, $mensagemSMS, $telefone);
+
+            if (!$resultadoEnvio['success']) {
+                return [
+                    'success' => false,
+                    'error' => 'Falha ao enviar mensagem via SMS',
+                    'lead_id' => $lead->id
+                ];
+            }
+
+            $this->registrarMensagem($conversa, $mensagemSMS, 'outgoing', $resultadoEnvio['message_sid'] ?? null);
+
+            $lead->ultima_interacao = Carbon::now();
+            if ($lead->status !== 'em_atendimento') {
+                $lead->status = 'em_atendimento';
+            }
+            $lead->save();
+
+            return [
+                'success' => true,
+                'lead_id' => $lead->id,
+                'conversa_id' => $conversa->id,
+                'message_sid' => $resultadoEnvio['message_sid'] ?? null
+            ];
+        } catch (\Exception $e) {
+            Log::error('[LeadAutomation] Erro ao enviar SMS de primeiro contato', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Erro ao enviar SMS',
+                'lead_id' => $lead->id
+            ];
+        }
+    }
+
+    /**
      * Iniciar atendimento em lote para múltiplos leads
      * 
      * @param array $leadIds IDs dos leads

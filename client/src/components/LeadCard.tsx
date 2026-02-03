@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { Phone, MessageSquare, Mail, MoreVertical, Zap, Trash2 } from 'lucide-react';
+import { Phone, MessageSquare, Mail, MoreVertical, Zap, Trash2, MessageCircle } from 'lucide-react';
 
 interface LeadCardProps {
   name: string;
@@ -12,6 +12,7 @@ interface LeadCardProps {
   delay?: number;
   onChat?: () => void;
   onAI?: () => void;
+  onSMS?: () => void;
   onCall?: () => void;
   onDelete?: () => void;
 }
@@ -84,6 +85,7 @@ const LeadCard = ({
   delay = 0,
   onChat,
   onAI,
+  onSMS,
   onCall,
   onDelete,
 }: LeadCardProps) => {
@@ -205,6 +207,19 @@ const LeadCard = ({
           >
             <Zap size={14} />
             IA
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSMS?.();
+            }}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold text-white transition-all"
+          >
+            <MessageCircle size={14} />
+            SMS
           </motion.button>
 
           <motion.button

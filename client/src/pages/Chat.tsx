@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
@@ -11,7 +11,9 @@ import {
   CheckCheck,
   MessageCircle,
   Clock,
-  Loader2
+  Loader2,
+  User,
+  RefreshCw
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -53,8 +55,14 @@ export default function Chat() {
   const [isSending, setIsSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showMobileContacts, setShowMobileContacts] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const lastMessageCountRef = useRef(0);
+  const chatPatternSvg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><g fill="none" stroke="#d9d2c8" stroke-width="1" opacity="0.22"><path d="M20 20h20v20H20z"/><circle cx="120" cy="40" r="10"/><path d="M80 120l15-15 15 15"/><circle cx="40" cy="120" r="6"/><path d="M120 120h20v20h-20z"/></g></svg>';
+  const chatPatternDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(chatPatternSvg)}`;
 
   useEffect(() => {
     fetchContacts();
@@ -64,18 +72,24 @@ export default function Chat() {
     if (selectedContactId) {
       fetchMessages(selectedContactId);
       setShowMobileContacts(false);
-      const interval = setInterval(() => fetchMessages(selectedContactId), 10000);
+      const interval = setInterval(() => fetchMessages(selectedContactId), 5000); // Reduzido para 5s
       return () => clearInterval(interval);
     }
   }, [selectedContactId]);
 
   useEffect(() => {
-    scrollToBottom();
+    // Only scroll if new messages arrived
+    if (messages.length > lastMessageCountRef.current) {
+      scrollToBottom('smooth');
+      lastMessageCountRef.current = messages.length;
+    }
   }, [messages]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    }, 100);
+  }, []);
 
   const getInitials = (name: string) => {
     if (!name) return '?';
@@ -116,18 +130,24 @@ export default function Chat() {
           const target = mappedContacts.find((c: Contact) => c.leadId?.toString() === targetLeadId);
           if (target) {
             setSelectedContactId(target.id);
+            setTimeout(() => scrollToBottom('auto'), 500);
           }
         }
       }
-    } catch {
+    } catch (error) {
+      console.error('Erro ao carregar conversas:', error);
       toast.error('Erro ao carregar conversas');
     } finally {
       setIsLoadingContacts(false);
+      setIsRefreshing(false);
     }
   };
 
   const fetchMessages = async (contactId: string) => {
     try {
+      if (messages.length === 0) {
+        setIsLoadingMessages(true);
+      }
       const response = await api.get(`/admin/conversas/${contactId}/mensagens`);
       if (response.data.success) {
         const mappedMessages = response.data.data
@@ -143,8 +163,11 @@ export default function Chat() {
           }));
         setMessages(mappedMessages);
       }
-    } catch {
-      // Silent fail on polling
+    } catch (error) {
+      console.error('Erro ao buscar mensagens:', error);
+      if (messages.length === 0) {
+        toast.error('Erro ao carregar mensagens');
+      }
     } finally {
       setIsLoadingMessages(false);
     }
@@ -169,6 +192,7 @@ export default function Chat() {
     };
 
     setMessages((prev) => [...prev, newMessage]);
+    scrollToBottom('smooth');
 
     try {
       const response = await api.post(`/admin/conversas/${selectedContactId}/mensagens`, {
@@ -181,12 +205,14 @@ export default function Chat() {
 
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === tempId ? { ...m, status: 'sent' } : m
+          m.id === tempId ? { ...m, id: response.data.data?.id || tempId, status: 'sent' } : m
         )
       );
 
       setTimeout(() => fetchMessages(selectedContactId), 1000);
-    } catch {
+      fetchContacts(); // Atualizar lista de conversas
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
       toast.error('Erro ao enviar mensagem');
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
     } finally {
@@ -248,56 +274,152 @@ export default function Chat() {
     return groups;
   }, [messages]);
 
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const highlightText = (text: string, term: string) => {
+    if (!term) return text;
+    const safeTerm = escapeRegExp(term);
+    const parts = text.split(new RegExp(`(${safeTerm})`, 'ig'));
+    return parts.map((part, index) =>
+      part.toLowerCase() === term.toLowerCase() ? (
+        <mark key={`${part}-${index}`} className="bg-primary/25 text-foreground rounded px-1">
+          {part}
+        </mark>
+      ) : (
+        <span key={`${part}-${index}`}>{part}</span>
+      )
+    );
+  };
+
+  const filteredMessages = useMemo(() => {
+    if (!searchTerm) return messages;
+    const term = searchTerm.toLowerCase();
+    return messages.filter((m) => m.text?.toLowerCase().includes(term));
+  }, [messages, searchTerm]);
+
+  const groupedFilteredMessages = useMemo(() => {
+    if (!searchTerm) return groupedMessages;
+    const groups: { date: string; messages: Message[] }[] = [];
+    let currentDate = '';
+
+    filteredMessages.forEach((message) => {
+      const dateKey = message.rawDate.toDateString();
+      if (dateKey !== currentDate) {
+        currentDate = dateKey;
+        groups.push({
+          date: formatDateSeparator(message.rawDate),
+          messages: [message],
+        });
+      } else {
+        groups[groups.length - 1].messages.push(message);
+      }
+    });
+
+    return groups;
+  }, [filteredMessages, groupedMessages, searchTerm]);
+
   const filteredContacts = useMemo(() => {
     if (!searchTerm) return contacts;
     const term = searchTerm.toLowerCase();
     return contacts.filter(
       (c) =>
         c.name.toLowerCase().includes(term) ||
-        c.phone?.toLowerCase().includes(term)
+        c.phone?.toLowerCase().includes(term) ||
+        c.lastMessage?.toLowerCase().includes(term)
     );
   }, [contacts, searchTerm]);
 
   const selectedContact = contacts.find((c) => c.id === selectedContactId);
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchContacts();
+    if (selectedContactId) {
+      await fetchMessages(selectedContactId);
+    }
+  };
+
   const MessageStatus = ({ status }: { status?: string }) => {
     if (status === 'sending') return <Clock className="w-3 h-3 text-muted-foreground" />;
     if (status === 'sent') return <Check className="w-3 h-3 text-muted-foreground" />;
     if (status === 'delivered') return <CheckCheck className="w-3 h-3 text-muted-foreground" />;
-    if (status === 'read') return <CheckCheck className="w-3 h-3 text-blue-400" />;
+    if (status === 'read') return <CheckCheck className="w-3 h-3 text-primary" />;
     return null;
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <Sidebar />
 
-      <div className="flex-1 flex md:ml-80">
+      <div className="relative flex-1 min-h-0 flex flex-col md:ml-80">
+        {/* Global Search */}
+        <div className="border-b border-border bg-card px-5 py-4">
+          <div className="max-w-5xl mx-auto flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Pesquisar pessoas, conversas e mensagens..."
+                className="w-full pl-11 pr-4 py-3 bg-muted/40 border border-border rounded-2xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+              />
+            </div>
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setSearchTerm('')}
+              >
+                Limpar
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="relative flex-1 min-h-0 flex">
+
         {/* Contacts Panel */}
         <div
           className={cn(
-            'w-full md:w-96 flex-shrink-0 flex flex-col bg-card border-r border-border',
+            'relative z-10 w-full md:w-[380px] flex-shrink-0 flex flex-col border-r border-border bg-card',
             'transition-transform duration-300 ease-in-out',
             !showMobileContacts && 'hidden md:flex'
           )}
         >
           {/* Header */}
-          <div className="p-4 border-b border-border bg-card/80 backdrop-blur-sm">
-            <h1 className="text-2xl font-bold text-foreground mb-4">Conversas</h1>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar conversa..."
-                className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border-0 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-              />
+          <div className="p-5 border-b border-border bg-card">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Central</p>
+                <h1 className="text-2xl font-semibold text-foreground">Conversas</h1>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+              </Button>
+            </div>
+            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="px-3 py-1 rounded-full bg-primary/15 text-primary border border-primary/30">
+                Tudo
+              </span>
+              <span className="px-3 py-1 rounded-full bg-muted/40 border border-border">
+                Não lidas
+              </span>
+              <span className="px-3 py-1 rounded-full bg-muted/40 border border-border">
+                Favoritas
+              </span>
             </div>
           </div>
 
           {/* Contacts List */}
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             {isLoadingContacts ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -305,7 +427,7 @@ export default function Chat() {
               </div>
             ) : filteredContacts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3 px-4">
-                <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-muted/40 flex items-center justify-center">
                   <MessageCircle className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <p className="text-sm text-muted-foreground text-center">
@@ -323,12 +445,12 @@ export default function Chat() {
                     onClick={() => setSelectedContactId(contact.id)}
                     className={cn(
                       'w-full p-4 flex items-center gap-3 transition-colors text-left',
-                      'hover:bg-muted/50',
-                      selectedContactId === contact.id && 'bg-primary/10 hover:bg-primary/15'
+                      'hover:bg-muted/40',
+                      selectedContactId === contact.id && 'bg-muted/60'
                     )}
                   >
                     <Avatar className="w-12 h-12 flex-shrink-0">
-                      <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-semibold">
+                      <AvatarFallback className="bg-primary/20 text-primary font-semibold">
                         {contact.initials}
                       </AvatarFallback>
                     </Avatar>
@@ -361,13 +483,13 @@ export default function Chat() {
 
         {/* Chat Area */}
         <div className={cn(
-          'flex-1 flex flex-col bg-background',
+          'relative z-10 flex-1 min-h-0 flex flex-col',
           showMobileContacts && 'hidden md:flex'
         )}>
           {selectedContact ? (
             <>
               {/* Chat Header */}
-              <div className="px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm flex items-center gap-3">
+              <div className="px-5 py-4 border-b border-border bg-card flex items-center gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -378,7 +500,7 @@ export default function Chat() {
                 </Button>
 
                 <Avatar className="w-10 h-10 flex-shrink-0">
-                  <AvatarFallback className="bg-gradient-to-br from-primary/80 to-primary text-primary-foreground font-semibold text-sm">
+                  <AvatarFallback className="bg-primary/20 text-primary font-semibold text-sm">
                     {selectedContact.initials}
                   </AvatarFallback>
                 </Avatar>
@@ -403,83 +525,131 @@ export default function Chat() {
               </div>
 
               {/* Messages Area */}
-              <ScrollArea className="flex-1 p-4">
-                <div className="max-w-3xl mx-auto space-y-4">
-                  {isLoadingMessages ? (
-                    <div className="flex justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    </div>
-                  ) : messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 gap-4">
-                      <div className="w-20 h-20 rounded-full bg-muted/30 flex items-center justify-center">
-                        <MessageCircle className="w-10 h-10 text-muted-foreground/50" />
+              <div className="flex-1 min-h-0 overflow-hidden relative bg-[linear-gradient(180deg,rgba(0,0,0,0.02),transparent_35%)]">
+                <div className="pointer-events-none absolute inset-0 opacity-50">
+                  <div
+                    className="absolute inset-0"
+                    style={{ backgroundImage: `url('${chatPatternDataUrl}')` }}
+                  />
+                </div>
+                <ScrollArea ref={scrollAreaRef} className="h-full">
+                  <div className="max-w-5xl mx-auto p-6 space-y-6 relative">
+                    {searchTerm && (
+                      <div className="flex items-center justify-center">
+                        <div className="px-3 py-1 rounded-full bg-muted/60 text-xs text-muted-foreground">
+                          {filteredMessages.length} resultado(s) na conversa
+                        </div>
                       </div>
-                      <div className="text-center">
-                        <p className="text-muted-foreground font-medium">Nenhuma mensagem</p>
-                        <p className="text-sm text-muted-foreground/70">Envie uma mensagem para iniciar a conversa</p>
+                    )}
+                    {isLoadingMessages ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
                       </div>
-                    </div>
-                  ) : (
-                    <AnimatePresence initial={false}>
-                      {groupedMessages.map((group) => (
-                        <div key={group.date} className="space-y-3">
-                          {/* Date Separator */}
-                          <div className="flex items-center justify-center py-2">
-                            <span className="px-3 py-1 bg-muted/50 rounded-full text-xs text-muted-foreground font-medium">
-                              {group.date}
-                            </span>
-                          </div>
+                    ) : filteredMessages.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-16 gap-4">
+                        <div className="w-20 h-20 rounded-full bg-muted/40 flex items-center justify-center">
+                          <MessageCircle className="w-10 h-10 text-muted-foreground" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-foreground font-medium">
+                            {searchTerm ? 'Nenhum resultado encontrado' : 'Nenhuma mensagem'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {searchTerm ? 'Tente outro termo de busca' : 'Envie uma mensagem para iniciar a conversa'}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <AnimatePresence initial={false}>
+                        {groupedFilteredMessages.map((group) => (
+                          <div key={group.date} className="space-y-3">
+                            {/* Date Separator */}
+                            <div className="flex items-center justify-center py-3">
+                              <div className="px-4 py-1.5 bg-muted/60 backdrop-blur-sm rounded-full text-xs text-muted-foreground font-medium shadow-sm">
+                                {group.date}
+                              </div>
+                            </div>
 
-                          {/* Messages */}
-                          {group.messages.map((message) => (
-                            <motion.div
-                              key={message.id}
-                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              transition={{ duration: 0.2 }}
-                              className={cn(
-                                'flex',
-                                message.sender === 'user' ? 'justify-end' : 'justify-start'
-                              )}
-                            >
-                              <div
-                                className={cn(
-                                  'max-w-[75%] md:max-w-[65%] px-4 py-2.5 rounded-2xl shadow-sm',
-                                  message.sender === 'user'
-                                    ? 'bg-primary text-primary-foreground rounded-br-md'
-                                    : 'bg-card border border-border rounded-bl-md'
-                                )}
-                              >
-                                <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-                                  {message.text}
-                                </p>
-                                <div
+                            {/* Messages */}
+                            {group.messages.map((message, index) => {
+                              const isUser = message.sender === 'user';
+                              const isLastInGroup = index === group.messages.length - 1 || 
+                                                    group.messages[index + 1]?.sender !== message.sender;
+                              
+                              return (
+                                <motion.div
+                                  key={message.id}
+                                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  transition={{ duration: 0.2 }}
                                   className={cn(
-                                    'flex items-center justify-end gap-1.5 mt-1',
-                                    message.sender === 'user'
-                                      ? 'text-primary-foreground/70'
-                                      : 'text-muted-foreground'
+                                    'flex gap-2 items-end',
+                                    isUser ? 'justify-end' : 'justify-start'
                                   )}
                                 >
-                                  <span className="text-[10px]">{message.timestamp}</span>
-                                  {message.sender === 'user' && (
-                                    <MessageStatus status={message.status} />
+                                  {!isUser && (
+                                    <Avatar className="w-8 h-8 flex-shrink-0">
+                                      <AvatarFallback className="bg-muted/50 text-muted-foreground text-xs">
+                                        <User className="w-4 h-4" />
+                                      </AvatarFallback>
+                                    </Avatar>
                                   )}
-                                </div>
-                              </div>
-                            </motion.div>
-                          ))}
-                        </div>
-                      ))}
-                    </AnimatePresence>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-              </ScrollArea>
+                                  
+                                  <div
+                                    className={cn(
+                                      'max-w-[75%] md:max-w-[65%]',
+                                      isUser && 'flex flex-col items-end'
+                                    )}
+                                  >
+                                    <div
+                                      className={cn(
+                                        'relative px-4 py-3 rounded-2xl shadow-sm',
+                                        isUser
+                                          ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                          : 'bg-card border border-border text-foreground rounded-bl-sm'
+                                      )}
+                                    >
+                                      <span
+                                        className={cn(
+                                          'pointer-events-none absolute bottom-0 w-3 h-3',
+                                          isUser
+                                            ? 'right-[-6px] bg-primary rotate-45 rounded-sm'
+                                            : 'left-[-6px] bg-card border-l border-b border-border rotate-45 rounded-sm'
+                                        )}
+                                      />
+                                      <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                                        {highlightText(message.text, searchTerm)}
+                                      </p>
+                                    </div>
+                                    <div
+                                      className={cn(
+                                        'flex items-center gap-1.5 mt-1 px-1',
+                                        isUser ? 'justify-end' : 'justify-start'
+                                      )}
+                                    >
+                                      <span className="text-[10px] text-muted-foreground">
+                                        {message.timestamp}
+                                      </span>
+                                      {isUser && (
+                                        <MessageStatus status={message.status} />
+                                      )}
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </AnimatePresence>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+              </div>
 
               {/* Input Area */}
-              <div className="p-4 border-t border-border bg-card/80 backdrop-blur-sm">
-                <div className="max-w-3xl mx-auto flex items-end gap-3">
+              <div className="p-5 border-t border-border bg-card">
+                <div className="max-w-5xl mx-auto flex items-end gap-3">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -501,7 +671,7 @@ export default function Chat() {
                         }
                       }}
                       placeholder="Digite uma mensagem..."
-                      className="w-full px-4 py-3 bg-muted/50 border-0 rounded-2xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      className="w-full px-4 py-3 bg-muted/40 border border-border rounded-2xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                       disabled={isSending}
                     />
                   </div>
@@ -510,7 +680,7 @@ export default function Chat() {
                     onClick={handleSendMessage}
                     disabled={!messageText.trim() || isSending}
                     size="icon"
-                    className="flex-shrink-0 w-11 h-11 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 disabled:opacity-50 disabled:shadow-none"
+                    className="flex-shrink-0 w-11 h-11 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-50 disabled:shadow-none"
                   >
                     {isSending ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -523,10 +693,10 @@ export default function Chat() {
             </>
           ) : (
             /* Empty State */
-            <div className="flex-1 flex flex-col items-center justify-center p-8 bg-muted/5">
+            <div className="flex-1 flex flex-col items-center justify-center p-8 bg-muted/10">
               <div className="text-center max-w-md">
-                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                  <MessageCircle className="w-12 h-12 text-primary/60" />
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <MessageCircle className="w-12 h-12 text-primary" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground mb-2">
                   Suas mensagens
@@ -540,5 +710,6 @@ export default function Chat() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

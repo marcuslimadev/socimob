@@ -83,6 +83,60 @@ class LeadsController extends Controller
     }
 
     /**
+     * Enviar SMS de primeiro contato para um lead
+     *
+     * POST /api/admin/leads/{id}/sms
+     */
+    public function sendSms(Request $request, $id)
+    {
+        try {
+            $tenantId = $request->get('tenant_id');
+
+            $lead = Lead::where('tenant_id', $tenantId)
+                ->findOrFail($id);
+
+            Log::info('[LeadsController] Enviando SMS manual', [
+                'tenant_id' => $tenantId,
+                'lead_id' => $lead->id,
+                'admin_user' => $request->user()->name ?? 'N/A'
+            ]);
+
+            $resultado = $this->leadAutomationService->enviarPrimeiroContatoSms($lead, true);
+
+            if ($resultado['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'SMS enviado com sucesso',
+                    'data' => $resultado
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'error' => $resultado['error'] ?? 'Falha ao enviar SMS'
+            ], 400);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Lead não encontrado'
+            ], 404);
+
+        } catch (\Exception $e) {
+            Log::error('[LeadsController] Erro ao enviar SMS', [
+                'lead_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Erro ao enviar SMS'
+            ], 500);
+        }
+    }
+
+    /**
      * Iniciar atendimento IA em lote
      * 
      * POST /api/admin/leads/iniciar-atendimento-lote
