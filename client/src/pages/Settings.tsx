@@ -93,10 +93,25 @@ export default function Settings() {
     name: '',
     contact_email: '',
     contact_phone: '',
-    api_key_openai: '',
     primary_color: '',
     secondary_color: '',
     logo_url: '',
+    // Integration fields from tenants table
+    openai_api_key: '',
+    openai_model: 'gpt-4o-mini',
+    ai_assistant_name: 'Assistente Virtual',
+    twilio_account_sid: '',
+    twilio_auth_token: '',
+    twilio_whatsapp_from: '',
+    twilio_template_welcome_sid: '',
+    mail_driver: 'smtp',
+    mail_host: '',
+    mail_port: 587,
+    mail_username: '',
+    mail_password: '',
+    mail_encryption: 'tls',
+    mail_from_address: '',
+    mail_from_name: '',
   });
   
   const [tenantConfigForm, setTenantConfigForm] = useState({
@@ -179,14 +194,30 @@ export default function Settings() {
 
   useEffect(() => {
     if (tenantConfig) {
+      const config = tenantConfig as any; // Type assertion for integration fields
       setTenantForm({
-        name: tenantConfig.name || '',
-        contact_email: tenantConfig.contact_email || '',
-        contact_phone: tenantConfig.contact_phone || '',
-        api_key_openai: '',
-        primary_color: tenantConfig.primary_color || '#1e293b',
-        secondary_color: tenantConfig.secondary_color || '#3b82f6',
-        logo_url: tenantConfig.logo_url || '',
+        name: config.name || '',
+        contact_email: config.contact_email || '',
+        contact_phone: config.contact_phone || '',
+        primary_color: config.primary_color || '#1e293b',
+        secondary_color: config.secondary_color || '#3b82f6',
+        logo_url: config.logo_url || '',
+        // Integration fields from tenants table
+        openai_api_key: config.openai_api_key || '',
+        openai_model: config.openai_model || 'gpt-4o-mini',
+        ai_assistant_name: config.ai_assistant_name || 'Assistente Virtual',
+        twilio_account_sid: config.twilio_account_sid || '',
+        twilio_auth_token: '',
+        twilio_whatsapp_from: config.twilio_whatsapp_from || '',
+        twilio_template_welcome_sid: config.twilio_template_welcome_sid || '',
+        mail_driver: config.mail_driver || 'smtp',
+        mail_host: config.mail_host || '',
+        mail_port: config.mail_port || 587,
+        mail_username: config.mail_username || '',
+        mail_password: '',
+        mail_encryption: config.mail_encryption || 'tls',
+        mail_from_address: config.mail_from_address || '',
+        mail_from_name: config.mail_from_name || '',
       });
     }
   }, [tenantConfig]);
@@ -781,29 +812,59 @@ export default function Settings() {
                       <div className="border-t border-white/10 pt-6 mt-6">
                         <h3 className="text-lg font-bold text-foreground mb-4">Integração com IA (OpenAI)</h3>
                         
-                        <div>
-                          <label className="block text-sm font-semibold text-foreground mb-2">
-                            API Key OpenAI
-                          </label>
-                          <input
-                            type="password"
-                            value={tenantForm.api_key_openai}
-                            onChange={(e) => setTenantForm({ ...tenantForm, api_key_openai: e.target.value })}
-                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
-                            placeholder="sk-proj-..."
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Chave da API OpenAI para gerar emails automáticos com IA. Deixe em branco para usar email padrão.
-                            {' '}
-                            <a 
-                              href="https://platform.openai.com/api-keys" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 underline"
-                            >
-                              Obter API Key aqui
-                            </a>
-                          </p>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              API Key OpenAI
+                            </label>
+                            <input
+                              type="password"
+                              value={tenantForm.openai_api_key}
+                              onChange={(e) => setTenantForm({ ...tenantForm, openai_api_key: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                              placeholder="sk-proj-..."
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Chave da API OpenAI para gerar emails automáticos com IA. Deixe em branco para usar email padrão.
+                              {' '}
+                              <a 
+                                href="https://platform.openai.com/api-keys" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:text-blue-300 underline"
+                              >
+                                Obter API Key aqui
+                              </a>
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-semibold text-foreground mb-2">
+                                Modelo
+                              </label>
+                              <input
+                                type="text"
+                                value={tenantForm.openai_model}
+                                onChange={(e) => setTenantForm({ ...tenantForm, openai_model: e.target.value })}
+                                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                placeholder="gpt-4o-mini"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-semibold text-foreground mb-2">
+                                Nome do Assistente
+                              </label>
+                              <input
+                                type="text"
+                                value={tenantForm.ai_assistant_name}
+                                onChange={(e) => setTenantForm({ ...tenantForm, ai_assistant_name: e.target.value })}
+                                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                placeholder="Assistente Virtual"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -910,8 +971,8 @@ export default function Settings() {
                             </label>
                             <input
                               type="text"
-                              value={tenantConfigForm.twilio_account_sid}
-                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, twilio_account_sid: e.target.value })}
+                              value={tenantForm.twilio_account_sid}
+                              onChange={(e) => setTenantForm({ ...tenantForm, twilio_account_sid: e.target.value })}
                               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
                               placeholder="AC..."
                             />
@@ -923,23 +984,36 @@ export default function Settings() {
                             </label>
                             <input
                               type="password"
-                              value={tenantConfigForm.twilio_auth_token}
-                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, twilio_auth_token: e.target.value })}
+                              value={tenantForm.twilio_auth_token}
+                              onChange={(e) => setTenantForm({ ...tenantForm, twilio_auth_token: e.target.value })}
                               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
                               placeholder="Token"
                             />
                           </div>
 
-                          <div className="md:col-span-2">
+                          <div>
                             <label className="block text-sm font-semibold text-foreground mb-2">
                               WhatsApp From (número)
                             </label>
                             <input
                               type="text"
-                              value={tenantConfigForm.twilio_whatsapp_from}
-                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, twilio_whatsapp_from: e.target.value })}
+                              value={tenantForm.twilio_whatsapp_from}
+                              onChange={(e) => setTenantForm({ ...tenantForm, twilio_whatsapp_from: e.target.value })}
                               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                               placeholder="whatsapp:+5511999999999"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Template Welcome SID
+                            </label>
+                            <input
+                              type="text"
+                              value={tenantForm.twilio_template_welcome_sid}
+                              onChange={(e) => setTenantForm({ ...tenantForm, twilio_template_welcome_sid: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                              placeholder="HX..."
                             />
                           </div>
                         </div>
@@ -948,41 +1022,56 @@ export default function Settings() {
                       <div className="border-t border-white/10 pt-6 mt-6">
                         <h3 className="text-lg font-bold text-foreground mb-4">Configurações de Email SMTP</h3>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Driver
+                            </label>
+                            <input
+                              type="text"
+                              value={tenantForm.mail_driver}
+                              onChange={(e) => setTenantForm({ ...tenantForm, mail_driver: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                              placeholder="smtp"
+                            />
+                          </div>
+
                           <div>
                             <label className="block text-sm font-semibold text-foreground mb-2">
                               Host SMTP
                             </label>
                             <input
                               type="text"
-                              value={tenantConfigForm.smtp_host}
-                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, smtp_host: e.target.value })}
+                              value={tenantForm.mail_host}
+                              onChange={(e) => setTenantForm({ ...tenantForm, mail_host: e.target.value })}
                               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                              placeholder="smtp.gmail.com"
+                              placeholder="smtp.titan.email"
                             />
                           </div>
 
                           <div>
                             <label className="block text-sm font-semibold text-foreground mb-2">
-                              Porta SMTP
+                              Porta
                             </label>
                             <input
                               type="number"
-                              value={tenantConfigForm.smtp_port}
-                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, smtp_port: parseInt(e.target.value) })}
+                              value={tenantForm.mail_port}
+                              onChange={(e) => setTenantForm({ ...tenantForm, mail_port: parseInt(e.target.value) || 587 })}
                               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                               placeholder="587"
                             />
                           </div>
+                        </div>
 
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                           <div>
                             <label className="block text-sm font-semibold text-foreground mb-2">
-                              Usuário SMTP
+                              Username
                             </label>
                             <input
                               type="text"
-                              value={tenantConfigForm.smtp_username}
-                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, smtp_username: e.target.value })}
+                              value={tenantForm.mail_username}
+                              onChange={(e) => setTenantForm({ ...tenantForm, mail_username: e.target.value })}
                               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                               placeholder="usuario@email.com"
                             />
@@ -990,25 +1079,42 @@ export default function Settings() {
 
                           <div>
                             <label className="block text-sm font-semibold text-foreground mb-2">
-                              Senha SMTP
+                              Password
                             </label>
                             <input
                               type="password"
-                              value={tenantConfigForm.smtp_password}
-                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, smtp_password: e.target.value })}
+                              value={tenantForm.mail_password}
+                              onChange={(e) => setTenantForm({ ...tenantForm, mail_password: e.target.value })}
                               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                               placeholder="********"
                             />
                           </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">
+                              Encryption
+                            </label>
+                            <select
+                              value={tenantForm.mail_encryption}
+                              onChange={(e) => setTenantForm({ ...tenantForm, mail_encryption: e.target.value })}
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            >
+                              <option value="">Nenhum</option>
+                              <option value="tls">TLS</option>
+                              <option value="ssl">SSL</option>
+                            </select>
+                          </div>
 
                           <div>
                             <label className="block text-sm font-semibold text-foreground mb-2">
-                              Email Remetente
+                              From Address
                             </label>
                             <input
                               type="email"
-                              value={tenantConfigForm.smtp_from_email}
-                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, smtp_from_email: e.target.value })}
+                              value={tenantForm.mail_from_address}
+                              onChange={(e) => setTenantForm({ ...tenantForm, mail_from_address: e.target.value })}
                               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                               placeholder="noreply@empresa.com"
                             />
@@ -1016,14 +1122,14 @@ export default function Settings() {
 
                           <div>
                             <label className="block text-sm font-semibold text-foreground mb-2">
-                              Nome Remetente
+                              From Name
                             </label>
                             <input
                               type="text"
-                              value={tenantConfigForm.smtp_from_name}
-                              onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, smtp_from_name: e.target.value })}
+                              value={tenantForm.mail_from_name}
+                              onChange={(e) => setTenantForm({ ...tenantForm, mail_from_name: e.target.value })}
                               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                              placeholder="Minha Empresa"
+                              placeholder="Empresa"
                             />
                           </div>
                         </div>

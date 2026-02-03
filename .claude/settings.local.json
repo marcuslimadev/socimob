@@ -79,7 +79,12 @@
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\pscp.exe\" -P 65002 -pw MundoMelhor@10 delete_marcus_leads.php u815655858@145.223.105.168:/home/u815655858/domains/lojadaesquina.store/public_html/)",
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\pscp.exe\" -P 65002 -pw MundoMelhor@10 check_leads.php u815655858@145.223.105.168:/home/u815655858/domains/lojadaesquina.store/public_html/)",
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -P 65002 u815655858@145.223.105.168 -pw MundoMelhor@10 -batch \"cd domains/lojadaesquina.store/public_html && rm -f delete_marcus_leads.php check_leads.php && git pull origin master\")",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(ls:*)",
+      "Bash(powershell -Command \"Get-Content ''c:\\\\Projetos\\\\socimobatual\\\\public\\\\index.html'' -TotalCount 100\")",
+      "Bash(php -r:*)",
+      "Bash(powershell -Command \"\\(Get-Content ''c:\\\\Projetos\\\\socimobatual\\\\public\\\\index.html'' -Raw\\) -match ''api/portal/imoveis''\")",
+      "Bash(powershell -Command:*)"
     ]
   }
 }

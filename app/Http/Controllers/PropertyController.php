@@ -33,7 +33,8 @@ class PropertyController extends Controller
         $perPage = $request->query('per_page', 15);
         
         $query = Property::where('tenant_id', $tenantId)
-            ->where('status', 'ativo')
+            ->where('active', true)
+            ->where('exibir_imovel', true)
             ->orderBy('created_at', 'desc');
         
         // Se pedir todos sem paginação

@@ -8,11 +8,16 @@ import {
   Calendar,
   Check,
   X,
+  Plus,
+  Edit2,
+  Trash2,
+  Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Vistoria {
   id: number;
@@ -26,6 +31,7 @@ interface Vistoria {
   metragem?: string | null;
   mobiliado?: boolean | null;
   data_vistoria?: string | null;
+  observacoes?: string | null;
 }
 
 export default function Vistorias() {
@@ -33,6 +39,9 @@ export default function Vistorias() {
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [editingVistoria, setEditingVistoria] = useState<Vistoria | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [filters, setFilters] = useState({
     codigo: '',
     status: 'todos',
@@ -47,13 +56,17 @@ export default function Vistorias() {
     data_inicio: '',
     data_fim: '',
   });
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number | null }>({
+    open: false,
+    id: null,
+  });
 
   useEffect(() => {
     fetchVistorias();
   }, [page]);
 
   const getFilterParams = () => {
-    const params: Record<string, string | number | undefined> = {};
+    const params: Record<string, string | number | boolean | undefined> = {};
 
     if (filters.codigo) params.codigo = filters.codigo;
     if (filters.status !== 'todos') params.status = filters.status;
@@ -74,7 +87,7 @@ export default function Vistorias() {
   const fetchVistorias = async () => {
     try {
       setIsLoading(true);
-      const params: Record<string, string | number | undefined> = {
+      const params: Record<string, string | number | boolean | undefined> = {
         page,
         per_page: 10,
       };
@@ -148,6 +161,93 @@ export default function Vistorias() {
     return date.toLocaleDateString('pt-BR', { dateStyle: 'short' });
   };
 
+  const handleCreate = () => {
+    setEditingVistoria({
+      id: 0,
+      codigo: '',
+      status: 'pendente',
+      cliente_nome: '',
+      imovel_id: null,
+      tipo: 'entrada',
+      vistoriadores: [],
+      pessoas: [],
+      metragem: '',
+      mobiliado: false,
+      data_vistoria: '',
+      observacoes: '',
+    });
+    setShowModal(true);
+  };
+
+  const handleEdit = (vistoria: Vistoria) => {
+    setEditingVistoria({
+      ...vistoria,
+      data_vistoria: vistoria.data_vistoria 
+        ? new Date(vistoria.data_vistoria).toISOString().slice(0, 16)
+        : '',
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!editingVistoria) return;
+
+    try {
+      setIsSaving(true);
+      
+      const payload = {
+        ...editingVistoria,
+        metragem: editingVistoria.metragem ? parseFloat(editingVistoria.metragem as string) : null,
+        imovel_id: editingVistoria.imovel_id || null,
+      };
+
+      if (editingVistoria.id === 0) {
+        // Create new
+        const response = await api.post('/vistorias', payload);
+        if (response.data?.success) {
+          toast.success('Vistoria criada com sucesso');
+          fetchVistorias();
+          setShowModal(false);
+          setEditingVistoria(null);
+        }
+      } else {
+        // Update existing
+        const response = await api.put(`/vistorias/${editingVistoria.id}`, payload);
+        if (response.data?.success) {
+          toast.success('Vistoria atualizada com sucesso');
+          fetchVistorias();
+          setShowModal(false);
+          setEditingVistoria(null);
+        }
+      }
+    } catch (error: any) {
+      console.error('Erro ao salvar vistoria:', error);
+      toast.error(error?.response?.data?.message || 'Erro ao salvar vistoria');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteClick = (id: number) => {
+    setDeleteDialog({ open: true, id });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.id) return;
+
+    try {
+      const response = await api.delete(`/vistorias/${deleteDialog.id}`);
+      if (response.data?.success) {
+        toast.success('Vistoria deletada com sucesso');
+        fetchVistorias();
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Erro ao deletar vistoria');
+    } finally {
+      setDeleteDialog({ open: false, id: null });
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const map: Record<string, string> = {
       solicitada: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
@@ -175,6 +275,15 @@ export default function Vistorias() {
               <p className="page-subtitle">Gerencie solicitações e inspeções do portfólio.</p>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleCreate}
+                className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-3 font-semibold text-white hover:from-blue-600 hover:to-blue-700 sm:w-auto flex items-center justify-center gap-2"
+              >
+                <Plus size={20} />
+                Nova Vistoria
+              </motion.button>
               <Link to="/vistorias/solicitacoes">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -182,15 +291,6 @@ export default function Vistorias() {
                   className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 font-semibold text-foreground sm:w-auto"
                 >
                   Solicitações
-                </motion.button>
-              </Link>
-              <Link to="/vistorias/solicitacoes/nova">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-3 font-semibold text-white hover:from-blue-600 hover:to-blue-700 sm:w-auto"
-                >
-                  Nova solicitação
                 </motion.button>
               </Link>
             </div>
@@ -400,15 +500,26 @@ export default function Vistorias() {
                         </td>
                         <td className="py-3 text-foreground">{formatDate(vistoria.data_vistoria)}</td>
                         <td className="py-3 text-right">
-                          <Link to={`/vistorias/${vistoria.id}`}>
+                          <div className="flex items-center justify-end gap-2">
                             <motion.button
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
-                              className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-foreground text-xs font-semibold"
+                              onClick={() => handleEdit(vistoria)}
+                              className="px-3 py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-semibold flex items-center gap-1"
                             >
-                              Ver
+                              <Edit2 size={12} />
+                              Editar
                             </motion.button>
-                          </Link>
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleDeleteClick(vistoria.id)}
+                              className="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 text-xs font-semibold flex items-center gap-1"
+                            >
+                              <Trash2 size={12} />
+                              Deletar
+                            </motion.button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -442,6 +553,226 @@ export default function Vistorias() {
           </div>
         </motion.div>
       </div>
+
+      {/* Create/Edit Modal */}
+      {showModal && editingVistoria && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-panel p-6 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                {editingVistoria.id === 0 ? <Plus size={24} /> : <Edit2 size={24} />}
+                {editingVistoria.id === 0 ? 'Nova Vistoria' : 'Editar Vistoria'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setEditingVistoria(null);
+                }}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Código
+                  </label>
+                  <input
+                    type="text"
+                    value={editingVistoria.codigo || ''}
+                    onChange={(e) =>
+                      setEditingVistoria({ ...editingVistoria, codigo: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Auto-gerado se vazio"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Status *
+                  </label>
+                  <select
+                    value={editingVistoria.status}
+                    onChange={(e) =>
+                      setEditingVistoria({ ...editingVistoria, status: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="pendente">Pendente</option>
+                    <option value="agendada">Agendada</option>
+                    <option value="concluida">Concluída</option>
+                    <option value="cancelada">Cancelada</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Cliente *
+                </label>
+                <input
+                  type="text"
+                  value={editingVistoria.cliente_nome || ''}
+                  onChange={(e) =>
+                    setEditingVistoria({ ...editingVistoria, cliente_nome: e.target.value })
+                  }
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Tipo *
+                  </label>
+                  <select
+                    value={editingVistoria.tipo || 'entrada'}
+                    onChange={(e) =>
+                      setEditingVistoria({ ...editingVistoria, tipo: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="entrada">Entrada</option>
+                    <option value="saida">Saída</option>
+                    <option value="periodica">Periódica</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    ID do Imóvel
+                  </label>
+                  <input
+                    type="number"
+                    value={editingVistoria.imovel_id || ''}
+                    onChange={(e) =>
+                      setEditingVistoria({
+                        ...editingVistoria,
+                        imovel_id: e.target.value ? parseInt(e.target.value) : null,
+                      })
+                    }
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Metragem (m²)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingVistoria.metragem || ''}
+                    onChange={(e) =>
+                      setEditingVistoria({ ...editingVistoria, metragem: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Data da Vistoria
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={editingVistoria.data_vistoria || ''}
+                    onChange={(e) =>
+                      setEditingVistoria({ ...editingVistoria, data_vistoria: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editingVistoria.mobiliado || false}
+                    onChange={(e) =>
+                      setEditingVistoria({ ...editingVistoria, mobiliado: e.target.checked })
+                    }
+                    className="w-5 h-5 rounded border-white/20 bg-white/10 text-blue-500 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-semibold text-foreground">Imóvel Mobiliado</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Observações
+                </label>
+                <textarea
+                  value={editingVistoria.observacoes || ''}
+                  onChange={(e) =>
+                    setEditingVistoria({ ...editingVistoria, observacoes: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleSave}
+                  disabled={isSaving || !editingVistoria.cliente_nome}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Save size={18} />
+                  )}
+                  Salvar
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingVistoria(null);
+                  }}
+                  className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-lg font-semibold text-foreground transition-all"
+                >
+                  Cancelar
+                </motion.button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}>
+        <AlertDialogContent className="bg-[#0f0f0f] border border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Vistoria</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja deletar esta vistoria? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-white/20 hover:bg-white/10">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

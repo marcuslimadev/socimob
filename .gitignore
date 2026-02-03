@@ -122,3 +122,37 @@ storage/logs/*
 ethereal/
 html5up-*.zip
 .env_prod_fixed
+
+# Test/Debug scripts (root level)
+add_corretor_enum.php
+check_*.php
+clear_cache.php
+clear_opcache.php
+criar_lead_*.php
+curl_test.php
+debug_*.php
+delete_marcus_leads.php
+diagnose_404.php
+gerar_token.php
+importar_imoveis_reais.php
+quick_create_user.php
+read_prod_logs.php
+reset_senha.php
+send_test_email.php
+setup_exclusiva_tenant.php
+sync_exclusiva_configs.php
+temp_fix*.php
+test_*.php
+test_*.sh
+testar_api_portal.php
+teste_*.php
+twilio_message_status.php
+update_tenant_*.php
+update_token_and_test.php
+verificar_imoveis.php
+verify_*.ps1
+fix_*.sql
+nul
+
+# Manus debug logs
+.manus-logs/

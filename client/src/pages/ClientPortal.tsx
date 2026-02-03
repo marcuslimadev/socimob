@@ -49,7 +49,6 @@ export default function ClientPortal() {
         setLoading(true);
         setError(null);
         const response = await api.get('/portal/imoveis');
-        console.log('API Response:', response.data);
         setProperties(response.data.data || response.data || []);
       } catch (err: any) {
         console.error('Erro ao carregar imóveis:', err);

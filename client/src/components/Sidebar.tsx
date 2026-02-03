@@ -65,6 +65,8 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [leadsCount, setLeadsCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
   // Use internal state if not controlled externally
   const actualIsOpen = onClose ? isOpen : internalIsOpen;
@@ -91,41 +93,58 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         if (response.data.success && response.data.data) {
           setTenant(response.data.data);
         }
-        
-        // Try to get notification count (optional, fail silently)
-        try {
-          const unreadResponse = await api.get('/notifications/unread/count', {
-            validateStatus: (status) => status < 500, // Don't throw on 404
-          });
-          if (unreadResponse.status === 200) {
-            setNotificationCount(unreadResponse.data.unread_count || 0);
-          } else {
-            setNotificationCount(0);
-          }
-        } catch (notifError) {
-          // Notifications endpoint not implemented yet, ignore
-          setNotificationCount(0);
-        }
       } catch (error) {
-        console.error('Erro ao carregar dados do tenant:', error);
+        // Silently handle error
       }
     };
 
     loadTenantAndUser();
   }, []);
 
+  // Carregar contadores de badges dinamicamente
+  useEffect(() => {
+    const loadBadgeCounts = async () => {
+      try {
+        // Carregar contagem de notificações não lidas
+        const notifResponse = await api.get('/notifications/unread-count');
+        if (notifResponse.data?.unread_count !== undefined) {
+          setNotificationCount(notifResponse.data.unread_count);
+        }
+
+        // Carregar contagem de leads novos
+        const leadsResponse = await api.get('/leads/stats');
+        if (leadsResponse.data?.success && leadsResponse.data?.data?.novos !== undefined) {
+          setLeadsCount(leadsResponse.data.data.novos);
+        }
+
+        // Carregar contagem de mensagens não lidas
+        const messagesResponse = await api.get('/admin/conversas/fila/estatisticas');
+        if (messagesResponse.data?.success && messagesResponse.data?.data?.aguardando !== undefined) {
+          setUnreadMessagesCount(messagesResponse.data.data.aguardando);
+        }
+      } catch (error) {
+        // Silently handle error - badges will show 0
+      }
+    };
+
+    loadBadgeCounts();
+
+    // Atualizar contadores a cada 30 segundos
+    const interval = setInterval(loadBadgeCounts, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const menuItems: SidebarItem[] = [
     { icon: <BarChart3 size={20} />, label: 'Dashboard', href: '/dashboard' },
-    { icon: <Users size={20} />, label: 'Leads', href: '/leads', badge: 12 },
+    { icon: <Users size={20} />, label: 'Leads', href: '/leads', badge: leadsCount || undefined },
     { icon: <Home size={20} />, label: 'Imóveis', href: '/properties' },
     { icon: <ClipboardCheck size={20} />, label: 'Vistorias', href: '/vistorias' },
     { icon: <UserRound size={20} />, label: 'Pessoas', href: '/pessoas' },
     { icon: <FileSignature size={20} />, label: 'Assinaturas', href: '/assinaturas' },
-    { icon: <MessageSquare size={20} />, label: 'Chat', href: '/chat', badge: 3 },
+    { icon: <MessageSquare size={20} />, label: 'Chat', href: '/chat', badge: unreadMessagesCount || undefined },
     { icon: <Bell size={20} />, label: 'Notificações', href: '/notifications', badge: notificationCount || undefined },
     { icon: <CalendarClock size={20} />, label: 'Agenda', href: '/agenda' },
     { icon: <Wallet size={20} />, label: 'Financeiro', href: '/financeiro' },
-    { icon: <Settings size={20} />, label: 'Configurações', href: '/settings' },
   ];
 
   // Menu adicional para admin
@@ -135,10 +154,13 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     { icon: <FileText size={20} />, label: 'Logs do Sistema', href: '/system-logs' },
   ] : [];
 
-  // Menu exclusivo para super_admin
+  // Menu exclusivo para super_admin (fica ANTES de Configurações)
   const superAdminMenuItems: SidebarItem[] = user?.role === 'super_admin' ? [
     { icon: <Building2 size={20} />, label: 'Tenants', href: '/tenants' },
   ] : [];
+  
+  // Configurações fica por último
+  const settingsItem: SidebarItem = { icon: <Settings size={20} />, label: 'Configurações', href: '/settings' };
 
   const sidebarVariants = {
     expanded: { width: 280 },
@@ -282,7 +304,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
         {/* Navigation */}
         <nav className="flex-1 flex flex-col gap-1 px-2 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-          {[...menuItems, ...adminMenuItems, ...superAdminMenuItems].map((item, index) => {
+          {[...menuItems, ...adminMenuItems, ...superAdminMenuItems, settingsItem].map((item, index) => {
             const isActive = location === item.href || (item.href !== '/dashboard' && location.startsWith(item.href));
 
             return (
@@ -460,7 +482,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
               {/* Navigation */}
               <nav className="flex-1 flex flex-col gap-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                {menuItems.map((item) => {
+                {[...menuItems, ...adminMenuItems, ...superAdminMenuItems, settingsItem].map((item) => {
                   const isActive = location === item.href || (item.href !== '/dashboard' && location.startsWith(item.href));
 
                   return (

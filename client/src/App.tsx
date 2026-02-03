@@ -29,6 +29,9 @@ import PropertyDetail from "./pages/PropertyDetail";
 import ImovelForm from "./pages/ImovelForm";
 import Settings from "./pages/Settings";
 import SystemLogs from "./pages/SystemLogs";
+import Tenants from "./pages/Tenants";
+import AdminUsers from "./pages/AdminUsers";
+import PropertyAds from "./pages/PropertyAds";
 
 
 function Router() {
@@ -58,7 +61,10 @@ function Router() {
       <Route path="/assinaturas" component={Assinaturas} />
       <Route path="/pessoas" component={Pessoas} />
       <Route path="/settings" component={Settings} />
+      <Route path="/tenants" component={Tenants} />
       <Route path="/system-logs" component={SystemLogs} />
+      <Route path="/admin/users" component={AdminUsers} />
+      <Route path="/admin/property-ads" component={PropertyAds} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

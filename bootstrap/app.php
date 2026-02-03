@@ -62,6 +62,7 @@ $app->configure('database');
 $app->configure('cache');
 $app->configure('session');
 $app->configure('queue');
+$app->configure('mail');
 
 /*
 |--------------------------------------------------------------------------

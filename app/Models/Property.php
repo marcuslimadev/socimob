@@ -47,6 +47,88 @@ class Property extends Model
         'last_sync' => 'datetime',
     ];
 
+    // Acessores para compatibilidade com o frontend
+    protected $appends = [
+        'type',
+        'transaction_type',
+        'price',
+        'address',
+        'neighborhood',
+        'city',
+        'state',
+        'bedrooms',
+        'bathrooms',
+        'parking_spaces',
+        'images',
+        'photos',
+        'area'
+    ];
+
+    public function getTypeAttribute()
+    {
+        return $this->tipo_imovel;
+    }
+
+    public function getTransactionTypeAttribute()
+    {
+        return $this->finalidade_imovel;
+    }
+
+    public function getPriceAttribute()
+    {
+        return $this->valor_venda;
+    }
+
+    public function getAddressAttribute()
+    {
+        return $this->logradouro;
+    }
+
+    public function getNeighborhoodAttribute()
+    {
+        return $this->bairro;
+    }
+
+    public function getCityAttribute()
+    {
+        return $this->cidade;
+    }
+
+    public function getStateAttribute()
+    {
+        return $this->estado;
+    }
+
+    public function getBedroomsAttribute()
+    {
+        return $this->dormitorios;
+    }
+
+    public function getBathroomsAttribute()
+    {
+        return $this->banheiros;
+    }
+
+    public function getParkingSpacesAttribute()
+    {
+        return $this->garagem;
+    }
+
+    public function getImagesAttribute()
+    {
+        return $this->imagens;
+    }
+
+    public function getPhotosAttribute()
+    {
+        return $this->imagens;
+    }
+
+    public function getAreaAttribute()
+    {
+        return $this->area_total;
+    }
+
     public function matches()
     {
         return $this->hasMany(LeadPropertyMatch::class, 'property_id');

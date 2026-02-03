@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { useViaCep } from '@/hooks/useViaCep';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Pessoa {
   id: number;
@@ -31,6 +32,11 @@ export default function Pessoas() {
   const [showModal, setShowModal] = useState(false);
   const [currentTab, setCurrentTab] = useState('principal');
   const [editingPessoa, setEditingPessoa] = useState<Pessoa | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number | null; name: string }>({
+    open: false,
+    id: null,
+    name: '',
+  });
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -225,16 +231,21 @@ export default function Pessoas() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Deseja realmente excluir esta pessoa?')) return;
+  const handleDeleteClick = (id: number, name: string) => {
+    setDeleteDialog({ open: true, id, name });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.id) return;
 
     try {
-      await api.delete(`/pessoas/${id}`);
+      await api.delete(`/pessoas/${deleteDialog.id}`);
       toast.success('Pessoa excluída com sucesso');
       fetchPessoas();
     } catch (error) {
-      console.error('Erro ao excluir pessoa:', error);
       toast.error('Erro ao excluir pessoa');
+    } finally {
+      setDeleteDialog({ open: false, id: null, name: '' });
     }
   };
 
@@ -730,7 +741,7 @@ export default function Pessoas() {
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
-                              onClick={() => handleDelete(pessoa.id)}
+                              onClick={() => handleDeleteClick(pessoa.id, pessoa.nome)}
                               className="p-2 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30"
                             >
                               <Trash2 size={16} />
@@ -851,6 +862,23 @@ export default function Pessoas() {
           </motion.div>
         </div>
       )}
+
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}>
+        <AlertDialogContent className="bg-[#0f0f0f] border border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Pessoa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deleteDialog.name}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-white/20 hover:bg-white/10">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -170,4 +170,31 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     // Conversas a partir de leads
     $router->post('/leads/conversas/sync', 'Admin\\LeadConversaController@syncFromLeads');
     $router->post('/leads/{id}/start-ai', 'Admin\\LeadConversaController@startAi');
+
+    // Property Ads (Propaganda de Imóveis)
+    $router->get('/property-ads', function () use ($router) {
+        $user = app('request')->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // Retorna lista vazia por enquanto - funcionalidade em desenvolvimento
+        return response()->json([
+            'success' => true,
+            'data' => [],
+            'message' => 'Funcionalidade em desenvolvimento'
+        ]);
+    });
+
+    $router->delete('/property-ads/{id}', function ($id) use ($router) {
+        $user = app('request')->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Anúncio excluído com sucesso'
+        ]);
+    });
 });

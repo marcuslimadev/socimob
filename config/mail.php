@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'default' => env('MAIL_DRIVER', 'smtp'),
+    'default' => env('MAIL_MAILER', env('MAIL_DRIVER', 'smtp')),
     'mailers' => [
         'smtp' => [
             'transport' => 'smtp',

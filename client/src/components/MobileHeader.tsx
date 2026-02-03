@@ -40,7 +40,7 @@ export default function MobileHeader({ onMenuToggle, isMenuOpen }: MobileHeaderP
   }, []);
 
   return (
-    <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#0a0a0a]/95 backdrop-blur-lg border-b border-white/10 z-50 flex items-center justify-between px-4">
+    <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-gradient-to-r from-gray-900 to-black backdrop-blur-lg border-b border-purple-500/30 z-50 flex items-center justify-between px-4 shadow-lg">
       {/* Logo e Nome */}
       <div className="flex items-center gap-3">
         {tenant?.logo ? (
