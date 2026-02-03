@@ -42,8 +42,8 @@ class ResolveTenant
 
         // Se for localhost, IP ou ngrok, usar tenant de teste quando configurado
         if ($this->isDevelopment($host) || $this->isNgrok($host)) {
-            // Em desenvolvimento local, simular exclusivalarimoveis.com para manter multi-tenancy correto
-            $tenant = Tenant::byDomain('exclusivalarimoveis.com')->first() ?? Tenant::find(1);
+            // Em desenvolvimento local, simular exclusivarlarimoveis.com para manter multi-tenancy correto
+            $tenant = Tenant::byDomain('exclusivarlarimoveis.com')->first() ?? Tenant::find(1);
             if ($tenant) {
                 app()->instance('tenant', $tenant);
                 $request->attributes->set('tenant_id', $tenant->id);
@@ -53,8 +53,8 @@ class ResolveTenant
 
         // Mapeamento de domínios alternativos para o domínio principal
         $domainAliases = [
-            'lojadaesquina.store' => 'exclusivalarimoveis.com',
-            'www.lojadaesquina.store' => 'exclusivalarimoveis.com',
+            'lojadaesquina.store' => 'exclusivarlarimoveis.com',
+            'www.lojadaesquina.store' => 'exclusivarlarimoveis.com',
         ];
 
         // Buscar tenant pelo dominio
