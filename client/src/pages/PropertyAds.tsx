@@ -277,39 +277,45 @@ export default function PropertyAds() {
 
       {/* Dialog de Propaganda Gerada */}
       <Dialog open={adDialog} onOpenChange={setAdDialog}>
-        <DialogContent className="bg-[#0f0f0f] border-0 max-w-[360px] p-0 h-[640px] overflow-hidden">
+        <DialogContent className="bg-black border-0 max-w-[400px] p-0 overflow-hidden">
           {adGeneration?.isGenerating ? (
-            <div className="flex flex-col items-center justify-center h-full">
+            <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="animate-spin h-12 w-12 text-purple-500 mb-4" />
               <p className="text-muted-foreground">Gerando texto com IA...</p>
             </div>
           ) : (
-            <div className="flex flex-col h-full">
-              {/* Grid de até 6 imagens - Formato 9:16 */}
+            <div>
+              {/* Grid de até 6 imagens */}
               {adGeneration?.property.photos && adGeneration.property.photos.length > 0 && (
-                <div className="grid grid-cols-3 gap-0.5 flex-1">
-                  {adGeneration.property.photos.slice(0, 6).map((photo, index) => (
-                    <div 
-                      key={index}
-                      className={`relative ${
-                        adGeneration.property.photos.length === 1 ? 'col-span-3 h-full' : 
-                        index === 0 && adGeneration.property.photos.length > 1 ? 'col-span-2 row-span-2' : 
-                        ''
-                      }`}
-                    >
-                      <img
-                        src={photo}
-                        alt={`${adGeneration.property.title} - Foto ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
+                <div className="grid grid-cols-3 gap-0.5">
+                  {adGeneration.property.photos.slice(0, 6).map((photo, index) => {
+                    const photoCount = adGeneration.property.photos.length;
+                    let className = 'relative ';
+                    
+                    if (photoCount === 1) {
+                      className += 'col-span-3 h-[400px]';
+                    } else if (index === 0 && photoCount > 1) {
+                      className += 'col-span-2 row-span-2 h-[266px]';
+                    } else {
+                      className += 'h-[133px]';
+                    }
+                    
+                    return (
+                      <div key={index} className={className}>
+                        <img
+                          src={photo}
+                          alt={`Foto ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               
               {/* Texto da propaganda */}
-              <div className="px-4 py-4 bg-black/30">
-                <p className="text-white whitespace-pre-wrap text-sm leading-relaxed">
+              <div className="px-4 py-4 bg-gradient-to-b from-black/50 to-black/80">
+                <p className="text-white whitespace-pre-wrap text-sm leading-relaxed font-normal">
                   {adGeneration?.generatedText}
                 </p>
                 <p className="text-[10px] text-gray-400 mt-2 text-right">
@@ -318,23 +324,23 @@ export default function PropertyAds() {
               </div>
               
               {/* Botões de ação */}
-              <div className="flex gap-2 px-4 pb-4">
+              <div className="flex gap-2 px-4 pb-4 bg-black/80">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleCopyText}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-white font-medium text-xs transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-white font-medium text-sm transition-all"
                 >
-                  <Download size={14} />
-                  Copiar
+                  <Download size={16} />
+                  Copiar Texto
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleShare}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-medium text-xs"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-semibold text-sm"
                 >
-                  <Share2 size={14} />
+                  <Share2 size={16} />
                   Compartilhar
                 </motion.button>
               </div>

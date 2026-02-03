@@ -6,7 +6,9 @@ use App\Models\Lead;
 use App\Services\LeadConversationService;
 use App\Services\LeadCustomerService;
 use App\Services\LeadService;
+use App\Services\TwilioService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ChavesNaMaoWebhookController extends Controller
@@ -14,16 +16,19 @@ class ChavesNaMaoWebhookController extends Controller
     private LeadConversationService $leadConversationService;
     private LeadCustomerService $leadCustomerService;
     private LeadService $leadService;
+    private TwilioService $twilioService;
 
     public function __construct(
         LeadConversationService $leadConversationService,
         LeadCustomerService $leadCustomerService,
         LeadService $leadService,
+        TwilioService $twilioService
     )
     {
         $this->leadConversationService = $leadConversationService;
         $this->leadCustomerService = $leadCustomerService;
         $this->leadService = $leadService;
+        $this->twilioService = $twilioService;
     }
     /**
      * Responde ao método GET (não permitido)
@@ -83,10 +88,13 @@ class ChavesNaMaoWebhookController extends Controller
             // 3. Criar usuário cliente se tiver email
             $lead = $this->processLead($leadData);
 
-            Log::info('✅ Lead processado com sucesso (Observer irá iniciar atendimento)', [
+            Log::info('✅ Lead processado com sucesso', [
                 'internal_id' => $lead->id,
                 'external_id' => $leadData['id'] ?? null
             ]);
+
+            // NOVO: Enviar SMS com link do WhatsApp do tenant
+            $this->sendWhatsAppSMS($lead, $leadData);
 
             return response()->json([
                 'success' => true,
@@ -257,6 +265,118 @@ class ChavesNaMaoWebhookController extends Controller
         }
 
         return implode("\n", $obs);
+    }
+
+    /**
+     * Envia SMS com link do WhatsApp do tenant para o lead
+     */
+    private function sendWhatsAppSMS(Lead $lead, array $leadData): void
+    {
+        try {
+            // Validar se o lead tem telefone
+            if (empty($lead->telefone) || $lead->telefone === '00000000000') {
+                Log::warning('📱 Lead sem telefone válido - SMS não enviado', [
+                    'lead_id' => $lead->id,
+                    'telefone' => $lead->telefone
+                ]);
+                return;
+            }
+
+            // Buscar número de WhatsApp do tenant
+            $tenantConfig = DB::table('tenant_configs')
+                ->where('tenant_id', $lead->tenant_id)
+                ->first();
+
+            if (!$tenantConfig || empty($tenantConfig->whatsapp_number)) {
+                Log::warning('📱 Tenant sem número de WhatsApp configurado - SMS não enviado', [
+                    'tenant_id' => $lead->tenant_id,
+                    'lead_id' => $lead->id
+                ]);
+                return;
+            }
+
+            $whatsappNumber = $tenantConfig->whatsapp_number;
+            
+            // Remover caracteres especiais do número do WhatsApp
+            $cleanWhatsappNumber = preg_replace('/[^0-9+]/', '', $whatsappNumber);
+
+            // Criar link do WhatsApp Web
+            $propertyInfo = $this->getPropertyInfoFromLead($leadData);
+            $message = $this->buildWhatsAppMessage($lead, $propertyInfo);
+            
+            // Encode da mensagem para URL
+            $encodedMessage = urlencode($message);
+            $whatsappLink = "https://wa.me/{$cleanWhatsappNumber}?text={$encodedMessage}";
+
+            // Criar mensagem do SMS
+            $smsBody = "Olá {$lead->nome}! 👋\n\n";
+            $smsBody .= "Recebemos seu interesse no imóvel.\n\n";
+            $smsBody .= "Clique aqui para falar direto conosco no WhatsApp:\n";
+            $smsBody .= $whatsappLink;
+
+            // Enviar SMS
+            $result = $this->twilioService->sendSMS($lead->telefone, $smsBody);
+
+            if ($result['success']) {
+                Log::info('✅ SMS com link do WhatsApp enviado com sucesso', [
+                    'lead_id' => $lead->id,
+                    'telefone' => $lead->telefone,
+                    'message_sid' => $result['message_sid']
+                ]);
+            } else {
+                Log::error('❌ Erro ao enviar SMS com link do WhatsApp', [
+                    'lead_id' => $lead->id,
+                    'telefone' => $lead->telefone,
+                    'error' => $result['error'],
+                    'response' => $result['response']
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('❌ Exceção ao enviar SMS com link do WhatsApp', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Extrai informações do imóvel dos dados do lead
+     */
+    private function getPropertyInfoFromLead(array $leadData): string
+    {
+        if (!isset($leadData['ad'])) {
+            return '';
+        }
+
+        $ad = $leadData['ad'];
+        $parts = [];
+
+        if (isset($ad['type'])) $parts[] = $ad['type'];
+        if (isset($ad['reference'])) $parts[] = "Ref: {$ad['reference']}";
+        if (isset($ad['neighborhood'])) $parts[] = $ad['neighborhood'];
+        if (isset($ad['city'])) $parts[] = $ad['city'];
+
+        return implode(' - ', $parts);
+    }
+
+    /**
+     * Constrói mensagem padrão para WhatsApp
+     */
+    private function buildWhatsAppMessage(Lead $lead, string $propertyInfo): string
+    {
+        $message = "Olá! Sou {$lead->nome} e tenho interesse ";
+        
+        if (!empty($propertyInfo)) {
+            $message .= "no imóvel: {$propertyInfo}";
+        } else {
+            $message .= "em conhecer mais sobre seus imóveis";
+        }
+        
+        $message .= ". Gostaria de mais informações.";
+        
+        return $message;
     }
     
 }

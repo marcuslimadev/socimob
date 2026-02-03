@@ -192,7 +192,7 @@ export default function ClientPortal() {
               Encontre seu Imóvel Perfeito
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Explore nossa seleção de propriedades premium em São Paulo
+              Explore nossa seleção de propriedades premium em Belo Horizonte
             </p>
           </motion.div>
 
