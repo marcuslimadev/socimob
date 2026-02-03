@@ -278,18 +278,6 @@ export default function PropertyAds() {
       {/* Dialog de Propaganda Gerada */}
       <Dialog open={adDialog} onOpenChange={setAdDialog}>
         <DialogContent className="bg-[#0f0f0f] border border-white/10 max-w-[420px] p-0">
-          <div className="p-4">
-            <DialogHeader className="mb-3">
-              <DialogTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="text-purple-400" size={18} />
-                Propaganda Gerada com IA
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Texto otimizado para redes sociais (máx. 400 caracteres)
-              </DialogDescription>
-            </DialogHeader>
-          </div>
-          
           {adGeneration?.isGenerating ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="animate-spin h-12 w-12 text-purple-500 mb-4" />
