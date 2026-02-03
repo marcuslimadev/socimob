@@ -18,6 +18,39 @@ class PropertyController extends Controller
     }
     
     /**
+     * Listar todos os imóveis do tenant
+     * 
+     * GET /api/imoveis
+     */
+    public function index(Request $request)
+    {
+        $tenantId = $request->attributes->get('tenant_id');
+        
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+        
+        $perPage = $request->query('per_page', 15);
+        
+        $query = Property::where('tenant_id', $tenantId)
+            ->where('status', 'ativo')
+            ->orderBy('created_at', 'desc');
+        
+        // Se pedir todos sem paginação
+        if ($perPage == 100 || $perPage == 'all') {
+            $properties = $query->get();
+            return response()->json([
+                'data' => $properties,
+                'total' => $properties->count()
+            ]);
+        }
+        
+        $properties = $query->paginate($perPage);
+        
+        return response()->json($properties);
+    }
+    
+    /**
      * Sincronizar imóveis manualmente
      * 
      * GET /api/properties/sync
