@@ -32,6 +32,11 @@ class TwilioService
             return $to;
         }
 
+        // Se não veio com DDI e parece número BR (10 ou 11 dígitos), prefixar 55
+        if (!str_starts_with($digits, '55') && (strlen($digits) === 10 || strlen($digits) === 11)) {
+            $digits = '55' . $digits;
+        }
+
         // Corrigir padrão BR legado: 55 + DDD(2) + número(8) => inserir 9 quando parece celular
         // Ex: 559292287144 -> 5592992287144
         if (str_starts_with($digits, '55') && strlen($digits) === 12) {

@@ -220,7 +220,23 @@ class WhatsAppService
     private function getOrCreateConversa($telefone, $dados)
     {
         $tenantId = $this->resolveTenantId($dados['tenant_id'] ?? null);
-        $query = Conversa::where('telefone', $telefone)
+        $telefoneNormal = trim((string) $telefone);
+        $telefoneSemPrefixo = Str::startsWith($telefoneNormal, 'whatsapp:')
+            ? substr($telefoneNormal, strlen('whatsapp:'))
+            : $telefoneNormal;
+        $telefoneComPrefixo = Str::startsWith($telefoneNormal, 'whatsapp:')
+            ? $telefoneNormal
+            : 'whatsapp:' . $telefoneSemPrefixo;
+        $telefoneSemPlus = ltrim($telefoneSemPrefixo, '+');
+
+        $telefonesPossiveis = array_values(array_unique([
+            $telefoneNormal,
+            $telefoneSemPrefixo,
+            $telefoneComPrefixo,
+            $telefoneSemPlus,
+        ]));
+
+        $query = Conversa::whereIn('telefone', $telefonesPossiveis)
             ->where('status', '!=', 'encerrada');
 
         if ($tenantId) {
@@ -235,7 +251,7 @@ class WhatsAppService
         if (!$conversa) {
             $conversa = Conversa::create([
                 'tenant_id' => $tenantId,
-                'telefone' => $telefone,
+                'telefone' => $telefoneSemPrefixo,
                 'whatsapp_name' => $dados['profile_name'],
                 'status' => 'ativa',
                 'stage' => 'boas_vindas',
@@ -252,6 +268,9 @@ class WhatsAppService
             $updates = [];
             if (!empty($dados['profile_name'])) {
                 $updates['whatsapp_name'] = $dados['profile_name'];
+            }
+            if (!empty($telefoneSemPrefixo) && $conversa->telefone !== $telefoneSemPrefixo) {
+                $updates['telefone'] = $telefoneSemPrefixo;
             }
             if (empty($conversa->tenant_id) && $tenantId) {
                 $updates['tenant_id'] = $tenantId;

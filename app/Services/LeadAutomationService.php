@@ -63,9 +63,9 @@ class LeadAutomationService
                 ]
             );
 
-            // 1. Validar número de WhatsApp
-            if (!$this->validarWhatsApp($telefone)) {
-                Log::warning('[LeadAutomation] Telefone inválido ou não é WhatsApp', [
+            // 1. Validar número de telefone para SMS
+            if (!$this->validarTelefone($telefone)) {
+                Log::warning('[LeadAutomation] Telefone inválido para SMS', [
                     'tenant_id' => $lead->tenant_id,
                     'lead_id' => $lead->id,
                     'telefone' => $telefone
@@ -73,12 +73,12 @@ class LeadAutomationService
                 \App\Models\SystemLog::warning(
                     \App\Models\SystemLog::CATEGORY_AUTOMATION,
                     'validacao_telefone',
-                    'Telefone inválido para WhatsApp',
+                    'Telefone inválido para SMS',
                     ['lead_id' => $lead->id, 'telefone' => $lead->telefone]
                 );
                 return [
                     'success' => false,
-                    'error' => 'Número de WhatsApp inválido',
+                    'error' => 'Número de telefone inválido para SMS',
                     'lead_id' => $lead->id
                 ];
             }
@@ -110,40 +110,31 @@ class LeadAutomationService
             $mensagemRegistrada = null;
             $messageSid = null;
 
-            // 4. Enviar template Twilio para leads de integração
-            $usarTemplate = $this->deveUsarTemplateInicial($lead);
+            // 4. Primeiro contato SEMPRE por SMS com link wa.me do tenant
             $resultadoEnvio = null;
+            $mensagemIA = $this->gerarMensagemInicial($lead);
+            $mensagemSMS = $this->montarMensagemPrimeiroContatoSms($lead, $mensagemIA);
+            $resultadoEnvio = $this->enviarMensagemSMS($lead, $mensagemSMS, $telefone);
 
-            if ($usarTemplate) {
-                $resultadoEnvio = $this->enviarTemplateWhatsApp($lead, $telefone);
-                if ($resultadoEnvio['success']) {
-                    $mensagemRegistrada = $this->mensagemTemplateRegistro($lead);
-                    $messageSid = $resultadoEnvio['message_sid'];
-                }
-            } else {
-                // 5. Gerar e enviar mensagem personalizada se template não foi enviado
-                $mensagemIA = $this->gerarMensagemInicial($lead);
-                $resultadoEnvio = $this->enviarMensagemWhatsApp($lead, $mensagemIA, $conversa, $telefone);
-                if ($resultadoEnvio['success']) {
-                    $mensagemRegistrada = $mensagemIA;
-                    $messageSid = $resultadoEnvio['message_sid'];
-                }
+            if ($resultadoEnvio['success']) {
+                $mensagemRegistrada = $mensagemSMS;
+                $messageSid = $resultadoEnvio['message_sid'];
             }
 
             if (!$resultadoEnvio || !$resultadoEnvio['success']) {
-                Log::error('[LeadAutomation] Falha ao enviar mensagem WhatsApp', [
+                Log::error('[LeadAutomation] Falha ao enviar SMS', [
                     'tenant_id' => $lead->tenant_id,
                     'lead_id' => $lead->id
                 ]);
                 \App\Models\SystemLog::error(
                     \App\Models\SystemLog::CATEGORY_TWILIO,
                     'envio_falhou',
-                    'Falha ao enviar mensagem WhatsApp',
+                    'Falha ao enviar mensagem SMS',
                     ['lead_id' => $lead->id, 'mensagem' => substr($mensagemIA, 0, 100)]
                 );
                 return [
                     'success' => false,
-                    'error' => 'Falha ao enviar mensagem via WhatsApp',
+                    'error' => 'Falha ao enviar mensagem via SMS',
                     'lead_id' => $lead->id
                 ];
             }
@@ -252,12 +243,12 @@ class LeadAutomationService
     }
 
     /**
-     * Validar se número é WhatsApp válido
+     * Validar se número é válido para SMS
      * 
      * @param string $telefone Número de telefone
      * @return bool É válido
      */
-    private function validarWhatsApp($telefone)
+    private function validarTelefone($telefone)
     {
         if (empty($telefone)) {
             Log::debug('[LeadAutomation] Telefone vazio');
@@ -672,6 +663,104 @@ Gere a mensagem de primeiro contato:";
             ]);
 
             return ['success' => false, 'message_sid' => null];
+        }
+    }
+
+    /**
+     * Enviar mensagem via SMS (Twilio)
+     *
+     * @param Lead $lead
+     * @param string $mensagem
+     * @param string $telefone
+     * @return array ['success' => bool, 'message_sid' => string|null]
+     */
+    private function enviarMensagemSMS(Lead $lead, string $mensagem, string $telefone): array
+    {
+        try {
+            $resultado = $this->twilioService->sendSMS($telefone, $mensagem);
+
+            if (empty($resultado['success'])) {
+                Log::error('[LeadAutomation] Falha no envio do SMS (Twilio)', [
+                    'lead_id' => $lead->id,
+                    'telefone' => $telefone,
+                    'http_code' => $resultado['http_code'] ?? null,
+                    'response' => $resultado['response'] ?? null,
+                    'error' => $resultado['error'] ?? null
+                ]);
+                return ['success' => false, 'message_sid' => null];
+            }
+
+            Log::info('[LeadAutomation] SMS enviado', [
+                'lead_id' => $lead->id,
+                'telefone' => $telefone,
+                'sid' => $resultado['message_sid'] ?? null
+            ]);
+
+            return [
+                'success' => true,
+                'message_sid' => $resultado['message_sid'] ?? null
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('[LeadAutomation] Erro ao enviar SMS', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return ['success' => false, 'message_sid' => null];
+        }
+    }
+
+    /**
+     * Montar mensagem de primeiro contato por SMS com link wa.me do tenant
+     */
+    private function montarMensagemPrimeiroContatoSms(Lead $lead, string $mensagemBase): string
+    {
+        $linkWa = $this->getTenantWhatsAppLink($lead);
+
+        $mensagem = trim($mensagemBase);
+        if ($linkWa) {
+            $mensagem .= "\n\nPara continuar no WhatsApp: {$linkWa}";
+        }
+
+        return $mensagem;
+    }
+
+    /**
+     * Obter link wa.me a partir do número do WhatsApp do tenant
+     */
+    private function getTenantWhatsAppLink(Lead $lead): ?string
+    {
+        try {
+            $tenant = $lead->tenant ?? null;
+            if ($tenant) {
+                $raw = $tenant->getIntegrationValue('twilio_whatsapp_from')
+                    ?? $tenant->getIntegrationValue('contact_phone');
+            } else {
+                $raw = null;
+            }
+
+            if (!$raw) {
+                $raw = env('EXCLUSIVA_TWILIO_WHATSAPP_FROM');
+            }
+
+            $raw = (string) $raw;
+            if ($raw === '') {
+                return null;
+            }
+
+            $digits = preg_replace('/\D+/', '', str_replace('whatsapp:', '', $raw));
+            if ($digits === '') {
+                return null;
+            }
+
+            return 'https://wa.me/' . $digits;
+        } catch (\Throwable $e) {
+            Log::error('[LeadAutomation] Erro ao montar link wa.me', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage()
+            ]);
+            return null;
         }
     }
 
