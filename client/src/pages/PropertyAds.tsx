@@ -277,24 +277,24 @@ export default function PropertyAds() {
 
       {/* Dialog de Propaganda Gerada */}
       <Dialog open={adDialog} onOpenChange={setAdDialog}>
-        <DialogContent className="bg-[#0f0f0f] border border-white/10 max-w-[420px] p-0">
+        <DialogContent className="bg-[#0f0f0f] border-0 max-w-[360px] p-0 h-[640px] overflow-hidden">
           {adGeneration?.isGenerating ? (
-            <div className="flex flex-col items-center justify-center py-12">
+            <div className="flex flex-col items-center justify-center h-full">
               <Loader2 className="animate-spin h-12 w-12 text-purple-500 mb-4" />
               <p className="text-muted-foreground">Gerando texto com IA...</p>
             </div>
           ) : (
-            <div className="space-y-0">
-              {/* Grid de até 6 imagens - Compacto */}
+            <div className="flex flex-col h-full">
+              {/* Grid de até 6 imagens - Formato 9:16 */}
               {adGeneration?.property.photos && adGeneration.property.photos.length > 0 && (
-                <div className="grid grid-cols-3 gap-0.5">
+                <div className="grid grid-cols-3 gap-0.5 flex-1">
                   {adGeneration.property.photos.slice(0, 6).map((photo, index) => (
                     <div 
                       key={index}
                       className={`relative ${
-                        adGeneration.property.photos.length === 1 ? 'col-span-3 h-80' : 
-                        index === 0 && adGeneration.property.photos.length > 1 ? 'col-span-2 row-span-2 h-52' : 
-                        'h-[103px]'
+                        adGeneration.property.photos.length === 1 ? 'col-span-3 h-full' : 
+                        index === 0 && adGeneration.property.photos.length > 1 ? 'col-span-2 row-span-2' : 
+                        ''
                       }`}
                     >
                       <img
@@ -308,31 +308,31 @@ export default function PropertyAds() {
               )}
               
               {/* Texto da propaganda */}
-              <div className="px-4 py-3 bg-black/20">
-                <p className="text-foreground whitespace-pre-wrap text-sm leading-snug">
+              <div className="px-4 py-4 bg-black/30">
+                <p className="text-white whitespace-pre-wrap text-sm leading-relaxed">
                   {adGeneration?.generatedText}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-1.5 text-right opacity-60">
-                  {adGeneration?.generatedText.length || 0} / 400 caracteres
+                <p className="text-[10px] text-gray-400 mt-2 text-right">
+                  {adGeneration?.generatedText.length || 0} / 400
                 </p>
               </div>
               
               {/* Botões de ação */}
-              <div className="flex gap-2 px-4 pb-4 pt-2">
+              <div className="flex gap-2 px-4 pb-4">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleCopyText}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-600/20 hover:bg-gray-600/30 rounded-lg text-gray-300 font-medium text-sm transition-all"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-white font-medium text-xs transition-all"
                 >
                   <Download size={14} />
-                  Copiar Texto
+                  Copiar
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleShare}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-medium text-sm"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-medium text-xs"
                 >
                   <Share2 size={14} />
                   Compartilhar
