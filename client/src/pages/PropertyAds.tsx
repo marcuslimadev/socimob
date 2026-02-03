@@ -277,16 +277,18 @@ export default function PropertyAds() {
 
       {/* Dialog de Propaganda Gerada */}
       <Dialog open={adDialog} onOpenChange={setAdDialog}>
-        <DialogContent className="bg-[#0f0f0f] border border-white/10 max-w-md sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="text-purple-400" size={20} />
-              Propaganda Gerada com IA
-            </DialogTitle>
-            <DialogDescription>
-              Texto otimizado para redes sociais (máx. 400 caracteres)
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="bg-[#0f0f0f] border border-white/10 max-w-[420px] p-0">
+          <div className="p-4">
+            <DialogHeader className="mb-3">
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="text-purple-400" size={18} />
+                Propaganda Gerada com IA
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Texto otimizado para redes sociais (máx. 400 caracteres)
+              </DialogDescription>
+            </DialogHeader>
+          </div>
           
           {adGeneration?.isGenerating ? (
             <div className="flex flex-col items-center justify-center py-12">
@@ -294,17 +296,17 @@ export default function PropertyAds() {
               <p className="text-muted-foreground">Gerando texto com IA...</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* Grid de até 6 imagens */}
+            <div className="space-y-0">
+              {/* Grid de até 6 imagens - Compacto */}
               {adGeneration?.property.photos && adGeneration.property.photos.length > 0 && (
-                <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
+                <div className="grid grid-cols-3 gap-0.5">
                   {adGeneration.property.photos.slice(0, 6).map((photo, index) => (
                     <div 
                       key={index}
                       className={`relative ${
-                        adGeneration.property.photos.length === 1 ? 'col-span-3 h-64' : 
-                        index === 0 && adGeneration.property.photos.length > 1 ? 'col-span-2 row-span-2 h-48' : 
-                        'h-24'
+                        adGeneration.property.photos.length === 1 ? 'col-span-3 h-80' : 
+                        index === 0 && adGeneration.property.photos.length > 1 ? 'col-span-2 row-span-2 h-52' : 
+                        'h-[103px]'
                       }`}
                     >
                       <img
@@ -317,30 +319,34 @@ export default function PropertyAds() {
                 </div>
               )}
               
-              <div className="glass-panel p-4 rounded-lg">
-                <p className="text-foreground whitespace-pre-wrap text-sm leading-relaxed">{adGeneration?.generatedText}</p>
-                <p className="text-xs text-muted-foreground mt-2 text-right">
+              {/* Texto da propaganda */}
+              <div className="px-4 py-3 bg-black/20">
+                <p className="text-foreground whitespace-pre-wrap text-sm leading-snug">
+                  {adGeneration?.generatedText}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-1.5 text-right opacity-60">
                   {adGeneration?.generatedText.length || 0} / 400 caracteres
                 </p>
               </div>
               
-              <div className="flex gap-2">
+              {/* Botões de ação */}
+              <div className="flex gap-2 px-4 pb-4 pt-2">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleCopyText}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-600/20 hover:bg-gray-600/30 rounded-lg text-gray-300 font-semibold transition-all"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-600/20 hover:bg-gray-600/30 rounded-lg text-gray-300 font-medium text-sm transition-all"
                 >
-                  <Download size={16} />
+                  <Download size={14} />
                   Copiar Texto
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleShare}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-semibold"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-medium text-sm"
                 >
-                  <Share2 size={16} />
+                  <Share2 size={14} />
                   Compartilhar
                 </motion.button>
               </div>
