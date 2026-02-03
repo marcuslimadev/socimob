@@ -432,15 +432,21 @@ class PropertyController extends Controller
      * 
      * POST /api/properties/{id}/generate-ad-description
      */
-    public function generateAdDescription($id)
+    public function generateAdDescription(Request $request, $id)
     {
         try {
-            $property = Property::where('tenant_id', auth()->user()->tenant_id)
+            $tenantId = $request->attributes->get('tenant_id');
+            
+            if (!$tenantId) {
+                return response()->json(['error' => 'No tenant context'], 400);
+            }
+            
+            $property = Property::where('tenant_id', $tenantId)
                 ->findOrFail($id);
 
             // Buscar configuração do tenant para pegar a chave OpenAI
             $tenantConfig = DB::table('tenant_config')
-                ->where('tenant_id', auth()->user()->tenant_id)
+                ->where('tenant_id', $tenantId)
                 ->first();
 
             $openaiKey = null;
@@ -474,25 +480,25 @@ class PropertyController extends Controller
 
             // Preparar informações do imóvel
             $propertyInfo = [
-                'title' => $property->title ?? '',
-                'type' => $property->type ?? '',
-                'city' => $property->city ?? '',
-                'state' => $property->state ?? '',
-                'neighborhood' => $property->neighborhood ?? '',
-                'bedrooms' => $property->bedrooms ?? 0,
-                'bathrooms' => $property->bathrooms ?? 0,
-                'area' => $property->area ?? 0,
-                'price' => $property->price ?? 0,
-                'description' => $property->description ?? '',
+                'title' => $property->titulo ?? $property->type ?? 'Imóvel',
+                'type' => $property->type ?? $property->tipo_imovel ?? '',
+                'city' => $property->city ?? $property->cidade ?? '',
+                'state' => $property->state ?? $property->estado ?? '',
+                'neighborhood' => $property->neighborhood ?? $property->bairro ?? '',
+                'bedrooms' => $property->bedrooms ?? $property->dormitorios ?? 0,
+                'bathrooms' => $property->bathrooms ?? $property->banheiros ?? 0,
+                'area' => $property->area ?? $property->area_total ?? 0,
+                'price' => $property->price ?? $property->valor_venda ?? 0,
+                'description' => $property->descricao ?? '',
             ];
 
             // Construir prompt para a IA
             $prompt = "Crie uma descrição curta e atrativa para propaganda de imóvel nas redes sociais. 
-Máximo de 200 caracteres. Foque nos pontos fortes e localização.
+Máximo de 400 caracteres. Foque nos pontos fortes e localização.
 
 Imóvel: {$propertyInfo['title']}
 Tipo: {$propertyInfo['type']}
-Localização: {$propertyInfo['city']}, {$propertyInfo['state']}
+Localização: {$propertyInfo['neighborhood']}, {$propertyInfo['city']}/{$propertyInfo['state']}
 Quartos: {$propertyInfo['bedrooms']}
 Banheiros: {$propertyInfo['bathrooms']}
 Área: {$propertyInfo['area']}m²
@@ -522,7 +528,7 @@ Responda APENAS com a descrição, sem aspas ou formatação adicional.";
                             'content' => $prompt
                         ]
                     ],
-                    'max_tokens' => 100,
+                    'max_tokens' => 150,
                     'temperature' => 0.7
                 ])
             ]);
@@ -535,11 +541,19 @@ Responda APENAS com a descrição, sem aspas ou formatação adicional.";
                 \Log::error('OpenAI API Error: ' . $response);
                 
                 // Fallback: criar descrição manual
-                $description = "{$propertyInfo['bedrooms']} quartos, {$propertyInfo['bathrooms']} banheiros, {$propertyInfo['area']}m² em {$propertyInfo['city']}. Excelente oportunidade!";
+                $parts = [];
+                if ($propertyInfo['type']) $parts[] = ucfirst($propertyInfo['type']);
+                if ($propertyInfo['bedrooms']) $parts[] = "{$propertyInfo['bedrooms']} quartos";
+                if ($propertyInfo['bathrooms']) $parts[] = "{$propertyInfo['bathrooms']} banheiros";
+                if ($propertyInfo['area']) $parts[] = "{$propertyInfo['area']}m²";
+                if ($propertyInfo['neighborhood']) $parts[] = $propertyInfo['neighborhood'];
+                if ($propertyInfo['city']) $parts[] = $propertyInfo['city'];
+                
+                $description = implode(', ', $parts) . '. Entre em contato!';
                 
                 return response()->json([
                     'success' => true,
-                    'description' => substr($description, 0, 200),
+                    'description' => substr($description, 0, 400),
                     'fallback' => true
                 ]);
             }
@@ -547,8 +561,8 @@ Responda APENAS com a descrição, sem aspas ou formatação adicional.";
             $result = json_decode($response, true);
             $description = $result['choices'][0]['message']['content'] ?? '';
             
-            // Garantir limite de 200 caracteres
-            $description = substr(trim($description), 0, 200);
+            // Garantir limite de 400 caracteres
+            $description = substr(trim($description), 0, 400);
 
             return response()->json([
                 'success' => true,
