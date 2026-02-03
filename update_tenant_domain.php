@@ -1,26 +1,34 @@
 <?php
 
-require __DIR__ . '/vendor/autoload.php';
-
-$app = require __DIR__ . '/bootstrap/app.php';
+// Script simples para atualizar domínio do tenant (compatível com PHP 8.0)
+$dsn = 'mysql:host=localhost;dbname=u815655858_socimob';
+$username = 'u815655858_socimob';
+$password = 'MundoMelhor@10';
 
 try {
-    $tenant = \App\Models\Tenant::find(1);
+    $pdo = new PDO($dsn, $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // Buscar tenant atual
+    $stmt = $pdo->query("SELECT id, name, domain FROM tenants WHERE id = 1");
+    $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$tenant) {
         echo "Tenant ID 1 não encontrado\n";
         exit(1);
     }
     
-    echo "Domínio atual: " . $tenant->domain . "\n";
+    echo "Domínio atual: " . $tenant['domain'] . "\n";
     
-    $tenant->domain = 'exclusivalarimoveis.com';
-    $tenant->save();
+    // Atualizar domínio
+    $stmt = $pdo->prepare("UPDATE tenants SET domain = ? WHERE id = 1");
+    $stmt->execute(['exclusivalarimoveis.com']);
     
-    echo "Domínio atualizado para: " . $tenant->domain . "\n";
+    echo "Domínio atualizado para: exclusivalarimoveis.com\n";
     echo "Sucesso!\n";
     
-} catch (\Exception $e) {
+} catch (PDOException $e) {
     echo "Erro: " . $e->getMessage() . "\n";
     exit(1);
 }
+
