@@ -267,7 +267,7 @@ class PropertySyncService
             'fotos' => $imagensData, // Array será convertido automaticamente pelo cast
             'exibir_imovel' => true,
             'active' => true,
-            'last_sync' => now()
+            'last_sync' => date('Y-m-d H:i:s')
         ];
     }
     
