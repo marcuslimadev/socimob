@@ -1,8 +1,8 @@
 <?php
 
 // Script simples para atualizar domínio do tenant (compatível com PHP 8.0)
-$dsn = 'mysql:host=localhost;dbname=u815655858_socimob';
-$username = 'u815655858_socimob';
+$dsn = 'mysql:host=localhost;dbname=u815655858_saas';
+$username = 'u815655858_saas';
 $password = 'MundoMelhor@10';
 
 try {
