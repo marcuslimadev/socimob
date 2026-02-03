@@ -493,18 +493,27 @@ class PropertyController extends Controller
             ];
 
             // Construir prompt para a IA
-            $prompt = "Crie uma descrição curta e atrativa para propaganda de imóvel nas redes sociais. 
-Máximo de 400 caracteres. Foque nos pontos fortes e localização.
+            $location = trim("{$propertyInfo['neighborhood']}, {$propertyInfo['city']}/{$propertyInfo['state']}", ', ');
+            
+            $prompt = "Crie uma descrição CURTA e ATRATIVA para propaganda de imóvel nas redes sociais (Instagram/WhatsApp).
 
-Imóvel: {$propertyInfo['title']}
-Tipo: {$propertyInfo['type']}
-Localização: {$propertyInfo['neighborhood']}, {$propertyInfo['city']}/{$propertyInfo['state']}
-Quartos: {$propertyInfo['bedrooms']}
-Banheiros: {$propertyInfo['bathrooms']}
-Área: {$propertyInfo['area']}m²
-Valor: R$ " . number_format($propertyInfo['price'], 2, ',', '.') . "
+IMPORTANTE: Máximo de 400 caracteres. Use EXATAMENTE a localização informada abaixo.
 
-Responda APENAS com a descrição, sem aspas ou formatação adicional.";
+📍 Localização: {$location}
+🏠 Tipo: {$propertyInfo['type']}
+🛏️ Quartos: {$propertyInfo['bedrooms']}
+🚿 Banheiros: {$propertyInfo['bathrooms']}
+📐 Área: {$propertyInfo['area']}m²
+💰 Valor: R$ " . number_format($propertyInfo['price'], 2, ',', '.') . "
+
+REGRAS:
+- Use OBRIGATORIAMENTE a cidade '{$propertyInfo['city']}' no texto
+- Máximo 400 caracteres
+- Tom persuasivo e moderno
+- Destaque a localização e diferenciais
+- Inclua call-to-action
+
+Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional.";
 
             // Fazer requisição para OpenAI
             $ch = curl_init('https://api.openai.com/v1/chat/completions');
