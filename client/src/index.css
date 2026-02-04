@@ -245,3 +245,22 @@
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out;
 }
+
+/* Custom Leaflet marker styles */
+.custom-marker-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.leaflet-popup-content {
+  margin: 12px;
+}
+
+.leaflet-popup-tip {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}

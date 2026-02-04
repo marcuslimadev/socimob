@@ -84,7 +84,8 @@
       "Bash(powershell -Command \"Get-Content ''c:\\\\Projetos\\\\socimobatual\\\\public\\\\index.html'' -TotalCount 100\")",
       "Bash(php -r:*)",
       "Bash(powershell -Command \"\\(Get-Content ''c:\\\\Projetos\\\\socimobatual\\\\public\\\\index.html'' -Raw\\) -match ''api/portal/imoveis''\")",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(php update_property_coordinates.php:*)"
     ]
   }
 }

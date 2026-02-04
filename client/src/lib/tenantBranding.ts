@@ -9,11 +9,15 @@ export interface TenantBranding {
   font_primary?: string;
   font_secondary?: string;
   font_url?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  domain?: string;
+  portal_finalidades?: string[];
 }
 
 export const fetchTenantBranding = async (): Promise<TenantBranding | null> => {
   try {
-    const response = await fetch("/portal/config", {
+    const response = await fetch("/api/portal/config", {
       headers: {
         "X-Tenant-Domain": window.location.hostname,
       },
@@ -21,8 +25,16 @@ export const fetchTenantBranding = async (): Promise<TenantBranding | null> => {
 
     if (!response.ok) return null;
     const payload = await response.json();
-    return payload?.data || payload?.tenant || payload || null;
-  } catch {
+    const data = payload?.data || payload?.tenant || payload || null;
+
+    // Ensure logo_url is properly set
+    if (data && !data.logo_url && data.logo) {
+      data.logo_url = data.logo;
+    }
+
+    return data;
+  } catch (error) {
+    console.warn('Failed to fetch tenant branding:', error);
     return null;
   }
 };

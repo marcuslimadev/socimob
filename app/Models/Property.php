@@ -32,6 +32,8 @@ class Property extends Model
         'banheiros',
         'garagem',            // Mudado de 'vagas'
         'imagens',            // Mudado de 'fotos'
+        'latitude',
+        'longitude',
         'last_sync',
     ];
 
@@ -44,6 +46,8 @@ class Property extends Model
         'banheiros' => 'integer',
         'garagem' => 'integer',
         'imagens' => 'array',      // Mudado de 'fotos'
+        'latitude' => 'float',
+        'longitude' => 'float',
         'last_sync' => 'datetime',
     ];
 

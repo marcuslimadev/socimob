@@ -144,6 +144,16 @@ export default function Settings() {
     twilio_whatsapp_from: '',
   });
 
+  const storedUser = localStorage.getItem('user');
+  const storedRole = storedUser ? (() => {
+    try {
+      return JSON.parse(storedUser)?.role as string | undefined;
+    } catch {
+      return undefined;
+    }
+  })() : undefined;
+  const isAdminRole = ['admin', 'super_admin'].includes(profileUser?.role || storedRole || '');
+
   const sections: SettingSection[] = [
     {
       id: 'profile',
@@ -151,7 +161,7 @@ export default function Settings() {
       description: 'Gerencie suas informacoes pessoais',
       icon: <User size={24} />,
     },
-    ...(profileUser?.role === 'admin' || profileUser?.role === 'super_admin' ? [{
+    ...(isAdminRole ? [{
       id: 'company',
       title: 'Empresa',
       description: 'Configuracoes da imobiliaria e integrações',

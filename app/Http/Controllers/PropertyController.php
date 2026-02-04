@@ -445,7 +445,7 @@ class PropertyController extends Controller
                 ->findOrFail($id);
 
             // Buscar configuração do tenant para pegar a chave OpenAI
-            $tenantConfig = DB::table('tenant_config')
+            $tenantConfig = DB::table('tenant_configs')
                 ->where('tenant_id', $tenantId)
                 ->first();
 
