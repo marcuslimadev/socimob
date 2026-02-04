@@ -4,13 +4,19 @@
  * Acesse: https://exclusivalarimoveis.com/sync_now.php
  */
 
+// Mostrar todos os erros
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+
 // Definir tempo limite maior
-set_time_limit(300); // 5 minutos
+set_time_limit(300);
 ini_set('max_execution_time', '300');
 
-// Iniciar output buffering para mostrar progresso
-ob_implicit_flush(true);
-ob_end_flush();
+// Desabilitar output buffering para ver progresso em tempo real
+while (ob_get_level()) {
+    ob_end_flush();
+}
+ob_implicit_flush(1);
 
 echo "<!DOCTYPE html>
 <html>
