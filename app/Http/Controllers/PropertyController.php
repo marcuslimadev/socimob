@@ -93,16 +93,16 @@ class PropertyController extends Controller
             'ip' => $request->ip()
         ]);
         
-        // Disparar job em background (Lumen syntax)
-        $job = new \App\Jobs\SyncPropertiesJob($tenant->id, $tenant->nome);
-        app('Illuminate\Contracts\Bus\Dispatcher')->dispatch($job);
+        // Sincronizar imediatamente
+        $syncService = app(\App\Services\PropertySyncService::class);
+        $result = $syncService->syncAll();
         
         return response()->json([
             'success' => true,
-            'message' => 'Sincronização iniciada em background',
+            'message' => 'Sincronização concluída',
             'tenant_id' => $tenant->id,
             'tenant_name' => $tenant->nome,
-            'note' => 'A sincronização está rodando em background. Verifique os logs para acompanhar o progresso.'
+            'result' => $result
         ]);
     }
     
