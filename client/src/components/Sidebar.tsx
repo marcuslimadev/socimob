@@ -91,7 +91,25 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           },
         });
         if (response.data.success && response.data.data) {
-          setTenant(response.data.data);
+          const tenantData = response.data.data as TenantConfig & { favicon_url?: string };
+          setTenant(tenantData);
+
+          if (typeof document !== 'undefined') {
+            if (tenantData.name) {
+              document.title = tenantData.name;
+            }
+
+            const faviconUrl = tenantData.favicon_url || tenantData.logo;
+            if (faviconUrl) {
+              let faviconLink = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
+              if (!faviconLink) {
+                faviconLink = document.createElement('link');
+                faviconLink.rel = 'icon';
+                document.head.appendChild(faviconLink);
+              }
+              faviconLink.href = faviconUrl;
+            }
+          }
         }
       } catch (error) {
         // Silently handle error

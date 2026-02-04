@@ -605,19 +605,19 @@ export default function Chat() {
                                       className={cn(
                                         'relative px-4 py-3 rounded-2xl shadow-sm',
                                         isUser
-                                          ? 'bg-primary text-primary-foreground rounded-br-sm'
-                                          : 'bg-card border border-border text-foreground rounded-bl-sm'
+                                          ? 'bg-[#e5e7eb] text-[#4b5563] rounded-br-sm'
+                                          : 'bg-[#e5e7eb] border border-[#d1d5db] text-[#4b5563] rounded-bl-sm'
                                       )}
                                     >
                                       <span
                                         className={cn(
                                           'pointer-events-none absolute bottom-0 w-3 h-3',
                                           isUser
-                                            ? 'right-[-6px] bg-primary rotate-45 rounded-sm'
-                                            : 'left-[-6px] bg-card border-l border-b border-border rotate-45 rounded-sm'
+                                            ? 'right-[-6px] bg-[#e5e7eb] border-r border-t border-[#d1d5db] rotate-45 rounded-sm'
+                                            : 'left-[-6px] bg-[#e5e7eb] border-l border-b border-[#d1d5db] rotate-45 rounded-sm'
                                         )}
                                       />
-                                      <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                                      <p className="text-base font-semibold whitespace-pre-wrap break-words leading-relaxed">
                                         {highlightText(message.text, searchTerm)}
                                       </p>
                                     </div>

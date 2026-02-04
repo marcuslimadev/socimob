@@ -352,13 +352,13 @@ export default function Tenants() {
       {showModal && editingTenant && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="glass-panel p-6 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="glass-panel p-8 rounded-2xl w-full max-w-7xl max-h-[95vh] overflow-y-auto"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                <Edit2 size={24} />
+            <div className="flex items-center justify-between mb-6 sticky top-0 bg-background/95 backdrop-blur-sm py-4 z-10 -mt-8 -mx-8 px-8 border-b border-white/10">
+              <h2 className="text-3xl font-bold text-foreground flex items-center gap-3">
+                <Edit2 size={28} />
                 Editar Tenant
               </h2>
               <button
@@ -368,503 +368,416 @@ export default function Tenants() {
                 }}
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
-                <X size={24} />
+                <X size={28} />
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
-                  Nome *
-                </label>
-                <input
-                  type="text"
-                  value={editingTenant.name}
-                  onChange={(e) =>
-                    setEditingTenant({ ...editingTenant, name: e.target.value })
-                  }
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+              {/* Coluna Esquerda */}
+              <div className="space-y-6">
+                {/* Informações Básicas */}
+                <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                  <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                    <Building2 size={20} />
+                    Informações Básicas
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Nome *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingTenant.name}
+                        onChange={(e) =>
+                          setEditingTenant({ ...editingTenant, name: e.target.value })
+                        }
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">
-                    Domínio *
-                  </label>
-                  <input
-                    type="text"
-                    value={editingTenant.domain}
-                    onChange={(e) =>
-                      setEditingTenant({ ...editingTenant, domain: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">
-                    Slug *
-                  </label>
-                  <input
-                    type="text"
-                    value={editingTenant.slug}
-                    onChange={(e) =>
-                      setEditingTenant({ ...editingTenant, slug: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={editingTenant.contact_email || ''}
-                    onChange={(e) =>
-                      setEditingTenant({
-                        ...editingTenant,
-                        contact_email: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">
-                    Telefone
-                  </label>
-                  <input
-                    type="tel"
-                    value={editingTenant.contact_phone || ''}
-                    onChange={(e) =>
-                      setEditingTenant({
-                        ...editingTenant,
-                        contact_phone: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="border-t border-white/10 pt-6 mt-6">
-                <h3 className="text-lg font-bold text-foreground mb-4">🏢 Informações da Empresa</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Razão Social
-                    </label>
-                    <input
-                      type="text"
-                      value={editingTenant.razao_social || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          razao_social: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      CNPJ
-                    </label>
-                    <input
-                      type="text"
-                      value={editingTenant.cnpj || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          cnpj: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="00.000.000/0000-00"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">
-                    Endereço
-                  </label>
-                  <input
-                    type="text"
-                    value={editingTenant.endereco || ''}
-                    onChange={(e) =>
-                      setEditingTenant({
-                        ...editingTenant,
-                        endereco: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Slogan
-                    </label>
-                    <input
-                      type="text"
-                      value={editingTenant.slogan || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          slogan: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Logo
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoChange}
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    {logoPreview && (
-                      <div className="mt-3">
-                        <img
-                          src={logoPreview}
-                          alt="Preview"
-                          className="h-20 object-contain bg-white/10 rounded-lg p-2"
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          Domínio *
+                        </label>
+                        <input
+                          type="text"
+                          value={editingTenant.domain}
+                          onChange={(e) =>
+                            setEditingTenant({ ...editingTenant, domain: e.target.value })
+                          }
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
-                    )}
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Favicon URL
-                    </label>
-                    <input
-                      type="url"
-                      value={editingTenant.favicon_url || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          favicon_url: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="https://exemplo.com/favicon.ico"
-                    />
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          Slug *
+                        </label>
+                        <input
+                          type="text"
+                          value={editingTenant.slug}
+                          onChange={(e) =>
+                            setEditingTenant({ ...editingTenant, slug: e.target.value })
+                          }
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          value={editingTenant.contact_email || ''}
+                          onChange={(e) =>
+                            setEditingTenant({
+                              ...editingTenant,
+                              contact_email: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          Telefone
+                        </label>
+                        <input
+                          type="tel"
+                          value={editingTenant.contact_phone || ''}
+                          onChange={(e) =>
+                            setEditingTenant({
+                              ...editingTenant,
+                              contact_phone: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informações da Empresa */}
+                <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                  <h3 className="text-lg font-bold text-foreground mb-4">🏢 Informações da Empresa</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          Razão Social
+                        </label>
+                        <input
+                          type="text"
+                          value={editingTenant.razao_social || ''}
+                          onChange={(e) =>
+                            setEditingTenant({
+                              ...editingTenant,
+                              razao_social: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          CNPJ
+                        </label>
+                        <input
+                          type="text"
+                          value={editingTenant.cnpj || ''}
+                          onChange={(e) =>
+                            setEditingTenant({
+                              ...editingTenant,
+                              cnpj: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="00.000.000/0000-00"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Endereço
+                      </label>
+                      <input
+                        type="text"
+                        value={editingTenant.endereco || ''}
+                        onChange={(e) =>
+                          setEditingTenant({
+                            ...editingTenant,
+                            endereco: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Slogan
+                      </label>
+                      <input
+                        type="text"
+                        value={editingTenant.slogan || ''}
+                        onChange={(e) =>
+                          setEditingTenant({
+                            ...editingTenant,
+                            slogan: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          Logo
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoChange}
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        {logoPreview && (
+                          <div className="mt-3">
+                            <img
+                              src={logoPreview}
+                              alt="Preview"
+                              className="h-20 object-contain bg-white/10 rounded-lg p-2"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          Favicon URL
+                        </label>
+                        <input
+                          type="url"
+                          value={editingTenant.favicon_url || ''}
+                          onChange={(e) =>
+                            setEditingTenant({
+                              ...editingTenant,
+                              favicon_url: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="https://exemplo.com/favicon.ico"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Configurações de Email */}
+                <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                  <h3 className="text-lg font-bold text-foreground mb-4">📧 Configurações de Email (SMTP)</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          Driver
+                        </label>
+                        <input
+                          type="text"
+                          value={editingTenant.mail_driver || ''}
+                          onChange={(e) =>
+                            setEditingTenant({
+                              ...editingTenant,
+                              mail_driver: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="smtp"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          Host
+                        </label>
+                        <input
+                          type="text"
+                          value={editingTenant.mail_host || ''}
+                          onChange={(e) =>
+                            setEditingTenant({
+                              ...editingTenant,
+                              mail_host: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="smtp.titan.email"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-white/10 pt-6 mt-6">
-                <h3 className="text-lg font-bold text-foreground mb-4">📱 Integração Twilio (WhatsApp)</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Account SID
-                    </label>
-                    <input
-                      type="text"
-                      value={editingTenant.twilio_account_sid || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          twilio_account_sid: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                      placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    />
-                  </div>
+              {/* Coluna Direita - Integrações */}
+              <div className="space-y-6">
+                {/* Twilio */}
+                <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                  <h3 className="text-lg font-bold text-foreground mb-4">📱 Integração Twilio (WhatsApp)</h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Account SID
+                      </label>
+                      <input
+                        type="text"
+                        value={editingTenant.twilio_account_sid || ''}
+                        onChange={(e) =>
+                          setEditingTenant({
+                            ...editingTenant,
+                            twilio_account_sid: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                        placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Auth Token
-                    </label>
-                    <input
-                      type="password"
-                      value={editingTenant.twilio_auth_token || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          twilio_auth_token: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                    />
-                  </div>
-                </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Auth Token
+                      </label>
+                      <input
+                        type="password"
+                        value={editingTenant.twilio_auth_token || ''}
+                        onChange={(e) =>
+                          setEditingTenant({
+                            ...editingTenant,
+                            twilio_auth_token: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                      />
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      WhatsApp From (Número)
-                    </label>
-                    <input
-                      type="text"
-                      value={editingTenant.twilio_whatsapp_from || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          twilio_whatsapp_from: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="whatsapp:+5511999999999"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        WhatsApp From (Número)
+                      </label>
+                      <input
+                        type="text"
+                        value={editingTenant.twilio_whatsapp_from || ''}
+                        onChange={(e) =>
+                          setEditingTenant({
+                            ...editingTenant,
+                            twilio_whatsapp_from: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="whatsapp:+5511999999999"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Template Welcome SID
-                    </label>
-                    <input
-                      type="text"
-                      value={editingTenant.twilio_template_welcome_sid || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          twilio_template_welcome_sid: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-white/10 pt-6 mt-6">
-                <h3 className="text-lg font-bold text-foreground mb-4">🤖 Integração OpenAI</h3>
-                
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">
-                    API Key
-                  </label>
-                  <input
-                    type="password"
-                    value={editingTenant.openai_api_key || ''}
-                    onChange={(e) =>
-                      setEditingTenant({
-                        ...editingTenant,
-                        openai_api_key: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                    placeholder="sk-proj-..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Modelo
-                    </label>
-                    <input
-                      type="text"
-                      value={editingTenant.openai_model || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          openai_model: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="gpt-4o-mini"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Nome do Assistente IA
-                    </label>
-                    <input
-                      type="text"
-                      value={editingTenant.ai_assistant_name || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          ai_assistant_name: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Assistente Virtual"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-white/10 pt-6 mt-6">
-                <h3 className="text-lg font-bold text-foreground mb-4">📧 Configurações de Email (SMTP)</h3>
-                
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Driver
-                    </label>
-                    <input
-                      type="text"
-                      value={editingTenant.mail_driver || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          mail_driver: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="smtp"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Host
-                    </label>
-                    <input
-                      type="text"
-                      value={editingTenant.mail_host || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          mail_host: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="smtp.titan.email"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Porta
-                    </label>
-                    <input
-                      type="number"
-                      value={editingTenant.mail_port || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          mail_port: parseInt(e.target.value) || 587,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="587"
-                    />
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Template Welcome SID
+                      </label>
+                      <input
+                        type="text"
+                        value={editingTenant.twilio_template_welcome_sid || ''}
+                        onChange={(e) =>
+                          setEditingTenant({
+                            ...editingTenant,
+                            twilio_template_welcome_sid: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                        placeholder="HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Username
-                    </label>
-                    <input
-                      type="text"
-                      value={editingTenant.mail_username || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          mail_username: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                {/* OpenAI */}
+                <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                  <h3 className="text-lg font-bold text-foreground mb-4">🤖 Integração OpenAI</h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        API Key
+                      </label>
+                      <input
+                        type="password"
+                        value={editingTenant.openai_api_key || ''}
+                        onChange={(e) =>
+                          setEditingTenant({
+                            ...editingTenant,
+                            openai_api_key: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                        placeholder="sk-proj-..."
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      value={editingTenant.mail_password || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          mail_password: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          Modelo
+                        </label>
+                        <input
+                          type="text"
+                          value={editingTenant.openai_model || ''}
+                          onChange={(e) =>
+                            setEditingTenant({
+                              ...editingTenant,
+                              openai_model: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="gpt-4o-mini"
+                        />
+                      </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Encryption
-                    </label>
-                    <select
-                      value={editingTenant.mail_encryption || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          mail_encryption: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Nenhum</option>
-                      <option value="tls">TLS</option>
-                      <option value="ssl">SSL</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      From Address
-                    </label>
-                    <input
-                      type="email"
-                      value={editingTenant.mail_from_address || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          mail_from_address: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="naoresponda@empresa.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      From Name
-                    </label>
-                    <input
-                      type="text"
-                      value={editingTenant.mail_from_name || ''}
-                      onChange={(e) =>
-                        setEditingTenant({
-                          ...editingTenant,
-                          mail_from_name: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Nome da Empresa"
-                    />
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          Nome do Assistente IA
+                        </label>
+                        <input
+                          type="text"
+                          value={editingTenant.ai_assistant_name || ''}
+                          onChange={(e) =>
+                            setEditingTenant({
+                              ...editingTenant,
+                              ai_assistant_name: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Teresa"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className="flex gap-4">
-                <motion.button
+            {/* Botões de Ação */}
+            <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-white/10 sticky bottom-0 bg-background/95 backdrop-blur-sm pb-4">
+              <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleSave}
@@ -891,7 +804,6 @@ export default function Tenants() {
                   Cancelar
                 </motion.button>
               </div>
-            </div>
           </motion.div>
         </div>
       )}

@@ -48,6 +48,54 @@ Use apenas informações confirmadas. Se faltar algum dado relevante, sinalize c
     }
 
     /**
+     * Método genérico para chat com a OpenAI API
+     * 
+     * @param array $messages Array de mensagens no formato [['role' => 'system', 'content' => '...'], ...]
+     * @param int|null $tenantId ID do tenant (opcional, para log)
+     * @return array Resposta completa da API
+     */
+    public function chat(array $messages, $tenantId = null): array
+    {
+        $url = 'https://api.openai.com/v1/chat/completions';
+        
+        $data = [
+            'model' => $this->model,
+            'messages' => $messages,
+            'temperature' => 0.7,
+            'max_tokens' => 1000
+        ];
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $this->apiKey
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+        
+        if ($httpCode !== 200) {
+            Log::error('OpenAI Chat Error', [
+                'http_code' => $httpCode,
+                'response' => $response,
+                'curl_error' => $error,
+                'tenant_id' => $tenantId
+            ]);
+            
+            throw new \Exception('OpenAI API Error: ' . ($error ?: 'HTTP ' . $httpCode));
+        }
+        
+        return json_decode($response, true);
+    }
+
+    /**
      * Transcrever áudio do WhatsApp usando Whisper API
      * 
      * @param string $audioPath Caminho do arquivo de áudio

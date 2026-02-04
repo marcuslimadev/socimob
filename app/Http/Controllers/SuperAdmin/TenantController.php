@@ -56,8 +56,22 @@ class TenantController extends Controller
 
         $tenants = $query->paginate($perPage);
 
+        // Para super admin, mostrar campos sensíveis (integrations configs)
+        $tenantsWithSecrets = collect($tenants->items())->map(function ($tenant) {
+            return $tenant->makeVisible([
+                'twilio_auth_token',
+                'openai_api_key',
+                'mail_password',
+                'api_key_pagar_me',
+                'api_key_apm_imoveis',
+                'api_key_neca',
+                'api_key_openai',
+                'api_token_externa',
+            ]);
+        });
+
         return response()->json([
-            'tenants' => $tenants->items(),
+            'tenants' => $tenantsWithSecrets,
             'total' => $tenants->total(),
             'current_page' => $tenants->currentPage(),
             'per_page' => $tenants->perPage(),
