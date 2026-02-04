@@ -103,7 +103,6 @@ class PropertyController extends Controller
             'tenant_name' => $tenant->nome,
             'note' => 'A sincronização está rodando em background. Verifique os logs para acompanhar o progresso.'
         ]);
-        }
     }
     
     /**
