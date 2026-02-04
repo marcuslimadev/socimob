@@ -17,7 +17,7 @@ class AnalyticsController extends Controller
 
         $days = (int) ($request->input('days') ?? 30);
         $days = max(1, min($days, 365));
-        $since = now()->subDays($days);
+        $since = \now()->subDays($days);
 
         $tenants = DB::table('tenants')
             ->select('id', 'name', 'domain')
