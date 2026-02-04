@@ -112,9 +112,8 @@ class PropertySyncService
                         
                         // Contar imagens para logging
                         $numImagens = 0;
-                        if (isset($data['imagens'])) {
-                            $imagensArray = json_decode($data['imagens'], true);
-                            $numImagens = is_array($imagensArray) ? count($imagensArray) : 0;
+                        if (isset($data['imagens']) && is_array($data['imagens'])) {
+                            $numImagens = count($data['imagens']);
                         }
                         
                         if ($existing) {
@@ -249,7 +248,7 @@ class PropertySyncService
             $endereco['estado'] ?? ''
         ])) ?: 'Endereço não informado';
         
-        return [
+        $data = [
             'codigo' => $imovel['codigoImovel'],
             'external_id' => strval($imovel['codigoImovel']),
             'titulo' => $titulo,
@@ -272,6 +271,13 @@ class PropertySyncService
             'active' => true,
             'last_sync' => date('Y-m-d H:i:s')
         ];
+        
+        // Garantir que o tenant_id seja incluído explicitamente (segurança adicional)
+        if (app()->bound('tenant')) {
+            $data['tenant_id'] = app('tenant')->id;
+        }
+        
+        return $data;
     }
     
     /**

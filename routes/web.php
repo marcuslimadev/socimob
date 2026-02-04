@@ -61,6 +61,10 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
     $router->post('/auth/logout', 'AuthController@logout');
     $router->get('/auth/me', ['middleware' => 'simple-auth', 'uses' => 'AuthController@me']);
     
+    // 🔒 Sincronização de imóveis - PROTEGIDO POR TENANT
+    // Só funciona se acessado pelo domínio correto (ex: exclusivalarimoveis.com)
+    $router->get('/properties/sync', 'PropertyController@sync');
+    
     // Configuração do tenant (público) - para homepage dinâmica
     $router->get('/tenant/config', function () {
         try {
@@ -162,8 +166,6 @@ require __DIR__ . '/super-admin.php';
 // ROTAS PÚBLICAS (SEM AUTENTICAÇÃO)
 // ===========================
 $router->group(['prefix' => 'api/properties'], function () use ($router) {
-    // Rotas específicas ANTES das dinâmicas
-    $router->get('/sync', 'PropertyController@sync');
     
     // Sync worker em duas fases
     $router->get('/sync-worker', function () {

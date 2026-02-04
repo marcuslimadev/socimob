@@ -55,15 +55,49 @@ class PropertyController extends Controller
      * Sincronizar imóveis manualmente
      * 
      * GET /api/properties/sync
+     * 
+     * IMPORTANTE: Este endpoint sincroniza APENAS os imóveis do tenant correto.
+     * Deve ser chamado apenas pelo domínio do tenant (ex: exclusivalarimoveis.com)
      */
-    public function sync()
+    public function sync(Request $request)
     {
+        // Verificar se o tenant está bound no container
+        if (!app()->bound('tenant')) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Tenant não identificado. Use o domínio correto (ex: exclusivalarimoveis.com)'
+            ], 403);
+        }
+        
+        $tenant = app('tenant');
+        
+        // Validar se é o tenant da Exclusiva Lar (tenant_id = 1)
+        $expectedTenantId = (int) env('EXCLUSIVA_TENANT_ID', 1);
+        if ($tenant->id !== $expectedTenantId) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Sincronização não autorizada para este tenant',
+                'tenant_id' => $tenant->id,
+                'expected' => $expectedTenantId
+            ], 403);
+        }
+        
+        // Log de segurança
+        \Illuminate\Support\Facades\Log::info('🔒 Sincronização iniciada', [
+            'tenant_id' => $tenant->id,
+            'tenant_name' => $tenant->nome,
+            'domain' => $request->getHost(),
+            'ip' => $request->ip()
+        ]);
+        
         $result = $this->syncService->syncAll();
         
         if ($result['success']) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Sincronização concluída com sucesso',
+                    'tenant_id' => $tenant->id,
+                    'tenant_name' => $tenant->nome,
                     'data' => $result['stats'],
                     'time_ms' => $result['time_ms'],
                     'errors_detail' => $result['errors_detail']
