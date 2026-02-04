@@ -119,6 +119,9 @@ export default function Settings() {
     api_key_apm_imoveis: '',
     api_key_neca: '',
     accent_color: '#FF6B6B',
+    font_primary: '',
+    font_secondary: '',
+    font_url: '',
     favicon_url: '',
     smtp_host: '',
     smtp_port: 587,
@@ -148,7 +151,7 @@ export default function Settings() {
       description: 'Gerencie suas informacoes pessoais',
       icon: <User size={24} />,
     },
-    ...(profileUser?.role === 'super_admin' ? [{
+    ...(profileUser?.role === 'admin' || profileUser?.role === 'super_admin' ? [{
       id: 'company',
       title: 'Empresa',
       description: 'Configuracoes da imobiliaria e integrações',
@@ -243,6 +246,9 @@ export default function Settings() {
             api_key_apm_imoveis: config.api_key_apm_imoveis || '',
             api_key_neca: config.api_key_neca || '',
             accent_color: config.accent_color || '#FF6B6B',
+            font_primary: config.font_primary || '',
+            font_secondary: config.font_secondary || '',
+            font_url: config.font_url || '',
             favicon_url: config.favicon_url || '',
             smtp_host: config.smtp_host || '',
             smtp_port: config.smtp_port || 587,
@@ -871,11 +877,11 @@ export default function Settings() {
                       <div className="border-t border-white/10 pt-6 mt-6">
                         <h3 className="text-lg font-bold text-foreground mb-4">Personalização Visual</h3>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-semibold text-foreground mb-2">
-                              Cor Primária
-                            </label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-semibold text-foreground mb-2">
+                                Cor Primária
+                              </label>
                             <div className="flex gap-2">
                               <input
                                 type="color"
@@ -893,10 +899,10 @@ export default function Settings() {
                             </div>
                           </div>
 
-                          <div>
-                            <label className="block text-sm font-semibold text-foreground mb-2">
-                              Cor Secundária
-                            </label>
+                            <div>
+                              <label className="block text-sm font-semibold text-foreground mb-2">
+                                Cor Secundária
+                              </label>
                             <div className="flex gap-2">
                               <input
                                 type="color"
@@ -911,10 +917,54 @@ export default function Settings() {
                                 className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
                                 placeholder="#3b82f6"
                               />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-semibold text-foreground mb-2">
+                                Fonte Primária
+                              </label>
+                              <input
+                                type="text"
+                                value={tenantConfigForm.font_primary}
+                                onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, font_primary: e.target.value })}
+                                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                placeholder="Ex: 'Poppins', 'Montserrat', 'Roboto'"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-semibold text-foreground mb-2">
+                                Fonte Secundária
+                              </label>
+                              <input
+                                type="text"
+                                value={tenantConfigForm.font_secondary}
+                                onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, font_secondary: e.target.value })}
+                                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                placeholder="Ex: 'Poppins', 'Montserrat', 'Roboto'"
+                              />
+                            </div>
+
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-semibold text-foreground mb-2">
+                                URL da Fonte (Google Fonts)
+                              </label>
+                              <input
+                                type="text"
+                                value={tenantConfigForm.font_url}
+                                onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, font_url: e.target.value })}
+                                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                placeholder="Ex: https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
+                              />
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Dica: cole a URL do Google Fonts para carregar a fonte no site.
+                              </p>
                             </div>
                           </div>
                         </div>
-                      </div>
 
                       <div className="border-t border-white/10 pt-6 mt-6">
                         <h3 className="text-lg font-bold text-foreground mb-4">Integrações de APIs Externas</h3>

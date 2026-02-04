@@ -1,14 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { Mail, ArrowRight, ArrowLeft } from 'lucide-react';
+import { fetchTenantBranding, hexToRgba, TenantBranding } from '@/lib/tenantBranding';
 
 export default function ForgotPassword() {
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [, setLocation] = useLocation();
+    const [tenant, setTenant] = useState<TenantBranding | null>(null);
+
+    useEffect(() => {
+        const loadTenant = async () => {
+            const data = await fetchTenantBranding();
+            if (data) setTenant(data);
+        };
+        loadTenant();
+    }, []);
+
+    const primary = tenant?.primary_color || '#2563eb';
+    const secondary = tenant?.secondary_color || '#7c3aed';
+    const gradient = `linear-gradient(135deg, ${primary}, ${secondary})`;
+    const softBg = `linear-gradient(135deg, ${hexToRgba(primary, 0.12)}, ${hexToRgba(secondary, 0.12)})`;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -54,7 +69,7 @@ export default function ForgotPassword() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-950/20 flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundImage: softBg }}>
             <motion.div
                 variants={containerVariants}
                 initial="hidden"
@@ -65,12 +80,15 @@ export default function ForgotPassword() {
                     <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4 glow-lg"
+                        className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4 glow-lg"
+                        style={{ backgroundImage: gradient }}
                     >
                         <Mail size={32} />
                     </motion.div>
                     <h1 className="text-2xl sm:text-3xl font-bold gradient-text mb-2">Recuperar Senha</h1>
-                    <p className="text-sm sm:text-base text-muted-foreground">Informe seu e-mail para receber o link de redefinição</p>
+                    <p className="text-sm sm:text-base text-muted-foreground">
+                        {tenant?.slogan || 'Informe seu e-mail para receber o link de redefinição'}
+                    </p>
                 </motion.div>
 
                 <motion.div
@@ -100,7 +118,8 @@ export default function ForgotPassword() {
                             variants={itemVariants}
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                            style={{ backgroundImage: gradient }}
                             disabled={isLoading}
                         >
                             {isLoading ? 'Enviando...' : 'Enviar Link'}

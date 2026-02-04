@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { fetchTenantBranding, hexToRgba, TenantBranding } from '@/lib/tenantBranding';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
@@ -11,6 +12,30 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
+  const [tenant, setTenant] = useState<TenantBranding | null>(null);
+
+  useEffect(() => {
+    const loadTenant = async () => {
+      const data = await fetchTenantBranding();
+      if (data) setTenant(data);
+    };
+
+    loadTenant();
+  }, []);
+
+  const getTenantInitials = (name?: string) => {
+    if (!name) return 'S';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  };
+
+  const primary = tenant?.primary_color || '#2563eb';
+  const secondary = tenant?.secondary_color || '#7c3aed';
+  const gradient = `linear-gradient(135deg, ${primary}, ${secondary})`;
+  const softBg = `linear-gradient(135deg, ${hexToRgba(primary, 0.12)}, ${hexToRgba(secondary, 0.12)})`;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +84,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-950/20 flex items-center justify-center p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ backgroundImage: softBg }}
+    >
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -72,12 +100,25 @@ export default function Login() {
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: 'spring', stiffness: 200 }}
-            className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4 glow-lg"
+            className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4 glow-lg overflow-hidden"
+            style={{ backgroundImage: gradient }}
           >
-            S
+            {tenant?.logo_url || tenant?.logo ? (
+              <img
+                src={tenant.logo_url || tenant.logo}
+                alt={tenant?.name || 'Logo'}
+                className="w-full h-full object-contain bg-white/5 p-2"
+              />
+            ) : (
+              getTenantInitials(tenant?.name)
+            )}
           </motion.div>
-          <h1 className="text-2xl sm:text-3xl font-bold gradient-text mb-2">SOCIMOB</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Gestão Imobiliária Inteligente</p>
+          <h1 className="text-2xl sm:text-3xl font-bold gradient-text mb-2">
+            {tenant?.name || 'SOCIMOB'}
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            {tenant?.slogan || 'Gestão Imobiliária Inteligente'}
+          </p>
         </motion.div>
 
         {/* Login Card */}
@@ -100,7 +141,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-all"
                   disabled={isLoading}
                 />
               </div>
@@ -118,7 +159,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-12 pr-12 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  className="w-full pl-12 pr-12 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-all"
                   disabled={isLoading}
                 />
                 <motion.button
@@ -149,7 +190,8 @@ export default function Login() {
               </label>
               <a
                 href="/forgot-password"
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                className="text-sm transition-colors"
+                style={{ color: primary }}
               >
                 Esqueceu a senha?
               </a>
@@ -161,7 +203,8 @@ export default function Login() {
               variants={itemVariants}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+              style={{ backgroundImage: gradient }}
               disabled={isLoading}
             >
               {isLoading ? 'Entrando...' : 'Entrar'}
@@ -176,7 +219,11 @@ export default function Login() {
         <motion.div variants={itemVariants} className="text-center">
           <p className="text-muted-foreground">
             Não tem uma conta?{' '}
-            <a href="#" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
+            <a
+              href="#"
+              className="font-semibold transition-colors"
+              style={{ color: primary }}
+            >
               Crie uma agora
             </a>
           </p>
@@ -187,14 +234,20 @@ export default function Login() {
           variants={itemVariants}
           className="mt-8 pt-6 border-t border-white/10 text-center text-xs text-muted-foreground"
         >
-          <p>© 2026 SOCIMOB. Todos os direitos reservados.</p>
+          <p>© 2026 {tenant?.name || 'SOCIMOB'}. Todos os direitos reservados.</p>
         </motion.div>
       </motion.div>
 
       {/* Background Decoration */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-full blur-3xl" />
+        <div
+          className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl"
+          style={{ backgroundImage: softBg }}
+        />
+        <div
+          className="absolute bottom-0 left-0 w-96 h-96 rounded-full blur-3xl"
+          style={{ backgroundImage: softBg }}
+        />
       </div>
     </div>
   );

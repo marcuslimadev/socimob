@@ -59,6 +59,9 @@ class PortalController extends Controller
                 'logo' => $tenant->logo_url,
                 'logo_url' => $tenant->logo_url,
                 'favicon_url' => $tenant->favicon_url,
+                'font_primary' => $config ? $config->font_primary : null,
+                'font_secondary' => $config ? $config->font_secondary : null,
+                'font_url' => $config ? $config->font_url : null,
                 'portal_finalidades' => $portalFinalidades,
             ]
         ]);
@@ -406,7 +409,5 @@ class PortalController extends Controller
         ]);
     }
 }
-
-
 
 

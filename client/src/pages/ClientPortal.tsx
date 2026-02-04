@@ -4,6 +4,7 @@ import { Search, MapPin, Bed, Bath, Ruler, Heart, Share2, Eye, Filter, Grid, Lis
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import api from '@/lib/api';
+import { fetchTenantBranding, hexToRgba, TenantBranding } from '@/lib/tenantBranding';
 
 interface Property {
   id: number;
@@ -41,6 +42,7 @@ export default function ClientPortal() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [likedProperties, setLikedProperties] = useState<Set<number>>(new Set());
+  const [tenant, setTenant] = useState<TenantBranding | null>(null);
 
   // Carregar imóveis da API
   useEffect(() => {
@@ -60,6 +62,20 @@ export default function ClientPortal() {
 
     fetchProperties();
   }, []);
+
+  useEffect(() => {
+    const loadTenant = async () => {
+      const data = await fetchTenantBranding();
+      if (data) setTenant(data);
+    };
+    loadTenant();
+  }, []);
+
+  const primary = tenant?.primary_color || '#2563eb';
+  const secondary = tenant?.secondary_color || '#7c3aed';
+  const gradient = `linear-gradient(135deg, ${primary}, ${secondary})`;
+  const softBg = `linear-gradient(135deg, ${hexToRgba(primary, 0.12)}, ${hexToRgba(secondary, 0.12)})`;
+  const heroBg = `linear-gradient(135deg, ${hexToRgba(primary, 0.18)}, ${hexToRgba(secondary, 0.18)})`;
 
   const handleLike = async (propertyId: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -149,7 +165,7 @@ export default function ClientPortal() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
+    <div className="min-h-screen" style={{ backgroundImage: softBg }}>
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -158,16 +174,28 @@ export default function ClientPortal() {
       >
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-              S
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold overflow-hidden"
+              style={{ backgroundImage: gradient }}
+            >
+              {tenant?.logo_url || tenant?.logo ? (
+                <img
+                  src={tenant.logo_url || tenant.logo}
+                  alt={tenant?.name || 'Logo'}
+                  className="w-full h-full object-contain bg-white/5 p-1"
+                />
+              ) : (
+                (tenant?.name?.substring(0, 2).toUpperCase() || 'SO')
+              )}
             </div>
-            <h1 className="text-2xl font-bold gradient-text">SOCIMOB</h1>
+            <h1 className="text-2xl font-bold gradient-text">{tenant?.name || 'SOCIMOB'}</h1>
           </div>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate('/login')}
-            className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-2 font-semibold text-white transition-all hover:from-blue-600 hover:to-blue-700 sm:w-auto glow-md hover:glow-lg"
+            className="w-full rounded-lg px-6 py-2 font-semibold text-white transition-all sm:w-auto glow-md hover:glow-lg hover:opacity-90"
+            style={{ backgroundImage: gradient }}
           >
             Entrar
           </motion.button>
@@ -179,7 +207,8 @@ export default function ClientPortal() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 py-12 md:py-20"
+        className="py-12 md:py-20"
+        style={{ backgroundImage: heroBg }}
       >
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <motion.div
@@ -192,7 +221,7 @@ export default function ClientPortal() {
               Encontre seu Imóvel Perfeito
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Explore nossa seleção de propriedades premium em Belo Horizonte
+              {tenant?.slogan || 'Explore nossa seleção de propriedades premium'}
             </p>
           </motion.div>
 
@@ -210,7 +239,7 @@ export default function ClientPortal() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar por localização, tipo de imóvel..."
-                className="w-full pl-14 pr-4 py-4 bg-white/10 border border-white/20 rounded-lg text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all sm:text-lg"
+                className="w-full pl-14 pr-4 py-4 bg-white/10 border border-white/20 rounded-lg text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-all sm:text-lg"
               />
             </div>
           </motion.div>
@@ -252,9 +281,10 @@ export default function ClientPortal() {
                     onClick={() => setSelectedType(selectedType === 'venda' ? null : 'venda')}
                     className={`px-4 py-2 rounded-lg font-semibold transition-all ${
                       selectedType === 'venda'
-                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                        ? 'text-white'
                         : 'bg-white/10 text-foreground hover:bg-white/20'
                     }`}
+                    style={selectedType === 'venda' ? { backgroundImage: gradient } : undefined}
                   >
                     Venda
                   </motion.button>
@@ -264,9 +294,10 @@ export default function ClientPortal() {
                     onClick={() => setSelectedType(selectedType === 'aluguel' ? null : 'aluguel')}
                     className={`px-4 py-2 rounded-lg font-semibold transition-all ${
                       selectedType === 'aluguel'
-                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                        ? 'text-white'
                         : 'bg-white/10 text-foreground hover:bg-white/20'
                     }`}
+                    style={selectedType === 'aluguel' ? { backgroundImage: gradient } : undefined}
                   >
                     Aluguel
                   </motion.button>
@@ -334,15 +365,16 @@ export default function ClientPortal() {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setSelectedBedrooms(selectedBedrooms === num ? null : num)}
-                      className={`w-full px-4 py-2 rounded-lg font-semibold transition-all ${
-                        selectedBedrooms === num
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
-                          : 'bg-white/10 text-foreground hover:bg-white/20'
-                      }`}
-                    >
-                      {num}+
-                    </motion.button>
-                  ))}
+                    className={`w-full px-4 py-2 rounded-lg font-semibold transition-all ${
+                      selectedBedrooms === num
+                        ? 'text-white'
+                        : 'bg-white/10 text-foreground hover:bg-white/20'
+                    }`}
+                    style={selectedBedrooms === num ? { backgroundImage: gradient } : undefined}
+                  >
+                    {num}+
+                  </motion.button>
+                ))}
                 </div>
               </div>
 
@@ -377,9 +409,10 @@ export default function ClientPortal() {
                   onClick={() => setViewMode('grid')}
                   className={`p-2 rounded-lg transition-all ${
                     viewMode === 'grid'
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                      ? 'text-white'
                       : 'bg-white/10 text-foreground hover:bg-white/20'
                   }`}
+                  style={viewMode === 'grid' ? { backgroundImage: gradient } : undefined}
                 >
                   <Grid size={20} />
                 </motion.button>
@@ -389,9 +422,10 @@ export default function ClientPortal() {
                   onClick={() => setViewMode('list')}
                   className={`p-2 rounded-lg transition-all ${
                     viewMode === 'list'
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                      ? 'text-white'
                       : 'bg-white/10 text-foreground hover:bg-white/20'
                   }`}
+                  style={viewMode === 'list' ? { backgroundImage: gradient } : undefined}
                 >
                   <List size={20} />
                 </motion.button>
@@ -402,7 +436,10 @@ export default function ClientPortal() {
             {loading && (
               <div className="flex items-center justify-center py-20">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <div
+                    className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4"
+                    style={{ borderColor: primary }}
+                  />
                   <p className="text-muted-foreground">Carregando imóveis...</p>
                 </div>
               </div>
@@ -412,9 +449,10 @@ export default function ClientPortal() {
             {error && !loading && (
               <div className="glass-panel rounded-xl p-8 text-center">
                 <p className="text-red-500 mb-4">❌ {error}</p>
-                <button 
-                  onClick={() => window.location.reload()} 
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white"
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 rounded-lg text-white hover:opacity-90"
+                  style={{ backgroundImage: gradient }}
                 >
                   Tentar Novamente
                 </button>
@@ -451,7 +489,7 @@ export default function ClientPortal() {
                         className="glass-panel rounded-2xl overflow-hidden group cursor-pointer"
                       >
                         {/* Image */}
-                        <div className="relative h-48 bg-gradient-to-br from-blue-500/20 to-purple-500/20 overflow-hidden">
+                        <div className="relative h-48 overflow-hidden" style={{ backgroundImage: heroBg }}>
                           {firstImage ? (
                             <img 
                               src={firstImage} 
@@ -526,10 +564,10 @@ export default function ClientPortal() {
                             <span>{location || 'Localização não informada'}</span>
                           </div>
 
-                          <div className="mb-4 p-3 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg">
-                            <p className="text-xs text-muted-foreground mb-1">
-                              {property.tipo_negocio === 'Venda' ? 'Preço' : 'Aluguel'}
-                            </p>
+                            <div className="mb-4 p-3 rounded-lg" style={{ backgroundImage: heroBg }}>
+                              <p className="text-xs text-muted-foreground mb-1">
+                                {property.tipo_negocio === 'Venda' ? 'Preço' : 'Aluguel'}
+                              </p>
                             <p className="text-2xl font-bold gradient-text">
                               R$ {price.toLocaleString('pt-BR')}
                             </p>
@@ -560,7 +598,8 @@ export default function ClientPortal() {
                             onClick={() => navigate(`/portal/imovel/${property.id}`)}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold text-white transition-all glow-sm hover:glow-md"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all glow-sm hover:glow-md hover:opacity-90"
+                            style={{ backgroundImage: gradient }}
                           >
                             <Eye size={16} />
                             Ver Detalhes

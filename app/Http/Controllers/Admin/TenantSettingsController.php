@@ -27,13 +27,15 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'User has no tenant'], 400);
         }
 
-        // Apenas super_admin pode acessar
-        if ($user->role !== 'super_admin') {
-            return response()->json(['error' => 'Unauthorized - Super admin only'], 403);
+        // Admin e super_admin podem acessar
+        if (!in_array($user->role, ['admin', 'super_admin'], true)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        // Super admin pode visualizar qualquer tenant
-        $viewAsTenantId = $request->input('tenant_id') ?? $user->tenant_id;
+        // Super admin pode visualizar qualquer tenant; admin apenas o próprio
+        $viewAsTenantId = $user->role === 'super_admin'
+            ? ($request->input('tenant_id') ?? $user->tenant_id)
+            : $user->tenant_id;
         
         $tenant = Tenant::find($viewAsTenantId);
 
@@ -83,13 +85,15 @@ class TenantSettingsController extends Controller
             return response()->json(['error' => 'User has no tenant'], 400);
         }
 
-        // Apenas super_admin pode atualizar
-        if ($user->role !== 'super_admin') {
-            return response()->json(['error' => 'Unauthorized - Super admin only'], 403);
+        // Admin e super_admin podem atualizar
+        if (!in_array($user->role, ['admin', 'super_admin'], true)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        // Super admin pode atualizar qualquer tenant
-        $tenantId = $request->input('tenant_id') ?? $user->tenant_id;
+        // Super admin pode atualizar qualquer tenant; admin apenas o próprio
+        $tenantId = $user->role === 'super_admin'
+            ? ($request->input('tenant_id') ?? $user->tenant_id)
+            : $user->tenant_id;
         
         $tenant = Tenant::find($tenantId);
 
@@ -119,6 +123,9 @@ class TenantSettingsController extends Controller
             'config.api_key_apm_imoveis' => 'nullable|string',
             'config.api_key_neca' => 'nullable|string',
             'config.accent_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
+            'config.font_primary' => 'nullable|string|max:200',
+            'config.font_secondary' => 'nullable|string|max:200',
+            'config.font_url' => 'nullable|string|max:500',
             'config.smtp_host' => 'nullable|string|max:255',
             'config.smtp_port' => 'nullable|integer',
             'config.smtp_username' => 'nullable|string|max:255',
@@ -208,6 +215,9 @@ class TenantSettingsController extends Controller
                 'api_key_apm_imoveis',
                 'api_key_neca',
                 'accent_color',
+                'font_primary',
+                'font_secondary',
+                'font_url',
                 'smtp_host',
                 'smtp_port',
                 'smtp_username',

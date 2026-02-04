@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { fetchTenantBranding, hexToRgba, TenantBranding } from '@/lib/tenantBranding';
 
 export default function ResetPassword() {
     const [password, setPassword] = useState('');
@@ -13,6 +14,7 @@ export default function ResetPassword() {
     const [, setLocation] = useLocation();
     const [token, setToken] = useState('');
     const [email, setEmail] = useState('');
+    const [tenant, setTenant] = useState<TenantBranding | null>(null);
 
     useEffect(() => {
         // Extract query params manually since wouter doesn't have useSearchParams hook built-in same way
@@ -28,6 +30,19 @@ export default function ResetPassword() {
             // setLocation('/login');
         }
     }, []);
+
+    useEffect(() => {
+        const loadTenant = async () => {
+            const data = await fetchTenantBranding();
+            if (data) setTenant(data);
+        };
+        loadTenant();
+    }, []);
+
+    const primary = tenant?.primary_color || '#2563eb';
+    const secondary = tenant?.secondary_color || '#7c3aed';
+    const gradient = `linear-gradient(135deg, ${primary}, ${secondary})`;
+    const softBg = `linear-gradient(135deg, ${hexToRgba(primary, 0.12)}, ${hexToRgba(secondary, 0.12)})`;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -86,7 +101,7 @@ export default function ResetPassword() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-950/20 flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundImage: softBg }}>
             <motion.div
                 variants={containerVariants}
                 initial="hidden"
@@ -97,12 +112,15 @@ export default function ResetPassword() {
                     <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4 glow-lg"
+                        className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4 glow-lg"
+                        style={{ backgroundImage: gradient }}
                     >
                         <Lock size={32} />
                     </motion.div>
                     <h1 className="text-2xl sm:text-3xl font-bold gradient-text mb-2">Nova Senha</h1>
-                    <p className="text-sm sm:text-base text-muted-foreground">Defina uma nova senha para sua conta</p>
+                    <p className="text-sm sm:text-base text-muted-foreground">
+                        {tenant?.slogan || 'Defina uma nova senha para sua conta'}
+                    </p>
                 </motion.div>
 
                 <motion.div
@@ -159,9 +177,10 @@ export default function ResetPassword() {
                             variants={itemVariants}
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={isLoading}
-                        >
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                        style={{ backgroundImage: gradient }}
+                        disabled={isLoading}
+                    >
                             {isLoading ? 'Redefinindo...' : 'Alterar Senha'}
                             {!isLoading && <ArrowRight size={20} />}
                         </motion.button>
