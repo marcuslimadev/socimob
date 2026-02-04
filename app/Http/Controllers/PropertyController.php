@@ -86,24 +86,54 @@ class PropertyController extends Controller
         }
         
         // Log de segurança
-        \Illuminate\Support\Facades\Log::info('🔒 Sincronização disparada', [
+        \Illuminate\Support\Facades\Log::info('🔒 Sincronização manual solicitada', [
             'tenant_id' => $tenant->id,
             'tenant_name' => $tenant->nome,
             'domain' => $request->getHost(),
             'ip' => $request->ip()
         ]);
         
-        // Sincronizar imediatamente
-        $syncService = app(\App\Services\PropertySyncService::class);
-        $result = $syncService->syncAll();
+        // IMPORTANTE: Para cron jobs, a sincronização pode demorar vários minutos.
+        // Retornar sucesso imediatamente e deixar o processo continuar em background.
+        ignore_user_abort(true);
+        set_time_limit(0);
         
-        return response()->json([
+        // Enviar resposta imediatamente
+        $response = response()->json([
             'success' => true,
-            'message' => 'Sincronização concluída',
+            'message' => 'Sincronização iniciada',
             'tenant_id' => $tenant->id,
             'tenant_name' => $tenant->nome,
-            'result' => $result
+            'note' => 'Processamento em andamento. Acompanhe os logs para ver o progresso.'
         ]);
+        
+        // Enviar resposta e fechar conexão
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+        
+        header('Connection: close');
+        header('Content-Length: ' . strlen($response->getContent()));
+        echo $response->getContent();
+        
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        
+        // Agora executar a sincronização em background
+        try {
+            $syncService = app(\App\Services\PropertySyncService::class);
+            $result = $syncService->syncAll();
+            
+            \Illuminate\Support\Facades\Log::info('✅ Sincronização concluída', $result);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('❌ Erro na sincronização', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+        
+        return $response;
     }
     
     /**
