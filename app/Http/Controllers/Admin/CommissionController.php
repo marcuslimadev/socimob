@@ -342,7 +342,7 @@ class CommissionController extends Controller
             $comissao->nfe_io_id = $nfse['id'];
             $comissao->nfse_numero = $nfse['numero'];
             $comissao->nfse_pdf_url = $nfse['pdfUrl'];
-            $comissao->nfse_emitida_em = now();
+            $comissao->nfse_emitida_em = Carbon::now();
             $comissao->save();
 
             Log::info('[CommissionController] NFSe emitida com sucesso', [

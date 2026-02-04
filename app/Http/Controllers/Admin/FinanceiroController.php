@@ -72,7 +72,7 @@ class FinanceiroController extends Controller
         $iss = $valor * ($aliquota / 100);
         $competencia = $request->input('competencia')
             ? Carbon::parse($request->input('competencia'))->toDateString()
-            : now()->toDateString();
+            : Carbon::now()->toDateString();
         $financeiroDados = $request->input('financeiro', []);
 
         $invoice = CommissionInvoice::create([

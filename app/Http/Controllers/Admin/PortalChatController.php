@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Conversa;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class PortalChatController extends Controller
 {
@@ -35,7 +36,7 @@ class PortalChatController extends Controller
         $conversa->update([
             'corretor_id' => $user->id,
             'status' => 'aguardando_corretor',
-            'ultima_atividade' => now(),
+            'ultima_atividade' => Carbon::now(),
         ]);
 
         return response()->json([
@@ -72,7 +73,7 @@ class PortalChatController extends Controller
         $conversa->update([
             'corretor_id' => null,
             'status' => 'ativa',
-            'ultima_atividade' => now(),
+            'ultima_atividade' => Carbon::now(),
         ]);
 
         return response()->json([

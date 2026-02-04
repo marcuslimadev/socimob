@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Models\SystemLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Carbon\Carbon;
 
 class SystemLogsController
 {
@@ -76,7 +77,7 @@ class SystemLogsController
         }
 
         $days = $request->input('days', 30);
-        $deleted = SystemLog::where('created_at', '<', now()->subDays($days))->delete();
+        $deleted = SystemLog::where('created_at', '<', Carbon::now()->subDays($days))->delete();
 
         return response()->json([
             'success' => true,
