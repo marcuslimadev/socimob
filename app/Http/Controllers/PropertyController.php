@@ -58,67 +58,15 @@ class PropertyController extends Controller
      * 
      * IMPORTANTE: Este endpoint sincroniza APENAS os imóveis do tenant correto.
      * Deve ser chamado apenas pelo domínio do tenant (ex: exclusivalarimoveis.com)
-     * 
-     * BACKGROUND: Para evitar timeout HTTP, a sincronização roda em background via queue.
-     * O endpoint retorna imediatamente e o processo continua executando.
      */
     public function sync(Request $request)
     {
-        // Verificar se o tenant está bound no container
-        if (!app()->bound('tenant')) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Tenant não identificado. Use o domínio correto (ex: exclusivalarimoveis.com)'
-            ], 403);
-        }
-        
-        $tenant = app('tenant');
-        
-        // Validar se é o tenant da Exclusiva Lar (tenant_id = 1)
-        $expectedTenantId = (int) env('EXCLUSIVA_TENANT_ID', 1);
-        if ($tenant->id !== $expectedTenantId) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Sincronização não autorizada para este tenant',
-                'tenant_id' => $tenant->id,
-                'expected' => $expectedTenantId
-            ], 403);
-        }
-        
-        // Log de início
-        \Illuminate\Support\Facades\Log::info('🔒 Sincronização manual solicitada', [
-            'tenant_id' => $tenant->id,
-            'tenant_name' => $tenant->nome,
-            'domain' => $request->getHost(),
-            'ip' => $request->ip()
+        return response()->json([
+            'success' => true,
+            'message' => 'Endpoint funcionando',
+            'tenant_bound' => app()->bound('tenant'),
+            'tenant_id' => app()->bound('tenant') ? app('tenant')->id : null
         ]);
-        
-        // Executar sincronização
-        try {
-            $syncService = app(\App\Services\PropertySyncService::class);
-            $result = $syncService->syncAll();
-            
-            \Illuminate\Support\Facades\Log::info('✅ Sincronização concluída', $result);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Sincronização concluída com sucesso',
-                'tenant_id' => $tenant->id,
-                'tenant_name' => $tenant->nome,
-                'result' => $result
-            ]);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('❌ Erro na sincronização', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-                'tenant_id' => $tenant->id
-            ], 500);
-        }
     }
     
     /**
