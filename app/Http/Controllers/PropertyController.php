@@ -59,13 +59,11 @@ class PropertyController extends Controller
      * IMPORTANTE: Este endpoint sincroniza APENAS os imóveis do tenant correto.
      * Deve ser chamado apenas pelo domínio do tenant (ex: exclusivalarimoveis.com)
      * 
-     * TIMEOUT: Para evitar timeout, aumenta o tempo limite para 10 minutos
+     * BACKGROUND: Para evitar timeout HTTP, a sincronização roda em background via queue.
+     * O endpoint retorna imediatamente e o processo continua executando.
      */
     public function sync(Request $request)
     {
-        // Aumentar tempo limite para 10 minutos (600 segundos)
-        set_time_limit(600);
-        
         // Verificar se o tenant está bound no container
         if (!app()->bound('tenant')) {
             return response()->json([
@@ -88,30 +86,23 @@ class PropertyController extends Controller
         }
         
         // Log de segurança
-        \Illuminate\Support\Facades\Log::info('🔒 Sincronização iniciada', [
+        \Illuminate\Support\Facades\Log::info('🔒 Sincronização disparada', [
             'tenant_id' => $tenant->id,
             'tenant_name' => $tenant->nome,
             'domain' => $request->getHost(),
             'ip' => $request->ip()
         ]);
         
-        $result = $this->syncService->syncAll();
+        // Disparar job em background
+        \App\Jobs\SyncPropertiesJob::dispatch($tenant->id, $tenant->nome);
         
-        if ($result['success']) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Sincronização concluída com sucesso',
-                    'tenant_id' => $tenant->id,
-                    'tenant_name' => $tenant->nome,
-                    'data' => $result['stats'],
-                    'time_ms' => $result['time_ms'],
-                    'errors_detail' => $result['errors_detail']
-                ]);
-        } else {
-            return response()->json([
-                'success' => false,
-                'error' => $result['error']
-            ], 500);
+        return response()->json([
+            'success' => true,
+            'message' => 'Sincronização iniciada em background',
+            'tenant_id' => $tenant->id,
+            'tenant_name' => $tenant->nome,
+            'note' => 'A sincronização está rodando em background. Verifique os logs para acompanhar o progresso.'
+        ]);
         }
     }
     
