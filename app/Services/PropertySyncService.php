@@ -208,15 +208,12 @@ class PropertySyncService
         // Imagem destaque
         $imagemDestaque = $this->getImagemDestaque($imovel['imagens'] ?? []);
         
-        // Preparar dados de imagens - formato completo
+        // Preparar dados de imagens - apenas URLs (strings)
         $imagensData = [];
         if (!empty($imovel['imagens']) && is_array($imovel['imagens'])) {
             foreach ($imovel['imagens'] as $img) {
                 if (isset($img['url'])) {
-                    $imagensData[] = [
-                        'url' => $img['url'],
-                        'destaque' => isset($img['destaque']) ? (bool)$img['destaque'] : false
-                    ];
+                    $imagensData[] = $img['url'];
                 }
             }
         }
