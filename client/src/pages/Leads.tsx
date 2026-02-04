@@ -30,6 +30,8 @@ export default function Leads() {
   const [isLoading, setIsLoading] = useState(true);
   const [showNewLeadModal, setShowNewLeadModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [smsSentLeads, setSmsSentLeads] = useState<Record<string, boolean>>({});
+  const [smsSendingLeadId, setSmsSendingLeadId] = useState<string | null>(null);
   const [newLead, setNewLead] = useState({
     nome: '',
     telefone: '',
@@ -140,16 +142,27 @@ export default function Leads() {
   };
 
   const handleSendSMS = async (leadId: string, leadName: string) => {
+    if (smsSentLeads[leadId] || smsSendingLeadId === leadId) {
+      return;
+    }
+
     toast.info(`Enviando SMS para ${leadName}`);
+    setSmsSendingLeadId(leadId);
     try {
       const response = await api.post(`/admin/leads/${leadId}/sms`);
       if (response.data.success || response.status === 200) {
         toast.success(`SMS enviado para ${leadName}`);
+        setSmsSentLeads((prev) => ({
+          ...prev,
+          [leadId]: true,
+        }));
         fetchLeads();
       }
     } catch (error) {
       console.error('Error sending SMS:', error);
       toast.error('Erro ao enviar SMS');
+    } finally {
+      setSmsSendingLeadId((current) => (current === leadId ? null : current));
     }
   };
 
@@ -436,6 +449,7 @@ export default function Leads() {
                       onChat={() => handleOpenChat(lead.id, lead.name)}
                       onAI={() => handleCallAI(lead.id, lead.name)}
                       onSMS={() => handleSendSMS(lead.id, lead.name)}
+                      smsDisabled={Boolean(smsSentLeads[lead.id]) || smsSendingLeadId === lead.id}
                       onCall={() => handleCall(lead.phone, lead.name)}
                       onDelete={() => handleDeleteClick(lead.id, lead.name)}
                     />

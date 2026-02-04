@@ -11,8 +11,8 @@ use Illuminate\Support\Carbon;
 /**
  * Serviço de Automação de Atendimento IA para Leads
  * 
- * Inicia atendimento via WhatsApp automaticamente para leads
- * importados da integração Chaves na Mão
+ * Regra: primeiro contato SEMPRE por SMS (porta de entrada).
+ * O atendimento via WhatsApp segue somente após resposta do cliente.
  */
 class LeadAutomationService
 {

@@ -13,6 +13,7 @@ interface LeadCardProps {
   onChat?: () => void;
   onAI?: () => void;
   onSMS?: () => void;
+  smsDisabled?: boolean;
   onCall?: () => void;
   onDelete?: () => void;
 }
@@ -86,6 +87,7 @@ const LeadCard = ({
   onChat,
   onAI,
   onSMS,
+  smsDisabled = false,
   onCall,
   onDelete,
 }: LeadCardProps) => {
@@ -214,12 +216,19 @@ const LeadCard = ({
             whileTap={{ scale: 0.95 }}
             onClick={(e) => {
               e.stopPropagation();
-              onSMS?.();
+              if (!smsDisabled) {
+                onSMS?.();
+              }
             }}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold text-white transition-all"
+            disabled={smsDisabled}
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white transition-all ${
+              smsDisabled
+                ? 'bg-white/5 text-white/50 cursor-not-allowed'
+                : 'bg-white/10 hover:bg-white/20'
+            }`}
           >
             <MessageCircle size={14} />
-            SMS
+            {smsDisabled ? 'SMS enviado' : 'SMS'}
           </motion.button>
 
           <motion.button

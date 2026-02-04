@@ -141,18 +141,28 @@ class LeadEmailService
 
         try {
             // Gerar conteúdo com IA
-            $response = $this->openAIService->chat([
-                [
-                    'role' => 'system',
-                    'content' => "Você é um assistente de atendimento imobiliário da {$tenant->name}. Crie emails profissionais, acolhedores e persuasivos para novos leads."
-                ],
-                [
-                    'role' => 'user',
-                    'content' => $prompt
-                ]
-            ], $lead->tenant_id);
+            $systemPrompt = "Você é um assistente de atendimento imobiliário da {$tenant->name}. Crie emails profissionais, acolhedores e persuasivos para novos leads.";
 
-            $conteudoIA = $response['choices'][0]['message']['content'] ?? '';
+            if (method_exists($this->openAIService, 'chat')) {
+                $response = $this->openAIService->chat([
+                    [
+                        'role' => 'system',
+                        'content' => $systemPrompt
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => $prompt
+                    ]
+                ], $lead->tenant_id);
+
+                $conteudoIA = $response['choices'][0]['message']['content'] ?? '';
+            } else {
+                $conteudoIA = $this->openAIService->generateSimpleMessage($systemPrompt, $prompt);
+            }
+
+            if (empty($conteudoIA)) {
+                return $this->gerarEmailPadrao($lead, $tenant);
+            }
 
             // Parse do conteúdo (esperamos formato: ASSUNTO: ... | CORPO: ...)
             return $this->parseConteudoEmail($conteudoIA, $lead, $tenant);
