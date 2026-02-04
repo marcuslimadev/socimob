@@ -58,9 +58,14 @@ class PropertyController extends Controller
      * 
      * IMPORTANTE: Este endpoint sincroniza APENAS os imóveis do tenant correto.
      * Deve ser chamado apenas pelo domínio do tenant (ex: exclusivalarimoveis.com)
+     * 
+     * TIMEOUT: Para evitar timeout, aumenta o tempo limite para 10 minutos
      */
     public function sync(Request $request)
     {
+        // Aumentar tempo limite para 10 minutos (600 segundos)
+        set_time_limit(600);
+        
         // Verificar se o tenant está bound no container
         if (!app()->bound('tenant')) {
             return response()->json([
