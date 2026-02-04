@@ -196,14 +196,18 @@ class WhatsAppService
                 return $this->handleFirstMessage($conversa, $telefone, $conversaData, $body);
             }
             
-            // 6. Processar com IA de forma assíncrona (evita timeout do webhook)
-            dispatch(new \App\Jobs\ProcessWhatsAppAIResponse($conversa->id, $body, $messageType === 'audio'));
+            // 6. Processar com IA (com logging de performance)
+            $startTime = microtime(true);
+            $result = $this->handleRegularMessage($conversa, $body, $messageType === 'audio');
+            $duration = round((microtime(true) - $startTime) * 1000, 2);
             
-            Log::info('✅ Mensagem enfileirada para processamento assíncrono', [
-                'conversa_id' => $conversa->id
+            Log::info('⏱️ Tempo de processamento IA', [
+                'conversa_id' => $conversa->id,
+                'tempo_ms' => $duration,
+                'sucesso' => $result['success'] ?? false
             ]);
             
-            return ['success' => true, 'message' => 'Mensagem enfileirada para processamento'];
+            return $result;
             
         } catch (\Throwable $e) {
             Log::error('Erro ao processar webhook', [

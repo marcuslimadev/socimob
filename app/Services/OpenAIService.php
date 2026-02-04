@@ -502,7 +502,7 @@ Após listar, pergunte: 'Qual te interessou?'
                 ['role' => 'user', 'content' => $userPrompt]
             ],
             'temperature' => 0.7,
-            'max_tokens' => 500
+            'max_tokens' => 150  // Reduzido de 500 para 150 (limite de 200 chars)
         ];
         
         $ch = curl_init();
