@@ -195,7 +195,7 @@ class DashboardController extends Controller
         
         $data = [];
         for ($i = $months - 1; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
+            $date = \now()->subMonths($i);
             $count = Tenant::whereYear('created_at', $date->year)
                 ->whereMonth('created_at', $date->month)
                 ->count();
