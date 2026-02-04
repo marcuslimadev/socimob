@@ -93,8 +93,9 @@ class PropertyController extends Controller
             'ip' => $request->ip()
         ]);
         
-        // Disparar job em background
-        \App\Jobs\SyncPropertiesJob::dispatch($tenant->id, $tenant->nome);
+        // Disparar job em background (Lumen syntax)
+        $job = new \App\Jobs\SyncPropertiesJob($tenant->id, $tenant->nome);
+        app('Illuminate\Contracts\Bus\Dispatcher')->dispatch($job);
         
         return response()->json([
             'success' => true,
