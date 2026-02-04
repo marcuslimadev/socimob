@@ -171,148 +171,281 @@ export default function Properties() {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="max-w-7xl mx-auto"
+          className="flex gap-6"
         >
-          <motion.div variants={itemVariants} className="mb-8">
-            <div className="page-header mb-4">
-              <div>
-                <h1 className="page-title mb-2">Imóveis</h1>
-                <p className="page-subtitle">Gerencie seu portfólio de propriedades</p>
+          {/* Sidebar de Filtros - Desktop */}
+          <motion.div 
+            variants={itemVariants}
+            className="hidden lg:block w-80 flex-shrink-0"
+          >
+            <div className="glass-panel p-6 rounded-2xl sticky top-6 space-y-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <Filter size={20} />
+                  Filtros
+                </h2>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={resetFilters}
+                  className="text-sm text-blue-500 hover:text-blue-600 font-medium"
+                >
+                  Limpar
+                </motion.button>
               </div>
-              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleExport}
-                  disabled={isExporting}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-6 py-3 font-semibold text-foreground transition-all hover:bg-white/20 disabled:opacity-50 sm:w-auto"
-                >
-                  <Download size={20} />
-                  {isExporting ? 'Exportando...' : 'Exportar'}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setLocation('/properties/novo')}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-3 font-semibold text-white transition-all hover:from-blue-600 hover:to-blue-700 sm:w-auto glow-md hover:glow-lg"
-                >
-                  <Plus size={20} />
-                  Novo Imóvel
-                </motion.button>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">Buscar</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Título ou localização..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">Tipo</label>
+                  <select
+                    value={selectedType}
+                    onChange={(e) => setSelectedType(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  >
+                    <option value="todos">Todos os Tipos</option>
+                    <option value="apartamento">Apartamento</option>
+                    <option value="casa">Casa</option>
+                    <option value="comercial">Comercial</option>
+                    <option value="terreno">Terreno</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">Finalidade</label>
+                  <select
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  >
+                    <option value="todos">Todos</option>
+                    <option value="venda">Venda</option>
+                    <option value="aluguel">Aluguel</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">Preço</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="Mínimo"
+                      value={minPrice}
+                      onChange={(e) => setMinPrice(e.target.value)}
+                      className="px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="Máximo"
+                      value={maxPrice}
+                      onChange={(e) => setMaxPrice(e.target.value)}
+                      className="px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">Dormitórios (mín.)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Quantidade"
+                    value={minBedrooms}
+                    onChange={(e) => setMinBedrooms(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">Banheiros (mín.)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Quantidade"
+                    value={minBathrooms}
+                    onChange={(e) => setMinBathrooms(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">Área mín. (m²)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Metros quadrados"
+                    value={minArea}
+                    onChange={(e) => setMinArea(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
               </div>
             </div>
           </motion.div>
 
-          <motion.div variants={itemVariants} className="glass-panel p-6 rounded-2xl mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
-                <input
-                  type="text"
-                  placeholder="Buscar por título..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                />
+          {/* Conteúdo Principal */}
+          <div className="flex-1 min-w-0">
+            <motion.div variants={itemVariants} className="mb-8">
+              <div className="page-header mb-4">
+                <div>
+                  <h1 className="page-title mb-2">Imóveis</h1>
+                  <p className="page-subtitle">Gerencie seu portfólio de propriedades</p>
+                </div>
+                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleExport}
+                    disabled={isExporting}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-6 py-3 font-semibold text-foreground transition-all hover:bg-white/20 disabled:opacity-50 sm:w-auto"
+                  >
+                    <Download size={20} />
+                    {isExporting ? 'Exportando...' : 'Exportar'}
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setLocation('/properties/novo')}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-3 font-semibold text-white transition-all hover:from-blue-600 hover:to-blue-700 sm:w-auto glow-md hover:glow-lg"
+                  >
+                    <Plus size={20} />
+                    Novo Imóvel
+                  </motion.button>
+                </div>
               </div>
+            </motion.div>
 
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              >
-                <option value="todos">Todos os Tipos</option>
-                <option value="apartamento">Apartamento</option>
-                <option value="casa">Casa</option>
-                <option value="comercial">Comercial</option>
-                <option value="terreno">Terreno</option>
-              </select>
+            {/* Filtros Mobile */}
+            <motion.div variants={itemVariants} className="glass-panel p-6 rounded-2xl mb-8 lg:hidden">
+              <div className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
+                  <input
+                    type="text"
+                    placeholder="Buscar por título..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
 
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              >
-                <option value="todos">Todos os Status</option>
-                <option value="venda">Venda</option>
-                <option value="aluguel">Aluguel</option>
-              </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <select
+                    value={selectedType}
+                    onChange={(e) => setSelectedType(e.target.value)}
+                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  >
+                    <option value="todos">Todos os Tipos</option>
+                    <option value="apartamento">Apartamento</option>
+                    <option value="casa">Casa</option>
+                    <option value="comercial">Comercial</option>
+                    <option value="terreno">Terreno</option>
+                  </select>
 
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={resetFilters}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-foreground transition-all"
-              >
-                <X size={18} />
-                Limpar
-              </motion.button>
-            </div>
+                  <select
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  >
+                    <option value="todos">Todos os Status</option>
+                    <option value="venda">Venda</option>
+                    <option value="aluguel">Aluguel</option>
+                  </select>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <input
-                type="number"
-                min={0}
-                placeholder="Preço mín."
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-              <input
-                type="number"
-                min={0}
-                placeholder="Preço máx."
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-              <input
-                type="number"
-                min={0}
-                placeholder="Dorms mín."
-                value={minBedrooms}
-                onChange={(e) => setMinBedrooms(e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-              <input
-                type="number"
-                min={0}
-                placeholder="Banhos mín."
-                value={minBathrooms}
-                onChange={(e) => setMinBathrooms(e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-              <input
-                type="number"
-                min={0}
-                placeholder="Área mín. (m²)"
-                value={minArea}
-                onChange={(e) => setMinArea(e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-            </div>
-          </motion.div>
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Preço mín."
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Preço máx."
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
 
-          {isLoading ? (
-            <div className="flex justify-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-6 text-sm text-muted-foreground">
-                <span>
-                  {filteredProperties.length} imóvel{filteredProperties.length !== 1 ? 'is' : ''} encontrado
-                  {filteredProperties.length !== 1 ? 's' : ''}
-                </span>
-                <span>Página {clampedPage} de {totalPages}</span>
+                <div className="grid grid-cols-3 gap-4">
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Dorms"
+                    value={minBedrooms}
+                    onChange={(e) => setMinBedrooms(e.target.value)}
+                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Banhos"
+                    value={minBathrooms}
+                    onChange={(e) => setMinBathrooms(e.target.value)}
+                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Área m²"
+                    value={minArea}
+                    onChange={(e) => setMinArea(e.target.value)}
+                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={resetFilters}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-foreground transition-all"
+                >
+                  <X size={18} />
+                  Limpar Filtros
+                </motion.button>
               </div>
+            </motion.div>
 
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
+            {isLoading ? (
+              <div className="flex justify-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-6 text-sm text-muted-foreground">
+                  <span>
+                    {filteredProperties.length} imóvel{filteredProperties.length !== 1 ? 'is' : ''} encontrado
+                    {filteredProperties.length !== 1 ? 's' : ''}
+                  </span>
+                  <span>Página {clampedPage} de {totalPages}</span>
+                </div>
+
+                <motion.div
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                >
                 {paginatedProperties.map((property, index) => (
                   <motion.div
                     key={property.id}
@@ -461,6 +594,7 @@ export default function Properties() {
               </div>
             </>
           )}
+          </div>
         </motion.div>
       </div>
     </div>
