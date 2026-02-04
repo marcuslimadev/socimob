@@ -85,7 +85,7 @@ class PropertyController extends Controller
             ], 403);
         }
         
-        // Log de segurança
+        // Log de início
         \Illuminate\Support\Facades\Log::info('🔒 Sincronização manual solicitada', [
             'tenant_id' => $tenant->id,
             'tenant_name' => $tenant->nome,
@@ -93,47 +93,32 @@ class PropertyController extends Controller
             'ip' => $request->ip()
         ]);
         
-        // IMPORTANTE: Para cron jobs, a sincronização pode demorar vários minutos.
-        // Retornar sucesso imediatamente e deixar o processo continuar em background.
-        ignore_user_abort(true);
-        set_time_limit(0);
-        
-        // Enviar resposta imediatamente
-        $response = response()->json([
-            'success' => true,
-            'message' => 'Sincronização iniciada',
-            'tenant_id' => $tenant->id,
-            'tenant_name' => $tenant->nome,
-            'note' => 'Processamento em andamento. Acompanhe os logs para ver o progresso.'
-        ]);
-        
-        // Enviar resposta e fechar conexão
-        if (ob_get_level()) {
-            ob_end_clean();
-        }
-        
-        header('Connection: close');
-        header('Content-Length: ' . strlen($response->getContent()));
-        echo $response->getContent();
-        
-        if (function_exists('fastcgi_finish_request')) {
-            fastcgi_finish_request();
-        }
-        
-        // Agora executar a sincronização em background
+        // Executar sincronização
         try {
             $syncService = app(\App\Services\PropertySyncService::class);
             $result = $syncService->syncAll();
             
             \Illuminate\Support\Facades\Log::info('✅ Sincronização concluída', $result);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Sincronização concluída com sucesso',
+                'tenant_id' => $tenant->id,
+                'tenant_name' => $tenant->nome,
+                'result' => $result
+            ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('❌ Erro na sincronização', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'tenant_id' => $tenant->id
+            ], 500);
         }
-        
-        return $response;
     }
     
     /**

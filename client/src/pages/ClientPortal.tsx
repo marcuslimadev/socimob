@@ -20,7 +20,9 @@ import {
   Phone,
   Mail,
   Loader2,
-  MessageCircle
+  MessageCircle,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
@@ -29,6 +31,7 @@ import { fetchTenantBranding, hexToRgba, TenantBranding } from '@/lib/tenantBran
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Leaflet imports
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
@@ -287,8 +290,7 @@ export default function ClientPortal() {
   const [selectedPropertyType, setSelectedPropertyType] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('recent');
   const [properties, setProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tenantLoading, setTenantLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [likedProperties, setLikedProperties] = useState<Set<number>>(new Set());
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
@@ -296,16 +298,34 @@ export default function ClientPortal() {
   const [hoveredProperty, setHoveredProperty] = useState<number | null>(null);
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
   const headerRef = useRef<HTMLDivElement>(null);
+  const { theme, toggleTheme } = useTheme();
 
   // Load tenant configuration
   useEffect(() => {
     const loadTenant = async () => {
-      setTenantLoading(true);
       try {
         const data = await fetchTenantBranding();
-        if (data) setTenant(data as TenantConfig);
-      } finally {
-        setTenantLoading(false);
+        if (data) {
+          setTenant(data as TenantConfig);
+          
+          // Update document title and favicon based on tenant branding
+          if (data.name) {
+            document.title = `${data.name} - Portal de Imóveis`;
+          }
+          
+          const faviconUrl = data.favicon_url || data.logo_url || data.logo;
+          if (faviconUrl) {
+            let faviconLink = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
+            if (!faviconLink) {
+              faviconLink = document.createElement("link");
+              faviconLink.rel = "icon";
+              document.head.appendChild(faviconLink);
+            }
+            faviconLink.href = faviconUrl;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load tenant branding:', err);
       }
     };
     loadTenant();
@@ -315,7 +335,6 @@ export default function ClientPortal() {
   useEffect(() => {
     const fetchProperties = async () => {
       try {
-        setLoading(true);
         setError(null);
         const response = await api.get('/portal/imoveis');
         const data = response.data.data || response.data || [];
@@ -344,8 +363,6 @@ export default function ClientPortal() {
         setProperties(propertiesWithCoords);
       } catch (err: any) {
         setError(err.message || 'Erro ao carregar imóveis');
-      } finally {
-        setLoading(false);
       }
     };
     fetchProperties();
@@ -390,11 +407,31 @@ export default function ClientPortal() {
     }
   };
 
-  const handleWhatsApp = (e: React.MouseEvent) => {
+  const handleWhatsApp = (e: React.MouseEvent, property?: Property) => {
     e.stopPropagation();
     if (tenant?.contact_phone) {
       const phone = tenant.contact_phone.replace(/\D/g, '');
-      window.open(`https://wa.me/${phone}`, '_blank');
+      
+      // Se houver contexto do imóvel, criar mensagem personalizada
+      let message = '';
+      if (property) {
+        const price = property.valor_venda || property.valor_aluguel || 0;
+        const location = [property.bairro, property.cidade].filter(Boolean).join(', ') || 'Não informado';
+        message = encodeURIComponent(
+          `Olá! Tenho interesse no imóvel:\n\n` +
+          `Título: ${property.titulo}\n` +
+          `Localização: ${location}\n` +
+          `Valor: ${formatPrice(price)}\n` +
+          `Link: ${window.location.origin}/portal/imovel/${property.id}\n\n` +
+          `Gostaria de mais informações.`
+        );
+      }
+      
+      const url = message 
+        ? `https://wa.me/${phone}?text=${message}`
+        : `https://wa.me/${phone}`;
+      
+      window.open(url, '_blank');
     }
   };
 
@@ -604,7 +641,7 @@ export default function ClientPortal() {
                 <Share2 className="w-4 h-4" />
               </Button>
               {tenant?.contact_phone && (
-                <Button size="sm" variant="outline" className="text-green-600" onClick={handleWhatsApp}>
+                <Button size="sm" variant="outline" className="text-green-600" onClick={(e) => handleWhatsApp(e, property)}>
                   <MessageCircle className="w-4 h-4" />
                 </Button>
               )}
@@ -617,9 +654,6 @@ export default function ClientPortal() {
     return (
       <motion.div
         layout
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
         whileHover={{ y: -4 }}
         onHoverStart={() => setHoveredProperty(property.id)}
         onHoverEnd={() => setHoveredProperty(null)}
@@ -670,6 +704,16 @@ export default function ClientPortal() {
             >
               <Share2 className="w-4 h-4" />
             </motion.button>
+            {tenant?.contact_phone && (
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={(e) => handleWhatsApp(e, property)}
+                className="p-2 rounded-full bg-green-500 text-white backdrop-blur-sm hover:bg-green-600 transition-all"
+              >
+                <MessageCircle className="w-4 h-4" />
+              </motion.button>
+            )}
           </div>
 
           <div className="absolute bottom-3 left-3 right-3">
@@ -726,16 +770,6 @@ export default function ClientPortal() {
     );
   };
 
-  // Show loading screen while tenant config is loading to prevent flickering
-  if (tenantLoading) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
-        <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground">Carregando...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -769,14 +803,23 @@ export default function ClientPortal() {
               </div>
             </div>
 
-            {/* Contact & Login */}
-            <div className="flex items-center gap-2">
-              {tenant?.contact_phone && (
+              {/* Contact & Login */}
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="hidden md:flex text-green-600"
-                  onClick={handleWhatsApp}
+                  className="text-muted-foreground"
+                  onClick={toggleTheme}
+                  aria-label="Alternar tema"
+                >
+                  {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                </Button>
+                {tenant?.contact_phone && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="hidden md:flex text-green-600"
+                    onClick={(e) => handleWhatsApp(e)}
                 >
                   <MessageCircle className="w-4 h-4" />
                   WhatsApp
@@ -803,25 +846,17 @@ export default function ClientPortal() {
         }}
       >
         <div className="max-w-7xl mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
-          >
+          <div className="text-center mb-8">
             <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
               Encontre o imóvel dos seus sonhos
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               {tenant?.slogan || 'Descubra as melhores oportunidades em imóveis'}
             </p>
-          </motion.div>
+          </div>
 
           {/* Search Bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="max-w-4xl mx-auto"
+          <div className="max-w-4xl mx-auto"
           >
             <div className="bg-card rounded-2xl shadow-xl border border-border p-4 md:p-6">
               <div className="flex flex-col md:flex-row gap-3">
@@ -969,7 +1004,7 @@ export default function ClientPortal() {
                 )}
               </AnimatePresence>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -980,7 +1015,12 @@ export default function ClientPortal() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
               <p className="text-muted-foreground">
-                <span className="font-semibold text-foreground">{filteredProperties.length}</span> imóveis encontrados
+                <span className="font-semibold text-foreground">
+                  {viewMode === 'map' ? mapVisibleProperties.length : filteredProperties.length}
+                </span> imóveis {viewMode === 'map' ? 'visíveis' : 'encontrados'}
+                {viewMode === 'map' && mapVisibleProperties.length < filteredProperties.length && (
+                  <span className="text-xs ml-1">(de {filteredProperties.length})</span>
+                )}
               </p>
             </div>
 
@@ -1033,16 +1073,8 @@ export default function ClientPortal() {
             </div>
           </div>
 
-          {/* Loading */}
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 animate-spin mb-4" style={{ color: primary }} />
-              <p className="text-muted-foreground">Carregando imóveis...</p>
-            </div>
-          )}
-
           {/* Error */}
-          {error && !loading && (
+          {error && (
             <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-8 text-center">
               <p className="text-destructive mb-4">{error}</p>
               <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
@@ -1050,7 +1082,7 @@ export default function ClientPortal() {
           )}
 
           {/* Content */}
-          {!loading && !error && (
+          {!error && (
             <>
               {viewMode === 'map' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1130,14 +1162,35 @@ export default function ClientPortal() {
                     </MapContainer>
                   </div>
 
-                  {/* Property List */}
-                  <ScrollArea className="h-[600px]">
-                    <div className="space-y-4 pr-4">
-                      {filteredProperties.map((property) => (
-                        <PropertyCard key={property.id} property={property} variant="list" />
-                      ))}
+                  {/* Property List - Filtered by visible map area */}
+                  <div className="flex flex-col h-[600px]">
+                    <div className="flex-shrink-0 pb-3 border-b border-border mb-3">
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-semibold text-foreground">{mapVisibleProperties.length}</span> imóveis nesta área
+                        {mapVisibleProperties.length < filteredProperties.length && (
+                          <span className="text-xs ml-2">(de {filteredProperties.length} no total)</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Mova ou aplique zoom no mapa para filtrar
+                      </p>
                     </div>
-                  </ScrollArea>
+                    <ScrollArea className="flex-1">
+                      <div className="space-y-4 pr-4">
+                        {mapVisibleProperties.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <MapIcon className="w-12 h-12 text-muted-foreground mb-3" />
+                            <p className="text-muted-foreground">Nenhum imóvel nesta área</p>
+                            <p className="text-xs text-muted-foreground mt-1">Tente ajustar o zoom ou mover o mapa</p>
+                          </div>
+                        ) : (
+                          mapVisibleProperties.map((property) => (
+                            <PropertyCard key={property.id} property={property} variant="list" />
+                          ))
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
                 </div>
               ) : (
                 <motion.div
@@ -1238,7 +1291,7 @@ export default function ClientPortal() {
           animate={{ scale: 1 }}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={handleWhatsApp}
+          onClick={(e) => handleWhatsApp(e)}
           className="fixed bottom-6 right-6 w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg flex items-center justify-center z-50"
         >
           <MessageCircle className="w-6 h-6" />

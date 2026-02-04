@@ -47,4 +47,7 @@ $router->group(['prefix' => 'api/super-admin', 'middleware' => ['simple-auth']],
     $router->get('/settings', 'SuperAdmin\SettingsController@index');
     $router->get('/settings/{key}', 'SuperAdmin\SettingsController@show');
     $router->put('/settings/{key}', 'SuperAdmin\SettingsController@update');
+
+    // Analytics
+    $router->get('/analytics/overview', 'SuperAdmin\AnalyticsController@overview');
 });

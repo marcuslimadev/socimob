@@ -32,6 +32,9 @@ import SystemLogs from "./pages/SystemLogs";
 import Tenants from "./pages/Tenants";
 import AdminUsers from "./pages/AdminUsers";
 import PropertyAds from "./pages/PropertyAds";
+import Analytics from "./pages/Analytics";
+import AnalyticsConsentBanner from "./components/AnalyticsConsentBanner";
+import AnalyticsTracker from "./components/AnalyticsTracker";
 
 
 function Router() {
@@ -65,6 +68,7 @@ function Router() {
       <Route path="/system-logs" component={SystemLogs} />
       <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/property-ads" component={PropertyAds} />
+      <Route path="/analytics" component={Analytics} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
@@ -82,10 +86,12 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider
         defaultTheme="dark"
-      // switchable
+        switchable
       >
         <TooltipProvider>
           <Toaster />
+          <AnalyticsConsentBanner />
+          <AnalyticsTracker />
           <Router />
         </TooltipProvider>
       </ThemeProvider>

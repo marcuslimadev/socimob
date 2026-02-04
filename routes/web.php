@@ -147,6 +147,9 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
     // Dashboard routes
     $router->get('/dashboard/stats', 'DashboardController@stats');
     $router->get('/dashboard/atividades', 'DashboardController@atividades');
+
+    // Analytics collect (public, consent required on client)
+    $router->post('/analytics/collect', 'AnalyticsController@collect');
 });
 
 // Landing Page Pública - DESATIVADA (agora usa frontend React)

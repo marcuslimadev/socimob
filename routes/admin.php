@@ -23,6 +23,9 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], funct
     $router->get('/settings/notifications', 'Admin\TenantSettingsController@getNotificationSettings');
     $router->put('/settings/notifications', 'Admin\TenantSettingsController@updateNotificationSettings');
 
+    // Analytics
+    $router->get('/analytics/overview', 'Admin\AnalyticsController@overview');
+
     // AI Prompt Settings
     $router->get('/settings/ai-prompt', 'Admin\TenantSettingsController@getAiPrompt');
     $router->post('/settings/ai-prompt', 'Admin\TenantSettingsController@saveAiPrompt');

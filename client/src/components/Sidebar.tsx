@@ -21,8 +21,12 @@ import {
   FileText,
   Shield,
   Image,
+  Sun,
+  Moon,
+  LineChart,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useTheme } from '@/contexts/ThemeContext';
 import TenantSelector from './TenantSelector';
 
 interface SidebarProps {
@@ -67,6 +71,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [notificationCount, setNotificationCount] = useState(0);
   const [leadsCount, setLeadsCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const { theme, toggleTheme } = useTheme();
 
   // Use internal state if not controlled externally
   const actualIsOpen = onClose ? isOpen : internalIsOpen;
@@ -167,6 +172,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
   // Menu adicional para admin
   const adminMenuItems: SidebarItem[] = user?.role === 'admin' || user?.role === 'super_admin' ? [
+    { icon: <LineChart size={20} />, label: 'Estatísticas', href: '/analytics' },
     { icon: <Shield size={20} />, label: 'Usuários', href: '/admin/users' },
     { icon: <Image size={20} />, label: 'Propaganda', href: '/admin/property-ads' },
     { icon: <FileText size={20} />, label: 'Logs do Sistema', href: '/system-logs' },
@@ -417,6 +423,16 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           >
             <Menu size={20} />
             {!isCollapsed && <span className="text-sm font-medium">Recolher</span>}
+          </motion.button>
+
+          <motion.button
+            onClick={toggleTheme}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-muted-foreground hover:bg-white/10 transition-all duration-300"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            {theme === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
+            {!isCollapsed && <span className="text-sm font-medium">Tema {theme === 'dark' ? 'Escuro' : 'Claro'}</span>}
           </motion.button>
 
           <motion.button

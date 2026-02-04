@@ -16,6 +16,7 @@ class Kernel extends ConsoleKernel
         Commands\ChavesNaMaoCommand::class,
         Commands\SyncPropertiesCommand::class,
         Commands\EnsurePropertiesCommand::class,
+        Commands\PruneAnalyticsCommand::class,
     ];
 
     /**
@@ -32,6 +33,10 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('properties:ensure')
             ->hourly()
+            ->withoutOverlapping();
+
+        $schedule->command('analytics:prune')
+            ->daily()
             ->withoutOverlapping();
     }
 }
