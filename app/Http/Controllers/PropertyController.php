@@ -61,12 +61,41 @@ class PropertyController extends Controller
      */
     public function sync(Request $request)
     {
-        return response()->json([
-            'success' => true,
-            'message' => 'Endpoint funcionando',
-            'tenant_bound' => app()->bound('tenant'),
-            'tenant_id' => app()->bound('tenant') ? app('tenant')->id : null
-        ]);
+        // Verificar tenant
+        if (!app()->bound('tenant')) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Tenant não identificado'
+            ], 403);
+        }
+        
+        $tenant = app('tenant');
+        
+        // Validar tenant_id = 1
+        if ($tenant->id !== 1) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Não autorizado para este tenant',
+                'tenant_id' => $tenant->id
+            ], 403);
+        }
+        
+        // Executar sincronização
+        try {
+            $syncService = app(\App\Services\PropertySyncService::class);
+            $result = $syncService->syncAll();
+            
+            return response()->json([
+                'success' => true,
+                'tenant_id' => $tenant->id,
+                'result' => $result
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
     
     /**
