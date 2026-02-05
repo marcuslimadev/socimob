@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Lead;
 use App\Models\SmsShortLink;
 use App\Models\Tenant;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -88,8 +89,20 @@ class SmsShortLinkService
     private function getTenantWhatsappDigits(Tenant $tenant): ?string
     {
         $raw = $tenant->getIntegrationValue('twilio_whatsapp_from')
-            ?? $tenant->getIntegrationValue('contact_phone')
-            ?? env('EXCLUSIVA_TWILIO_WHATSAPP_FROM');
+            ?? $tenant->getIntegrationValue('contact_phone');
+
+        if (!$raw) {
+            $config = DB::table('tenant_configs')
+                ->where('tenant_id', $tenant->id)
+                ->first();
+            if ($config && !empty($config->whatsapp_number)) {
+                $raw = $config->whatsapp_number;
+            }
+        }
+
+        if (!$raw) {
+            $raw = env('EXCLUSIVA_TWILIO_WHATSAPP_FROM');
+        }
 
         if (!$raw) {
             return null;
