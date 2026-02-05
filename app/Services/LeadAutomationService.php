@@ -19,15 +19,18 @@ class LeadAutomationService
     private $whatsappService;
     private $twilioService;
     private $openAIService;
+    private SmsShortLinkService $smsShortLinkService;
 
     public function __construct(
         WhatsAppService $whatsappService,
         TwilioService $twilioService,
-        OpenAIService $openAIService
+        OpenAIService $openAIService,
+        SmsShortLinkService $smsShortLinkService
     ) {
         $this->whatsappService = $whatsappService;
         $this->twilioService = $twilioService;
         $this->openAIService = $openAIService;
+        $this->smsShortLinkService = $smsShortLinkService;
     }
 
     /**
@@ -113,12 +116,17 @@ class LeadAutomationService
             // 4. Primeiro contato SEMPRE por SMS com link wa.me do tenant
             $resultadoEnvio = null;
             $mensagemIA = $this->gerarMensagemInicial($lead);
-            $mensagemSMS = $this->montarMensagemPrimeiroContatoSms($lead, $mensagemIA);
+            $smsPayload = $this->montarMensagemPrimeiroContatoSms($lead, $mensagemIA);
+            $mensagemSMS = $smsPayload['mensagem'];
+            $shortLink = $smsPayload['short_link'] ?? null;
             $resultadoEnvio = $this->enviarMensagemSMS($lead, $mensagemSMS, $telefone);
 
             if ($resultadoEnvio['success']) {
                 $mensagemRegistrada = $mensagemSMS;
                 $messageSid = $resultadoEnvio['message_sid'];
+                if (!empty($shortLink)) {
+                    $this->smsShortLinkService->updateSmsSid($shortLink, $messageSid);
+                }
             }
 
             if (!$resultadoEnvio || !$resultadoEnvio['success']) {
@@ -144,9 +152,11 @@ class LeadAutomationService
                 $this->registrarMensagem($conversa, $mensagemRegistrada, 'outgoing', $messageSid);
             }
 
-            // 7. Atualizar status do lead
+            // 7. Atualizar status do lead e marcar SMS enviado
             $lead->status = 'em_atendimento';
             $lead->ultima_interacao = Carbon::now();
+            $lead->sms_enviado = true;
+            $lead->sms_enviado_em = Carbon::now();
             $lead->save();
 
             Log::info('[LeadAutomation] Atendimento iniciado com sucesso', [
@@ -231,7 +241,9 @@ class LeadAutomationService
             }
 
             $mensagemIA = $this->gerarMensagemInicial($lead);
-            $mensagemSMS = $this->montarMensagemPrimeiroContatoSms($lead, $mensagemIA);
+            $smsPayload = $this->montarMensagemPrimeiroContatoSms($lead, $mensagemIA);
+            $mensagemSMS = $smsPayload['mensagem'];
+            $shortLink = $smsPayload['short_link'] ?? null;
 
             $resultadoEnvio = $this->enviarMensagemSMS($lead, $mensagemSMS, $telefone);
 
@@ -243,9 +255,15 @@ class LeadAutomationService
                 ];
             }
 
+            if (!empty($shortLink)) {
+                $this->smsShortLinkService->updateSmsSid($shortLink, $resultadoEnvio['message_sid'] ?? null);
+            }
+
             $this->registrarMensagem($conversa, $mensagemSMS, 'outgoing', $resultadoEnvio['message_sid'] ?? null);
 
             $lead->ultima_interacao = Carbon::now();
+            $lead->sms_enviado = true;
+            $lead->sms_enviado_em = Carbon::now();
             if ($lead->status !== 'em_atendimento') {
                 $lead->status = 'em_atendimento';
             }
@@ -255,7 +273,8 @@ class LeadAutomationService
                 'success' => true,
                 'lead_id' => $lead->id,
                 'conversa_id' => $conversa->id,
-                'message_sid' => $resultadoEnvio['message_sid'] ?? null
+                'message_sid' => $resultadoEnvio['message_sid'] ?? null,
+                'sms_enviado' => true
             ];
         } catch (\Exception $e) {
             Log::error('[LeadAutomation] Erro ao enviar SMS de primeiro contato', [
@@ -786,16 +805,20 @@ Gere a mensagem de primeiro contato:";
     /**
      * Montar mensagem de primeiro contato por SMS com link wa.me do tenant
      */
-    private function montarMensagemPrimeiroContatoSms(Lead $lead, string $mensagemBase): string
+    private function montarMensagemPrimeiroContatoSms(Lead $lead, string $mensagemBase): array
     {
-        $linkWa = $this->getTenantWhatsAppLink($lead);
+        $shortLink = $this->smsShortLinkService->createForLead($lead, $mensagemBase);
+        $linkWa = $shortLink ? $this->smsShortLinkService->buildWhatsAppLink($shortLink) : $this->getTenantWhatsAppLink($lead);
 
         $mensagem = trim($mensagemBase);
         if ($linkWa) {
             $mensagem .= "\n\nPara continuar no WhatsApp: {$linkWa}";
         }
 
-        return $mensagem;
+        return [
+            'mensagem' => $mensagem,
+            'short_link' => $shortLink,
+        ];
     }
 
     /**

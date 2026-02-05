@@ -8,6 +8,7 @@ use App\Observers\LeadObserver;
 
 class ObserverServiceProvider extends ServiceProvider
 {
+    private static bool $listenerRegistered = false;
     /**
      * Register any application services.
      *
@@ -25,6 +26,11 @@ class ObserverServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        if (self::$listenerRegistered) {
+            return;
+        }
+        self::$listenerRegistered = true;
+
         \Log::info('🚀 ObserverServiceProvider::boot() chamado!');
         
         // 🔥 CRITICAL: Lumen não dispara created/updated corretamente

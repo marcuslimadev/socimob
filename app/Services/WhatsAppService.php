@@ -9,7 +9,9 @@ use App\Models\Property;
 use App\Models\LeadPropertyMatch;
 use App\Models\LeadDocument;
 use App\Models\AppSetting;
+use App\Models\SmsShortLink;
 use App\Services\LeadCustomerService;
+use App\Services\SmsShortLinkService;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
@@ -33,13 +35,15 @@ class WhatsAppService
     private $openai;
     private $stageDetection;
     private LeadCustomerService $leadCustomerService;
+    private SmsShortLinkService $smsShortLinkService;
     
-    public function __construct(TwilioService $twilio, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService)
+    public function __construct(TwilioService $twilio, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService, SmsShortLinkService $smsShortLinkService)
     {
         $this->twilio = $twilio;
         $this->openai = $openai;
         $this->stageDetection = $stageDetection;
         $this->leadCustomerService = $leadCustomerService;
+        $this->smsShortLinkService = $smsShortLinkService;
     }
     
     /**
@@ -56,6 +60,7 @@ class WhatsAppService
             $messageSid = $webhookData['message_id'] ?? null;
             $mediaUrl = $webhookData['media_url'] ?? null;
             $mediaType = $webhookData['media_type'] ?? null;
+            $channel = $webhookData['channel'] ?? 'whatsapp';
             
             // Dados do perfil WhatsApp
             $profileName = $webhookData['profile_name'] ?? null;
@@ -84,8 +89,8 @@ class WhatsAppService
                 return ['success' => false, 'error' => 'Número de origem não identificado'];
             }
             
-            // Limpar telefone
-            $telefone = $this->cleanPhoneNumber($from);
+            // Normalizar telefone
+            $telefone = $this->normalizePhoneE164($from) ?? $this->cleanPhoneNumber($from);
             
             // 1. Obter ou criar conversa
             $tenantId = $this->resolveTenantId($webhookData['tenant_id'] ?? null);
@@ -96,7 +101,8 @@ class WhatsAppService
                 'country' => $country,
                 'latitude' => $latitude,
                 'longitude' => $longitude,
-                'tenant_id' => $tenantId
+                'tenant_id' => $tenantId,
+                'canal' => $channel
             ];
             $conversa = $this->getOrCreateConversa($telefone, $conversaData);
             
@@ -110,6 +116,27 @@ class WhatsAppService
                 'media_url' => $mediaUrl,
                 'status' => 'received'
             ]);
+
+            if ($channel === 'whatsapp') {
+                $code = trim((string) $body);
+                $shortLink = null;
+
+                if (preg_match('/^\d{4,8}$/', $code)) {
+                    $shortLink = $this->smsShortLinkService->resolveCode($tenantId, $code);
+                }
+
+                if (!$shortLink && $conversa->lead_id) {
+                    $shortLink = SmsShortLink::where('tenant_id', $tenantId)
+                        ->where('lead_id', $conversa->lead_id)
+                        ->whereNull('used_at')
+                        ->orderByDesc('created_at')
+                        ->first();
+                }
+
+                if ($shortLink) {
+                    $this->smsShortLinkService->markUsed($shortLink, $messageSid, $mensagem->id ?? null);
+                }
+            }
             
             // 3. Processar áudio se necessário
             if ($messageType === 'audio' && $mediaUrl) {
@@ -120,15 +147,7 @@ class WhatsAppService
                 
                 // Enviar feedback imediato
                 $feedbackMsg = "🎤 Recebi seu áudio! Vou ouvir agora e já te respondo... ⏳";
-                $this->twilio->sendMessage($telefone, $feedbackMsg);
-                
-                // Salvar mensagem de feedback
-                $this->saveMensagem($conversa->id, [
-                    'direction' => 'outgoing',
-                    'message_type' => 'text',
-                    'content' => $feedbackMsg,
-                    'status' => 'sent'
-                ]);
+                $this->sendMessage($conversa->id, $telefone, $feedbackMsg, $channel);
                 
                 // Transcrever áudio
                 $transcriptionResult = $this->transcribeAudio($mediaUrl, $conversa->id, $mensagem->id);
@@ -148,13 +167,7 @@ class WhatsAppService
                     
                     // Enviar mensagem de erro ao usuário
                     $errorMsg = "Desculpe, tive dificuldade em ouvir seu áudio. Pode tentar novamente ou digitar sua mensagem? 😊";
-                    $this->twilio->sendMessage($telefone, $errorMsg);
-                    $this->saveMensagem($conversa->id, [
-                        'direction' => 'outgoing',
-                        'message_type' => 'text',
-                        'content' => $errorMsg,
-                        'status' => 'sent'
-                    ]);
+                    $this->sendMessage($conversa->id, $telefone, $errorMsg, $channel);
                     
                     return [
                         'success' => false,
@@ -230,21 +243,18 @@ class WhatsAppService
     private function getOrCreateConversa($telefone, $dados)
     {
         $tenantId = $this->resolveTenantId($dados['tenant_id'] ?? null);
-        $telefoneNormal = trim((string) $telefone);
+        $telefoneNormal = $this->normalizePhoneE164($telefone) ?? trim((string) $telefone);
         $telefoneSemPrefixo = Str::startsWith($telefoneNormal, 'whatsapp:')
             ? substr($telefoneNormal, strlen('whatsapp:'))
             : $telefoneNormal;
-        $telefoneComPrefixo = Str::startsWith($telefoneNormal, 'whatsapp:')
-            ? $telefoneNormal
-            : 'whatsapp:' . $telefoneSemPrefixo;
-        $telefoneSemPlus = ltrim($telefoneSemPrefixo, '+');
 
-        $telefonesPossiveis = array_values(array_unique([
-            $telefoneNormal,
-            $telefoneSemPrefixo,
-            $telefoneComPrefixo,
-            $telefoneSemPlus,
-        ]));
+        $telefonesPossiveis = $this->buildPhoneVariants($telefoneSemPrefixo);
+        if (empty($telefonesPossiveis)) {
+            $telefonesPossiveis = array_values(array_unique([
+                $telefoneNormal,
+                $telefoneSemPrefixo,
+            ]));
+        }
 
         $query = Conversa::whereIn('telefone', $telefonesPossiveis)
             ->where('status', '!=', 'encerrada');
@@ -265,6 +275,7 @@ class WhatsAppService
                 'whatsapp_name' => $dados['profile_name'],
                 'status' => 'ativa',
                 'stage' => 'boas_vindas',
+                'canal' => $dados['canal'] ?? 'whatsapp',
                 'iniciada_em' => Carbon::now()
             ]);
             
@@ -287,6 +298,9 @@ class WhatsAppService
             }
             if (empty($conversa->stage)) {
                 $updates['stage'] = 'boas_vindas';
+            }
+            if (empty($conversa->canal) && !empty($dados['canal'])) {
+                $updates['canal'] = $dados['canal'];
             }
             if (!empty($updates)) {
                 $updates['ultima_atividade'] = Carbon::now();
@@ -1662,10 +1676,11 @@ class WhatsAppService
     /**
      * Enviar mensagem
      */
-    private function sendMessage($conversaId, $telefone, $body)
+    private function sendMessage($conversaId, $telefone, $body, ?string $channel = null)
     {
         $conversa = Conversa::find($conversaId);
         $isPortal = $this->isPortalChannel($telefone, $conversa);
+        $channel = $channel ?: ($conversa->canal ?? 'whatsapp');
 
         if ($isPortal) {
             $this->saveMensagem($conversaId, [
@@ -1678,7 +1693,11 @@ class WhatsAppService
             return ['success' => true, 'message_sid' => null];
         }
 
-        $result = $this->twilio->sendMessage($telefone, $body);
+        if ($channel === 'sms') {
+            $result = $this->twilio->sendSMS($telefone, $body);
+        } else {
+            $result = $this->twilio->sendMessage($telefone, $body);
+        }
 
         // Registrar mensagem enviada
         $this->saveMensagem($conversaId, [
@@ -1692,10 +1711,11 @@ class WhatsAppService
         return $result;
     }
 
-    private function sendTemplateMessage($conversaId, $telefone, string $contentSid, array $contentVariables = []): array
+    private function sendTemplateMessage($conversaId, $telefone, string $contentSid, array $contentVariables = [], ?string $channel = null): array
     {
         $conversa = Conversa::find($conversaId);
         $isPortal = $this->isPortalChannel($telefone, $conversa);
+        $channel = $channel ?: ($conversa->canal ?? 'whatsapp');
         
         // Obter mensagem do template configurada no tenant
         $conteudoRegistro = $this->expandirMensagemTemplate($conversa->tenant_id, $contentVariables);
@@ -1709,6 +1729,10 @@ class WhatsAppService
             ]);
 
             return ['success' => true, 'message_sid' => null];
+        }
+
+        if ($channel === 'sms') {
+            return $this->sendMessage($conversaId, $telefone, $conteudoRegistro, $channel);
         }
 
         $result = $this->twilio->sendTemplate($telefone, $contentSid, $contentVariables);
@@ -1800,6 +1824,9 @@ class WhatsAppService
      */
     private function createLead($telefone, $dados, $conversaId)
     {
+        $telefoneNormalizado = $this->normalizePhoneE164($telefone) ?? $this->cleanPhoneNumber($telefone);
+        $channel = $dados['canal'] ?? 'whatsapp';
+
         // Montar localização se tiver cidade/estado
         $localizacao = null;
         $city = $dados['city'] ?? null;
@@ -1820,21 +1847,37 @@ class WhatsAppService
             'whatsapp_name' => $dados['profile_name'],
             'localizacao' => $localizacao,
             'status' => 'novo',
-            'origem' => 'whatsapp',
+            'origem' => $channel === 'sms' ? 'sms' : 'whatsapp',
             'primeira_interacao' => Carbon::now(),
             'ultima_interacao' => Carbon::now(),
             'tenant_id' => $tenantId,
         ];
 
-        $criteria = ['telefone' => $telefone];
-        if (!empty($tenantId)) {
-            $criteria['tenant_id'] = $tenantId;
+        if ($channel === 'sms') {
+            $leadData['telefone'] = $telefoneNormalizado;
+        } else {
+            $leadData['whatsapp'] = $telefoneNormalizado;
         }
-        
-        $lead = Lead::firstOrCreate(
-            $criteria,
-            $leadData
-        );
+
+        $variantes = $this->buildPhoneVariants($telefoneNormalizado);
+        $query = Lead::query();
+        if (!empty($tenantId)) {
+            $query->where('tenant_id', $tenantId);
+        }
+        if (!empty($variantes)) {
+            $query->where(function ($q) use ($variantes) {
+                $q->whereIn('telefone', $variantes)
+                    ->orWhereIn('whatsapp', $variantes);
+            });
+        } else {
+            $query->where('telefone', $telefoneNormalizado)
+                ->orWhere('whatsapp', $telefoneNormalizado);
+        }
+
+        $lead = $query->first();
+        if (!$lead) {
+            $lead = Lead::create($leadData);
+        }
         
         // Se o lead já existia, atualizar dados se não tiver
         if (!$lead->wasRecentlyCreated) {
@@ -1842,6 +1885,8 @@ class WhatsAppService
             if (!$lead->nome && isset($dados['profile_name'])) $updates['nome'] = $dados['profile_name'];
             if (!$lead->localizacao && $localizacao) $updates['localizacao'] = $localizacao;
             if (!$lead->tenant_id && !empty($tenantId)) $updates['tenant_id'] = $tenantId;
+            if (empty($lead->telefone) && $telefoneNormalizado) $updates['telefone'] = $telefoneNormalizado;
+            if (empty($lead->whatsapp) && $telefoneNormalizado) $updates['whatsapp'] = $telefoneNormalizado;
             
             if (!empty($updates)) {
                 $lead->update($updates);
@@ -1880,6 +1925,67 @@ class WhatsAppService
         // Remove 'whatsapp:' e quaisquer espaços
         $cleaned = str_replace(['whatsapp:', ' '], '', $phone);
         return trim($cleaned);
+    }
+
+    private function normalizePhoneE164(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $raw = trim(str_replace('whatsapp:', '', (string) $value));
+        if ($raw === '') {
+            return null;
+        }
+
+        if (Str::startsWith($raw, ['portal:', 'web:'])) {
+            return $raw;
+        }
+
+        if (Str::startsWith($raw, '+')) {
+            $digits = preg_replace('/\D+/', '', $raw);
+            return $digits ? '+' . $digits : null;
+        }
+
+        if (Str::startsWith($raw, '00')) {
+            $digits = preg_replace('/\D+/', '', substr($raw, 2));
+            return $digits ? '+' . $digits : null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $raw);
+        if ($digits === '') {
+            return null;
+        }
+
+        // Se não veio com DDI e parece número BR (10 ou 11 dígitos), prefixar 55
+        if (strlen($digits) === 10 || strlen($digits) === 11) {
+            $digits = '55' . $digits;
+        }
+
+        return '+' . $digits;
+    }
+
+    private function buildPhoneVariants(?string $value): array
+    {
+        $normalized = $this->normalizePhoneE164($value);
+        if (!$normalized) {
+            return [];
+        }
+
+        if (Str::startsWith($normalized, ['portal:', 'web:'])) {
+            return [$normalized];
+        }
+
+        $digits = ltrim($normalized, '+');
+
+        return array_values(array_unique([
+            $normalized,
+            $digits,
+            '+' . $digits,
+            'whatsapp:' . $normalized,
+            'whatsapp:+' . $digits,
+            'whatsapp:' . $digits,
+        ]));
     }
 
     private function isPortalChannel(string $telefone, ?Conversa $conversa): bool

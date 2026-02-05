@@ -6,6 +6,7 @@ use App\Models\Lead;
 use App\Services\LeadConversationService;
 use App\Services\LeadCustomerService;
 use App\Services\LeadService;
+use App\Services\SmsShortLinkService;
 use App\Services\TwilioService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,18 +18,21 @@ class ChavesNaMaoWebhookController extends Controller
     private LeadCustomerService $leadCustomerService;
     private LeadService $leadService;
     private TwilioService $twilioService;
+    private SmsShortLinkService $smsShortLinkService;
 
     public function __construct(
         LeadConversationService $leadConversationService,
         LeadCustomerService $leadCustomerService,
         LeadService $leadService,
-        TwilioService $twilioService
+        TwilioService $twilioService,
+        SmsShortLinkService $smsShortLinkService
     )
     {
         $this->leadConversationService = $leadConversationService;
         $this->leadCustomerService = $leadCustomerService;
         $this->leadService = $leadService;
         $this->twilioService = $twilioService;
+        $this->smsShortLinkService = $smsShortLinkService;
     }
     /**
      * Responde ao método GET (não permitido)
@@ -93,7 +97,7 @@ class ChavesNaMaoWebhookController extends Controller
                 'external_id' => $leadData['id'] ?? null
             ]);
 
-            // NOVO: Enviar SMS com link do WhatsApp do tenant
+            // Enviar SMS com link do WhatsApp do tenant (apenas se ainda não foi enviado)
             $this->sendWhatsAppSMS($lead, $leadData);
 
             return response()->json([
@@ -283,30 +287,40 @@ class ChavesNaMaoWebhookController extends Controller
             }
 
             // Buscar número de WhatsApp do tenant
-            $tenantConfig = DB::table('tenant_configs')
-                ->where('tenant_id', $lead->tenant_id)
-                ->first();
+            $tenant = $lead->tenant ?? \App\Models\Tenant::find($lead->tenant_id);
+            $whatsappNumber = null;
 
-            if (!$tenantConfig || empty($tenantConfig->whatsapp_number)) {
+            if ($tenant) {
+                $whatsappNumber = $tenant->getIntegrationValue('twilio_whatsapp_from')
+                    ?? $tenant->getIntegrationValue('contact_phone');
+            }
+
+            if (empty($whatsappNumber)) {
+                $tenantConfig = DB::table('tenant_configs')
+                    ->where('tenant_id', $lead->tenant_id)
+                    ->first();
+
+                if ($tenantConfig && !empty($tenantConfig->whatsapp_number)) {
+                    $whatsappNumber = $tenantConfig->whatsapp_number;
+                }
+            }
+
+            if (empty($whatsappNumber)) {
                 Log::warning('📱 Tenant sem número de WhatsApp configurado - SMS não enviado', [
                     'tenant_id' => $lead->tenant_id,
                     'lead_id' => $lead->id
                 ]);
                 return;
             }
-
-            $whatsappNumber = $tenantConfig->whatsapp_number;
             
             // Remover caracteres especiais do número do WhatsApp
             $cleanWhatsappNumber = preg_replace('/[^0-9+]/', '', $whatsappNumber);
 
-            // Criar link do WhatsApp Web
-            $propertyInfo = $this->getPropertyInfoFromLead($leadData);
-            $message = $this->buildWhatsAppMessage($lead, $propertyInfo);
-            
-            // Encode da mensagem para URL
-            $encodedMessage = urlencode($message);
-            $whatsappLink = "https://wa.me/{$cleanWhatsappNumber}?text={$encodedMessage}";
+            // Criar link curto do WhatsApp
+            $shortLink = $this->smsShortLinkService->createForLead($lead, $leadData['message'] ?? null);
+            $whatsappLink = $shortLink
+                ? $this->smsShortLinkService->buildWhatsAppLink($shortLink)
+                : "https://wa.me/{$cleanWhatsappNumber}";
 
             // Criar mensagem do SMS
             $smsBody = "Olá {$lead->nome}! 👋\n\n";
@@ -314,10 +328,22 @@ class ChavesNaMaoWebhookController extends Controller
             $smsBody .= "Clique aqui para falar direto conosco no WhatsApp:\n";
             $smsBody .= $whatsappLink;
 
+            // Evitar envio duplicado
+            if (!empty($lead->sms_enviado)) {
+                Log::info('ℹ️ SMS já havia sido enviado para o lead - ignorando', [
+                    'lead_id' => $lead->id,
+                    'telefone' => $lead->telefone
+                ]);
+                return;
+            }
+
             // Enviar SMS
             $result = $this->twilioService->sendSMS($lead->telefone, $smsBody);
 
             if ($result['success']) {
+                if ($shortLink) {
+                    $this->smsShortLinkService->updateSmsSid($shortLink, $result['message_sid'] ?? null);
+                }
                 Log::info('✅ SMS com link do WhatsApp enviado com sucesso', [
                     'lead_id' => $lead->id,
                     'telefone' => $lead->telefone,

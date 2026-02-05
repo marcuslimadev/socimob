@@ -13,9 +13,51 @@ class LeadService
             return null;
         }
 
-        $digits = preg_replace('/\D+/', '', $phone);
+        $raw = trim(str_replace('whatsapp:', '', (string) $phone));
+        if ($raw === '') {
+            return null;
+        }
 
-        return $digits ?: null;
+        if (str_starts_with($raw, '+')) {
+            $digits = preg_replace('/\D+/', '', $raw);
+            return $digits ? '+' . $digits : null;
+        }
+
+        if (str_starts_with($raw, '00')) {
+            $digits = preg_replace('/\D+/', '', substr($raw, 2));
+            return $digits ? '+' . $digits : null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $raw);
+        if ($digits === '') {
+            return null;
+        }
+
+        // Se não veio com DDI e parece número BR (10 ou 11 dígitos), prefixar 55
+        if (strlen($digits) === 10 || strlen($digits) === 11) {
+            $digits = '55' . $digits;
+        }
+
+        return '+' . $digits;
+    }
+
+    private function buildPhoneVariants(?string $phone): array
+    {
+        $normalized = $this->normalizePhone($phone);
+        if (!$normalized) {
+            return [];
+        }
+
+        $digits = ltrim($normalized, '+');
+
+        return array_values(array_unique([
+            $normalized,
+            $digits,
+            '+' . $digits,
+            'whatsapp:' . $normalized,
+            'whatsapp:+' . $digits,
+            'whatsapp:' . $digits,
+        ]));
     }
 
     public function findExisting(?int $tenantId = null, ?string $email = null, ?string ...$phones): ?Lead
@@ -46,10 +88,12 @@ class LeadService
             }
 
             foreach ($normalizedPhones as $phone) {
+                $variants = $this->buildPhoneVariants($phone);
+                $targets = !empty($variants) ? $variants : [$phone];
                 $method = $hasCondition ? 'orWhere' : 'where';
-                $q->{$method}(function ($phoneQuery) use ($phone) {
-                    $phoneQuery->where('telefone', $phone)
-                        ->orWhere('whatsapp', $phone);
+                $q->{$method}(function ($phoneQuery) use ($targets) {
+                    $phoneQuery->whereIn('telefone', $targets)
+                        ->orWhereIn('whatsapp', $targets);
                 });
                 $hasCondition = true;
             }
