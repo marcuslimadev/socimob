@@ -218,23 +218,44 @@ class ConversasController extends Controller
         }
 
         $conversa = $this->resolveConversaForTenant($id, $request);
+        $user = $request->user();
+
+        // Verificar se conversa está atribuída a outro corretor
+        if ($conversa->corretor_id && $user && $conversa->corretor_id !== $user->id) {
+            // Apenas admin pode pegar conversa de outro corretor
+            if (!in_array($user->role, ['admin', 'super_admin'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Conversa em atendimento por outro corretor'
+                ], 403);
+            }
+        }
+
+        // Atribuir conversa ao corretor/admin que está enviando a mensagem
+        if ($user && empty($conversa->corretor_id)) {
+            $conversa->update([
+                'corretor_id' => $user->id,
+                'user_id' => $user->id,
+                'status' => 'em_atendimento',
+                'stage' => 'atendimento_humano'
+            ]);
+            
+            Log::info('🔒 Conversa atribuída ao corretor', [
+                'conversa_id' => $conversa->id,
+                'corretor_id' => $user->id,
+                'corretor_nome' => $user->name
+            ]);
+        }
 
         $isPortal = str_starts_with($conversa->telefone, 'portal:')
             || str_starts_with($conversa->telefone, 'web:')
             || $conversa->canal === 'portal';
 
         if ($isPortal) {
-            $user = $request->user();
-            if ($conversa->corretor_id && $user && $conversa->corretor_id !== $user->id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Conversa em atendimento por outro corretor'
-                ], 403);
-            }
-
             $mensagem = Mensagem::create([
                 'tenant_id' => $conversa->tenant_id,
                 'conversa_id' => $conversa->id,
+                'user_id' => $user?->id,
                 'direction' => 'outgoing',
                 'message_type' => 'text',
                 'content' => $request->input('content'),
@@ -258,6 +279,7 @@ class ConversasController extends Controller
             // Registrar mensagem
             $mensagem = Mensagem::create([
                 'conversa_id' => $conversa->id,
+                'user_id' => $user?->id,
                 'message_sid' => $result['message_sid'],
                 'direction' => 'outgoing',
                 'message_type' => 'text',
@@ -489,6 +511,78 @@ class ConversasController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Redesignar conversa para outro corretor (admin only)
+     * POST /api/conversas/{id}/assign
+     */
+    public function assign(Request $request, $id)
+    {
+        $user = $request->user();
+        
+        // Apenas admins podem redesignar
+        if (!in_array($user->role, ['admin', 'super_admin'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Acesso negado. Apenas administradores podem redesignar conversas.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'corretor_id' => 'nullable|exists:users,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'messages' => $validator->errors()
+            ], 422);
+        }
+
+        $conversa = $this->resolveConversaForTenant($id, $request);
+        $corretorId = $request->input('corretor_id');
+
+        // Se corretor_id é null, libera a conversa para a IA
+        if ($corretorId === null) {
+            $conversa->update([
+                'corretor_id' => null,
+                'user_id' => null,
+                'status' => 'ativa',
+                'stage' => 'inicial'
+            ]);
+
+            \Log::info('🔓 Conversa liberada para IA', [
+                'conversa_id' => $conversa->id,
+                'admin' => $user->name
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Conversa liberada para IA',
+                'data' => $conversa
+            ]);
+        }
+
+        // Redesignar para outro corretor
+        $conversa->update([
+            'corretor_id' => $corretorId,
+            'user_id' => $corretorId,
+            'status' => 'em_atendimento',
+            'stage' => 'atendimento_humano'
+        ]);
+
+        \Log::info('🔄 Conversa redesignada', [
+            'conversa_id' => $conversa->id,
+            'novo_corretor_id' => $corretorId,
+            'admin' => $user->name
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Conversa redesignada com sucesso',
+            'data' => $conversa
+        ]);
     }
 
     /**

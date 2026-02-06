@@ -197,7 +197,25 @@ class WhatsAppService
                 $this->handleIncomingDocument($conversa, $mensagem, $messageType, $mediaUrl, $mediaType, $body);
             }
             
-            // 5. Verificar se é primeira mensagem (boas-vindas)
+            // 5. Verificar se conversa está atribuída a um corretor/admin
+            // Se sim, IA não deve responder - apenas humano pode continuar
+            if (!empty($conversa->corretor_id)) {
+                Log::info('🔒 Conversa atribuída a corretor - IA não vai responder', [
+                    'conversa_id' => $conversa->id,
+                    'corretor_id' => $conversa->corretor_id,
+                    'lead_id' => $conversa->lead_id
+                ]);
+                
+                // Apenas registrar a mensagem recebida, não responder
+                return [
+                    'success' => true,
+                    'message' => 'Mensagem recebida - conversa atribuída a corretor',
+                    'assigned_to' => $conversa->corretor_id,
+                    'conversa_id' => $conversa->id
+                ];
+            }
+            
+            // 6. Verificar se é primeira mensagem (boas-vindas)
             // Mas se a mensagem contém um código de short link, é resposta ao SMS - continuar fluxo normal
             $isShortLinkResponse = preg_match('/C[óo]digo de atendimento:\s*\d{6}/', $body ?? '');
             
@@ -212,7 +230,7 @@ class WhatsAppService
                 return $this->handleFirstMessage($conversa, $telefone, $conversaData, $body);
             }
             
-            // 6. Processar com IA (com logging de performance)
+            // 7. Processar com IA (com logging de performance)
             $startTime = microtime(true);
             $result = $this->handleRegularMessage($conversa, $body, $messageType === 'audio');
             $duration = round((microtime(true) - $startTime) * 1000, 2);
