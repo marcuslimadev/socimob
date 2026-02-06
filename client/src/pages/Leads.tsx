@@ -349,7 +349,7 @@ export default function Leads() {
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-800"
               >
                 <option value="todos">Todos os Status</option>
                 <option value="novo">Novo</option>
@@ -363,7 +363,7 @@ export default function Leads() {
               <select
                 value={selectedSort}
                 onChange={(e) => setSelectedSort(e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-800"
               >
                 <option value="recente">Mais Recente</option>
                 <option value="valor-alto">Maior Valor</option>
@@ -520,7 +520,7 @@ export default function Leads() {
                   id="lead-status"
                   value={newLead.status}
                   onChange={(e) => setNewLead((prev) => ({ ...prev, status: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-md border border-white/10 bg-transparent text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 rounded-md border border-white/10 bg-transparent text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-800"
                 >
                   <option value="novo">Novo</option>
                   <option value="em_atendimento">Em Atendimento</option>
