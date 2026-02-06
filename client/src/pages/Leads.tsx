@@ -52,6 +52,12 @@ export default function Leads() {
 
   useEffect(() => {
     fetchLeads();
+
+    const intervalId = window.setInterval(() => {
+      fetchLeads();
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
   }, []);
 
   const fetchLeads = async () => {
