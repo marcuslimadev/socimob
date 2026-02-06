@@ -13,6 +13,7 @@ class TwilioService
     private $accountSid;
     private $authToken;
     private $whatsappFrom;
+    private $smsFrom;
 
     private function normalizeTo(string $to): string
     {
@@ -62,9 +63,11 @@ class TwilioService
 
     public function __construct()
     {
-        $this->accountSid = env('EXCLUSIVA_TWILIO_ACCOUNT_SID');
-        $this->authToken = env('EXCLUSIVA_TWILIO_AUTH_TOKEN');
-        $this->whatsappFrom = env('EXCLUSIVA_TWILIO_WHATSAPP_FROM');
+        // Usar config() em vez de env() para evitar problemas de cache
+        $this->accountSid = config('twilio.account_sid');
+        $this->authToken = config('twilio.auth_token');
+        $this->whatsappFrom = config('twilio.whatsapp_from');
+        $this->smsFrom = config('twilio.sms_from');
     }
     
     /**
@@ -377,7 +380,7 @@ class TwilioService
      * @param string $body Texto da mensagem (max 160 caracteres recomendado)
      * @return array Resultado do envio
      */
-    public function sendSMS(string $to, string $body): array
+    public function sendSMS(string $to, string $body, ?string $from = null): array
     {
         \App\Models\SystemLog::info(
             \App\Models\SystemLog::CATEGORY_TWILIO,
@@ -395,17 +398,24 @@ class TwilioService
             $to = substr($to, strlen('whatsapp:'));
         }
 
-        // Verificar se há número de SMS configurado
-        $smsFrom = env('EXCLUSIVA_TWILIO_SMS_FROM', env('EXCLUSIVA_TWILIO_PHONE_NUMBER'));
+        $fromToUse = $from ?: $this->smsFrom;
 
-        if (empty($smsFrom)) {
-            \Log::error('Twilio Send SMS - Remetente não configurado');
+        // Verificar se há número de SMS configurado (usa propriedade definida no construtor)
+        if (empty($fromToUse)) {
+            \Log::error('Twilio Send SMS - Remetente não configurado', [
+                'config_value' => config('twilio.sms_from'),
+                'env_sms_from' => env('EXCLUSIVA_TWILIO_SMS_FROM'),
+                'env_phone_number' => env('EXCLUSIVA_TWILIO_PHONE_NUMBER'),
+            ]);
 
             \App\Models\SystemLog::error(
                 \App\Models\SystemLog::CATEGORY_TWILIO,
                 'sms_config_missing',
                 'Remetente SMS Twilio não configurado',
-                ['to' => $to]
+                [
+                    'to' => $to,
+                    'config_value' => config('twilio.sms_from'),
+                ]
             );
 
             return [
@@ -413,13 +423,13 @@ class TwilioService
                 'http_code' => null,
                 'message_sid' => null,
                 'status' => null,
-                'error' => 'TWILIO_SMS_FROM/TWILIO_PHONE_NUMBER não configurado',
+                'error' => 'TWILIO_SMS_FROM/TWILIO_PHONE_NUMBER não configurado. Verifique config/twilio.php e .env',
                 'response' => null
             ];
         }
 
         $data = [
-            'From' => $smsFrom,
+            'From' => $fromToUse,
             'To' => $to,
             'Body' => $body
         ];
@@ -441,6 +451,7 @@ class TwilioService
 
         \Log::info('Twilio Send SMS', [
             'to' => $to,
+            'from' => $fromToUse,
             'http_code' => $httpCode,
             'response' => $responseData,
             'error' => $error
@@ -453,6 +464,7 @@ class TwilioService
                 'SMS enviado com sucesso via Twilio',
                 [
                     'to' => $to,
+                    'from' => $fromToUse,
                     'message_sid' => $responseData['sid'] ?? null,
                     'status' => $responseData['status'] ?? null
                 ]

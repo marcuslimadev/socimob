@@ -338,7 +338,8 @@ class ChavesNaMaoWebhookController extends Controller
             }
 
             // Enviar SMS
-            $result = $this->twilioService->sendSMS($lead->telefone, $smsBody);
+            $smsFrom = $this->resolveTenantSmsFrom($lead);
+            $result = $this->twilioService->sendSMS($lead->telefone, $smsBody, $smsFrom);
 
             if ($result['success']) {
                 if ($shortLink) {
@@ -403,6 +404,35 @@ class ChavesNaMaoWebhookController extends Controller
         $message .= ". Gostaria de mais informações.";
         
         return $message;
+    }
+
+    /**
+     * Resolver número de SMS do tenant (Twilio)
+     */
+    private function resolveTenantSmsFrom(Lead $lead): ?string
+    {
+        try {
+            $tenant = $lead->tenant ?? \App\Models\Tenant::find($lead->tenant_id);
+            if (!$tenant) {
+                return null;
+            }
+
+            $raw = $tenant->getIntegrationValue('twilio_sms_from')
+                ?? $tenant->getIntegrationValue('twilio_phone_number');
+
+            if (!$raw) {
+                return null;
+            }
+
+            $raw = (string) $raw;
+            return $raw !== '' ? $raw : null;
+        } catch (\Throwable $e) {
+            Log::error('[ChavesNaMaoWebhook] Erro ao resolver SMS From do tenant', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
     }
     
 }

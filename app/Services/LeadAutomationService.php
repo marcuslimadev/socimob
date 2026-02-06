@@ -768,7 +768,9 @@ Gere a mensagem de primeiro contato:";
     private function enviarMensagemSMS(Lead $lead, string $mensagem, string $telefone): array
     {
         try {
-            $resultado = $this->twilioService->sendSMS($telefone, $mensagem);
+            $lead->loadMissing('tenant');
+            $smsFrom = $this->resolveTenantSmsFrom($lead);
+            $resultado = $this->twilioService->sendSMS($telefone, $mensagem, $smsFrom);
 
             if (empty($resultado['success'])) {
                 Log::error('[LeadAutomation] Falha no envio do SMS (Twilio)', [
@@ -852,6 +854,35 @@ Gere a mensagem de primeiro contato:";
             return 'https://wa.me/' . $digits;
         } catch (\Throwable $e) {
             Log::error('[LeadAutomation] Erro ao montar link wa.me', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Resolver número de SMS do tenant (Twilio)
+     */
+    private function resolveTenantSmsFrom(Lead $lead): ?string
+    {
+        try {
+            $tenant = $lead->tenant ?? null;
+            if (!$tenant) {
+                return null;
+            }
+
+            $raw = $tenant->getIntegrationValue('twilio_sms_from')
+                ?? $tenant->getIntegrationValue('twilio_phone_number');
+
+            if (!$raw) {
+                return null;
+            }
+
+            $raw = (string) $raw;
+            return $raw !== '' ? $raw : null;
+        } catch (\Throwable $e) {
+            Log::error('[LeadAutomation] Erro ao resolver SMS From do tenant', [
                 'lead_id' => $lead->id,
                 'error' => $e->getMessage()
             ]);
