@@ -183,20 +183,6 @@ const LeadCard = ({
             whileTap={{ scale: 0.95 }}
             onClick={(e) => {
               e.stopPropagation();
-              onAI?.();
-            }}
-            title="IA"
-            aria-label="IA"
-            className="flex-1 flex items-center justify-center px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold text-white transition-all"
-          >
-            <Zap size={14} />
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={(e) => {
-              e.stopPropagation();
               if (!smsDisabled) {
                 onSMS?.();
               }
