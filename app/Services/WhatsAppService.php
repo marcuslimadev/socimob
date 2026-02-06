@@ -198,6 +198,9 @@ class WhatsAppService
             }
             
             // 5. Verificar se é primeira mensagem (boas-vindas)
+            // Mas se a mensagem contém um código de short link, é resposta ao SMS - continuar fluxo normal
+            $isShortLinkResponse = preg_match('/C[óo]digo de atendimento:\s*\d{6}/', $body ?? '');
+            
             $totalMensagens = $conversa->mensagens()->count();
             
             // Se for áudio, desconta a mensagem de feedback
@@ -205,7 +208,7 @@ class WhatsAppService
                 $totalMensagens -= 1; // Remove feedback "Vou ouvir agora"
             }
             
-            if ($totalMensagens === 1) {
+            if ($totalMensagens === 1 && !$isShortLinkResponse) {
                 return $this->handleFirstMessage($conversa, $telefone, $conversaData, $body);
             }
             
