@@ -63,11 +63,46 @@ class TwilioService
 
     public function __construct()
     {
+        $this->loadConfig();
+    }
+
+    private function loadConfig(): void
+    {
         // Usar config() em vez de env() para evitar problemas de cache
         $this->accountSid = config('twilio.account_sid');
         $this->authToken = config('twilio.auth_token');
         $this->whatsappFrom = config('twilio.whatsapp_from');
         $this->smsFrom = config('twilio.sms_from');
+
+        if (!$this->accountSid || !$this->authToken) {
+            $this->tryLoadEnv();
+        }
+
+        $this->accountSid = $this->accountSid ?: env('EXCLUSIVA_TWILIO_ACCOUNT_SID');
+        $this->authToken = $this->authToken ?: env('EXCLUSIVA_TWILIO_AUTH_TOKEN');
+        $this->whatsappFrom = $this->whatsappFrom ?: env('EXCLUSIVA_TWILIO_WHATSAPP_FROM');
+        $this->smsFrom = $this->smsFrom ?: env('EXCLUSIVA_TWILIO_SMS_FROM', env('EXCLUSIVA_TWILIO_PHONE_NUMBER'));
+    }
+
+    private function tryLoadEnv(): void
+    {
+        try {
+            if (!class_exists(\Dotenv\Dotenv::class)) {
+                return;
+            }
+
+            $basePath = dirname(__DIR__, 2);
+            $envPath = $basePath . DIRECTORY_SEPARATOR . '.env';
+            if (!is_readable($envPath)) {
+                return;
+            }
+
+            \Dotenv\Dotenv::createImmutable($basePath)->safeLoad();
+        } catch (\Throwable $e) {
+            \Log::warning('TwilioService: falha ao recarregar .env', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
     
     /**
@@ -79,6 +114,17 @@ class TwilioService
      */
     public function sendMessage($to, $body)
     {
+        if (empty($this->accountSid) || empty($this->authToken)) {
+            \Log::error('Twilio Send Message - Credenciais não configuradas');
+            return [
+                'success' => false,
+                'http_code' => null,
+                'message_sid' => null,
+                'status' => null,
+                'error' => 'TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN não configurado',
+                'response' => null
+            ];
+        }
         \App\Models\SystemLog::info(
             \App\Models\SystemLog::CATEGORY_TWILIO,
             'send_message_start',
@@ -382,6 +428,17 @@ class TwilioService
      */
     public function sendSMS(string $to, string $body, ?string $from = null): array
     {
+        if (empty($this->accountSid) || empty($this->authToken)) {
+            \Log::error('Twilio Send SMS - Credenciais não configuradas');
+            return [
+                'success' => false,
+                'http_code' => null,
+                'message_sid' => null,
+                'status' => null,
+                'error' => 'TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN não configurado',
+                'response' => null
+            ];
+        }
         \App\Models\SystemLog::info(
             \App\Models\SystemLog::CATEGORY_TWILIO,
             'send_sms_start',
