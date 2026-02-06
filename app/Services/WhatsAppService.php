@@ -1945,11 +1945,13 @@ class WhatsAppService
 
         if (Str::startsWith($raw, '+')) {
             $digits = preg_replace('/\D+/', '', $raw);
+            $digits = $this->applyBrazilianMobileNormalization($digits);
             return $digits ? '+' . $digits : null;
         }
 
         if (Str::startsWith($raw, '00')) {
             $digits = preg_replace('/\D+/', '', substr($raw, 2));
+            $digits = $this->applyBrazilianMobileNormalization($digits);
             return $digits ? '+' . $digits : null;
         }
 
@@ -1959,11 +1961,35 @@ class WhatsAppService
         }
 
         // Se não veio com DDI e parece número BR (10 ou 11 dígitos), prefixar 55
-        if (strlen($digits) === 10 || strlen($digits) === 11) {
+        if (!str_starts_with($digits, '55') && (strlen($digits) === 10 || strlen($digits) === 11)) {
             $digits = '55' . $digits;
         }
 
+        $digits = $this->applyBrazilianMobileNormalization($digits);
         return '+' . $digits;
+    }
+
+    /**
+     * Normaliza números brasileiros adicionando 9º dígito quando necessário
+     */
+    private function applyBrazilianMobileNormalization(?string $digits): ?string
+    {
+        if (!$digits) {
+            return null;
+        }
+
+        // Corrigir padrão BR legado: 55 + DDD(2) + número(8) => inserir 9 quando parece celular
+        if (str_starts_with($digits, '55') && strlen($digits) === 12) {
+            $ddd = substr($digits, 2, 2);
+            $local = substr($digits, 4); // 8 dígitos
+            $first = substr($local, 0, 1);
+
+            if (ctype_digit($first) && (int) $first >= 6) {
+                return '55' . $ddd . '9' . $local;
+            }
+        }
+
+        return $digits;
     }
 
     private function buildPhoneVariants(?string $value): array
