@@ -1853,11 +1853,9 @@ class WhatsAppService
             'tenant_id' => $tenantId,
         ];
 
-        if ($channel === 'sms') {
-            $leadData['telefone'] = $telefoneNormalizado;
-        } else {
-            $leadData['whatsapp'] = $telefoneNormalizado;
-        }
+        // Sempre preencher ambos os campos para evitar erro de SQL
+        $leadData['telefone'] = $telefoneNormalizado;
+        $leadData['whatsapp'] = $telefoneNormalizado;
 
         $variantes = $this->buildPhoneVariants($telefoneNormalizado);
         $query = Lead::query();
