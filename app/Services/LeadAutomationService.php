@@ -113,20 +113,41 @@ class LeadAutomationService
             $mensagemRegistrada = null;
             $messageSid = null;
 
-            // 4. Primeiro contato SEMPRE por SMS com link wa.me do tenant
-            $resultadoEnvio = null;
-            $mensagemIA = $this->gerarMensagemInicial($lead);
-            $smsPayload = $this->montarMensagemPrimeiroContatoSms($lead, $mensagemIA);
-            $mensagemSMS = $smsPayload['mensagem'];
-            $shortLink = $smsPayload['short_link'] ?? null;
-            $resultadoEnvio = $this->enviarMensagemSMS($lead, $mensagemSMS, $telefone);
+            // 4. Verificar se deve enviar SMS ou WhatsApp
+            // Se a conversa JÁ EXISTE e tem mensagens, significa que o cliente iniciou contato via WhatsApp
+            // Nesse caso, NÃO enviar SMS, apenas continuar no WhatsApp
+            $deveEnviarSMS = !$conversaExistente || $conversaExistente->mensagens()->count() === 0;
+            
+            if ($deveEnviarSMS) {
+                // Primeiro contato por SMS com link wa.me do tenant
+                $resultadoEnvio = null;
+                $mensagemIA = $this->gerarMensagemInicial($lead);
+                $smsPayload = $this->montarMensagemPrimeiroContatoSms($lead, $mensagemIA);
+                $mensagemSMS = $smsPayload['mensagem'];
+                $shortLink = $smsPayload['short_link'] ?? null;
+                $resultadoEnvio = $this->enviarMensagemSMS($lead, $mensagemSMS, $telefone);
 
-            if ($resultadoEnvio['success']) {
-                $mensagemRegistrada = $mensagemSMS;
-                $messageSid = $resultadoEnvio['message_sid'];
-                if (!empty($shortLink)) {
-                    $this->smsShortLinkService->updateSmsSid($shortLink, $messageSid);
+                if ($resultadoEnvio['success']) {
+                    $mensagemRegistrada = $mensagemSMS;
+                    $messageSid = $resultadoEnvio['message_sid'];
+                    if (!empty($shortLink)) {
+                        $this->smsShortLinkService->updateSmsSid($shortLink, $messageSid);
+                    }
                 }
+            } else {
+                // Cliente iniciou contato via WhatsApp - não enviar SMS
+                Log::info('[LeadAutomation] Cliente já iniciou contato via WhatsApp - pulando envio de SMS', [
+                    'lead_id' => $lead->id,
+                    'conversa_id' => $conversa->id
+                ]);
+                
+                return [
+                    'success' => true,
+                    'message' => 'Atendimento já iniciado pelo cliente via WhatsApp',
+                    'lead_id' => $lead->id,
+                    'conversa_id' => $conversa->id,
+                    'via' => 'whatsapp'
+                ];
             }
 
             if (!$resultadoEnvio || !$resultadoEnvio['success']) {
