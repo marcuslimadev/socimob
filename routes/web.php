@@ -53,8 +53,16 @@ $router->post('/github/webhook', 'GitHubWebhookController@handle');
 $router->get('/webhook/chaves-na-mao', 'ChavesNaMaoWebhookController@methodNotAllowed');
 $router->post('/webhook/chaves-na-mao', 'ChavesNaMaoWebhookController@receive');
 
+// Short link para WhatsApp (resolve tenant pelo domínio)
+$router->group(['middleware' => 'resolve-tenant'], function () use ($router) {
+    $router->get('/w/{code}', 'ShortLinkController@redirectWhatsApp');
+});
+
 // Auth API routes
 $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function () use ($router) {
+    // Short link para WhatsApp (resolve tenant pelo domínio)
+    $router->get('/w/{code}', 'ShortLinkController@redirectWhatsApp');
+
     // ⚡ Rate limiting: 5 tentativas por minuto em login
     $router->post('/auth/login', ['middleware' => 'throttle:5,1', 'uses' => 'AuthController@login']);
     $router->post('/auth/google', ['middleware' => 'throttle:5,1', 'uses' => 'AuthController@googleLogin']);

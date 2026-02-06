@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 
 class SmsShortLinkService
 {
@@ -39,7 +40,18 @@ class SmsShortLinkService
 
     public function buildWhatsAppLink(SmsShortLink $link): string
     {
-        return 'https://wa.me/' . $link->whatsapp_number . '/' . $link->code;
+        $tenant = Tenant::find($link->tenant_id);
+        $base = $tenant?->domain ?: config('app.url');
+
+        if (!$base) {
+            $base = 'https://localhost';
+        }
+
+        if (!preg_match('#^https?://#i', $base)) {
+            $base = 'https://' . $base;
+        }
+
+        return rtrim($base, '/') . '/api/w/' . $link->code;
     }
 
     public function resolveCode(int $tenantId, string $code): ?SmsShortLink
@@ -53,7 +65,7 @@ class SmsShortLinkService
     public function markUsed(SmsShortLink $link, ?string $messageSid = null, ?int $mensagemId = null): void
     {
         $link->update([
-            'used_at' => now(),
+            'used_at' => Carbon::now(),
             'used_message_sid' => $messageSid,
             'used_mensagem_id' => $mensagemId,
         ]);
@@ -112,6 +124,37 @@ class SmsShortLinkService
         }
 
         $digits = preg_replace('/\D+/', '', str_replace('whatsapp:', '', (string) $raw));
+        $digits = $this->normalizeWhatsappDigits($digits);
         return $digits ?: null;
+    }
+
+    private function normalizeWhatsappDigits(?string $digits): ?string
+    {
+        if (!$digits) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', (string) $digits);
+        if ($digits === '') {
+            return null;
+        }
+
+        // Se não veio com DDI e parece número BR (10 ou 11 dígitos), prefixar 55
+        if (!str_starts_with($digits, '55') && (strlen($digits) === 10 || strlen($digits) === 11)) {
+            $digits = '55' . $digits;
+        }
+
+        // Corrigir padrão BR legado: 55 + DDD(2) + número(8) => inserir 9 quando parece celular
+        if (str_starts_with($digits, '55') && strlen($digits) === 12) {
+            $ddd = substr($digits, 2, 2);
+            $local = substr($digits, 4); // 8 dígitos
+            $first = substr($local, 0, 1);
+
+            if (ctype_digit($first) && (int) $first >= 6) {
+                $digits = '55' . $ddd . '9' . $local;
+            }
+        }
+
+        return $digits;
     }
 }

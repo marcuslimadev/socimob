@@ -770,7 +770,14 @@ Gere a mensagem de primeiro contato:";
         try {
             $lead->loadMissing('tenant');
             $smsFrom = $this->resolveTenantSmsFrom($lead);
-            $resultado = $this->twilioService->sendSMS($telefone, $mensagem, $smsFrom);
+            $twilioCreds = $this->resolveTenantTwilioCredentials($lead);
+            $resultado = $this->twilioService->sendSMS(
+                $telefone,
+                $mensagem,
+                $smsFrom,
+                $twilioCreds['account_sid'] ?? null,
+                $twilioCreds['auth_token'] ?? null
+            );
 
             if (empty($resultado['success'])) {
                 Log::error('[LeadAutomation] Falha no envio do SMS (Twilio)', [
@@ -859,6 +866,7 @@ Gere a mensagem de primeiro contato:";
             }
 
             $digits = preg_replace('/\D+/', '', str_replace('whatsapp:', '', $raw));
+            $digits = $this->normalizeWhatsappDigits($digits);
             if ($digits === '') {
                 return null;
             }
@@ -899,6 +907,80 @@ Gere a mensagem de primeiro contato:";
                 'error' => $e->getMessage()
             ]);
             return null;
+        }
+    }
+
+    private function normalizeWhatsappDigits(?string $digits): ?string
+    {
+        if (!$digits) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', (string) $digits);
+        if ($digits === '') {
+            return null;
+        }
+
+        if (!str_starts_with($digits, '55') && (strlen($digits) === 10 || strlen($digits) === 11)) {
+            $digits = '55' . $digits;
+        }
+
+        if (str_starts_with($digits, '55') && strlen($digits) === 12) {
+            $ddd = substr($digits, 2, 2);
+            $local = substr($digits, 4);
+            $first = substr($local, 0, 1);
+
+            if (ctype_digit($first) && (int) $first >= 6) {
+                $digits = '55' . $ddd . '9' . $local;
+            }
+        }
+
+        return $digits;
+    }
+
+    /**
+     * Resolver credenciais Twilio do tenant (prioriza tenant_configs)
+     */
+    private function resolveTenantTwilioCredentials(Lead $lead): array
+    {
+        try {
+            $tenant = $lead->tenant ?? null;
+            if (!$tenant) {
+                return ['account_sid' => null, 'auth_token' => null];
+            }
+
+            $tenant->loadMissing('config');
+            $config = $tenant->config;
+
+            $accountSid = $config?->twilio_account_sid ?: null;
+            $authToken = $config?->twilio_auth_token ?: null;
+
+            if (!$accountSid) {
+                $accountSid = $tenant->getIntegrationValue('twilio_account_sid');
+            }
+            if (!$authToken) {
+                $authToken = $tenant->getIntegrationValue('twilio_auth_token');
+            }
+
+            if (!$accountSid || !$authToken) {
+                Log::warning('[LeadAutomation] Credenciais Twilio ausentes no tenant_configs', [
+                    'tenant_id' => $lead->tenant_id,
+                    'has_account_sid' => !empty($accountSid),
+                    'has_auth_token' => !empty($authToken),
+                ]);
+            }
+
+            return [
+                'account_sid' => $accountSid ?: null,
+                'auth_token' => $authToken ?: null,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('[LeadAutomation] Erro ao resolver credenciais Twilio do tenant', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ['account_sid' => null, 'auth_token' => null];
         }
     }
 
