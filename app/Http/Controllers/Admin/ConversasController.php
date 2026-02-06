@@ -130,6 +130,10 @@ class ConversasController extends BaseController
             
             // Adicionar informações extras
             foreach ($conversas as &$conversa) {
+                $conversa->lead_nome = $this->sanitizeUtf8($conversa->lead_nome ?? null);
+                $conversa->lead_email = $this->sanitizeUtf8($conversa->lead_email ?? null);
+                $conversa->corretor_nome = $this->sanitizeUtf8($conversa->corretor_nome ?? null);
+
                 // Última mensagem
                 $ultimaMensagem = DB::table('mensagens')
                     ->where('conversa_id', $conversa->id)
@@ -137,7 +141,7 @@ class ConversasController extends BaseController
                     ->first();
                 
                 $conversa->ultima_mensagem = $ultimaMensagem 
-                    ? substr($ultimaMensagem->content, 0, 100) 
+                    ? $this->sanitizeUtf8(substr((string) $ultimaMensagem->content, 0, 100)) 
                     : null;
                 
                 // Contar não lidas (incoming que não têm read_at)
@@ -168,6 +172,21 @@ class ConversasController extends BaseController
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    private function sanitizeUtf8($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $text = (string) $value;
+        if ($text === '') {
+            return $text;
+        }
+
+        $clean = @iconv('UTF-8', 'UTF-8//IGNORE', $text);
+        return $clean === false ? preg_replace('/[\x00-\x1F\x7F]/u', '', $text) : $clean;
     }
     
     /**
