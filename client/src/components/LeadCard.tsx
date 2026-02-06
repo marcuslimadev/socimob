@@ -192,10 +192,11 @@ const LeadCard = ({
               e.stopPropagation();
               onChat?.();
             }}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold text-white transition-all glow-sm hover:glow-md"
+            title="Chat"
+            aria-label="Chat"
+            className="flex-1 flex items-center justify-center px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold text-white transition-all glow-sm hover:glow-md"
           >
             <MessageSquare size={14} />
-            Chat
           </motion.button>
 
           <motion.button
@@ -205,10 +206,11 @@ const LeadCard = ({
               e.stopPropagation();
               onAI?.();
             }}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold text-white transition-all"
+            title="IA"
+            aria-label="IA"
+            className="flex-1 flex items-center justify-center px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold text-white transition-all"
           >
             <Zap size={14} />
-            IA
           </motion.button>
 
           <motion.button
@@ -221,14 +223,15 @@ const LeadCard = ({
               }
             }}
             disabled={smsDisabled}
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white transition-all ${
+            title={smsDisabled ? 'SMS enviado' : 'SMS'}
+            aria-label={smsDisabled ? 'SMS enviado' : 'SMS'}
+            className={`flex-1 flex items-center justify-center px-3 py-2 rounded-lg text-sm font-semibold text-white transition-all ${
               smsDisabled
                 ? 'bg-white/5 text-white/50 cursor-not-allowed'
                 : 'bg-white/10 hover:bg-white/20'
             }`}
           >
             <Mail size={14} />
-            {smsDisabled ? 'SMS enviado' : 'SMS'}
           </motion.button>
 
           <motion.button
@@ -238,10 +241,11 @@ const LeadCard = ({
               e.stopPropagation();
               onWhatsAppWeb?.();
             }}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-500/90 hover:bg-green-500 rounded-lg text-sm font-semibold text-white transition-all"
+            title="WhatsApp Web"
+            aria-label="WhatsApp Web"
+            className="flex-1 flex items-center justify-center px-3 py-2 bg-green-500/90 hover:bg-green-500 rounded-lg text-sm font-semibold text-white transition-all"
           >
             <MessageCircle size={14} />
-            WhatsApp Web
           </motion.button>
         </div>
       </div>
