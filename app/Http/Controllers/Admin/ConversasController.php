@@ -123,10 +123,11 @@ class ConversasController extends BaseController
                     ->values();
             } else {
                 // Admin vê suas conversas + conversas livres (sem corretor_id)
+                $userId = $user->id;
                 $conversas = $query
-                    ->where(function ($q) use ($user) {
+                    ->where(function ($q) use ($userId) {
                         $q->whereNull('conversas.corretor_id')
-                          ->orWhere('conversas.corretor_id', $user->id);
+                          ->orWhere('conversas.corretor_id', $userId);
                     })
                     ->orderBy('conversas.ultima_atividade', 'desc')
                     ->orderBy('conversas.created_at', 'asc')
