@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class AnalyticsController extends Controller
 {
@@ -42,7 +43,8 @@ class AnalyticsController extends Controller
         $region = $request->header('X-Region') ?? $data['region'] ?? null;
         $city = $request->header('X-City') ?? $data['city'] ?? null;
 
-        $now = now();
+        $now = Carbon::now();
+        $consentAt = !empty($data['consent_at']) ? Carbon::parse($data['consent_at']) : $now;
 
         DB::table('analytics_sessions')->updateOrInsert(
             [
@@ -60,7 +62,7 @@ class AnalyticsController extends Controller
                 'city' => $city,
                 'referrer' => $referrer,
                 'landing_path' => $path,
-                'consent_at' => $data['consent_at'] ?? $now,
+                'consent_at' => $consentAt,
                 'last_seen_at' => $now,
                 'first_seen_at' => DB::raw('COALESCE(first_seen_at, NOW())'),
                 'updated_at' => $now,

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Laravel\Lumen\Routing\Controller as BaseController;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 class ConversasController extends BaseController
 {
@@ -157,6 +158,10 @@ class ConversasController extends BaseController
             ]);
             
         } catch (\Exception $e) {
+            Log::error('[ConversasController] Erro ao carregar conversas', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Erro ao carregar conversas',
