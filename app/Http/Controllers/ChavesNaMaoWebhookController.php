@@ -291,8 +291,7 @@ class ChavesNaMaoWebhookController extends Controller
             $whatsappNumber = null;
 
             if ($tenant) {
-                $whatsappNumber = $tenant->getIntegrationValue('twilio_whatsapp_from')
-                    ?? $tenant->getIntegrationValue('contact_phone');
+                $whatsappNumber = $tenant->getIntegrationValue('twilio_whatsapp_from');
             }
 
             if (empty($whatsappNumber)) {
@@ -303,6 +302,10 @@ class ChavesNaMaoWebhookController extends Controller
                 if ($tenantConfig && !empty($tenantConfig->whatsapp_number)) {
                     $whatsappNumber = $tenantConfig->whatsapp_number;
                 }
+            }
+
+            if (empty($whatsappNumber) && $tenant) {
+                $whatsappNumber = $tenant->getIntegrationValue('contact_phone');
             }
 
             if (empty($whatsappNumber)) {

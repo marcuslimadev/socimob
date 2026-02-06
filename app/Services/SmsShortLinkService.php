@@ -88,8 +88,7 @@ class SmsShortLinkService
 
     private function getTenantWhatsappDigits(Tenant $tenant): ?string
     {
-        $raw = $tenant->getIntegrationValue('twilio_whatsapp_from')
-            ?? $tenant->getIntegrationValue('contact_phone');
+        $raw = $tenant->getIntegrationValue('twilio_whatsapp_from');
 
         if (!$raw) {
             $config = DB::table('tenant_configs')
@@ -98,6 +97,10 @@ class SmsShortLinkService
             if ($config && !empty($config->whatsapp_number)) {
                 $raw = $config->whatsapp_number;
             }
+        }
+
+        if (!$raw) {
+            $raw = $tenant->getIntegrationValue('contact_phone');
         }
 
         if (!$raw) {

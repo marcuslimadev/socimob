@@ -830,11 +830,23 @@ Gere a mensagem de primeiro contato:";
     {
         try {
             $tenant = $lead->tenant ?? null;
+            $raw = null;
+
             if ($tenant) {
-                $raw = $tenant->getIntegrationValue('twilio_whatsapp_from')
-                    ?? $tenant->getIntegrationValue('contact_phone');
-            } else {
-                $raw = null;
+                $raw = $tenant->getIntegrationValue('twilio_whatsapp_from');
+
+                if (!$raw) {
+                    $config = \Illuminate\Support\Facades\DB::table('tenant_configs')
+                        ->where('tenant_id', $lead->tenant_id)
+                        ->first();
+                    if ($config && !empty($config->whatsapp_number)) {
+                        $raw = $config->whatsapp_number;
+                    }
+                }
+
+                if (!$raw) {
+                    $raw = $tenant->getIntegrationValue('contact_phone');
+                }
             }
 
             if (!$raw) {
