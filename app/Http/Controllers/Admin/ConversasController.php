@@ -133,14 +133,6 @@ class ConversasController extends BaseController
                     ->get();
             }
             
-            // Verificar se existe coluna message_type uma vez (não dentro do loop)
-            $hasMsgType = false;
-            try {
-                $hasMsgType = Schema::hasColumn('mensagens', 'message_type');
-            } catch (\Exception $e) {
-                Log::warning('Erro ao verificar coluna message_type', ['error' => $e->getMessage()]);
-            }
-            
             // Adicionar informações extras
             foreach ($conversas as &$conversa) {
                 $conversa->lead_nome = $this->sanitizeUtf8($conversa->lead_nome ?? null);
@@ -168,47 +160,8 @@ class ConversasController extends BaseController
                 $conversa->em_fila = is_null($conversa->corretor_id);
                 $conversa->atribuida_a_mim = $conversa->corretor_id == $user->id;
                 
-                // Verificar se precisa de intervenção humana (SMS enviado há 2h+ sem resposta)
+                // TODO: Implementar needs_human_intervention quando resolver o erro 500
                 $conversa->needs_human_intervention = false;
-                
-                try {
-                    $ultimoSmsQuery = DB::table('mensagens')
-                        ->where('conversa_id', $conversa->id)
-                        ->where('direction', 'outgoing')
-                        ->whereNotNull('sent_at');
-                    
-                    // Se tiver message_type, filtrar por SMS
-                    if ($hasMsgType) {
-                        $ultimoSmsQuery->where('message_type', 'sms');
-                    }
-                    
-                    $ultimoSmsEnviado = $ultimoSmsQuery
-                        ->orderBy('sent_at', 'desc')
-                        ->first();
-                        
-                    if ($ultimoSmsEnviado) {
-                        $ultimaMensagemCliente = DB::table('mensagens')
-                            ->where('conversa_id', $conversa->id)
-                            ->where('direction', 'incoming')
-                            ->where('created_at', '>', $ultimoSmsEnviado->sent_at)
-                            ->orderBy('created_at', 'desc')
-                            ->first();
-                        
-                        // Se não houve resposta e já passaram 2 horas
-                        if (!$ultimaMensagemCliente) {
-                            $horasDesdeEnvio = Carbon::parse($ultimoSmsEnviado->sent_at)->diffInHours(now());
-                            if ($horasDesdeEnvio >= 2) {
-                                $conversa->needs_human_intervention = true;
-                            }
-                        }
-                    }
-                } catch (\Exception $e) {
-                    // Se der erro, apenas ignora e deixa needs_human_intervention = false
-                    Log::warning('Erro ao verificar needs_human_intervention', [
-                        'conversa_id' => $conversa->id,
-                        'error' => $e->getMessage()
-                    ]);
-                }
             }
             
             return response()->json([
