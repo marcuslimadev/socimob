@@ -1476,18 +1476,34 @@ class WhatsAppService
 
     private function handleIncomingDocument($conversa, $mensagem, $messageType, $mediaUrl, $mediaType, $messageBody): void
     {
-        if ($messageType !== 'document' || !$mediaUrl || !$conversa->lead_id) {
+        // Capturar documentos (PDFs) e imagens (JPG, PNG)
+        if (!$mediaUrl || !$conversa->lead_id) {
             return;
         }
 
-        $isPdf = ($mediaType && stripos($mediaType, 'pdf') !== false);
-
-        if (!$isPdf) {
-            $path = parse_url($mediaUrl, PHP_URL_PATH) ?: '';
-            $isPdf = Str::endsWith(strtolower($path), '.pdf');
+        $isDocument = ($messageType === 'document');
+        $isImage = ($messageType === 'image');
+        
+        // Validar se é PDF ou imagem
+        $isPdf = false;
+        $isValidImage = false;
+        
+        if ($mediaType) {
+            $isPdf = stripos($mediaType, 'pdf') !== false;
+            $isValidImage = (stripos($mediaType, 'image/jpeg') !== false || 
+                           stripos($mediaType, 'image/jpg') !== false || 
+                           stripos($mediaType, 'image/png') !== false);
         }
 
-        if (!$isPdf) {
+        if (!$isPdf && !$isValidImage) {
+            $path = parse_url($mediaUrl, PHP_URL_PATH) ?: '';
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            $isPdf = ($ext === 'pdf');
+            $isValidImage = in_array($ext, ['jpg', 'jpeg', 'png']);
+        }
+
+        // Se não for nem PDF nem imagem válida, ignorar
+        if (!$isPdf && !$isValidImage) {
             return;
         }
 
@@ -1496,23 +1512,33 @@ class WhatsAppService
             return;
         }
 
-        $nomeArquivo = basename(parse_url($mediaUrl, PHP_URL_PATH) ?? 'documento.pdf');
+        $path = parse_url($mediaUrl, PHP_URL_PATH) ?? '';
+        $nomeArquivo = basename($path);
+        
+        if (!$nomeArquivo) {
+            $ext = $isPdf ? 'pdf' : ($isValidImage ? 'jpg' : 'file');
+            $nomeArquivo = 'documento_' . date('YmdHis') . '.' . $ext;
+        }
 
         LeadDocument::create([
+            'tenant_id' => $conversa->tenant_id,
             'lead_id' => $lead->id,
             'conversa_id' => $conversa->id,
             'mensagem_id' => $mensagem->id,
             'nome' => $nomeArquivo,
             'tipo' => $this->guessDocumentType($messageBody),
-            'mime_type' => $mediaType,
+            'mime_type' => $mediaType ?? 'application/octet-stream',
             'arquivo_url' => $mediaUrl,
             'status' => 'pendente',
         ]);
 
+        $emoji = $isPdf ? '📄' : '🖼️';
+        $tipoTexto = $isPdf ? 'documento' : 'imagem';
+        
         $this->sendMessage(
             $conversa->id,
             $conversa->telefone,
-            '📄 Recebi seu documento e já repassei para um corretor humano revisar, ok? Assim que ele validar te aviso aqui!'
+            "{$emoji} Recebi seu {$tipoTexto} e já salvei no seu perfil! Um corretor pode revisar em breve. 😊"
         );
     }
 

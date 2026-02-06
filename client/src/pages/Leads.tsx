@@ -197,6 +197,21 @@ export default function Leads() {
     }
   };
 
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
+    try {
+      await api.put(`/leads/${leadId}`, { status: newStatus });
+      toast.success('Status atualizado com sucesso');
+      setLeads(prevLeads => 
+        prevLeads.map(lead => 
+          lead.id === leadId ? { ...lead, status: newStatus as any } : lead
+        )
+      );
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      toast.error('Erro ao atualizar status');
+    }
+  };
+
   const resetNewLeadForm = () => {
     setNewLead({
       nome: '',
@@ -455,6 +470,7 @@ export default function Leads() {
                       smsDisabled={lead.sms_enviado || Boolean(smsSentLeads[lead.id]) || smsSendingLeadId === lead.id}
                       onWhatsAppWeb={() => handleWhatsAppWeb(lead.phone, lead.name)}
                       onDelete={() => handleDeleteClick(lead.id, lead.name)}
+                      onStatusChange={(newStatus) => handleStatusChange(lead.id, newStatus)}
                     />
                   </motion.div>
                 ))

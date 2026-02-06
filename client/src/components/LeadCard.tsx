@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
-import { Phone, MessageSquare, Mail, Zap, Trash2, MessageCircle } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Phone, MessageSquare, Mail, Zap, Trash2, MessageCircle, ChevronDown } from 'lucide-react';
 
 interface LeadCardProps {
   id?: number;
@@ -18,6 +18,7 @@ interface LeadCardProps {
   onWhatsAppWeb?: () => void;
   onDelete?: () => void;
   onClick?: () => void;
+  onStatusChange?: (newStatus: string) => void;
 }
 
 const statusConfig = {
@@ -94,9 +95,39 @@ const LeadCard = ({
   onWhatsAppWeb,
   onDelete,
   onClick,
+  onStatusChange,
 }: LeadCardProps) => {
   const config = statusConfig[status];
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowStatusDropdown(false);
+      }
+    };
+
+    if (showStatusDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showStatusDropdown]);
+
+  const handleStatusChange = (newStatus: string) => {
+    setShowStatusDropdown(false);
+    onStatusChange?.(newStatus);
+  };
+
+  const statusOptions = [
+    { value: 'novo', label: 'Novo' },
+    { value: 'em_atendimento', label: 'Em Atendimento' },
+    { value: 'qualificado', label: 'Qualificado' },
+    { value: 'proposta', label: 'Proposta' },
+    { value: 'fechado', label: 'Fechado' },
+    { value: 'perdido', label: 'Perdido' },
+  ];
 
   return (
     <motion.div
@@ -113,8 +144,39 @@ const LeadCard = ({
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
             <h3 className="font-bold text-lg text-foreground mb-1">{name}</h3>
-            <div className={`inline-block px-2 py-1 rounded-lg text-xs font-semibold ${config.color} bg-white/5`}>
-              {config.label}
+            <div className="relative inline-block" ref={dropdownRef}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowStatusDropdown(!showStatusDropdown);
+                }}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold ${config.color} bg-white/5 hover:bg-white/10 transition-colors`}
+              >
+                {config.label}
+                <ChevronDown size={12} />
+              </button>
+              {showStatusDropdown && onStatusChange && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute z-50 left-0 mt-1 w-48 bg-gray-900 dark:bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden"
+                >
+                  {statusOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStatusChange(option.value);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-800 dark:hover:bg-gray-700 transition-colors ${
+                        option.value === status ? 'bg-gray-800/50 dark:bg-gray-700/50 font-semibold' : ''
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
             </div>
           </div>
 
