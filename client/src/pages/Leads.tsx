@@ -441,12 +441,14 @@ export default function Leads() {
                     transition={{ delay: 0.3 + index * 0.05 }}
                   >
                     <LeadCard
+                      id={parseInt(lead.id)}
                       name={lead.name}
                       phone={lead.phone}
                       email={lead.email}
                       status={lead.status}
                       value={lead.value}
                       lastContact={lead.lastContact}
+                      onClick={() => setLocation(`/leads/${lead.id}`)}
                       onChat={() => handleOpenChat(lead.id, lead.name)}
                       onAI={() => handleCallAI(lead.id, lead.name)}
                       onSMS={() => handleSendSMS(lead.id, lead.name)}

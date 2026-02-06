@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Phone, MessageSquare, Mail, Zap, Trash2, MessageCircle } from 'lucide-react';
 
 interface LeadCardProps {
+  id?: number;
   name: string;
   phone: string;
   email?: string;
@@ -16,6 +17,7 @@ interface LeadCardProps {
   smsDisabled?: boolean;
   onWhatsAppWeb?: () => void;
   onDelete?: () => void;
+  onClick?: () => void;
 }
 
 const statusConfig = {
@@ -77,6 +79,7 @@ const statusConfig = {
 };
 
 const LeadCard = ({
+  id,
   name,
   phone,
   email,
@@ -90,6 +93,7 @@ const LeadCard = ({
   smsDisabled = false,
   onWhatsAppWeb,
   onDelete,
+  onClick,
 }: LeadCardProps) => {
   const config = statusConfig[status];
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -101,6 +105,7 @@ const LeadCard = ({
       transition={{ delay, type: 'spring', stiffness: 200 }}
       whileHover={{ y: -4 }}
       className={`glass-panel p-4 rounded-xl border ${config.border} group cursor-pointer relative overflow-hidden`}
+      onClick={onClick}
     >
       <div className={`absolute inset-0 bg-gradient-to-br ${config.bg} opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`} />
 

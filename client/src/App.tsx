@@ -24,6 +24,7 @@ import VistoriaSolicitacoes from "./pages/VistoriaSolicitacoes";
 import VistoriaSolicitacoesKanban from "./pages/VistoriaSolicitacoesKanban";
 import VistoriaSolicitacoesCalendario from "./pages/VistoriaSolicitacoesCalendario";
 import VistoriaContestacoes from "./pages/VistoriaContestacoes";
+import LeadProfile from "./pages/LeadProfile";
 
 import PropertyDetail from "./pages/PropertyDetail";
 import ImovelForm from "./pages/ImovelForm";
@@ -43,6 +44,7 @@ function Router() {
       <Route path={"/"} component={ClientPortal} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/leads" component={Leads} />
+      <Route path="/leads/:id" component={LeadProfile} />
       <Route path="/properties" component={Properties} />
       <Route path="/properties/novo" component={ImovelForm} />
       <Route path="/chat" component={Chat} />
