@@ -2,42 +2,6 @@
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-(function () {
-    if (!function_exists('now')) {
-        function now($tz = null)
-        {
-            return \Carbon\Carbon::now($tz);
-        }
-    }
-})();
-
-namespace App\Http\Controllers {
-    if (!function_exists(__NAMESPACE__ . '\\now')) {
-        function now($tz = null)
-        {
-            return \Carbon\Carbon::now($tz);
-        }
-    }
-}
-
-namespace App\Http\Controllers\Admin {
-    if (!function_exists(__NAMESPACE__ . '\\now')) {
-        function now($tz = null)
-        {
-            return \Carbon\Carbon::now($tz);
-        }
-    }
-}
-
-namespace App\Http\Controllers\SuperAdmin {
-    if (!function_exists(__NAMESPACE__ . '\\now')) {
-        function now($tz = null)
-        {
-            return \Carbon\Carbon::now($tz);
-        }
-    }
-}
-
 (new Laravel\Lumen\Bootstrap\LoadEnvironmentVariables(
     dirname(__DIR__)
 ))->bootstrap();
