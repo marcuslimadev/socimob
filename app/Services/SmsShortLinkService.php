@@ -58,7 +58,6 @@ class SmsShortLinkService
     {
         return SmsShortLink::where('tenant_id', $tenantId)
             ->where('code', $code)
-            ->whereNull('used_at')
             ->first();
     }
 
