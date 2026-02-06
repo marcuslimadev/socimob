@@ -53,6 +53,8 @@ class Lead extends Model
         'chaves_na_mao_response',
         'chaves_na_mao_error',
         'chaves_na_mao_retries',
+        'sms_enviado',
+        'sms_enviado_em',
     ];
 
     protected $casts = [
@@ -62,6 +64,8 @@ class Lead extends Model
         'ultima_interacao' => 'datetime',
         'diagnostico_gerado_em' => 'datetime',
         'chaves_na_mao_sent_at' => 'datetime',
+        'sms_enviado' => 'boolean',
+        'sms_enviado_em' => 'datetime',
     ];
 
     public function corretor()

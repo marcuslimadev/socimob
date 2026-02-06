@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class AnalyticsController extends Controller
 {
@@ -17,7 +18,7 @@ class AnalyticsController extends Controller
 
         $days = (int) ($request->input('days') ?? 30);
         $days = max(1, min($days, 365));
-        $since = \now()->subDays($days);
+        $since = Carbon::now()->subDays($days);
 
         $tenants = DB::table('tenants')
             ->select('id', 'name', 'domain')

@@ -13,6 +13,7 @@ use App\Models\Lead;
 use App\Models\LeadDocument;
 use App\Models\LeadPropertyMatch;
 use App\Models\Mensagem;
+use App\Models\SystemLog;
 use App\Services\OpenAIService;
 
 /**
@@ -385,6 +386,21 @@ class LeadsController extends Controller
             $stats = $this->deleteLeads([$lead->id]);
             DB::commit();
 
+            $user = request()->user();
+            SystemLog::info(
+                SystemLog::CATEGORY_LEAD,
+                'delete_lead',
+                'Lead excluído com sucesso',
+                [
+                    'lead_id' => $lead->id,
+                    'lead_nome' => $lead->nome ?? null,
+                    'lead_telefone' => $lead->telefone ?? null,
+                    'tenant_id' => $lead->tenant_id ?? null,
+                    'deleted_by_user_id' => $user?->id,
+                    'deleted_by_user_email' => $user?->email,
+                ]
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'Lead excluído com sucesso',
@@ -436,6 +452,19 @@ class LeadsController extends Controller
         try {
             $stats = $this->deleteLeads($leadIds);
             DB::commit();
+
+            $user = $request->user();
+            SystemLog::info(
+                SystemLog::CATEGORY_LEAD,
+                'bulk_delete_leads',
+                'Leads excluídos com sucesso',
+                [
+                    'lead_ids' => $leadIds,
+                    'tenant_id' => $tenantId,
+                    'deleted_by_user_id' => $user?->id,
+                    'deleted_by_user_email' => $user?->email,
+                ]
+            );
 
             return response()->json([
                 'success' => true,

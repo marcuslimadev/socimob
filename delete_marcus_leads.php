@@ -7,13 +7,26 @@ use App\Models\Conversa;
 
 $app->boot();
 
-// Buscar leads com o telefone do Marcus
-$phone = '31973127682';
-$leads = Lead::where('telefone', 'like', "%{$phone}%")
-    ->orWhere('whatsapp', 'like', "%{$phone}%")
-    ->get();
+// Buscar leads por telefone (argumento CLI) e opcionalmente por tenant
+$phone = $argv[1] ?? getenv('PHONE') ?? '31973127682';
+$tenantId = $argv[2] ?? getenv('TENANT_ID');
 
-echo "Encontrados: " . $leads->count() . " leads com o número {$phone}\n\n";
+$leadsQuery = Lead::query()
+    ->when($tenantId, function ($query) use ($tenantId) {
+        $query->where('tenant_id', $tenantId);
+    })
+    ->where(function ($query) use ($phone) {
+        $query->where('telefone', 'like', "%{$phone}%")
+            ->orWhere('whatsapp', 'like', "%{$phone}%");
+    });
+
+$leads = $leadsQuery->get();
+
+echo "Encontrados: " . $leads->count() . " leads com o número {$phone}";
+if (!empty($tenantId)) {
+    echo " (tenant_id={$tenantId})";
+}
+echo "\n\n";
 
 foreach ($leads as $lead) {
     echo "Deletando Lead ID: {$lead->id} - Nome: {$lead->nome} - Tel: {$lead->telefone}\n";

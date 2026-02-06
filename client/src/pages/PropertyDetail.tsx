@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useLocation, useRoute } from 'wouter';
-import { ArrowLeft, MapPin, Bed, Bath, Ruler, Share2, Heart, Phone, ImageIcon, Car, Eye, X, Send } from 'lucide-react';
+import { ArrowLeft, MapPin, Bed, Bath, Ruler, Share2, Heart, MessageCircle, ImageIcon, Car, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
+import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
 interface Property {
   id: number;
@@ -43,27 +44,20 @@ export default function PropertyDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [showContactModal, setShowContactModal] = useState(false);
-  const [contactForm, setContactForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    message: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tenant, setTenant] = useState<TenantBranding | null>(null);
   const [isLiked, setIsLiked] = useState(false);
 
   useEffect(() => {
     const fetchProperty = async () => {
       if (!params?.id) return;
-      
+
       try {
         setLoading(true);
         setError(null);
         const response = await api.get(`/portal/imoveis/${params.id}`);
         const propertyData = response.data.data || response.data;
         setProperty(propertyData);
-        
+
         // Set first image as selected
         const imagens = propertyData.fotos?.length
           ? propertyData.fotos
@@ -81,6 +75,7 @@ export default function PropertyDetail() {
     };
 
     fetchProperty();
+    fetchTenantBranding().then(data => setTenant(data));
   }, [params?.id]);
 
   const handleLike = async () => {
@@ -132,47 +127,22 @@ export default function PropertyDetail() {
     }
   };
 
-  const handleContactSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleWhatsApp = () => {
+    if (!property || !tenant?.contact_phone) return;
 
-    if (!property) return;
+    const phone = tenant.contact_phone.replace(/\D/g, '');
+    const priceValue = property.valor_venda || property.valor_aluguel || 0;
+    const location = [property.bairro, property.cidade].filter(Boolean).join(', ') || 'Não informado';
+    const message = encodeURIComponent(
+      `Olá! Tenho interesse no imóvel:\n\n` +
+      `Título: ${property.titulo}\n` +
+      `Localização: ${location}\n` +
+      `Valor: R$ ${priceValue.toLocaleString('pt-BR')}\n` +
+      `Link: ${window.location.href}\n\n` +
+      `Gostaria de mais informações.`
+    );
 
-    // Validações básicas
-    if (!contactForm.name || !contactForm.email || !contactForm.phone) {
-      toast.error('Por favor, preencha todos os campos obrigatórios');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-
-      const response = await api.post('/portal/interesse', {
-        property_id: property.id,
-        name: contactForm.name,
-        email: contactForm.email,
-        phone: contactForm.phone,
-        message: contactForm.message || `Tenho interesse no imóvel: ${property.titulo}`
-      });
-
-      if (response.data.success) {
-        toast.success(response.data.message || 'Interesse registrado com sucesso! Em breve entraremos em contato.');
-        setShowContactModal(false);
-        setContactForm({ name: '', email: '', phone: '', message: '' });
-
-        // Abrir WhatsApp após registro
-        const whatsappNumber = import.meta.env.VITE_WHATSAPP_NUMBER || '553173341150';
-        const whatsappMessage = encodeURIComponent(
-          `Olá! Tenho interesse no imóvel: ${property.titulo} (Código: ${property.codigo || property.id})`
-        );
-        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
-        window.open(whatsappUrl, '_blank');
-      }
-    } catch (err: any) {
-      console.error('Erro ao registrar interesse:', err);
-      toast.error(err.response?.data?.message || 'Erro ao registrar interesse. Tente novamente.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
   };
 
   if (loading) {
@@ -202,6 +172,56 @@ export default function PropertyDetail() {
     );
   }
 
+  /**
+   * Processa a descrição do imóvel: decodifica HTML entities,
+   * converte <br/> em quebras de linha e transforma linhas com * em tópicos.
+   */
+  const formatDescription = (raw: string): string => {
+    // Decodificar HTML entities usando um elemento temporário
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = raw;
+    let text = textarea.value;
+
+    // Normalizar quebras de linha: <br>, <br/>, <br /> -> \n
+    text = text.replace(/<br\s*\/?>/gi, '\n');
+
+    // Remover quaisquer outras tags HTML
+    text = text.replace(/<[^>]+>/g, '');
+
+    // Normalizar espaços não-quebrantes
+    text = text.replace(/\u00A0/g, ' ');
+
+    // Separar em linhas e limpar
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    const htmlParts: string[] = [];
+    let currentList: string[] = [];
+
+    const flushList = () => {
+      if (currentList.length > 0) {
+        htmlParts.push(
+          '<ul class="list-disc list-inside space-y-1 my-3">' +
+          currentList.map(item => `<li>${item}</li>`).join('') +
+          '</ul>'
+        );
+        currentList = [];
+      }
+    };
+
+    for (const line of lines) {
+      // Linhas que começam com * ou - são tópicos
+      if (/^\*\s+/.test(line) || /^-\s+/.test(line)) {
+        currentList.push(line.replace(/^[\*\-]\s+/, ''));
+      } else {
+        flushList();
+        htmlParts.push(`<p class="mb-2">${line}</p>`);
+      }
+    }
+    flushList();
+
+    return htmlParts.join('');
+  };
+
   const priceFromString = property.preco
     ? Number(property.preco.replace(/[^\d]/g, ''))
     : 0;
@@ -215,111 +235,6 @@ export default function PropertyDetail() {
   const locationParts = [property.bairro, property.cidade, property.estado].filter(Boolean);
 
   return (
-    <>
-      {/* Modal de Contato */}
-      <AnimatePresence>
-        {showContactModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowContactModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="glass-panel rounded-2xl p-6 max-w-md w-full"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Entre em Contato</h2>
-                <button
-                  onClick={() => setShowContactModal(false)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-all"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <form onSubmit={handleContactSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Nome *</label>
-                  <input
-                    type="text"
-                    required
-                    value={contactForm.name}
-                    onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                    placeholder="Seu nome completo"
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">E-mail *</label>
-                  <input
-                    type="email"
-                    required
-                    value={contactForm.email}
-                    onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                    placeholder="seu@email.com"
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Telefone *</label>
-                  <input
-                    type="tel"
-                    required
-                    value={contactForm.phone}
-                    onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
-                    placeholder="(31) 99999-9999"
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Mensagem</label>
-                  <textarea
-                    value={contactForm.message}
-                    onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                    placeholder="Descreva seu interesse..."
-                    rows={3}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowContactModal(false)}
-                    className="flex-1 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-lg font-semibold transition-all"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-white font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    ) : (
-                      <>
-                        <Send size={18} />
-                        Enviar
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="glass-panel border-b">
@@ -430,9 +345,16 @@ export default function PropertyDetail() {
               className="glass-panel rounded-2xl p-6"
             >
               <h2 className="text-xl font-bold mb-4">Descrição</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                {property.descricao || 'Sem descrição disponível.'}
-              </p>
+              {property.descricao ? (
+                <div
+                  className="text-muted-foreground leading-relaxed property-description"
+                  dangerouslySetInnerHTML={{ __html: formatDescription(property.descricao) }}
+                />
+              ) : (
+                <p className="text-muted-foreground leading-relaxed">
+                  Sem descrição disponível.
+                </p>
+              )}
             </motion.div>
           </div>
 
@@ -528,13 +450,15 @@ export default function PropertyDetail() {
 
               {/* Action Buttons */}
               <div className="space-y-3">
-                <button
-                  onClick={() => setShowContactModal(true)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-white font-semibold transition-all glow-sm hover:glow-md"
-                >
-                  <Phone size={18} />
-                  Entrar em Contato
-                </button>
+                {tenant?.contact_phone && (
+                  <button
+                    onClick={handleWhatsApp}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg text-white font-semibold transition-all glow-sm hover:glow-md"
+                  >
+                    <MessageCircle size={18} />
+                    Entrar em Contato
+                  </button>
+                )}
                 <div className="flex gap-2">
                   <button
                     onClick={handleLike}
@@ -565,6 +489,5 @@ export default function PropertyDetail() {
         </div>
       </div>
     </div>
-    </>
   );
 }

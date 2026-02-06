@@ -122,8 +122,13 @@ class ConversasController extends BaseController
                     ->unique('id')
                     ->values();
             } else {
-                // Admin vê tudo
-                $conversas = $query->orderBy('conversas.ultima_atividade', 'desc')
+                // Admin vê suas conversas + conversas livres (sem corretor_id)
+                $conversas = $query
+                    ->where(function ($q) use ($user) {
+                        $q->whereNull('conversas.corretor_id')
+                          ->orWhere('conversas.corretor_id', $user->id);
+                    })
+                    ->orderBy('conversas.ultima_atividade', 'desc')
                     ->orderBy('conversas.created_at', 'asc')
                     ->get();
             }
@@ -154,6 +159,33 @@ class ConversasController extends BaseController
                 // Indicar se está em fila ou atribuída
                 $conversa->em_fila = is_null($conversa->corretor_id);
                 $conversa->atribuida_a_mim = $conversa->corretor_id == $user->id;
+                
+                // Verificar se precisa de intervenção humana (SMS enviado há 2h+ sem resposta)
+                $conversa->needs_human_intervention = false;
+                $ultimoSmsEnviado = DB::table('mensagens')
+                    ->where('conversa_id', $conversa->id)
+                    ->where('direction', 'outgoing')
+                    ->where('message_type', 'sms')
+                    ->whereNotNull('sent_at')
+                    ->orderBy('sent_at', 'desc')
+                    ->first();
+                    
+                if ($ultimoSmsEnviado) {
+                    $ultimaMensagemCliente = DB::table('mensagens')
+                        ->where('conversa_id', $conversa->id)
+                        ->where('direction', 'incoming')
+                        ->where('created_at', '>', $ultimoSmsEnviado->sent_at)
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+                    
+                    // Se não houve resposta e já passaram 2 horas
+                    if (!$ultimaMensagemCliente) {
+                        $horasDesdeEnvio = \Carbon\Carbon::parse($ultimoSmsEnviado->sent_at)->diffInHours(now());
+                        if ($horasDesdeEnvio >= 2) {
+                            $conversa->needs_human_intervention = true;
+                        }
+                    }
+                }
             }
             
             return response()->json([

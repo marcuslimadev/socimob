@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { Phone, MessageSquare, Mail, MoreVertical, Zap, Trash2, MessageCircle } from 'lucide-react';
+import { Phone, MessageSquare, Mail, Zap, Trash2, MessageCircle } from 'lucide-react';
 
 interface LeadCardProps {
   name: string;
@@ -92,7 +92,7 @@ const LeadCard = ({
   onDelete,
 }: LeadCardProps) => {
   const config = statusConfig[status];
-  const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   return (
     <motion.div
@@ -113,42 +113,21 @@ const LeadCard = ({
             </div>
           </div>
 
-          <div className="relative">
+          {onDelete && (
             <motion.button
-              whileHover={{ scale: 1.1 }}
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={(e) => {
                 e.stopPropagation();
-                setShowMenu(!showMenu);
+                setShowDeleteConfirm(true);
               }}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+              title="Excluir"
+              aria-label="Excluir"
             >
-              <MoreVertical size={16} className="text-muted-foreground" />
+              <Trash2 size={14} />
             </motion.button>
-
-            {showMenu && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="absolute right-0 top-10 z-20 bg-black/90 backdrop-blur-lg border border-white/20 rounded-lg shadow-xl overflow-hidden"
-                style={{ minWidth: '150px' }}
-              >
-                {onDelete && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMenu(false);
-                      onDelete();
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors text-left"
-                  >
-                    <Trash2 size={14} />
-                    <span className="text-sm">Excluir</span>
-                  </button>
-                )}
-              </motion.div>
-            )}
-          </div>
+          )}
         </div>
 
         <div className="space-y-2 mb-4">
@@ -249,6 +228,51 @@ const LeadCard = ({
           </motion.button>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div
+          className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowDeleteConfirm(false);
+          }}
+        >
+          <div
+            className="w-full max-w-xs rounded-xl border border-white/10 bg-[#0B1018]/95 p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center gap-2 text-red-400">
+              <Trash2 size={16} />
+              <span className="text-sm font-semibold">Confirmar exclusão</span>
+            </div>
+            <div className="mb-4 text-sm text-muted-foreground">
+              <div className="font-semibold text-foreground">{name}</div>
+              <div>{phone}</div>
+              {email && <div className="truncate">{email}</div>}
+              <div className="mt-2 text-xs">
+                Status: <span className={config.color}>{config.label}</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="flex-1 rounded-lg bg-red-500/90 px-3 py-2 text-sm text-white hover:bg-red-500"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  onDelete?.();
+                }}
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

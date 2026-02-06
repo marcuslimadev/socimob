@@ -7,7 +7,6 @@ import { api } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import LeadCard from '@/components/LeadCard';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -44,11 +43,6 @@ export default function Leads() {
     observacoes: '',
   });
   const [_, setLocation] = useLocation();
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: string | null; name: string }>({
-    open: false,
-    id: null,
-    name: '',
-  });
 
   useEffect(() => {
     fetchLeads();
@@ -190,24 +184,16 @@ export default function Leads() {
     toast.success(`Abrindo WhatsApp Web para ${leadName}`);
   };
 
-  const handleDeleteClick = (leadId: string, leadName: string) => {
-    setDeleteDialog({ open: true, id: leadId, name: leadName });
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deleteDialog.id) return;
-
+  const handleDeleteClick = async (leadId: string, leadName: string) => {
     try {
-      const response = await api.delete(`/leads/${deleteDialog.id}`);
+      const response = await api.delete(`/leads/${leadId}`);
 
       if (response.data.success) {
-        toast.success(`Lead ${deleteDialog.name} excluído com sucesso`);
-        setLeads(prevLeads => prevLeads.filter(lead => lead.id !== deleteDialog.id));
+        toast.success(`Lead ${leadName} excluído com sucesso`);
+        setLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId));
       }
     } catch (error) {
       toast.error('Erro ao excluir lead');
-    } finally {
-      setDeleteDialog({ open: false, id: null, name: '' });
     }
   };
 
@@ -608,22 +594,6 @@ export default function Leads() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}>
-        <AlertDialogContent className="bg-[#0f0f0f] border border-white/10">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Lead</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o lead <strong>{deleteDialog.name}</strong>? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/20 hover:bg-white/10">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

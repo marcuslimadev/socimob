@@ -190,9 +190,15 @@ class WebhookController extends Controller
                 // Não adicionar whatsapp: aqui, o WhatsAppService vai fazer isso
             }
 
+            $to = $this->toNullableString($data['To'] ?? null);
+            $channel = 'whatsapp';
+            if (!Str::startsWith((string) $from, 'whatsapp:') && !Str::startsWith((string) $to, 'whatsapp:')) {
+                $channel = 'sms';
+            }
+
             return [
                 'from' => $from,
-                'to' => $this->toNullableString($data['To'] ?? null),
+                'to' => $to,
                 'message' => $this->toNullableString($data['Body'] ?? null),
                 'message_id' => $this->toNullableString($data['MessageSid'] ?? null),
                 'profile_name' => $this->toNullableString($data['ProfileName'] ?? null),
@@ -206,6 +212,7 @@ class WebhookController extends Controller
                     'longitude' => $this->toNullableString($data['Longitude'] ?? null),
                 ],
                 'source' => 'twilio',
+                'channel' => $channel,
                 'raw' => $data
             ];
         }

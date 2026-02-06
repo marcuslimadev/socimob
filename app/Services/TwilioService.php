@@ -419,16 +419,29 @@ class TwilioService
         ];
     }
 
+    private function resolveCredentials(?string $accountSidOverride, ?string $authTokenOverride): array
+    {
+        $accountSid = $accountSidOverride ?: $this->accountSid;
+        $authToken = $authTokenOverride ?: $this->authToken;
+
+        return [$accountSid, $authToken];
+    }
+
     /**
      * Enviar SMS via Twilio
      *
      * @param string $to Número de destino (formato: +5531987654321)
      * @param string $body Texto da mensagem (max 160 caracteres recomendado)
+     * @param string|null $from Remetente SMS (opcional)
+     * @param string|null $accountSidOverride Credencial Twilio por tenant (opcional)
+     * @param string|null $authTokenOverride Credencial Twilio por tenant (opcional)
      * @return array Resultado do envio
      */
-    public function sendSMS(string $to, string $body, ?string $from = null): array
+    public function sendSMS(string $to, string $body, ?string $from = null, ?string $accountSidOverride = null, ?string $authTokenOverride = null): array
     {
-        if (empty($this->accountSid) || empty($this->authToken)) {
+        [$accountSid, $authToken] = $this->resolveCredentials($accountSidOverride, $authTokenOverride);
+
+        if (empty($accountSid) || empty($authToken)) {
             \Log::error('Twilio Send SMS - Credenciais não configuradas');
             return [
                 'success' => false,
@@ -446,7 +459,7 @@ class TwilioService
             ['to' => $to, 'body_length' => strlen($body)]
         );
 
-        $url = "https://api.twilio.com/2010-04-01/Accounts/{$this->accountSid}/Messages.json";
+        $url = "https://api.twilio.com/2010-04-01/Accounts/{$accountSid}/Messages.json";
 
         // Normalizar número (remover prefixo whatsapp: se houver)
         $to = $this->normalizeTo((string) $to);
@@ -496,7 +509,7 @@ class TwilioService
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_setopt($ch, CURLOPT_USERPWD, "{$this->accountSid}:{$this->authToken}");
+        curl_setopt($ch, CURLOPT_USERPWD, "{$accountSid}:{$authToken}");
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
         $response = curl_exec($ch);

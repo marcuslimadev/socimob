@@ -45,6 +45,8 @@ interface SidebarItem {
 interface TenantConfig {
   name: string;
   logo?: string;
+  logo_url?: string;
+  favicon_url?: string;
   slogan?: string;
   primary_color?: string;
 }
@@ -89,22 +91,25 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
         // Carregar configuração do tenant da API
         const { default: axios } = await import('axios');
-        const response = await axios.get('/portal/config', {
+        const response = await axios.get('/api/portal/config', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
             'X-Tenant-Domain': window.location.hostname,
           },
         });
         if (response.data.success && response.data.data) {
-          const tenantData = response.data.data as TenantConfig & { favicon_url?: string };
-          setTenant(tenantData);
+          const tenantData = response.data.data as TenantConfig;
+          setTenant({
+            ...tenantData,
+            logo_url: tenantData.logo_url || tenantData.logo,
+          });
 
           if (typeof document !== 'undefined') {
             if (tenantData.name) {
               document.title = tenantData.name;
             }
 
-            const faviconUrl = tenantData.favicon_url || tenantData.logo;
+            const faviconUrl = tenantData.favicon_url || tenantData.logo_url || tenantData.logo;
             if (faviconUrl) {
               let faviconLink = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
               if (!faviconLink) {
@@ -248,9 +253,9 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             transition={{ type: 'spring', stiffness: 200 }}
             className="relative"
           >
-            {tenant?.logo ? (
+            {tenant?.logo_url || tenant?.logo ? (
               <img
-                src={tenant.logo}
+                src={tenant.logo_url || tenant.logo}
                 alt={tenant.name}
                 className="w-16 h-16 rounded-xl object-contain bg-white/5 p-2"
               />
@@ -472,9 +477,9 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
               {!onClose && tenant && (
                 <div className="flex flex-col gap-4 mb-6 pb-4 border-b border-white/10">
                   <div className="flex items-center gap-3">
-                    {tenant?.logo ? (
+                    {tenant?.logo_url || tenant?.logo ? (
                       <img
-                        src={tenant.logo}
+                        src={tenant.logo_url || tenant.logo}
                         alt={tenant.name}
                         className="w-12 h-12 rounded-lg object-contain bg-white/5 p-1"
                       />

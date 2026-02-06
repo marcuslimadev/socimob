@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class PruneAnalyticsCommand extends Command
 {
@@ -13,7 +14,7 @@ class PruneAnalyticsCommand extends Command
     public function handle()
     {
         $days = (int) env('ANALYTICS_RETENTION_DAYS', 180);
-        $threshold = now()->subDays($days);
+        $threshold = Carbon::now()->subDays($days);
 
         $events = DB::table('analytics_events')
             ->where('occurred_at', '<', $threshold)

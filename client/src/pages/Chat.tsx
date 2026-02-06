@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
@@ -31,6 +31,9 @@ interface Message {
   rawDate: Date;
   read: boolean;
   status?: 'sending' | 'sent' | 'delivered' | 'read';
+  messageType?: string;
+  mediaUrl?: string | null;
+  transcription?: string | null;
 }
 
 interface Contact {
@@ -43,6 +46,7 @@ interface Contact {
   online: boolean;
   leadId: number;
   phone: string;
+  needsHumanIntervention?: boolean;
 }
 
 export default function Chat() {
@@ -60,6 +64,12 @@ export default function Chat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
+  const pendingScrollRestoreRef = useRef<{
+    top: number;
+    height: number;
+    wasNearBottom: boolean;
+    prevCount: number;
+  } | null>(null);
   const chatPatternSvg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><g fill="none" stroke="#d9d2c8" stroke-width="1" opacity="0.22"><path d="M20 20h20v20H20z"/><circle cx="120" cy="40" r="10"/><path d="M80 120l15-15 15 15"/><circle cx="40" cy="120" r="6"/><path d="M120 120h20v20h-20z"/></g></svg>';
   const chatPatternDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(chatPatternSvg)}`;
@@ -78,17 +88,48 @@ export default function Chat() {
   }, [selectedContactId]);
 
   useEffect(() => {
-    // Only scroll if new messages arrived
+    // Only scroll if new messages arrived and user was near bottom
     if (messages.length > lastMessageCountRef.current) {
-      scrollToBottom('smooth');
+      const viewport = getScrollViewport();
+      const isNearBottom = viewport
+        ? viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight) < 40
+        : true;
+
+      if (isNearBottom) {
+        scrollToBottom('smooth');
+      }
       lastMessageCountRef.current = messages.length;
     }
+  }, [messages]);
+
+  useLayoutEffect(() => {
+    const pending = pendingScrollRestoreRef.current;
+    if (!pending) return;
+
+    const viewport = getScrollViewport();
+    if (!viewport) return;
+
+    if (messages.length > pending.prevCount && pending.wasNearBottom) {
+      viewport.scrollTop = viewport.scrollHeight;
+    } else {
+      const heightDiff = viewport.scrollHeight - pending.height;
+      viewport.scrollTop = pending.top + (heightDiff > 0 ? heightDiff : 0);
+    }
+
+    pendingScrollRestoreRef.current = null;
   }, [messages]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior });
     }, 100);
+  }, []);
+
+  const getScrollViewport = useCallback(() => {
+    if (!scrollAreaRef.current) return null;
+    return scrollAreaRef.current.querySelector(
+      '[data-radix-scroll-area-viewport]'
+    ) as HTMLDivElement | null;
   }, []);
 
   const getInitials = (name: string) => {
@@ -119,6 +160,7 @@ export default function Chat() {
               online: false,
               leadId: item.lead_id,
               phone: item.lead_telefone,
+              needsHumanIntervention: item.needs_human_intervention || false,
             };
           });
         setContacts(mappedContacts);
@@ -148,6 +190,15 @@ export default function Chat() {
       if (messages.length === 0) {
         setIsLoadingMessages(true);
       }
+      const viewport = getScrollViewport();
+      const scrollSnapshot = viewport
+        ? {
+            top: viewport.scrollTop,
+            height: viewport.scrollHeight,
+            wasNearBottom: viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight) < 40,
+          }
+        : null;
+
       const response = await api.get(`/admin/conversas/${contactId}/mensagens`);
       if (response.data.success) {
         const mappedMessages = response.data.data
@@ -160,8 +211,43 @@ export default function Chat() {
             rawDate: new Date(item.created_at),
             read: !!item.read_at,
             status: item.read_at ? 'read' : item.delivered_at ? 'delivered' : 'sent',
-          }));
-        setMessages(mappedMessages);
+            messageType: item.message_type,
+            mediaUrl: item.media_url ?? null,
+            transcription: item.transcription ?? null,
+          }))
+          .sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
+
+        // Apenas atualiza se houver diferença real nas mensagens
+        setMessages((prevMessages) => {
+          if (prevMessages.length === 0 || prevMessages.length !== mappedMessages.length) {
+            if (scrollSnapshot) {
+              pendingScrollRestoreRef.current = {
+                ...scrollSnapshot,
+                prevCount: prevMessages.length,
+              };
+            }
+            return mappedMessages;
+          }
+
+          const hasChanges = mappedMessages.some((newMsg, idx) => {
+            const oldMsg = prevMessages[idx];
+            return (
+              !oldMsg ||
+              oldMsg.id !== newMsg.id ||
+              oldMsg.status !== newMsg.status ||
+              oldMsg.text !== newMsg.text
+            );
+          });
+
+          if (hasChanges && scrollSnapshot) {
+            pendingScrollRestoreRef.current = {
+              ...scrollSnapshot,
+              prevCount: prevMessages.length,
+            };
+          }
+
+          return hasChanges ? mappedMessages : prevMessages;
+        });
       }
     } catch (error) {
       console.error('Erro ao buscar mensagens:', error);
@@ -276,10 +362,23 @@ export default function Chat() {
 
   const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+  const formatHtmlMessage = (html: string) => {
+    // Converte <br>, <br/>, <br /> para quebras de linha
+    let formatted = html.replace(/<br\s*\/?>/gi, '\n');
+    
+    // Remove outras tags HTML mas mantém o conteúdo
+    formatted = formatted.replace(/<[^>]+>/g, '');
+    
+    return formatted;
+  };
+
   const highlightText = (text: string, term: string) => {
-    if (!term) return text;
+    // Formata HTML primeiro
+    const formattedText = formatHtmlMessage(text);
+    
+    if (!term) return formattedText;
     const safeTerm = escapeRegExp(term);
-    const parts = text.split(new RegExp(`(${safeTerm})`, 'ig'));
+    const parts = formattedText.split(new RegExp(`(${safeTerm})`, 'ig'));
     return parts.map((part, index) =>
       part.toLowerCase() === term.toLowerCase() ? (
         <mark key={`${part}-${index}`} className="bg-primary/25 text-foreground rounded px-1">
@@ -345,6 +444,19 @@ export default function Chat() {
     if (status === 'delivered') return <CheckCheck className="w-3 h-3 text-muted-foreground" />;
     if (status === 'read') return <CheckCheck className="w-3 h-3 text-primary" />;
     return null;
+  };
+
+  const isAudioMessage = (message: Message) => {
+    if (!message.mediaUrl) return false;
+    if (message.messageType === 'audio' || message.messageType === 'voice') return true;
+    return /\.(mp3|ogg|wav|m4a|opus)(\?|$)/i.test(message.mediaUrl);
+  };
+
+  const getMessageDisplayText = (message: Message) => {
+    if (message.messageType === 'audio') {
+      return message.text || 'Áudio';
+    }
+    return message.text || '';
   };
 
   return (
@@ -446,7 +558,8 @@ export default function Chat() {
                     className={cn(
                       'w-full p-4 flex items-center gap-3 transition-colors text-left',
                       'hover:bg-muted/40',
-                      selectedContactId === contact.id && 'bg-muted/60'
+                      selectedContactId === contact.id && 'bg-muted/60',
+                      contact.needsHumanIntervention && selectedContactId !== contact.id && 'bg-yellow-100/60 dark:bg-yellow-900/20 hover:bg-yellow-100/80 dark:hover:bg-yellow-900/30'
                     )}
                   >
                     <Avatar className="w-12 h-12 flex-shrink-0">
@@ -605,21 +718,34 @@ export default function Chat() {
                                       className={cn(
                                         'relative px-4 py-3 rounded-2xl shadow-sm',
                                         isUser
-                                          ? 'bg-[#e5e7eb] text-[#4b5563] rounded-br-sm'
-                                          : 'bg-[#e5e7eb] border border-[#d1d5db] text-[#4b5563] rounded-bl-sm'
+                                          ? 'bg-primary/10 text-foreground rounded-br-sm border border-primary/20'
+                                          : 'bg-muted text-foreground rounded-bl-sm border border-border'
                                       )}
                                     >
                                       <span
                                         className={cn(
                                           'pointer-events-none absolute bottom-0 w-3 h-3',
                                           isUser
-                                            ? 'right-[-6px] bg-[#e5e7eb] border-r border-t border-[#d1d5db] rotate-45 rounded-sm'
-                                            : 'left-[-6px] bg-[#e5e7eb] border-l border-b border-[#d1d5db] rotate-45 rounded-sm'
+                                            ? 'right-[-6px] bg-primary/10 border-r border-t border-primary/20 rotate-45 rounded-sm'
+                                            : 'left-[-6px] bg-muted border-l border-b border-border rotate-45 rounded-sm'
                                         )}
                                       />
+                                      {isAudioMessage(message) && message.mediaUrl && (
+                                        <div className="mb-2">
+                                          <audio controls className="w-full max-w-xs">
+                                            <source src={message.mediaUrl} />
+                                          </audio>
+                                        </div>
+                                      )}
                                       <p className="text-base font-semibold whitespace-pre-wrap break-words leading-relaxed">
-                                        {highlightText(message.text, searchTerm)}
+                                        {highlightText(getMessageDisplayText(message), searchTerm)}
                                       </p>
+                                      {message.messageType === 'audio' && message.transcription && (
+                                        <p className="mt-2 text-xs text-muted-foreground">
+                                          <span className="font-semibold text-foreground/80">Transcrição:</span>{' '}
+                                          {highlightText(message.transcription, searchTerm)}
+                                        </p>
+                                      )}
                                     </div>
                                     <div
                                       className={cn(
