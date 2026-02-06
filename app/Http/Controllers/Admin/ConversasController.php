@@ -133,6 +133,14 @@ class ConversasController extends BaseController
                     ->get();
             }
             
+            // Verificar se existe coluna message_type uma vez (não dentro do loop)
+            $hasMsgType = false;
+            try {
+                $hasMsgType = Schema::hasColumn('mensagens', 'message_type');
+            } catch (\Exception $e) {
+                Log::warning('Erro ao verificar coluna message_type', ['error' => $e->getMessage()]);
+            }
+            
             // Adicionar informações extras
             foreach ($conversas as &$conversa) {
                 $conversa->lead_nome = $this->sanitizeUtf8($conversa->lead_nome ?? null);
@@ -164,9 +172,6 @@ class ConversasController extends BaseController
                 $conversa->needs_human_intervention = false;
                 
                 try {
-                    // Verificar se existe coluna message_type
-                    $hasMsgType = Schema::hasColumn('mensagens', 'message_type');
-                    
                     $ultimoSmsQuery = DB::table('mensagens')
                         ->where('conversa_id', $conversa->id)
                         ->where('direction', 'outgoing')
