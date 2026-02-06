@@ -14,7 +14,7 @@ interface LeadCardProps {
   onAI?: () => void;
   onSMS?: () => void;
   smsDisabled?: boolean;
-  onCall?: () => void;
+  onWhatsAppWeb?: () => void;
   onDelete?: () => void;
 }
 
@@ -88,7 +88,7 @@ const LeadCard = ({
   onAI,
   onSMS,
   smsDisabled = false,
-  onCall,
+  onWhatsAppWeb,
   onDelete,
 }: LeadCardProps) => {
   const config = statusConfig[status];
@@ -227,7 +227,7 @@ const LeadCard = ({
                 : 'bg-white/10 hover:bg-white/20'
             }`}
           >
-            <MessageCircle size={14} />
+            <Mail size={14} />
             {smsDisabled ? 'SMS enviado' : 'SMS'}
           </motion.button>
 
@@ -236,12 +236,12 @@ const LeadCard = ({
             whileTap={{ scale: 0.95 }}
             onClick={(e) => {
               e.stopPropagation();
-              onCall?.();
+              onWhatsAppWeb?.();
             }}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold text-white transition-all"
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-500/90 hover:bg-green-500 rounded-lg text-sm font-semibold text-white transition-all"
           >
-            <Phone size={14} />
-            Ligar
+            <MessageCircle size={14} />
+            WhatsApp Web
           </motion.button>
         </div>
       </div>

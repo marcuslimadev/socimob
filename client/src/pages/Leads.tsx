@@ -20,6 +20,7 @@ interface Lead {
   status: 'novo' | 'em_atendimento' | 'qualificado' | 'proposta' | 'fechado' | 'perdido';
   value?: number;
   lastContact?: string;
+  sms_enviado?: boolean;
 }
 
 export default function Leads() {
@@ -67,7 +68,8 @@ export default function Leads() {
             email: item.email || '',
             status: item.status || 'novo',
             value: parseFloat(item.budget_max || item.budget_min || '0'),
-            lastContact: formatDate(item.updated_at)
+            lastContact: formatDate(item.updated_at),
+            sms_enviado: Boolean(item.sms_enviado)
           }));
         setLeads(mappedLeads);
       }
@@ -142,7 +144,9 @@ export default function Leads() {
   };
 
   const handleSendSMS = async (leadId: string, leadName: string) => {
-    if (smsSentLeads[leadId] || smsSendingLeadId === leadId) {
+    // Check if SMS was already sent (from backend or local state)
+    const lead = leads.find(l => l.id === leadId);
+    if (lead?.sms_enviado || smsSentLeads[leadId] || smsSendingLeadId === leadId) {
       return;
     }
 
@@ -166,13 +170,18 @@ export default function Leads() {
     }
   };
 
-  const handleCall = (phone: string, leadName: string) => {
-    if (phone) {
-      window.open(`tel:${phone}`);
-      toast.success(`Ligando para ${leadName}`);
-    } else {
+  const handleWhatsAppWeb = (phone: string, leadName: string) => {
+    const digits = (phone || '').replace(/\D/g, '');
+    if (!digits) {
       toast.error('Telefone não disponível');
+      return;
     }
+
+    const formatted = digits.startsWith('55') ? digits : `55${digits}`;
+    const message = encodeURIComponent(`Olá ${leadName}, tudo bem?`);
+    const url = `https://web.whatsapp.com/send?phone=${formatted}&text=${message}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    toast.success(`Abrindo WhatsApp Web para ${leadName}`);
   };
 
   const handleDeleteClick = (leadId: string, leadName: string) => {
@@ -449,8 +458,8 @@ export default function Leads() {
                       onChat={() => handleOpenChat(lead.id, lead.name)}
                       onAI={() => handleCallAI(lead.id, lead.name)}
                       onSMS={() => handleSendSMS(lead.id, lead.name)}
-                      smsDisabled={Boolean(smsSentLeads[lead.id]) || smsSendingLeadId === lead.id}
-                      onCall={() => handleCall(lead.phone, lead.name)}
+                      smsDisabled={lead.sms_enviado || Boolean(smsSentLeads[lead.id]) || smsSendingLeadId === lead.id}
+                      onWhatsAppWeb={() => handleWhatsAppWeb(lead.phone, lead.name)}
                       onDelete={() => handleDeleteClick(lead.id, lead.name)}
                     />
                   </motion.div>
