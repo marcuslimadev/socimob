@@ -162,29 +162,47 @@ class ConversasController extends BaseController
                 
                 // Verificar se precisa de intervenção humana (SMS enviado há 2h+ sem resposta)
                 $conversa->needs_human_intervention = false;
-                $ultimoSmsEnviado = DB::table('mensagens')
-                    ->where('conversa_id', $conversa->id)
-                    ->where('direction', 'outgoing')
-                    ->where('message_type', 'sms')
-                    ->whereNotNull('sent_at')
-                    ->orderBy('sent_at', 'desc')
-                    ->first();
+                
+                try {
+                    // Verificar se existe coluna message_type
+                    $hasMsgType = Schema::hasColumn('mensagens', 'message_type');
                     
-                if ($ultimoSmsEnviado) {
-                    $ultimaMensagemCliente = DB::table('mensagens')
+                    $ultimoSmsQuery = DB::table('mensagens')
                         ->where('conversa_id', $conversa->id)
-                        ->where('direction', 'incoming')
-                        ->where('created_at', '>', $ultimoSmsEnviado->sent_at)
-                        ->orderBy('created_at', 'desc')
-                        ->first();
+                        ->where('direction', 'outgoing')
+                        ->whereNotNull('sent_at');
                     
-                    // Se não houve resposta e já passaram 2 horas
-                    if (!$ultimaMensagemCliente) {
-                        $horasDesdeEnvio = \Carbon\Carbon::parse($ultimoSmsEnviado->sent_at)->diffInHours(now());
-                        if ($horasDesdeEnvio >= 2) {
-                            $conversa->needs_human_intervention = true;
+                    // Se tiver message_type, filtrar por SMS
+                    if ($hasMsgType) {
+                        $ultimoSmsQuery->where('message_type', 'sms');
+                    }
+                    
+                    $ultimoSmsEnviado = $ultimoSmsQuery
+                        ->orderBy('sent_at', 'desc')
+                        ->first();
+                        
+                    if ($ultimoSmsEnviado) {
+                        $ultimaMensagemCliente = DB::table('mensagens')
+                            ->where('conversa_id', $conversa->id)
+                            ->where('direction', 'incoming')
+                            ->where('created_at', '>', $ultimoSmsEnviado->sent_at)
+                            ->orderBy('created_at', 'desc')
+                            ->first();
+                        
+                        // Se não houve resposta e já passaram 2 horas
+                        if (!$ultimaMensagemCliente) {
+                            $horasDesdeEnvio = Carbon::parse($ultimoSmsEnviado->sent_at)->diffInHours(now());
+                            if ($horasDesdeEnvio >= 2) {
+                                $conversa->needs_human_intervention = true;
+                            }
                         }
                     }
+                } catch (\Exception $e) {
+                    // Se der erro, apenas ignora e deixa needs_human_intervention = false
+                    Log::warning('Erro ao verificar needs_human_intervention', [
+                        'conversa_id' => $conversa->id,
+                        'error' => $e->getMessage()
+                    ]);
                 }
             }
             
