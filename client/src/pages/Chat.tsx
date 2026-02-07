@@ -485,19 +485,23 @@ export default function Chat() {
     if (!url) return '';
     // Se já é URL completa
     if (/^https?:\/\//i.test(url)) return url;
+    
+    // Para caminhos relativos, usa a mesma origem da API
+    // A API já está configurada para usar o domínio correto via /api
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+    const baseUrl = apiBaseUrl.startsWith('http') 
+      ? apiBaseUrl.replace(/\/api$/, '') // Remove /api do final se existir
+      : window.location.origin; // Usa origin atual se for path relativo
+    
     // Se começa com /
     if (url.startsWith('/')) {
-      // Se é caminho do storage Laravel
-      if (url.startsWith('/storage/')) {
-        return `${window.location.origin}${url}`;
-      }
-      return `${window.location.origin}${url}`;
+      return `${baseUrl}${url}`;
     }
     // Se não tem protocolo nem barra, adiciona /storage/
     if (!url.startsWith('storage/')) {
-      return `${window.location.origin}/storage/${url}`;
+      return `${baseUrl}/storage/${url}`;
     }
-    return `${window.location.origin}/${url}`;
+    return `${baseUrl}/${url}`;
   };
 
   const getMessageDisplayText = (message: Message) => {
