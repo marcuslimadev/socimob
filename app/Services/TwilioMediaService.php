@@ -14,8 +14,13 @@ class TwilioMediaService
 
     public function __construct()
     {
-        $this->accountSid = env('TWILIO_ACCOUNT_SID');
-        $this->authToken = env('TWILIO_AUTH_TOKEN');
+        // Tenta EXCLUSIVA_ primeiro (ambiente de produção), depois fallback para TWILIO_
+        $this->accountSid = env('EXCLUSIVA_TWILIO_ACCOUNT_SID') ?: env('TWILIO_ACCOUNT_SID');
+        $this->authToken = env('EXCLUSIVA_TWILIO_AUTH_TOKEN') ?: env('TWILIO_AUTH_TOKEN');
+        
+        if (!$this->accountSid || !$this->authToken) {
+            Log::error('❌ Credenciais do Twilio não configuradas! Verifique EXCLUSIVA_TWILIO_ACCOUNT_SID e EXCLUSIVA_TWILIO_AUTH_TOKEN no .env');
+        }
     }
 
     /**
@@ -35,9 +40,12 @@ class TwilioMediaService
                 'mensagem_id' => $mensagemId
             ]);
 
-            // Faz download autenticado da mídia
+            // Faz download autenticado da mídia (com follow redirects)
             $response = Http::withBasicAuth($this->accountSid, $this->authToken)
                 ->timeout(30)
+                ->withOptions([
+                    'allow_redirects' => ['max' => 5] // Seguir até 5 redirects
+                ])
                 ->get($mediaUrl);
 
             if (!$response->successful()) {

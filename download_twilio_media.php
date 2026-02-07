@@ -20,11 +20,13 @@ $messages = DB::table('mensagens')
 
 echo "Encontradas {$messages->count()} mensagens com mídia do Twilio\n\n";
 
-$accountSid = env('TWILIO_ACCOUNT_SID');
-$authToken = env('TWILIO_AUTH_TOKEN');
+$accountSid = env('EXCLUSIVA_TWILIO_ACCOUNT_SID') ?: env('TWILIO_ACCOUNT_SID');
+$authToken = env('EXCLUSIVA_TWILIO_AUTH_TOKEN') ?: env('TWILIO_AUTH_TOKEN');
 
 if (!$accountSid || !$authToken) {
-    echo "❌ ERRO: TWILIO_ACCOUNT_SID e TWILIO_AUTH_TOKEN não configurados no .env\n";
+    echo "❌ ERRO: Credenciais do Twilio não configuradas no .env\n";
+    echo "   Certifique-se de ter EXCLUSIVA_TWILIO_ACCOUNT_SID e EXCLUSIVA_TWILIO_AUTH_TOKEN\n";
+    echo "   ou TWILIO_ACCOUNT_SID e TWILIO_AUTH_TOKEN\n";
     exit(1);
 }
 
