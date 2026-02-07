@@ -66,29 +66,9 @@ export default function Chat() {
 
   const fetchSeqRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
+  const hasLoadedMessagesRef = useRef(false);
 
   const pendingScrollRestoreRef = useRef<null | { top: number; height: number; nearBottom: boolean }>(null);
-
-  // ==== DEBUG REFS ====
-  const renderCountRef = useRef(0);
-  const lastViewportRef = useRef<HTMLDivElement | null>(null);
-  const lastScrollTopRef = useRef<number>(-1);
-  const lastScrollHeightRef = useRef<number>(-1);
-  const lastClientHeightRef = useRef<number>(-1);
-  const lastAppliedSeqRef = useRef<number>(0);
-
-  const dbg = (...args: any[]) => console.log('[CHATDBG]', ...args);
-
-  renderCountRef.current++;
-  dbg('render', {
-    n: renderCountRef.current,
-    selectedContactId,
-    messagesLen: messages.length,
-    contactsLen: contacts.length,
-    isLoadingMessages,
-    searchTerm,
-    showMobileContacts,
-  });
   const chatPatternSvg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><g fill="none" stroke="#d9d2c8" stroke-width="1" opacity="0.22"><path d="M20 20h20v20H20z"/><circle cx="120" cy="40" r="10"/><path d="M80 120l15-15 15 15"/><circle cx="40" cy="120" r="6"/><path d="M120 120h20v20h-20z"/></g></svg>';
   const chatPatternDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(chatPatternSvg)}`;
@@ -99,38 +79,9 @@ export default function Chat() {
     return vp;
   }, []);
 
-  // Observa remount/troca do viewport (isso costuma causar pulo pro topo)
-  useEffect(() => {
-    const vp = getScrollViewport();
-    if (vp && vp !== lastViewportRef.current) {
-      dbg('viewport changed (possible remount)', { prev: !!lastViewportRef.current, now: !!vp });
-      lastViewportRef.current = vp;
-    }
-  });
-
-  // Loga mudanças de scrollTop (pra ver quem está zerando)
-  useEffect(() => {
-    const vp = getScrollViewport();
-    if (!vp) return;
-
-    const onScroll = () => {
-      const top = vp.scrollTop;
-      if (top !== lastScrollTopRef.current) {
-        dbg('scroll', { top, sh: vp.scrollHeight, ch: vp.clientHeight });
-        lastScrollTopRef.current = top;
-      }
-    };
-
-    vp.addEventListener('scroll', onScroll, { passive: true });
-    return () => vp.removeEventListener('scroll', onScroll);
-  }, [getScrollViewport]);
-
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    dbg('scrollToBottom called', { behavior });
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior });
-      const vp = getScrollViewport();
-      if (vp) dbg('scrollToBottom after', { top: vp.scrollTop, sh: vp.scrollHeight, ch: vp.clientHeight });
     }, 50);
   }, [getScrollViewport]);
 
@@ -140,15 +91,9 @@ export default function Chat() {
 
     const vp = getScrollViewport();
     if (!vp) {
-      dbg('restore skipped: no viewport');
       pendingScrollRestoreRef.current = null;
       return;
     }
-
-    dbg('RESTORE start', {
-      pending,
-      before: { top: vp.scrollTop, sh: vp.scrollHeight, ch: vp.clientHeight },
-    });
 
     if (pending.nearBottom) {
       vp.scrollTop = vp.scrollHeight;
@@ -157,39 +102,32 @@ export default function Chat() {
       vp.scrollTop = pending.top + heightDelta;
     }
 
-    dbg('RESTORE end', { after: { top: vp.scrollTop, sh: vp.scrollHeight, ch: vp.clientHeight } });
     pendingScrollRestoreRef.current = null;
   }, [messages, getScrollViewport]);
 
   useEffect(() => {
-    dbg('mount -> fetchContacts');
     fetchContacts();
   }, []);
 
-  // CUIDADO: garanta que só existe 1 interval por contato
   useEffect(() => {
     if (!selectedContactId) return;
 
-    dbg('selectedContactId changed', { selectedContactId });
-
-    // mata interval anterior
     if (intervalRef.current) {
-      dbg('clearing previous interval');
       window.clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+
+    hasLoadedMessagesRef.current = false;
 
     fetchMessages(selectedContactId);
     setShowMobileContacts(false);
 
     intervalRef.current = window.setInterval(() => {
-      dbg('interval tick -> fetchMessages', { selectedContactId });
       fetchMessages(selectedContactId);
     }, 15000);
 
     return () => {
       if (intervalRef.current) {
-        dbg('cleanup interval');
         window.clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
@@ -245,19 +183,11 @@ export default function Chat() {
         }
       : null;
 
-    dbg('applyMessagesWithScrollPreserve', {
-      seq,
-      incomingLen: incoming.length,
-      snapshot,
-      vpNow: vp ? { top: vp.scrollTop, sh: vp.scrollHeight, ch: vp.clientHeight } : null,
-    });
-
     setMessages((prev) => {
       const prevLen = prev.length;
 
       if (prevLen === 0) {
         if (snapshot) pendingScrollRestoreRef.current = snapshot;
-        dbg('setMessages: prev empty -> replace', { seq, prevLen, nextLen: incoming.length });
         return incoming;
       }
 
@@ -295,22 +225,18 @@ export default function Chat() {
 
       if (!hasChanges) {
         pendingScrollRestoreRef.current = null;
-        dbg('setMessages: NO CHANGES', { seq, prevLen, incomingLen: incoming.length });
         return prev;
       }
 
       if (snapshot) pendingScrollRestoreRef.current = snapshot;
-      dbg('setMessages: HAS CHANGES', { seq, prevLen, nextLen: merged.length });
       return merged;
     });
   };
 
   const fetchContacts = async () => {
-    dbg('fetchContacts start');
     try {
       setIsLoadingContacts(true);
       const response = await api.get('/admin/conversas');
-      dbg('fetchContacts response', { success: response.data?.success, count: response.data?.data?.length });
 
       if (response.data.success) {
         const mappedContacts = response.data.data
@@ -346,7 +272,6 @@ export default function Chat() {
             );
           });
 
-          dbg('setContacts', { prevLen: prev.length, nextLen: mappedContacts.length, hasChanges });
           return hasChanges ? mappedContacts : prev;
         });
 
@@ -355,7 +280,6 @@ export default function Chat() {
 
         if (targetLeadId && !selectedContactId) {
           const target = mappedContacts.find((c: Contact) => c.leadId?.toString() === targetLeadId);
-          dbg('leadId auto-select', { targetLeadId, found: !!target });
           if (target) {
             setSelectedContactId(target.id);
             setTimeout(() => scrollToBottom('auto'), 200);
@@ -363,42 +287,26 @@ export default function Chat() {
         }
       }
     } catch (e) {
-      dbg('fetchContacts error', e);
       toast.error('Erro ao carregar conversas');
     } finally {
       setIsLoadingContacts(false);
       setIsRefreshing(false);
-      dbg('fetchContacts end');
     }
   };
 
   const fetchMessages = async (contactId: string) => {
     const seq = ++fetchSeqRef.current;
-    dbg('fetchMessages start', { contactId, seq });
+    const isFirstLoad = !hasLoadedMessagesRef.current;
 
     try {
-      if (messages.length === 0) setIsLoadingMessages(true);
-
-      const vpBefore = getScrollViewport();
-      if (vpBefore) {
-        lastScrollHeightRef.current = vpBefore.scrollHeight;
-        lastClientHeightRef.current = vpBefore.clientHeight;
-        lastScrollTopRef.current = vpBefore.scrollTop;
-        dbg('viewport before fetch', { top: vpBefore.scrollTop, sh: vpBefore.scrollHeight, ch: vpBefore.clientHeight });
-      } else {
-        dbg('no viewport before fetch');
-      }
+      if (isFirstLoad) setIsLoadingMessages(true);
 
       const response = await api.get(`/admin/conversas/${contactId}/mensagens`);
-      dbg('fetchMessages response', { seq, ok: response.data?.success, count: response.data?.data?.length });
 
       if (seq !== fetchSeqRef.current) {
-        dbg('fetchMessages ignored (stale)', { seq, current: fetchSeqRef.current });
         return;
       }
       if (!response.data.success) return;
-
-      lastAppliedSeqRef.current = seq;
 
       const mappedMessages = response.data.data
         .filter((item: any) => item && item.id != null)
@@ -417,13 +325,13 @@ export default function Chat() {
         .sort((a: Message, b: Message) => a.rawDate.getTime() - b.rawDate.getTime());
 
       applyMessagesWithScrollPreserve(mappedMessages, seq);
+      
+      if (isFirstLoad) hasLoadedMessagesRef.current = true;
     } catch (e) {
       if (seq !== fetchSeqRef.current) return;
-      dbg('fetchMessages error', e);
-      if (messages.length === 0) toast.error('Erro ao carregar mensagens');
+      if (isFirstLoad) toast.error('Erro ao carregar mensagens');
     } finally {
-      if (seq === fetchSeqRef.current) setIsLoadingMessages(false);
-      dbg('fetchMessages end', { seq, current: fetchSeqRef.current });
+      if (seq === fetchSeqRef.current && isFirstLoad) setIsLoadingMessages(false);
     }
   };
 
@@ -566,13 +474,29 @@ export default function Chat() {
 
   const isImageMessage = (message: Message) => {
     if (!message.mediaUrl) return false;
-    if (message.messageType === 'image' || message.messageType === 'photo') return true;
-    return /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(message.mediaUrl);
+    // Verifica pelo tipo de mensagem primeiro
+    if (message.messageType === 'image' || message.messageType === 'photo' || message.messageType === 'picture') return true;
+    // Verifica pela extensão do arquivo
+    const url = message.mediaUrl.toLowerCase();
+    return /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif|tiff?)(\?|$|#)/i.test(url);
   };
 
   const getMediaUrl = (url: string) => {
+    if (!url) return '';
+    // Se já é URL completa
     if (/^https?:\/\//i.test(url)) return url;
-    if (url.startsWith('/')) return `${window.location.origin}${url}`;
+    // Se começa com /
+    if (url.startsWith('/')) {
+      // Se é caminho do storage Laravel
+      if (url.startsWith('/storage/')) {
+        return `${window.location.origin}${url}`;
+      }
+      return `${window.location.origin}${url}`;
+    }
+    // Se não tem protocolo nem barra, adiciona /storage/
+    if (!url.startsWith('storage/')) {
+      return `${window.location.origin}/storage/${url}`;
+    }
     return `${window.location.origin}/${url}`;
   };
 
@@ -856,18 +780,41 @@ export default function Chat() {
                                         </div>
                                       )}
                                       {isImageMessage(message) && message.mediaUrl && (
-                                        <div className="mb-2">
+                                        <div className="mb-2 relative">
                                           <img
                                             src={getMediaUrl(message.mediaUrl)}
                                             alt="Imagem enviada"
                                             loading="lazy"
-                                            className="w-full max-w-sm rounded-lg border border-border object-contain"
+                                            className="w-full max-w-sm rounded-lg border border-border object-contain bg-muted/20"
+                                            onError={(e) => {
+                                              console.error('Erro ao carregar imagem:', message.mediaUrl);
+                                              console.log('URL processada:', getMediaUrl(message.mediaUrl));
+                                              
+                                              // Substitui por placeholder ao invés de esconder
+                                              const img = e.currentTarget;
+                                              img.style.display = 'none';
+                                              const parent = img.parentElement;
+                                              if (parent && !parent.querySelector('.image-error-placeholder')) {
+                                                parent.insertAdjacentHTML('beforeend', `
+                                                  <div class="image-error-placeholder flex flex-col items-center justify-center p-8 bg-muted/40 rounded-lg border border-dashed border-border">
+                                                    <svg class="w-12 h-12 text-muted-foreground mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                    <p class="text-xs text-muted-foreground text-center">Imagem não disponível</p>
+                                                    <p class="text-xs text-muted-foreground/60 text-center mt-1">Requer autenticação Twilio</p>
+                                                  </div>
+                                                `);
+                                              }
+                                            }}
                                           />
                                         </div>
                                       )}
-                                      <p className="text-base font-semibold whitespace-pre-wrap break-words leading-relaxed">
-                                        {highlightText(getMessageDisplayText(message), searchTerm)}
-                                      </p>
+                                      {/* Mostra legenda/texto da mensagem se houver */}
+                                      {getMessageDisplayText(message) && (
+                                        <p className="text-base font-semibold whitespace-pre-wrap break-words leading-relaxed">
+                                          {highlightText(getMessageDisplayText(message), searchTerm)}
+                                        </p>
+                                      )}
                                       {message.messageType === 'audio' && message.transcription && (
                                         <p className="mt-2 text-xs text-muted-foreground">
                                           <span className="font-semibold text-foreground/80">Transcrição:</span>{' '}

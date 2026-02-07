@@ -1476,8 +1476,16 @@ class WhatsAppService
 
     private function handleIncomingDocument($conversa, $mensagem, $messageType, $mediaUrl, $mediaType, $messageBody): void
     {
+        Log::info('🖼️ handleIncomingDocument chamado', [
+            'messageType' => $messageType,
+            'mediaUrl' => $mediaUrl,
+            'mediaType' => $mediaType,
+            'lead_id' => $conversa->lead_id ?? 'null'
+        ]);
+        
         // Capturar documentos (PDFs) e imagens (JPG, PNG)
         if (!$mediaUrl || !$conversa->lead_id) {
+            Log::warning('❌ Retornando early: mediaUrl=' . ($mediaUrl ? 'ok' : 'null') . ', lead_id=' . ($conversa->lead_id ?? 'null'));
             return;
         }
 
@@ -1512,6 +1520,36 @@ class WhatsAppService
             return;
         }
 
+        // Se for mídia do Twilio, baixar e salvar localmente
+        $localMediaUrl = $mediaUrl;
+        if (str_contains($mediaUrl, 'api.twilio.com')) {
+            Log::info('📥 Detectado URL do Twilio, iniciando download...', ['url' => $mediaUrl]);
+            try {
+                $twilioMediaService = app(\App\Services\TwilioMediaService::class);
+                $localPath = $twilioMediaService->downloadAndSaveMedia(
+                    $mediaUrl,
+                    $lead->id,
+                    $mensagem->id
+                );
+                
+                if ($localPath) {
+                    Log::info('✅ Mídia baixada com sucesso!', ['local_path' => $localPath]);
+                    // Atualizar mensagem com URL local
+                    $mensagem->update(['media_url' => $localPath]);
+                    $localMediaUrl = $localPath;
+                } else {
+                    Log::error('❌ downloadAndSaveMedia retornou null');
+                }
+            } catch (\Exception $e) {
+                Log::error('❌ Erro ao baixar mídia do Twilio: ' . $e->getMessage(), [
+                    'exception' => get_class($e),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        } else {
+            Log::info('ℹ️ URL não é do Twilio, mantendo original', ['url' => $mediaUrl]);
+        }
+
         $path = parse_url($mediaUrl, PHP_URL_PATH) ?? '';
         $nomeArquivo = basename($path);
         
@@ -1528,7 +1566,7 @@ class WhatsAppService
             'nome' => $nomeArquivo,
             'tipo' => $this->guessDocumentType($messageBody),
             'mime_type' => $mediaType ?? 'application/octet-stream',
-            'arquivo_url' => $mediaUrl,
+            'arquivo_url' => $localMediaUrl,
             'status' => 'pendente',
         ]);
 
