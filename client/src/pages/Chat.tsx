@@ -64,6 +64,10 @@ export default function Chat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
+  const fetchSeqRef = useRef(0);
+  const pendingScrollRestoreRef = useRef<
+    null | { top: number; height: number; nearBottom: boolean }
+  >(null);
   const chatPatternSvg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><g fill="none" stroke="#d9d2c8" stroke-width="1" opacity="0.22"><path d="M20 20h20v20H20z"/><circle cx="120" cy="40" r="10"/><path d="M80 120l15-15 15 15"/><circle cx="40" cy="120" r="6"/><path d="M120 120h20v20h-20z"/></g></svg>';
   const chatPatternDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(chatPatternSvg)}`;
@@ -81,26 +85,6 @@ export default function Chat() {
     }
   }, [selectedContactId]);
 
-  useEffect(() => {
-    // Only scroll if new messages arrived and user was near bottom
-    if (messages.length > lastMessageCountRef.current && messages.length > 0) {
-      const viewport = getScrollViewport();
-      if (!viewport) return;
-      
-      const isNearBottom = viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight) < 100;
-
-      // Apenas rola para baixo se for mensagem nova E usuário estava perto do fim
-      if (isNearBottom && messages.length > lastMessageCountRef.current) {
-        setTimeout(() => {
-          if (viewport) {
-            viewport.scrollTop = viewport.scrollHeight;
-          }
-        }, 50);
-      }
-      lastMessageCountRef.current = messages.length;
-    }
-  }, [messages.length]); // Apenas quando o COMPRIMENTO muda, não o array todo
-
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior });
@@ -114,6 +98,21 @@ export default function Chat() {
     ) as HTMLDivElement | null;
   }, []);
 
+  useLayoutEffect(() => {
+    const pending = pendingScrollRestoreRef.current;
+    if (!pending) return;
+    const viewport = getScrollViewport();
+    if (!viewport) return;
+
+    if (pending.nearBottom) {
+      viewport.scrollTop = viewport.scrollHeight;
+    } else {
+      const heightDelta = viewport.scrollHeight - pending.height;
+      viewport.scrollTop = pending.top + heightDelta;
+    }
+    pendingScrollRestoreRef.current = null;
+  }, [messages, getScrollViewport]);
+
   const getInitials = (name: string) => {
     if (!name) return '?';
     const parts = name.trim().split(' ');
@@ -121,6 +120,65 @@ export default function Chat() {
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
     return name.slice(0, 2).toUpperCase();
+  };
+
+  const applyMessagesWithScrollPreserve = (incoming: Message[]) => {
+    const viewport = getScrollViewport();
+    const snapshot =
+      viewport
+        ? {
+            top: viewport.scrollTop,
+            height: viewport.scrollHeight,
+            nearBottom: viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight) < 100,
+          }
+        : null;
+
+    setMessages((prev) => {
+      if (prev.length === 0) {
+        if (snapshot) pendingScrollRestoreRef.current = snapshot;
+        return incoming;
+      }
+
+      const prevById = new Map(prev.map((m) => [m.id, m]));
+      const incomingIds = new Set(incoming.map((m) => m.id));
+      let hasChanges = false;
+
+      const merged = incoming.map((m) => {
+        const old = prevById.get(m.id);
+        if (!old) {
+          hasChanges = true;
+          return m;
+        }
+        const changed =
+          old.status !== m.status ||
+          old.text !== m.text ||
+          old.read !== m.read ||
+          old.mediaUrl !== m.mediaUrl ||
+          old.transcription !== m.transcription ||
+          old.messageType !== m.messageType;
+
+        if (changed) {
+          hasChanges = true;
+          return { ...old, ...m };
+        }
+        return old;
+      });
+
+      const pending = prev.filter((m) => m.id.startsWith('temp-') && !incomingIds.has(m.id));
+      if (pending.length) {
+        hasChanges = true;
+        merged.push(...pending);
+        merged.sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
+      }
+
+      if (!hasChanges) {
+        pendingScrollRestoreRef.current = null;
+        return prev;
+      }
+
+      if (snapshot) pendingScrollRestoreRef.current = snapshot;
+      return merged;
+    });
   };
 
   const fetchContacts = async () => {
@@ -193,62 +251,41 @@ export default function Chat() {
   };
 
   const fetchMessages = async (contactId: string) => {
+    const seq = ++fetchSeqRef.current;
+
     try {
-      if (messages.length === 0) {
-        setIsLoadingMessages(true);
-      }
+      if (messages.length === 0) setIsLoadingMessages(true);
 
       const response = await api.get(`/admin/conversas/${contactId}/mensagens`);
-      if (response.data.success) {
-        const mappedMessages = response.data.data
-          .filter((item: any) => item && item.id != null)
-          .map((item: any) => ({
-            id: item.id.toString(),
-            sender: item.direction === 'outgoing' ? 'user' : 'contact',
-            text: item.content,
-            timestamp: formatTime(item.created_at),
-            rawDate: new Date(item.created_at),
-            read: !!item.read_at,
-            status: item.read_at ? 'read' : item.delivered_at ? 'delivered' : 'sent',
-            messageType: item.message_type,
-            mediaUrl: item.media_url ?? null,
-            transcription: item.transcription ?? null,
-          }))           .sort((a: Message, b: Message) => a.rawDate.getTime() - b.rawDate.getTime());
 
-        // Apenas atualiza se houver diferença real nas mensagens
-        setMessages((prevMessages) => {
-          // Se é o primeiro carregamento
-          if (prevMessages.length === 0) {
-            return mappedMessages;
-          }
+      if (seq !== fetchSeqRef.current) return;
+      if (!response.data.success) return;
 
-          // Se mudou o número de mensagens, atualiza
-          if (prevMessages.length !== mappedMessages.length) {
-            return mappedMessages;
-          }
+      const mappedMessages = response.data.data
+        .filter((item: any) => item && item.id != null)
+        .map((item: any) => ({
+          id: item.id.toString(),
+          sender: item.direction === 'outgoing' ? 'user' : 'contact',
+          text: item.content,
+          timestamp: formatTime(item.created_at),
+          rawDate: new Date(item.created_at),
+          read: !!item.read_at,
+          status: item.read_at ? 'read' : item.delivered_at ? 'delivered' : 'sent',
+          messageType: item.message_type,
+          mediaUrl: item.media_url ?? null,
+          transcription: item.transcription ?? null,
+        }))
+        .sort((a: Message, b: Message) => a.rawDate.getTime() - b.rawDate.getTime());
 
-          // Se o tamanho é igual, verifica se há mudanças reais no conteúdo
-          const hasRealChanges = mappedMessages.some((newMsg: Message, idx: number) => {
-            const oldMsg = prevMessages[idx];
-            return (
-              !oldMsg ||
-              oldMsg.id !== newMsg.id ||
-              oldMsg.status !== newMsg.status ||
-              oldMsg.text !== newMsg.text
-            );
-          });
-
-          // Evita re-render se não há mudanças
-          return hasRealChanges ? mappedMessages : prevMessages;
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao buscar mensagens:', error);
+      applyMessagesWithScrollPreserve(mappedMessages);
+    } catch (e) {
+      if (seq !== fetchSeqRef.current) return;
+      console.error('Erro ao buscar mensagens:', e);
       if (messages.length === 0) {
         toast.error('Erro ao carregar mensagens');
       }
     } finally {
-      setIsLoadingMessages(false);
+      if (seq === fetchSeqRef.current) setIsLoadingMessages(false);
     }
   };
 
@@ -271,7 +308,7 @@ export default function Chat() {
     };
 
     setMessages((prev) => [...prev, newMessage]);
-    scrollToBottom('smooth');
+    scrollToBottom('auto');
 
     try {
       const response = await api.post(`/admin/conversas/${selectedContactId}/mensagens`, {
@@ -443,6 +480,18 @@ export default function Chat() {
     if (!message.mediaUrl) return false;
     if (message.messageType === 'audio' || message.messageType === 'voice') return true;
     return /\.(mp3|ogg|wav|m4a|opus)(\?|$)/i.test(message.mediaUrl);
+  };
+
+  const isImageMessage = (message: Message) => {
+    if (!message.mediaUrl) return false;
+    if (message.messageType === 'image' || message.messageType === 'photo') return true;
+    return /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(message.mediaUrl);
+  };
+
+  const getMediaUrl = (url: string) => {
+    if (/^https?:\/\//i.test(url)) return url;
+    if (url.startsWith('/')) return `${window.location.origin}${url}`;
+    return `${window.location.origin}/${url}`;
   };
 
   const getMessageDisplayText = (message: Message) => {
@@ -720,8 +769,18 @@ export default function Chat() {
                                       {isAudioMessage(message) && message.mediaUrl && (
                                         <div className="mb-2">
                                           <audio controls className="w-full max-w-xs">
-                                            <source src={message.mediaUrl} />
+                                            <source src={getMediaUrl(message.mediaUrl)} />
                                           </audio>
+                                        </div>
+                                      )}
+                                      {isImageMessage(message) && message.mediaUrl && (
+                                        <div className="mb-2">
+                                          <img
+                                            src={getMediaUrl(message.mediaUrl)}
+                                            alt="Imagem enviada"
+                                            loading="lazy"
+                                            className="w-full max-w-sm rounded-lg border border-border object-contain"
+                                          />
                                         </div>
                                       )}
                                       <p className="text-base font-semibold whitespace-pre-wrap break-words leading-relaxed">
