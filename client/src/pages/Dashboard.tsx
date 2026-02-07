@@ -120,7 +120,7 @@ export default function Dashboard() {
       description: 'Solicitações, agendas e laudos',
       href: '/vistorias',
       icon: <ClipboardCheck size={20} />,
-      badge: 'Em desenvolvimento',
+      badge: 'Ativo',
       gradient: 'from-amber-500 to-orange-600',
     },
     {
@@ -128,7 +128,7 @@ export default function Dashboard() {
       description: 'Documentos e status de assinatura',
       href: '/assinaturas',
       icon: <FileSignature size={20} />,
-      badge: 'Em desenvolvimento',
+      badge: 'Ativo',
       gradient: 'from-indigo-500 to-sky-600',
     },
     {
@@ -136,7 +136,7 @@ export default function Dashboard() {
       description: 'Clientes, proprietários e contatos',
       href: '/pessoas',
       icon: <UserRound size={20} />,
-      badge: 'Em desenvolvimento',
+      badge: 'Ativo',
       gradient: 'from-rose-500 to-pink-600',
     },
     {

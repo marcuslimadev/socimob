@@ -64,12 +64,6 @@ export default function Chat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
-  const pendingScrollRestoreRef = useRef<{
-    top: number;
-    height: number;
-    wasNearBottom: boolean;
-    prevCount: number;
-  } | null>(null);
   const chatPatternSvg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><g fill="none" stroke="#d9d2c8" stroke-width="1" opacity="0.22"><path d="M20 20h20v20H20z"/><circle cx="120" cy="40" r="10"/><path d="M80 120l15-15 15 15"/><circle cx="40" cy="120" r="6"/><path d="M120 120h20v20h-20z"/></g></svg>';
   const chatPatternDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(chatPatternSvg)}`;
@@ -89,35 +83,23 @@ export default function Chat() {
 
   useEffect(() => {
     // Only scroll if new messages arrived and user was near bottom
-    if (messages.length > lastMessageCountRef.current) {
+    if (messages.length > lastMessageCountRef.current && messages.length > 0) {
       const viewport = getScrollViewport();
-      const isNearBottom = viewport
-        ? viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight) < 40
-        : true;
+      if (!viewport) return;
+      
+      const isNearBottom = viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight) < 100;
 
-      if (isNearBottom) {
-        scrollToBottom('smooth');
+      // Apenas rola para baixo se for mensagem nova E usuário estava perto do fim
+      if (isNearBottom && messages.length > lastMessageCountRef.current) {
+        setTimeout(() => {
+          if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
+          }
+        }, 50);
       }
       lastMessageCountRef.current = messages.length;
     }
-  }, [messages]);
-
-  useLayoutEffect(() => {
-    const pending = pendingScrollRestoreRef.current;
-    if (!pending) return;
-
-    const viewport = getScrollViewport();
-    if (!viewport) return;
-
-    if (messages.length > pending.prevCount && pending.wasNearBottom) {
-      viewport.scrollTop = viewport.scrollHeight;
-    } else {
-      const heightDiff = viewport.scrollHeight - pending.height;
-      viewport.scrollTop = pending.top + (heightDiff > 0 ? heightDiff : 0);
-    }
-
-    pendingScrollRestoreRef.current = null;
-  }, [messages]);
+  }, [messages.length]); // Apenas quando o COMPRIMENTO muda, não o array todo
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     setTimeout(() => {
@@ -176,7 +158,7 @@ export default function Chat() {
           }
 
           // Comparação otimizada - ignora timestamp pois muda constantemente
-          const hasChanges = mappedContacts.some((newContact, idx) => {
+          const hasChanges = mappedContacts.some((newContact: Contact, idx: number) => {
             const oldContact = prevContacts[idx];
             return (
               !oldContact ||
@@ -215,14 +197,6 @@ export default function Chat() {
       if (messages.length === 0) {
         setIsLoadingMessages(true);
       }
-      const viewport = getScrollViewport();
-      const scrollSnapshot = viewport
-        ? {
-            top: viewport.scrollTop,
-            height: viewport.scrollHeight,
-            wasNearBottom: viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight) < 40,
-          }
-        : null;
 
       const response = await api.get(`/admin/conversas/${contactId}/mensagens`);
       if (response.data.success) {
@@ -239,35 +213,22 @@ export default function Chat() {
             messageType: item.message_type,
             mediaUrl: item.media_url ?? null,
             transcription: item.transcription ?? null,
-          }))
-          .sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
+          }))           .sort((a: Message, b: Message) => a.rawDate.getTime() - b.rawDate.getTime());
 
         // Apenas atualiza se houver diferença real nas mensagens
         setMessages((prevMessages) => {
-          // Se é o primeiro carregamento ou mudou drasticamente o número de mensagens
-          if (prevMessages.length === 0 || Math.abs(prevMessages.length - mappedMessages.length) > 1) {
-            if (scrollSnapshot) {
-              pendingScrollRestoreRef.current = {
-                ...scrollSnapshot,
-                prevCount: prevMessages.length,
-              };
-            }
+          // Se é o primeiro carregamento
+          if (prevMessages.length === 0) {
             return mappedMessages;
           }
 
-          // Comparação otimizada: verifica se há mudanças reais
+          // Se mudou o número de mensagens, atualiza
           if (prevMessages.length !== mappedMessages.length) {
-            if (scrollSnapshot) {
-              pendingScrollRestoreRef.current = {
-                ...scrollSnapshot,
-                prevCount: prevMessages.length,
-              };
-            }
             return mappedMessages;
           }
 
           // Se o tamanho é igual, verifica se há mudanças reais no conteúdo
-          const hasRealChanges = mappedMessages.some((newMsg, idx) => {
+          const hasRealChanges = mappedMessages.some((newMsg: Message, idx: number) => {
             const oldMsg = prevMessages[idx];
             return (
               !oldMsg ||
@@ -277,18 +238,8 @@ export default function Chat() {
             );
           });
 
-          if (!hasRealChanges) {
-            return prevMessages; // Evita re-render se não há mudanças
-          }
-
-          if (scrollSnapshot) {
-            pendingScrollRestoreRef.current = {
-              ...scrollSnapshot,
-              prevCount: prevMessages.length,
-            };
-          }
-
-          return mappedMessages;
+          // Evita re-render se não há mudanças
+          return hasRealChanges ? mappedMessages : prevMessages;
         });
       }
     } catch (error) {

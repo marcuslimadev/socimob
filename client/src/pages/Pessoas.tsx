@@ -11,13 +11,29 @@ interface Pessoa {
   id: number;
   nome: string;
   tipo: string;
+  pais?: string | null;
   cpf: string | null;
   cnpj: string | null;
+  rg?: string | null;
+  orgao_expedidor?: string | null;
+  data_expedicao?: string | null;
+  cnh?: string | null;
+  data_nascimento?: string | null;
+  razao_social?: string | null;
+  inscricao_estadual?: string | null;
+  inscricao_municipal?: string | null;
   email: string | null;
   telefone: string | null;
   celular: string | null;
+  cep?: string | null;
   cidade: string | null;
   estado: string | null;
+  bairro?: string | null;
+  endereco?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  observacoes?: string | null;
+  contatos?: Array<{ tipo: string; contato: string; descricao: string }> | null;
   ativo: boolean;
   created_at?: string;
 }
@@ -155,36 +171,46 @@ export default function Pessoas() {
     setShowModal(true);
   };
 
-  const openEditModal = (pessoa: Pessoa) => {
-    setEditingPessoa(pessoa);
-    setFormData({
-      nome: pessoa.nome || '',
-      pais: 'Brasil',
-      telefone: pessoa.telefone || '',
-      celular: pessoa.celular || '',
-      email: pessoa.email || '',
-      tipo: pessoa.tipo || 'fisica',
-      cpf: pessoa.cpf || '',
-      rg: '',
-      orgao_expedidor: '',
-      data_expedicao: '',
-      cnh: '',
-      data_nascimento: '',
-      cnpj: pessoa.cnpj || '',
-      razao_social: '',
-      inscricao_estadual: '',
-      inscricao_municipal: '',
-      cep: '',
-      estado: pessoa.estado || '',
-      cidade: pessoa.cidade || '',
-      bairro: '',
-      endereco: '',
-      numero: '',
-      complemento: '',
-      observacoes: '',
-    });
-    setCurrentTab('principal');
-    setShowModal(true);
+  const openEditModal = async (pessoa: Pessoa) => {
+    try {
+      // Buscar dados completos da pessoa
+      const response = await api.get(`/pessoas/${pessoa.id}`);
+      const pessoaCompleta = response.data.data || response.data;
+
+      setEditingPessoa(pessoaCompleta);
+      setFormData({
+        nome: pessoaCompleta.nome || '',
+        pais: pessoaCompleta.pais || 'Brasil',
+        telefone: pessoaCompleta.telefone || '',
+        celular: pessoaCompleta.celular || '',
+        email: pessoaCompleta.email || '',
+        tipo: pessoaCompleta.tipo || 'fisica',
+        cpf: pessoaCompleta.cpf || '',
+        rg: pessoaCompleta.rg || '',
+        orgao_expedidor: pessoaCompleta.orgao_expedidor || '',
+        data_expedicao: pessoaCompleta.data_expedicao?.split('T')[0] || '',
+        cnh: pessoaCompleta.cnh || '',
+        data_nascimento: pessoaCompleta.data_nascimento?.split('T')[0] || '',
+        cnpj: pessoaCompleta.cnpj || '',
+        razao_social: pessoaCompleta.razao_social || '',
+        inscricao_estadual: pessoaCompleta.inscricao_estadual || '',
+        inscricao_municipal: pessoaCompleta.inscricao_municipal || '',
+        cep: pessoaCompleta.cep || '',
+        estado: pessoaCompleta.estado || '',
+        cidade: pessoaCompleta.cidade || '',
+        bairro: pessoaCompleta.bairro || '',
+        endereco: pessoaCompleta.endereco || '',
+        numero: pessoaCompleta.numero || '',
+        complemento: pessoaCompleta.complemento || '',
+        observacoes: pessoaCompleta.observacoes || '',
+      });
+      setContatos(pessoaCompleta.contatos || []);
+      setCurrentTab('principal');
+      setShowModal(true);
+    } catch (error) {
+      console.error('Erro ao carregar dados da pessoa:', error);
+      toast.error('Erro ao carregar dados da pessoa');
+    }
   };
 
   const addContato = () => {
