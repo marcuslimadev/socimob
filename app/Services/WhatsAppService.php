@@ -108,6 +108,12 @@ class WhatsAppService
             
             // 2. Registrar mensagem recebida
             $messageType = $this->detectMessageType($mediaUrl, $mediaType);
+            Log::info('📝 Tipo de mensagem detectado', [
+                'messageType' => $messageType,
+                'mediaUrl' => $mediaUrl,
+                'mediaType' => $mediaType
+            ]);
+            
             $mensagem = $this->saveMensagem($conversa->id, [
                 'message_sid' => $messageSid,
                 'direction' => 'incoming',
@@ -194,7 +200,15 @@ class WhatsAppService
 
             if ($leadModel) {
                 $this->hydrateLeadProfileFromSnippet($leadModel, $body);
+                
+                Log::info('📋 Chamando handleIncomingDocument', [
+                    'messageType' => $messageType,
+                    'mediaUrl' => $mediaUrl,
+                    'mensagem_id' => $mensagem->id ?? 'null'
+                ]);
                 $this->handleIncomingDocument($conversa, $mensagem, $messageType, $mediaUrl, $mediaType, $body);
+            } else {
+                Log::warning('⚠️ leadModel é null, handleIncomingDocument NÃO será chamado!');
             }
             
             // 5. Verificar se conversa está atribuída a um corretor/admin
