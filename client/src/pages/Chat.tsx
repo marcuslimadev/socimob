@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send,
   Phone,
@@ -201,9 +200,9 @@ export default function Chat() {
 
       const response = await api.get(`/admin/conversas/${contactId}/mensagens`);
       if (response.data.success) {
-        const mappedMessages = response.data.data
+        const mappedMessages: Message[] = response.data.data
           .filter((item: any) => item && item.id != null)
-          .map((item: any) => ({
+          .map((item: any): Message => ({
             id: item.id.toString(),
             sender: item.direction === 'outgoing' ? 'user' : 'contact',
             text: item.content,
@@ -215,7 +214,7 @@ export default function Chat() {
             mediaUrl: item.media_url ?? null,
             transcription: item.transcription ?? null,
           }))
-          .sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
+          .sort((a: Message, b: Message) => a.rawDate.getTime() - b.rawDate.getTime());
 
         // Apenas atualiza se houver diferença real nas mensagens
         setMessages((prevMessages) => {
@@ -548,12 +547,9 @@ export default function Chat() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {filteredContacts.map((contact, index) => (
-                  <motion.button
+                {filteredContacts.map((contact) => (
+                  <button
                     key={contact.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03 }}
                     onClick={() => setSelectedContactId(contact.id)}
                     className={cn(
                       'w-full p-4 flex items-center gap-3 transition-colors text-left',
@@ -587,7 +583,7 @@ export default function Chat() {
                         {contact.unread > 9 ? '9+' : contact.unread}
                       </span>
                     )}
-                  </motion.button>
+                  </button>
                 ))}
               </div>
             )}
@@ -673,7 +669,7 @@ export default function Chat() {
                         </div>
                       </div>
                     ) : (
-                      <AnimatePresence initial={false}>
+                      <>
                         {groupedFilteredMessages.map((group) => (
                           <div key={group.date} className="space-y-3">
                             {/* Date Separator */}
@@ -690,11 +686,8 @@ export default function Chat() {
                                                     group.messages[index + 1]?.sender !== message.sender;
                               
                               return (
-                                <motion.div
+                                <div
                                   key={message.id}
-                                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                                  transition={{ duration: 0.2 }}
                                   className={cn(
                                     'flex gap-2 items-end',
                                     isUser ? 'justify-end' : 'justify-start'
@@ -761,12 +754,12 @@ export default function Chat() {
                                       )}
                                     </div>
                                   </div>
-                                </motion.div>
+                                </div>
                               );
                             })}
                           </div>
                         ))}
-                      </AnimatePresence>
+                      </>
                     )}
                     <div ref={messagesEndRef} />
                   </div>
