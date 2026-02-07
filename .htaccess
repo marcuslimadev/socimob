@@ -1,6 +1,7 @@
 DirectoryIndex index.html index.php
 
 <IfModule mod_rewrite.c>
+    Options +FollowSymLinks
     RewriteEngine On
 
     # Redirecionar www para sem www
