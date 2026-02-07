@@ -211,7 +211,7 @@ class WhatsAppService
                 Log::warning('⚠️ leadModel é null, handleIncomingDocument NÃO será chamado!');
             }
             
-            // 5. Verificar se conversa está atribuída a um corretor/admin
+            // 5. Verificar se conversa está atribuída a um corretor/admin OU se humano já respondeu
             // Se sim, IA não deve responder - apenas humano pode continuar
             if (!empty($conversa->corretor_id)) {
                 Log::info('🔒 Conversa atribuída a corretor - IA não vai responder', [
@@ -225,6 +225,31 @@ class WhatsAppService
                     'success' => true,
                     'message' => 'Mensagem recebida - conversa atribuída a corretor',
                     'assigned_to' => $conversa->corretor_id,
+                    'conversa_id' => $conversa->id
+                ];
+            }
+            
+            // Verificar se humano já respondeu (mensagens outgoing manuais nas últimas 24h)
+            $hasRecentHumanResponse = $conversa->mensagens()
+                ->where('direction', 'outgoing')
+                ->where('created_at', '>=', now()->subHours(24))
+                ->where(function($q) {
+                    // Mensagens manuais não tem message_sid ou tem metadata indicando envio manual
+                    $q->whereNull('message_sid')
+                      ->orWhereNotNull('sent_by_user_id');
+                })
+                ->exists();
+                
+            if ($hasRecentHumanResponse) {
+                Log::info('🔒 Humano já respondeu recentemente - IA não vai responder', [
+                    'conversa_id' => $conversa->id,
+                    'lead_id' => $conversa->lead_id
+                ]);
+                
+                // Apenas registrar a mensagem recebida, não responder
+                return [
+                    'success' => true,
+                    'message' => 'Mensagem recebida - humano já está atendendo',
                     'conversa_id' => $conversa->id
                 ];
             }
