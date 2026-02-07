@@ -233,11 +233,7 @@ class WhatsAppService
             $hasRecentHumanResponse = $conversa->mensagens()
                 ->where('direction', 'outgoing')
                 ->where('created_at', '>=', now()->subHours(24))
-                ->where(function($q) {
-                    // Mensagens manuais não tem message_sid ou tem metadata indicando envio manual
-                    $q->whereNull('message_sid')
-                      ->orWhereNotNull('sent_by_user_id');
-                })
+                ->whereNotNull('user_id') // Mensagens enviadas por um usuário (humano)
                 ->exists();
                 
             if ($hasRecentHumanResponse) {
