@@ -14,6 +14,7 @@ require __DIR__ . '/bootstrap/app.php';
 
 use App\Models\Lead;
 use App\Models\Conversa;
+use App\Models\Pessoa;
 use App\Services\TwilioService;
 use App\Services\SmsShortLinkService;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +58,48 @@ if (!$onlySms) {
         
         if (!$dryRun) {
             try {
+                // Verificar se já existe pessoa com este telefone
+                $pessoaExistente = Pessoa::where('tenant_id', $lead->tenant_id)
+                    ->where(function($query) use ($lead) {
+                        $query->where('telefone', $lead->telefone)
+                              ->orWhere('celular', $lead->telefone);
+                    })
+                    ->first();
+
+                if (!$pessoaExistente) {
+                    // Criar pessoa a partir do lead
+                    $pessoa = Pessoa::create([
+                        'tenant_id' => $lead->tenant_id,
+                        'nome' => $lead->nome,
+                        'telefone' => $lead->telefone,
+                        'celular' => $lead->telefone,
+                        'email' => $lead->email,
+                        'tipo' => 'fisica',
+                        'cpf' => $lead->cpf,
+                        'renda_mensal' => $lead->renda_mensal,
+                        'profissao' => $lead->profissao,
+                        'papeis' => json_encode(['lead', 'interessado']),
+                        'status' => 'ativo',
+                        'origem' => $lead->origem ?? 'sistema',
+                        'classificacao' => 'lead',
+                        'interesses' => $lead->objetivo_compra,
+                        'preferencias' => json_encode([
+                            'tipo_imovel' => $lead->preferencia_tipo_imovel,
+                            'bairro' => $lead->preferencia_bairro,
+                            'quartos' => $lead->quartos,
+                            'suites' => $lead->suites,
+                            'garagem' => $lead->garagem,
+                        ]),
+                        'corretor_responsavel_id' => $lead->corretor_id,
+                        'observacoes' => $lead->observacoes,
+                        'ativo' => true,
+                    ]);
+                    
+                    echo "    ✓ Pessoa criada (ID: {$pessoa->id})\n";
+                } else {
+                    echo "    ℹ Pessoa já existe (ID: {$pessoaExistente->id})\n";
+                }
+
                 // Criar conversa para o lead
                 $conversa = Conversa::create([
                     'tenant_id' => $lead->tenant_id,
@@ -66,7 +109,7 @@ if (!$onlySms) {
                     'status' => 'ativa',
                     'stage' => 'qualificacao',
                     'canal' => 'manual',
-                    'iniciada_em' => $lead->created_at ?? now(),
+                    'iniciada_em' => $lead->created_at ?? new \DateTime(),
                 ]);
 
                 echo "    ✓ Conversa criada (ID: {$conversa->id})\n";
@@ -79,7 +122,7 @@ if (!$onlySms) {
                 ]);
             }
         } else {
-            echo "    [DRY-RUN] Conversa seria criada\n";
+            echo "    [DRY-RUN] Pessoa e conversa seriam criadas\n";
             $profilesCreated++;
         }
     }
@@ -150,7 +193,7 @@ if (!$onlyProfiles) {
                         // Marcar como enviado
                         $lead->update([
                             'sms_enviado' => true,
-                            'sms_enviado_em' => now(),
+                            'sms_enviado_em' => new \DateTime(),
                         ]);
                         
                         echo "    ✓ SMS enviado (Code: {$shortCode})\n";
