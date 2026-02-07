@@ -82,6 +82,9 @@ class ChavesNaMaoWebhookController extends Controller
                 'lead_id' => $leadData['id'] ?? 'N/A',
                 'segment' => $leadData['segment'] ?? 'N/A',
                 'name' => $leadData['name'] ?? 'N/A',
+                'phone' => $leadData['phone'] ?? 'N/A',
+                'ad_city' => $leadData['ad']['city'] ?? 'N/A',
+                'ad_state' => $leadData['ad']['state'] ?? 'N/A',
                 'payload_keys' => array_keys($leadData)
             ]);
 
@@ -210,6 +213,16 @@ class ChavesNaMaoWebhookController extends Controller
             if (isset($ad['garages'])) {
                 $leadData['garagem'] = $ad['garages'];
             }
+            
+            // Extrair cidade e estado do anúncio
+            if (isset($ad['city'])) {
+                $leadData['cidade'] = $ad['city'];
+            }
+            if (isset($ad['state'])) {
+                $leadData['estado'] = $ad['state'];
+            }
+            
+            // Montar localização combinada
             if (isset($ad['neighborhood']) || isset($ad['city'])) {
                 $leadData['localizacao'] = trim(
                     ($ad['neighborhood'] ?? '') . ', ' . ($ad['city'] ?? '')
