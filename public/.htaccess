@@ -5,9 +5,10 @@
 
     RewriteEngine On
 
-    # Exceção para arquivos do storage (imagens, áudios, vídeos)
-    RewriteCond %{REQUEST_URI} ^/storage/
-    RewriteRule ^ - [L]
+    # Exceção para arquivos do storage (DEVE vir ANTES de qualquer outra regra)
+    # Desabilita rewrite completamente para /storage/*
+    RewriteCond %{REQUEST_URI} ^/storage/ [NC]
+    RewriteRule .* - [L,QSA]
 
     # Exceção para Portal Svelte (servir arquivos estáticos)
     RewriteCond %{REQUEST_URI} ^/portal/svelte/
