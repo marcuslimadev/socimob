@@ -82,7 +82,7 @@ export default function Chat() {
     if (selectedContactId) {
       fetchMessages(selectedContactId);
       setShowMobileContacts(false);
-      const interval = setInterval(() => fetchMessages(selectedContactId), 5000); // Reduzido para 5s
+      const interval = setInterval(() => fetchMessages(selectedContactId), 15000); // Aumentado para 15s para reduzir piscar
       return () => clearInterval(interval);
     }
   }, [selectedContactId]);
@@ -163,7 +163,32 @@ export default function Chat() {
               needsHumanIntervention: item.needs_human_intervention || false,
             };
           });
-        setContacts(mappedContacts);
+        
+        // Apenas atualiza se houver mudanças reais
+        setContacts((prevContacts) => {
+          if (prevContacts.length === 0) {
+            return mappedContacts; // Primeiro carregamento
+          }
+
+          // Verifica se há mudanças significativas
+          if (prevContacts.length !== mappedContacts.length) {
+            return mappedContacts;
+          }
+
+          // Comparação otimizada - ignora timestamp pois muda constantemente
+          const hasChanges = mappedContacts.some((newContact, idx) => {
+            const oldContact = prevContacts[idx];
+            return (
+              !oldContact ||
+              oldContact.id !== newContact.id ||
+              oldContact.lastMessage !== newContact.lastMessage ||
+              oldContact.unread !== newContact.unread ||
+              oldContact.needsHumanIntervention !== newContact.needsHumanIntervention
+            );
+          });
+
+          return hasChanges ? mappedContacts : prevContacts;
+        });
 
         const query = new URLSearchParams(window.location.search);
         const targetLeadId = query.get('leadId');
@@ -219,7 +244,8 @@ export default function Chat() {
 
         // Apenas atualiza se houver diferença real nas mensagens
         setMessages((prevMessages) => {
-          if (prevMessages.length === 0 || prevMessages.length !== mappedMessages.length) {
+          // Se é o primeiro carregamento ou mudou drasticamente o número de mensagens
+          if (prevMessages.length === 0 || Math.abs(prevMessages.length - mappedMessages.length) > 1) {
             if (scrollSnapshot) {
               pendingScrollRestoreRef.current = {
                 ...scrollSnapshot,
@@ -229,7 +255,19 @@ export default function Chat() {
             return mappedMessages;
           }
 
-          const hasChanges = mappedMessages.some((newMsg, idx) => {
+          // Comparação otimizada: verifica se há mudanças reais
+          if (prevMessages.length !== mappedMessages.length) {
+            if (scrollSnapshot) {
+              pendingScrollRestoreRef.current = {
+                ...scrollSnapshot,
+                prevCount: prevMessages.length,
+              };
+            }
+            return mappedMessages;
+          }
+
+          // Se o tamanho é igual, verifica se há mudanças reais no conteúdo
+          const hasRealChanges = mappedMessages.some((newMsg, idx) => {
             const oldMsg = prevMessages[idx];
             return (
               !oldMsg ||
@@ -239,14 +277,18 @@ export default function Chat() {
             );
           });
 
-          if (hasChanges && scrollSnapshot) {
+          if (!hasRealChanges) {
+            return prevMessages; // Evita re-render se não há mudanças
+          }
+
+          if (scrollSnapshot) {
             pendingScrollRestoreRef.current = {
               ...scrollSnapshot,
               prevCount: prevMessages.length,
             };
           }
 
-          return hasChanges ? mappedMessages : prevMessages;
+          return mappedMessages;
         });
       }
     } catch (error) {
@@ -548,12 +590,9 @@ export default function Chat() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {filteredContacts.map((contact, index) => (
-                  <motion.button
+                {filteredContacts.map((contact) => (
+                  <button
                     key={contact.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03 }}
                     onClick={() => setSelectedContactId(contact.id)}
                     className={cn(
                       'w-full p-4 flex items-center gap-3 transition-colors text-left',
@@ -587,7 +626,7 @@ export default function Chat() {
                         {contact.unread > 9 ? '9+' : contact.unread}
                       </span>
                     )}
-                  </motion.button>
+                  </button>
                 ))}
               </div>
             )}
@@ -673,7 +712,7 @@ export default function Chat() {
                         </div>
                       </div>
                     ) : (
-                      <AnimatePresence initial={false}>
+                      <>
                         {groupedFilteredMessages.map((group) => (
                           <div key={group.date} className="space-y-3">
                             {/* Date Separator */}
@@ -690,11 +729,8 @@ export default function Chat() {
                                                     group.messages[index + 1]?.sender !== message.sender;
                               
                               return (
-                                <motion.div
+                                <div
                                   key={message.id}
-                                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                                  transition={{ duration: 0.2 }}
                                   className={cn(
                                     'flex gap-2 items-end',
                                     isUser ? 'justify-end' : 'justify-start'
@@ -761,12 +797,12 @@ export default function Chat() {
                                       )}
                                     </div>
                                   </div>
-                                </motion.div>
+                                </div>
                               );
                             })}
                           </div>
                         ))}
-                      </AnimatePresence>
+                      </>
                     )}
                     <div ref={messagesEndRef} />
                   </div>
