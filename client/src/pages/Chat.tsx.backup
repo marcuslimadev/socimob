@@ -306,12 +306,9 @@ export default function Chat() {
   };
 
   const fetchContacts = async () => {
-    dbg('fetchContacts start');
     try {
       setIsLoadingContacts(true);
       const response = await api.get('/admin/conversas');
-      dbg('fetchContacts response', { success: response.data?.success, count: response.data?.data?.length });
-
       if (response.data.success) {
         const mappedContacts = response.data.data
           .filter((item: any) => item && item.id != null && item.lead_id != null)
@@ -330,24 +327,31 @@ export default function Chat() {
               needsHumanIntervention: item.needs_human_intervention || false,
             };
           });
+        
+        // Apenas atualiza se houver mudanças reais
+        setContacts((prevContacts) => {
+          if (prevContacts.length === 0) {
+            return mappedContacts; // Primeiro carregamento
+          }
 
-        setContacts((prev) => {
-          if (prev.length === 0) return mappedContacts;
-          if (prev.length !== mappedContacts.length) return mappedContacts;
+          // Verifica se há mudanças significativas
+          if (prevContacts.length !== mappedContacts.length) {
+            return mappedContacts;
+          }
 
-          const hasChanges = mappedContacts.some((n: Contact, idx: number) => {
-            const o = prev[idx];
+          // Comparação otimizada - ignora timestamp pois muda constantemente
+          const hasChanges = mappedContacts.some((newContact: Contact, idx: number) => {
+            const oldContact = prevContacts[idx];
             return (
-              !o ||
-              o.id !== n.id ||
-              o.lastMessage !== n.lastMessage ||
-              o.unread !== n.unread ||
-              o.needsHumanIntervention !== n.needsHumanIntervention
+              !oldContact ||
+              oldContact.id !== newContact.id ||
+              oldContact.lastMessage !== newContact.lastMessage ||
+              oldContact.unread !== newContact.unread ||
+              oldContact.needsHumanIntervention !== newContact.needsHumanIntervention
             );
           });
 
-          dbg('setContacts', { prevLen: prev.length, nextLen: mappedContacts.length, hasChanges });
-          return hasChanges ? mappedContacts : prev;
+          return hasChanges ? mappedContacts : prevContacts;
         });
 
         const query = new URLSearchParams(window.location.search);
@@ -355,50 +359,31 @@ export default function Chat() {
 
         if (targetLeadId && !selectedContactId) {
           const target = mappedContacts.find((c: Contact) => c.leadId?.toString() === targetLeadId);
-          dbg('leadId auto-select', { targetLeadId, found: !!target });
           if (target) {
             setSelectedContactId(target.id);
-            setTimeout(() => scrollToBottom('auto'), 200);
+            setTimeout(() => scrollToBottom('auto'), 500);
           }
         }
       }
-    } catch (e) {
-      dbg('fetchContacts error', e);
+    } catch (error) {
+      console.error('Erro ao carregar conversas:', error);
       toast.error('Erro ao carregar conversas');
     } finally {
       setIsLoadingContacts(false);
       setIsRefreshing(false);
-      dbg('fetchContacts end');
     }
   };
 
   const fetchMessages = async (contactId: string) => {
     const seq = ++fetchSeqRef.current;
-    dbg('fetchMessages start', { contactId, seq });
 
     try {
       if (messages.length === 0) setIsLoadingMessages(true);
 
-      const vpBefore = getScrollViewport();
-      if (vpBefore) {
-        lastScrollHeightRef.current = vpBefore.scrollHeight;
-        lastClientHeightRef.current = vpBefore.clientHeight;
-        lastScrollTopRef.current = vpBefore.scrollTop;
-        dbg('viewport before fetch', { top: vpBefore.scrollTop, sh: vpBefore.scrollHeight, ch: vpBefore.clientHeight });
-      } else {
-        dbg('no viewport before fetch');
-      }
-
       const response = await api.get(`/admin/conversas/${contactId}/mensagens`);
-      dbg('fetchMessages response', { seq, ok: response.data?.success, count: response.data?.data?.length });
 
-      if (seq !== fetchSeqRef.current) {
-        dbg('fetchMessages ignored (stale)', { seq, current: fetchSeqRef.current });
-        return;
-      }
+      if (seq !== fetchSeqRef.current) return;
       if (!response.data.success) return;
-
-      lastAppliedSeqRef.current = seq;
 
       const mappedMessages = response.data.data
         .filter((item: any) => item && item.id != null)
@@ -416,14 +401,15 @@ export default function Chat() {
         }))
         .sort((a: Message, b: Message) => a.rawDate.getTime() - b.rawDate.getTime());
 
-      applyMessagesWithScrollPreserve(mappedMessages, seq);
+      applyMessagesWithScrollPreserve(mappedMessages);
     } catch (e) {
       if (seq !== fetchSeqRef.current) return;
-      dbg('fetchMessages error', e);
-      if (messages.length === 0) toast.error('Erro ao carregar mensagens');
+      console.error('Erro ao buscar mensagens:', e);
+      if (messages.length === 0) {
+        toast.error('Erro ao carregar mensagens');
+      }
     } finally {
       if (seq === fetchSeqRef.current) setIsLoadingMessages(false);
-      dbg('fetchMessages end', { seq, current: fetchSeqRef.current });
     }
   };
 
@@ -475,6 +461,59 @@ export default function Chat() {
     }
   };
 
+  const formatTime = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatRelativeTime = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Agora';
+    if (diffMins < 60) return `${diffMins}min`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}d`;
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  };
+
+  const formatDateSeparator = (date: Date) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 86400000);
+    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    if (messageDate.getTime() === today.getTime()) return 'Hoje';
+    if (messageDate.getTime() === yesterday.getTime()) return 'Ontem';
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+  };
+
+  const groupedMessages = useMemo(() => {
+    const groups: { date: string; messages: Message[] }[] = [];
+    let currentDate = '';
+
+    messages.forEach((message) => {
+      const dateKey = message.rawDate.toDateString();
+      if (dateKey !== currentDate) {
+        currentDate = dateKey;
+        groups.push({
+          date: formatDateSeparator(message.rawDate),
+          messages: [message],
+        });
+      } else {
+        groups[groups.length - 1].messages.push(message);
+      }
+    });
+
+    return groups;
+  }, [messages]);
+
   const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   const formatHtmlMessage = (html: string) => {
@@ -512,22 +551,25 @@ export default function Chat() {
   }, [messages, searchTerm]);
 
   const groupedFilteredMessages = useMemo(() => {
-    const src = filteredMessages;
+    if (!searchTerm) return groupedMessages;
     const groups: { date: string; messages: Message[] }[] = [];
     let currentDate = '';
 
-    src.forEach((message) => {
+    filteredMessages.forEach((message) => {
       const dateKey = message.rawDate.toDateString();
       if (dateKey !== currentDate) {
         currentDate = dateKey;
-        groups.push({ date: formatDateSeparator(message.rawDate), messages: [message] });
+        groups.push({
+          date: formatDateSeparator(message.rawDate),
+          messages: [message],
+        });
       } else {
         groups[groups.length - 1].messages.push(message);
       }
     });
 
     return groups;
-  }, [filteredMessages]);
+  }, [filteredMessages, groupedMessages, searchTerm]);
 
   const filteredContacts = useMemo(() => {
     if (!searchTerm) return contacts;
