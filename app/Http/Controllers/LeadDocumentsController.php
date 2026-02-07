@@ -108,7 +108,7 @@ class LeadDocumentsController extends Controller
 
     private function resolveLeadForTenant(int $id, Request $request): Lead
     {
-        $tenantId = $request->attributes->get('tenant_id');
+        $tenantId = $request->attributes->get('tenant_id') ?? $request->input('tenant_id');
 
         $query = Lead::query();
 
@@ -116,6 +116,15 @@ class LeadDocumentsController extends Controller
             $query->where('tenant_id', $tenantId);
         }
 
-        return $query->findOrFail($id);
+        try {
+            return $query->findOrFail($id);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('Lead não encontrado', [
+                'lead_id' => $id,
+                'tenant_id' => $tenantId,
+                'error' => $e->getMessage()
+            ]);
+            abort(404, 'Lead não encontrado');
+        }
     }
 }
