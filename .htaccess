@@ -11,6 +11,10 @@ DirectoryIndex index.html index.php
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
+    # Exceção para arquivos do storage (mídia do WhatsApp)
+    RewriteCond %{REQUEST_URI} ^/storage/ [NC]
+    RewriteRule ^ - [L]
+
     # Rotas API/webhook/sync vão para index.php (Lumen)
     RewriteCond %{REQUEST_URI} ^/(api|webhook|sync) [NC]
     RewriteRule ^ index.php [L]
