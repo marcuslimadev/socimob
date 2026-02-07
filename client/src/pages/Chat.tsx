@@ -486,22 +486,19 @@ export default function Chat() {
     // Se já é URL completa
     if (/^https?:\/\//i.test(url)) return url;
     
-    // Para caminhos relativos, usa a mesma origem da API
-    // A API já está configurada para usar o domínio correto via /api
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
-    const baseUrl = apiBaseUrl.startsWith('http') 
-      ? apiBaseUrl.replace(/\/api$/, '') // Remove /api do final se existir
-      : window.location.origin; // Usa origin atual se for path relativo
+    // Para arquivos de mídia, sempre usa o domínio da API backend
+    // onde os arquivos estão armazenados fisicamente
+    const storageBaseUrl = 'https://lojadaesquina.store';
     
     // Se começa com /
     if (url.startsWith('/')) {
-      return `${baseUrl}${url}`;
+      return `${storageBaseUrl}${url}`;
     }
     // Se não tem protocolo nem barra, adiciona /storage/
     if (!url.startsWith('storage/')) {
-      return `${baseUrl}/storage/${url}`;
+      return `${storageBaseUrl}/storage/${url}`;
     }
-    return `${baseUrl}/${url}`;
+    return `${storageBaseUrl}/${url}`;
   };
 
   const getMessageDisplayText = (message: Message) => {
