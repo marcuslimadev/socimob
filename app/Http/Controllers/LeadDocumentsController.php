@@ -16,9 +16,9 @@ class LeadDocumentsController extends Controller
     {
     }
 
-    public function index(Request $request, int $leadId)
+    public function index(Request $request, $id)
     {
-        $lead = $this->resolveLeadForTenant($leadId, $request);
+        $lead = $this->resolveLeadForTenant((int)$id, $request);
 
         $documents = $lead->documents()
             ->orderByDesc('created_at')
@@ -30,9 +30,9 @@ class LeadDocumentsController extends Controller
         ]);
     }
 
-    public function store(Request $request, int $leadId)
+    public function store(Request $request, $id)
     {
-        $lead = $this->resolveLeadForTenant($leadId, $request);
+        $lead = $this->resolveLeadForTenant((int)$id, $request);
 
         $validator = Validator::make($request->all(), [
             'arquivo' => 'required|file|mimes:pdf,jpg,jpeg,png,doc,docx',
@@ -61,13 +61,13 @@ class LeadDocumentsController extends Controller
         ], 201);
     }
 
-    public function destroy(Request $request, int $leadId, int $documentId)
+    public function destroy(Request $request, $id, $documentId)
     {
-        $lead = $this->resolveLeadForTenant($leadId, $request);
+        $lead = $this->resolveLeadForTenant((int)$id, $request);
 
         $document = LeadDocument::where('lead_id', $lead->id)
             ->when($lead->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
-            ->findOrFail($documentId);
+            ->findOrFail((int)$documentId);
 
         $this->documents->deleteDocument($document);
         $document->delete();
@@ -78,9 +78,9 @@ class LeadDocumentsController extends Controller
         ]);
     }
 
-    public function export(Request $request, int $leadId): BinaryFileResponse
+    public function export(Request $request, $id): BinaryFileResponse
     {
-        $lead = $this->resolveLeadForTenant($leadId, $request);
+        $lead = $this->resolveLeadForTenant((int)$id, $request);
         $documents = $lead->documents()->orderBy('created_at')->get();
 
         if ($documents->isEmpty()) {
