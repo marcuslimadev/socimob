@@ -72,6 +72,9 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
     // 🔒 Sincronização de imóveis - PROTEGIDO POR TENANT
     // Só funciona se acessado pelo domínio correto (ex: exclusivalarimoveis.com)
     $router->get('/properties/sync', 'PropertyController@sync');
+
+    // Proxy de mídia do Twilio (usado pelo chat) - relativo a /api
+    $router->get('/conversas/media/proxy', 'ConversasController@proxyMedia');
     
     // Configuração do tenant (público) - para homepage dinâmica
     $router->get('/tenant/config', function () {
