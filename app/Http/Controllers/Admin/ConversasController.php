@@ -853,4 +853,12 @@ class ConversasController extends BaseController
             ], 500);
         }
     }
+
+    /**
+     * Proxy para mídias do Twilio (delega ao ConversasController principal)
+     */
+    public function proxyMedia(Request $request)
+    {
+        return app(\App\Http\Controllers\ConversasController::class)->proxyMedia($request);
+    }
 }

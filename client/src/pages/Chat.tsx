@@ -12,7 +12,11 @@ import {
   Clock,
   Loader2,
   User,
-  RefreshCw
+  RefreshCw,
+  FileText,
+  Film,
+  Download,
+  ExternalLink
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -478,11 +482,40 @@ export default function Chat() {
 
   const isImageMessage = (message: Message) => {
     if (!message.mediaUrl) return false;
-    // Verifica pelo tipo de mensagem primeiro
     if (message.messageType === 'image' || message.messageType === 'photo' || message.messageType === 'picture') return true;
-    // Verifica pela extensão do arquivo
     const url = message.mediaUrl.toLowerCase();
     return /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif|tiff?)(\?|$|#)/i.test(url);
+  };
+
+  const isVideoMessage = (message: Message) => {
+    if (!message.mediaUrl) return false;
+    if (message.messageType === 'video') return true;
+    return /\.(mp4|webm|mov|avi|mkv|3gp)(\?|$)/i.test(message.mediaUrl);
+  };
+
+  const isDocumentMessage = (message: Message) => {
+    if (!message.mediaUrl) return false;
+    if (message.messageType === 'document' || message.messageType === 'file') return true;
+    return /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|csv|txt|zip|rar)(\?|$)/i.test(message.mediaUrl);
+  };
+
+  const getDocumentLabel = (message: Message) => {
+    const url = message.mediaUrl || '';
+    const type = message.messageType || '';
+    if (type === 'document' || type === 'file' || /\.pdf(\?|$)/i.test(url)) return 'Documento';
+    if (/\.(doc|docx)(\?|$)/i.test(url)) return 'Documento Word';
+    if (/\.(xls|xlsx|csv)(\?|$)/i.test(url)) return 'Planilha';
+    if (/\.(ppt|pptx)(\?|$)/i.test(url)) return 'Apresentação';
+    if (/\.(zip|rar)(\?|$)/i.test(url)) return 'Arquivo compactado';
+    return 'Documento';
+  };
+
+  // Detecta tipo de media para URLs do Twilio (que não têm extensão)
+  // Se o messageType não é audio/image/video, assume documento
+  const isTwilioGenericMedia = (message: Message) => {
+    if (!message.mediaUrl) return false;
+    if (!message.mediaUrl.includes('twilio.com')) return false;
+    return !isAudioMessage(message) && !isImageMessage(message) && !isVideoMessage(message) && !isDocumentMessage(message);
   };
 
   const getMediaUrl = (url: string) => {
@@ -836,6 +869,39 @@ export default function Chat() {
                                             }}
                                           />
                                         </div>
+                                      )}
+                                      {isVideoMessage(message) && message.mediaUrl && (
+                                        <div className="mb-2">
+                                          <video
+                                            controls
+                                            className="w-full max-w-sm rounded-lg border border-border bg-black"
+                                            preload="metadata"
+                                          >
+                                            <source src={getMediaUrl(message.mediaUrl)} />
+                                            Vídeo não suportado pelo navegador.
+                                          </video>
+                                        </div>
+                                      )}
+                                      {(isDocumentMessage(message) || isTwilioGenericMedia(message)) && message.mediaUrl && (
+                                        <a
+                                          href={getMediaUrl(message.mediaUrl)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="mb-2 flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors max-w-sm"
+                                        >
+                                          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                            <FileText className="w-5 h-5 text-primary" />
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium truncate">
+                                              {getDocumentLabel(message)}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                              Clique para abrir
+                                            </p>
+                                          </div>
+                                          <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                        </a>
                                       )}
                                       {/* Mostra legenda/texto da mensagem se houver */}
                                       {getMessageDisplayText(message) && (

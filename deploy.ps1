@@ -20,7 +20,7 @@ $SSH_HOST = "145.223.105.168"
 $SSH_PORT = "65002"
 $SSH_USER = "u815655858"
 $SSH_PASS = "MundoMelhor@10"
-$DEPLOY_PATH = "domains/lojadaesquina.store/public_html"
+$DEPLOY_PATH = "~/domains/lojadaesquina.store/public_html"
 
 try {
     Write-Host "`n" -NoNewline
@@ -49,33 +49,14 @@ try {
         throw "Erro ao copiar build: $_"
     }
 
-    # 3. VERIFICAR MUDANCAS
-    Write-Step "VERIFICAR MUDANCAS NO BUILD"
-    $gitStatus = git status --porcelain dist/public public/index.html public/assets
-    if ([string]::IsNullOrWhiteSpace($gitStatus)) {
-        Write-Warning "Nenhuma mudanca no build detectada"
-        if (-not $Force) {
-            $continue = Read-Host "Continuar mesmo assim? (s/N)"
-            if ($continue -ne 's' -and $continue -ne 'S') {
-                Write-Host "Deploy cancelado pelo usuario" -ForegroundColor Yellow
-                exit 0
-            }
-        } else {
-            Write-Host "Modo -Force ativado, continuando deploy..." -ForegroundColor Yellow
-        }
-    } else {
-        Write-Success "Mudancas detectadas no build:"
-        git status dist/public --short
-    }
-
-    # 3. COMMIT E PUSH
+    # 2. COMMIT E PUSH
     Write-Step "COMMIT E PUSH"
     git add .
 
     $fullCommitMessage = @"
 $CommitMessage
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+
 "@
 
     git commit -m $fullCommitMessage

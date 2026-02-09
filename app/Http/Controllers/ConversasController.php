@@ -877,7 +877,7 @@ class ConversasController extends Controller
     public function proxyMedia(Request $request)
     {
         $mediaUrl = $request->query('url');
-        
+
         if (!$mediaUrl) {
             return response()->json(['error' => 'URL da mídia não fornecida'], 400);
         }
@@ -889,28 +889,22 @@ class ConversasController extends Controller
 
         try {
             $result = $this->twilio->downloadMedia($mediaUrl);
-            
+
             if ($result['success']) {
-                // Detectar tipo de conteúdo baseado na URL
-                $contentType = 'application/octet-stream';
-                if (str_contains($mediaUrl, '.jpg') || str_contains($mediaUrl, 'image/jpeg')) {
-                    $contentType = 'image/jpeg';
-                } elseif (str_contains($mediaUrl, '.png') || str_contains($mediaUrl, 'image/png')) {
-                    $contentType = 'image/png';
-                } elseif (str_contains($mediaUrl, '.gif')) {
-                    $contentType = 'image/gif';
-                } elseif (str_contains($mediaUrl, '.pdf')) {
-                    $contentType = 'application/pdf';
-                } elseif (str_contains($mediaUrl, 'audio')) {
-                    $contentType = 'audio/ogg';
-                }
+                $contentType = $result['contentType'] ?? 'application/octet-stream';
+
+                // Limpar parâmetros extras do content-type (ex: "image/jpeg; charset=UTF-8")
+                $cleanType = explode(';', $contentType)[0];
 
                 return response($result['data'], 200)
-                    ->header('Content-Type', $contentType)
-                    ->header('Cache-Control', 'public, max-age=86400'); // Cache de 1 dia
+                    ->header('Content-Type', $cleanType)
+                    ->header('Cache-Control', 'public, max-age=86400')
+                    ->header('X-Media-Content-Type', $cleanType); // Header extra para debug no frontend
             }
-            
-            return response()->json(['error' => 'Falha ao baixar mídia'], 500);
+
+            return response()->json([
+                'error' => $result['error'] ?? 'Falha ao baixar mídia',
+            ], 502);
         } catch (\Exception $e) {
             \Log::error("Erro ao fazer proxy de mídia: " . $e->getMessage());
             return response()->json(['error' => 'Erro ao processar mídia'], 500);

@@ -401,21 +401,32 @@ class TwilioService
         curl_setopt($ch, CURLOPT_USERPWD, "{$this->accountSid}:{$this->authToken}");
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-        
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
         $data = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        $curlError = curl_error($ch);
         curl_close($ch);
-        
+
         if ($httpCode === 200 && $data) {
             return [
                 'success' => true,
-                'data' => $data
+                'data' => $data,
+                'contentType' => $contentType ?: 'application/octet-stream',
             ];
         }
-        
+
+        \Log::error("TwilioService::downloadMedia falhou", [
+            'url' => $mediaUrl,
+            'httpCode' => $httpCode,
+            'curlError' => $curlError,
+            'hasCredentials' => !empty($this->accountSid) && !empty($this->authToken),
+        ]);
+
         return [
             'success' => false,
-            'error' => 'Failed to download media'
+            'error' => "Failed to download media (HTTP {$httpCode})",
         ];
     }
 
