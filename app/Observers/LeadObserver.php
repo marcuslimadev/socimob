@@ -502,6 +502,39 @@ class LeadObserver
             $updates['papeis'] = ['cliente', 'lead'];
         }
 
+        // CRÍTICO: Sempre atualizar observações e preferências do lead
+        // Mesmo que a pessoa já tenha dados, queremos manter histórico atualizado
+        $novasObservacoes = $this->montarObservacoesPessoa($lead);
+        if ($novasObservacoes) {
+            // Se pessoa já tem observações, adicionar as novas separadas por linha
+            if (!empty($pessoa->observacoes)) {
+                $updates['observacoes'] = $pessoa->observacoes . "\n\n--- Atualização de Lead ---\n" . $novasObservacoes;
+            } else {
+                $updates['observacoes'] = $novasObservacoes;
+            }
+        }
+
+        // Sempre atualizar preferências (merge com as existentes)
+        $novasPreferencias = $this->montarPreferenciasPessoa($lead);
+        if ($novasPreferencias) {
+            $preferenciasAtuais = $pessoa->preferencias ?? [];
+            if (is_string($preferenciasAtuais)) {
+                $preferenciasAtuais = json_decode($preferenciasAtuais, true) ?? [];
+            }
+            // Merge: novos dados sobrescrevem os antigos
+            $updates['preferencias'] = array_merge($preferenciasAtuais, $novasPreferencias);
+        }
+
+        // Sempre atualizar interesses
+        $novosInteresses = $this->montarInteressesPessoa($lead);
+        if ($novosInteresses) {
+            $interessesAtuais = $pessoa->interesses ?? [];
+            if (is_string($interessesAtuais)) {
+                $interessesAtuais = json_decode($interessesAtuais, true) ?? [];
+            }
+            $updates['interesses'] = array_merge($interessesAtuais, $novosInteresses);
+        }
+
         if (!empty($updates)) {
             $pessoa->update($updates);
         }

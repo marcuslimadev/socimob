@@ -204,6 +204,17 @@ class ChavesNaMaoWebhookController extends Controller
         if (!$isVehicle && isset($data['ad'])) {
             $ad = $data['ad'];
             
+            // Tipo de imóvel (Casa, Apartamento, etc)
+            if (isset($ad['type'])) {
+                $leadData['preferencia_tipo_imovel'] = $ad['type'];
+            }
+            
+            // Bairro
+            if (isset($ad['neighborhood'])) {
+                $leadData['preferencia_bairro'] = $ad['neighborhood'];
+            }
+            
+            // Características do imóvel
             if (isset($ad['rooms'])) {
                 $leadData['quartos'] = $ad['rooms'];
             }
@@ -214,22 +225,24 @@ class ChavesNaMaoWebhookController extends Controller
                 $leadData['garagem'] = $ad['garages'];
             }
             
-            // Extrair cidade e estado do anúncio
-            if (isset($ad['city'])) {
-                $leadData['cidade'] = $ad['city'];
-            }
-            if (isset($ad['state'])) {
-                $leadData['estado'] = $ad['state'];
+            // Montar localização combinada (Bairro, Cidade - Estado)
+            $locParts = array_filter([
+                $ad['neighborhood'] ?? null,
+                $ad['city'] ?? null,
+                $ad['state'] ?? null
+            ]);
+            if (!empty($locParts)) {
+                $leadData['localizacao'] = implode(', ', $locParts);
             }
             
-            // Montar localização combinada
-            if (isset($ad['neighborhood']) || isset($ad['city'])) {
-                $leadData['localizacao'] = trim(
-                    ($ad['neighborhood'] ?? '') . ', ' . ($ad['city'] ?? '')
-                );
-            }
+            // Preço do anúncio
             if (isset($ad['price'])) {
                 $leadData['budget_max'] = (float) $ad['price'];
+            }
+            
+            // Referência do imóvel (salvar nas observações do cliente)
+            if (isset($ad['reference'])) {
+                $leadData['observacoes_cliente'] = "Referência do imóvel: " . $ad['reference'];
             }
         }
 
