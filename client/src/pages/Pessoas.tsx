@@ -95,6 +95,20 @@ export default function Pessoas() {
     }
   }, [searchParams]);
 
+  // Abrir automaticamente a pessoa se houver apenas 1 resultado da busca vinda da URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(searchParams);
+    const searchParam = urlParams.get('search');
+    
+    if (searchParam && pessoas.length === 1 && !isLoading) {
+      // Aguardar um momento para garantir que a lista foi carregada
+      const timer = setTimeout(() => {
+        openEditModal(pessoas[0]);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [pessoas, searchParams, isLoading]);
+
   const handleBuscarCep = async () => {
     if (!formData.cep) {
       toast.error('Digite um CEP');
