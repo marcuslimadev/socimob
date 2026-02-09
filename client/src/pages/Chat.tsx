@@ -33,6 +33,7 @@ interface Message {
   messageType?: string;
   mediaUrl?: string | null;
   transcription?: string | null;
+  senderName?: string;
 }
 
 interface Contact {
@@ -321,6 +322,7 @@ export default function Chat() {
           messageType: item.message_type,
           mediaUrl: item.media_url ?? null,
           transcription: item.transcription ?? null,
+          senderName: item.sender_name ?? undefined,
         }))
         .sort((a: Message, b: Message) => a.rawDate.getTime() - b.rawDate.getTime());
 
@@ -773,6 +775,17 @@ export default function Chat() {
                                             : 'left-[-6px] bg-muted border-l border-b border-border rotate-45 rounded-sm'
                                         )}
                                       />
+                                      {/* Nome do remetente */}
+                                      {message.senderName && (
+                                        <div className={cn(
+                                          "text-[10px] font-medium mb-1.5 opacity-70",
+                                          message.senderName === 'Assistente IA' 
+                                            ? 'text-blue-600 dark:text-blue-400' 
+                                            : 'text-foreground'
+                                        )}>
+                                          {message.senderName}
+                                        </div>
+                                      )}
                                       {isAudioMessage(message) && message.mediaUrl && (
                                         <div className="mb-2">
                                           <audio controls className="w-full max-w-xs">

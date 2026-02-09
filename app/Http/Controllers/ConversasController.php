@@ -155,8 +155,31 @@ class ConversasController extends Controller
             
             \Log::info("Encontradas " . count($mensagens) . " mensagens");
             
+            // Buscar informações dos remetentes (usuários e lead)
+            $userIds = $mensagens->pluck('user_id')->filter()->unique();
+            $users = $db->table('users')->whereIn('id', $userIds)->get()->keyBy('id');
+            
+            $lead = null;
+            if ($conversa->lead_id) {
+                $lead = $db->table('leads')->find($conversa->lead_id);
+            }
+            
             // Formatar mensagens para garantir campos corretos
-            $mensagens = $mensagens->map(function($msg) {
+            $mensagens = $mensagens->map(function($msg) use ($users, $lead, $conversa) {
+                $senderName = null;
+                
+                if ($msg->direction === 'outgoing' && $msg->user_id) {
+                    // Mensagem enviada por corretor/admin
+                    $user = $users->get($msg->user_id);
+                    $senderName = $user ? $user->name : 'Atendente';
+                } elseif ($msg->direction === 'incoming') {
+                    // Mensagem recebida do lead
+                    $senderName = $lead?->nome ?? ($lead?->telefone ?? 'Cliente');
+                } else {
+                    // Mensagem do sistema/IA
+                    $senderName = 'Assistente IA';
+                }
+                
                 return [
                     'id' => $msg->id,
                     'conversa_id' => $msg->conversa_id,
@@ -169,7 +192,9 @@ class ConversasController extends Controller
                     'status' => $msg->status ?? 'sent',
                     'sent_at' => $msg->sent_at,
                     'read_at' => $msg->read_at ?? null,
-                    'created_at' => $msg->created_at ?? null
+                    'created_at' => $msg->created_at ?? null,
+                    'sender_name' => $senderName,
+                    'user_id' => $msg->user_id ?? null
                 ];
             });
             
