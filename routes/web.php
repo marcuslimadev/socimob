@@ -235,6 +235,9 @@ $router->group(['prefix' => 'api/deploy'], function () use ($router) {
     $router->get('/info', 'DeployController@info');
 });
 
+// Proxy público para mídias do Twilio (usado no chat via <img src>)
+$router->get('/conversas/media/proxy', 'ConversasController@proxyMedia');
+
 // ===========================
 // Autenticação (sem middleware)
 // ===========================
@@ -365,6 +368,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
         $router->get('/conversas/{id}', 'Admin\ConversasController@show');
         $router->get('/conversas/{id}/mensagens', 'Admin\ConversasController@mensagens');
         $router->post('/conversas/{id}/mensagens', 'Admin\ConversasController@enviarMensagem');
+        // Proxy de mídia (Twilio) – também exposto sem auth em /api/conversas/media/proxy
         $router->get('/conversas/media/proxy', 'Admin\ConversasController@proxyMedia');
         $router->get('/mensagens/{id}/media', 'Admin\MensagemMediaController@show');
 

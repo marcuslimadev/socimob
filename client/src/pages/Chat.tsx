@@ -490,7 +490,7 @@ export default function Chat() {
     
     // Se é uma URL do Twilio (api.twilio.com), usar proxy para evitar erro de autenticação
     if (url.includes('twilio.com')) {
-      return `https://lojadaesquina.store/api/admin/conversas/media/proxy?url=${encodeURIComponent(url)}`;
+      return `/api/conversas/media/proxy?url=${encodeURIComponent(url)}`;
     }
     
     // Se já é URL completa
