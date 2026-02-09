@@ -1,5 +1,4 @@
 import '@testing-library/jest-dom';
-import 'vitest-canvas-mock';
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
