@@ -37,12 +37,12 @@ class PessoasController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('nome', 'ILIKE', "%{$search}%")
-                  ->orWhere('cpf', 'ILIKE', "%{$search}%")
-                  ->orWhere('cnpj', 'ILIKE', "%{$search}%")
-                  ->orWhere('email', 'ILIKE', "%{$search}%")
-                  ->orWhere('telefone', 'ILIKE', "%{$search}%")
-                  ->orWhere('celular', 'ILIKE', "%{$search}%");
+                $q->where('nome', 'LIKE', "%{$search}%")
+                  ->orWhere('cpf', 'LIKE', "%{$search}%")
+                  ->orWhere('cnpj', 'LIKE', "%{$search}%")
+                  ->orWhere('email', 'LIKE', "%{$search}%")
+                  ->orWhere('telefone', 'LIKE', "%{$search}%")
+                  ->orWhere('celular', 'LIKE', "%{$search}%");
             });
         }
 
