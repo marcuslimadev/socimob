@@ -70,7 +70,7 @@ try {
 
     # 3. COMMIT E PUSH
     Write-Step "COMMIT E PUSH"
-    git add dist/public
+    git add .
 
     $fullCommitMessage = @"
 $CommitMessage

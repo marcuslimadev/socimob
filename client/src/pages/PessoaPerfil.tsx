@@ -15,6 +15,16 @@ import {
   Phone,
   MapPin,
   Edit,
+  MessageCircle,
+  ExternalLink,
+  Users,
+  TrendingUp,
+  Calendar,
+  MessageSquare,
+  Building2,
+  DollarSign,
+  Clock,
+  Send,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
@@ -104,7 +114,28 @@ interface PessoaDocumento {
   created_at: string;
 }
 
-type TabType = 'informacoes' | 'documentos' | 'endereco' | 'atividades';
+interface Interacao {
+  id: number;
+  tipo: string;
+  descricao: string;
+  data_interacao: string;
+  usuario?: { id: number; name: string };
+}
+
+interface Relacionamento {
+  id: number;
+  tipo: string;
+  pessoa_destino: { id: number; nome: string; tipo: string };
+}
+
+interface Estatisticas {
+  total_interacoes: number;
+  total_documentos: number;
+  total_relacionamentos: number;
+  total_indicacoes: number;
+}
+
+type TabType = 'informacoes' | 'documentos' | 'endereco' | 'atividades' | 'relacionamentos' | 'notas';
 
 const PessoaPerfil: React.FC = () => {
   const [match, params] = useRoute('/pessoas/:id');
@@ -117,18 +148,31 @@ const PessoaPerfil: React.FC = () => {
   const [documents, setDocuments] = useState<PessoaDocumento[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [interacoes, setInteracoes] = useState<Interacao[]>([]);
+  const [relacionamentos, setRelacionamentos] = useState<Relacionamento[]>([]);
+  const [estatisticas, setEstatisticas] = useState<Estatisticas | null>(null);
+  const [newNote, setNewNote] = useState('');
+  const [loadingInteracoes, setLoadingInteracoes] = useState(false);
+  const [recommendedProperties, setRecommendedProperties] = useState<any[]>([]);
+  const [loadingProperties, setLoadingProperties] = useState(false);
 
   useEffect(() => {
     if (id) {
       loadPessoa();
       loadDocuments();
+      loadInteracoes();
+      loadRelacionamentos();
     }
   }, [id]);
 
   const loadPessoa = async () => {
     try {
       const response = await api.get(`/pessoas/${id}`);
-      setPessoa(response.data.data || response.data);
+      const pessoaData = response.data.data || response.data;
+      setPessoa(pessoaData);
+      if (pessoaData.estatisticas) {
+        setEstatisticas(pessoaData.estatisticas);
+      }
     } catch (error) {
       console.error('Erro ao carregar pessoa:', error);
       toast.error('Erro ao carregar dados da pessoa');
@@ -143,6 +187,71 @@ const PessoaPerfil: React.FC = () => {
       setDocuments(response.data.data || []);
     } catch (error) {
       console.error('Erro ao carregar documentos:', error);
+    }
+  };
+
+  const loadInteracoes = async () => {
+    try {
+      setLoadingInteracoes(true);
+      const response = await api.get(`/pessoas/${id}/interacoes`);
+      setInteracoes(response.data.data || []);
+    } catch (error) {
+      console.error('Erro ao carregar interações:', error);
+    } finally {
+      setLoadingInteracoes(false);
+    }
+  };
+
+  const loadRelacionamentos = async () => {
+    try {
+      const response = await api.get(`/pessoas/${id}/relacionamentos`);
+      setRelacionamentos(response.data.data || []);
+    } catch (error) {
+      console.error('Erro ao carregar relacionamentos:', error);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+
+    try {
+      await api.post(`/pessoas/${id}/interacoes`, {
+        tipo: 'nota',
+        descricao: newNote,
+        data_interacao: new Date().toISOString(),
+      });
+      toast.success('Nota adicionada com sucesso');
+      setNewNote('');
+      loadInteracoes();
+    } catch (error) {
+      console.error('Erro ao adicionar nota:', error);
+      toast.error('Erro ao adicionar nota');
+    }
+  };
+
+  const handleWhatsApp = () => {
+    const phone = (pessoa?.whatsapp || pessoa?.celular || pessoa?.telefone)?.replace(/\D/g, '');
+    if (phone) {
+      window.open(`https://wa.me/55${phone}`, '_blank');
+    } else {
+      toast.error('Número de telefone não encontrado');
+    }
+  };
+
+  const handleEmail = () => {
+    if (pessoa?.email) {
+      window.location.href = `mailto:${pessoa.email}`;
+    } else {
+      toast.error('Email não encontrado');
+    }
+  };
+
+  const handleCall = () => {
+    const phone = pessoa?.celular || pessoa?.telefone;
+    if (phone) {
+      window.location.href = `tel:${phone}`;
+    } else {
+      toast.error('Número de telefone não encontrado');
     }
   };
 
@@ -207,9 +316,11 @@ const PessoaPerfil: React.FC = () => {
 
   const tabs = [
     { id: 'informacoes', label: 'Informações', icon: User },
-    { id: 'documentos', label: 'Documentos', icon: FileText },
+    { id: 'documentos', label: 'Documentos', icon: FileText, badge: documents.length },
     { id: 'endereco', label: 'Endereço', icon: MapPin },
-    { id: 'atividades', label: 'Atividades', icon: Activity },
+    { id: 'atividades', label: 'Atividades', icon: Activity, badge: estatisticas?.total_interacoes },
+    { id: 'relacionamentos', label: 'Relacionamentos', icon: Users, badge: estatisticas?.total_relacionamentos },
+    { id: 'notas', label: 'Notas', icon: MessageSquare },
   ];
 
   if (loading) {
@@ -272,17 +383,53 @@ const PessoaPerfil: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                onClick={() => navigate(`/pessoas?edit=${id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-              >
-                <Edit className="w-4 h-4" />
-                Editar
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Quick Action Buttons */}
+                {(pessoa.celular || pessoa.telefone || pessoa.whatsapp) && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleWhatsApp}
+                    className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                    title="WhatsApp"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                  </motion.button>
+                )}
+                {pessoa.email && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleEmail}
+                    className="flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    title="Email"
+                  >
+                    <Mail className="w-4 h-4" />
+                  </motion.button>
+                )}
+                {(pessoa.celular || pessoa.telefone) && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleCall}
+                    className="flex items-center gap-2 px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors"
+                    title="Ligar"
+                  >
+                    <Phone className="w-4 h-4" />
+                  </motion.button>
+                )}
+                <button
+                  onClick={() => navigate(`/pessoas?edit=${id}`)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  <Edit className="w-4 h-4" />
+                  Editar
+                </button>
+              </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 mt-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex gap-2 mt-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -290,7 +437,7 @@ const PessoaPerfil: React.FC = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as TabType)}
                     className={`
-                      flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors relative
+                      flex items-center gap-2 px-4 py-3 font-medium text-sm transition-colors relative whitespace-nowrap
                       ${
                         activeTab === tab.id
                           ? 'text-blue-600 dark:text-blue-400'
@@ -300,6 +447,11 @@ const PessoaPerfil: React.FC = () => {
                   >
                     <Icon className="w-4 h-4" />
                     {tab.label}
+                    {tab.badge !== undefined && tab.badge > 0 && (
+                      <span className="ml-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 text-xs rounded-full">
+                        {tab.badge}
+                      </span>
+                    )}
                     {activeTab === tab.id && (
                       <motion.div
                         layoutId="activeTab"
@@ -315,6 +467,71 @@ const PessoaPerfil: React.FC = () => {
 
         {/* Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Statistics Cards */}
+          {estatisticas && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-100 text-sm font-medium">Interações</p>
+                    <p className="text-3xl font-bold mt-1">{estatisticas.total_interacoes}</p>
+                  </div>
+                  <Activity className="w-10 h-10 text-blue-200" />
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-100 text-sm font-medium">Documentos</p>
+                    <p className="text-3xl font-bold mt-1">{estatisticas.total_documentos}</p>
+                  </div>
+                  <FileText className="w-10 h-10 text-green-200" />
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-100 text-sm font-medium">Relacionamentos</p>
+                    <p className="text-3xl font-bold mt-1">{estatisticas.total_relacionamentos}</p>
+                  </div>
+                  <Users className="w-10 h-10 text-purple-200" />
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-100 text-sm font-medium">Indicações</p>
+                    <p className="text-3xl font-bold mt-1">{estatisticas.total_indicacoes}</p>
+                  </div>
+                  <TrendingUp className="w-10 h-10 text-orange-200" />
+                </div>
+              </motion.div>
+            </div>
+          )}
+
           {activeTab === 'informacoes' && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -859,13 +1076,185 @@ const PessoaPerfil: React.FC = () => {
           )}
 
           {activeTab === 'atividades' && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Histórico de Atividades
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400">
-                Em desenvolvimento - aqui será exibido o histórico de interações com a pessoa.
-              </p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Activity className="w-5 h-5" />
+                  Histórico de Atividades ({interacoes.length})
+                </h2>
+              </div>
+              
+              {loadingInteracoes ? (
+                <div className="flex items-center justify-center p-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : interacoes.length === 0 ? (
+                <div className="p-12 text-center">
+                  <Activity className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Nenhuma atividade registrada ainda
+                  </p>
+                </div>
+              ) : (
+                <div className="p-6 space-y-4">
+                  {interacoes.map((interacao, index) => (
+                    <motion.div
+                      key={interacao.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="flex gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="flex-shrink-0">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          interacao.tipo === 'ligacao' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                          interacao.tipo === 'email' ? 'bg-purple-100 dark:bg-purple-900/30' :
+                          interacao.tipo === 'nota' ? 'bg-yellow-100 dark:bg-yellow-900/30' :
+                          interacao.tipo === 'reuniao' ? 'bg-green-100 dark:bg-green-900/30' :
+                          'bg-gray-100 dark:bg-gray-700'
+                        }`}>
+                          {interacao.tipo === 'ligacao' && <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
+                          {interacao.tipo === 'email' && <Mail className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
+                          {interacao.tipo === 'nota' && <MessageSquare className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />}
+                          {interacao.tipo === 'reuniao' && <Users className="w-5 h-5 text-green-600 dark:text-green-400" />}
+                          {!['ligacao', 'email', 'nota', 'reuniao'].includes(interacao.tipo) && <Activity className="w-5 h-5 text-gray-600 dark:text-gray-400" />}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white capitalize">
+                              {interacao.tipo.replace('_', ' ')}
+                            </p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              {interacao.descricao}
+                            </p>
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                            {new Date(interacao.data_interacao).toLocaleString('pt-BR')}
+                          </span>
+                        </div>
+                        {interacao.usuario && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                            Por: {interacao.usuario.name}
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'relacionamentos' && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Relacionamentos ({relacionamentos.length})
+                </h2>
+              </div>
+
+              {relacionamentos.length === 0 ? (
+                <div className="p-12 text-center">
+                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Nenhum relacionamento cadastrado
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {relacionamentos.map((rel) => (
+                    <div key={rel.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                            {rel.pessoa_destino.nome.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {rel.pessoa_destino.nome}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 rounded">
+                                {rel.tipo}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {rel.pessoa_destino.tipo === 'fisica' ? 'Pessoa Física' : 'Pessoa Jurídica'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/pessoas/${rel.pessoa_destino.id}`)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'notas' && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  Notas e Comentários
+                </h2>
+              </div>
+
+              <div className="p-6">
+                <div className="flex gap-3 mb-6">
+                  <textarea
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    placeholder="Adicionar uma nota..."
+                    className="flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    rows={3}
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleAddNote}
+                    disabled={!newNote.trim()}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center gap-2 h-fit"
+                  >
+                    <Send className="w-4 h-4" />
+                    Adicionar
+                  </motion.button>
+                </div>
+
+                <div className="space-y-4">
+                  {interacoes.filter(i => i.tipo === 'nota').map((nota, index) => (
+                    <motion.div
+                      key={nota.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-lg"
+                    >
+                      <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
+                        {nota.descricao}
+                      </p>
+                      <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
+                        <span>{nota.usuario?.name || 'Sistema'}</span>
+                        <span>{new Date(nota.data_interacao).toLocaleString('pt-BR')}</span>
+                      </div>
+                    </motion.div>
+                  ))}
+                  {interacoes.filter(i => i.tipo === 'nota').length === 0 && (
+                    <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                      Nenhuma nota adicionada ainda
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

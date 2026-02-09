@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Plus, MapPin, Bed, Bath, Ruler, Heart, Share2, Eye, X, Download } from 'lucide-react';
+import { Search, Filter, Plus, MapPin, Bed, Bath, Ruler, Heart, Share2, Eye, X, Download, RefreshCw } from 'lucide-react';
 import { useLocation } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -24,6 +24,7 @@ export default function Properties() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('todos');
   const [selectedStatus, setSelectedStatus] = useState('todos');
@@ -33,10 +34,20 @@ export default function Properties() {
   const [minBathrooms, setMinBathrooms] = useState('');
   const [minArea, setMinArea] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const itemsPerPage = 9;
 
   useEffect(() => {
     fetchProperties();
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        setUserRole(parsed.role || null);
+      } catch (error) {
+        console.error('Erro ao ler usuário do storage:', error);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -161,6 +172,26 @@ export default function Properties() {
       setIsExporting(false);
     }
   };
+
+  const handleSyncProperties = async () => {
+    try {
+      setIsSyncing(true);
+      const response = await api.get('/properties/sync');
+      if (response.data?.success) {
+        toast.success('Imóveis atualizados com sucesso');
+        await fetchProperties();
+      } else {
+        toast.error(response.data?.error || 'Erro ao atualizar imóveis');
+      }
+    } catch (error) {
+      console.error('Erro ao sincronizar imóveis:', error);
+      toast.error('Erro ao atualizar imóveis');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
 
   return (
     <div className="flex">
@@ -307,6 +338,18 @@ export default function Properties() {
                   <p className="page-subtitle">Gerencie seu portfólio de propriedades</p>
                 </div>
                 <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                  {isAdmin && (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleSyncProperties}
+                      disabled={isSyncing}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-6 py-3 font-semibold text-foreground transition-all hover:bg-white/20 disabled:opacity-50 sm:w-auto"
+                    >
+                      <RefreshCw size={20} className={isSyncing ? 'animate-spin' : ''} />
+                      {isSyncing ? 'Atualizando...' : 'Atualizar imóveis'}
+                    </motion.button>
+                  )}
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}

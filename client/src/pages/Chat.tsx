@@ -496,9 +496,8 @@ export default function Chat() {
     // Se já é URL completa
     if (/^https?:\/\//i.test(url)) return url;
     
-    // Para arquivos de mídia, sempre usa o domínio da API backend
-    // onde os arquivos estão armazenados fisicamente
-    const storageBaseUrl = 'https://lojadaesquina.store';
+    // Para arquivos de mídia, usa o domínio atual (tenant) para evitar CORS/host mismatch
+    const storageBaseUrl = typeof window !== 'undefined' ? window.location.origin : '';
     
     // Se começa com /
     if (url.startsWith('/')) {
