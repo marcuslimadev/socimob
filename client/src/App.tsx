@@ -4,43 +4,63 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Dashboard from "./pages/Dashboard";
-import Leads from "./pages/Leads";
-import Properties from "./pages/Properties";
-import Chat from "./pages/Chat";
-import NotificationCenter from "./pages/NotificationCenter";
-import Login from "./pages/Login";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import ClientPortal from "./pages/ClientPortal";
-import Agenda from "./pages/Agenda";
-import Financeiro from "./pages/Financeiro";
-import Vistorias from "./pages/Vistorias";
-import Assinaturas from "./pages/Assinaturas";
-import Pessoas from "./pages/Pessoas";
-import VistoriaDetail from "./pages/VistoriaDetail";
-import VistoriaSolicitacaoNova from "./pages/VistoriaSolicitacaoNova";
-import VistoriaSolicitacoes from "./pages/VistoriaSolicitacoes";
-import VistoriaSolicitacoesKanban from "./pages/VistoriaSolicitacoesKanban";
-import VistoriaSolicitacoesCalendario from "./pages/VistoriaSolicitacoesCalendario";
-import VistoriaContestacoes from "./pages/VistoriaContestacoes";
-import LeadProfile from "./pages/LeadProfile";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/hooks/useQueryConfig";
+import ProgressBar from "@/components/ProgressBar";
+import { lazy, Suspense } from "react";
+import { SkeletonLoader } from "./components/SkeletonLoader";
 
-import PropertyDetail from "./pages/PropertyDetail";
-import ImovelForm from "./pages/ImovelForm";
-import Settings from "./pages/Settings";
-import SystemLogs from "./pages/SystemLogs";
-import Tenants from "./pages/Tenants";
-import AdminUsers from "./pages/AdminUsers";
-import PropertyAds from "./pages/PropertyAds";
-import Analytics from "./pages/Analytics";
-import AnalyticsConsentBanner from "./components/AnalyticsConsentBanner";
-import AnalyticsTracker from "./components/AnalyticsTracker";
+// Lazy load das páginas para code splitting
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Leads = lazy(() => import("./pages/Leads"));
+const Properties = lazy(() => import("./pages/Properties"));
+const Chat = lazy(() => import("./pages/Chat"));
+const NotificationCenter = lazy(() => import("./pages/NotificationCenter"));
+const Login = lazy(() => import("./pages/Login"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const ClientPortal = lazy(() => import("./pages/ClientPortal"));
+const Agenda = lazy(() => import("./pages/Agenda"));
+const Financeiro = lazy(() => import("./pages/Financeiro"));
+const Vistorias = lazy(() => import("./pages/Vistorias"));
+const Assinaturas = lazy(() => import("./pages/Assinaturas"));
+const Pessoas = lazy(() => import("./pages/Pessoas"));
+const VistoriaDetail = lazy(() => import("./pages/VistoriaDetail"));
+const VistoriaSolicitacaoNova = lazy(() => import("./pages/VistoriaSolicitacaoNova"));
+const VistoriaSolicitacoes = lazy(() => import("./pages/VistoriaSolicitacoes"));
+const VistoriaSolicitacoesKanban = lazy(() => import("./pages/VistoriaSolicitacoesKanban"));
+const VistoriaSolicitacoesCalendario = lazy(() => import("./pages/VistoriaSolicitacoesCalendario"));
+const VistoriaContestacoes = lazy(() => import("./pages/VistoriaContestacoes"));
+const LeadProfile = lazy(() => import("./pages/LeadProfile"));
+const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
+const ImovelForm = lazy(() => import("./pages/ImovelForm"));
+const Settings = lazy(() => import("./pages/Settings"));
+const SystemLogs = lazy(() => import("./pages/SystemLogs"));
+const Tenants = lazy(() => import("./pages/Tenants"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers"));
+const PropertyAds = lazy(() => import("./pages/PropertyAds"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const AnalyticsConsentBanner = lazy(() => import("./components/AnalyticsConsentBanner"));
+const AnalyticsTracker = lazy(() => import("./components/AnalyticsTracker"));
 
+// Loading fallback component
+function PageLoader() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-7xl space-y-6">
+        <SkeletonLoader variant="card" count={1} className="h-32" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <SkeletonLoader variant="card" count={4} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Router() {
   return (
-    <Switch>
+    <Suspense fallback={<PageLoader />}>
+      <Switch>
       <Route path={"/"} component={ClientPortal} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/leads" component={Leads} />
@@ -75,6 +95,7 @@ function Router() {
       {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
+    </Suspense>
   );
 }
 
@@ -86,17 +107,22 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        switchable
-      >
-        <TooltipProvider>
-          <Toaster />
-          <AnalyticsConsentBanner />
-          <AnalyticsTracker />
-          <Router />
-        </TooltipProvider>
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider
+          defaultTheme="light"
+          switchable
+        >
+          <TooltipProvider>
+            <ProgressBar />
+            <Toaster />
+            <Suspense fallback={null}>
+              <AnalyticsConsentBanner />
+              <AnalyticsTracker />
+            </Suspense>
+            <Router />
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }

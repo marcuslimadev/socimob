@@ -1,14 +1,15 @@
 // Dashboard Principal - SOCIMOB v2 - Deploy Automatico - Mobile First
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart3, Users, TrendingUp, MessageSquare, Zap, Activity, ClipboardCheck, FileSignature, UserRound, Home } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 import MetricCard from '@/components/MetricCard';
 import LeadCard from '@/components/LeadCard';
 import KanbanBoard from '@/components/KanbanBoard';
 import PageLayout from '@/components/PageLayout';
 import QuickAccessCard from '@/components/QuickAccessCard';
+import { SkeletonLoader } from '@/components/SkeletonLoader';
 
 interface DashboardStats {
   leads: {
@@ -56,41 +57,44 @@ interface RecentActivity {
 }
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentLeads, setRecentLeads] = useState<any[]>([]);
-  const [activities, setActivities] = useState<RecentActivity[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
-    try {
-      const [statsRes, leadsRes, activitiesRes] = await Promise.all([
-        api.get('/dashboard/stats'),
-        api.get('/leads'), // Getting all leads and slicing the top 3
-        api.get('/dashboard/atividades')
-      ]);
-
-      if (statsRes.data.success) {
-        setStats(statsRes.data.data);
+  // Usar React Query para buscar dados do dashboard
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: async () => {
+      const res = await api.get('/dashboard/stats');
+      if (res.data.success) {
+        return res.data.data as DashboardStats;
       }
+      return null;
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutos
+  });
 
-      if (leadsRes.data.success) {
-        setRecentLeads(leadsRes.data.data.slice(0, 3));
+  const { data: recentLeads = [], isLoading: leadsLoading } = useQuery({
+    queryKey: ['dashboard', 'leads'],
+    queryFn: async () => {
+      const res = await api.get('/leads');
+      if (res.data.success) {
+        return res.data.data.slice(0, 3);
       }
+      return [];
+    },
+    staleTime: 1 * 60 * 1000, // 1 minuto
+  });
 
-      if (activitiesRes.data.success) {
-        setActivities(activitiesRes.data.data);
+  const { data: activities = [], isLoading: activitiesLoading } = useQuery({
+    queryKey: ['dashboard', 'atividades'],
+    queryFn: async () => {
+      const res = await api.get('/dashboard/atividades');
+      if (res.data.success) {
+        return res.data.data as RecentActivity[];
       }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      toast.error('Erro ao carregar dados do dashboard');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return [];
+    },
+    staleTime: 1 * 60 * 1000, // 1 minuto
+  });
+
+  const isLoading = statsLoading || leadsLoading || activitiesLoading;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -166,6 +170,16 @@ export default function Dashboard() {
           </p>
         </motion.div>
 
+          {statsLoading ? (
+            <motion.div
+              variants={itemVariants}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+            >
+              {[...Array(4)].map((_, i) => (
+                <SkeletonLoader key={i} variant="card" />
+              ))}
+            </motion.div>
+          ) : (
           <motion.div
             variants={itemVariants}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
@@ -206,7 +220,18 @@ export default function Dashboard() {
               delay={0.3}
             />
           </motion.div>
+          )}
 
+          {statsLoading ? (
+            <motion.div
+              variants={itemVariants}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 md:mb-8"
+            >
+              {[...Array(4)].map((_, i) => (
+                <SkeletonLoader key={i} variant="card" />
+              ))}
+            </motion.div>
+          ) : (
           <motion.div
             variants={itemVariants}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 md:mb-8"
@@ -248,6 +273,7 @@ export default function Dashboard() {
               delay={0.7}
             />
           </motion.div>
+          )}
 
           <motion.div variants={itemVariants} className="mb-6 md:mb-8">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 md:mb-6 gap-2">
@@ -331,6 +357,13 @@ export default function Dashboard() {
 
           <motion.div variants={itemVariants} className="mb-6 md:mb-8">
             <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 md:mb-6">Leads Recentes</h2>
+            {leadsLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {[...Array(3)].map((_, i) => (
+                  <SkeletonLoader key={i} variant="card" />
+                ))}
+              </div>
+            ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {recentLeads.map((lead, index) => (
                 <LeadCard
@@ -345,6 +378,7 @@ export default function Dashboard() {
                 />
               ))}
             </div>
+            )}
           </motion.div>
 
           <motion.div variants={itemVariants}>

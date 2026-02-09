@@ -1,11 +1,13 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, Plus, Download, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 import { api } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Sidebar from '@/components/Sidebar';
 import LeadCard from '@/components/LeadCard';
+import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,8 +28,6 @@ export default function Leads() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('todos');
   const [selectedSort, setSelectedSort] = useState('recente');
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [showNewLeadModal, setShowNewLeadModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [smsSentLeads, setSmsSentLeads] = useState<Record<string, boolean>>({});
@@ -43,24 +43,16 @@ export default function Leads() {
     observacoes: '',
   });
   const [_, setLocation] = useLocation();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchLeads();
-
-    const intervalId = window.setInterval(() => {
-      fetchLeads();
-    }, 30000);
-
-    return () => window.clearInterval(intervalId);
-  }, []);
-
-  const fetchLeads = async () => {
-    try {
+  // Fetch leads com React Query
+  const { data: leads = [], isLoading } = useQuery({
+    queryKey: ['leads'],
+    queryFn: async () => {
       const response = await api.get('/leads');
       if (response.data.success) {
-        // Map backend data to frontend interface - filter out invalid leads
-        const mappedLeads = response.data.data
-          .filter((item: any) => item && item.id != null) // Skip leads without ID
+        return response.data.data
+          .filter((item: any) => item && item.id != null)
           .map((item: any) => ({
             id: item.id.toString(),
             name: item.nome || 'Sem nome',
@@ -71,15 +63,12 @@ export default function Leads() {
             lastContact: formatDate(item.updated_at),
             sms_enviado: Boolean(item.sms_enviado)
           }));
-        setLeads(mappedLeads);
       }
-    } catch (error) {
-      console.error('Error fetching leads:', error);
-      toast.error('Erro ao carregar leads');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return [];
+    },
+    refetchInterval: 30000, // Refetch a cada 30 segundos
+    staleTime: 15000, // 15 segundos
+  });
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
