@@ -20,6 +20,41 @@ import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import PageLayout from '@/components/PageLayout';
 
+interface Lead {
+  id: number;
+  nome?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  whatsapp?: string | null;
+  cpf?: string | null;
+  estado_civil?: string | null;
+  composicao_familiar?: string | null;
+  profissao?: string | null;
+  renda_mensal?: number | null;
+  fonte_renda?: string | null;
+  preferencia_tipo_imovel?: string | null;
+  preferencia_bairro?: string | null;
+  quartos?: number | null;
+  suites?: number | null;
+  garagem?: number | null;
+  budget_min?: number | null;
+  budget_max?: number | null;
+  financiamento_status?: string | null;
+  prazo_compra?: string | null;
+  objetivo_compra?: string | null;
+  preferencia_lazer?: string | null;
+  preferencia_seguranca?: string | null;
+  caracteristicas_desejadas?: string | null;
+  observacoes_cliente?: string | null;
+  diagnostico_ia?: string | null;
+  diagnostico_status?: string | null;
+  status?: string | null;
+  fonte?: string | null;
+  localizacao?: string | null;
+  cidade?: string | null;
+  state?: string | null;
+}
+
 interface Pessoa {
   id: number;
   nome: string;
@@ -56,6 +91,7 @@ interface Pessoa {
   corretor_responsavel_id?: number | null;
   renda_mensal?: number | null;
   profissao?: string | null;
+  lead?: Lead | null;
 }
 
 interface PessoaDocumento {
@@ -409,6 +445,240 @@ const PessoaPerfil: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* Dados do Lead - Se existir */}
+              {pessoa.lead && (
+                <>
+                  {/* Perfil Pessoal do Lead */}
+                  <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-6">
+                    <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <User className="w-5 h-5 text-blue-600" />
+                      Perfil Pessoal (Lead)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {pessoa.lead.estado_civil && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Estado Civil
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white capitalize">
+                            {pessoa.lead.estado_civil.replace('_', ' ')}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {pessoa.lead.composicao_familiar && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Composição Familiar
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white">
+                            {pessoa.lead.composicao_familiar}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Dados Financeiros */}
+                  <div className="mt-8 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg p-6">
+                    <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <span className="text-xl">💰</span>
+                      Dados Financeiros
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {pessoa.lead.renda_mensal && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Renda Mensal
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white font-semibold">
+                            R$ {Number(pessoa.lead.renda_mensal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {pessoa.lead.fonte_renda && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Fonte de Renda
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white capitalize">
+                            {pessoa.lead.fonte_renda.replace('_', ' ')}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {pessoa.lead.financiamento_status && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Status do Financiamento
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white capitalize">
+                            {pessoa.lead.financiamento_status.replace('_', ' ')}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {(pessoa.lead.budget_min || pessoa.lead.budget_max) && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Orçamento
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white font-semibold">
+                            {pessoa.lead.budget_min && `R$ ${Number(pessoa.lead.budget_min).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`}
+                            {pessoa.lead.budget_min && pessoa.lead.budget_max && ' - '}
+                            {pessoa.lead.budget_max && `R$ ${Number(pessoa.lead.budget_max).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Preferências de Imóvel */}
+                  <div className="mt-8 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-6">
+                    <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <span className="text-xl">🏠</span>
+                      Preferências de Imóvel
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {pessoa.lead.preferencia_tipo_imovel && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Tipo de Imóvel
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white capitalize font-semibold">
+                            {pessoa.lead.preferencia_tipo_imovel}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {pessoa.lead.preferencia_bairro && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Bairro Preferido
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white font-semibold">
+                            {pessoa.lead.preferencia_bairro}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {(pessoa.lead.quartos || pessoa.lead.suites || pessoa.lead.garagem) && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Cômodos
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white">
+                            {pessoa.lead.quartos && `${pessoa.lead.quartos} quartos`}
+                            {pessoa.lead.quartos && pessoa.lead.suites && ', '}
+                            {pessoa.lead.suites && `${pessoa.lead.suites} suítes`}
+                            {(pessoa.lead.quartos || pessoa.lead.suites) && pessoa.lead.garagem && ', '}
+                            {pessoa.lead.garagem && `${pessoa.lead.garagem} vagas`}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {pessoa.lead.preferencia_lazer && (
+                        <div className="md:col-span-2">
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Preferências de Lazer
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white">
+                            {pessoa.lead.preferencia_lazer}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {pessoa.lead.preferencia_seguranca && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Segurança
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white">
+                            {pessoa.lead.preferencia_seguranca}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {pessoa.lead.caracteristicas_desejadas && (
+                        <div className="md:col-span-3">
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Características Desejadas
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white">
+                            {pessoa.lead.caracteristicas_desejadas}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Timeline de Compra */}
+                  <div className="mt-8 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-lg p-6">
+                    <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <span className="text-xl">⏰</span>
+                      Timeline de Compra
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {pessoa.lead.prazo_compra && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Prazo para Compra
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white font-semibold capitalize">
+                            {pessoa.lead.prazo_compra.replace('_', ' ')}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {pessoa.lead.objetivo_compra && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Objetivo da Compra
+                          </label>
+                          <p className="mt-1 text-gray-900 dark:text-white capitalize">
+                            {pessoa.lead.objetivo_compra}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Diagnóstico e Observações */}
+                  {(pessoa.lead.observacoes_cliente || pessoa.lead.diagnostico_ia) && (
+                    <div className="mt-8 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 rounded-lg p-6">
+                      <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-gray-600" />
+                        Diagnóstico e Observações
+                      </h3>
+                      <div className="grid grid-cols-1 gap-6">
+                        {pessoa.lead.observacoes_cliente && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                              Observações do Cliente
+                            </label>
+                            <p className="mt-1 text-gray-900 dark:text-white whitespace-pre-wrap">
+                              {pessoa.lead.observacoes_cliente}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {pessoa.lead.diagnostico_ia && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                              Diagnóstico IA
+                            </label>
+                            <p className="mt-1 text-gray-900 dark:text-white whitespace-pre-wrap">
+                              {pessoa.lead.diagnostico_ia}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
 

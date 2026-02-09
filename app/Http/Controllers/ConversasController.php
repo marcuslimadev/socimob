@@ -175,39 +175,131 @@ class ConversasController extends Controller
                 if ($lead) {
                     $contextParts = [];
                     
-                    // Tipo de imóvel preferido
+                    // 🏠 IMÓVEL DESEJADO
+                    $imovelParts = [];
+                    
                     if (!empty($lead->preferencia_tipo_imovel)) {
-                        $contextParts[] = $lead->preferencia_tipo_imovel;
+                        $imovelParts[] = ucfirst($lead->preferencia_tipo_imovel);
                     }
                     
-                    // Bairro preferido
                     if (!empty($lead->preferencia_bairro)) {
-                        $contextParts[] = $lead->preferencia_bairro;
+                        $imovelParts[] = $lead->preferencia_bairro;
                     }
                     
-                    // Quartos
+                    // Cômodos
+                    $comodos = [];
                     if (!empty($lead->quartos)) {
-                        $contextParts[] = $lead->quartos . " qts";
+                        $comodos[] = $lead->quartos . " qts";
+                    }
+                    if (!empty($lead->suites)) {
+                        $comodos[] = $lead->suites . " suítes";
+                    }
+                    if (!empty($lead->garagem)) {
+                        $comodos[] = $lead->garagem . " vagas";
+                    }
+                    if (!empty($comodos)) {
+                        $imovelParts[] = implode(', ', $comodos);
                     }
                     
-                    // Orçamento
+                    if (!empty($imovelParts)) {
+                        $contextParts[] = "🏠 " . implode(' • ', $imovelParts);
+                    }
+                    
+                    // 💰 ORÇAMENTO E FINANCEIRO
+                    $finParts = [];
+                    
                     if (!empty($lead->budget_max)) {
                         $budget = (float) $lead->budget_max;
                         if ($budget >= 1000000) {
-                            $contextParts[] = "R$ " . number_format($budget / 1000000, 1) . "M";
+                            $finParts[] = "R$ " . number_format($budget / 1000000, 1, ',', '.') . "M";
                         } else if ($budget >= 1000) {
-                            $contextParts[] = "R$ " . number_format($budget / 1000, 0) . "k";
+                            $finParts[] = "R$ " . number_format($budget / 1000, 0, ',', '.') . "k";
                         } else {
-                            $contextParts[] = "R$ " . number_format($budget, 0);
+                            $finParts[] = "R$ " . number_format($budget, 0, ',', '.');
                         }
                     }
                     
-                    // Origem do lead
-                    if (!empty($lead->fonte)) {
-                        $contextParts[] = $lead->fonte;
+                    if (!empty($lead->renda_mensal)) {
+                        $renda = (float) $lead->renda_mensal;
+                        if ($renda >= 1000) {
+                            $finParts[] = "Renda: R$ " . number_format($renda / 1000, 1, ',', '.') . "k";
+                        }
                     }
                     
-                    $leadContext = !empty($contextParts) ? implode(' • ', $contextParts) : null;
+                    if (!empty($lead->financiamento_status)) {
+                        $statusMap = [
+                            'pre_aprovado' => 'Pré-aprovado',
+                            'em_analise' => 'Em análise',
+                            'a_enviar' => 'A enviar',
+                            'nao_precisa' => 'Sem financ.',
+                        ];
+                        $finParts[] = $statusMap[$lead->financiamento_status] ?? $lead->financiamento_status;
+                    }
+                    
+                    if (!empty($finParts)) {
+                        $contextParts[] = "💰 " . implode(' • ', $finParts);
+                    }
+                    
+                    // 👤 PERFIL
+                    $perfilParts = [];
+                    
+                    if (!empty($lead->profissao)) {
+                        $perfilParts[] = $lead->profissao;
+                    }
+                    
+                    if (!empty($lead->estado_civil)) {
+                        $estadoCivilMap = [
+                            'solteiro' => 'Solteiro(a)',
+                            'casado' => 'Casado(a)',
+                            'divorciado' => 'Divorciado(a)',
+                            'viuvo' => 'Viúvo(a)',
+                            'uniao_estavel' => 'União estável',
+                        ];
+                        $perfilParts[] = $estadoCivilMap[$lead->estado_civil] ?? $lead->estado_civil;
+                    }
+                    
+                    if (!empty($lead->composicao_familiar)) {
+                        $perfilParts[] = $lead->composicao_familiar;
+                    }
+                    
+                    if (!empty($perfilParts)) {
+                        $contextParts[] = "👤 " . implode(' • ', $perfilParts);
+                    }
+                    
+                    // ⏰ PRAZO
+                    if (!empty($lead->prazo_compra)) {
+                        $prazoMap = [
+                            'urgente' => '⚡ Urgente',
+                            '1_mes' => '⏰ 1 mês',
+                            '3_meses' => '⏰ 3 meses',
+                            '6_meses' => '⏰ 6 meses',
+                            '1_ano' => '⏰ 1 ano',
+                            'sem_pressa' => '⏰ Sem pressa',
+                        ];
+                        $contextParts[] = $prazoMap[$lead->prazo_compra] ?? "⏰ " . $lead->prazo_compra;
+                    }
+                    
+                    // 📍 STATUS DO LEAD
+                    if (!empty($lead->status) && $lead->status !== 'novo') {
+                        $statusLabels = [
+                            'qualificado' => '✓ Qualificado',
+                            'em_negociacao' => '💬 Em negociação',
+                            'proposta_enviada' => '📄 Proposta enviada',
+                            'ganho' => '🎉 Fechado',
+                            'perdido' => '❌ Perdido',
+                            'pausado' => '⏸️ Pausado'
+                        ];
+                        if (isset($statusLabels[$lead->status])) {
+                            $contextParts[] = $statusLabels[$lead->status];
+                        }
+                    }
+                    
+                    // 📱 ORIGEM
+                    if (!empty($lead->fonte)) {
+                        $contextParts[] = "📱 " . $lead->fonte;
+                    }
+                    
+                    $leadContext = !empty($contextParts) ? implode(' | ', $contextParts) : null;
                 }
             }
             
@@ -777,5 +869,51 @@ class ConversasController extends Controller
             'documentos' => $documentosDeletados,
             'matches_atualizados' => $matchesAtualizados,
         ];
+    }
+
+    /**
+     * Proxy para mídias do Twilio (evita erro de autenticação no frontend)
+     */
+    public function proxyMedia(Request $request)
+    {
+        $mediaUrl = $request->query('url');
+        
+        if (!$mediaUrl) {
+            return response()->json(['error' => 'URL da mídia não fornecida'], 400);
+        }
+
+        // Validar que é uma URL do Twilio
+        if (!str_contains($mediaUrl, 'twilio.com')) {
+            return response()->json(['error' => 'URL inválida'], 403);
+        }
+
+        try {
+            $result = $this->twilio->downloadMedia($mediaUrl);
+            
+            if ($result['success']) {
+                // Detectar tipo de conteúdo baseado na URL
+                $contentType = 'application/octet-stream';
+                if (str_contains($mediaUrl, '.jpg') || str_contains($mediaUrl, 'image/jpeg')) {
+                    $contentType = 'image/jpeg';
+                } elseif (str_contains($mediaUrl, '.png') || str_contains($mediaUrl, 'image/png')) {
+                    $contentType = 'image/png';
+                } elseif (str_contains($mediaUrl, '.gif')) {
+                    $contentType = 'image/gif';
+                } elseif (str_contains($mediaUrl, '.pdf')) {
+                    $contentType = 'application/pdf';
+                } elseif (str_contains($mediaUrl, 'audio')) {
+                    $contentType = 'audio/ogg';
+                }
+
+                return response($result['data'], 200)
+                    ->header('Content-Type', $contentType)
+                    ->header('Cache-Control', 'public, max-age=86400'); // Cache de 1 dia
+            }
+            
+            return response()->json(['error' => 'Falha ao baixar mídia'], 500);
+        } catch (\Exception $e) {
+            \Log::error("Erro ao fazer proxy de mídia: " . $e->getMessage());
+            return response()->json(['error' => 'Erro ao processar mídia'], 500);
+        }
     }
 }

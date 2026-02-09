@@ -487,6 +487,12 @@ export default function Chat() {
 
   const getMediaUrl = (url: string) => {
     if (!url) return '';
+    
+    // Se é uma URL do Twilio (api.twilio.com), usar proxy para evitar erro de autenticação
+    if (url.includes('twilio.com')) {
+      return `https://lojadaesquina.store/api/admin/conversas/media/proxy?url=${encodeURIComponent(url)}`;
+    }
+    
     // Se já é URL completa
     if (/^https?:\/\//i.test(url)) return url;
     

@@ -120,7 +120,8 @@ class PessoasController extends Controller
                 $q->with('usuario:id,name')->limit(50);
             },
             'documentosAnexados',
-            'relacionamentos.pessoaDestino:id,nome,tipo'
+            'relacionamentos.pessoaDestino:id,nome,tipo',
+            'lead' // Incluir lead associado com todos os dados
         ])->find($id);
 
         if (!$pessoa) {

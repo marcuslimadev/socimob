@@ -20,7 +20,7 @@ $SSH_HOST = "145.223.105.168"
 $SSH_PORT = "65002"
 $SSH_USER = "u815655858"
 $SSH_PASS = "MundoMelhor@10"
-$DEPLOY_PATH = "~/domains/socimob.com.br/public_html"
+$DEPLOY_PATH = "domains/lojadaesquina.store/public_html"
 
 try {
     Write-Host "`n" -NoNewline

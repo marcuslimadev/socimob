@@ -136,6 +136,14 @@ class Pessoa extends Model
     }
 
     /**
+     * Lead associado à pessoa
+     */
+    public function lead()
+    {
+        return $this->hasOne(Lead::class, 'pessoa_id');
+    }
+
+    /**
      * Verifica se pessoa tem determinado papel
      */
     public function temPapel($papel)
