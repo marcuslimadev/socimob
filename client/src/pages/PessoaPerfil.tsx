@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
-import Sidebar from '@/components/Sidebar';
+import PageLayout from '@/components/PageLayout';
 
 interface Pessoa {
   id: number;
@@ -178,31 +178,27 @@ const PessoaPerfil: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center h-screen">
+      <PageLayout>
+        <div className="flex items-center justify-center h-screen">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   if (!pessoa) {
     return (
-      <div className="flex">
-        <Sidebar />
-        <div className="flex-1 p-8">
+      <PageLayout>
+        <div className="p-8">
           <p>Pessoa não encontrada</p>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar />
-      
-      <div className="flex-1">
+    <PageLayout>
+      <div className="-m-3 sm:-m-4 md:-m-6 lg:-m-8">
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -604,7 +600,7 @@ const PessoaPerfil: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 
