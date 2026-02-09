@@ -377,7 +377,7 @@ export default function ClientPortal() {
     try {
       const response = await api.post(`/portal/likes/${propertyId}`);
       if (response.data.success) {
-        setLikedProperties((prev) => new Set([...prev, propertyId]));
+        setLikedProperties((prev) => new Set(Array.from(prev).concat(propertyId)));
         toast.success('Adicionado aos favoritos!');
       }
     } catch (err: any) {

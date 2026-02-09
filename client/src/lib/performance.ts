@@ -102,9 +102,9 @@ export function reportMetrics() {
   }
 
   // Send to analytics service if available
-  if (window.gtag) {
+  if ((window as any).gtag) {
     Object.entries(vitals).forEach(([name, value]) => {
-      window.gtag('event', name, {
+      (window as any).gtag('event', name, {
         value: Math.round(value),
         event_category: 'performance',
       });

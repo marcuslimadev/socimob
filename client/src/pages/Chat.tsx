@@ -789,7 +789,7 @@ export default function Chat() {
                                             className="w-full max-w-sm rounded-lg border border-border object-contain bg-muted/20"
                                             onError={(e) => {
                                               console.error('Erro ao carregar imagem:', message.mediaUrl);
-                                              console.log('URL processada:', getMediaUrl(message.mediaUrl));
+                                              console.log('URL processada:', message.mediaUrl ? getMediaUrl(message.mediaUrl) : 'N/A');
                                               
                                               // Substitui por placeholder ao invés de esconder
                                               const img = e.currentTarget;

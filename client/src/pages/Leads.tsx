@@ -124,7 +124,7 @@ export default function Leads() {
       const response = await api.post(`/admin/leads/${leadId}/iniciar-atendimento`);
       if (response.data.success || response.status === 200) {
         toast.success(`Atendimento IA iniciado para ${leadName}`);
-        fetchLeads(); // Refresh status
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
       }
     } catch (error) {
       console.error('Error starting AI:', error);
@@ -134,7 +134,7 @@ export default function Leads() {
 
   const handleSendSMS = async (leadId: string, leadName: string) => {
     // Check if SMS was already sent (from backend or local state)
-    const lead = leads.find(l => l.id === leadId);
+    const lead = leads.find((l: any) => l.id === leadId);
     if (lead?.sms_enviado || smsSentLeads[leadId] || smsSendingLeadId === leadId) {
       return;
     }
@@ -149,7 +149,7 @@ export default function Leads() {
           ...prev,
           [leadId]: true,
         }));
-        fetchLeads();
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
       }
     } catch (error) {
       console.error('Error sending SMS:', error);
@@ -179,7 +179,7 @@ export default function Leads() {
 
       if (response.data.success) {
         toast.success(`Lead ${leadName} excluído com sucesso`);
-        setLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId));
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
       }
     } catch (error) {
       toast.error('Erro ao excluir lead');
@@ -190,11 +190,7 @@ export default function Leads() {
     try {
       await api.put(`/leads/${leadId}`, { status: newStatus });
       toast.success('Status atualizado com sucesso');
-      setLeads(prevLeads => 
-        prevLeads.map(lead => 
-          lead.id === leadId ? { ...lead, status: newStatus as any } : lead
-        )
-      );
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       toast.error('Erro ao atualizar status');
@@ -261,7 +257,7 @@ export default function Leads() {
         toast.success('Lead criado com sucesso');
         setShowNewLeadModal(false);
         resetNewLeadForm();
-        fetchLeads();
+        queryClient.invalidateQueries({ queryKey: ['leads'] });
       } else {
         toast.error(response.data.error || 'Erro ao criar lead');
       }
@@ -273,7 +269,7 @@ export default function Leads() {
     }
   };
 
-  const filteredLeads = leads.filter((lead) => {
+  const filteredLeads = leads.filter((lead: any) => {
     const matchSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.phone.includes(searchTerm);
     const matchStatus = selectedStatus === 'todos' || lead.status === selectedStatus;
@@ -399,10 +395,10 @@ export default function Leads() {
           <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
             {[
               { label: 'Total', value: leads.length, color: 'from-blue-500 to-blue-600' },
-              { label: 'Novo', value: leads.filter(l => l.status === 'novo').length, color: 'from-blue-500/50 to-blue-600/50' },
-              { label: 'Em Atend.', value: leads.filter(l => l.status === 'em_atendimento').length, color: 'from-cyan-500 to-cyan-600' },
-              { label: 'Qualificado', value: leads.filter(l => l.status === 'qualificado').length, color: 'from-purple-500 to-purple-600' },
-              { label: 'Fechado', value: leads.filter(l => l.status === 'fechado').length, color: 'from-green-500 to-green-600' },
+              { label: 'Novo', value: leads.filter((l: any) => l.status === 'novo').length, color: 'from-blue-500/50 to-blue-600/50' },
+              { label: 'Em Atend.', value: leads.filter((l: any) => l.status === 'em_atendimento').length, color: 'from-cyan-500 to-cyan-600' },
+              { label: 'Qualificado', value: leads.filter((l: any) => l.status === 'qualificado').length, color: 'from-purple-500 to-purple-600' },
+              { label: 'Fechado', value: leads.filter((l: any) => l.status === 'fechado').length, color: 'from-green-500 to-green-600' },
             ].map((stat, index) => (
               <motion.div
                 key={stat.label}

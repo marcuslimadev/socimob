@@ -365,7 +365,7 @@ export default function Dashboard() {
               </div>
             ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {recentLeads.map((lead, index) => (
+              {recentLeads.map((lead: any, index: number) => (
                 <LeadCard
                   key={lead.id}
                   name={lead.nome || 'Sem nome'}
