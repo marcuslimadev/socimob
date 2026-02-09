@@ -93,9 +93,20 @@ class ConversasController extends Controller
                 return $conversa;
             });
             
+            if (false) {
             $statusCode = $result['http_code'] ?? 502;
             $payload = [
                 'error' => $result['error'] ?? 'Falha ao baixar m︸ia',
+            ];
+            if (!empty($result['response'])) {
+                $payload['twilio_response'] = substr((string) $result['response'], 0, 500);
+            }
+            return response()->json($payload, $statusCode);
+            }
+
+            $statusCode = $result['http_code'] ?? 502;
+            $payload = [
+                'error' => $result['error'] ?? 'Falha ao baixar midia',
             ];
             if (!empty($result['response'])) {
                 $payload['twilio_response'] = substr((string) $result['response'], 0, 500);
