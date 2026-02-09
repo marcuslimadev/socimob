@@ -90,33 +90,11 @@ class SyncLeadsPessoas extends Command
                 $lead->update(['pessoa_id' => $pessoa->id]);
                 $this->info("✓ Lead #{$lead->id} ({$lead->nome}) associado à pessoa existente #{$pessoa->id}");
             } else {
-                // Criar nova pessoa
-                $pessoa = Pessoa::create([
-                    'tenant_id' => $lead->tenant_id,
-                    'nome' => $lead->nome,
-                    'email' => $lead->email,
-                    'telefone' => $lead->telefone,
-                    'celular' => $lead->whatsapp ?: $lead->telefone,
-                    'whatsapp' => $lead->whatsapp,
-                    'cpf' => $lead->cpf ?? null,
-                    'tipo' => 'fisica',
-                    'pais' => 'Brasil',
-                    'ativo' => true,
-                    'papeis' => ['cliente', 'lead'],
-                    'status' => $lead->status ?? 'ativo',
-                    'origem' => 'Lead CRM',
-                    'corretor_responsavel_id' => $lead->corretor_id ?? null,
-                    'renda_mensal' => $lead->renda_mensal ?? null,
-                    'profissao' => $lead->profissao ?? null,
-                    'observacoes' => $lead->observacoes,
-                    'ultimo_contato' => $lead->ultima_interacao ?? now(),
-                    'primeiro_contato' => $lead->primeira_interacao ?? $lead->created_at,
-                ]);
+                // Usar LeadObserver para criar pessoa com todos os dados do Chaves na Mão
+                $observer = new LeadObserver();
+                $observer->criarOuAtualizarPessoa($lead);
                 
-                // Associar lead à pessoa
-                $lead->update(['pessoa_id' => $pessoa->id]);
-                
-                $this->info("✓ Nova pessoa #{$pessoa->id} criada para lead #{$lead->id} ({$lead->nome})");
+                $this->info("✓ Nova pessoa #{$lead->pessoa_id} criada para lead #{$lead->id} ({$lead->nome}) com dados completos");
             }
         } catch (\Exception $e) {
             $this->error("Erro ao processar lead #{$lead->id}: " . $e->getMessage());

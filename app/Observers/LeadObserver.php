@@ -334,7 +334,7 @@ class LeadObserver
     /**
      * Criar ou atualizar registro em Pessoas quando um Lead é criado/atualizado
      */
-    private function criarOuAtualizarPessoa(Lead $lead): void
+    public function criarOuAtualizarPessoa(Lead $lead): void
     {
         try {
             // Se o lead já tem pessoa associada, apenas atualizar
@@ -423,7 +423,9 @@ class LeadObserver
                     'corretor_responsavel_id' => $lead->corretor_id,
                     'renda_mensal' => $lead->renda_mensal,
                     'profissao' => $lead->profissao,
-                    'observacoes' => $lead->observacoes,
+                    'observacoes' => $this->montarObservacoesPessoa($lead),
+                    'preferencias' => $this->montarPreferenciasPessoa($lead),
+                    'interesses' => $this->montarInteressesPessoa($lead),
                     'ultimo_contato' => $lead->ultima_interacao,
                     'primeiro_contato' => $lead->primeira_interacao,
                 ]);
@@ -503,5 +505,125 @@ class LeadObserver
         if (!empty($updates)) {
             $pessoa->update($updates);
         }
+    }
+
+    /**
+     * Montar observações da pessoa a partir do lead
+     */
+    public function montarObservacoesPessoa(Lead $lead): ?string
+    {
+        $observacoes = [];
+
+        // Observações originais do lead
+        if (!empty($lead->observacoes)) {
+            $observacoes[] = $lead->observacoes;
+        }
+
+        // Observações do cliente (do Chaves na Mão)
+        if (!empty($lead->observacoes_cliente)) {
+            $observacoes[] = "Observações do Cliente: {$lead->observacoes_cliente}";
+        }
+
+        // Dados pessoais
+        if (!empty($lead->estado_civil)) {
+            $observacoes[] = "Estado Civil: {$lead->estado_civil}";
+        }
+        if (!empty($lead->composicao_familiar)) {
+            $observacoes[] = "Composição Familiar: {$lead->composicao_familiar}";
+        }
+        if (!empty($lead->fonte_renda)) {
+            $observacoes[] = "Fonte de Renda: {$lead->fonte_renda}";
+        }
+
+        // Financiamento
+        if (!empty($lead->financiamento_status)) {
+            $observacoes[] = "Status Financiamento: {$lead->financiamento_status}";
+        }
+        if (!empty($lead->prazo_compra)) {
+            $observacoes[] = "Prazo de Compra: {$lead->prazo_compra}";
+        }
+        if (!empty($lead->objetivo_compra)) {
+            $observacoes[] = "Objetivo da Compra: {$lead->objetivo_compra}";
+        }
+
+        return !empty($observacoes) ? implode("\n\n", $observacoes) : null;
+    }
+
+    /**
+     * Montar preferências da pessoa a partir do lead
+     */
+    public function montarPreferenciasPessoa(Lead $lead): ?array
+    {
+        $preferencias = [];
+
+        // Orçamento
+        if (!empty($lead->budget_min)) {
+            $preferencias['budget_min'] = $lead->budget_min;
+        }
+        if (!empty($lead->budget_max)) {
+            $preferencias['budget_max'] = $lead->budget_max;
+        }
+
+        // Localização
+        if (!empty($lead->localizacao)) {
+            $preferencias['localizacao'] = $lead->localizacao;
+        }
+        if (!empty($lead->preferencia_bairro)) {
+            $preferencias['bairro'] = $lead->preferencia_bairro;
+        }
+
+        // Características do imóvel
+        if (!empty($lead->preferencia_tipo_imovel)) {
+            $preferencias['tipo_imovel'] = $lead->preferencia_tipo_imovel;
+        }
+        if (!empty($lead->quartos)) {
+            $preferencias['quartos'] = $lead->quartos;
+        }
+        if (!empty($lead->suites)) {
+            $preferencias['suites'] = $lead->suites;
+        }
+        if (!empty($lead->garagem)) {
+            $preferencias['garagem'] = $lead->garagem;
+        }
+
+        // Comodidades
+        if (!empty($lead->preferencia_lazer)) {
+            $preferencias['lazer'] = $lead->preferencia_lazer;
+        }
+        if (!empty($lead->preferencia_seguranca)) {
+            $preferencias['seguranca'] = $lead->preferencia_seguranca;
+        }
+
+        // Características desejadas
+        if (!empty($lead->caracteristicas_desejadas)) {
+            $preferencias['caracteristicas'] = $lead->caracteristicas_desejadas;
+        }
+
+        return !empty($preferencias) ? $preferencias : null;
+    }
+
+    /**
+     * Montar interesses da pessoa a partir do lead
+     */
+    public function montarInteressesPessoa(Lead $lead): ?array
+    {
+        $interesses = [];
+
+        // Tipo de interesse
+        if (!empty($lead->objetivo_compra)) {
+            $interesses[] = $lead->objetivo_compra;
+        }
+
+        // Tipo de imóvel
+        if (!empty($lead->preferencia_tipo_imovel)) {
+            $interesses[] = $lead->preferencia_tipo_imovel;
+        }
+
+        // Status do financiamento como interesse
+        if (!empty($lead->financiamento_status)) {
+            $interesses[] = "Financiamento: {$lead->financiamento_status}";
+        }
+
+        return !empty($interesses) ? array_unique($interesses) : null;
     }
 }
