@@ -9,7 +9,11 @@
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "lint": "tsc --noEmit && prettier --check .",
+    "analyze": "vite-bundle-visualizer"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -66,7 +70,13 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
     "wouter": "^3.3.5",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "@tanstack/react-query": "^5.28.0",
+    "zustand": "^4.4.1",
+    "react-virtual": "^11.0.1",
+    "react-helmet-async": "^2.0.4",
+    "nprogress": "^0.2.0",
+    "@types/nprogress": "^0.2.3"
   },
   "devDependencies": {
     "@builder.io/vite-plugin-jsx-loc": "^0.1.1",
@@ -90,7 +100,12 @@
     "typescript": "5.6.3",
     "vite": "^7.1.7",
     "vite-plugin-manus-runtime": "^0.0.57",
-    "vitest": "^2.1.4"
+    "vitest": "^2.1.4",
+    "@vitest/ui": "^1.0.4",
+    "vite-bundle-visualizer": "^1.0.0",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/jest-dom": "^6.1.5",
+    "vitest-canvas-mock": "^0.3.5"
   },
   "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af",
   "pnpm": {
