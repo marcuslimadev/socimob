@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { UserRound, Loader2, Search, Plus, Edit, Trash2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
-import { useLocation, useSearch, useRoute } from 'wouter';
+import { useRoute } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { useViaCep } from '@/hooks/useViaCep';
@@ -40,7 +40,6 @@ interface Pessoa {
 }
 
 export default function Pessoas() {
-  const searchParams = useSearch();
   const [match, params] = useRoute('/pessoas/:id');
   const pessoaId = match ? params?.id : null;
   
@@ -105,29 +104,6 @@ export default function Pessoas() {
       loadPessoa();
     }
   }, [pessoaId]);
-
-  // Aplicar busca automática se vier da URL
-  useEffect(() => {
-    const urlParams = new URLSearchParams(searchParams);
-    const searchParam = urlParams.get('search');
-    if (searchParam) {
-      setSearchTerm(searchParam);
-    }
-  }, [searchParams]);
-
-  // Abrir automaticamente a pessoa se houver apenas 1 resultado da busca vinda da URL
-  useEffect(() => {
-    const urlParams = new URLSearchParams(searchParams);
-    const searchParam = urlParams.get('search');
-    
-    if (searchParam && pessoas.length === 1 && !isLoading && !pessoaId) {
-      // Aguardar um momento para garantir que a lista foi carregada
-      const timer = setTimeout(() => {
-        openEditModal(pessoas[0]);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [pessoas, searchParams, isLoading, pessoaId]);
 
   const handleBuscarCep = async () => {
     if (!formData.cep) {
