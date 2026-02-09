@@ -448,7 +448,11 @@ export default function Leads() {
                       status={lead.status}
                       value={lead.value}
                       lastContact={lead.lastContact}
-                      onClick={() => setLocation(`/pessoas?search=${encodeURIComponent(lead.phone || lead.name)}`)}
+                      onClick={() => {
+                        // Remove caracteres especiais do telefone para busca
+                        const searchTerm = lead.phone ? lead.phone.replace(/\D/g, '') : lead.name;
+                        setLocation(`/pessoas?search=${encodeURIComponent(searchTerm)}`);
+                      }}
                       onChat={() => handleOpenChat(lead.id, lead.name)}
                       onAI={() => handleCallAI(lead.id, lead.name)}
                       onSMS={() => handleSendSMS(lead.id, lead.name)}
