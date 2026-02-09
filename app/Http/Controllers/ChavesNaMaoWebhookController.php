@@ -78,13 +78,27 @@ class ChavesNaMaoWebhookController extends Controller
                 $leadData = $rawData;
             }
 
+            // LOG COMPLETO - EXATAMENTE como chegou do Chaves na Mão
+            Log::channel('daily')->info('========================================');
+            Log::channel('daily')->info('📥 WEBHOOK CHAVES NA MÃO - PAYLOAD COMPLETO');
+            Log::channel('daily')->info('========================================');
+            Log::channel('daily')->info('RAW REQUEST BODY:', [
+                'raw_content' => $request->getContent(),
+                'headers' => $request->headers->all()
+            ]);
+            Log::channel('daily')->info('LEAD DATA PARSED:', $leadData);
+            Log::channel('daily')->info('========================================');
+
             Log::info('📥 Lead recebido do Chaves na Mão', [
                 'lead_id' => $leadData['id'] ?? 'N/A',
                 'segment' => $leadData['segment'] ?? 'N/A',
                 'name' => $leadData['name'] ?? 'N/A',
                 'phone' => $leadData['phone'] ?? 'N/A',
+                'message' => $leadData['message'] ?? 'N/A',
+                'ad_title' => $leadData['ad']['title'] ?? 'N/A',
+                'ad_reference' => $leadData['ad']['reference'] ?? 'N/A',
                 'ad_city' => $leadData['ad']['city'] ?? 'N/A',
-                'ad_state' => $leadData['ad']['state'] ?? 'N/A',
+                'ad_price' => $leadData['ad']['price'] ?? 'N/A',
                 'payload_keys' => array_keys($leadData)
             ]);
 
