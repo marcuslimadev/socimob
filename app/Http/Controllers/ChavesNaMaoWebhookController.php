@@ -200,8 +200,11 @@ class ChavesNaMaoWebhookController extends Controller
             'observacoes' => $this->buildObservacoes($data, $isVehicle),
         ];
 
-        // Dados específicos de imóveis
-        if (!$isVehicle && isset($data['ad'])) {
+        // Extrair dados da MENSAGEM (quando ad[] estiver vazio ou incompleto)
+        $this->extractFromMessage($leadData, $data);
+
+        // Dados específicos de imóveis do ad[]
+        if (isset($data['ad']) && !$isVehicle) {
             $ad = $data['ad'];
             
             // Tipo de imóvel (Casa, Apartamento, etc)
@@ -243,6 +246,13 @@ class ChavesNaMaoWebhookController extends Controller
             // Referência do imóvel (salvar nas observações do cliente)
             if (isset($ad['reference'])) {
                 $leadData['observacoes_cliente'] = "Referência do imóvel: " . $ad['reference'];
+            }
+        }
+
+        // Referência do ad SEMPRE (mesmo para VEHICLE) - pode ter imóvel classificado errado
+        if (isset($data['ad']['reference']) && !empty($data['ad']['reference'])) {
+            if (empty($leadData['observacoes_cliente'])) {
+                $leadData['observacoes_cliente'] = "Referência: " . $data['ad']['reference'];
             }
         }
 
@@ -295,6 +305,95 @@ class ChavesNaMaoWebhookController extends Controller
         }
 
         return implode("\n", $obs);
+    }
+
+    /**
+     * Extrai informações da mensagem do lead (tipo de imóvel, bairro, etc)
+     */
+    private function extractFromMessage(array &$leadData, array $data): void
+    {
+        $message = $data['message'] ?? '';
+        if (empty($message)) {
+            return;
+        }
+
+        $messageLower = mb_strtolower($message);
+
+        // Detectar tipo de imóvel na mensagem
+        $tiposImovel = [
+            'casa' => 'Casa',
+            'casas' => 'Casa',
+            'sobrado' => 'Sobrado',
+            'apartamento' => 'Apartamento',
+            'apto' => 'Apartamento',
+            'ap ' => 'Apartamento',
+            'kitnet' => 'Kitnet',
+            'kitnete' => 'Kitnet',
+            'studio' => 'Studio',
+            'loft' => 'Loft',
+            'terreno' => 'Terreno',
+            'chácara' => 'Chácara',
+            'fazenda' => 'Fazenda',
+            'galpão' => 'Galpão',
+            'sala comercial' => 'Sala Comercial',
+            'loja' => 'Loja',
+            'prédio' => 'Prédio',
+        ];
+
+        foreach ($tiposImovel as $palavra => $tipo) {
+            if (str_contains($messageLower, $palavra)) {
+                if (empty($leadData['preferencia_tipo_imovel'])) {
+                    $leadData['preferencia_tipo_imovel'] = $tipo;
+                }
+                break;
+            }
+        }
+
+        // Detectar número de quartos
+        if (preg_match('/(\d+)\s*(quarto|quartos|dormitório|dormitórios)/i', $message, $matches)) {
+            if (empty($leadData['quartos'])) {
+                $leadData['quartos'] = (int) $matches[1];
+            }
+        }
+
+        // Detectar número de suítes
+        if (preg_match('/(\d+)\s*(suíte|suítes|suite|suites)/i', $message, $matches)) {
+            if (empty($leadData['suites'])) {
+                $leadData['suites'] = (int) $matches[1];
+            }
+        }
+
+        // Detectar bairros conhecidos de BH (lista parcial)
+        $bairrosBH = [
+            'pampulha', 'savassi', 'lourdes', 'funcionários', 'santa efigênia',
+            'centro', 'floresta', 'carlos prates', 'gutierrez', 'santo agostinho',
+            'luxemburgo', 'anchieta', 'sion', 'serra', 'mangabeiras',
+            'buritis', 'belvedere', 'castelo', 'nova suissa', 'santa lúcia',
+            'itapoã', 'bandeirantes', 'ouro preto', 'cachoeirinha', 'santa tereza',
+            'cidade jardim', 'planalto', 'são pedro', 'são lucas', 'eldorado'
+        ];
+
+        foreach ($bairrosBH as $bairro) {
+            if (str_contains($messageLower, $bairro)) {
+                if (empty($leadData['preferencia_bairro'])) {
+                    $leadData['preferencia_bairro'] = ucwords($bairro);
+                    $leadData['localizacao'] = ucwords($bairro) . ', Belo Horizonte';
+                }
+                break;
+            }
+        }
+
+        // Detectar valores mencionados (ex: "até 500 mil", "R$ 650.000")
+        if (preg_match('/(?:até|max|máximo|orçamento).*?(?:r\$?)?\s*([\d.,]+)\s*(?:mil|k|reais)?/i', $messageLower, $matches)) {
+            if (empty($leadData['budget_max'])) {
+                $valor = str_replace(['.', ','], '', $matches[1]);
+                // Se terminou com "mil" ou "k", multiplicar por 1000
+                if (preg_match('/mil|k/i', $matches[0])) {
+                    $valor = (float) $valor * 1000;
+                }
+                $leadData['budget_max'] = (float) $valor;
+            }
+        }
     }
 
     /**
