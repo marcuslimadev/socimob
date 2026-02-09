@@ -448,7 +448,7 @@ export default function Leads() {
                       status={lead.status}
                       value={lead.value}
                       lastContact={lead.lastContact}
-                      onClick={() => setLocation(`/leads/${lead.id}`)}
+                      onClick={() => setLocation(`/pessoas?search=${encodeURIComponent(lead.phone || lead.name)}`)}
                       onChat={() => handleOpenChat(lead.id, lead.name)}
                       onAI={() => handleCallAI(lead.id, lead.name)}
                       onSMS={() => handleSendSMS(lead.id, lead.name)}

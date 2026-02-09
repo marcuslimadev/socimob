@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { UserRound, Loader2, Search, Plus, Edit, Trash2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLocation, useSearch } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { useViaCep } from '@/hooks/useViaCep';
@@ -39,6 +40,7 @@ interface Pessoa {
 }
 
 export default function Pessoas() {
+  const searchParams = useSearch();
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,6 +86,15 @@ export default function Pessoas() {
   const [contatos, setContatos] = useState<Array<{ tipo: string; contato: string; descricao: string }>>([]);
   const { buscarCep, isLoading: isLoadingCep } = useViaCep();
 
+  // Aplicar busca automática se vier da URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(searchParams);
+    const searchParam = urlParams.get('search');
+    if (searchParam) {
+      setSearchTerm(searchParam);
+    }
+  }, [searchParams]);
+
   const handleBuscarCep = async () => {
     if (!formData.cep) {
       toast.error('Digite um CEP');
@@ -106,7 +117,7 @@ export default function Pessoas() {
 
   useEffect(() => {
     fetchPessoas();
-  }, [page, tipoFilter]);
+  }, [page, tipoFilter, searchTerm]);
 
   const fetchPessoas = async () => {
     try {
