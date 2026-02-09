@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Http;
+
 /**
  * Serviço de integração com Twilio WhatsApp
  * APROVEITADO e ADAPTADO de:
@@ -397,39 +399,44 @@ class TwilioService
     {
         [$accountSid, $authToken] = $this->resolveCredentials($accountSidOverride, $authTokenOverride);
 
-        $ch = curl_init($mediaUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_setopt($ch, CURLOPT_USERPWD, "{$accountSid}:{$authToken}");
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        if (empty($accountSid) || empty($authToken)) {
+            \Log::error("TwilioService::downloadMedia credenciais ausentes", [
+                'url' => $mediaUrl,
+                'hasAccountSid' => !empty($accountSid),
+                'hasAuthToken' => !empty($authToken),
+            ]);
+            return [
+                'success' => false,
+                'error' => 'Credenciais Twilio ausentes',
+            ];
+        }
 
-        $data = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-        $curlError = curl_error($ch);
-        curl_close($ch);
+        $response = Http::withBasicAuth($accountSid, $authToken)
+            ->timeout(60)
+            ->withOptions([
+                'allow_redirects' => ['max' => 5],
+            ])
+            ->get($mediaUrl);
 
-        if ($httpCode === 200 && $data) {
+        if ($response->successful() && $response->body()) {
             return [
                 'success' => true,
-                'data' => $data,
-                'contentType' => $contentType ?: 'application/octet-stream',
+                'data' => $response->body(),
+                'contentType' => $response->header('Content-Type') ?: 'application/octet-stream',
             ];
         }
 
         \Log::error("TwilioService::downloadMedia falhou", [
             'url' => $mediaUrl,
-            'httpCode' => $httpCode,
-            'curlError' => $curlError,
+            'httpCode' => $response->status(),
+            'responseSnippet' => substr($response->body() ?? '', 0, 200),
             'accountSidUsed' => substr($accountSid ?? '', 0, 10) . '...',
             'hasCredentials' => !empty($accountSid) && !empty($authToken),
         ]);
 
         return [
             'success' => false,
-            'error' => "Failed to download media (HTTP {$httpCode})",
+            'error' => "Failed to download media (HTTP {$response->status()})",
         ];
     }
 

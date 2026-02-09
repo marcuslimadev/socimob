@@ -893,6 +893,21 @@ class ConversasController extends Controller
             $accountSid = $tenant ? $tenant->getTwilioAccountSid() : null;
             $authToken = $tenant ? $tenant->getTwilioAuthToken() : null;
 
+            // Extrair Account SID da URL do Twilio para usar como fallback
+            // URL format: https://api.twilio.com/2010-04-01/Accounts/{AccountSid}/Messages/...
+            if (empty($accountSid) && preg_match('#/Accounts/(AC[a-f0-9]+)/#', $mediaUrl, $matches)) {
+                $accountSid = $matches[1];
+                \Log::info("proxyMedia: Account SID extraído da URL: " . substr($accountSid, 0, 10) . '...');
+            }
+
+            \Log::info("proxyMedia: debug credenciais", [
+                'tenant_id' => $tenant ? $tenant->id : 'null',
+                'tenant_domain' => $tenant ? ($tenant->domain ?? 'N/A') : 'null',
+                'accountSid_from_tenant' => $accountSid ? substr($accountSid, 0, 10) . '...' : 'VAZIO',
+                'authToken_from_tenant' => $authToken ? 'SET(' . strlen($authToken) . ' chars)' : 'VAZIO',
+                'url_account' => preg_match('#/Accounts/(AC[a-f0-9]+)/#', $mediaUrl, $m) ? substr($m[1], 0, 10) . '...' : 'N/A',
+            ]);
+
             $result = $this->twilio->downloadMedia($mediaUrl, $accountSid, $authToken);
 
             if ($result['success']) {
@@ -904,7 +919,7 @@ class ConversasController extends Controller
                 return response($result['data'], 200)
                     ->header('Content-Type', $cleanType)
                     ->header('Cache-Control', 'public, max-age=86400')
-                    ->header('X-Media-Content-Type', $cleanType); // Header extra para debug no frontend
+                    ->header('X-Media-Content-Type', $cleanType);
             }
 
             return response()->json([
