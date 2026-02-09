@@ -17,6 +17,7 @@ class Kernel extends ConsoleKernel
         Commands\SyncPropertiesCommand::class,
         Commands\EnsurePropertiesCommand::class,
         Commands\PruneAnalyticsCommand::class,
+        Commands\SyncLeadsPessoas::class,
     ];
 
     /**
