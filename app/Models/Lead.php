@@ -20,6 +20,7 @@ class Lead extends Model
         'status',
         'observacoes',
         'user_id',
+        'pessoa_id',
         'corretor_id',
         'budget_min',
         'budget_max',
@@ -71,6 +72,11 @@ class Lead extends Model
     public function corretor()
     {
         return $this->belongsTo(User::class, 'corretor_id');
+    }
+
+    public function pessoa()
+    {
+        return $this->belongsTo(Pessoa::class, 'pessoa_id');
     }
 
     public function conversas()

@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Lead;
+use App\Models\Pessoa;
 use App\Services\ChavesNaMaoService;
 use App\Services\LeadCustomerService;
 use App\Services\LeadAutomationService;
@@ -49,6 +50,9 @@ class LeadObserver
             'LeadObserver - lead criado, verificando atendimento',
             ['lead_id' => $lead->id, 'nome' => $lead->nome]
         );
+
+        // 0. Criar ou atualizar registro em Pessoas PRIMEIRO
+        $this->criarOuAtualizarPessoa($lead);
 
         // 1. SEMPRE iniciar atendimento IA automaticamente para TODOS os leads
         if ($this->deveIniciarAtendimento($lead)) {
@@ -104,6 +108,9 @@ class LeadObserver
             'lead_id' => $lead->id,
             'nome' => $lead->nome
         ]);
+        
+        // 0. Criar ou atualizar registro em Pessoas PRIMEIRO
+        $this->criarOuAtualizarPessoa($lead);
         
         // 1. Verificar se precisa iniciar atendimento (mesmo que seja update)
         // Se o lead não tem conversas ainda, iniciar atendimento automático
@@ -321,6 +328,180 @@ class LeadObserver
 
             // Em caso de erro, assume que não tem conversas (tenta iniciar atendimento)
             return false;
+        }
+    }
+
+    /**
+     * Criar ou atualizar registro em Pessoas quando um Lead é criado/atualizado
+     */
+    private function criarOuAtualizarPessoa(Lead $lead): void
+    {
+        try {
+            // Se o lead já tem pessoa associada, apenas atualizar
+            if ($lead->pessoa_id) {
+                $pessoa = Pessoa::withoutGlobalScope('tenant')->find($lead->pessoa_id);
+                if ($pessoa) {
+                    $this->atualizarPessoaDoLead($pessoa, $lead);
+                    Log::info('[LeadObserver] Pessoa atualizada do lead', [
+                        'lead_id' => $lead->id,
+                        'pessoa_id' => $pessoa->id
+                    ]);
+                    return;
+                }
+            }
+
+            // Buscar pessoa existente pelo telefone/whatsapp
+            $telefone = $lead->whatsapp ?: $lead->telefone;
+            
+            if (empty($telefone) && empty($lead->email) && empty($lead->cpf)) {
+                Log::warning('[LeadObserver] Lead sem telefone, email ou CPF - pessoa não criada', [
+                    'lead_id' => $lead->id,
+                    'nome' => $lead->nome
+                ]);
+                return;
+            }
+
+            $pessoa = null;
+
+            // Buscar por telefone/whatsapp
+            if (!empty($telefone)) {
+                $pessoa = Pessoa::withoutGlobalScope('tenant')
+                    ->where('tenant_id', $lead->tenant_id)
+                    ->where(function($q) use ($telefone) {
+                        $q->where('telefone', $telefone)
+                          ->orWhere('celular', $telefone)
+                          ->orWhere('whatsapp', $telefone);
+                    })
+                    ->first();
+            }
+
+            // Se não encontrou por telefone, buscar por email
+            if (!$pessoa && !empty($lead->email)) {
+                $pessoa = Pessoa::withoutGlobalScope('tenant')
+                    ->where('tenant_id', $lead->tenant_id)
+                    ->where('email', $lead->email)
+                    ->first();
+            }
+
+            // Se não encontrou por email, buscar por CPF
+            if (!$pessoa && !empty($lead->cpf)) {
+                $pessoa = Pessoa::withoutGlobalScope('tenant')
+                    ->where('tenant_id', $lead->tenant_id)
+                    ->where('cpf', $lead->cpf)
+                    ->first();
+            }
+
+            if ($pessoa) {
+                // Atualizar pessoa existente
+                $this->atualizarPessoaDoLead($pessoa, $lead);
+                
+                // Associar lead à pessoa
+                $lead->update(['pessoa_id' => $pessoa->id]);
+                
+                Log::info('[LeadObserver] Lead associado à pessoa existente', [
+                    'lead_id' => $lead->id,
+                    'pessoa_id' => $pessoa->id,
+                    'nome' => $lead->nome
+                ]);
+            } else {
+                // Criar nova pessoa
+                $pessoa = Pessoa::create([
+                    'tenant_id' => $lead->tenant_id,
+                    'nome' => $lead->nome,
+                    'email' => $lead->email,
+                    'telefone' => $lead->telefone,
+                    'celular' => $lead->whatsapp ?: $lead->telefone,
+                    'whatsapp' => $lead->whatsapp,
+                    'cpf' => $lead->cpf,
+                    'tipo' => 'fisica',
+                    'pais' => 'Brasil',
+                    'ativo' => true,
+                    // Campos CRM do lead
+                    'papeis' => ['cliente', 'lead'],
+                    'status' => $lead->status,
+                    'origem' => $lead->isFromIntegration() ? 'Chaves na Mão' : 'Manual',
+                    'corretor_responsavel_id' => $lead->corretor_id,
+                    'renda_mensal' => $lead->renda_mensal,
+                    'profissao' => $lead->profissao,
+                    'observacoes' => $lead->observacoes,
+                    'ultimo_contato' => $lead->ultima_interacao,
+                    'primeiro_contato' => $lead->primeira_interacao,
+                ]);
+                
+                // Associar lead à pessoa
+                $lead->update(['pessoa_id' => $pessoa->id]);
+                
+                Log::info('[LeadObserver] Nova pessoa criada do lead', [
+                    'lead_id' => $lead->id,
+                    'pessoa_id' => $pessoa->id,
+                    'nome' => $lead->nome
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('[LeadObserver] Erro ao criar/atualizar pessoa do lead', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Atualizar dados da pessoa com informações do lead
+     */
+    private function atualizarPessoaDoLead(Pessoa $pessoa, Lead $lead): void
+    {
+        $updates = [];
+
+        // Atualizar campos básicos se estiverem vazios na pessoa
+        if (empty($pessoa->nome) && !empty($lead->nome)) {
+            $updates['nome'] = $lead->nome;
+        }
+        if (empty($pessoa->email) && !empty($lead->email)) {
+            $updates['email'] = $lead->email;
+        }
+        if (empty($pessoa->telefone) && !empty($lead->telefone)) {
+            $updates['telefone'] = $lead->telefone;
+        }
+        if (empty($pessoa->celular) && !empty($lead->whatsapp)) {
+            $updates['celular'] = $lead->whatsapp;
+        }
+        if (empty($pessoa->whatsapp) && !empty($lead->whatsapp)) {
+            $updates['whatsapp'] = $lead->whatsapp;
+        }
+        if (empty($pessoa->cpf) && !empty($lead->cpf)) {
+            $updates['cpf'] = $lead->cpf;
+        }
+
+        // Atualizar campos CRM
+        if (empty($pessoa->renda_mensal) && !empty($lead->renda_mensal)) {
+            $updates['renda_mensal'] = $lead->renda_mensal;
+        }
+        if (empty($pessoa->profissao) && !empty($lead->profissao)) {
+            $updates['profissao'] = $lead->profissao;
+        }
+        if (empty($pessoa->corretor_responsavel_id) && !empty($lead->corretor_id)) {
+            $updates['corretor_responsavel_id'] = $lead->corretor_id;
+        }
+
+        // Atualizar último contato se o lead tiver mais recente
+        if ($lead->ultima_interacao && (!$pessoa->ultimo_contato || $lead->ultima_interacao > $pessoa->ultimo_contato)) {
+            $updates['ultimo_contato'] = $lead->ultima_interacao;
+        }
+
+        // Garantir que tenha papel de lead
+        if (!empty($pessoa->papeis) && is_array($pessoa->papeis)) {
+            if (!in_array('lead', $pessoa->papeis)) {
+                $papeis = $pessoa->papeis;
+                $papeis[] = 'lead';
+                $updates['papeis'] = array_unique($papeis);
+            }
+        } else {
+            $updates['papeis'] = ['cliente', 'lead'];
+        }
+
+        if (!empty($updates)) {
+            $pessoa->update($updates);
         }
     }
 }
