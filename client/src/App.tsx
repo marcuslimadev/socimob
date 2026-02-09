@@ -25,6 +25,7 @@ const Financeiro = lazy(() => import("./pages/Financeiro"));
 const Vistorias = lazy(() => import("./pages/Vistorias"));
 const Assinaturas = lazy(() => import("./pages/Assinaturas"));
 const Pessoas = lazy(() => import("./pages/Pessoas"));
+const PessoaPerfil = lazy(() => import("./pages/PessoaPerfil"));
 const VistoriaDetail = lazy(() => import("./pages/VistoriaDetail"));
 const VistoriaSolicitacaoNova = lazy(() => import("./pages/VistoriaSolicitacaoNova"));
 const VistoriaSolicitacoes = lazy(() => import("./pages/VistoriaSolicitacoes"));
@@ -84,7 +85,7 @@ function Router() {
       <Route path="/vistorias/contestacoes" component={VistoriaContestacoes} />
       <Route path="/vistorias/:id" component={VistoriaDetail} />
       <Route path="/assinaturas" component={Assinaturas} />
-      <Route path="/pessoas/:id" component={Pessoas} />
+      <Route path="/pessoas/:id" component={PessoaPerfil} />
       <Route path="/pessoas" component={Pessoas} />
       <Route path="/settings" component={Settings} />
       <Route path="/tenants" component={Tenants} />

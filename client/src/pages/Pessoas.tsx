@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { UserRound, Loader2, Search, Plus, Edit, Trash2, MapPin } from 'lucide-react';
+import { UserRound, Loader2, Search, Plus, Edit, Trash2, MapPin, Eye } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRoute } from 'wouter';
+import { useRoute, useLocation } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { useViaCep } from '@/hooks/useViaCep';
@@ -40,8 +40,7 @@ interface Pessoa {
 }
 
 export default function Pessoas() {
-  const [match, params] = useRoute('/pessoas/:id');
-  const pessoaId = match ? params?.id : null;
+  const [, navigate] = useLocation();
   
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,23 +88,6 @@ export default function Pessoas() {
   const { buscarCep, isLoading: isLoadingCep } = useViaCep();
 
   // Abrir pessoa específica se vier da URL (/pessoas/:id)
-  useEffect(() => {
-    if (pessoaId) {
-      const loadPessoa = async () => {
-        try {
-          const response = await api.get(`/pessoas/${pessoaId}`);
-          const pessoa = response.data.data || response.data;
-          await openEditModal(pessoa);
-        } catch (error) {
-          console.error('Erro ao carregar pessoa:', error);
-          toast.error('Pessoa não encontrada');
-        }
-      };
-      loadPessoa();
-    }
-  }, [pessoaId]);
-
-  const handleBuscarCep = async () => {
     if (!formData.cep) {
       toast.error('Digite um CEP');
       return;
@@ -780,8 +762,18 @@ export default function Pessoas() {
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
+                              onClick={() => navigate(`/pessoas/${pessoa.id}`)}
+                              className="p-2 rounded-lg bg-green-500/20 text-green-300 hover:bg-green-500/30"
+                              title="Ver perfil completo"
+                            >
+                              <Eye size={16} />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
                               onClick={() => openEditModal(pessoa)}
                               className="p-2 rounded-lg bg-blue-500/20 text-blue-300 hover:bg-blue-500/30"
+                              title="Editar dados"
                             >
                               <Edit size={16} />
                             </motion.button>
