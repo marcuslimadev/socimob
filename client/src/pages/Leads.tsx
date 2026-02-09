@@ -448,10 +448,26 @@ export default function Leads() {
                       status={lead.status}
                       value={lead.value}
                       lastContact={lead.lastContact}
-                      onClick={() => {
-                        // Remove caracteres especiais do telefone para busca
-                        const searchTerm = lead.phone ? lead.phone.replace(/\D/g, '') : lead.name;
-                        setLocation(`/pessoas?search=${encodeURIComponent(searchTerm)}`);
+                      onClick={async () => {
+                        try {
+                          // Buscar pessoa pelo telefone
+                          const phoneDigits = lead.phone ? lead.phone.replace(/\D/g, '') : '';
+                          if (phoneDigits) {
+                            const response = await api.get('/pessoas', { params: { search: phoneDigits, per_page: 1 } });
+                            const pessoas = response.data.data || [];
+                            if (pessoas.length > 0) {
+                              // Redirecionar para o perfil da pessoa encontrada
+                              setLocation(`/pessoas/${pessoas[0].id}`);
+                            } else {
+                              toast.error('Pessoa não encontrada para este lead');
+                            }
+                          } else {
+                            toast.error('Lead sem telefone cadastrado');
+                          }
+                        } catch (error) {
+                          console.error('Erro ao buscar pessoa:', error);
+                          toast.error('Erro ao buscar pessoa');
+                        }
                       }}
                       onChat={() => handleOpenChat(lead.id, lead.name)}
                       onAI={() => handleCallAI(lead.id, lead.name)}

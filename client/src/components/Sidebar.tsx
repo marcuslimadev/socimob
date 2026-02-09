@@ -437,7 +437,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             whileTap={{ scale: 0.98 }}
           >
             {theme === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
-            {!isCollapsed && <span className="text-sm font-medium">Tema {theme === 'dark' ? 'Escuro' : 'Claro'}</span>}
+            {!isCollapsed && <span className="text-sm font-medium">Tema {theme === 'dark' ? 'Claro' : 'Escuro'}</span>}
           </motion.button>
 
           <motion.button

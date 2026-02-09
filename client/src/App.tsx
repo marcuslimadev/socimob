@@ -84,6 +84,7 @@ function Router() {
       <Route path="/vistorias/contestacoes" component={VistoriaContestacoes} />
       <Route path="/vistorias/:id" component={VistoriaDetail} />
       <Route path="/assinaturas" component={Assinaturas} />
+      <Route path="/pessoas/:id" component={Pessoas} />
       <Route path="/pessoas" component={Pessoas} />
       <Route path="/settings" component={Settings} />
       <Route path="/tenants" component={Tenants} />

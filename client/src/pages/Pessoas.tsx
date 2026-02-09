@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { UserRound, Loader2, Search, Plus, Edit, Trash2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
-import { useLocation, useSearch } from 'wouter';
+import { useLocation, useSearch, useRoute } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { useViaCep } from '@/hooks/useViaCep';
@@ -41,6 +41,9 @@ interface Pessoa {
 
 export default function Pessoas() {
   const searchParams = useSearch();
+  const [match, params] = useRoute('/pessoas/:id');
+  const pessoaId = match ? params?.id : null;
+  
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -86,6 +89,23 @@ export default function Pessoas() {
   const [contatos, setContatos] = useState<Array<{ tipo: string; contato: string; descricao: string }>>([]);
   const { buscarCep, isLoading: isLoadingCep } = useViaCep();
 
+  // Abrir pessoa específica se vier da URL (/pessoas/:id)
+  useEffect(() => {
+    if (pessoaId) {
+      const loadPessoa = async () => {
+        try {
+          const response = await api.get(`/pessoas/${pessoaId}`);
+          const pessoa = response.data.data || response.data;
+          await openEditModal(pessoa);
+        } catch (error) {
+          console.error('Erro ao carregar pessoa:', error);
+          toast.error('Pessoa não encontrada');
+        }
+      };
+      loadPessoa();
+    }
+  }, [pessoaId]);
+
   // Aplicar busca automática se vier da URL
   useEffect(() => {
     const urlParams = new URLSearchParams(searchParams);
@@ -100,14 +120,14 @@ export default function Pessoas() {
     const urlParams = new URLSearchParams(searchParams);
     const searchParam = urlParams.get('search');
     
-    if (searchParam && pessoas.length === 1 && !isLoading) {
+    if (searchParam && pessoas.length === 1 && !isLoading && !pessoaId) {
       // Aguardar um momento para garantir que a lista foi carregada
       const timer = setTimeout(() => {
         openEditModal(pessoas[0]);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [pessoas, searchParams, isLoading]);
+  }, [pessoas, searchParams, isLoading, pessoaId]);
 
   const handleBuscarCep = async () => {
     if (!formData.cep) {
