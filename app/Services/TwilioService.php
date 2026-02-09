@@ -423,6 +423,7 @@ class TwilioService
                 'success' => true,
                 'data' => $response->body(),
                 'contentType' => $response->header('Content-Type') ?: 'application/octet-stream',
+                'http_code' => $response->status(),
             ];
         }
 
@@ -436,7 +437,9 @@ class TwilioService
 
         return [
             'success' => false,
+            'http_code' => $response->status(),
             'error' => "Failed to download media (HTTP {$response->status()})",
+            'response' => $response->body(),
         ];
     }
 
