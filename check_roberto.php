@@ -10,7 +10,6 @@ echo "=== VERIFICAR ROBERTO JR ===\n\n";
 // Buscar lead por telefone
 $lead = Lead::where('telefone', 'LIKE', '%5531971809143%')
     ->orWhere('whatsapp', 'LIKE', '%5531971809143%')
-    ->orWhere('celular', 'LIKE', '%5531971809143%')
     ->first();
 
 if (!$lead) {
