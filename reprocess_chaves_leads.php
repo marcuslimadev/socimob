@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Log;
 
 echo "=== RE-PROCESSAR LEADS DO CHAVES NA MÃO ===\n\n";
 
-// Buscar todos os leads que vieram do Chaves na Mão
-$leads = Lead::where('origem', 'chaves_na_mao')
+// Buscar todos os leads que têm observações mencionando "Chaves na Mão"
+$leads = Lead::where('observacoes', 'LIKE', '%Chaves na M%')
     ->whereNotNull('pessoa_id')
     ->orderBy('created_at', 'desc')
     ->get();
