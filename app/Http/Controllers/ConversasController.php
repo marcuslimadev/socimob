@@ -92,27 +92,6 @@ class ConversasController extends Controller
                 }
                 return $conversa;
             });
-            
-            if (false) {
-            $statusCode = $result['http_code'] ?? 502;
-            $payload = [
-                'error' => $result['error'] ?? 'Falha ao baixar m︸ia',
-            ];
-            if (!empty($result['response'])) {
-                $payload['twilio_response'] = substr((string) $result['response'], 0, 500);
-            }
-            return response()->json($payload, $statusCode);
-            }
-
-            $statusCode = $result['http_code'] ?? 502;
-            $payload = [
-                'error' => $result['error'] ?? 'Falha ao baixar midia',
-            ];
-            if (!empty($result['response'])) {
-                $payload['twilio_response'] = substr((string) $result['response'], 0, 500);
-            }
-            return response()->json($payload, $statusCode);
-
             return response()->json([
                 'success' => true,
                 'data' => $conversas
@@ -942,9 +921,14 @@ class ConversasController extends Controller
                     ->header('X-Media-Content-Type', $cleanType);
             }
 
-            return response()->json([
-                'error' => $result['error'] ?? 'Falha ao baixar mídia',
-            ], 502);
+            $statusCode = $result['http_code'] ?? 502;
+            $payload = [
+                'error' => $result['error'] ?? 'Falha ao baixar midia',
+            ];
+            if (!empty($result['response'])) {
+                $payload['twilio_response'] = substr((string) $result['response'], 0, 500);
+            }
+            return response()->json($payload, $statusCode);
         } catch (\Exception $e) {
             \Log::error("Erro ao fazer proxy de mídia: " . $e->getMessage());
             return response()->json(['error' => 'Erro ao processar mídia'], 500);
