@@ -155,6 +155,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
     // Dashboard routes
     $router->get('/dashboard/stats', 'DashboardController@stats');
     $router->get('/dashboard/atividades', 'DashboardController@atividades');
+    $router->get('/dashboard/timeline', 'DashboardController@timeline');
 
     // Analytics collect (public, consent required on client)
     $router->post('/analytics/collect', 'AnalyticsController@collect');
@@ -267,6 +268,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     $router->get('/dashboard/stats', 'DashboardController@stats');
     $router->get('/dashboard/chart/atendimentos', 'DashboardController@chartAtendimentos');
     $router->get('/dashboard/atividades', 'DashboardController@atividades');
+    $router->get('/dashboard/timeline', 'DashboardController@timeline');
 
     // Vistorias
     $router->get('/vistorias', 'VistoriasController@index');
