@@ -87,7 +87,7 @@ export default function Pessoas() {
   const [contatos, setContatos] = useState<Array<{ tipo: string; contato: string; descricao: string }>>([]);
   const { buscarCep, isLoading: isLoadingCep } = useViaCep();
 
-  // Abrir pessoa específica se vier da URL (/pessoas/:id)
+  const handleBuscarCep = async () => {
     if (!formData.cep) {
       toast.error('Digite um CEP');
       return;
