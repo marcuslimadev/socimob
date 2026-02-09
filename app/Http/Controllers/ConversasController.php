@@ -160,13 +160,61 @@ class ConversasController extends Controller
             $users = $db->table('users')->whereIn('id', $userIds)->get()->keyBy('id');
             
             $lead = null;
+            $pessoa = null;
+            $leadContext = null;
+            
             if ($conversa->lead_id) {
                 $lead = $db->table('leads')->find($conversa->lead_id);
+                
+                // Buscar pessoa associada ao lead
+                if ($lead && $lead->pessoa_id) {
+                    $pessoa = $db->table('pessoas')->find($lead->pessoa_id);
+                }
+                
+                // Montar contexto do lead para exibição no chat
+                if ($lead) {
+                    $contextParts = [];
+                    
+                    // Tipo de imóvel preferido
+                    if (!empty($lead->preferencia_tipo_imovel)) {
+                        $contextParts[] = $lead->preferencia_tipo_imovel;
+                    }
+                    
+                    // Bairro preferido
+                    if (!empty($lead->preferencia_bairro)) {
+                        $contextParts[] = $lead->preferencia_bairro;
+                    }
+                    
+                    // Quartos
+                    if (!empty($lead->quartos)) {
+                        $contextParts[] = $lead->quartos . " qts";
+                    }
+                    
+                    // Orçamento
+                    if (!empty($lead->budget_max)) {
+                        $budget = (float) $lead->budget_max;
+                        if ($budget >= 1000000) {
+                            $contextParts[] = "R$ " . number_format($budget / 1000000, 1) . "M";
+                        } else if ($budget >= 1000) {
+                            $contextParts[] = "R$ " . number_format($budget / 1000, 0) . "k";
+                        } else {
+                            $contextParts[] = "R$ " . number_format($budget, 0);
+                        }
+                    }
+                    
+                    // Origem do lead
+                    if (!empty($lead->fonte)) {
+                        $contextParts[] = $lead->fonte;
+                    }
+                    
+                    $leadContext = !empty($contextParts) ? implode(' • ', $contextParts) : null;
+                }
             }
             
             // Formatar mensagens para garantir campos corretos
-            $mensagens = $mensagens->map(function($msg) use ($users, $lead, $conversa) {
+            $mensagens = $mensagens->map(function($msg) use ($users, $lead, $leadContext, $conversa) {
                 $senderName = null;
+                $senderContext = null;
                 
                 if ($msg->direction === 'outgoing' && $msg->user_id) {
                     // Mensagem enviada por corretor/admin
@@ -175,6 +223,7 @@ class ConversasController extends Controller
                 } elseif ($msg->direction === 'incoming') {
                     // Mensagem recebida do lead
                     $senderName = $lead?->nome ?? ($lead?->telefone ?? 'Cliente');
+                    $senderContext = $leadContext; // Adicionar contexto do lead
                 } else {
                     // Mensagem do sistema/IA
                     $senderName = 'Assistente IA';
@@ -194,6 +243,7 @@ class ConversasController extends Controller
                     'read_at' => $msg->read_at ?? null,
                     'created_at' => $msg->created_at ?? null,
                     'sender_name' => $senderName,
+                    'sender_context' => $senderContext,
                     'user_id' => $msg->user_id ?? null
                 ];
             });

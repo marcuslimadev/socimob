@@ -34,6 +34,7 @@ interface Message {
   mediaUrl?: string | null;
   transcription?: string | null;
   senderName?: string;
+  senderContext?: string;
 }
 
 interface Contact {
@@ -323,6 +324,7 @@ export default function Chat() {
           mediaUrl: item.media_url ?? null,
           transcription: item.transcription ?? null,
           senderName: item.sender_name ?? undefined,
+          senderContext: item.sender_context ?? undefined,
         }))
         .sort((a: Message, b: Message) => a.rawDate.getTime() - b.rawDate.getTime());
 
@@ -775,15 +777,22 @@ export default function Chat() {
                                             : 'left-[-6px] bg-muted border-l border-b border-border rotate-45 rounded-sm'
                                         )}
                                       />
-                                      {/* Nome do remetente */}
+                                      {/* Nome do remetente e contexto */}
                                       {message.senderName && (
-                                        <div className={cn(
-                                          "text-[10px] font-medium mb-1.5 opacity-70",
-                                          message.senderName === 'Assistente IA' 
-                                            ? 'text-blue-600 dark:text-blue-400' 
-                                            : 'text-foreground'
-                                        )}>
-                                          {message.senderName}
+                                        <div className="mb-1.5">
+                                          <div className={cn(
+                                            "text-[10px] font-medium opacity-70",
+                                            message.senderName === 'Assistente IA' 
+                                              ? 'text-blue-600 dark:text-blue-400' 
+                                              : 'text-foreground'
+                                          )}>
+                                            {message.senderName}
+                                          </div>
+                                          {message.senderContext && (
+                                            <div className="text-[9px] text-muted-foreground/60 mt-0.5 font-normal">
+                                              {message.senderContext}
+                                            </div>
+                                          )}
                                         </div>
                                       )}
                                       {isAudioMessage(message) && message.mediaUrl && (
