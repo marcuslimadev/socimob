@@ -393,12 +393,14 @@ class TwilioService
     /**
      * Baixar áudio do WhatsApp
      */
-    public function downloadMedia($mediaUrl)
+    public function downloadMedia($mediaUrl, ?string $accountSidOverride = null, ?string $authTokenOverride = null)
     {
+        [$accountSid, $authToken] = $this->resolveCredentials($accountSidOverride, $authTokenOverride);
+
         $ch = curl_init($mediaUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_setopt($ch, CURLOPT_USERPWD, "{$this->accountSid}:{$this->authToken}");
+        curl_setopt($ch, CURLOPT_USERPWD, "{$accountSid}:{$authToken}");
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 60);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
@@ -421,7 +423,8 @@ class TwilioService
             'url' => $mediaUrl,
             'httpCode' => $httpCode,
             'curlError' => $curlError,
-            'hasCredentials' => !empty($this->accountSid) && !empty($this->authToken),
+            'accountSidUsed' => substr($accountSid ?? '', 0, 10) . '...',
+            'hasCredentials' => !empty($accountSid) && !empty($authToken),
         ]);
 
         return [

@@ -888,7 +888,12 @@ class ConversasController extends Controller
         }
 
         try {
-            $result = $this->twilio->downloadMedia($mediaUrl);
+            // Usar credenciais do tenant (prioridade sobre as globais)
+            $tenant = app('tenant');
+            $accountSid = $tenant ? $tenant->getTwilioAccountSid() : null;
+            $authToken = $tenant ? $tenant->getTwilioAuthToken() : null;
+
+            $result = $this->twilio->downloadMedia($mediaUrl, $accountSid, $authToken);
 
             if ($result['success']) {
                 $contentType = $result['contentType'] ?? 'application/octet-stream';
