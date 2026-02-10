@@ -8,28 +8,24 @@ import {
   Ruler,
   Heart,
   Share2,
-  Eye,
-  Grid,
-  List,
-  Map as MapIcon,
-  ChevronDown,
-  X,
-  SlidersHorizontal,
   Home,
   Car,
   Phone,
   Mail,
-  Loader2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  X,
   MessageCircle,
   Sun,
-  Moon
+  Moon,
+  Map as MapIcon,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import api from '@/lib/api';
-import { fetchTenantBranding, hexToRgba, TenantBranding } from '@/lib/tenantBranding';
+import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -56,14 +52,12 @@ const createPropertyIcon = (type: string, color: string) => {
   let iconSvg: string;
 
   if (isHouse) {
-    // House icon
     iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 45" width="36" height="45">
       <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 27 18 27s18-13.5 18-27C36 8.06 27.94 0 18 0z" fill="${color}"/>
       <path d="M18 4C10.27 4 4 10.27 4 18c0 10.5 14 21 14 21s14-10.5 14-21C32 10.27 25.73 4 18 4z" fill="white" opacity="0.2"/>
       <path d="M18 10l-8 6v10h5v-6h6v6h5V16l-8-6z" fill="white"/>
     </svg>`;
   } else if (isApartment) {
-    // Apartment/Building icon
     iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 45" width="36" height="45">
       <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 27 18 27s18-13.5 18-27C36 8.06 27.94 0 18 0z" fill="${color}"/>
       <path d="M18 4C10.27 4 4 10.27 4 18c0 10.5 14 21 14 21s14-10.5 14-21C32 10.27 25.73 4 18 4z" fill="white" opacity="0.2"/>
@@ -75,7 +69,6 @@ const createPropertyIcon = (type: string, color: string) => {
       <rect x="15" y="21" width="6" height="6" fill="${color}"/>
     </svg>`;
   } else if (isTerrain) {
-    // Terrain/Land icon
     iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 45" width="36" height="45">
       <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 27 18 27s18-13.5 18-27C36 8.06 27.94 0 18 0z" fill="${color}"/>
       <path d="M18 4C10.27 4 4 10.27 4 18c0 10.5 14 21 14 21s14-10.5 14-21C32 10.27 25.73 4 18 4z" fill="white" opacity="0.2"/>
@@ -83,7 +76,6 @@ const createPropertyIcon = (type: string, color: string) => {
       <circle cx="12" cy="12" r="2" fill="white"/>
     </svg>`;
   } else if (isCommercial) {
-    // Commercial icon
     iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 45" width="36" height="45">
       <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 27 18 27s18-13.5 18-27C36 8.06 27.94 0 18 0z" fill="${color}"/>
       <path d="M18 4C10.27 4 4 10.27 4 18c0 10.5 14 21 14 21s14-10.5 14-21C32 10.27 25.73 4 18 4z" fill="white" opacity="0.2"/>
@@ -94,7 +86,6 @@ const createPropertyIcon = (type: string, color: string) => {
       <rect x="14" y="20" width="8" height="6" fill="${color}"/>
     </svg>`;
   } else {
-    // Default icon
     iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 45" width="36" height="45">
       <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 27 18 27s18-13.5 18-27C36 8.06 27.94 0 18 0z" fill="${color}"/>
       <path d="M18 4C10.27 4 4 10.27 4 18c0 10.5 14 21 14 21s14-10.5 14-21C32 10.27 25.73 4 18 4z" fill="white" opacity="0.2"/>
@@ -147,8 +138,7 @@ interface TenantConfig extends TenantBranding {
   portal_finalidades?: string[];
 }
 
-type ViewMode = 'grid' | 'list' | 'map';
-type SortOption = 'recent' | 'price_asc' | 'price_desc' | 'area_asc' | 'area_desc';
+type SortOption = 'recent' | 'price_asc' | 'price_desc' | 'area_desc';
 
 const PRICE_RANGES = [
   { label: 'Qualquer preço', min: 0, max: Infinity },
@@ -169,7 +159,6 @@ const PROPERTY_TYPES = [
   { value: 'cobertura', label: 'Cobertura' },
 ];
 
-// Map bounds type
 interface MapBounds {
   north: number;
   south: number;
@@ -177,7 +166,6 @@ interface MapBounds {
   west: number;
 }
 
-// Map component that fits bounds and tracks visible area
 function MapBoundsHandler({
   properties,
   onBoundsChange,
@@ -189,10 +177,8 @@ function MapBoundsHandler({
 }) {
   const map = useMap();
 
-  // Track bounds changes
   useEffect(() => {
     if (!onBoundsChange) return;
-
     const updateBounds = () => {
       const bounds = map.getBounds();
       onBoundsChange({
@@ -202,28 +188,20 @@ function MapBoundsHandler({
         west: bounds.getWest(),
       });
     };
-
-    // Initial bounds
     updateBounds();
-
-    // Listen for zoom and move events
     map.on('moveend', updateBounds);
     map.on('zoomend', updateBounds);
-
     return () => {
       map.off('moveend', updateBounds);
       map.off('zoomend', updateBounds);
     };
   }, [map, onBoundsChange]);
 
-  // Initial fit to all properties
   useEffect(() => {
     if (!initialFit || properties.length === 0) return;
-
     const validProperties = properties.filter(
       (p) => p.latitude && p.longitude && !isNaN(p.latitude) && !isNaN(p.longitude)
     );
-
     if (validProperties.length > 0) {
       const bounds = L.latLngBounds(
         validProperties.map((p) => [p.latitude!, p.longitude!])
@@ -235,7 +213,6 @@ function MapBoundsHandler({
   return null;
 }
 
-// Brazilian city coordinates for geocoding fallback
 const BRAZIL_CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   'são paulo': { lat: -23.5505, lng: -46.6333 },
   'sao paulo': { lat: -23.5505, lng: -46.6333 },
@@ -273,16 +250,146 @@ const BRAZIL_CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   'juiz de fora': { lat: -21.7642, lng: -43.3503 },
 };
 
-// Get coordinates from city name
 function getCityCoords(city: string | undefined): { lat: number; lng: number } | null {
   if (!city) return null;
   const normalized = city.toLowerCase().trim();
   return BRAZIL_CITY_COORDS[normalized] || null;
 }
 
+// ===== Photo Carousel =====
+function PhotoCarousel({
+  photos,
+  onLike,
+  isLiked,
+  badges,
+}: {
+  photos: string[];
+  onLike: (e: React.MouseEvent) => void;
+  isLiked: boolean;
+  badges: { label: string; className: string }[];
+}) {
+  const [current, setCurrent] = useState(0);
+  const touchStartRef = useRef(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const diff = touchStartRef.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0 && current < photos.length - 1) setCurrent((c) => c + 1);
+      if (diff < 0 && current > 0) setCurrent((c) => c - 1);
+    }
+  };
+
+  if (photos.length === 0) {
+    return (
+      <div className="w-full h-full bg-muted/50 flex items-center justify-center">
+        <Home className="w-12 h-12 text-muted-foreground/30" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="relative w-full h-full group/carousel"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Photo strip */}
+      <div
+        className="flex h-full transition-transform duration-300 ease-out will-change-transform"
+        style={{ transform: `translateX(-${current * 100}%)` }}
+      >
+        {photos.map((photo, i) => (
+          <img
+            key={i}
+            src={photo}
+            alt=""
+            className="w-full h-full object-cover flex-shrink-0"
+            loading="lazy"
+          />
+        ))}
+      </div>
+
+      {/* Navigation arrows */}
+      {current > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setCurrent((c) => c - 1);
+          }}
+          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity hover:bg-white"
+        >
+          <ChevronLeft className="w-4 h-4 text-gray-700" />
+        </button>
+      )}
+      {current < photos.length - 1 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setCurrent((c) => c + 1);
+          }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-opacity hover:bg-white"
+        >
+          <ChevronRight className="w-4 h-4 text-gray-700" />
+        </button>
+      )}
+
+      {/* Dot indicators */}
+      {photos.length > 1 && (
+        <div className="absolute bottom-2.5 left-0 right-0 flex justify-center gap-1.5">
+          {photos.slice(0, 7).map((_, i) => (
+            <button
+              key={i}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrent(i);
+              }}
+              className={cn(
+                'w-[6px] h-[6px] rounded-full transition-all',
+                i === current ? 'bg-white scale-110' : 'bg-white/60'
+              )}
+            />
+          ))}
+          {photos.length > 7 && <span className="w-[6px] h-[6px] rounded-full bg-white/30" />}
+        </div>
+      )}
+
+      {/* Badges */}
+      {badges.length > 0 && (
+        <div className="absolute top-3 left-3 flex gap-1.5">
+          {badges.map((badge, i) => (
+            <span
+              key={i}
+              className={cn('px-2 py-1 text-xs font-medium rounded shadow-sm', badge.className)}
+            >
+              {badge.label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Heart button */}
+      <button
+        onClick={onLike}
+        className={cn(
+          'absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm',
+          isLiked
+            ? 'bg-red-500 text-white'
+            : 'bg-white/90 text-gray-500 hover:text-red-500 hover:bg-white'
+        )}
+      >
+        <Heart className={cn('w-4 h-4', isLiked && 'fill-current')} />
+      </button>
+    </div>
+  );
+}
+
+// ===== Main Component =====
 export default function ClientPortal() {
   const [, navigate] = useLocation();
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [priceRangeIndex, setPriceRangeIndex] = useState(0);
   const [selectedBedrooms, setSelectedBedrooms] = useState<number | null>(null);
@@ -290,14 +397,14 @@ export default function ClientPortal() {
   const [selectedPropertyType, setSelectedPropertyType] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('recent');
   const [properties, setProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [likedProperties, setLikedProperties] = useState<Set<number>>(new Set());
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
   const [hoveredProperty, setHoveredProperty] = useState<number | null>(null);
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [showMobileMap, setShowMobileMap] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
   // Load tenant configuration
@@ -307,12 +414,9 @@ export default function ClientPortal() {
         const data = await fetchTenantBranding();
         if (data) {
           setTenant(data as TenantConfig);
-          
-          // Update document title and favicon based on tenant branding
           if (data.name) {
             document.title = `${data.name} - Portal de Imóveis`;
           }
-          
           const faviconUrl = data.favicon_url || data.logo_url || data.logo;
           if (faviconUrl) {
             let faviconLink = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
@@ -336,41 +440,42 @@ export default function ClientPortal() {
     const fetchProperties = async () => {
       try {
         setError(null);
+        setLoading(true);
         const response = await api.get('/portal/imoveis');
         const data = response.data.data || response.data || [];
 
-        // Add coordinates based on city when not available
         const propertiesWithCoords = data.map((prop: Property) => {
-          if (prop.latitude && prop.longitude) {
-            return prop;
-          }
-
-          // Try to get coordinates from city name
+          if (prop.latitude && prop.longitude) return prop;
           const cityCoords = getCityCoords(prop.cidade);
           if (cityCoords) {
-            // Add small random offset to avoid all markers in same spot
             return {
               ...prop,
               latitude: cityCoords.lat + (Math.random() - 0.5) * 0.02,
               longitude: cityCoords.lng + (Math.random() - 0.5) * 0.02,
             };
           }
-
-          // No coordinates available - property won't show on map
           return prop;
         });
 
         setProperties(propertiesWithCoords);
       } catch (err: any) {
         setError(err.message || 'Erro ao carregar imóveis');
+      } finally {
+        setLoading(false);
       }
     };
     fetchProperties();
   }, []);
 
-  // Theme colors
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!openDropdown) return;
+    const handler = () => setOpenDropdown(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [openDropdown]);
+
   const primary = tenant?.primary_color || '#1e40af';
-  const secondary = tenant?.secondary_color || '#3b82f6';
 
   const handleLike = async (propertyId: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -394,12 +499,9 @@ export default function ClientPortal() {
     const shareUrl = `${window.location.origin}/portal/imovel/${property.id}`;
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: property.titulo,
-          url: shareUrl,
-        });
+        await navigator.share({ title: property.titulo, url: shareUrl });
       } catch {
-        // User cancelled
+        // cancelled
       }
     } else {
       await navigator.clipboard.writeText(shareUrl);
@@ -411,8 +513,6 @@ export default function ClientPortal() {
     e.stopPropagation();
     if (tenant?.contact_phone) {
       const phone = tenant.contact_phone.replace(/\D/g, '');
-      
-      // Se houver contexto do imóvel, criar mensagem personalizada
       let message = '';
       if (property) {
         const price = property.valor_venda || property.valor_aluguel || 0;
@@ -426,19 +526,16 @@ export default function ClientPortal() {
           `Gostaria de mais informações.`
         );
       }
-      
-      const url = message 
+      const url = message
         ? `https://wa.me/${phone}?text=${message}`
         : `https://wa.me/${phone}`;
-      
       window.open(url, '_blank');
     }
   };
 
-  // Filter and sort properties
+  // Filter and sort
   const filteredProperties = useMemo(() => {
     let result = properties.filter((prop) => {
-      // Search filter
       const searchMatch =
         !searchTerm ||
         prop.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -447,22 +544,18 @@ export default function ClientPortal() {
         prop.tipo_imovel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         prop.logradouro?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      // Price filter
       const price = prop.valor_venda || prop.valor_aluguel || 0;
       const priceRange = PRICE_RANGES[priceRangeIndex];
       const priceMatch = price >= priceRange.min && price <= priceRange.max;
 
-      // Bedrooms filter
       const bedrooms = prop.quartos ?? prop.dormitorios ?? 0;
       const bedroomsMatch = !selectedBedrooms || bedrooms >= selectedBedrooms;
 
-      // Transaction type filter
       const typeMatch =
         !selectedType ||
         prop.tipo_negocio?.toLowerCase() === selectedType.toLowerCase() ||
         prop.finalidade_imovel?.toLowerCase().includes(selectedType.toLowerCase());
 
-      // Property type filter
       const propTypeMatch =
         !selectedPropertyType ||
         prop.tipo_imovel?.toLowerCase().includes(selectedPropertyType.toLowerCase());
@@ -470,16 +563,12 @@ export default function ClientPortal() {
       return searchMatch && priceMatch && bedroomsMatch && typeMatch && propTypeMatch;
     });
 
-    // Sort
     switch (sortOption) {
       case 'price_asc':
         result.sort((a, b) => (a.valor_venda || 0) - (b.valor_venda || 0));
         break;
       case 'price_desc':
         result.sort((a, b) => (b.valor_venda || 0) - (a.valor_venda || 0));
-        break;
-      case 'area_asc':
-        result.sort((a, b) => (a.area_total || 0) - (b.area_total || 0));
         break;
       case 'area_desc':
         result.sort((a, b) => (b.area_total || 0) - (a.area_total || 0));
@@ -491,13 +580,12 @@ export default function ClientPortal() {
     return result;
   }, [properties, searchTerm, priceRangeIndex, selectedBedrooms, selectedType, selectedPropertyType, sortOption]);
 
-  // Filter properties by map bounds (only when in map view)
-  const mapVisibleProperties = useMemo(() => {
-    if (!mapBounds || viewMode !== 'map') return filteredProperties;
-
+  // Display properties (filtered by map bounds on desktop)
+  const displayProperties = useMemo(() => {
+    if (!mapBounds) return filteredProperties;
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) return filteredProperties;
     return filteredProperties.filter((prop) => {
-      if (!prop.latitude || !prop.longitude) return false;
-
+      if (!prop.latitude || !prop.longitude) return true;
       return (
         prop.latitude >= mapBounds.south &&
         prop.latitude <= mapBounds.north &&
@@ -505,7 +593,7 @@ export default function ClientPortal() {
         prop.longitude <= mapBounds.east
       );
     });
-  }, [filteredProperties, mapBounds, viewMode]);
+  }, [filteredProperties, mapBounds]);
 
   const hasActiveFilters =
     searchTerm || priceRangeIndex > 0 || selectedBedrooms || selectedType || selectedPropertyType;
@@ -526,303 +614,231 @@ export default function ClientPortal() {
     }).format(value);
   };
 
-  const PropertyCard = ({ property, variant = 'grid' }: { property: Property; variant?: 'grid' | 'list' }) => {
-    const firstImage = property.fotos?.[0]?.url || property.imagens?.[0];
+  const getPhotos = (property: Property): string[] => {
+    const photos: string[] = [];
+    if (property.fotos) {
+      photos.push(...property.fotos.map((f) => f.url));
+    }
+    if (property.imagens) {
+      photos.push(...property.imagens.filter((img) => !photos.includes(img)));
+    }
+    return photos;
+  };
+
+  const generateDescription = (property: Property) => {
+    const tipo = property.tipo_imovel?.toLowerCase() || 'imóvel';
+    const area = property.area_util || property.area_total;
+    const bedrooms = property.quartos ?? property.dormitorios;
+    const isRental = property.finalidade_imovel?.toLowerCase().includes('aluguel');
+    let desc = isRental ? `Aluguel de ${tipo}` : `Comprar ${tipo}`;
+    if (property.bairro) desc += ` em ${property.bairro}`;
+    if (area) desc += `, ${area} m²`;
+    if (bedrooms) desc += bedrooms === 1 ? '. 1 quarto' : `. ${bedrooms} quartos`;
+    desc += '.';
+    return desc;
+  };
+
+  // Map center
+  const mapCenter = useMemo((): [number, number] => {
+    const propWithCoords = filteredProperties.find((p) => p.latitude && p.longitude);
+    if (propWithCoords) return [propWithCoords.latitude!, propWithCoords.longitude!];
+    return [-15.7801, -47.9292];
+  }, [filteredProperties]);
+
+  // Finalidade filter visibility
+  const showFinalidadeFilter = useMemo(() => {
+    const pf = tenant?.portal_finalidades?.map((f) => f.toLowerCase()) ?? [];
+    const showVenda = pf.length === 0 || pf.some((f) => f.includes('venda'));
+    const showAluguel = pf.length === 0 || pf.some((f) => f.includes('aluguel') || f.includes('locação') || f.includes('locacao'));
+    return showVenda && showAluguel;
+  }, [tenant]);
+
+  // ===== Property Card =====
+  const PropertyCard = ({ property }: { property: Property }) => {
+    const photos = getPhotos(property);
     const price = property.valor_venda || property.valor_aluguel || 0;
     const bedrooms = property.quartos ?? property.dormitorios;
     const area = property.area_util || property.area_total;
-    const location = [property.bairro, property.cidade].filter(Boolean).join(', ') || 'Localização não informada';
     const isLiked = likedProperties.has(property.id);
-    const isHovered = hoveredProperty === property.id;
+    const description = generateDescription(property);
+    const address = [property.logradouro, property.bairro, property.cidade]
+      .filter(Boolean)
+      .join(', ');
 
-    if (variant === 'list') {
-      return (
-        <motion.div
-          layout
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          whileHover={{ scale: 1.01 }}
-          onHoverStart={() => setHoveredProperty(property.id)}
-          onHoverEnd={() => setHoveredProperty(null)}
-          onClick={() => navigate(`/portal/imovel/${property.id}`)}
-          className="flex flex-col sm:flex-row bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-xl transition-all"
-        >
-          <div className="relative w-full sm:w-72 h-48 sm:h-auto flex-shrink-0">
-            {firstImage ? (
-              <img
-                src={firstImage}
-                alt={property.titulo}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-full h-full bg-muted flex items-center justify-center">
-                <Home className="w-12 h-12 text-muted-foreground" />
-              </div>
-            )}
-            {property.destaque && (
-              <span className="absolute top-3 left-3 px-2 py-1 bg-amber-500 text-white text-xs font-semibold rounded-full">
-                Destaque
-              </span>
-            )}
-            <div className="absolute top-3 right-3 flex gap-2">
-              <button
-                onClick={(e) => handleLike(property.id, e)}
-                className={cn(
-                  'p-2 rounded-full backdrop-blur-sm transition-all',
-                  isLiked ? 'bg-red-500 text-white' : 'bg-black/30 text-white hover:bg-black/50'
-                )}
-              >
-                <Heart className={cn('w-4 h-4', isLiked && 'fill-current')} />
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 p-5">
-            <div className="flex items-start justify-between gap-4 mb-3">
-              <div>
-                <span
-                  className="inline-block px-2 py-0.5 text-xs font-medium rounded mb-2"
-                  style={{ backgroundColor: `${primary}20`, color: primary }}
-                >
-                  {property.tipo_negocio || property.finalidade_imovel}
-                </span>
-                <h3 className="text-lg font-semibold text-foreground line-clamp-1">{property.titulo}</h3>
-                <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {location}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold" style={{ color: primary }}>
-                  {formatPrice(price)}
-                </p>
-                {property.tipo_negocio?.toLowerCase() === 'aluguel' && (
-                  <span className="text-xs text-muted-foreground">/mês</span>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-4">
-              {bedrooms != null && (
-                <span className="flex items-center gap-1">
-                  <Bed className="w-4 h-4" /> {bedrooms} quartos
-                </span>
-              )}
-              {property.banheiros != null && (
-                <span className="flex items-center gap-1">
-                  <Bath className="w-4 h-4" /> {property.banheiros} banheiros
-                </span>
-              )}
-              {property.garagem != null && (
-                <span className="flex items-center gap-1">
-                  <Car className="w-4 h-4" /> {property.garagem} vagas
-                </span>
-              )}
-              {area != null && (
-                <span className="flex items-center gap-1">
-                  <Ruler className="w-4 h-4" /> {area}m²
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                style={{ backgroundColor: primary }}
-                className="text-white"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/portal/imovel/${property.id}`);
-                }}
-              >
-                <Eye className="w-4 h-4" />
-                Ver detalhes
-              </Button>
-              <Button size="sm" variant="outline" onClick={(e) => handleShare(property, e)}>
-                <Share2 className="w-4 h-4" />
-              </Button>
-              {tenant?.contact_phone && (
-                <Button size="sm" variant="outline" className="text-green-600" onClick={(e) => handleWhatsApp(e, property)}>
-                  <MessageCircle className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </motion.div>
-      );
+    const badges: { label: string; className: string }[] = [];
+    if (property.destaque) {
+      badges.push({ label: 'Destaque', className: 'bg-amber-500 text-white' });
     }
+
+    const details = [
+      area ? `${area} m²` : null,
+      bedrooms ? `${bedrooms} quarto${bedrooms > 1 ? 's' : ''}` : null,
+    ]
+      .filter(Boolean)
+      .join(' \u00B7 ');
 
     return (
       <motion.div
-        layout
-        whileHover={{ y: -4 }}
-        onHoverStart={() => setHoveredProperty(property.id)}
-        onHoverEnd={() => setHoveredProperty(null)}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
         onClick={() => navigate(`/portal/imovel/${property.id}`)}
+        onMouseEnter={() => setHoveredProperty(property.id)}
+        onMouseLeave={() => setHoveredProperty(null)}
         className={cn(
-          'group bg-card border rounded-2xl overflow-hidden cursor-pointer transition-all',
-          isHovered ? 'shadow-xl border-primary/30' : 'border-border hover:shadow-lg'
+          'group bg-card rounded-lg overflow-hidden cursor-pointer transition-shadow',
+          hoveredProperty === property.id ? 'shadow-lg' : 'hover:shadow-md'
         )}
       >
-        <div className="relative h-52 overflow-hidden">
-          {firstImage ? (
-            <img
-              src={firstImage}
-              alt={property.titulo}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full bg-muted flex items-center justify-center">
-              <Home className="w-16 h-16 text-muted-foreground" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-          {property.destaque && (
-            <span className="absolute top-3 left-3 px-2.5 py-1 bg-amber-500 text-white text-xs font-semibold rounded-full shadow-lg">
-              ⭐ Destaque
-            </span>
-          )}
-
-          <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={(e) => handleLike(property.id, e)}
-              className={cn(
-                'p-2 rounded-full backdrop-blur-sm transition-all',
-                isLiked ? 'bg-red-500 text-white' : 'bg-white/90 text-gray-700 hover:bg-white'
-              )}
-            >
-              <Heart className={cn('w-4 h-4', isLiked && 'fill-current')} />
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={(e) => handleShare(property, e)}
-              className="p-2 rounded-full bg-white/90 text-gray-700 backdrop-blur-sm hover:bg-white transition-all"
-            >
-              <Share2 className="w-4 h-4" />
-            </motion.button>
-            {tenant?.contact_phone && (
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={(e) => handleWhatsApp(e, property)}
-                className="p-2 rounded-full bg-green-500 text-white backdrop-blur-sm hover:bg-green-600 transition-all"
-              >
-                <MessageCircle className="w-4 h-4" />
-              </motion.button>
-            )}
-          </div>
-
-          <div className="absolute bottom-3 left-3 right-3">
-            <p className="text-white text-2xl font-bold drop-shadow-lg">{formatPrice(price)}</p>
-            {property.tipo_negocio?.toLowerCase() === 'aluguel' && (
-              <span className="text-white/80 text-sm">/mês</span>
-            )}
-          </div>
+        {/* Photo carousel */}
+        <div className="relative aspect-[4/3] overflow-hidden">
+          <PhotoCarousel
+            photos={photos}
+            onLike={(e) => handleLike(property.id, e)}
+            isLiked={isLiked}
+            badges={badges}
+          />
         </div>
 
+        {/* Content */}
         <div className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span
-              className="px-2 py-0.5 text-xs font-medium rounded"
-              style={{ backgroundColor: `${primary}15`, color: primary }}
-            >
-              {property.tipo_imovel}
-            </span>
-            <span className="px-2 py-0.5 text-xs font-medium bg-muted rounded text-muted-foreground">
-              {property.tipo_negocio || property.finalidade_imovel}
-            </span>
-          </div>
-
-          <h3 className="font-semibold text-foreground line-clamp-1 mb-1">{property.titulo}</h3>
-          <p className="text-sm text-muted-foreground flex items-center gap-1 mb-4">
-            <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="truncate">{location}</span>
+          <p className="text-sm text-foreground/80 line-clamp-2 leading-snug mb-2.5">
+            {description}
           </p>
 
-          <div className="flex items-center gap-3 text-sm text-muted-foreground border-t border-border pt-3">
-            {bedrooms != null && (
-              <span className="flex items-center gap-1">
-                <Bed className="w-4 h-4" /> {bedrooms}
-              </span>
-            )}
-            {property.banheiros != null && (
-              <span className="flex items-center gap-1">
-                <Bath className="w-4 h-4" /> {property.banheiros}
-              </span>
-            )}
-            {property.garagem != null && (
-              <span className="flex items-center gap-1">
-                <Car className="w-4 h-4" /> {property.garagem}
-              </span>
-            )}
-            {area != null && (
-              <span className="flex items-center gap-1 ml-auto">
-                <Ruler className="w-4 h-4" /> {area}m²
-              </span>
-            )}
-          </div>
+          <p className="text-[17px] font-bold text-foreground leading-tight">
+            {formatPrice(price)}
+          </p>
+          {property.finalidade_imovel?.toLowerCase().includes('aluguel') && (
+            <p className="text-xs text-muted-foreground mt-0.5">/mês</p>
+          )}
+
+          {details && (
+            <p className="text-sm text-muted-foreground mt-2.5">{details}</p>
+          )}
+
+          {address && (
+            <p className="text-xs text-muted-foreground mt-1 truncate">{address}</p>
+          )}
         </div>
       </motion.div>
     );
   };
 
+  // ===== Map Render (shared between desktop and mobile) =====
+  const renderMap = (className?: string) => (
+    <MapContainer
+      center={mapCenter}
+      zoom={filteredProperties.length > 0 ? 12 : 4}
+      className={cn('h-full w-full', className)}
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <MapBoundsHandler
+        properties={filteredProperties}
+        onBoundsChange={setMapBounds}
+        initialFit={true}
+      />
+      {filteredProperties.map((property) => {
+        if (!property.latitude || !property.longitude) return null;
+        const price = property.valor_venda || property.valor_aluguel || 0;
+        const propertyIcon = createPropertyIcon(property.tipo_imovel, primary);
+
+        return (
+          <Marker
+            key={property.id}
+            position={[property.latitude, property.longitude]}
+            icon={propertyIcon}
+            eventHandlers={{
+              click: () => setHoveredProperty(property.id),
+            }}
+          >
+            <Popup>
+              <div className="w-56">
+                {property.fotos?.[0]?.url && (
+                  <img
+                    src={property.fotos[0].url}
+                    alt={property.titulo}
+                    className="w-full h-28 object-cover rounded-t-lg -mt-3 -mx-3 mb-2"
+                    style={{ width: 'calc(100% + 24px)' }}
+                  />
+                )}
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                  style={{ backgroundColor: `${primary}15`, color: primary }}
+                >
+                  {property.tipo_imovel}
+                </span>
+                <h4 className="font-semibold text-sm line-clamp-1 mt-1">{property.titulo}</h4>
+                <p className="text-xs text-gray-500 mb-1.5">
+                  {property.bairro}, {property.cidade}
+                </p>
+                <p className="font-bold text-base" style={{ color: primary }}>
+                  {formatPrice(price)}
+                </p>
+                <Button
+                  size="sm"
+                  className="w-full mt-2 text-white text-xs"
+                  style={{ backgroundColor: primary }}
+                  onClick={() => navigate(`/portal/imovel/${property.id}`)}
+                >
+                  Ver detalhes
+                </Button>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
+    </MapContainer>
+  );
+
+  // ===== RENDER =====
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header
-        ref={headerRef}
-        className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border"
-      >
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            {/* Logo */}
-            <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* ===== STICKY HEADER ===== */}
+      <div className="sticky top-0 z-50 bg-card border-b border-border">
+        {/* Row 1: Logo + Actions */}
+        <div className="px-4 lg:px-6">
+          <div className="flex items-center justify-between h-[60px]">
+            <div className="flex items-center gap-3 min-w-0">
               {tenant?.logo_url || tenant?.logo ? (
                 <img
                   src={tenant.logo_url || tenant.logo}
                   alt={tenant?.name || 'Logo'}
-                  className="h-10 w-auto object-contain"
+                  className="h-8 w-auto object-contain flex-shrink-0"
                 />
               ) : (
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                   style={{ backgroundColor: primary }}
                 >
                   {tenant?.name?.substring(0, 2).toUpperCase() || 'IM'}
                 </div>
               )}
-              <div className="hidden sm:block">
-                <h1 className="font-bold text-foreground">{tenant?.name || 'Imobiliária'}</h1>
-                {tenant?.slogan && (
-                  <p className="text-xs text-muted-foreground">{tenant.slogan}</p>
-                )}
-              </div>
+              <span className="font-semibold text-foreground hidden sm:block truncate">
+                {tenant?.name || 'Imobiliária'}
+              </span>
             </div>
 
-              {/* Contact & Login */}
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={toggleTheme}
+              >
+                {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </Button>
+              {tenant?.contact_phone && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-muted-foreground"
-                  onClick={toggleTheme}
-                  aria-label="Alternar tema"
-                >
-                  {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                </Button>
-                {tenant?.contact_phone && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="hidden md:flex text-green-600"
-                    onClick={(e) => handleWhatsApp(e)}
+                  className="hidden md:flex text-green-600 hover:text-green-700"
+                  onClick={(e) => handleWhatsApp(e)}
                 >
                   <MessageCircle className="w-4 h-4" />
-                  WhatsApp
+                  <span className="ml-1">WhatsApp</span>
                 </Button>
               )}
               <Button
@@ -836,464 +852,432 @@ export default function ClientPortal() {
             </div>
           </div>
         </div>
-      </header>
 
-      {/* Hero Section */}
-      <section
-        className="relative py-16 md:py-24"
-        style={{
-          background: `linear-gradient(135deg, ${hexToRgba(primary, 0.08)} 0%, ${hexToRgba(secondary, 0.08)} 100%)`,
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
-              Encontre o imóvel dos seus sonhos
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              {tenant?.slogan || 'Descubra as melhores oportunidades em imóveis'}
-            </p>
-          </div>
-
-          {/* Search Bar */}
-          <div className="max-w-4xl mx-auto"
-          >
-            <div className="bg-card rounded-2xl shadow-xl border border-border p-4 md:p-6">
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Busque por bairro, cidade ou tipo de imóvel..."
-                    className="w-full pl-12 pr-4 py-3 bg-muted/50 border-0 rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="flex-1 md:flex-none"
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                    Filtros
-                    {hasActiveFilters && (
-                      <span
-                        className="ml-1 w-5 h-5 rounded-full text-xs flex items-center justify-center text-white"
-                        style={{ backgroundColor: primary }}
-                      >
-                        !
-                      </span>
-                    )}
-                  </Button>
-                  <Button
-                    style={{ backgroundColor: primary }}
-                    className="text-white flex-1 md:flex-none"
-                  >
-                    <Search className="w-4 h-4" />
-                    Buscar
-                  </Button>
-                </div>
-              </div>
-
-              {/* Quick Filters */}
-              <AnimatePresence>
-                {showFilters && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 mt-4 border-t border-border">
-                      {/* Transaction Type - only show if tenant allows multiple finalidades */}
-                      {(() => {
-                        const pf = tenant?.portal_finalidades?.map(f => f.toLowerCase()) ?? [];
-                        const showVenda = pf.length === 0 || pf.some(f => f.includes('venda'));
-                        const showAluguel = pf.length === 0 || pf.some(f => f.includes('aluguel') || f.includes('locação') || f.includes('locacao'));
-                        // Only show filter if both options are available
-                        if (!showVenda || !showAluguel) return null;
-                        return (
-                          <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">
-                              Finalidade
-                            </label>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant={selectedType === 'venda' ? 'default' : 'outline'}
-                                onClick={() => setSelectedType(selectedType === 'venda' ? null : 'venda')}
-                                style={selectedType === 'venda' ? { backgroundColor: primary } : {}}
-                                className={selectedType === 'venda' ? 'text-white' : ''}
-                              >
-                                Comprar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant={selectedType === 'aluguel' ? 'default' : 'outline'}
-                                onClick={() => setSelectedType(selectedType === 'aluguel' ? null : 'aluguel')}
-                                style={selectedType === 'aluguel' ? { backgroundColor: primary } : {}}
-                                className={selectedType === 'aluguel' ? 'text-white' : ''}
-                              >
-                                Alugar
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Property Type */}
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Tipo de imóvel
-                        </label>
-                        <select
-                          value={selectedPropertyType}
-                          onChange={(e) => setSelectedPropertyType(e.target.value)}
-                          className="w-full px-3 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        >
-                          {PROPERTY_TYPES.map((type) => (
-                            <option key={type.value} value={type.value}>
-                              {type.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Price Range */}
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Faixa de preço
-                        </label>
-                        <select
-                          value={priceRangeIndex}
-                          onChange={(e) => setPriceRangeIndex(Number(e.target.value))}
-                          className="w-full px-3 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        >
-                          {PRICE_RANGES.map((range, idx) => (
-                            <option key={idx} value={idx}>
-                              {range.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Bedrooms */}
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Quartos
-                        </label>
-                        <div className="flex gap-1">
-                          {[1, 2, 3, 4].map((num) => (
-                            <Button
-                              key={num}
-                              size="sm"
-                              variant={selectedBedrooms === num ? 'default' : 'outline'}
-                              onClick={() => setSelectedBedrooms(selectedBedrooms === num ? null : num)}
-                              style={selectedBedrooms === num ? { backgroundColor: primary } : {}}
-                              className={cn('flex-1', selectedBedrooms === num && 'text-white')}
-                            >
-                              {num}+
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {hasActiveFilters && (
-                      <div className="flex justify-end pt-3">
-                        <Button variant="ghost" size="sm" onClick={clearFilters}>
-                          <X className="w-4 h-4" />
-                          Limpar filtros
-                        </Button>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+        {/* Row 2: Search + Filter Chips */}
+        <div className="px-4 lg:px-6 pb-3 pt-0.5">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+            {/* Search input */}
+            <div className="relative flex-shrink-0 w-56 lg:w-72">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Qualquer lugar..."
+                className="w-full pl-9 pr-8 py-2 bg-muted/40 border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/30"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
+
+            <div className="w-px h-6 bg-border flex-shrink-0" />
+
+            {/* Finalidade chip */}
+            {showFinalidadeFilter && (
+              <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => setOpenDropdown(openDropdown === 'finalidade' ? null : 'finalidade')}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap',
+                    selectedType
+                      ? 'border-primary/40 bg-primary/5 text-primary'
+                      : 'border-border text-foreground hover:bg-muted/50'
+                  )}
+                  style={selectedType ? { borderColor: `${primary}40`, backgroundColor: `${primary}08`, color: primary } : {}}
+                >
+                  {selectedType === 'aluguel' ? 'Alugar' : 'Comprar'}
+                  {selectedType ? (
+                    <X
+                      className="w-3.5 h-3.5 ml-0.5"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedType(null);
+                      }}
+                    />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                {openDropdown === 'finalidade' && (
+                  <div className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-lg shadow-xl py-1 z-50 min-w-[140px]">
+                    <button
+                      onClick={() => {
+                        setSelectedType('venda');
+                        setOpenDropdown(null);
+                      }}
+                      className={cn(
+                        'w-full px-4 py-2.5 text-sm text-left hover:bg-muted/50 transition-colors',
+                        selectedType === 'venda' && 'font-semibold'
+                      )}
+                      style={selectedType === 'venda' ? { color: primary } : {}}
+                    >
+                      Comprar
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedType('aluguel');
+                        setOpenDropdown(null);
+                      }}
+                      className={cn(
+                        'w-full px-4 py-2.5 text-sm text-left hover:bg-muted/50 transition-colors',
+                        selectedType === 'aluguel' && 'font-semibold'
+                      )}
+                      style={selectedType === 'aluguel' ? { color: primary } : {}}
+                    >
+                      Alugar
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Price chip */}
+            <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setOpenDropdown(openDropdown === 'price' ? null : 'price')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap',
+                  priceRangeIndex > 0
+                    ? 'border-primary/40 bg-primary/5 text-primary'
+                    : 'border-border text-foreground hover:bg-muted/50'
+                )}
+                style={
+                  priceRangeIndex > 0
+                    ? { borderColor: `${primary}40`, backgroundColor: `${primary}08`, color: primary }
+                    : {}
+                }
+              >
+                {priceRangeIndex > 0 ? PRICE_RANGES[priceRangeIndex].label : 'Valor do imóvel'}
+                {priceRangeIndex > 0 ? (
+                  <X
+                    className="w-3.5 h-3.5 ml-0.5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPriceRangeIndex(0);
+                    }}
+                  />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
+              {openDropdown === 'price' && (
+                <div className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-lg shadow-xl py-1 z-50 min-w-[180px]">
+                  {PRICE_RANGES.map((range, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setPriceRangeIndex(idx);
+                        setOpenDropdown(null);
+                      }}
+                      className={cn(
+                        'w-full px-4 py-2.5 text-sm text-left hover:bg-muted/50 transition-colors',
+                        priceRangeIndex === idx && 'font-semibold'
+                      )}
+                      style={priceRangeIndex === idx ? { color: primary } : {}}
+                    >
+                      {range.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Property type chip */}
+            <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setOpenDropdown(openDropdown === 'type' ? null : 'type')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap',
+                  selectedPropertyType
+                    ? 'border-primary/40 bg-primary/5 text-primary'
+                    : 'border-border text-foreground hover:bg-muted/50'
+                )}
+                style={
+                  selectedPropertyType
+                    ? { borderColor: `${primary}40`, backgroundColor: `${primary}08`, color: primary }
+                    : {}
+                }
+              >
+                {selectedPropertyType
+                  ? PROPERTY_TYPES.find((t) => t.value === selectedPropertyType)?.label || selectedPropertyType
+                  : 'Tipo de imóvel'}
+                {selectedPropertyType ? (
+                  <X
+                    className="w-3.5 h-3.5 ml-0.5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPropertyType('');
+                    }}
+                  />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
+              {openDropdown === 'type' && (
+                <div className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-lg shadow-xl py-1 z-50 min-w-[160px]">
+                  {PROPERTY_TYPES.filter((t) => t.value).map((type) => (
+                    <button
+                      key={type.value}
+                      onClick={() => {
+                        setSelectedPropertyType(type.value);
+                        setOpenDropdown(null);
+                      }}
+                      className={cn(
+                        'w-full px-4 py-2.5 text-sm text-left hover:bg-muted/50 transition-colors',
+                        selectedPropertyType === type.value && 'font-semibold'
+                      )}
+                      style={selectedPropertyType === type.value ? { color: primary } : {}}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Bedrooms chip */}
+            <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setOpenDropdown(openDropdown === 'bedrooms' ? null : 'bedrooms')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap',
+                  selectedBedrooms
+                    ? 'border-primary/40 bg-primary/5 text-primary'
+                    : 'border-border text-foreground hover:bg-muted/50'
+                )}
+                style={
+                  selectedBedrooms
+                    ? { borderColor: `${primary}40`, backgroundColor: `${primary}08`, color: primary }
+                    : {}
+                }
+              >
+                {selectedBedrooms ? `${selectedBedrooms}+ quartos` : 'Quartos'}
+                {selectedBedrooms ? (
+                  <X
+                    className="w-3.5 h-3.5 ml-0.5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedBedrooms(null);
+                    }}
+                  />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
+              {openDropdown === 'bedrooms' && (
+                <div className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-lg shadow-xl p-2 z-50">
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4].map((num) => (
+                      <button
+                        key={num}
+                        onClick={() => {
+                          setSelectedBedrooms(num);
+                          setOpenDropdown(null);
+                        }}
+                        className={cn(
+                          'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                          selectedBedrooms === num ? 'text-white' : 'hover:bg-muted/50 text-foreground'
+                        )}
+                        style={selectedBedrooms === num ? { backgroundColor: primary } : {}}
+                      >
+                        {num}+
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Clear all */}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 flex-shrink-0 whitespace-nowrap transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+                Limpar
+              </button>
+            )}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Results Section */}
-      <section className="py-8 md:py-12">
-        <div className="max-w-7xl mx-auto px-4">
-          {/* Toolbar */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <div>
-              <p className="text-muted-foreground">
-                <span className="font-semibold text-foreground">
-                  {viewMode === 'map' ? mapVisibleProperties.length : filteredProperties.length}
-                </span> imóveis {viewMode === 'map' ? 'visíveis' : 'encontrados'}
-                {viewMode === 'map' && mapVisibleProperties.length < filteredProperties.length && (
-                  <span className="text-xs ml-1">(de {filteredProperties.length})</span>
-                )}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {/* Sort */}
+      {/* ===== MAIN CONTENT ===== */}
+      <div className="flex flex-1 min-h-0">
+        {/* Cards Section */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          {/* Results header */}
+          <div className="px-4 lg:px-6 py-3 border-b border-border/50 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-base font-bold text-foreground">
+                  {displayProperties.length.toLocaleString('pt-BR')}{' '}
+                  {displayProperties.length === 1 ? 'imóvel' : 'imóveis'}
+                </span>
+                <span className="text-sm text-muted-foreground ml-1.5">
+                  {selectedType === 'aluguel' ? 'para alugar' : 'à venda'}
+                  {searchTerm ? ` em ${searchTerm}` : ''}
+                </span>
+              </div>
               <div className="relative">
                 <select
                   value={sortOption}
                   onChange={(e) => setSortOption(e.target.value as SortOption)}
-                  className="appearance-none pl-3 pr-8 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="appearance-none pl-3 pr-8 py-1.5 bg-transparent border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
                 >
                   <option value="recent">Mais recentes</option>
-                  <option value="price_asc">Menor preço</option>
-                  <option value="price_desc">Maior preço</option>
+                  <option value="price_asc">Menor valor</option>
+                  <option value="price_desc">Maior valor</option>
                   <option value="area_desc">Maior área</option>
                 </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              </div>
-
-              {/* View Mode */}
-              <div className="flex border border-border rounded-lg overflow-hidden">
-                <Button
-                  size="icon-sm"
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  onClick={() => setViewMode('grid')}
-                  style={viewMode === 'grid' ? { backgroundColor: primary } : {}}
-                  className={viewMode === 'grid' ? 'text-white rounded-none' : 'rounded-none'}
-                >
-                  <Grid className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon-sm"
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  onClick={() => setViewMode('list')}
-                  style={viewMode === 'list' ? { backgroundColor: primary } : {}}
-                  className={viewMode === 'list' ? 'text-white rounded-none' : 'rounded-none'}
-                >
-                  <List className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon-sm"
-                  variant={viewMode === 'map' ? 'default' : 'ghost'}
-                  onClick={() => setViewMode('map')}
-                  style={viewMode === 'map' ? { backgroundColor: primary } : {}}
-                  className={viewMode === 'map' ? 'text-white rounded-none' : 'rounded-none'}
-                >
-                  <MapIcon className="w-4 h-4" />
-                </Button>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
               </div>
             </div>
           </div>
 
-          {/* Error */}
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-8 text-center">
-              <p className="text-destructive mb-4">{error}</p>
-              <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
-            </div>
-          )}
-
-          {/* Content */}
-          {!error && (
-            <>
-              {viewMode === 'map' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Map */}
-                  <div className="h-[600px] rounded-2xl overflow-hidden border border-border">
-                    <MapContainer
-                      center={(() => {
-                        // Find first property with coordinates
-                        const propWithCoords = filteredProperties.find(p => p.latitude && p.longitude);
-                        if (propWithCoords) {
-                          return [propWithCoords.latitude!, propWithCoords.longitude!] as [number, number];
-                        }
-                        // Default to Brazil center
-                        return [-15.7801, -47.9292] as [number, number];
-                      })()}
-                      zoom={filteredProperties.length > 0 ? 12 : 4}
-                      className="h-full w-full"
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      <MapBoundsHandler
-                        properties={filteredProperties}
-                        onBoundsChange={setMapBounds}
-                        initialFit={true}
-                      />
-                      {filteredProperties.map((property) => {
-                        if (!property.latitude || !property.longitude) return null;
-                        const price = property.valor_venda || property.valor_aluguel || 0;
-                        const propertyIcon = createPropertyIcon(property.tipo_imovel, primary);
-
-                        return (
-                          <Marker
-                            key={property.id}
-                            position={[property.latitude, property.longitude]}
-                            icon={propertyIcon}
-                            eventHandlers={{
-                              click: () => setHoveredProperty(property.id),
-                            }}
-                          >
-                            <Popup>
-                              <div className="w-64">
-                                {property.fotos?.[0]?.url && (
-                                  <img
-                                    src={property.fotos[0].url}
-                                    alt={property.titulo}
-                                    className="w-full h-32 object-cover rounded-t-lg -mt-3 -mx-3 mb-2"
-                                    style={{ width: 'calc(100% + 24px)' }}
-                                  />
-                                )}
-                                <div className="flex items-center gap-1 mb-1">
-                                  <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: `${primary}20`, color: primary }}>
-                                    {property.tipo_imovel}
-                                  </span>
-                                </div>
-                                <h4 className="font-semibold text-sm line-clamp-1">{property.titulo}</h4>
-                                <p className="text-xs text-muted-foreground mb-2">
-                                  {property.bairro}, {property.cidade}
-                                </p>
-                                <p className="font-bold text-lg" style={{ color: primary }}>
-                                  {formatPrice(price)}
-                                </p>
-                                <Button
-                                  size="sm"
-                                  className="w-full mt-2 text-white"
-                                  style={{ backgroundColor: primary }}
-                                  onClick={() => navigate(`/portal/imovel/${property.id}`)}
-                                >
-                                  Ver detalhes
-                                </Button>
-                              </div>
-                            </Popup>
-                          </Marker>
-                        );
-                      })}
-                    </MapContainer>
-                  </div>
-
-                  {/* Property List - Filtered by visible map area */}
-                  <div className="flex flex-col h-[600px]">
-                    <div className="flex-shrink-0 pb-3 border-b border-border mb-3">
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-semibold text-foreground">{mapVisibleProperties.length}</span> imóveis nesta área
-                        {mapVisibleProperties.length < filteredProperties.length && (
-                          <span className="text-xs ml-2">(de {filteredProperties.length} no total)</span>
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Mova ou aplique zoom no mapa para filtrar
-                      </p>
+          {/* Property Grid */}
+          <div className="flex-1 overflow-y-auto p-4 lg:p-5">
+            {error ? (
+              <div className="py-16 text-center">
+                <p className="text-destructive mb-4">{error}</p>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  Tentar novamente
+                </Button>
+              </div>
+            ) : loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-5">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="bg-card rounded-lg overflow-hidden animate-pulse">
+                    <div className="aspect-[4/3] bg-muted" />
+                    <div className="p-4 space-y-3">
+                      <div className="h-4 bg-muted rounded w-3/4" />
+                      <div className="h-5 bg-muted rounded w-1/3" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
+                      <div className="h-3 bg-muted rounded w-2/3" />
                     </div>
-                    <ScrollArea className="flex-1">
-                      <div className="space-y-4 pr-4">
-                        {mapVisibleProperties.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center py-12 text-center">
-                            <MapIcon className="w-12 h-12 text-muted-foreground mb-3" />
-                            <p className="text-muted-foreground">Nenhum imóvel nesta área</p>
-                            <p className="text-xs text-muted-foreground mt-1">Tente ajustar o zoom ou mover o mapa</p>
-                          </div>
-                        ) : (
-                          mapVisibleProperties.map((property) => (
-                            <PropertyCard key={property.id} property={property} variant="list" />
-                          ))
-                        )}
-                      </div>
-                    </ScrollArea>
                   </div>
-                </div>
-              ) : (
-                <motion.div
-                  layout
-                  className={cn(
-                    viewMode === 'grid'
-                      ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'
-                      : 'space-y-4'
-                  )}
-                >
-                  <AnimatePresence mode="popLayout">
-                    {filteredProperties.length === 0 ? (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="col-span-full bg-muted/30 rounded-2xl p-12 text-center"
-                      >
-                        <Home className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-xl font-semibold text-foreground mb-2">
-                          Nenhum imóvel encontrado
-                        </h3>
-                        <p className="text-muted-foreground mb-4">
-                          Tente ajustar os filtros para encontrar mais opções
-                        </p>
-                        {hasActiveFilters && (
-                          <Button variant="outline" onClick={clearFilters}>
-                            Limpar filtros
-                          </Button>
-                        )}
-                      </motion.div>
-                    ) : (
-                      filteredProperties.map((property) => (
-                        <PropertyCard key={property.id} property={property} variant={viewMode} />
-                      ))
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              )}
-            </>
-          )}
+                ))}
+              </div>
+            ) : displayProperties.length === 0 ? (
+              <div className="py-16 text-center">
+                <Home className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Nenhum imóvel encontrado
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Tente ajustar os filtros ou mover o mapa
+                </p>
+                {hasActiveFilters && (
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    Limpar filtros
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-5">
+                <AnimatePresence mode="popLayout">
+                  {displayProperties.map((property) => (
+                    <PropertyCard key={property.id} property={property} />
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
         </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="bg-card border-t border-border py-8">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+        {/* Map Section (Desktop) */}
+        <div className="hidden lg:block w-[42%] flex-shrink-0 border-l border-border sticky top-[105px] h-[calc(100vh-105px)]">
+          {renderMap()}
+        </div>
+      </div>
+
+      {/* ===== MOBILE MAP BUTTON ===== */}
+      <div className="lg:hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-40">
+        <Button
+          onClick={() => setShowMobileMap(true)}
+          className="shadow-lg rounded-full text-white px-5"
+          style={{ backgroundColor: primary }}
+        >
+          <MapIcon className="w-4 h-4 mr-1.5" />
+          Ver mapa
+        </Button>
+      </div>
+
+      {/* ===== MOBILE MAP OVERLAY ===== */}
+      <AnimatePresence>
+        {showMobileMap && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-background"
+          >
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
+                <span className="font-semibold text-foreground">
+                  {filteredProperties.length} imóveis no mapa
+                </span>
+                <Button size="sm" variant="ghost" onClick={() => setShowMobileMap(false)}>
+                  <X className="w-4 h-4 mr-1" />
+                  Fechar
+                </Button>
+              </div>
+              <div className="flex-1">{renderMap()}</div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ===== FOOTER ===== */}
+      <footer className="bg-card border-t border-border py-6 lg:hidden">
+        <div className="px-4">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="flex items-center gap-2">
               {tenant?.logo_url || tenant?.logo ? (
                 <img
                   src={tenant.logo_url || tenant.logo}
                   alt={tenant?.name}
-                  className="h-8 w-auto object-contain"
+                  className="h-6 w-auto object-contain"
                 />
-              ) : (
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                  style={{ backgroundColor: primary }}
-                >
-                  {tenant?.name?.substring(0, 2).toUpperCase() || 'IM'}
-                </div>
-              )}
-              <span className="font-semibold text-foreground">{tenant?.name || 'Imobiliária'}</span>
+              ) : null}
+              <span className="font-medium text-foreground text-sm">
+                {tenant?.name || 'Imobiliária'}
+              </span>
             </div>
-
             <div className="flex items-center gap-4">
               {tenant?.contact_phone && (
                 <a
                   href={`tel:${tenant.contact_phone}`}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  <Phone className="w-4 h-4" />
+                  <Phone className="w-3.5 h-3.5" />
                   {tenant.contact_phone}
                 </a>
               )}
               {tenant?.contact_email && (
                 <a
                   href={`mailto:${tenant.contact_email}`}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  <Mail className="w-4 h-4" />
+                  <Mail className="w-3.5 h-3.5" />
                   {tenant.contact_email}
                 </a>
               )}
             </div>
-
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} {tenant?.name || 'Imobiliária'}. Todos os direitos reservados.
+            <p className="text-xs text-muted-foreground">
+              &copy; {new Date().getFullYear()} {tenant?.name || 'Imobiliária'}
             </p>
           </div>
         </div>
       </footer>
 
-      {/* WhatsApp FAB */}
+      {/* ===== WHATSAPP FAB ===== */}
       {tenant?.contact_phone && (
         <motion.button
           initial={{ scale: 0 }}
