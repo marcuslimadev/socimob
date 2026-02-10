@@ -9,6 +9,7 @@ import { queryClient } from "@/hooks/useQueryConfig";
 import ProgressBar from "@/components/ProgressBar";
 import { lazy, Suspense } from "react";
 import { SkeletonLoader } from "./components/SkeletonLoader";
+import BottomNavigation from "./components/BottomNavigation";
 
 // Lazy load das páginas para code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -122,6 +123,7 @@ function App() {
               <AnalyticsTracker />
             </Suspense>
             <Router />
+            <BottomNavigation />
           </TooltipProvider>
         </ThemeProvider>
       </QueryClientProvider>

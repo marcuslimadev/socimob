@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 import PageLayout from '@/components/PageLayout';
-import StatsStrip from '@/components/StatsStrip';
+import StatsGrid from '@/components/StatsGrid';
 import TimelineFeed from '@/components/TimelineFeed';
 
 interface DashboardStats {
@@ -94,9 +94,9 @@ export default function Dashboard() {
           </p>
         </motion.div>
 
-        {/* Stats Strip - compact */}
+        {/* Stats Grid - mobile optimized */}
         <motion.div variants={itemVariants} className="mb-6">
-          <StatsStrip stats={stats} loading={statsLoading} />
+          <StatsGrid stats={stats} loading={statsLoading} />
         </motion.div>
 
         {/* Timeline Feed - main body */}
