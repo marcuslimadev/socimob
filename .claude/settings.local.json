@@ -87,7 +87,10 @@
       "Bash(powershell -Command:*)",
       "Bash(php update_property_coordinates.php:*)",
       "Bash(pnpm run build:*)",
-      "Bash(Copy-Item -Path dist/public/* -Destination public/ -Recurse -Force)"
+      "Bash(Copy-Item -Path dist/public/* -Destination public/ -Recurse -Force)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(git stash pop:*)"
     ]
   }
 }
