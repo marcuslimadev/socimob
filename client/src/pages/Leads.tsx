@@ -325,7 +325,7 @@ export default function Leads() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleNewLead}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-3 font-semibold text-white transition-all hover:from-blue-600 hover:to-blue-700 sm:w-auto glow-md hover:glow-lg"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 px-6 py-3 font-semibold text-white transition-all sm:w-auto"
               >
                 <Plus size={20} />
                 Novo Lead

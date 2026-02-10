@@ -743,7 +743,7 @@ export default function Settings() {
                         whileTap={{ scale: 0.98 }}
                         onClick={handleProfileSave}
                         disabled={isSavingProfile}
-                        className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg flex items-center justify-center gap-2 disabled:opacity-60"
+                        className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                       >
                         {isSavingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save size={18} />}
                         Salvar Alteracoes
@@ -1381,7 +1381,7 @@ export default function Settings() {
                         whileTap={{ scale: 0.98 }}
                         onClick={handleTenantSave}
                         disabled={isSavingTenant}
-                        className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg flex items-center justify-center gap-2 disabled:opacity-60"
+                        className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                       >
                         {isSavingTenant ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save size={18} />}
                         Salvar Configurações da Empresa
@@ -1456,7 +1456,7 @@ export default function Settings() {
                         whileTap={{ scale: 0.95 }}
                         onClick={handlePasswordSave}
                         disabled={isSavingPassword}
-                        className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg flex items-center justify-center gap-2 disabled:opacity-60"
+                        className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                       >
                         {isSavingPassword ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save size={18} />}
                         Alterar Senha
@@ -1483,7 +1483,7 @@ export default function Settings() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg"
+                    className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold text-white transition-all"
                   >
                     Gerenciar Plano
                   </motion.button>

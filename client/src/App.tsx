@@ -48,7 +48,7 @@ const AnalyticsTracker = lazy(() => import("./components/AnalyticsTracker"));
 // Loading fallback component
 function PageLoader() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-7xl space-y-6">
         <SkeletonLoader variant="card" count={1} className="h-32" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

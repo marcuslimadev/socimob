@@ -372,11 +372,11 @@ export default function PropertyDetail() {
                 <span>{locationParts.length > 0 ? locationParts.join(', ') : 'Localização não informada'}</span>
               </div>
 
-              <div className="mb-6 p-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg">
+              <div className="mb-6 p-4 bg-blue-500/10 rounded-lg">
                 <p className="text-sm text-muted-foreground mb-1">
                   {property.tipo_negocio === 'Venda' ? 'Preço de Venda' : 'Valor do Aluguel'}
                 </p>
-                <p className="text-3xl font-bold gradient-text">
+                <p className="text-3xl font-bold text-foreground">
                   R$ {price.toLocaleString('pt-BR')}
                 </p>
               </div>
@@ -453,7 +453,7 @@ export default function PropertyDetail() {
                 {tenant?.contact_phone && (
                   <button
                     onClick={handleWhatsApp}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg text-white font-semibold transition-all glow-sm hover:glow-md"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-white font-semibold transition-all"
                   >
                     <MessageCircle size={18} />
                     Entrar em Contato

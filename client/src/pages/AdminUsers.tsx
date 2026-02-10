@@ -157,7 +157,7 @@ export default function AdminUsers() {
                 setEditingUser(null);
                 setShowModal(true);
               }}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white font-semibold"
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold transition-all"
             >
               <Plus size={20} />
               Novo Usuário
@@ -198,7 +198,7 @@ export default function AdminUsers() {
                     <tr key={user.id} className="border-b border-white/5 hover:bg-white/5">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
                             {user.name.charAt(0).toUpperCase()}
                           </div>
                           <span className="font-medium text-foreground">{user.name}</span>

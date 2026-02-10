@@ -40,9 +40,7 @@ export default function ResetPassword() {
     }, []);
 
     const primary = tenant?.primary_color || '#2563eb';
-    const secondary = tenant?.secondary_color || '#7c3aed';
-    const gradient = `linear-gradient(135deg, ${primary}, ${secondary})`;
-    const softBg = `linear-gradient(135deg, ${hexToRgba(primary, 0.12)}, ${hexToRgba(secondary, 0.12)})`;
+    const softBg = hexToRgba(primary, 0.12);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -101,7 +99,7 @@ export default function ResetPassword() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundImage: softBg }}>
+        <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: softBg }}>
             <motion.div
                 variants={containerVariants}
                 initial="hidden"
@@ -112,12 +110,12 @@ export default function ResetPassword() {
                     <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4 glow-lg"
-                        style={{ backgroundImage: gradient }}
+                        className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4"
+                        style={{ backgroundColor: primary }}
                     >
                         <Lock size={32} />
                     </motion.div>
-                    <h1 className="text-2xl sm:text-3xl font-bold gradient-text mb-2">Nova Senha</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Nova Senha</h1>
                     <p className="text-sm sm:text-base text-muted-foreground">
                         {tenant?.slogan || 'Defina uma nova senha para sua conta'}
                     </p>
@@ -177,8 +175,8 @@ export default function ResetPassword() {
                             variants={itemVariants}
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
-                        style={{ backgroundImage: gradient }}
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-white transition-all mb-4 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                        style={{ backgroundColor: primary }}
                         disabled={isLoading}
                     >
                             {isLoading ? 'Redefinindo...' : 'Alterar Senha'}

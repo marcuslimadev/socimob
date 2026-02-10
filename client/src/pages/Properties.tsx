@@ -364,7 +364,7 @@ export default function Properties() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setLocation('/properties/novo')}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-3 font-semibold text-white transition-all hover:from-blue-600 hover:to-blue-700 sm:w-auto glow-md hover:glow-lg"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 px-6 py-3 font-semibold text-white transition-all sm:w-auto"
                   >
                     <Plus size={20} />
                     Novo Imóvel
@@ -549,9 +549,9 @@ export default function Properties() {
                         <span>{property.location}</span>
                       </div>
 
-                      <div className="mb-4 p-3 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg">
+                      <div className="mb-4 p-3 bg-blue-500/10 rounded-lg">
                         <p className="text-xs text-muted-foreground mb-1">Preço</p>
-                        <p className="text-2xl font-bold gradient-text">
+                        <p className="text-2xl font-bold text-foreground">
                           {formatPrice(property.price, property.status === 'aluguel')}
                         </p>
                       </div>

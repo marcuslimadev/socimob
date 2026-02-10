@@ -500,11 +500,12 @@ class ConversasController extends BaseController
                 if (($m->direction ?? null) === 'incoming') {
                     $m->sender_name = $leadName;
                 } else {
-                    $senderName = null;
                     if ($hasUserIdColumn && !empty($m->user_id)) {
-                        $senderName = $senderNamesByUserId[(string) $m->user_id] ?? $senderNamesByUserId[(int) $m->user_id] ?? null;
+                        $m->sender_name = $senderNamesByUserId[(string) $m->user_id] ?? $senderNamesByUserId[(int) $m->user_id] ?? $fallbackOutgoingName;
+                    } else {
+                        // Mensagem sem user_id = enviada por IA ou Sistema
+                        $m->sender_name = 'Assistente IA';
                     }
-                    $m->sender_name = $senderName ?: $fallbackOutgoingName;
                 }
             }
             
