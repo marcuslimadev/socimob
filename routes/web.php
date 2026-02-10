@@ -386,6 +386,10 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     // Imóveis - Detalhes completos
     $router->get('/imoveis/detalhes/{codigo}', 'PropertyController@detalhesCompletos');
 
+    // CRM unificado
+    $router->get('/crm/clientes', 'CRMController@index');
+    $router->patch('/crm/clientes/{id}/status', 'CRMController@updateStatus');
+
     // Configurações do CRM / IA
     $router->get('/settings', 'SettingsController@index');
     $router->put('/settings', 'SettingsController@update');

@@ -164,12 +164,10 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
   const menuItems: SidebarItem[] = [
     { icon: <BarChart3 size={20} />, label: 'Dashboard', href: '/dashboard' },
-    { icon: <Users size={20} />, label: 'Leads', href: '/leads', badge: leadsCount || undefined },
+    { icon: <Users size={20} />, label: 'CRM', href: '/crm', badge: (leadsCount || 0) + (unreadMessagesCount || 0) || undefined },
     { icon: <Home size={20} />, label: 'Imóveis', href: '/properties' },
     { icon: <ClipboardCheck size={20} />, label: 'Vistorias', href: '/vistorias' },
-    { icon: <UserRound size={20} />, label: 'Pessoas', href: '/pessoas' },
     { icon: <FileSignature size={20} />, label: 'Assinaturas', href: '/assinaturas' },
-    { icon: <MessageSquare size={20} />, label: 'Chat', href: '/chat', badge: unreadMessagesCount || undefined },
     { icon: <Bell size={20} />, label: 'Notificações', href: '/notifications', badge: notificationCount || undefined },
     { icon: <CalendarClock size={20} />, label: 'Agenda', href: '/agenda' },
     { icon: <Wallet size={20} />, label: 'Financeiro', href: '/financeiro' },

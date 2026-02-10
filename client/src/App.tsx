@@ -16,6 +16,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Leads = lazy(() => import("./pages/Leads"));
 const Properties = lazy(() => import("./pages/Properties"));
 const Chat = lazy(() => import("./pages/Chat"));
+const CRM = lazy(() => import("./pages/CRM"));
 const NotificationCenter = lazy(() => import("./pages/NotificationCenter"));
 const Login = lazy(() => import("./pages/Login"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
@@ -65,6 +66,7 @@ function Router() {
       <Switch>
       <Route path={"/"} component={ClientPortal} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/crm" component={CRM} />
       <Route path="/leads" component={Leads} />
       <Route path="/leads/:id" component={LeadProfile} />
       <Route path="/properties" component={Properties} />
