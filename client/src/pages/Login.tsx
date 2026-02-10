@@ -32,8 +32,8 @@ export default function Login() {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const primary = tenant?.primary_color || '#2563eb';
-  const secondary = tenant?.secondary_color || '#7c3aed';
+  const primary = tenant?.primary_color || '#091b42';
+  const secondary = tenant?.secondary_color || '#180931';
   const gradient = `linear-gradient(135deg, ${primary}, ${secondary})`;
   const softBg = `linear-gradient(135deg, ${hexToRgba(primary, 0.12)}, ${hexToRgba(secondary, 0.12)})`;
 
