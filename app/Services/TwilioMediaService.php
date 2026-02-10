@@ -31,9 +31,12 @@ class TwilioMediaService
      * @param int $mensagemId ID da mensagem
      * @return string|null Caminho local da mídia salva
      */
-    public function downloadAndSaveMedia(string $mediaUrl, int $leadId, int $mensagemId): ?string
+    public function downloadAndSaveMedia(string $mediaUrl, int $leadId, int $mensagemId, ?string $accountSidOverride = null, ?string $authTokenOverride = null): ?string
     {
         try {
+            $sid = $accountSidOverride ?: $this->accountSid;
+            $token = $authTokenOverride ?: $this->authToken;
+
             Log::info("Baixando mídia do Twilio", [
                 'media_url' => $mediaUrl,
                 'lead_id' => $leadId,
@@ -41,7 +44,7 @@ class TwilioMediaService
             ]);
 
             // Faz download autenticado da mídia (com follow redirects)
-            $response = Http::withBasicAuth($this->accountSid, $this->authToken)
+            $response = Http::withBasicAuth($sid, $token)
                 ->timeout(30)
                 ->withOptions([
                     'allow_redirects' => ['max' => 5] // Seguir até 5 redirects
@@ -176,15 +179,40 @@ class TwilioMediaService
      */
     protected function getExtensionFromContentType(?string $contentType): string
     {
-        return match($contentType) {
-            'image/jpeg' => 'jpg',
+        if (!$contentType) return 'bin';
+
+        // Limpar parâmetros (ex: "audio/ogg; codecs=opus" → "audio/ogg")
+        $clean = strtolower(trim(explode(';', $contentType)[0]));
+
+        return match($clean) {
+            // Imagens
+            'image/jpeg', 'image/jpg' => 'jpg',
             'image/png' => 'png',
             'image/gif' => 'gif',
             'image/webp' => 'webp',
-            'audio/mpeg' => 'mp3',
-            'audio/ogg' => 'ogg',
-            'audio/wav' => 'wav',
+            'image/heic' => 'heic',
+            'image/svg+xml' => 'svg',
+            // Áudio
+            'audio/mpeg', 'audio/mp3' => 'mp3',
+            'audio/ogg', 'audio/opus' => 'ogg',
+            'audio/wav', 'audio/x-wav' => 'wav',
+            'audio/mp4', 'audio/m4a', 'audio/x-m4a' => 'm4a',
+            'audio/amr' => 'amr',
+            'audio/aac' => 'aac',
+            // Vídeo
             'video/mp4' => 'mp4',
+            'video/3gpp' => '3gp',
+            'video/quicktime' => 'mov',
+            'video/webm' => 'webm',
+            'video/x-msvideo' => 'avi',
+            // Documentos
+            'application/pdf' => 'pdf',
+            'application/msword' => 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+            'application/vnd.ms-excel' => 'xls',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+            'text/plain' => 'txt',
+            'text/csv' => 'csv',
             default => 'bin'
         };
     }

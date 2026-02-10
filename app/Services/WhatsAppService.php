@@ -1511,42 +1511,14 @@ class WhatsAppService
 
     private function handleIncomingDocument($conversa, $mensagem, $messageType, $mediaUrl, $mediaType, $messageBody): void
     {
-        Log::info('🖼️ handleIncomingDocument chamado', [
+        Log::info('handleIncomingDocument chamado', [
             'messageType' => $messageType,
             'mediaUrl' => $mediaUrl,
             'mediaType' => $mediaType,
             'lead_id' => $conversa->lead_id ?? 'null'
         ]);
-        
-        // Capturar documentos (PDFs) e imagens (JPG, PNG)
+
         if (!$mediaUrl || !$conversa->lead_id) {
-            Log::warning('❌ Retornando early: mediaUrl=' . ($mediaUrl ? 'ok' : 'null') . ', lead_id=' . ($conversa->lead_id ?? 'null'));
-            return;
-        }
-
-        $isDocument = ($messageType === 'document');
-        $isImage = ($messageType === 'image');
-        
-        // Validar se é PDF ou imagem
-        $isPdf = false;
-        $isValidImage = false;
-        
-        if ($mediaType) {
-            $isPdf = stripos($mediaType, 'pdf') !== false;
-            $isValidImage = (stripos($mediaType, 'image/jpeg') !== false || 
-                           stripos($mediaType, 'image/jpg') !== false || 
-                           stripos($mediaType, 'image/png') !== false);
-        }
-
-        if (!$isPdf && !$isValidImage) {
-            $path = parse_url($mediaUrl, PHP_URL_PATH) ?: '';
-            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-            $isPdf = ($ext === 'pdf');
-            $isValidImage = in_array($ext, ['jpg', 'jpeg', 'png']);
-        }
-
-        // Se não for nem PDF nem imagem válida, ignorar
-        if (!$isPdf && !$isValidImage) {
             return;
         }
 
@@ -1555,64 +1527,71 @@ class WhatsAppService
             return;
         }
 
-        // Se for mídia do Twilio, baixar e salvar localmente
+        // 1. Baixar e salvar localmente QUALQUER mídia do Twilio (imagem, PDF, áudio, vídeo, etc.)
         $localMediaUrl = $mediaUrl;
         if (str_contains($mediaUrl, 'api.twilio.com')) {
-            Log::info('📥 Detectado URL do Twilio, iniciando download...', ['url' => $mediaUrl]);
             try {
+                // Resolver credenciais do tenant
+                $tenant = \App\Models\Tenant::find($conversa->tenant_id);
+                $sid = $tenant ? $tenant->getTwilioAccountSid() : null;
+                $token = $tenant ? $tenant->getTwilioAuthToken() : null;
+
                 $twilioMediaService = app(\App\Services\TwilioMediaService::class);
                 $localPath = $twilioMediaService->downloadAndSaveMedia(
                     $mediaUrl,
                     $lead->id,
-                    $mensagem->id
+                    $mensagem->id,
+                    $sid,
+                    $token
                 );
-                
+
                 if ($localPath) {
-                    Log::info('✅ Mídia baixada com sucesso!', ['local_path' => $localPath]);
-                    // Atualizar mensagem com URL local
+                    Log::info('Mídia salva localmente', ['local_path' => $localPath]);
                     $mensagem->update(['media_url' => $localPath]);
                     $localMediaUrl = $localPath;
                 } else {
-                    Log::error('❌ downloadAndSaveMedia retornou null');
+                    Log::error('downloadAndSaveMedia retornou null', ['url' => $mediaUrl]);
                 }
             } catch (\Exception $e) {
-                Log::error('❌ Erro ao baixar mídia do Twilio: ' . $e->getMessage(), [
-                    'exception' => get_class($e),
-                    'trace' => $e->getTraceAsString()
-                ]);
+                Log::error('Erro ao baixar mídia do Twilio: ' . $e->getMessage());
             }
-        } else {
-            Log::info('ℹ️ URL não é do Twilio, mantendo original', ['url' => $mediaUrl]);
         }
 
-        $path = parse_url($mediaUrl, PHP_URL_PATH) ?? '';
-        $nomeArquivo = basename($path);
-        
-        if (!$nomeArquivo) {
-            $ext = $isPdf ? 'pdf' : ($isValidImage ? 'jpg' : 'file');
-            $nomeArquivo = 'documento_' . date('YmdHis') . '.' . $ext;
-        }
-
-        LeadDocument::create([
-            'tenant_id' => $conversa->tenant_id,
-            'lead_id' => $lead->id,
-            'conversa_id' => $conversa->id,
-            'mensagem_id' => $mensagem->id,
-            'nome' => $nomeArquivo,
-            'tipo' => $this->guessDocumentType($messageBody),
-            'mime_type' => $mediaType ?? 'application/octet-stream',
-            'arquivo_url' => $localMediaUrl,
-            'status' => 'pendente',
-        ]);
-
-        $emoji = $isPdf ? '📄' : '🖼️';
-        $tipoTexto = $isPdf ? 'documento' : 'imagem';
-        
-        $this->sendMessage(
-            $conversa->id,
-            $conversa->telefone,
-            "{$emoji} Recebi seu {$tipoTexto} e já salvei no seu perfil! Um corretor pode revisar em breve. 😊"
+        // 2. Para PDFs e imagens, criar LeadDocument (para o painel de documentos do lead)
+        $isPdf = $mediaType && stripos($mediaType, 'pdf') !== false;
+        $isValidImage = $mediaType && (
+            stripos($mediaType, 'image/jpeg') !== false ||
+            stripos($mediaType, 'image/jpg') !== false ||
+            stripos($mediaType, 'image/png') !== false
         );
+
+        if (!$isPdf && !$isValidImage) {
+            $path = parse_url($mediaUrl, PHP_URL_PATH) ?: '';
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            $isPdf = ($ext === 'pdf');
+            $isValidImage = in_array($ext, ['jpg', 'jpeg', 'png']);
+        }
+
+        if ($isPdf || $isValidImage) {
+            $path = parse_url($mediaUrl, PHP_URL_PATH) ?? '';
+            $nomeArquivo = basename($path);
+            if (!$nomeArquivo) {
+                $ext = $isPdf ? 'pdf' : 'jpg';
+                $nomeArquivo = 'documento_' . date('YmdHis') . '.' . $ext;
+            }
+
+            LeadDocument::create([
+                'tenant_id' => $conversa->tenant_id,
+                'lead_id' => $lead->id,
+                'conversa_id' => $conversa->id,
+                'mensagem_id' => $mensagem->id,
+                'nome' => $nomeArquivo,
+                'tipo' => $this->guessDocumentType($messageBody),
+                'mime_type' => $mediaType ?? 'application/octet-stream',
+                'arquivo_url' => $localMediaUrl,
+                'status' => 'pendente',
+            ]);
+        }
     }
 
     private function guessDocumentType(?string $message): string
