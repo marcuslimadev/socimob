@@ -256,25 +256,59 @@ const KanbanColumn = memo(({ status, clients, selectedClientId, onSelect }: {
   onSelect: (client: CRMClient) => void;
 }) => {
   const config = STATUS_CONFIG[status];
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const filteredClients = useMemo(() => {
+    if (!query.trim()) return clients;
+    const term = query.toLowerCase();
+    return clients.filter((client) => (
+      client.nome?.toLowerCase().includes(term) ||
+      client.telefone?.toLowerCase().includes(term) ||
+      (client.email || '').toLowerCase().includes(term)
+    ));
+  }, [clients, query]);
+
   return (
-    <div className="flex-shrink-0 w-[280px] flex flex-col h-full">
-      <div className={cn('flex items-center gap-2 px-3 py-2 rounded-t-xl border', config.bg)}>
+    <div className="flex-shrink-0 w-[280px] flex flex-col">
+      <button
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-xl border transition-all',
+          config.bg
+        )}
+        aria-expanded={isOpen}
+      >
         <span className={cn('text-sm font-semibold', config.color)}>{config.label}</span>
         <span className={cn('text-xs font-bold px-1.5 py-0.5 rounded-full', config.bg, config.color)}>
           {clients.length}
         </span>
-      </div>
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-2 space-y-2">
-          {clients.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8">Nenhum cliente</p>
-          ) : (
-            clients.map((client) => (
-              <ClientCard key={client.id} client={client} isSelected={selectedClientId === client.id} onSelect={onSelect} />
-            ))
-          )}
+        <span className="ml-auto text-xs text-muted-foreground">{isOpen ? 'Fechar' : 'Abrir'}</span>
+      </button>
+
+      {isOpen && (
+        <div className="mt-2 flex flex-col h-[calc(100%-2.5rem)]">
+          <div className="px-2 pb-2">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar..."
+              className="w-full px-3 py-2 bg-muted/40 border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="p-2 space-y-2">
+              {filteredClients.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-8">Nenhum cliente</p>
+              ) : (
+                filteredClients.map((client) => (
+                  <ClientCard key={client.id} client={client} isSelected={selectedClientId === client.id} onSelect={onSelect} />
+                ))
+              )}
+            </div>
+          </ScrollArea>
         </div>
-      </ScrollArea>
+      )}
     </div>
   );
 });
@@ -290,6 +324,8 @@ export default function CRM() {
   const [selectedClient, setSelectedClient] = useState<CRMClient | null>(null);
   const [activeTab, setActiveTab] = useState<'chat' | 'perfil'>('chat');
   const [mobileStatus, setMobileStatus] = useState<StatusKey>('novo');
+  const [drawerDocked, setDrawerDocked] = useState(false);
+  const [drawerCollapsed, setDrawerCollapsed] = useState(false);
 
   // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -334,6 +370,7 @@ export default function CRM() {
   const handleSelectClient = useCallback((client: CRMClient) => {
     setSelectedClient(client);
     setActiveTab('chat');
+    setDrawerCollapsed(false);
   }, []);
 
   const handleStatusChange = useCallback(async (clientId: number, newStatus: StatusKey) => {
@@ -911,48 +948,93 @@ export default function CRM() {
 
       {/* Drawer */}
       {selectedClient && (
-        <div className={cn('fixed inset-0 z-50 flex', 'lg:inset-y-0 lg:left-auto lg:right-0 lg:w-[55%] xl:w-[50%]')}>
-          <div className="absolute inset-0 bg-black/40 lg:bg-black/20" onClick={() => setSelectedClient(null)} />
-          <div className={cn('relative ml-auto w-full bg-background border-l border-border flex flex-col h-full', 'lg:w-full')}>
+        <div
+          className={cn(
+            'fixed z-50',
+            drawerDocked
+              ? 'inset-0 flex'
+              : 'bottom-4 right-4 w-[380px] max-w-[90vw] h-[70vh] max-h-[720px]'
+          )}
+        >
+          {drawerDocked && (
+            <div className="absolute inset-0 bg-black/40 lg:bg-black/20" onClick={() => setSelectedClient(null)} />
+          )}
+
+          <div
+            className={cn(
+              'relative bg-background border border-border flex flex-col overflow-hidden',
+              drawerDocked
+                ? 'ml-auto w-full h-full lg:w-[55%] xl:w-[50%] rounded-none border-l'
+                : 'shadow-2xl rounded-2xl'
+            )}
+          >
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
-              <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)} className="flex-shrink-0">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <Avatar className="w-10 h-10 flex-shrink-0">
-                <AvatarFallback className="bg-primary/15 text-primary font-semibold text-sm">{getInitials(selectedClient.nome)}</AvatarFallback>
-              </Avatar>
+              {drawerDocked ? (
+                <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)} className="flex-shrink-0">
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+              ) : (
+                <div className="w-9 h-9 flex items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
+                  {getInitials(selectedClient.nome)}
+                </div>
+              )}
+
               <div className="flex-1 min-w-0">
                 <h2 className="font-semibold text-foreground truncate">{selectedClient.nome}</h2>
                 <p className="text-xs text-muted-foreground truncate">{selectedClient.telefone}</p>
               </div>
-              <div className="relative group">
-                <button className={cn('flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border', (STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).bg, (STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).color)}>
-                  {(STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).label}
-                  <ChevronDown className="w-3 h-3" />
-                </button>
-                <div className="hidden group-hover:block absolute right-0 top-full mt-1 w-40 bg-card border border-border rounded-xl shadow-xl z-10 py-1">
-                  {ALL_STATUSES.map((s) => (
-                    <button key={s} onClick={() => handleStatusChange(selectedClient.id, s)} className={cn('w-full text-left px-3 py-2 text-xs hover:bg-muted/50 transition-colors', s === selectedClient.status && 'font-bold')}>
-                      <span className={STATUS_CONFIG[s].color}>{STATUS_CONFIG[s].label}</span>
-                    </button>
-                  ))}
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => setDrawerDocked((prev) => !prev)}
+                >
+                  {drawerDocked ? 'Flutuar' : 'Encaixar'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => setDrawerCollapsed((prev) => !prev)}
+                >
+                  {drawerCollapsed ? 'Abrir' : 'Minimizar'}
+                </Button>
+                <div className="relative group">
+                  <button className={cn('flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border', (STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).bg, (STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).color)}>
+                    {(STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).label}
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  <div className="hidden group-hover:block absolute right-0 top-full mt-1 w-40 bg-card border border-border rounded-xl shadow-xl z-10 py-1">
+                    {ALL_STATUSES.map((s) => (
+                      <button key={s} onClick={() => handleStatusChange(selectedClient.id, s)} className={cn('w-full text-left px-3 py-2 text-xs hover:bg-muted/50 transition-colors', s === selectedClient.status && 'font-bold')}>
+                        <span className={STATUS_CONFIG[s].color}>{STATUS_CONFIG[s].label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-            {/* Tabs */}
-            <div className="flex border-b border-border bg-card">
-              {(['chat', 'perfil'] as const).map((tab) => (
-                <button key={tab} onClick={() => setActiveTab(tab)} className={cn('flex-1 py-2.5 text-sm font-medium transition-colors relative', activeTab === tab ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}>
-                  {tab === 'chat' ? 'Chat' : 'Perfil'}
-                  {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
-                </button>
-              ))}
-            </div>
-            {/* Tab content */}
-            <div className="flex-1 min-h-0 flex flex-col">
-              {activeTab === 'chat' ? renderChatTab() : renderPerfilTab()}
-            </div>
+
+            {!drawerCollapsed && (
+              <>
+                {/* Tabs */}
+                <div className="flex border-b border-border bg-card">
+                  {(['chat', 'perfil'] as const).map((tab) => (
+                    <button key={tab} onClick={() => setActiveTab(tab)} className={cn('flex-1 py-2.5 text-sm font-medium transition-colors relative', activeTab === tab ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}>
+                      {tab === 'chat' ? 'Chat' : 'Perfil'}
+                      {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+                    </button>
+                  ))}
+                </div>
+                {/* Tab content */}
+                <div className="flex-1 min-h-0 flex flex-col">
+                  {activeTab === 'chat' ? renderChatTab() : renderPerfilTab()}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
