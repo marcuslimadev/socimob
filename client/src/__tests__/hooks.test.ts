@@ -13,7 +13,7 @@ describe('useAppStore', () => {
     expect(state.userId).toBeNull();
     expect(state.tenantId).toBeNull();
     expect(state.unreadNotifications).toBe(0);
-    expect(state.theme).toBe('light');
+    expect(state.theme).toBe('dark');
   });
 
   it('should update sidebar state', () => {
@@ -69,6 +69,6 @@ describe('useAppStore', () => {
     expect(resetState.userId).toBeNull();
     expect(resetState.tenantId).toBeNull();
     expect(resetState.unreadNotifications).toBe(0);
-    expect(resetState.theme).toBe('light');
+    expect(resetState.theme).toBe('dark');
   });
 });

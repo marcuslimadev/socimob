@@ -1,4 +1,3 @@
-```pwsh
 #!/usr/bin/env pwsh
 # Deploy simples: build -> copia p/ public -> commit/push -> pull+copy no servidor -> healthcheck
 # Uso: .\deploy.ps1 [-CommitMessage "msg"] [-Force] [-SkipCommit]
@@ -113,4 +112,4 @@ date
   Write-Host "`nX Erro: $_`n" -ForegroundColor Red
   exit 1
 }
-```
+

@@ -112,7 +112,7 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
-          defaultTheme="light"
+          defaultTheme="dark"
           switchable
         >
           <TooltipProvider>

@@ -46,7 +46,7 @@ export const useAppStore = create<AppState>()(
       setUnreadNotifications: (count) => set({ unreadNotifications: count }),
       
       // Theme State
-      theme: 'light',
+      theme: 'dark',
       setTheme: (theme) => set({ theme }),
       
       // Reset
@@ -55,7 +55,7 @@ export const useAppStore = create<AppState>()(
         userId: null,
         tenantId: null,
         unreadNotifications: 0,
-        theme: 'light',
+        theme: 'dark',
       }),
     }),
     {
