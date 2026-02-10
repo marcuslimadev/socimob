@@ -153,6 +153,9 @@ class PortalController extends Controller
             $imoveisQuery->whereIn(DB::raw('LOWER(finalidade_imovel)'), $normalizedFinalidades);
         }
 
+        // Filtrar imóveis com valor mínimo (excluir preços inválidos/muito baixos)
+        $imoveisQuery->where('valor_venda', '>=', 30000);
+
         // Aplicar filtros do frontend
         if ($request->has('localizacao') && $request->localizacao) {
             $localizacao = $request->localizacao;
@@ -225,6 +228,9 @@ class PortalController extends Controller
             if ($hasFinalidade && $normalizedFinalidades && count($normalizedFinalidades) > 0) {
                 $sharedQuery->whereIn(DB::raw('LOWER(finalidade_imovel)'), $normalizedFinalidades);
             }
+
+            // Filtrar imóveis com valor mínimo
+            $sharedQuery->where('valor_venda', '>=', 30000);
 
             // Aplicar os mesmos filtros do frontend para propriedades compartilhadas
             if ($request->has('localizacao') && $request->localizacao) {

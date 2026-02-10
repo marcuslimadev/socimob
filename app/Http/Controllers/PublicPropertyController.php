@@ -16,6 +16,7 @@ class PublicPropertyController extends Controller
     {
         $query = Property::where('active', 1)
             ->where('exibir_imovel', 1)
+            ->where('valor_venda', '>=', 30000)
             ->where(function ($q) {
                 $q->whereIn('finalidade_imovel', ['Venda', 'Venda/Aluguel'])
                     ->orWhereNull('finalidade_imovel')
@@ -77,6 +78,7 @@ class PublicPropertyController extends Controller
         $property = Property::where('codigo', $codigo)
             ->where('active', 1)
             ->where('exibir_imovel', 1)
+            ->where('valor_venda', '>=', 30000)
             ->where(function ($q) {
                 $q->whereIn('finalidade_imovel', ['Venda', 'Venda/Aluguel'])
                     ->orWhereNull('finalidade_imovel')
