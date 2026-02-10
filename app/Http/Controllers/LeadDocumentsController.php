@@ -106,6 +106,43 @@ class LeadDocumentsController extends Controller
         return response()->download($zipPath, $fileName)->deleteFileAfterSend(true);
     }
 
+    public function exportSelected(Request $request, $id): BinaryFileResponse
+    {
+        $lead = $this->resolveLeadForTenant((int)$id, $request);
+        $ids = $request->input('ids', []);
+
+        if (!is_array($ids) || empty($ids)) {
+            abort(422, 'Selecione ao menos um documento');
+        }
+
+        $documents = $lead->documents()
+            ->whereIn('id', $ids)
+            ->orderBy('created_at')
+            ->get();
+
+        if ($documents->isEmpty()) {
+            abort(404, 'Nenhum documento encontrado para exportação');
+        }
+
+        try {
+            $zipPath = $this->documents->createZipForLead($lead, $documents);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao gerar ZIP de documentos selecionados', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage(),
+            ]);
+            abort(500, 'Não foi possível gerar o ZIP dos documentos selecionados');
+        }
+
+        if (!$zipPath) {
+            abort(422, 'Nenhum documento disponível para exportação');
+        }
+
+        $fileName = basename($zipPath);
+
+        return response()->download($zipPath, $fileName)->deleteFileAfterSend(true);
+    }
+
     private function resolveLeadForTenant(int $id, Request $request): Lead
     {
         $tenantId = $request->attributes->get('tenant_id') ?? $request->input('tenant_id');

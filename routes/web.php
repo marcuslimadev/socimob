@@ -303,6 +303,8 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     // Pessoas - Documentos
     $router->get('/pessoas/{id}/documentos', 'PessoasController@getDocumentos');
     $router->post('/pessoas/{id}/documentos', 'PessoasController@uploadDocumento');
+    $router->get('/pessoas/{id}/documentos/export', 'PessoasController@exportDocumentos');
+    $router->post('/pessoas/{id}/documentos/export', 'PessoasController@exportDocumentosSelecionados');
     $router->delete('/pessoas/documentos/{documentoId}', 'PessoasController@deleteDocumento');
     $router->post('/pessoas/documentos/{documentoId}/verificar', 'PessoasController@verificarDocumento');
     
@@ -355,6 +357,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     $router->post('/leads/{id}/documents', 'LeadDocumentsController@store');
     $router->delete('/leads/{id}/documents/{documentId}', 'LeadDocumentsController@destroy');
     $router->get('/leads/{id}/documents/export', 'LeadDocumentsController@export');
+    $router->post('/leads/{id}/documents/export', 'LeadDocumentsController@exportSelected');
     $router->delete('/leads/{id}', 'LeadsController@destroy');
     $router->delete('/leads', 'LeadsController@bulkDestroy');
     $router->post('/leads/{id}/diagnostico', 'LeadsController@diagnostico');

@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, memo } from 'react';
 import {
   Search,
-  Phone,
   Send,
-  Paperclip,
   ArrowLeft,
   Check,
   CheckCheck,
@@ -11,18 +9,13 @@ import {
   Loader2,
   User,
   MessageCircle,
-  X,
   ChevronDown,
   FileText,
   ExternalLink,
-  Tag,
+  Download,
+  Image,
   Users,
-  Plus,
   RefreshCw,
-  Flame,
-  Thermometer,
-  Snowflake,
-  MoreVertical,
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -70,6 +63,16 @@ interface Message {
   transcription?: string | null;
   senderName?: string;
   senderContext?: string;
+}
+
+interface ClientDocument {
+  id: number;
+  nome: string;
+  tipo?: string;
+  mime_type: string;
+  arquivo_url: string;
+  status: string;
+  created_at: string;
 }
 
 type StatusKey = 'novo' | 'em_atendimento' | 'qualificado' | 'proposta' | 'fechado' | 'perdido';
@@ -141,13 +144,149 @@ function truncateMsg(text: string | null, max = 50) {
   return clean.length > max ? clean.slice(0, max) + '...' : clean;
 }
 
-// ─── Component ───────────────────────────────────────────────────────
+function formatHtmlMessage(html: string) {
+  return html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
+}
+
+function isAudioMessage(m: Message) {
+  return !!(m.mediaUrl && (m.messageType === 'audio' || m.messageType === 'voice' || /\.(mp3|ogg|wav|m4a|opus)(\?|$)/i.test(m.mediaUrl)));
+}
+function isImageMessage(m: Message) {
+  return !!(m.mediaUrl && (m.messageType === 'image' || m.messageType === 'photo' || /\.(png|jpe?g|gif|webp)(\?|$)/i.test(m.mediaUrl)));
+}
+function isVideoMessage(m: Message) {
+  return !!(m.mediaUrl && m.messageType === 'video');
+}
+function isDocumentMessage(m: Message) {
+  return !!(m.mediaUrl && (m.messageType === 'document' || m.messageType === 'file' || /\.(pdf|doc|docx|xls|xlsx)(\?|$)/i.test(m.mediaUrl)));
+}
+
+// ─── Debounce hook ───────────────────────────────────────────────────
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
+// ─── Sub-components (outside main component to avoid re-creation) ────
+
+const InfoField = memo(({ label, value }: { label: string; value: string | null | undefined }) => (
+  <div>
+    <p className="text-[11px] text-muted-foreground">{label}</p>
+    <p className="text-sm text-foreground font-medium">{value || '-'}</p>
+  </div>
+));
+
+const MessageStatusIcon = memo(({ status }: { status?: string }) => {
+  if (status === 'sending') return <Clock className="w-3 h-3 text-muted-foreground" />;
+  if (status === 'sent') return <Check className="w-3 h-3 text-muted-foreground" />;
+  if (status === 'delivered') return <CheckCheck className="w-3 h-3 text-muted-foreground" />;
+  if (status === 'read') return <CheckCheck className="w-3 h-3 text-primary" />;
+  return null;
+});
+
+const ClientCard = memo(({ client, isSelected, onSelect }: {
+  client: CRMClient;
+  isSelected: boolean;
+  onSelect: (client: CRMClient) => void;
+}) => {
+  const classif = client.classificacao;
+  return (
+    <button
+      onClick={() => onSelect(client)}
+      className={cn(
+        'w-full text-left p-3 rounded-xl border transition-all hover:shadow-md cursor-pointer',
+        'bg-card border-border hover:border-primary/30',
+        isSelected && 'ring-2 ring-primary/50 border-primary/50'
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <Avatar className="w-10 h-10 flex-shrink-0">
+          <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
+            {getInitials(client.nome)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="font-semibold text-sm text-foreground truncate">{client.nome}</h4>
+            {client.unread > 0 && (
+              <span className="flex-shrink-0 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-[10px] font-bold text-primary-foreground">
+                {client.unread > 9 ? '9+' : client.unread}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground truncate mt-0.5">{client.telefone}</p>
+          {client.ultima_mensagem && (
+            <p className="text-xs text-muted-foreground/70 truncate mt-1">
+              {truncateMsg(client.ultima_mensagem, 40)}
+            </p>
+          )}
+          <div className="flex items-center gap-2 mt-2">
+            {classif && (
+              <span className={cn(
+                'text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
+                classif === 'quente' && 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                classif === 'morno' && 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+                classif === 'frio' && 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+              )}>
+                {classif === 'quente' ? 'Quente' : classif === 'morno' ? 'Morno' : 'Frio'}
+              </span>
+            )}
+            {client.ultima_mensagem_at && (
+              <span className="text-[10px] text-muted-foreground">{formatRelativeTime(client.ultima_mensagem_at)}</span>
+            )}
+            {client.corretor_nome && (
+              <span className="text-[10px] text-muted-foreground truncate ml-auto">{client.corretor_nome}</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+});
+
+const KanbanColumn = memo(({ status, clients, selectedClientId, onSelect }: {
+  status: StatusKey;
+  clients: CRMClient[];
+  selectedClientId: number | null;
+  onSelect: (client: CRMClient) => void;
+}) => {
+  const config = STATUS_CONFIG[status];
+  return (
+    <div className="flex-shrink-0 w-[280px] flex flex-col h-full">
+      <div className={cn('flex items-center gap-2 px-3 py-2 rounded-t-xl border', config.bg)}>
+        <span className={cn('text-sm font-semibold', config.color)}>{config.label}</span>
+        <span className={cn('text-xs font-bold px-1.5 py-0.5 rounded-full', config.bg, config.color)}>
+          {clients.length}
+        </span>
+      </div>
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="p-2 space-y-2">
+          {clients.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8">Nenhum cliente</p>
+          ) : (
+            clients.map((client) => (
+              <ClientCard key={client.id} client={client} isSelected={selectedClientId === client.id} onSelect={onSelect} />
+            ))
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+});
+
+// ─── Main Component ──────────────────────────────────────────────────
 
 export default function CRM() {
   const queryClient = useQueryClient();
 
   // State
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 400);
   const [selectedClient, setSelectedClient] = useState<CRMClient | null>(null);
   const [activeTab, setActiveTab] = useState<'chat' | 'perfil'>('chat');
   const [mobileStatus, setMobileStatus] = useState<StatusKey>('novo');
@@ -165,13 +304,18 @@ export default function CRM() {
   const hasLoadedMessagesRef = useRef(false);
   const pendingScrollRestoreRef = useRef<null | { top: number; height: number; nearBottom: boolean }>(null);
 
+  // Documents state (perfil)
+  const [documents, setDocuments] = useState<ClientDocument[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+  const [selectedDownloads, setSelectedDownloads] = useState<Record<string, boolean>>({});
+
   // ─── Fetch CRM data ───────────────────────────────────────────────
 
   const { data: crmData, isLoading, refetch } = useQuery({
-    queryKey: ['crm-clientes', search],
+    queryKey: ['crm-clientes', debouncedSearch],
     queryFn: async () => {
       const params: any = {};
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       const res = await api.get('/crm/clientes', { params });
       if (res.data.success) return res.data.data as Record<StatusKey, CRMClient[]>;
       return {} as Record<StatusKey, CRMClient[]>;
@@ -185,22 +329,120 @@ export default function CRM() {
     return ALL_STATUSES.flatMap((s) => crmData[s] || []);
   }, [crmData]);
 
-  // ─── Status update ─────────────────────────────────────────────────
+  // ─── Callbacks (stable references) ─────────────────────────────────
 
-  const handleStatusChange = async (clientId: number, newStatus: StatusKey) => {
+  const handleSelectClient = useCallback((client: CRMClient) => {
+    setSelectedClient(client);
+    setActiveTab('chat');
+  }, []);
+
+  const handleStatusChange = useCallback(async (clientId: number, newStatus: StatusKey) => {
     try {
       await api.patch(`/crm/clientes/${clientId}/status`, { status: newStatus });
       toast.success('Status atualizado');
       queryClient.invalidateQueries({ queryKey: ['crm-clientes'] });
-      if (selectedClient?.id === clientId) {
-        setSelectedClient((prev) => prev ? { ...prev, status: newStatus } : null);
-      }
+      setSelectedClient((prev) => prev?.id === clientId ? { ...prev, status: newStatus } : prev);
     } catch {
       toast.error('Erro ao atualizar status');
     }
-  };
+  }, [queryClient]);
 
-  // ─── Chat logic (adapted from Chat.tsx) ────────────────────────────
+  const getDocumentsEndpoint = useCallback((client: CRMClient) => {
+    if (client.pessoa_id) return `/pessoas/${client.pessoa_id}/documentos`;
+    return `/leads/${client.id}/documents`;
+  }, []);
+
+  const getDocumentsExportEndpoint = useCallback((client: CRMClient) => {
+    if (client.pessoa_id) return `/pessoas/${client.pessoa_id}/documentos/export`;
+    return `/leads/${client.id}/documents/export`;
+  }, []);
+
+  const loadDocuments = useCallback(async (client: CRMClient) => {
+    try {
+      setIsLoadingDocuments(true);
+      const res = await api.get(getDocumentsEndpoint(client));
+      setDocuments(res.data.data || []);
+    } catch (error) {
+      console.error('Erro ao carregar documentos:', error);
+      setDocuments([]);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  }, [getDocumentsEndpoint]);
+
+  useEffect(() => {
+    if (!selectedClient) {
+      setDocuments([]);
+      setSelectedDownloads({});
+      return;
+    }
+    loadDocuments(selectedClient);
+    setSelectedDownloads({});
+  }, [selectedClient?.id, selectedClient?.pessoa_id, loadDocuments]);
+
+  const handleDownloadAll = useCallback(async () => {
+    if (!selectedClient) return;
+    try {
+      const res = await api.get(getDocumentsExportEndpoint(selectedClient), { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `cliente-${selectedClient.id}-documentos.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Download iniciado');
+    } catch (error) {
+      console.error('Erro ao baixar documentos:', error);
+      toast.error('Erro ao baixar documentos');
+    }
+  }, [selectedClient, getDocumentsExportEndpoint]);
+
+  const handleDownloadSelected = useCallback(async () => {
+    if (!selectedClient) return;
+    const selectedDocIds = Object.entries(selectedDownloads)
+      .filter(([key, isSelected]) => isSelected && key.startsWith('doc:'))
+      .map(([key]) => Number(key.split(':')[1]))
+      .filter((id) => Number.isFinite(id));
+
+    if (!selectedDocIds.length) {
+      toast.error('Selecione pelo menos um arquivo ou foto');
+      return;
+    }
+
+    try {
+      const endpoint = selectedClient.pessoa_id
+        ? `/pessoas/${selectedClient.pessoa_id}/documentos/export`
+        : `/leads/${selectedClient.id}/documents/export`;
+      const res = await api.post(endpoint, { ids: selectedDocIds }, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `cliente-${selectedClient.id}-selecionados.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Download iniciado');
+    } catch (error) {
+      console.error('Erro ao baixar selecionados:', error);
+      toast.error('Erro ao baixar selecionados');
+    }
+  }, [selectedClient, selectedDownloads]);
+
+  const toggleSelectAll = useCallback((allIds: string[], next?: boolean) => {
+    setSelectedDownloads((prev) => {
+      const shouldSelect = next ?? allIds.some((id) => !prev[id]);
+      const updated: Record<string, boolean> = { ...prev };
+      allIds.forEach((id) => {
+        updated[id] = shouldSelect;
+      });
+      return updated;
+    });
+  }, []);
+
+  // ─── Chat logic ────────────────────────────────────────────────────
 
   const getScrollViewport = useCallback(() => {
     if (!scrollAreaRef.current) return null;
@@ -208,9 +450,7 @@ export default function CRM() {
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-    }, 50);
+    setTimeout(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }); }, 50);
   }, []);
 
   useLayoutEffect(() => {
@@ -223,7 +463,7 @@ export default function CRM() {
     pendingScrollRestoreRef.current = null;
   }, [messages, getScrollViewport]);
 
-  const applyMessagesWithScrollPreserve = (incoming: Message[]) => {
+  const applyMessagesWithScrollPreserve = useCallback((incoming: Message[]) => {
     const vp = getScrollViewport();
     const snapshot = vp ? { top: vp.scrollTop, height: vp.scrollHeight, nearBottom: vp.scrollHeight - (vp.scrollTop + vp.clientHeight) < 100 } : null;
 
@@ -241,15 +481,15 @@ export default function CRM() {
         if (changed) { hasChanges = true; return { ...old, ...m }; }
         return old;
       });
-      const pending = prev.filter((m) => m.id.startsWith('temp-'));
-      if (pending.length) { hasChanges = true; merged.push(...pending); merged.sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime()); }
+      const pendingMsgs = prev.filter((m) => m.id.startsWith('temp-'));
+      if (pendingMsgs.length) { hasChanges = true; merged.push(...pendingMsgs); merged.sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime()); }
       if (!hasChanges) { pendingScrollRestoreRef.current = null; return prev; }
       if (snapshot) pendingScrollRestoreRef.current = snapshot;
       return merged;
     });
-  };
+  }, [getScrollViewport]);
 
-  const fetchMessages = async (conversaId: number) => {
+  const fetchMessages = useCallback(async (conversaId: number) => {
     const seq = ++fetchSeqRef.current;
     const isFirst = !hasLoadedMessagesRef.current;
     try {
@@ -281,11 +521,12 @@ export default function CRM() {
     } finally {
       if (seq === fetchSeqRef.current && isFirst) setIsLoadingMessages(false);
     }
-  };
+  }, [applyMessagesWithScrollPreserve]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = useCallback(async () => {
     if (!messageText.trim() || !selectedClient?.conversa_id || isSending) return;
     const text = messageText.trim();
+    const conversaId = selectedClient.conversa_id;
     setMessageText('');
     setIsSending(true);
 
@@ -295,10 +536,10 @@ export default function CRM() {
     scrollToBottom();
 
     try {
-      const res = await api.post(`/admin/conversas/${selectedClient.conversa_id}/mensagens`, { content: text });
+      const res = await api.post(`/admin/conversas/${conversaId}/mensagens`, { content: text });
       if (!res.data.success) throw new Error();
       setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, id: res.data.data?.id || tempId, status: 'sent' } : m));
-      setTimeout(() => selectedClient.conversa_id && fetchMessages(selectedClient.conversa_id), 1000);
+      setTimeout(() => fetchMessages(conversaId), 1000);
     } catch {
       toast.error('Erro ao enviar mensagem');
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
@@ -306,19 +547,18 @@ export default function CRM() {
       setIsSending(false);
       inputRef.current?.focus();
     }
-  };
+  }, [messageText, selectedClient?.conversa_id, isSending, scrollToBottom, fetchMessages]);
 
   // Open/close drawer with chat
   useEffect(() => {
     if (chatIntervalRef.current) { window.clearInterval(chatIntervalRef.current); chatIntervalRef.current = null; }
     if (!selectedClient?.conversa_id) { setMessages([]); hasLoadedMessagesRef.current = false; return; }
+    const conversaId = selectedClient.conversa_id;
     hasLoadedMessagesRef.current = false;
-    fetchMessages(selectedClient.conversa_id);
-    chatIntervalRef.current = window.setInterval(() => {
-      if (selectedClient.conversa_id) fetchMessages(selectedClient.conversa_id);
-    }, 15000);
+    fetchMessages(conversaId);
+    chatIntervalRef.current = window.setInterval(() => fetchMessages(conversaId), 15000);
     return () => { if (chatIntervalRef.current) { window.clearInterval(chatIntervalRef.current); chatIntervalRef.current = null; } };
-  }, [selectedClient?.id, selectedClient?.conversa_id]);
+  }, [selectedClient?.id, selectedClient?.conversa_id, fetchMessages]);
 
   // Group messages by date
   const groupedMessages = useMemo(() => {
@@ -334,132 +574,25 @@ export default function CRM() {
     return groups;
   }, [messages]);
 
-  // Media helpers
-  const isAudioMessage = (m: Message) => m.mediaUrl && (m.messageType === 'audio' || m.messageType === 'voice' || /\.(mp3|ogg|wav|m4a|opus)(\?|$)/i.test(m.mediaUrl));
-  const isImageMessage = (m: Message) => m.mediaUrl && (m.messageType === 'image' || m.messageType === 'photo' || /\.(png|jpe?g|gif|webp)(\?|$)/i.test(m.mediaUrl));
-  const isVideoMessage = (m: Message) => m.mediaUrl && m.messageType === 'video';
-  const isDocumentMessage = (m: Message) => m.mediaUrl && (m.messageType === 'document' || m.messageType === 'file' || /\.(pdf|doc|docx|xls|xlsx)(\?|$)/i.test(m.mediaUrl));
+  // ─── Render: Drawer content ────────────────────────────────────────
 
-  const MessageStatus = ({ status }: { status?: string }) => {
-    if (status === 'sending') return <Clock className="w-3 h-3 text-muted-foreground" />;
-    if (status === 'sent') return <Check className="w-3 h-3 text-muted-foreground" />;
-    if (status === 'delivered') return <CheckCheck className="w-3 h-3 text-muted-foreground" />;
-    if (status === 'read') return <CheckCheck className="w-3 h-3 text-primary" />;
-    return null;
-  };
-
-  const formatHtmlMessage = (html: string) => {
-    return html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
-  };
-
-  // ─── Client Card ───────────────────────────────────────────────────
-
-  const ClientCard = ({ client }: { client: CRMClient }) => {
-    const classif = client.classificacao;
-    return (
-      <button
-        onClick={() => { setSelectedClient(client); setActiveTab('chat'); }}
-        className={cn(
-          'w-full text-left p-3 rounded-xl border transition-all hover:shadow-md cursor-pointer',
-          'bg-card border-border hover:border-primary/30',
-          selectedClient?.id === client.id && 'ring-2 ring-primary/50 border-primary/50'
-        )}
-      >
-        <div className="flex items-start gap-3">
-          <Avatar className="w-10 h-10 flex-shrink-0">
-            <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
-              {getInitials(client.nome)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <h4 className="font-semibold text-sm text-foreground truncate">{client.nome}</h4>
-              {client.unread > 0 && (
-                <span className="flex-shrink-0 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-[10px] font-bold text-primary-foreground">
-                  {client.unread > 9 ? '9+' : client.unread}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground truncate mt-0.5">{client.telefone}</p>
-            {client.ultima_mensagem && (
-              <p className="text-xs text-muted-foreground/70 truncate mt-1">
-                {truncateMsg(client.ultima_mensagem, 40)}
-              </p>
-            )}
-            <div className="flex items-center gap-2 mt-2">
-              {classif && (
-                <span className={cn(
-                  'text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
-                  classif === 'quente' && 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                  classif === 'morno' && 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-                  classif === 'frio' && 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-                )}>
-                  {classif === 'quente' ? 'Quente' : classif === 'morno' ? 'Morno' : 'Frio'}
-                </span>
-              )}
-              {client.ultima_mensagem_at && (
-                <span className="text-[10px] text-muted-foreground">{formatRelativeTime(client.ultima_mensagem_at)}</span>
-              )}
-              {client.corretor_nome && (
-                <span className="text-[10px] text-muted-foreground truncate ml-auto">{client.corretor_nome}</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </button>
-    );
-  };
-
-  // ─── Kanban Column ─────────────────────────────────────────────────
-
-  const KanbanColumn = ({ status }: { status: StatusKey }) => {
-    const config = STATUS_CONFIG[status];
-    const clients = crmData?.[status] || [];
-    return (
-      <div className="flex-shrink-0 w-[280px] flex flex-col h-full">
-        <div className={cn('flex items-center gap-2 px-3 py-2 rounded-t-xl border', config.bg)}>
-          <span className={cn('text-sm font-semibold', config.color)}>{config.label}</span>
-          <span className={cn('text-xs font-bold px-1.5 py-0.5 rounded-full', config.bg, config.color)}>
-            {clients.length}
-          </span>
-        </div>
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="p-2 space-y-2">
-            {clients.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-8">Nenhum cliente</p>
-            ) : (
-              clients.map((client) => <ClientCard key={client.id} client={client} />)
-            )}
-          </div>
-        </ScrollArea>
-      </div>
-    );
-  };
-
-  // ─── Drawer: Chat Tab ──────────────────────────────────────────────
-
-  const ChatTab = () => {
+  const renderChatTab = () => {
     if (!selectedClient?.conversa_id) {
       return (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8">
           <MessageCircle className="w-12 h-12 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground text-center">
-            Nenhuma conversa encontrada para este cliente.
-          </p>
+          <p className="text-sm text-muted-foreground text-center">Nenhuma conversa encontrada para este cliente.</p>
         </div>
       );
     }
 
     return (
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Messages */}
         <div className="flex-1 min-h-0 overflow-hidden">
           <ScrollArea ref={scrollAreaRef} className="h-full">
             <div className="p-4 space-y-4">
               {isLoadingMessages ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
+                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
               ) : messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
                   <MessageCircle className="w-10 h-10 text-muted-foreground/40" />
@@ -469,9 +602,7 @@ export default function CRM() {
                 groupedMessages.map((group) => (
                   <div key={group.date} className="space-y-2">
                     <div className="flex justify-center py-2">
-                      <span className="px-3 py-1 bg-muted/60 rounded-full text-[11px] text-muted-foreground font-medium">
-                        {group.date}
-                      </span>
+                      <span className="px-3 py-1 bg-muted/60 rounded-full text-[11px] text-muted-foreground font-medium">{group.date}</span>
                     </div>
                     {group.messages.map((message) => {
                       const isUser = message.sender === 'user';
@@ -479,50 +610,30 @@ export default function CRM() {
                         <div key={message.id} className={cn('flex gap-2 items-end', isUser ? 'justify-end' : 'justify-start')}>
                           {!isUser && (
                             <Avatar className="w-7 h-7 flex-shrink-0">
-                              <AvatarFallback className="bg-muted/50 text-muted-foreground text-[10px]">
-                                <User className="w-3.5 h-3.5" />
-                              </AvatarFallback>
+                              <AvatarFallback className="bg-muted/50 text-muted-foreground text-[10px]"><User className="w-3.5 h-3.5" /></AvatarFallback>
                             </Avatar>
                           )}
                           <div className={cn('max-w-[80%]', isUser && 'flex flex-col items-end')}>
-                            <div className={cn(
-                              'px-3 py-2 rounded-2xl shadow-sm text-sm',
-                              isUser ? 'bg-primary/10 text-foreground rounded-br-sm border border-primary/20' : 'bg-muted text-foreground rounded-bl-sm border border-border'
-                            )}>
+                            <div className={cn('px-3 py-2 rounded-2xl shadow-sm text-sm', isUser ? 'bg-primary/10 text-foreground rounded-br-sm border border-primary/20' : 'bg-muted text-foreground rounded-bl-sm border border-border')}>
                               {message.senderName && (
-                                <div className={cn(
-                                  "text-[10px] font-medium opacity-70 mb-1",
-                                  message.senderName === 'Assistente IA' ? 'text-blue-600 dark:text-blue-400' : 'text-foreground'
-                                )}>
+                                <div className={cn("text-[10px] font-medium opacity-70 mb-1", message.senderName === 'Assistente IA' ? 'text-blue-600 dark:text-blue-400' : 'text-foreground')}>
                                   {message.senderName}
                                 </div>
                               )}
-                              {isAudioMessage(message) && message.mediaUrl && (
-                                <audio controls className="w-full max-w-[250px] mb-1"><source src={getMediaUrl(message.mediaUrl)} /></audio>
-                              )}
-                              {isImageMessage(message) && message.mediaUrl && (
-                                <img src={getMediaUrl(message.mediaUrl)} alt="" loading="lazy" className="max-w-[250px] rounded-lg border border-border mb-1" />
-                              )}
-                              {isVideoMessage(message) && message.mediaUrl && (
-                                <video controls className="max-w-[250px] rounded-lg mb-1" preload="metadata"><source src={getMediaUrl(message.mediaUrl)} /></video>
-                              )}
+                              {isAudioMessage(message) && message.mediaUrl && <audio controls className="w-full max-w-[250px] mb-1"><source src={getMediaUrl(message.mediaUrl)} /></audio>}
+                              {isImageMessage(message) && message.mediaUrl && <img src={getMediaUrl(message.mediaUrl)} alt="" loading="lazy" className="max-w-[250px] rounded-lg border border-border mb-1" />}
+                              {isVideoMessage(message) && message.mediaUrl && <video controls className="max-w-[250px] rounded-lg mb-1" preload="metadata"><source src={getMediaUrl(message.mediaUrl)} /></video>}
                               {isDocumentMessage(message) && message.mediaUrl && (
                                 <a href={getMediaUrl(message.mediaUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border mb-1 hover:bg-muted/50 transition-colors">
-                                  <FileText className="w-4 h-4 text-primary" />
-                                  <span className="text-xs">Documento</span>
-                                  <ExternalLink className="w-3 h-3 text-muted-foreground ml-auto" />
+                                  <FileText className="w-4 h-4 text-primary" /><span className="text-xs">Documento</span><ExternalLink className="w-3 h-3 text-muted-foreground ml-auto" />
                                 </a>
                               )}
-                              {message.text && (
-                                <p className="whitespace-pre-wrap break-words leading-relaxed">{formatHtmlMessage(message.text)}</p>
-                              )}
-                              {message.messageType === 'audio' && message.transcription && (
-                                <p className="mt-1 text-[11px] text-muted-foreground italic">{message.transcription}</p>
-                              )}
+                              {message.text && <p className="whitespace-pre-wrap break-words leading-relaxed">{formatHtmlMessage(message.text)}</p>}
+                              {message.messageType === 'audio' && message.transcription && <p className="mt-1 text-[11px] text-muted-foreground italic">{message.transcription}</p>}
                             </div>
                             <div className={cn('flex items-center gap-1 mt-0.5 px-1', isUser ? 'justify-end' : 'justify-start')}>
                               <span className="text-[10px] text-muted-foreground">{message.timestamp}</span>
-                              {isUser && <MessageStatus status={message.status} />}
+                              {isUser && <MessageStatusIcon status={message.status} />}
                             </div>
                           </div>
                         </div>
@@ -536,7 +647,6 @@ export default function CRM() {
           </ScrollArea>
         </div>
 
-        {/* Input */}
         <div className="p-3 border-t border-border bg-card">
           <div className="flex items-end gap-2">
             <div className="flex-1 relative">
@@ -551,12 +661,7 @@ export default function CRM() {
                 disabled={isSending}
               />
             </div>
-            <Button
-              onClick={handleSendMessage}
-              disabled={!messageText.trim() || isSending}
-              size="icon"
-              className="flex-shrink-0 w-10 h-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
+            <Button onClick={handleSendMessage} disabled={!messageText.trim() || isSending} size="icon" className="flex-shrink-0 w-10 h-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground">
               {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>
@@ -565,29 +670,33 @@ export default function CRM() {
     );
   };
 
-  // ─── Drawer: Profile Tab ───────────────────────────────────────────
-
-  const PerfilTab = () => {
+  const renderPerfilTab = () => {
     if (!selectedClient) return null;
     const p = selectedClient.pessoa;
+    const imageDocs = documents.filter((doc) => doc.mime_type?.startsWith('image/'));
+    const fileDocs = documents.filter((doc) => !doc.mime_type?.startsWith('image/'));
+    const photoItems = imageDocs
+      .map((doc) => ({ id: `doc:${doc.id}`, url: getMediaUrl(doc.arquivo_url), label: doc.nome }))
+      .filter((item) => item.url);
+    const fileItems = fileDocs.map((doc) => ({ id: `doc:${doc.id}`, url: getMediaUrl(doc.arquivo_url), label: doc.nome, mime: doc.mime_type }));
+    const allSelectableIds = [...fileItems.map((f) => f.id), ...photoItems.map((p) => p.id)];
+    const allSelected = allSelectableIds.length > 0 && allSelectableIds.every((id) => selectedDownloads[id]);
+
     return (
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
-          {/* Lead info */}
           <div className="space-y-3">
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Dados do Lead</h4>
             <div className="grid grid-cols-2 gap-3">
               <InfoField label="Nome" value={selectedClient.nome} />
               <InfoField label="Telefone" value={selectedClient.telefone} />
               <InfoField label="E-mail" value={selectedClient.email} />
-              <InfoField label="Classificação" value={selectedClient.classificacao} />
+              <InfoField label="Classificacao" value={selectedClient.classificacao} />
               <InfoField label="Corretor" value={selectedClient.corretor_nome} />
               <InfoField label="Origem" value={selectedClient.origem} />
               {selectedClient.valor && <InfoField label="Valor" value={`R$ ${selectedClient.valor.toLocaleString('pt-BR')}`} />}
             </div>
           </div>
-
-          {/* Pessoa info */}
           {p && (
             <div className="space-y-3 pt-4 border-t border-border">
               <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Dados da Pessoa</h4>
@@ -601,99 +710,110 @@ export default function CRM() {
               </div>
             </div>
           )}
-        </div>
-      </ScrollArea>
-    );
-  };
-
-  const InfoField = ({ label, value }: { label: string; value: string | null | undefined }) => (
-    <div>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className="text-sm text-foreground font-medium">{value || '-'}</p>
-    </div>
-  );
-
-  // ─── Drawer ────────────────────────────────────────────────────────
-
-  const ClientDrawer = () => {
-    if (!selectedClient) return null;
-    const config = STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo;
-
-    return (
-      <div className={cn(
-        'fixed inset-0 z-50 flex',
-        'lg:inset-y-0 lg:left-auto lg:right-0 lg:w-[55%] xl:w-[50%]'
-      )}>
-        {/* Backdrop */}
-        <div className="absolute inset-0 bg-black/40 lg:bg-black/20" onClick={() => setSelectedClient(null)} />
-
-        {/* Panel */}
-        <div className={cn(
-          'relative ml-auto w-full bg-background border-l border-border flex flex-col h-full',
-          'lg:w-full'
-        )}>
-          {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
-            <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)} className="flex-shrink-0">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <Avatar className="w-10 h-10 flex-shrink-0">
-              <AvatarFallback className="bg-primary/15 text-primary font-semibold text-sm">
-                {getInitials(selectedClient.nome)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-foreground truncate">{selectedClient.nome}</h2>
-              <p className="text-xs text-muted-foreground truncate">{selectedClient.telefone}</p>
-            </div>
-
-            {/* Status dropdown */}
-            <div className="relative group">
-              <button className={cn('flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border', config.bg, config.color)}>
-                {config.label}
-                <ChevronDown className="w-3 h-3" />
-              </button>
-              <div className="hidden group-hover:block absolute right-0 top-full mt-1 w-40 bg-card border border-border rounded-xl shadow-xl z-10 py-1">
-                {ALL_STATUSES.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => handleStatusChange(selectedClient.id, s)}
-                    className={cn(
-                      'w-full text-left px-3 py-2 text-xs hover:bg-muted/50 transition-colors',
-                      s === selectedClient.status && 'font-bold'
-                    )}
+          <div className="space-y-3 pt-4 border-t border-border">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Arquivos e Fotos</h4>
+              <div className="flex items-center gap-2">
+                {allSelectableIds.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={() => toggleSelectAll(allSelectableIds, !allSelected)}
                   >
-                    <span className={STATUS_CONFIG[s].color}>{STATUS_CONFIG[s].label}</span>
-                  </button>
-                ))}
+                    {allSelected ? 'Desmarcar tudo' : 'Selecionar tudo'}
+                  </Button>
+                )}
+                {documents.length > 0 && (
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={handleDownloadAll}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Baixar ZIP
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={handleDownloadSelected}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Baixar selecionados
+                </Button>
               </div>
             </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex border-b border-border bg-card">
-            {(['chat', 'perfil'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  'flex-1 py-2.5 text-sm font-medium transition-colors relative',
-                  activeTab === tab ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {tab === 'chat' ? 'Chat' : 'Perfil'}
-                {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
-              </button>
-            ))}
-          </div>
-
-          {/* Tab content */}
-          <div className="flex-1 min-h-0 flex flex-col">
-            {activeTab === 'chat' && <ChatTab />}
-            {activeTab === 'perfil' && <PerfilTab />}
+            {isLoadingDocuments ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Carregando arquivos...
+              </div>
+            ) : fileItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum arquivo enviado.</p>
+            ) : (
+              <div className="space-y-2">
+                {fileItems.map((doc) => (
+                  <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-border"
+                      checked={!!selectedDownloads[doc.id]}
+                      onChange={(e) => setSelectedDownloads((prev) => ({ ...prev, [doc.id]: e.target.checked }))}
+                    />
+                    <a
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 flex-1 min-w-0 hover:text-foreground"
+                      data-download-id={doc.id}
+                      data-download-name={doc.label}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{doc.label}</p>
+                        <p className="text-xs text-muted-foreground">{doc.mime}</p>
+                      </div>
+                      <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="pt-4 border-t border-border space-y-3">
+              <div className="flex items-center gap-2">
+                <Image className="w-4 h-4 text-muted-foreground" />
+                <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Fotos</h4>
+              </div>
+              {photoItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma foto disponível.</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {photoItems.map((photo) => (
+                    <label key={photo.id} className="group relative rounded-lg border border-border overflow-hidden bg-muted/30">
+                      <input
+                        type="checkbox"
+                        className="absolute top-2 left-2 h-4 w-4 rounded border-border bg-background/80"
+                        checked={!!selectedDownloads[photo.id]}
+                        onChange={(e) => setSelectedDownloads((prev) => ({ ...prev, [photo.id]: e.target.checked }))}
+                      />
+                      <a
+                        href={photo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                        data-download-id={photo.id}
+                        data-download-name={photo.label}
+                      >
+                        <img
+                          src={photo.url}
+                          alt={photo.label}
+                          className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105"
+                          loading="lazy"
+                        />
+                      </a>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </ScrollArea>
     );
   };
 
@@ -701,6 +821,7 @@ export default function CRM() {
 
   const totalClients = allClients.length;
   const totalUnread = allClients.reduce((sum, c) => sum + c.unread, 0);
+  const selectedClientId = selectedClient?.id ?? null;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
@@ -718,7 +839,6 @@ export default function CRM() {
                 <span className="text-[10px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">{totalUnread}</span>
               )}
             </div>
-
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <input
@@ -729,7 +849,6 @@ export default function CRM() {
                 className="w-full pl-9 pr-3 py-2 bg-muted/40 border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
-
             <Button variant="ghost" size="icon" onClick={() => refetch()} className="text-muted-foreground hover:text-foreground">
               <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
             </Button>
@@ -737,7 +856,7 @@ export default function CRM() {
         </div>
 
         {/* Content */}
-        {isLoading ? (
+        {isLoading && !crmData ? (
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
@@ -746,13 +865,12 @@ export default function CRM() {
             {/* Desktop: Kanban */}
             <div className="hidden lg:flex flex-1 min-h-0 overflow-x-auto p-4 gap-3">
               {ALL_STATUSES.map((status) => (
-                <KanbanColumn key={status} status={status} />
+                <KanbanColumn key={status} status={status} clients={crmData?.[status] || []} selectedClientId={selectedClientId} onSelect={handleSelectClient} />
               ))}
             </div>
 
             {/* Mobile: Tabs + List */}
             <div className="lg:hidden flex-1 min-h-0 flex flex-col">
-              {/* Status tabs */}
               <div className="flex border-b border-border bg-card overflow-x-auto scrollbar-hide">
                 {ALL_STATUSES.map((s) => {
                   const count = (crmData?.[s] || []).length;
@@ -772,8 +890,6 @@ export default function CRM() {
                   );
                 })}
               </div>
-
-              {/* Client list */}
               <ScrollArea className="flex-1 min-h-0">
                 <div className="p-3 space-y-2">
                   {(crmData?.[mobileStatus] || []).length === 0 ? (
@@ -783,7 +899,7 @@ export default function CRM() {
                     </div>
                   ) : (
                     (crmData?.[mobileStatus] || []).map((client) => (
-                      <ClientCard key={client.id} client={client} />
+                      <ClientCard key={client.id} client={client} isSelected={selectedClientId === client.id} onSelect={handleSelectClient} />
                     ))
                   )}
                 </div>
@@ -794,7 +910,52 @@ export default function CRM() {
       </div>
 
       {/* Drawer */}
-      {selectedClient && <ClientDrawer />}
+      {selectedClient && (
+        <div className={cn('fixed inset-0 z-50 flex', 'lg:inset-y-0 lg:left-auto lg:right-0 lg:w-[55%] xl:w-[50%]')}>
+          <div className="absolute inset-0 bg-black/40 lg:bg-black/20" onClick={() => setSelectedClient(null)} />
+          <div className={cn('relative ml-auto w-full bg-background border-l border-border flex flex-col h-full', 'lg:w-full')}>
+            {/* Header */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
+              <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)} className="flex-shrink-0">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <Avatar className="w-10 h-10 flex-shrink-0">
+                <AvatarFallback className="bg-primary/15 text-primary font-semibold text-sm">{getInitials(selectedClient.nome)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <h2 className="font-semibold text-foreground truncate">{selectedClient.nome}</h2>
+                <p className="text-xs text-muted-foreground truncate">{selectedClient.telefone}</p>
+              </div>
+              <div className="relative group">
+                <button className={cn('flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border', (STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).bg, (STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).color)}>
+                  {(STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).label}
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+                <div className="hidden group-hover:block absolute right-0 top-full mt-1 w-40 bg-card border border-border rounded-xl shadow-xl z-10 py-1">
+                  {ALL_STATUSES.map((s) => (
+                    <button key={s} onClick={() => handleStatusChange(selectedClient.id, s)} className={cn('w-full text-left px-3 py-2 text-xs hover:bg-muted/50 transition-colors', s === selectedClient.status && 'font-bold')}>
+                      <span className={STATUS_CONFIG[s].color}>{STATUS_CONFIG[s].label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Tabs */}
+            <div className="flex border-b border-border bg-card">
+              {(['chat', 'perfil'] as const).map((tab) => (
+                <button key={tab} onClick={() => setActiveTab(tab)} className={cn('flex-1 py-2.5 text-sm font-medium transition-colors relative', activeTab === tab ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}>
+                  {tab === 'chat' ? 'Chat' : 'Perfil'}
+                  {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+                </button>
+              ))}
+            </div>
+            {/* Tab content */}
+            <div className="flex-1 min-h-0 flex flex-col">
+              {activeTab === 'chat' ? renderChatTab() : renderPerfilTab()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

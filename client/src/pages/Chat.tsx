@@ -69,6 +69,7 @@ export default function Chat() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showMobileContacts, setShowMobileContacts] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -602,6 +603,14 @@ export default function Chat() {
                 Limpar
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden md:inline-flex text-muted-foreground hover:text-foreground"
+              onClick={() => setIsChatCollapsed((prev) => !prev)}
+            >
+              {isChatCollapsed ? 'Abrir chat' : 'Minimizar chat'}
+            </Button>
           </div>
         </div>
 
@@ -612,6 +621,8 @@ export default function Chat() {
           className={cn(
             'relative z-10 w-full md:w-[380px] flex-shrink-0 flex flex-col border-r border-border bg-card',
             'transition-transform duration-300 ease-in-out',
+            isChatCollapsed && 'md:w-full',
+            isChatCollapsed && 'md:border-r-0',
             !showMobileContacts && 'hidden md:flex'
           )}
         >
@@ -666,7 +677,12 @@ export default function Chat() {
                 {filteredContacts.map((contact) => (
                   <button
                     key={contact.id}
-                    onClick={() => setSelectedContactId(contact.id)}
+                    onClick={() => {
+                      setSelectedContactId(contact.id);
+                      if (isChatCollapsed) {
+                        setIsChatCollapsed(false);
+                      }
+                    }}
                     className={cn(
                       'w-full p-4 flex items-center gap-3 transition-colors text-left',
                       'hover:bg-muted/40',
@@ -709,7 +725,8 @@ export default function Chat() {
         {/* Chat Area */}
         <div className={cn(
           'relative z-10 flex-1 min-h-0 flex flex-col',
-          showMobileContacts && 'hidden md:flex'
+          showMobileContacts && 'hidden md:flex',
+          isChatCollapsed && 'md:hidden'
         )}>
           {selectedContact ? (
             <>

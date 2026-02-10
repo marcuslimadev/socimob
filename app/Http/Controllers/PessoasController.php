@@ -7,8 +7,12 @@ use App\Models\PessoaInteracao;
 use App\Models\PessoaDocumento;
 use App\Models\PessoaRelacionamento;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use ZipArchive;
 
 class PessoasController extends Controller
 {
@@ -386,6 +390,154 @@ class PessoasController extends Controller
         ]);
 
         return response()->json(['success' => true, 'data' => $documento]);
+    }
+
+    /**
+     * Exportar documentos (ZIP)
+     * GET /api/pessoas/{id}/documentos/export
+     */
+    public function exportDocumentos(Request $request, $id)
+    {
+        $pessoa = Pessoa::find($id);
+        if (!$pessoa) {
+            return response()->json(['error' => 'Pessoa not found'], 404);
+        }
+
+        $documentos = $pessoa->documentosAnexados()
+            ->orderBy('created_at')
+            ->get();
+
+        if ($documentos->isEmpty()) {
+            abort(404, 'Nenhum documento encontrado para esta pessoa');
+        }
+
+        try {
+            $zipPath = $this->createZipForPessoa($pessoa, $documentos);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao gerar ZIP de documentos da pessoa', [
+                'pessoa_id' => $pessoa->id,
+                'error' => $e->getMessage(),
+            ]);
+            abort(500, 'Não foi possível gerar o ZIP dos documentos');
+        }
+
+        if (!$zipPath) {
+            abort(422, 'Nenhum documento disponível para exportação');
+        }
+
+        $fileName = basename($zipPath);
+
+        return response()->download($zipPath, $fileName)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Exportar documentos selecionados (ZIP)
+     * POST /api/pessoas/{id}/documentos/export
+     */
+    public function exportDocumentosSelecionados(Request $request, $id)
+    {
+        $pessoa = Pessoa::find($id);
+        if (!$pessoa) {
+            return response()->json(['error' => 'Pessoa not found'], 404);
+        }
+
+        $ids = $request->input('ids', []);
+        if (!is_array($ids) || empty($ids)) {
+            abort(422, 'Selecione ao menos um documento');
+        }
+
+        $documentos = $pessoa->documentosAnexados()
+            ->whereIn('id', $ids)
+            ->orderBy('created_at')
+            ->get();
+
+        if ($documentos->isEmpty()) {
+            abort(404, 'Nenhum documento encontrado para exportação');
+        }
+
+        try {
+            $zipPath = $this->createZipForPessoa($pessoa, $documentos);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao gerar ZIP de documentos selecionados da pessoa', [
+                'pessoa_id' => $pessoa->id,
+                'error' => $e->getMessage(),
+            ]);
+            abort(500, 'Não foi possível gerar o ZIP dos documentos selecionados');
+        }
+
+        if (!$zipPath) {
+            abort(422, 'Nenhum documento disponível para exportação');
+        }
+
+        $fileName = basename($zipPath);
+
+        return response()->download($zipPath, $fileName)->deleteFileAfterSend(true);
+    }
+
+    private function createZipForPessoa(Pessoa $pessoa, $documentos): ?string
+    {
+        $tempDir = storage_path('app/temp');
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        $zipFileName = "pessoa-{$pessoa->id}-documentos.zip";
+        $zipPath = $tempDir . DIRECTORY_SEPARATOR . $zipFileName;
+
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new \RuntimeException('Não foi possível criar o arquivo ZIP.');
+        }
+
+        $added = 0;
+        foreach ($documentos as $documento) {
+            $content = $this->getPessoaDocumentoContent($documento);
+            if (!$content) {
+                continue;
+            }
+
+            $fileName = $this->buildPessoaDocumentoFileName($documento, ++$added);
+            $zip->addFromString($fileName, $content);
+        }
+
+        $zip->close();
+
+        if ($added === 0) {
+            @unlink($zipPath);
+            return null;
+        }
+
+        return $zipPath;
+    }
+
+    private function buildPessoaDocumentoFileName(PessoaDocumento $documento, int $index): string
+    {
+        $baseName = $documento->nome ?: 'documento';
+        $extension = pathinfo($baseName, PATHINFO_EXTENSION) ?: 'pdf';
+        $sanitized = Str::slug(pathinfo($baseName, PATHINFO_FILENAME));
+
+        if (!$sanitized) {
+            $sanitized = 'documento';
+        }
+
+        return sprintf('%02d-%s.%s', $index, $sanitized, $extension);
+    }
+
+    private function getPessoaDocumentoContent(PessoaDocumento $documento): ?string
+    {
+        $path = ltrim((string) $documento->arquivo, '/');
+        if ($path && Storage::disk('public')->exists($path)) {
+            return Storage::disk('public')->get($path);
+        }
+
+        if (Str::startsWith($documento->arquivo, ['http://', 'https://'])) {
+            $response = Http::timeout(10)->get($documento->arquivo);
+            if ($response->successful()) {
+                return $response->body();
+            }
+        }
+
+        return null;
     }
 
     /**
