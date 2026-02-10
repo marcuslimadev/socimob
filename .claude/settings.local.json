@@ -85,7 +85,9 @@
       "Bash(php -r:*)",
       "Bash(powershell -Command \"\\(Get-Content ''c:\\\\Projetos\\\\socimobatual\\\\public\\\\index.html'' -Raw\\) -match ''api/portal/imoveis''\")",
       "Bash(powershell -Command:*)",
-      "Bash(php update_property_coordinates.php:*)"
+      "Bash(php update_property_coordinates.php:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(Copy-Item -Path dist/public/* -Destination public/ -Recurse -Force)"
     ]
   }
 }
