@@ -907,32 +907,41 @@ export default function ClientPortal() {
                     className="overflow-hidden"
                   >
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 mt-4 border-t border-border">
-                      {/* Transaction Type */}
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Finalidade
-                        </label>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant={selectedType === 'venda' ? 'default' : 'outline'}
-                            onClick={() => setSelectedType(selectedType === 'venda' ? null : 'venda')}
-                            style={selectedType === 'venda' ? { backgroundColor: primary } : {}}
-                            className={selectedType === 'venda' ? 'text-white' : ''}
-                          >
-                            Comprar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={selectedType === 'aluguel' ? 'default' : 'outline'}
-                            onClick={() => setSelectedType(selectedType === 'aluguel' ? null : 'aluguel')}
-                            style={selectedType === 'aluguel' ? { backgroundColor: primary } : {}}
-                            className={selectedType === 'aluguel' ? 'text-white' : ''}
-                          >
-                            Alugar
-                          </Button>
-                        </div>
-                      </div>
+                      {/* Transaction Type - only show if tenant allows multiple finalidades */}
+                      {(() => {
+                        const pf = tenant?.portal_finalidades?.map(f => f.toLowerCase()) ?? [];
+                        const showVenda = pf.length === 0 || pf.some(f => f.includes('venda'));
+                        const showAluguel = pf.length === 0 || pf.some(f => f.includes('aluguel') || f.includes('locação') || f.includes('locacao'));
+                        // Only show filter if both options are available
+                        if (!showVenda || !showAluguel) return null;
+                        return (
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                              Finalidade
+                            </label>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant={selectedType === 'venda' ? 'default' : 'outline'}
+                                onClick={() => setSelectedType(selectedType === 'venda' ? null : 'venda')}
+                                style={selectedType === 'venda' ? { backgroundColor: primary } : {}}
+                                className={selectedType === 'venda' ? 'text-white' : ''}
+                              >
+                                Comprar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={selectedType === 'aluguel' ? 'default' : 'outline'}
+                                onClick={() => setSelectedType(selectedType === 'aluguel' ? null : 'aluguel')}
+                                style={selectedType === 'aluguel' ? { backgroundColor: primary } : {}}
+                                className={selectedType === 'aluguel' ? 'text-white' : ''}
+                              >
+                                Alugar
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Property Type */}
                       <div>
