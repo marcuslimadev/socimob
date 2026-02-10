@@ -676,11 +676,16 @@ Gere a mensagem de primeiro contato:";
         $nome = $lead->nome ?? 'Cliente';
         $saudacao = $this->obterSaudacao();
 
+        // Resolver nomes dinâmicos do tenant
+        $tenant = app('tenant');
+        $assistantName = $tenant ? $tenant->getAiAssistantName() : env('AI_ASSISTANT_NAME', 'Teresa');
+        $companyName = $tenant ? $tenant->getCompanyName() : env('COMPANY_NAME', 'Imobiliária');
+
         // Personalizar com nome se disponível
         if ($lead->nome) {
-            $msg = "{$saudacao}, {$nome}! Meu nome é Alex, assistente virtual da Exclusiva Lar Imóveis.\n\n";
+            $msg = "{$saudacao}, {$nome}! Meu nome é {$assistantName}, assistente virtual da {$companyName}.\n\n";
         } else {
-            $msg = "{$saudacao}! Meu nome é Alex, assistente virtual da Exclusiva Lar Imóveis.\n\n";
+            $msg = "{$saudacao}! Meu nome é {$assistantName}, assistente virtual da {$companyName}.\n\n";
         }
 
         $msg .= "Vi que você demonstrou interesse em nossos imóveis";

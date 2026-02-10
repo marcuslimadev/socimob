@@ -16,7 +16,9 @@ import {
   FileText,
   Film,
   Download,
-  ExternalLink
+  ExternalLink,
+  Info,
+  Tag
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -52,6 +54,8 @@ interface Contact {
   leadId: number;
   phone: string;
   needsHumanIntervention?: boolean;
+  observacoes?: string | null;
+  classificacao?: string | null;
 }
 
 export default function Chat() {
@@ -260,6 +264,8 @@ export default function Chat() {
               leadId: item.lead_id,
               phone: item.lead_telefone,
               needsHumanIntervention: item.needs_human_intervention || false,
+              observacoes: item.lead_observacoes || null,
+              classificacao: item.lead_classificacao || null,
             };
           });
 
@@ -724,6 +730,33 @@ export default function Chat() {
                   </Button>
                 </div>
               </div>
+
+              {/* Lead Info Banner */}
+              {(selectedContact.observacoes || selectedContact.classificacao) && (
+                <div className="border-b border-border bg-muted/40 px-5 py-2.5 space-y-1">
+                  {selectedContact.classificacao && (
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className={cn(
+                        "text-xs font-semibold px-2 py-0.5 rounded-full",
+                        selectedContact.classificacao === 'quente' && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                        selectedContact.classificacao === 'morno' && "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+                        selectedContact.classificacao === 'frio' && "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                      )}>
+                        {selectedContact.classificacao === 'quente' ? 'Quente' : selectedContact.classificacao === 'morno' ? 'Morno' : 'Frio'}
+                      </span>
+                    </div>
+                  )}
+                  {selectedContact.observacoes && (
+                    <div className="flex items-start gap-2">
+                      <Info className="w-3.5 h-3.5 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {selectedContact.observacoes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Messages Area */}
               <div className="flex-1 min-h-0 overflow-hidden relative bg-[linear-gradient(180deg,rgba(0,0,0,0.02),transparent_35%)]">

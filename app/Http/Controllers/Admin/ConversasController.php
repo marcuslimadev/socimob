@@ -28,6 +28,8 @@ class ConversasController extends BaseController
                     'leads.nome as lead_nome',
                     'leads.telefone as lead_telefone',
                     'leads.email as lead_email',
+                    'leads.observacoes as lead_observacoes',
+                    'leads.classificacao as lead_classificacao',
                     'corretor.name as corretor_nome'
                 )
                 ->where(function ($q) use ($tenantId) {
@@ -732,6 +734,8 @@ class ConversasController extends BaseController
                     'leads.nome as lead_nome',
                     'leads.telefone as lead_telefone',
                     'leads.email as lead_email',
+                    'leads.observacoes as lead_observacoes',
+                    'leads.classificacao as lead_classificacao',
                     'leads.quartos',
                     'leads.localizacao',
                     'leads.budget_min',

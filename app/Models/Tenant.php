@@ -275,6 +275,11 @@ class Tenant extends Model
         return $this->getIntegrationValue('ai_assistant_name', 'Teresa');
     }
 
+    public function getCompanyName()
+    {
+        return $this->name ?: ($this->razao_social ?: 'Imobiliária');
+    }
+
     public function suspendSubscription(string $reason = null): void
     {
         $this->update([

@@ -510,13 +510,14 @@ class WhatsAppService
         $this->updateLeadStatusFromStage($lead, 'coleta_dados');
 
         $assistantName = $this->getAssistantName();
+        $companyName = $this->getCompanyName();
         $nomePreferido = $this->extractPreferredName($lead->nome ?? $dados['profile_name'] ?? null);
         $property = $this->findPropertyFromMessage($mensagemOriginal);
 
         if ($property) {
-            $mensagemBoasVindas = $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property);
+            $mensagemBoasVindas = $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property, $companyName);
         } else {
-            $mensagemBoasVindas = $this->buildGenericWelcomeMessage($assistantName, $nomePreferido);
+            $mensagemBoasVindas = $this->buildGenericWelcomeMessage($assistantName, $nomePreferido, $companyName);
         }
 
         $this->sendMessage($conversa->id, $telefone, $mensagemBoasVindas);
@@ -530,6 +531,16 @@ class WhatsAppService
 
     private function getAssistantName(): string
     {
+        // 1. Tentar via tenant
+        $tenant = app('tenant');
+        if ($tenant) {
+            $tenantName = $tenant->getAiAssistantName();
+            if (!empty($tenantName)) {
+                return $tenantName;
+            }
+        }
+
+        // 2. Fallback: AppSetting / env
         $default = env('AI_ASSISTANT_NAME', 'Teresa');
         $name = AppSetting::getValue('ai_name', $default);
 
@@ -540,6 +551,16 @@ class WhatsAppService
         $name = trim((string) $name);
 
         return $name !== '' ? $name : $default;
+    }
+
+    private function getCompanyName(): string
+    {
+        $tenant = app('tenant');
+        if ($tenant) {
+            return $tenant->getCompanyName();
+        }
+
+        return env('COMPANY_NAME', 'Imobiliária');
     }
 
     private function extractPreferredName(?string $nome): ?string
@@ -557,12 +578,12 @@ class WhatsAppService
         return $partes ? $partes[0] : $nome;
     }
 
-    private function buildGenericWelcomeMessage(string $assistantName, ?string $preferredName): string
+    private function buildGenericWelcomeMessage(string $assistantName, ?string $preferredName, string $companyName = 'Imobiliária'): string
     {
         $saudacao = $preferredName ? "Oi, *{$preferredName}*!" : 'Olá!';
         $nomePergunta = $this->buildNameConfirmation($preferredName);
 
-        return $saudacao . " Eu sou a {$assistantName}, da *Exclusiva Lar Imóveis*. Vou te ajudar a encontrar o imóvel ideal. " .
+        return $saudacao . " Eu sou a {$assistantName}, da *{$companyName}*. Vou te ajudar a encontrar o imóvel ideal. " .
             $nomePergunta . "\n\n" .
             "Me conta um pouco sobre o que você procura:\n" .
             "• Qual o valor que você tem em mente?\n" .
@@ -571,7 +592,7 @@ class WhatsAppService
             "Pode mandar texto ou áudio, como preferir.";
     }
 
-    private function buildPropertyWelcomeMessage(string $assistantName, ?string $preferredName, Property $property): string
+    private function buildPropertyWelcomeMessage(string $assistantName, ?string $preferredName, Property $property, string $companyName = 'Imobiliária'): string
     {
         $saudacao = $preferredName ? "Oi, *{$preferredName}*!" : 'Olá!';
         $referencia = $property->referencia_imovel ?: $property->codigo_imovel;
@@ -583,7 +604,7 @@ class WhatsAppService
         $highlights = $this->extractPropertyHighlights($property);
         $nomePergunta = $this->buildNameConfirmation($preferredName);
 
-        $mensagem = $saudacao . " Eu sou a {$assistantName}, da *Exclusiva Lar Imóveis*. Vi que você se interessou pelo {$property->tipo_imovel}";
+        $mensagem = $saudacao . " Eu sou a {$assistantName}, da *{$companyName}*. Vi que você se interessou pelo {$property->tipo_imovel}";
 
         if ($localizacao) {
             $mensagem .= " em {$localizacao}";
@@ -756,14 +777,20 @@ class WhatsAppService
 
         $conversa->loadMissing('lead');
 
-        // Verificar se já coletou informações básicas necessárias (não usar campos_pendentes porque começa vazio)
-        $leadQualificado = $conversa->lead 
-            && !empty($conversa->lead->tipo_imovel_interesse)
-            && !empty($conversa->lead->orcamento_max)
-            && !empty($conversa->lead->localizacao_preferida);
+        // Classificar lead automaticamente
+        if ($conversa->lead) {
+            $this->classifyLead($conversa->lead);
+        }
 
-        if ($leadQualificado) {
-            $handoffMessage = 'Cadastro concluído! Um corretor humano vai continuar o atendimento e te enviar os detalhes. 👍';
+        // Verificar se já coletou informações essenciais: bairro + orçamento + prazo
+        $lead = $conversa->lead;
+        $temBairro = $lead && (!empty($lead->localizacao) || !empty($lead->preferencia_bairro));
+        $temOrcamento = $lead && ($lead->budget_min || $lead->budget_max);
+        $temPrazo = $lead && !empty($lead->prazo_compra);
+
+        if ($temBairro && $temOrcamento && $temPrazo) {
+            $companyName = $this->getCompanyName();
+            $handoffMessage = "Perfeito! Vou repassar suas informações para um corretor especializado da {$companyName}. Ele vai te contatar em breve com as melhores opções. 👍";
 
             $conversa->update([
                 'stage' => 'atendimento_humano',
@@ -776,7 +803,7 @@ class WhatsAppService
 
             return [
                 'success' => true,
-                'message' => 'Cadastro concluído e encaminhado para corretor humano',
+                'message' => 'Lead qualificado e encaminhado para corretor humano',
                 'ai_response' => $handoffMessage,
                 'current_stage' => $conversa->stage,
             ];
@@ -1001,6 +1028,39 @@ class WhatsAppService
         $status = $map[$stage];
         if ($lead->status !== $status) {
             $lead->update(['status' => $status]);
+        }
+    }
+
+    /**
+     * Classificar lead automaticamente: quente / morno / frio
+     */
+    private function classifyLead(Lead $lead): void
+    {
+        $temBairro = !empty($lead->localizacao) || !empty($lead->preferencia_bairro);
+        $temOrcamento = $lead->budget_min || $lead->budget_max;
+        $prazoCurto = false;
+
+        if (!empty($lead->prazo_compra)) {
+            $prazo = mb_strtolower($lead->prazo_compra);
+            $prazoCurto = Str::contains($prazo, ['urgente', 'imediato', '1 m', '2 m', '3 m', 'este mês', 'próximo mês', 'logo', 'rápido']);
+        }
+
+        if ($temBairro && $temOrcamento && $prazoCurto) {
+            $classificacao = 'quente';
+        } elseif ($temBairro || $temOrcamento) {
+            $classificacao = 'morno';
+        } else {
+            $classificacao = 'frio';
+        }
+
+        if ($lead->classificacao !== $classificacao) {
+            $lead->update(['classificacao' => $classificacao]);
+            Log::info("🏷️ Lead classificado como: {$classificacao}", [
+                'lead_id' => $lead->id,
+                'tem_bairro' => $temBairro,
+                'tem_orcamento' => $temOrcamento,
+                'prazo_curto' => $prazoCurto,
+            ]);
         }
     }
 

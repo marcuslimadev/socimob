@@ -18,6 +18,7 @@ class Lead extends Model
         'whatsapp',
         'whatsapp_name',
         'status',
+        'classificacao',
         'observacoes',
         'user_id',
         'pessoa_id',
