@@ -38,7 +38,7 @@ const MetricCard = ({
         <div className="flex-1">
           <p className="text-sm text-muted-foreground font-medium mb-2">{title}</p>
           <div className="flex items-baseline gap-2">
-            <h3 className="text-3xl font-bold gradient-text">{value}</h3>
+            <h3 className="text-3xl font-bold text-foreground">{value}</h3>
             {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
           </div>
         </div>
@@ -48,7 +48,7 @@ const MetricCard = ({
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ delay: delay + 0.2, type: 'spring', stiffness: 200 }}
-            className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white glow-md group-hover:glow-lg transition-all`}
+            className={`w-12 h-12 rounded-xl ${gradient} flex items-center justify-center text-white transition-all`}
           >
             {icon}
           </motion.div>

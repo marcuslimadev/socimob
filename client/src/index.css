@@ -162,7 +162,7 @@
   }
 
   .page-title {
-    @apply text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent;
+    @apply text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground;
   }
 
   .page-subtitle {
@@ -179,26 +179,17 @@
   }
 
   .blur-divider {
-    @apply h-px bg-gradient-to-r from-transparent via-border to-transparent dark:via-white/20;
+    @apply h-px bg-border dark:bg-white/10;
   }
 
   .gradient-text {
-    background-image: linear-gradient(135deg, var(--primary), var(--secondary));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    @apply text-foreground;
   }
 
-  .glow-sm {
-    filter: drop-shadow(0 0 8px color-mix(in oklab, var(--primary) 60%, transparent));
-  }
-
-  .glow-md {
-    filter: drop-shadow(0 0 16px color-mix(in oklab, var(--primary) 70%, transparent));
-  }
-
+  .glow-sm,
+  .glow-md,
   .glow-lg {
-    filter: drop-shadow(0 0 24px color-mix(in oklab, var(--primary) 80%, transparent));
+    /* removed */
   }
 
   @media (min-width: 640px) {

@@ -38,7 +38,7 @@ const QuickAccessCard = ({
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ delay: delay + 0.1, type: 'spring', stiffness: 200 }}
-            className={`w-11 h-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white glow-md group-hover:glow-lg transition-all`}
+            className={`w-11 h-11 rounded-xl ${gradient} flex items-center justify-center text-white transition-all`}
           >
             {icon}
           </motion.div>
@@ -49,7 +49,7 @@ const QuickAccessCard = ({
           </div>
         )}
         <div
-          className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-5 transition-opacity pointer-events-none`}
+          className="absolute inset-0 rounded-2xl opacity-0 pointer-events-none"
         />
       </motion.div>
     </Link>

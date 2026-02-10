@@ -33,9 +33,7 @@ export default function Login() {
   };
 
   const primary = tenant?.primary_color || '#091b42';
-  const secondary = tenant?.secondary_color || '#180931';
-  const gradient = `linear-gradient(135deg, ${primary}, ${secondary})`;
-  const softBg = `linear-gradient(135deg, ${hexToRgba(primary, 0.12)}, ${hexToRgba(secondary, 0.12)})`;
+  const softBg = hexToRgba(primary, 0.12);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +84,7 @@ export default function Login() {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4"
-      style={{ backgroundImage: softBg }}
+      style={{ backgroundColor: softBg }}
     >
       <motion.div
         variants={containerVariants}
@@ -100,8 +98,8 @@ export default function Login() {
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: 'spring', stiffness: 200 }}
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4 glow-lg overflow-hidden"
-            style={{ backgroundImage: gradient }}
+            className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4 overflow-hidden"
+            style={{ backgroundColor: primary }}
           >
             {tenant?.logo_url || tenant?.logo ? (
               <img
@@ -113,7 +111,7 @@ export default function Login() {
               getTenantInitials(tenant?.name)
             )}
           </motion.div>
-          <h1 className="text-2xl sm:text-3xl font-bold gradient-text mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
             {tenant?.name || 'SOCIMOB'}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">
@@ -203,8 +201,8 @@ export default function Login() {
               variants={itemVariants}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-white transition-all glow-md hover:glow-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
-              style={{ backgroundImage: gradient }}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-white transition-all mb-4 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+              style={{ backgroundColor: primary }}
               disabled={isLoading}
             >
               {isLoading ? 'Entrando...' : 'Entrar'}
@@ -242,11 +240,11 @@ export default function Login() {
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
         <div
           className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl"
-          style={{ backgroundImage: softBg }}
+          style={{ backgroundColor: softBg }}
         />
         <div
           className="absolute bottom-0 left-0 w-96 h-96 rounded-full blur-3xl"
-          style={{ backgroundImage: softBg }}
+          style={{ backgroundColor: softBg }}
         />
       </div>
     </div>

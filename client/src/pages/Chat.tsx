@@ -83,6 +83,24 @@ export default function Chat() {
     '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><g fill="none" stroke="#d9d2c8" stroke-width="1" opacity="0.22"><path d="M20 20h20v20H20z"/><circle cx="120" cy="40" r="10"/><path d="M80 120l15-15 15 15"/><circle cx="40" cy="120" r="6"/><path d="M120 120h20v20h-20z"/></g></svg>';
   const chatPatternDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(chatPatternSvg)}`;
 
+  const decodeHtml = (value: string) => {
+    if (typeof window === 'undefined') return value;
+    const doc = new DOMParser().parseFromString(`<!doctype html><body>${value}`, 'text/html');
+    return doc.body.textContent || '';
+  };
+
+  const normalizeObservacoes = (value?: string | null) => {
+    if (!value) return '';
+    const withBreaks = value.replace(/<\s*br\s*\/?>/gi, '\n');
+    const withoutTags = withBreaks.replace(/<\/?[^>]+(>|$)/g, '');
+    return decodeHtml(withoutTags).trim();
+  };
+
+  const observacoesText = useMemo(
+    () => normalizeObservacoes(selectedContact?.observacoes),
+    [selectedContact?.observacoes]
+  );
+
   const getScrollViewport = useCallback(() => {
     if (!scrollAreaRef.current) return null;
     const vp = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
@@ -732,7 +750,7 @@ export default function Chat() {
               </div>
 
               {/* Lead Info Banner */}
-              {(selectedContact.observacoes || selectedContact.classificacao) && (
+              {(observacoesText || selectedContact.classificacao) && (
                 <div className="border-b border-border bg-muted/40 px-5 py-2.5 space-y-1">
                   {selectedContact.classificacao && (
                     <div className="flex items-center gap-2">
@@ -747,11 +765,11 @@ export default function Chat() {
                       </span>
                     </div>
                   )}
-                  {selectedContact.observacoes && (
+                  {observacoesText && (
                     <div className="flex items-start gap-2">
                       <Info className="w-3.5 h-3.5 text-blue-500 mt-0.5 flex-shrink-0" />
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {selectedContact.observacoes}
+                      <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+                        {observacoesText}
                       </p>
                     </div>
                   )}

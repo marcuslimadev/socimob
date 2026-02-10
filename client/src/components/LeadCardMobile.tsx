@@ -254,7 +254,7 @@ const LeadCardMobile = ({
               }}
               title="Chat"
               aria-label="Chat"
-              className="flex items-center justify-center px-2 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-xs font-semibold text-white transition-all glow-sm hover:glow-md"
+              className="flex items-center justify-center px-2 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-semibold text-white transition-all"
             >
               <MessageSquare size={14} />
             </motion.button>

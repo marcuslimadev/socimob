@@ -114,47 +114,47 @@ export default function TimelineItem({ item, index, isLast }: Props) {
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: Math.min(index * 0.03, 0.5) }}
-      className="relative flex gap-3 sm:gap-4"
+      className="relative flex gap-2.5 sm:gap-4"
     >
       {/* Vertical line */}
       {!isLast && (
         <div
-          className="absolute left-[17px] sm:left-[19px] top-[36px] bottom-0 w-[2px]"
-          style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.03))' }}
+          className="absolute left-[15px] sm:left-[19px] top-[34px] sm:top-[36px] bottom-0 w-[2px]"
+          style={{ background: 'rgba(255,255,255,0.08)' }}
         />
       )}
 
       {/* Icon node */}
-      <div className={`relative z-10 flex-shrink-0 w-[36px] h-[36px] sm:w-[40px] sm:h-[40px] rounded-full ${colors.bg} border ${colors.border} flex items-center justify-center`}>
-        <IconComponent size={16} className={colors.text} />
+      <div className={`relative z-10 flex-shrink-0 w-[32px] h-[32px] sm:w-[40px] sm:h-[40px] rounded-full ${colors.bg} border ${colors.border} flex items-center justify-center`}>
+        <IconComponent size={14} className={`${colors.text} sm:!w-4 sm:!h-4`} />
       </div>
 
       {/* Content card */}
       <div
         onClick={handleClick}
-        className={`flex-1 p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] transition-all mb-3 ${item.link ? 'cursor-pointer' : 'cursor-default'}`}
+        className={`flex-1 min-w-0 p-2.5 sm:p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] transition-all mb-2.5 sm:mb-3 ${item.link ? 'cursor-pointer' : 'cursor-default'}`}
       >
         {/* Header row */}
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <h4 className="text-sm font-semibold text-foreground leading-tight">{item.title}</h4>
-          <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+        <div className="flex items-start justify-between gap-2 mb-0.5 sm:mb-1">
+          <h4 className="text-xs sm:text-sm font-semibold text-foreground leading-tight line-clamp-2">{item.title}</h4>
+          <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap flex-shrink-0 mt-0.5">
             {formatRelativeTime(item.timestamp)}
           </span>
         </div>
 
         {/* Description */}
-        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-2">
+        <p className="text-[11px] sm:text-sm text-muted-foreground leading-relaxed mb-1.5 sm:mb-2 line-clamp-2">
           {item.description}
         </p>
 
         {/* Footer badges */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           {item.actor?.name && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-muted-foreground">
+            <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-white/10 text-muted-foreground truncate max-w-[120px] sm:max-w-none">
               {item.actor.name}
             </span>
           )}
-          <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}>
+          <span className={`text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}>
             {catLabel}
           </span>
         </div>

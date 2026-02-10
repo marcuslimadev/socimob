@@ -260,7 +260,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 className="w-16 h-16 rounded-xl object-contain bg-white/5 p-2"
               />
             ) : (
-              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl glow-md">
+              <div className="w-16 h-16 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-2xl">
                 <Building2 size={32} />
               </div>
             )}
@@ -273,7 +273,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
               transition={{ delay: 0.2 }}
               className="text-center"
             >
-              <h1 className="font-bold text-base gradient-text line-clamp-1">
+              <h1 className="font-bold text-base text-foreground line-clamp-1">
                 {tenant?.name || 'SOCIMOB'}
               </h1>
               {tenant?.slogan && (
@@ -353,12 +353,12 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                   {isActive && (
                     <motion.div
                       layoutId="activeIndicator"
-                      className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-purple-600 rounded-r-lg"
+                      className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600 rounded-r-lg"
                       transition={{ type: 'spring', stiffness: 200 }}
                     />
                   )}
 
-                  <div className={`${isActive ? 'glow-sm' : ''}`}>
+                  <div>
                     {item.icon}
                   </div>
 
@@ -489,7 +489,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <h1 className="font-bold gradient-text text-base truncate">
+                      <h1 className="font-bold text-foreground text-base truncate">
                         {tenant?.name || 'SOCIMOB'}
                       </h1>
                       {tenant?.slogan && (
