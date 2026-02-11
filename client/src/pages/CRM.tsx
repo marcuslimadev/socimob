@@ -896,7 +896,7 @@ export default function CRM() {
             )}
           </div>
         )}
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden" style={{ backgroundColor: '#b3b3b3' }}>
           <ScrollArea ref={scrollAreaRef} className="h-full">
             <div className="p-4 space-y-4">
               {isLoadingMessages ? (
@@ -1357,7 +1357,7 @@ export default function CRM() {
             'fixed z-50',
             drawerDocked || isMobile
               ? 'inset-0 flex'
-              : 'bottom-4 right-4 w-[380px] max-w-[90vw] h-[70vh] max-h-[720px]'
+              : 'bottom-4 right-4 w-[440px] max-w-[90vw] h-[80vh] max-h-[820px]'
           )}
         >
           {(drawerDocked || isMobile) && (
