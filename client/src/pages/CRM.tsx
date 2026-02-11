@@ -10,12 +10,17 @@ import {
   User,
   MessageCircle,
   ChevronDown,
+  ChevronUp,
   FileText,
   ExternalLink,
   Download,
   Image,
+  Info,
   Users,
   RefreshCw,
+  Maximize2,
+  Minimize2,
+  Key,
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -36,6 +41,8 @@ interface CRMClient {
   email: string | null;
   status: string;
   classificacao: string | null;
+  observacoes?: string | null;
+  observacoes_cliente?: string | null;
   valor: number | null;
   corretor_id: number | null;
   corretor_nome: string | null;
@@ -87,6 +94,60 @@ const STATUS_CONFIG: Record<StatusKey, { label: string; color: string; bg: strin
 };
 
 const ALL_STATUSES: StatusKey[] = ['novo', 'em_atendimento', 'qualificado', 'proposta', 'fechado', 'perdido'];
+
+const createEmptyCRMData = (): Record<StatusKey, CRMClient[]> => ({
+  novo: [],
+  em_atendimento: [],
+  qualificado: [],
+  proposta: [],
+  fechado: [],
+  perdido: [],
+});
+
+function normalizeCRMData(raw: unknown): Record<StatusKey, CRMClient[]> {
+  const normalized = createEmptyCRMData();
+
+  if (!raw) return normalized;
+
+  if (Array.isArray(raw)) {
+    raw.forEach((item) => {
+      if (!item) return;
+      const status = ((item as CRMClient).status || 'novo') as StatusKey;
+      normalized[status] = [...normalized[status], item as CRMClient];
+    });
+    return normalized;
+  }
+
+  if (typeof raw === 'object') {
+    ALL_STATUSES.forEach((status) => {
+      const bucket = (raw as Record<string, unknown>)[status];
+      if (Array.isArray(bucket)) {
+        normalized[status] = bucket as CRMClient[];
+      } else if (bucket && Array.isArray((bucket as { data?: unknown }).data)) {
+        normalized[status] = (bucket as { data: CRMClient[] }).data;
+      }
+    });
+  }
+
+  return normalized;
+}
+
+function normalizeFlatClients(raw: unknown): CRMClient[] {
+  if (Array.isArray(raw)) return raw as CRMClient[];
+  if (raw && typeof raw === 'object') {
+    const values = Object.values(raw as Record<string, unknown>);
+    const flattened: CRMClient[] = [];
+    values.forEach((v) => {
+      if (Array.isArray(v)) {
+        flattened.push(...(v as CRMClient[]));
+      } else if (v && Array.isArray((v as { data?: unknown }).data)) {
+        flattened.push(...((v as { data: CRMClient[] }).data));
+      }
+    });
+    return flattened;
+  }
+  return [];
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -146,6 +207,23 @@ function truncateMsg(text: string | null, max = 50) {
 
 function formatHtmlMessage(html: string) {
   return html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
+}
+
+function decodeHtml(value: string) {
+  if (typeof window === 'undefined') return value;
+  const doc = new DOMParser().parseFromString(`<!doctype html><body>${value}`, 'text/html');
+  return doc.body.textContent || '';
+}
+
+function normalizeObservacoes(value?: string | null) {
+  if (!value) return '';
+  const withBreaks = value.replace(/<\s*br\s*\/?>/gi, '\n');
+  const withoutTags = withBreaks.replace(/<\/?[^>]+(>|$)/g, '');
+  let text = decodeHtml(withoutTags).trim();
+  // Remove repeated blocks (separated by "--- Atualização de Lead ---")
+  const sepIdx = text.indexOf('--- Atualização de Lead ---');
+  if (sepIdx > 0) text = text.slice(0, sepIdx).trim();
+  return text;
 }
 
 function isAudioMessage(m: Message) {
@@ -249,67 +327,48 @@ const ClientCard = memo(({ client, isSelected, onSelect }: {
   );
 });
 
-const KanbanColumn = memo(({ status, clients, selectedClientId, onSelect }: {
-  status: StatusKey;
-  clients: CRMClient[];
-  selectedClientId: number | null;
+const DataRow = memo(({ client, isSelected, onSelect }: {
+  client: CRMClient;
+  isSelected: boolean;
   onSelect: (client: CRMClient) => void;
 }) => {
-  const config = STATUS_CONFIG[status];
-  const [isOpen, setIsOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const filteredClients = useMemo(() => {
-    if (!query.trim()) return clients;
-    const term = query.toLowerCase();
-    return clients.filter((client) => (
-      client.nome?.toLowerCase().includes(term) ||
-      client.telefone?.toLowerCase().includes(term) ||
-      (client.email || '').toLowerCase().includes(term)
-    ));
-  }, [clients, query]);
-
+  const statusConf = STATUS_CONFIG[client.status as StatusKey] || STATUS_CONFIG.novo;
   return (
-    <div className="flex-shrink-0 w-[280px] flex flex-col">
-      <button
-        onClick={() => setIsOpen((prev) => !prev)}
-        className={cn(
-          'flex items-center gap-2 px-3 py-2 rounded-xl border transition-all',
-          config.bg
-        )}
-        aria-expanded={isOpen}
-      >
-        <span className={cn('text-sm font-semibold', config.color)}>{config.label}</span>
-        <span className={cn('text-xs font-bold px-1.5 py-0.5 rounded-full', config.bg, config.color)}>
-          {clients.length}
-        </span>
-        <span className="ml-auto text-xs text-muted-foreground">{isOpen ? 'Fechar' : 'Abrir'}</span>
-      </button>
-
-      {isOpen && (
-        <div className="mt-2 flex flex-col h-[calc(100%-2.5rem)]">
-          <div className="px-2 pb-2">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar..."
-              className="w-full px-3 py-2 bg-muted/40 border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="p-2 space-y-2">
-              {filteredClients.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-8">Nenhum cliente</p>
-              ) : (
-                filteredClients.map((client) => (
-                  <ClientCard key={client.id} client={client} isSelected={selectedClientId === client.id} onSelect={onSelect} />
-                ))
-              )}
-            </div>
-          </ScrollArea>
-        </div>
+    <tr
+      onClick={() => onSelect(client)}
+      className={cn(
+        'cursor-pointer border-b border-white/5 hover:bg-white/5 transition-colors',
+        isSelected && 'bg-primary/10'
       )}
-    </div>
+    >
+      <td className="px-3 py-3">
+        <div className="flex items-center gap-3">
+          <Avatar className="w-8 h-8 flex-shrink-0">
+            <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
+              {getInitials(client.nome)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">{client.nome}</p>
+            <p className="text-xs text-muted-foreground truncate">{client.email || '-'}</p>
+          </div>
+        </div>
+      </td>
+      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{client.telefone}</td>
+      <td className="px-3 py-3">
+        <span className={cn('text-[10px] font-semibold px-2 py-1 rounded-full border', statusConf.bg, statusConf.color)}>
+          {statusConf.label}
+        </span>
+      </td>
+      <td className="px-3 py-3 text-xs text-muted-foreground truncate max-w-[240px]">
+        {client.ultima_mensagem ? truncateMsg(client.ultima_mensagem, 60) : '-'}
+      </td>
+      <td className="px-3 py-3 text-xs text-muted-foreground">{client.corretor_nome || '-'}</td>
+      <td className="px-3 py-3 text-xs text-muted-foreground">{client.origem || '-'}</td>
+      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
+        {client.updated_at ? formatRelativeTime(client.updated_at) : '-'}
+      </td>
+    </tr>
   );
 });
 
@@ -326,6 +385,19 @@ export default function CRM() {
   const [mobileStatus, setMobileStatus] = useState<StatusKey>('novo');
   const [drawerDocked, setDrawerDocked] = useState(false);
   const [drawerCollapsed, setDrawerCollapsed] = useState(false);
+  const [obsExpanded, setObsExpanded] = useState(true);
+  const [tableSearch, setTableSearch] = useState('');
+  const debouncedTableSearch = useDebounce(tableSearch, 400);
+  const [statusFilter, setStatusFilter] = useState<StatusKey | 'all'>('all');
+  const [classificacaoFilter, setClassificacaoFilter] = useState<'all' | 'quente' | 'morno' | 'frio'>('all');
+  const [corretorFilter, setCorretorFilter] = useState<string>('');
+  const [sortKey, setSortKey] = useState<'updated_at' | 'nome' | 'status'>('updated_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [corretores, setCorretores] = useState<Array<{ id: number; name: string; email?: string }>>([]);
+  const [tablePage, setTablePage] = useState(1);
+  const [tablePerPage, setTablePerPage] = useState(50);
+  const [isMobile, setIsMobile] = useState(false);
+  const [flatTableError, setFlatTableError] = useState(false);
 
   // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -347,23 +419,136 @@ export default function CRM() {
 
   // ─── Fetch CRM data ───────────────────────────────────────────────
 
-  const { data: crmData, isLoading, refetch } = useQuery({
-    queryKey: ['crm-clientes', debouncedSearch],
+  const { data: crmData = createEmptyCRMData(), isLoading, refetch } = useQuery<Record<StatusKey, CRMClient[]>>({
+    queryKey: ['crm-clientes', debouncedSearch, corretorFilter, classificacaoFilter],
     queryFn: async () => {
       const params: any = {};
       if (debouncedSearch) params.search = debouncedSearch;
+      if (corretorFilter) params.corretor_id = corretorFilter;
+      if (classificacaoFilter !== 'all') params.classificacao = classificacaoFilter;
       const res = await api.get('/crm/clientes', { params });
-      if (res.data.success) return res.data.data as Record<StatusKey, CRMClient[]>;
-      return {} as Record<StatusKey, CRMClient[]>;
+      const payload = res?.data?.data ?? res?.data ?? [];
+      return normalizeCRMData(payload);
     },
     refetchInterval: 30000,
     staleTime: 15000,
+    initialData: createEmptyCRMData,
+  });
+
+  const { data: tableData, isLoading: isLoadingTable } = useQuery({
+    queryKey: ['crm-clientes-table', debouncedTableSearch, corretorFilter, classificacaoFilter, statusFilter, sortKey, sortDir, tablePage, tablePerPage],
+    queryFn: async () => {
+      const params: any = {
+        flat: 1,
+        page: tablePage,
+        per_page: tablePerPage,
+        sort_by: sortKey,
+        sort_dir: sortDir,
+      };
+      if (debouncedTableSearch) params.search = debouncedTableSearch;
+      if (corretorFilter) params.corretor_id = corretorFilter;
+      if (classificacaoFilter !== 'all') params.classificacao = classificacaoFilter;
+      if (statusFilter !== 'all') params.status = statusFilter;
+      const res = await api.get('/crm/clientes', { params });
+      const raw = res?.data ?? {};
+      const flat = normalizeFlatClients(raw?.data ?? raw);
+      return {
+        ...raw,
+        data: flat,
+      };
+    },
+    keepPreviousData: true,
+    onError: () => setFlatTableError(true),
+    onSuccess: () => setFlatTableError(false),
   });
 
   const allClients = useMemo(() => {
     if (!crmData) return [];
-    return ALL_STATUSES.flatMap((s) => crmData[s] || []);
+    return ALL_STATUSES.flatMap((s) => Array.isArray(crmData[s]) ? crmData[s] : []);
   }, [crmData]);
+
+  const tableClients = useMemo(() => {
+    if (!flatTableError && Array.isArray(tableData?.data)) {
+      return tableData.data as CRMClient[];
+    }
+
+    const term = tableSearch.trim().toLowerCase();
+    let filtered = term
+      ? allClients.filter((client) => (
+          client.nome?.toLowerCase().includes(term) ||
+          client.telefone?.toLowerCase().includes(term) ||
+          (client.email || '').toLowerCase().includes(term) ||
+          (client.corretor_nome || '').toLowerCase().includes(term) ||
+          (client.origem || '').toLowerCase().includes(term)
+        ))
+      : allClients;
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((client) => (client.status || 'novo') === statusFilter);
+    }
+    if (classificacaoFilter !== 'all') {
+      filtered = filtered.filter((client) => client.classificacao === classificacaoFilter);
+    }
+    if (corretorFilter) {
+      filtered = filtered.filter((client) => String(client.corretor_id || '') === String(corretorFilter));
+    }
+
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortKey === 'nome') {
+        const aName = (a.nome || '').toLowerCase();
+        const bName = (b.nome || '').toLowerCase();
+        return sortDir === 'asc' ? aName.localeCompare(bName) : bName.localeCompare(aName);
+      }
+      if (sortKey === 'status') {
+        const aStatus = a.status || 'novo';
+        const bStatus = b.status || 'novo';
+        return sortDir === 'asc' ? aStatus.localeCompare(bStatus) : bStatus.localeCompare(aStatus);
+      }
+      const aTime = new Date(a.updated_at || a.ultima_mensagem_at || a.created_at || 0).getTime();
+      const bTime = new Date(b.updated_at || b.ultima_mensagem_at || b.created_at || 0).getTime();
+      return sortDir === 'asc' ? aTime - bTime : bTime - aTime;
+    });
+
+    const start = (tablePage - 1) * tablePerPage;
+    return sorted.slice(start, start + tablePerPage);
+  }, [flatTableError, tableData, allClients, tableSearch, statusFilter, classificacaoFilter, corretorFilter, sortKey, sortDir, tablePage, tablePerPage]);
+
+  const tableMeta = useMemo(() => {
+    if (!flatTableError && tableData) {
+      return {
+        total: tableData.total || 0,
+        current_page: tableData.current_page || 1,
+        last_page: tableData.last_page || 1,
+        per_page: tableData.per_page || tablePerPage,
+      };
+    }
+    const term = tableSearch.trim().toLowerCase();
+    let filtered = term
+      ? allClients.filter((client) => (
+          client.nome?.toLowerCase().includes(term) ||
+          client.telefone?.toLowerCase().includes(term) ||
+          (client.email || '').toLowerCase().includes(term) ||
+          (client.corretor_nome || '').toLowerCase().includes(term) ||
+          (client.origem || '').toLowerCase().includes(term)
+        ))
+      : allClients;
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((client) => (client.status || 'novo') === statusFilter);
+    }
+    if (classificacaoFilter !== 'all') {
+      filtered = filtered.filter((client) => client.classificacao === classificacaoFilter);
+    }
+    if (corretorFilter) {
+      filtered = filtered.filter((client) => String(client.corretor_id || '') === String(corretorFilter));
+    }
+    const total = filtered.length;
+    const last_page = Math.max(1, Math.ceil(total / tablePerPage));
+    return {
+      total,
+      current_page: Math.min(tablePage, last_page),
+      last_page,
+      per_page: tablePerPage,
+    };
+  }, [flatTableError, tableData, allClients, tableSearch, statusFilter, classificacaoFilter, corretorFilter, tablePage, tablePerPage]);
 
   // ─── Callbacks (stable references) ─────────────────────────────────
 
@@ -383,6 +568,48 @@ export default function CRM() {
       toast.error('Erro ao atualizar status');
     }
   }, [queryClient]);
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [debouncedTableSearch, statusFilter, classificacaoFilter, corretorFilter, sortKey, sortDir, tablePerPage]);
+
+  useEffect(() => {
+    const update = () => {
+      const mobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (mobile) {
+        setDrawerDocked(true);
+        setDrawerCollapsed(false);
+      }
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
+      const user = JSON.parse(storedUser);
+      const role = user?.role;
+      if (role === 'admin' || role === 'super_admin') {
+        api.get('/admin/corretores')
+          .then((res) => {
+            if (Array.isArray(res.data?.corretores)) {
+              setCorretores(res.data.corretores);
+            } else {
+              setCorretores([]);
+            }
+          })
+          .catch(() => {
+            // silent
+          });
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const getDocumentsEndpoint = useCallback((client: CRMClient) => {
     if (client.pessoa_id) return `/pessoas/${client.pessoa_id}/documentos`;
@@ -623,8 +850,52 @@ export default function CRM() {
       );
     }
 
+    const rawObs = selectedClient.observacoes || selectedClient.pessoa?.observacoes || '';
+    const rawObsCliente = selectedClient.observacoes_cliente || '';
+    const observacoesParts = [
+      normalizeObservacoes(rawObs),
+      normalizeObservacoes(rawObsCliente),
+    ].filter((value, index, arr) => value && arr.indexOf(value) === index);
+    const observacoesText = observacoesParts.join('\n\n');
+
+    const origemValue = selectedClient.origem || selectedClient.pessoa?.origem || '';
+    const isChavesNaMao = origemValue === 'chaves_na_mao' || rawObs.toLowerCase().includes('chaves na m');
+    const showObsPanel = !!(observacoesText || isChavesNaMao);
+
     return (
       <div className="flex-1 flex flex-col min-h-0">
+        {showObsPanel && (
+          <div className="border-b border-border bg-amber-500/5 flex-shrink-0">
+            <button
+              onClick={() => setObsExpanded((p) => !p)}
+              className="w-full flex items-center gap-2 px-4 py-2 hover:bg-amber-500/10 transition-colors"
+            >
+              <Key className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+              <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 truncate">
+                {isChavesNaMao ? 'Chaves na Mão' : 'Observações'}
+              </span>
+              {!obsExpanded && observacoesText && (
+                <span className="text-[10px] text-muted-foreground truncate flex-1 text-left">
+                  — {observacoesText.split('\n')[0]}
+                </span>
+              )}
+              <span className="ml-auto flex-shrink-0 text-muted-foreground">
+                {obsExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              </span>
+            </button>
+            {obsExpanded && (
+              <div className="px-4 pb-2.5" style={{ paddingLeft: '1.375rem' }}>
+                {observacoesText ? (
+                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line ml-4">
+                    {observacoesText}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground/60 italic ml-4">Sem observações registradas</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex-1 min-h-0 overflow-hidden">
           <ScrollArea ref={scrollAreaRef} className="h-full">
             <div className="p-4 space-y-4">
@@ -900,10 +1171,143 @@ export default function CRM() {
         ) : (
           <>
             {/* Desktop: Kanban */}
-            <div className="hidden lg:flex flex-1 min-h-0 overflow-x-auto p-4 gap-3">
-              {ALL_STATUSES.map((status) => (
-                <KanbanColumn key={status} status={status} clients={crmData?.[status] || []} selectedClientId={selectedClientId} onSelect={handleSelectClient} />
-              ))}
+            <div className="hidden lg:flex flex-1 min-h-0 p-4">
+              <div className="w-full flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    type="text"
+                    value={tableSearch}
+                    onChange={(e) => setTableSearch(e.target.value)}
+                    placeholder="Buscar clientes..."
+                    className="w-full max-w-md px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as StatusKey | 'all')}
+                    className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900"
+                  >
+                    <option value="all">Todos os status</option>
+                    {ALL_STATUSES.map((s) => (
+                      <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={classificacaoFilter}
+                    onChange={(e) => setClassificacaoFilter(e.target.value as 'all' | 'quente' | 'morno' | 'frio')}
+                    className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900"
+                  >
+                    <option value="all">Classificação</option>
+                    <option value="quente">Quente</option>
+                    <option value="morno">Morno</option>
+                    <option value="frio">Frio</option>
+                  </select>
+                  {corretores.length > 0 && (
+                    <select
+                      value={corretorFilter}
+                      onChange={(e) => setCorretorFilter(e.target.value)}
+                      className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900"
+                    >
+                      <option value="">Todos os corretores</option>
+                      {corretores.map((corretor) => (
+                        <option key={corretor.id} value={corretor.id}>
+                          {corretor.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <select
+                    value={sortKey}
+                    onChange={(e) => setSortKey(e.target.value as 'updated_at' | 'nome' | 'status')}
+                    className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900"
+                  >
+                    <option value="updated_at">Ordenar: Atualização</option>
+                    <option value="nome">Ordenar: Nome</option>
+                    <option value="status">Ordenar: Status</option>
+                  </select>
+                  <button
+                    onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                    className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground hover:bg-white/10 transition-colors"
+                    title="Alternar ordem"
+                  >
+                    {sortDir === 'asc' ? '↑' : '↓'}
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    {tableMeta.total} resultado(s)
+                  </span>
+                </div>
+                <div className="rounded-xl border border-white/10 overflow-hidden">
+                  <ScrollArea className="max-h-[calc(100vh-240px)]">
+                    <table className="w-full text-left">
+                      <thead className="sticky top-0 bg-background/80 backdrop-blur border-b border-white/10">
+                        <tr className="text-xs uppercase tracking-wider text-muted-foreground">
+                          <th className="px-3 py-3">Cliente</th>
+                          <th className="px-3 py-3">Telefone</th>
+                          <th className="px-3 py-3">Status</th>
+                          <th className="px-3 py-3">Última mensagem</th>
+                          <th className="px-3 py-3">Corretor</th>
+                          <th className="px-3 py-3">Origem</th>
+                          <th className="px-3 py-3">Atualizado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {isLoadingTable ? (
+                          <tr>
+                            <td colSpan={7} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                              <Loader2 className="w-4 h-4 animate-spin inline-block mr-2" />
+                              Carregando...
+                            </td>
+                          </tr>
+                        ) : tableClients.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                              Nenhum cliente encontrado
+                            </td>
+                          </tr>
+                        ) : (
+                          tableClients.map((client) => (
+                            <DataRow
+                              key={client.id}
+                              client={client}
+                              isSelected={selectedClientId === client.id}
+                              onSelect={handleSelectClient}
+                            />
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </ScrollArea>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <div>
+                    Página {tableMeta.current_page} de {tableMeta.last_page} • Total {tableMeta.total}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={tablePerPage}
+                      onChange={(e) => setTablePerPage(Number(e.target.value))}
+                      className="px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900"
+                    >
+                      {[25, 50, 100, 200].map((n) => (
+                        <option key={n} value={n}>{n}/página</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => setTablePage((p) => Math.max(1, p - 1))}
+                      disabled={tableMeta.current_page <= 1}
+                      className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-foreground disabled:opacity-50"
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      onClick={() => setTablePage((p) => Math.min(tableMeta.last_page, p + 1))}
+                      disabled={tableMeta.current_page >= tableMeta.last_page}
+                      className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-foreground disabled:opacity-50"
+                    >
+                      Próxima
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Mobile: Tabs + List */}
@@ -951,23 +1355,23 @@ export default function CRM() {
         <div
           className={cn(
             'fixed z-50',
-            drawerDocked
+            drawerDocked || isMobile
               ? 'inset-0 flex'
               : 'bottom-4 right-4 w-[380px] max-w-[90vw] h-[70vh] max-h-[720px]'
           )}
         >
-          {drawerDocked && (
+          {(drawerDocked || isMobile) && (
             <div className="absolute inset-0 bg-black/40 lg:bg-black/20" onClick={() => setSelectedClient(null)} />
           )}
 
-          <div
-            className={cn(
+            <div
+              className={cn(
               'relative bg-background border border-border flex flex-col overflow-hidden',
-              drawerDocked
+              (drawerDocked || isMobile)
                 ? 'ml-auto w-full h-full lg:w-[55%] xl:w-[50%] rounded-none border-l'
-                : 'shadow-2xl rounded-2xl'
-            )}
-          >
+                : 'shadow-2xl rounded-2xl h-full max-h-[80vh]'
+              )}
+            >
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
               {drawerDocked ? (
@@ -985,22 +1389,26 @@ export default function CRM() {
                 <p className="text-xs text-muted-foreground truncate">{selectedClient.telefone}</p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                {!isMobile && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-8 h-8 text-muted-foreground hover:text-foreground"
+                    onClick={() => setDrawerDocked((prev) => !prev)}
+                    title={drawerDocked ? 'Flutuar' : 'Encaixar'}
+                  >
+                    {drawerDocked ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => setDrawerDocked((prev) => !prev)}
-                >
-                  {drawerDocked ? 'Flutuar' : 'Encaixar'}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-foreground"
+                  size="icon"
+                  className="w-8 h-8 text-muted-foreground hover:text-foreground"
                   onClick={() => setDrawerCollapsed((prev) => !prev)}
+                  title={drawerCollapsed ? 'Abrir' : 'Minimizar'}
                 >
-                  {drawerCollapsed ? 'Abrir' : 'Minimizar'}
+                  {drawerCollapsed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </Button>
                 <div className="relative group">
                   <button className={cn('flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border', (STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).bg, (STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).color)}>
@@ -1030,7 +1438,7 @@ export default function CRM() {
                   ))}
                 </div>
                 {/* Tab content */}
-                <div className="flex-1 min-h-0 flex flex-col">
+                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                   {activeTab === 'chat' ? renderChatTab() : renderPerfilTab()}
                 </div>
               </>
