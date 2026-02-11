@@ -132,13 +132,16 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
     $router->group(['prefix' => 'portal'], function () use ($router) {
         // Configura‡Æo do tenant (p£blico)
         $router->get('/config', 'Portal\PortalController@getConfig');
-        
+
         // Listagem de im¢veis (p£blico)
         $router->get('/imoveis', 'Portal\PortalController@getImoveis');
-        
+
         // Detalhes de im¢vel (p£blico)
         $router->get('/imoveis/{id}', 'Portal\PortalController@getImovel');
-        
+
+        // Chat bot - criar lead (público, sem auth)
+        $router->post('/chat-lead', ['middleware' => 'throttle:10,1', 'uses' => 'Portal\PortalController@createChatLead']);
+
         // Login do portal
         $router->post('/auth/login', 'Portal\ClientAuthController@login');
         $router->post('/auth/register', 'Portal\ClientAuthController@register');
@@ -377,6 +380,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
         // Proxy de mídia (Twilio) – também exposto sem auth em /api/conversas/media/proxy
         $router->get('/conversas/media/proxy', 'Admin\ConversasController@proxyMedia');
         $router->get('/mensagens/{id}/media', 'Admin\MensagemMediaController@show');
+        $router->get('/corretores', 'Admin\CommissionController@listarCorretores');
 
         // Leads - SMS
         $router->post('/leads/{id}/sms', 'Admin\LeadsController@sendSms');

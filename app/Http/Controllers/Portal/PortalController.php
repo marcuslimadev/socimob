@@ -389,7 +389,7 @@ class PortalController extends Controller
     public function registrarInteresse(Request $request)
     {
         $tenantId = $request->attributes->get('tenant_id');
-        
+
         if (!$tenantId) {
             return response()->json(['error' => 'Tenant not found'], 404);
         }
@@ -408,11 +408,107 @@ class PortalController extends Controller
 
         // Criar lead (você pode criar uma tabela 'leads' depois)
         // Por enquanto, retornar sucesso
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Interesse registrado com sucesso! Entraremos em contato em breve.'
         ]);
+    }
+
+    /**
+     * Criar lead via chat bot do portal (público, sem auth)
+     * POST /api/portal/chat-lead
+     */
+    public function createChatLead(Request $request)
+    {
+        try {
+            $tenantId = $request->attributes->get('tenant_id');
+
+            if (!$tenantId) {
+                $tenantId = 1;
+            }
+
+            $validator = Validator::make($request->all(), [
+                'nome' => 'required|string|max:255',
+                'whatsapp' => 'required|string|max:20',
+                'email' => 'nullable|email|max:255',
+                'interesse' => 'nullable|string|max:500',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Dados inválidos',
+                    'messages' => $validator->errors(),
+                ], 422);
+            }
+
+            $whatsapp = preg_replace('/\D/', '', $request->whatsapp);
+
+            // Check for existing lead with same whatsapp for this tenant
+            $existingLead = \App\Models\Lead::where('tenant_id', $tenantId)
+                ->where(function ($q) use ($whatsapp, $request) {
+                    $q->where('telefone', 'like', "%{$whatsapp}%")
+                      ->orWhere('whatsapp', 'like', "%{$whatsapp}%");
+                    if ($request->email) {
+                        $q->orWhere('email', $request->email);
+                    }
+                })
+                ->first();
+
+            if ($existingLead) {
+                // Update existing lead
+                if ($request->interesse) {
+                    $obs = $existingLead->observacoes ?? '';
+                    $obs .= ($obs ? "\n" : '') . "[Chat Portal " . now()->format('d/m/Y H:i') . "] " . $request->interesse;
+                    $existingLead->observacoes = $obs;
+                }
+                if ($request->email && !$existingLead->email) {
+                    $existingLead->email = $request->email;
+                }
+                $existingLead->save();
+
+                $lead = $existingLead;
+            } else {
+                // Create new lead
+                $lead = \App\Models\Lead::create([
+                    'tenant_id' => $tenantId,
+                    'nome' => $request->nome,
+                    'telefone' => $whatsapp,
+                    'whatsapp' => $whatsapp,
+                    'email' => $request->email,
+                    'status' => 'novo',
+                    'classificacao' => 'quente',
+                    'observacoes' => $request->interesse
+                        ? "[Chat Portal " . now()->format('d/m/Y H:i') . "] " . $request->interesse
+                        : "[Chat Portal " . now()->format('d/m/Y H:i') . "] Lead capturado via chat automatizado do portal",
+                ]);
+            }
+
+            // Get tenant WhatsApp number
+            $tenant = \App\Models\Tenant::find($tenantId);
+            $config = $tenant ? $tenant->config : null;
+            $tenantWhatsapp = $config && $config->whatsapp_number
+                ? preg_replace('/\D/', '', $config->whatsapp_number)
+                : ($tenant ? preg_replace('/\D/', '', $tenant->contact_phone ?? '') : '');
+
+            return response()->json([
+                'success' => true,
+                'lead_id' => $lead->id,
+                'whatsapp_number' => $tenantWhatsapp,
+                'message' => 'Lead criado com sucesso!',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('[Portal] Erro ao criar lead via chat', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Erro ao registrar seu contato. Tente novamente.',
+            ], 500);
+        }
     }
 }
 
