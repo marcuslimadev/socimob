@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   MapPin,
@@ -20,6 +19,8 @@ import {
   Sun,
   Moon,
   Map as MapIcon,
+  Send,
+  Bot,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
@@ -27,7 +28,7 @@ import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useTheme } from '@/contexts/ThemeContext';
+// Theme forced to light mode in portal
 
 // Leaflet imports
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
@@ -388,6 +389,205 @@ function PhotoCarousel({
   );
 }
 
+// ===== Panda SVG Mascot =====
+const PandaSvg = ({ size = 48 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="30" cy="28" r="18" fill="#2d2d2d"/>
+    <circle cx="90" cy="28" r="18" fill="#2d2d2d"/>
+    <circle cx="30" cy="28" r="10" fill="#4a4a4a"/>
+    <circle cx="90" cy="28" r="10" fill="#4a4a4a"/>
+    <ellipse cx="60" cy="62" rx="42" ry="40" fill="#f5f5f5"/>
+    <ellipse cx="42" cy="55" rx="14" ry="12" fill="#2d2d2d" transform="rotate(-8 42 55)"/>
+    <ellipse cx="78" cy="55" rx="14" ry="12" fill="#2d2d2d" transform="rotate(8 78 55)"/>
+    <ellipse cx="42" cy="54" rx="6" ry="7" fill="white"/>
+    <ellipse cx="78" cy="54" rx="6" ry="7" fill="white"/>
+    <circle cx="44" cy="53" r="3.5" fill="#1a1a1a"/>
+    <circle cx="80" cy="53" r="3.5" fill="#1a1a1a"/>
+    <circle cx="45" cy="51.5" r="1.2" fill="white"/>
+    <circle cx="81" cy="51.5" r="1.2" fill="white"/>
+    <ellipse cx="60" cy="68" rx="5" ry="3.5" fill="#2d2d2d"/>
+    <path d="M55 72 Q60 78 65 72" stroke="#2d2d2d" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+    <circle cx="32" cy="68" r="6" fill="#ffb3b3" opacity="0.4"/>
+    <circle cx="88" cy="68" r="6" fill="#ffb3b3" opacity="0.4"/>
+    <path d="M18 50 Q18 30 60 25 Q102 30 102 50" stroke="#555" strokeWidth="3.5" fill="none" strokeLinecap="round"/>
+    <rect x="10" y="45" width="12" height="16" rx="4" fill="#555"/>
+    <rect x="98" y="45" width="12" height="16" rx="4" fill="#555"/>
+    <circle cx="16" cy="53" r="3" fill="#4CAF50"/>
+    <circle cx="104" cy="53" r="3" fill="#4CAF50"/>
+  </svg>
+);
+
+// ===== Chat Widget Types =====
+type ChatStep = 'greeting' | 'ask_name' | 'ask_whatsapp' | 'ask_email' | 'ask_interesse' | 'submitting' | 'done';
+interface ChatMessage { from: 'bot' | 'user'; text: string; }
+
+// ===== Panda Chat Widget =====
+function PandaChatWidget({ tenantPhone, tenantName, primary }: { tenantPhone?: string; tenantName?: string; primary: string }) {
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<ChatStep>('greeting');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [nome, setNome] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [email, setEmail] = useState('');
+  const [interesse, setInteresse] = useState('');
+  const [leadWhatsapp, setLeadWhatsapp] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => { if (open && inputRef.current) setTimeout(() => inputRef.current?.focus(), 300); }, [open, step]);
+
+  const addBot = (text: string) => setMessages(prev => [...prev, { from: 'bot', text }]);
+  const addUser = (text: string) => setMessages(prev => [...prev, { from: 'user', text }]);
+
+  const handleOpen = () => {
+    setOpen(true);
+    if (messages.length === 0) {
+      setTimeout(() => {
+        addBot(`Oi! Eu sou o Pandinha, assistente virtual da ${tenantName || 'imobiliária'}!`);
+        setTimeout(() => { addBot('Posso te ajudar a encontrar o imóvel ideal. Para começar, qual é o seu nome?'); setStep('ask_name'); }, 600);
+      }, 300);
+    }
+  };
+
+  const fmtWa = (v: string) => {
+    const d = v.replace(/\D/g, '');
+    if (d.length <= 2) return `(${d}`;
+    if (d.length <= 7) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+    return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7,11)}`;
+  };
+
+  const handleSend = async () => {
+    const val = input.trim();
+    if (!val) return;
+    setInput('');
+    switch (step) {
+      case 'ask_name':
+        addUser(val); setNome(val);
+        setTimeout(() => { addBot(`Prazer, ${val}!`); setTimeout(() => { addBot('Qual o seu WhatsApp? Assim posso te conectar com nosso time.'); setStep('ask_whatsapp'); }, 500); }, 400);
+        break;
+      case 'ask_whatsapp': {
+        const digits = val.replace(/\D/g, '');
+        if (digits.length < 10) { addBot('Hmm, número incompleto. Informe com DDD, ex: (31) 99999-8888'); return; }
+        addUser(val); setWhatsapp(digits);
+        setTimeout(() => { addBot('Perfeito! E o seu e-mail? (digite "pular" se preferir não informar)'); setStep('ask_email'); }, 400);
+        break;
+      }
+      case 'ask_email':
+        if (val.toLowerCase() === 'pular' || val.toLowerCase() === 'não' || val.toLowerCase() === 'nao') {
+          addUser('Prefiro não informar');
+          setTimeout(() => { addBot('Sem problemas! Que tipo de imóvel você procura? (ex: apartamento 2 quartos, casa com quintal...)'); setStep('ask_interesse'); }, 400);
+        } else if (!val.includes('@')) {
+          addBot('Hmm, e-mail inválido. Tente novamente ou digite "pular".'); return;
+        } else {
+          addUser(val); setEmail(val);
+          setTimeout(() => { addBot('Ótimo! Que tipo de imóvel você procura? (ex: apartamento 2 quartos, casa com quintal...)'); setStep('ask_interesse'); }, 400);
+        }
+        break;
+      case 'ask_interesse':
+        addUser(val); setInteresse(val); setStep('submitting');
+        setTimeout(async () => {
+          addBot('Registrando seu contato...');
+          try {
+            const resp = await fetch('/api/portal/chat-lead', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Tenant-Domain': window.location.hostname },
+              body: JSON.stringify({ nome, whatsapp, email: email || undefined, interesse: val }),
+            });
+            const data = await resp.json();
+            if (data.success) {
+              const wpNum = data.whatsapp_number || (tenantPhone ? tenantPhone.replace(/\D/g, '') : '');
+              setLeadWhatsapp(wpNum);
+              setTimeout(() => { addBot(`Pronto, ${nome}! Seu contato foi registrado!`); setTimeout(() => { addBot('Um corretor vai entrar em contato em breve. Você pode iniciar uma conversa pelo WhatsApp agora mesmo!'); setStep('done'); }, 600); }, 500);
+            } else {
+              addBot('Ops, tivemos um problema. Tente pelo WhatsApp direto!');
+              setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : ''); setStep('done');
+            }
+          } catch {
+            addBot('Ops, algo deu errado. Tente pelo WhatsApp direto!');
+            setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : ''); setStep('done');
+          }
+        }, 300);
+        break;
+    }
+  };
+
+  const waLink = leadWhatsapp
+    ? `https://wa.me/${leadWhatsapp}?text=${encodeURIComponent(`Olá! Sou ${nome}, acabei de me cadastrar pelo portal. Estou interessado em: ${interesse}`)}`
+    : tenantPhone ? `https://wa.me/${tenantPhone.replace(/\D/g, '')}?text=${encodeURIComponent('Olá! Tenho interesse em imóveis.')}` : '';
+
+  return (
+    <>
+      {open && (
+        <div className="fixed bottom-24 right-4 sm:right-6 z-[60] w-[340px] sm:w-[380px] rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'min(520px, calc(100vh - 140px))', backgroundColor: '#fff' }}>
+          <div className="flex items-center gap-3 px-4 py-3 text-white flex-shrink-0" style={{ backgroundColor: primary }}>
+            <PandaSvg size={36} />
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm leading-tight">Pandinha</div>
+              <div className="text-[11px] opacity-80 flex items-center gap-1"><Bot className="w-3 h-3" />Assistente Virtual</div>
+            </div>
+            <button onClick={() => setOpen(false)} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"><X className="w-4 h-4" /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ backgroundColor: '#f0ede8', minHeight: '280px' }}>
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {msg.from === 'bot' && <div className="w-7 h-7 rounded-full flex items-center justify-center mr-2 flex-shrink-0 mt-0.5" style={{ backgroundColor: '#f5f5f5' }}><PandaSvg size={22} /></div>}
+                <div className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.from === 'user' ? 'text-white rounded-br-md' : 'rounded-bl-md'}`} style={{ backgroundColor: msg.from === 'user' ? primary : '#fff', color: msg.from === 'user' ? '#fff' : '#333', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>{msg.text}</div>
+              </div>
+            ))}
+            {step === 'done' && waLink && (
+              <div className="flex justify-start">
+                <div className="w-7 h-7 mr-2 flex-shrink-0" />
+                <a href={waLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-2xl rounded-bl-md text-sm font-medium transition-colors shadow-sm">
+                  <MessageCircle className="w-5 h-5" />Continuar no WhatsApp
+                </a>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+          {step !== 'done' && step !== 'submitting' && step !== 'greeting' && (
+            <div className="flex items-center gap-2 px-3 py-3" style={{ borderTop: '1px solid #e8e4de' }}>
+              <input
+                ref={inputRef}
+                type={step === 'ask_whatsapp' ? 'tel' : step === 'ask_email' ? 'email' : 'text'}
+                value={input}
+                onChange={(e) => step === 'ask_whatsapp' ? setInput(fmtWa(e.target.value)) : setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                placeholder={step === 'ask_name' ? 'Seu nome...' : step === 'ask_whatsapp' ? '(31) 99999-8888' : step === 'ask_email' ? 'seu@email.com' : 'Ex: apartamento 2 quartos...'}
+                className="flex-1 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2"
+                style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }}
+              />
+              <button onClick={handleSend} className="w-9 h-9 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ backgroundColor: primary }}><Send className="w-4 h-4" /></button>
+            </div>
+          )}
+          <div className="px-4 py-1.5 text-center" style={{ borderTop: '1px solid #e8e4de', backgroundColor: '#fafaf8' }}>
+            <span className="text-[10px]" style={{ color: '#aaa' }}>Atendimento automatizado por IA</span>
+          </div>
+        </div>
+      )}
+      <button
+        onClick={open ? () => setOpen(false) : handleOpen}
+        className="fixed bottom-6 right-4 sm:right-6 z-[60] w-16 h-16 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200"
+        style={{ backgroundColor: open ? '#666' : primary }}
+      >
+        {open ? <X className="w-6 h-6 text-white" /> : (
+          <div className="relative">
+            <PandaSvg size={40} />
+            <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white" />
+          </div>
+        )}
+      </button>
+      {!open && (
+        <div className="fixed bottom-[88px] right-4 sm:right-6 z-[59] rounded-xl shadow-lg px-3 py-2 text-sm font-medium animate-bounce" style={{ backgroundColor: '#fff', color: primary, animationDuration: '2s' }}>
+          <div className="absolute bottom-0 right-6 w-3 h-3 rotate-45 translate-y-1.5 shadow-lg" style={{ backgroundColor: '#fff' }} />
+          Posso te ajudar?
+        </div>
+      )}
+    </>
+  );
+}
+
 // ===== Main Component =====
 export default function ClientPortal() {
   const [, navigate] = useLocation();
@@ -406,7 +606,7 @@ export default function ClientPortal() {
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
-  const { theme, toggleTheme } = useTheme();
+  // theme forced to light via useEffect below
 
   // Load tenant configuration
   useEffect(() => {
@@ -477,24 +677,6 @@ export default function ClientPortal() {
   }, [openDropdown]);
 
   const primary = tenant?.primary_color || '#1e40af';
-  const secondary = tenant?.secondary_color || '#f59e0b';
-  const tenantLogo = tenant?.logo_url || tenant?.logo || '';
-  const mascotUrl = useMemo(() => {
-    if (!tenant) return '';
-    const meta = tenant.metadata || {};
-    return (
-      meta.mascote_url ||
-      meta.mascot_url ||
-      meta.assistant_avatar_url ||
-      meta.assistant_avatar ||
-      meta.avatar_url ||
-      (tenant as any).mascote_url ||
-      (tenant as any).mascot_url ||
-      (tenant as any).assistant_avatar_url ||
-      (tenant as any).assistant_avatar ||
-      ''
-    );
-  }, [tenant]);
 
   const handleLike = async (propertyId: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -697,16 +879,15 @@ export default function ClientPortal() {
       .join(' \u00B7 ');
 
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+      <div
         onClick={() => navigate(`/portal/imovel/${property.id}`)}
         onMouseEnter={() => setHoveredProperty(property.id)}
         onMouseLeave={() => setHoveredProperty(null)}
         className={cn(
-          'group bg-card rounded-lg overflow-hidden cursor-pointer transition-shadow',
-          hoveredProperty === property.id ? 'shadow-lg' : 'hover:shadow-md'
+          'group rounded-xl overflow-hidden cursor-pointer transition-shadow duration-200',
+          hoveredProperty === property.id ? 'shadow-lg' : 'shadow-sm hover:shadow-md'
         )}
+        style={{ backgroundColor: '#ffffff' }}
       >
         {/* Photo carousel */}
         <div className="relative aspect-[4/3] overflow-hidden">
@@ -720,26 +901,26 @@ export default function ClientPortal() {
 
         {/* Content */}
         <div className="p-4">
-          <p className="text-sm text-foreground/80 line-clamp-2 leading-snug mb-2.5">
+          <p className="text-sm line-clamp-2 leading-snug mb-2.5" style={{ color: '#444' }}>
             {description}
           </p>
 
-          <p className="text-[17px] font-bold text-foreground leading-tight">
+          <p className="text-[17px] font-bold leading-tight" style={{ color: '#1a1a1a' }}>
             {formatPrice(price)}
           </p>
           {property.finalidade_imovel?.toLowerCase().includes('aluguel') && (
-            <p className="text-xs text-muted-foreground mt-0.5">/mês</p>
+            <p className="text-xs mt-0.5" style={{ color: '#888' }}>/mês</p>
           )}
 
           {details && (
-            <p className="text-sm text-muted-foreground mt-2.5">{details}</p>
+            <p className="text-sm mt-2.5" style={{ color: '#666' }}>{details}</p>
           )}
 
           {address && (
-            <p className="text-xs text-muted-foreground mt-1 truncate">{address}</p>
+            <p className="text-xs mt-1 truncate" style={{ color: '#888' }}>{address}</p>
           )}
         </div>
-      </motion.div>
+      </div>
     );
   };
 
@@ -812,65 +993,43 @@ export default function ClientPortal() {
     </MapContainer>
   );
 
+  // Force light theme for portal
+  useEffect(() => {
+    const root = document.documentElement;
+    const wasDark = root.classList.contains('dark');
+    root.classList.remove('dark');
+    return () => { if (wasDark) root.classList.add('dark'); };
+  }, []);
+
   // ===== RENDER =====
   return (
-    <div
-      className="min-h-screen bg-background flex flex-col"
-      style={{
-        fontFamily: "Futura, 'Avenir Next', 'Century Gothic', ui-sans-serif, system-ui",
-        backgroundImage:
-          'radial-gradient(circle at 6% 8%, rgba(234, 67, 53, 0.14) 0, rgba(234, 67, 53, 0.14) 90px, transparent 92px), radial-gradient(circle at 94% 12%, rgba(66, 133, 244, 0.14) 0, rgba(66, 133, 244, 0.14) 110px, transparent 112px), linear-gradient(135deg, rgba(251, 188, 5, 0.08), transparent 45%)',
-      }}
-    >
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f7f5f0' }}>
       {/* ===== STICKY HEADER ===== */}
-      <div className="sticky top-0 z-50 bg-card border-b border-border">
+      <div className="sticky top-0 z-50 border-b" style={{ backgroundColor: '#ffffff', borderColor: '#e8e4de' }}>
         {/* Row 1: Logo + Actions */}
-        <div className="px-4 lg:px-6 relative overflow-hidden">
-          <div className="pointer-events-none absolute -right-8 -top-8 w-24 h-24 rounded-full border-8 border-red-500/20" />
-          <div className="pointer-events-none absolute right-16 -bottom-5 w-14 h-14 bg-blue-500/15 rotate-12" />
+        <div className="px-4 lg:px-6">
           <div className="flex items-center justify-between h-[60px]">
             <div className="flex items-center gap-3 min-w-0">
-              {tenantLogo ? (
-                <div className="h-12 min-w-[84px] px-2 bg-white border-2 border-black/80 rounded-sm shadow-[4px_4px_0_rgba(0,0,0,0.35)] flex items-center justify-center">
-                  <img
-                    src={tenantLogo}
-                    alt={tenant?.name || 'Logo'}
-                    className="h-8 w-auto object-contain flex-shrink-0"
-                  />
-                </div>
+              {tenant?.logo_url || tenant?.logo ? (
+                <img
+                  src={tenant.logo_url || tenant.logo}
+                  alt={tenant?.name || 'Logo'}
+                  className="h-8 w-auto object-contain flex-shrink-0"
+                />
               ) : (
                 <div
-                  className="w-12 h-12 rounded-sm flex items-center justify-center text-white font-bold text-sm flex-shrink-0 border-2 border-black/80 shadow-[4px_4px_0_rgba(0,0,0,0.35)]"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                   style={{ backgroundColor: primary }}
                 >
                   {tenant?.name?.substring(0, 2).toUpperCase() || 'IM'}
                 </div>
               )}
-              <div className="min-w-0">
-                <span className="font-extrabold uppercase tracking-wide text-foreground hidden sm:block truncate">
-                  {tenant?.name || 'Imobiliária'}
-                </span>
-                {tenant?.slogan && (
-                  <p className="hidden sm:block text-[11px] text-muted-foreground truncate">{tenant.slogan}</p>
-                )}
-              </div>
-              {mascotUrl ? (
-                <div className="hidden md:flex items-center gap-2 px-2 py-1 border border-black/30 bg-background/80 rounded-sm">
-                  <img src={mascotUrl} alt="Mascote" className="w-7 h-7 rounded-full object-cover border border-black/20" />
-                  <span className="text-[11px] font-semibold text-foreground/80">Mascote</span>
-                </div>
-              ) : null}
+              <span className="font-semibold hidden sm:block truncate" style={{ color: '#1a1a1a' }}>
+                {tenant?.name || 'Imobiliária'}
+              </span>
             </div>
 
             <div className="flex items-center gap-1.5">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
-                onClick={toggleTheme}
-              >
-                {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-              </Button>
               {tenant?.contact_phone && (
                 <Button
                   variant="ghost"
@@ -896,16 +1055,17 @@ export default function ClientPortal() {
 
         {/* Row 2: Search + Filter Chips */}
         <div className="px-4 lg:px-6 pb-3 pt-0.5">
-          <div className="flex items-center gap-2 overflow-x-auto overflow-y-visible scrollbar-hide">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* Search input */}
             <div className="relative flex-shrink-0 w-56 lg:w-72">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#999' }} />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Qualquer lugar..."
-                className="w-full pl-9 pr-8 py-2 bg-muted/40 border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/30"
+                className="w-full pl-9 pr-8 py-2 rounded-lg text-sm focus:outline-none focus:ring-2"
+                style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }}
               />
               {searchTerm && (
                 <button
@@ -947,7 +1107,7 @@ export default function ClientPortal() {
                   )}
                 </button>
                 {openDropdown === 'finalidade' && (
-                  <div className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-lg shadow-xl py-1 z-50 min-w-[140px]">
+                  <div className="absolute top-full left-0 mt-1.5 rounded-lg shadow-xl py-1 z-50 min-w-[140px]" style={{ backgroundColor: '#fff', border: '1px solid #e0dcd5' }}>
                     <button
                       type="button"
                       onClick={() => {
@@ -1012,7 +1172,7 @@ export default function ClientPortal() {
                 )}
               </button>
               {openDropdown === 'price' && (
-                <div className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-lg shadow-xl py-1 z-50 min-w-[180px]">
+                <div className="absolute top-full left-0 mt-1.5 rounded-lg shadow-xl py-1 z-50 min-w-[180px]" style={{ backgroundColor: '#fff', border: '1px solid #e0dcd5' }}>
                   {PRICE_RANGES.map((range, idx) => (
                     <button
                       type="button"
@@ -1067,7 +1227,7 @@ export default function ClientPortal() {
                 )}
               </button>
               {openDropdown === 'type' && (
-                <div className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-lg shadow-xl py-1 z-50 min-w-[160px]">
+                <div className="absolute top-full left-0 mt-1.5 rounded-lg shadow-xl py-1 z-50 min-w-[160px]" style={{ backgroundColor: '#fff', border: '1px solid #e0dcd5' }}>
                   {PROPERTY_TYPES.filter((t) => t.value).map((type) => (
                     <button
                       type="button"
@@ -1120,7 +1280,7 @@ export default function ClientPortal() {
                 )}
               </button>
               {openDropdown === 'bedrooms' && (
-                <div className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-lg shadow-xl p-2 z-50">
+                <div className="absolute top-full left-0 mt-1.5 rounded-lg shadow-xl p-2 z-50" style={{ backgroundColor: '#fff', border: '1px solid #e0dcd5' }}>
                   <div className="flex gap-1">
                     {[1, 2, 3, 4].map((num) => (
                       <button
@@ -1156,54 +1316,6 @@ export default function ClientPortal() {
               </button>
             )}
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {showFinalidadeFilter && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setSelectedType((prev) => (prev === 'venda' ? null : 'venda'))}
-                  className={cn(
-                    'px-3 py-1.5 text-xs font-bold uppercase tracking-wide border-2 rounded-sm transition-colors',
-                    selectedType === 'venda'
-                      ? 'text-white border-black'
-                      : 'text-foreground border-black/50 bg-background hover:bg-muted'
-                  )}
-                  style={selectedType === 'venda' ? { backgroundColor: primary } : {}}
-                >
-                  Compra
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedType((prev) => (prev === 'aluguel' ? null : 'aluguel'))}
-                  className={cn(
-                    'px-3 py-1.5 text-xs font-bold uppercase tracking-wide border-2 rounded-sm transition-colors',
-                    selectedType === 'aluguel'
-                      ? 'text-black border-black'
-                      : 'text-foreground border-black/50 bg-background hover:bg-muted'
-                  )}
-                  style={selectedType === 'aluguel' ? { backgroundColor: secondary } : {}}
-                >
-                  Aluguel
-                </button>
-              </>
-            )}
-            {[1, 2, 3, 4].map((q) => (
-              <button
-                key={`quick-bed-${q}`}
-                type="button"
-                onClick={() => setSelectedBedrooms((prev) => (prev === q ? null : q))}
-                className={cn(
-                  'px-2.5 py-1 text-xs font-semibold border rounded-sm transition-colors',
-                  selectedBedrooms === q
-                    ? 'text-white border-transparent'
-                    : 'text-muted-foreground border-border hover:text-foreground hover:border-foreground/40'
-                )}
-                style={selectedBedrooms === q ? { backgroundColor: primary } : {}}
-              >
-                {q}+ quartos
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -1212,14 +1324,14 @@ export default function ClientPortal() {
         {/* Cards Section */}
         <div className="flex-1 min-w-0 flex flex-col">
           {/* Results header */}
-          <div className="px-4 lg:px-6 py-3 border-b border-border/50 flex-shrink-0">
+          <div className="px-4 lg:px-6 py-3 flex-shrink-0" style={{ borderBottom: '1px solid #e8e4de' }}>
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-base font-bold text-foreground">
+                <span className="text-base font-bold" style={{ color: '#1a1a1a' }}>
                   {displayProperties.length.toLocaleString('pt-BR')}{' '}
                   {displayProperties.length === 1 ? 'imóvel' : 'imóveis'}
                 </span>
-                <span className="text-sm text-muted-foreground ml-1.5">
+                <span className="text-sm ml-1.5" style={{ color: '#888' }}>
                   {selectedType === 'aluguel' ? 'para alugar' : 'à venda'}
                   {searchTerm ? ` em ${searchTerm}` : ''}
                 </span>
@@ -1250,15 +1362,15 @@ export default function ClientPortal() {
                 </Button>
               </div>
             ) : loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5 lg:gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="bg-card rounded-lg overflow-hidden animate-pulse">
-                    <div className="aspect-[4/3] bg-muted" />
+                  <div key={i} className="rounded-xl overflow-hidden animate-pulse" style={{ backgroundColor: '#fff' }}>
+                    <div className="aspect-[4/3]" style={{ backgroundColor: '#e8e4de' }} />
                     <div className="p-4 space-y-3">
-                      <div className="h-4 bg-muted rounded w-3/4" />
-                      <div className="h-5 bg-muted rounded w-1/3" />
-                      <div className="h-3 bg-muted rounded w-1/2" />
-                      <div className="h-3 bg-muted rounded w-2/3" />
+                      <div className="h-4 rounded w-3/4" style={{ backgroundColor: '#e8e4de' }} />
+                      <div className="h-5 rounded w-1/3" style={{ backgroundColor: '#e8e4de' }} />
+                      <div className="h-3 rounded w-1/2" style={{ backgroundColor: '#e8e4de' }} />
+                      <div className="h-3 rounded w-2/3" style={{ backgroundColor: '#e8e4de' }} />
                     </div>
                   </div>
                 ))}
@@ -1279,19 +1391,17 @@ export default function ClientPortal() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-5">
-                <AnimatePresence mode="popLayout">
-                  {displayProperties.map((property) => (
-                    <PropertyCard key={property.id} property={property} />
-                  ))}
-                </AnimatePresence>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5 lg:gap-6">
+                {displayProperties.map((property) => (
+                  <PropertyCard key={property.id} property={property} />
+                ))}
               </div>
             )}
           </div>
         </div>
 
         {/* Map Section (Desktop) */}
-        <div className="hidden lg:block w-[42%] flex-shrink-0 border-l border-border sticky top-[105px] h-[calc(100vh-105px)]">
+        <div className="hidden lg:block w-[42%] flex-shrink-0 sticky top-[105px] h-[calc(100vh-105px)]" style={{ borderLeft: '1px solid #e8e4de' }}>
           {renderMap()}
         </div>
       </div>
@@ -1309,86 +1419,62 @@ export default function ClientPortal() {
       </div>
 
       {/* ===== MOBILE MAP OVERLAY ===== */}
-      <AnimatePresence>
-        {showMobileMap && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-background"
-          >
-            <div className="h-full flex flex-col">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
-                <span className="font-semibold text-foreground">
-                  {filteredProperties.length} imóveis no mapa
-                </span>
-                <Button size="sm" variant="ghost" onClick={() => setShowMobileMap(false)}>
-                  <X className="w-4 h-4 mr-1" />
-                  Fechar
-                </Button>
-              </div>
-              <div className="flex-1">{renderMap()}</div>
+      {showMobileMap && (
+        <div className="fixed inset-0 z-[60]" style={{ backgroundColor: '#f7f5f0' }}>
+          <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: '#e8e4de', backgroundColor: '#fff' }}>
+              <span className="font-semibold" style={{ color: '#1a1a1a' }}>
+                {filteredProperties.length} imóveis no mapa
+              </span>
+              <Button size="sm" variant="ghost" onClick={() => setShowMobileMap(false)}>
+                <X className="w-4 h-4 mr-1" />
+                Fechar
+              </Button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <div className="flex-1">{renderMap()}</div>
+          </div>
+        </div>
+      )}
 
       {/* ===== FOOTER ===== */}
-      <footer className="bg-card border-t border-border py-6 lg:hidden">
+      <footer className="py-6 lg:hidden" style={{ backgroundColor: '#fff', borderTop: '1px solid #e8e4de' }}>
         <div className="px-4">
           <div className="flex flex-col items-center gap-3 text-center">
             <div className="flex items-center gap-2">
-              {tenantLogo ? (
+              {(tenant?.logo_url || tenant?.logo) ? (
                 <img
-                  src={tenantLogo}
+                  src={tenant.logo_url || tenant.logo}
                   alt={tenant?.name}
                   className="h-6 w-auto object-contain"
                 />
               ) : null}
-              <span className="font-medium text-foreground text-sm">
+              <span className="font-medium text-sm" style={{ color: '#1a1a1a' }}>
                 {tenant?.name || 'Imobiliária'}
               </span>
             </div>
             <div className="flex items-center gap-4">
               {tenant?.contact_phone && (
-                <a
-                  href={`tel:${tenant.contact_phone}`}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                >
+                <a href={`tel:${tenant.contact_phone}`} className="flex items-center gap-1.5 text-xs" style={{ color: '#888' }}>
                   <Phone className="w-3.5 h-3.5" />
                   {tenant.contact_phone}
                 </a>
               )}
               {tenant?.contact_email && (
-                <a
-                  href={`mailto:${tenant.contact_email}`}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                >
+                <a href={`mailto:${tenant.contact_email}`} className="flex items-center gap-1.5 text-xs" style={{ color: '#888' }}>
                   <Mail className="w-3.5 h-3.5" />
                   {tenant.contact_email}
                 </a>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs" style={{ color: '#aaa' }}>
               &copy; {new Date().getFullYear()} {tenant?.name || 'Imobiliária'}
             </p>
           </div>
         </div>
       </footer>
 
-      {/* ===== WHATSAPP FAB ===== */}
-      {tenant?.contact_phone && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={(e) => handleWhatsApp(e)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg flex items-center justify-center z-50"
-        >
-          <MessageCircle className="w-6 h-6" />
-        </motion.button>
-      )}
+      {/* ===== PANDA CHAT WIDGET ===== */}
+      <PandaChatWidget tenantPhone={tenant?.contact_phone} tenantName={tenant?.name} primary={primary} />
     </div>
   );
 }
