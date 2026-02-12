@@ -82,6 +82,14 @@ interface ClientDocument {
   created_at: string;
 }
 
+interface CRMTableResponse {
+  data: CRMClient[];
+  total: number;
+  current_page: number;
+  last_page: number;
+  per_page: number;
+}
+
 type StatusKey = 'novo' | 'em_atendimento' | 'qualificado' | 'proposta' | 'fechado' | 'perdido';
 
 const STATUS_CONFIG: Record<StatusKey, { label: string; color: string; bg: string }> = {
@@ -435,7 +443,7 @@ export default function CRM() {
     initialData: createEmptyCRMData,
   });
 
-  const { data: tableData, isLoading: isLoadingTable } = useQuery({
+  const { data: tableData, isLoading: isLoadingTable, isError: isTableError } = useQuery<CRMTableResponse>({
     queryKey: ['crm-clientes-table', debouncedTableSearch, corretorFilter, classificacaoFilter, statusFilter, sortKey, sortDir, tablePage, tablePerPage],
     queryFn: async () => {
       const params: any = {
@@ -453,14 +461,19 @@ export default function CRM() {
       const raw = res?.data ?? {};
       const flat = normalizeFlatClients(raw?.data ?? raw);
       return {
-        ...raw,
+        total: Number(raw?.total || 0),
+        current_page: Number(raw?.current_page || tablePage),
+        last_page: Number(raw?.last_page || 1),
+        per_page: Number(raw?.per_page || tablePerPage),
         data: flat,
       };
     },
-    keepPreviousData: true,
-    onError: () => setFlatTableError(true),
-    onSuccess: () => setFlatTableError(false),
+    placeholderData: (previousData) => previousData,
   });
+
+  useEffect(() => {
+    setFlatTableError(isTableError);
+  }, [isTableError]);
 
   const allClients = useMemo(() => {
     if (!crmData) return [];
@@ -665,35 +678,64 @@ export default function CRM() {
 
   const handleDownloadSelected = useCallback(async () => {
     if (!selectedClient) return;
+    let hasStartedDownload = false;
     const selectedDocIds = Object.entries(selectedDownloads)
       .filter(([key, isSelected]) => isSelected && key.startsWith('doc:'))
       .map(([key]) => Number(key.split(':')[1]))
       .filter((id) => Number.isFinite(id));
+    const selectedMessageIds = Object.entries(selectedDownloads)
+      .filter(([key, isSelected]) => isSelected && key.startsWith('msg:'))
+      .map(([key]) => key.split(':')[1])
+      .filter((id) => !!id);
 
-    if (!selectedDocIds.length) {
+    if (!selectedDocIds.length && !selectedMessageIds.length) {
       toast.error('Selecione pelo menos um arquivo ou foto');
       return;
     }
 
-    try {
-      const endpoint = selectedClient.pessoa_id
-        ? `/pessoas/${selectedClient.pessoa_id}/documentos/export`
-        : `/leads/${selectedClient.id}/documents/export`;
-      const res = await api.post(endpoint, { ids: selectedDocIds }, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `cliente-${selectedClient.id}-selecionados.zip`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success('Download iniciado');
-    } catch (error) {
-      console.error('Erro ao baixar selecionados:', error);
-      toast.error('Erro ao baixar selecionados');
+    if (selectedDocIds.length > 0) {
+      try {
+        const endpoint = selectedClient.pessoa_id
+          ? `/pessoas/${selectedClient.pessoa_id}/documentos/export`
+          : `/leads/${selectedClient.id}/documents/export`;
+        const res = await api.post(endpoint, { ids: selectedDocIds }, { responseType: 'blob' });
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `cliente-${selectedClient.id}-selecionados.zip`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        hasStartedDownload = true;
+      } catch (error) {
+        console.error('Erro ao baixar documentos selecionados:', error);
+        toast.error('Erro ao baixar documentos selecionados');
+      }
     }
-  }, [selectedClient, selectedDownloads]);
+
+    if (selectedMessageIds.length > 0) {
+      const mediaUrls = selectedMessageIds
+        .map((messageId) => messages.find((message) => message.id === messageId)?.mediaUrl)
+        .filter((url): url is string => !!url)
+        .map((url) => getMediaUrl(url));
+
+      mediaUrls.forEach((url) => {
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        hasStartedDownload = true;
+      });
+    }
+
+    if (hasStartedDownload) {
+      toast.success('Download iniciado');
+    }
+  }, [selectedClient, selectedDownloads, messages]);
 
   const toggleSelectAll = useCallback((allIds: string[], next?: boolean) => {
     setSelectedDownloads((prev) => {
@@ -896,7 +938,7 @@ export default function CRM() {
             )}
           </div>
         )}
-        <div className="flex-1 min-h-0 overflow-hidden" style={{ backgroundColor: '#b3b3b3' }}>
+        <div className="flex-1 min-h-0 overflow-hidden" style={{ backgroundColor: '#1f1d1d' }}>
           <ScrollArea ref={scrollAreaRef} className="h-full">
             <div className="p-4 space-y-4">
               {isLoadingMessages ? (
@@ -981,14 +1023,83 @@ export default function CRM() {
   const renderPerfilTab = () => {
     if (!selectedClient) return null;
     const p = selectedClient.pessoa;
+    type PerfilMediaItem = {
+      id: string;
+      url: string;
+      label: string;
+      source: 'chat' | 'documento';
+      mime?: string;
+      createdAt?: Date;
+    };
+
     const imageDocs = documents.filter((doc) => doc.mime_type?.startsWith('image/'));
     const fileDocs = documents.filter((doc) => !doc.mime_type?.startsWith('image/'));
-    const photoItems = imageDocs
-      .map((doc) => ({ id: `doc:${doc.id}`, url: getMediaUrl(doc.arquivo_url), label: doc.nome }))
+    const chatMediaMessages = messages.filter((message) => !!message.mediaUrl);
+
+    const chatPhotoItems: PerfilMediaItem[] = chatMediaMessages
+      .filter((message) => isImageMessage(message))
+      .map((message) => ({
+        id: `msg:${message.id}`,
+        url: getMediaUrl(message.mediaUrl || ''),
+        label: message.text?.trim() || `Imagem ${message.timestamp}`,
+        source: 'chat' as const,
+        createdAt: message.rawDate,
+      }))
       .filter((item) => item.url);
-    const fileItems = fileDocs.map((doc) => ({ id: `doc:${doc.id}`, url: getMediaUrl(doc.arquivo_url), label: doc.nome, mime: doc.mime_type }));
-    const allSelectableIds = [...fileItems.map((f) => f.id), ...photoItems.map((p) => p.id)];
+
+    const chatFileItems: PerfilMediaItem[] = chatMediaMessages
+      .filter((message) => !isImageMessage(message))
+      .map((message) => ({
+        id: `msg:${message.id}`,
+        url: getMediaUrl(message.mediaUrl || ''),
+        label: message.text?.trim() || `Arquivo ${message.timestamp}`,
+        mime: message.messageType || 'media',
+        source: 'chat' as const,
+        createdAt: message.rawDate,
+      }))
+      .filter((item) => item.url);
+
+    const profilePhotoItems: PerfilMediaItem[] = imageDocs
+      .map((doc) => ({
+        id: `doc:${doc.id}`,
+        url: getMediaUrl(doc.arquivo_url),
+        label: doc.nome,
+        source: 'documento' as const,
+        createdAt: doc.created_at ? new Date(doc.created_at) : undefined,
+      }))
+      .filter((item) => item.url);
+
+    const profileFileItems: PerfilMediaItem[] = fileDocs.map((doc) => ({
+      id: `doc:${doc.id}`,
+      url: getMediaUrl(doc.arquivo_url),
+      label: doc.nome,
+      mime: doc.mime_type,
+      source: 'documento',
+      createdAt: doc.created_at ? new Date(doc.created_at) : undefined,
+    }));
+
+    const photoItems = [...profilePhotoItems, ...chatPhotoItems]
+      .filter((item, index, all) => index === all.findIndex((entry) => entry.url === item.url))
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+    const fileItems = [...profileFileItems, ...chatFileItems]
+      .filter((item, index, all) => index === all.findIndex((entry) => entry.url === item.url))
+      .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+
+    const allItems = [...fileItems, ...photoItems];
+    const allSelectableIds = allItems.map((item) => item.id);
     const allSelected = allSelectableIds.length > 0 && allSelectableIds.every((id) => selectedDownloads[id]);
+    const sourceStats = {
+      documento: allItems.filter((item) => item.source === 'documento').length,
+      chat: allItems.filter((item) => item.source === 'chat').length,
+    };
+    const formatItemDate = (date?: Date) =>
+      date ? date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Sem data';
+    const getSourceBadgeClass = (source: PerfilMediaItem['source']) =>
+      source === 'chat'
+        ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+        : 'bg-violet-500/15 text-violet-400 border-violet-500/30';
+    const getSourceLabel = (source: PerfilMediaItem['source']) =>
+      source === 'chat' ? 'Origem: Chat' : 'Origem: Documento';
 
     return (
       <ScrollArea className="flex-1">
@@ -1005,6 +1116,7 @@ export default function CRM() {
               {selectedClient.valor && <InfoField label="Valor" value={`R$ ${selectedClient.valor.toLocaleString('pt-BR')}`} />}
             </div>
           </div>
+
           {p && (
             <div className="space-y-3 pt-4 border-t border-border">
               <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Dados da Pessoa</h4>
@@ -1018,6 +1130,7 @@ export default function CRM() {
               </div>
             </div>
           )}
+
           <div className="space-y-3 pt-4 border-t border-border">
             <div className="flex items-center justify-between">
               <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Arquivos e Fotos</h4>
@@ -1044,6 +1157,19 @@ export default function CRM() {
                 </Button>
               </div>
             </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="px-2 py-0.5 rounded-full border border-white/10 bg-white/5 text-muted-foreground">
+                Total: {allSelectableIds.length}
+              </span>
+              <span className="px-2 py-0.5 rounded-full border border-violet-500/30 bg-violet-500/15 text-violet-400">
+                Documentos: {sourceStats.documento}
+              </span>
+              <span className="px-2 py-0.5 rounded-full border border-blue-500/30 bg-blue-500/15 text-blue-400">
+                Chat: {sourceStats.chat}
+              </span>
+            </div>
+
             {isLoadingDocuments ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -1074,7 +1200,13 @@ export default function CRM() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{doc.label}</p>
-                        <p className="text-xs text-muted-foreground">{doc.mime}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
+                          <span className={cn('px-1.5 py-0.5 rounded-full border', getSourceBadgeClass(doc.source))}>
+                            {getSourceLabel(doc.source)}
+                          </span>
+                          <span className="text-muted-foreground">{doc.mime || 'arquivo'}</span>
+                          <span className="text-muted-foreground">{formatItemDate(doc.createdAt)}</span>
+                        </div>
                       </div>
                       <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     </a>
@@ -1082,6 +1214,7 @@ export default function CRM() {
                 ))}
               </div>
             )}
+
             <div className="pt-4 border-t border-border space-y-3">
               <div className="flex items-center gap-2">
                 <Image className="w-4 h-4 text-muted-foreground" />
@@ -1095,7 +1228,7 @@ export default function CRM() {
                     <label key={photo.id} className="group relative rounded-lg border border-border overflow-hidden bg-muted/30">
                       <input
                         type="checkbox"
-                        className="absolute top-2 left-2 h-4 w-4 rounded border-border bg-background/80"
+                        className="absolute top-2 left-2 z-10 h-4 w-4 rounded border-border bg-background/80"
                         checked={!!selectedDownloads[photo.id]}
                         onChange={(e) => setSelectedDownloads((prev) => ({ ...prev, [photo.id]: e.target.checked }))}
                       />
@@ -1107,6 +1240,9 @@ export default function CRM() {
                         data-download-id={photo.id}
                         data-download-name={photo.label}
                       >
+                        <span className={cn('absolute right-2 top-2 z-10 px-1.5 py-0.5 rounded-full border text-[10px] backdrop-blur-sm', getSourceBadgeClass(photo.source))}>
+                          {photo.source === 'chat' ? 'Chat' : 'Documento'}
+                        </span>
                         <img
                           src={photo.url}
                           alt={photo.label}

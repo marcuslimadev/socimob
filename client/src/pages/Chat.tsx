@@ -97,6 +97,8 @@ export default function Chat() {
     return decodeHtml(withoutTags).trim();
   };
 
+  const selectedContact = contacts.find((c) => c.id === selectedContactId);
+
   const observacoesText = useMemo(
     () => normalizeObservacoes(selectedContact?.observacoes),
     [selectedContact?.observacoes]
@@ -481,8 +483,6 @@ export default function Chat() {
     );
   }, [contacts, searchTerm]);
 
-  const selectedContact = contacts.find((c) => c.id === selectedContactId);
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await fetchContacts();
@@ -794,7 +794,7 @@ export default function Chat() {
               )}
 
               {/* Messages Area */}
-              <div className="flex-1 min-h-0 overflow-hidden relative bg-[linear-gradient(180deg,rgba(0,0,0,0.02),transparent_35%)]">
+              <div className="flex-1 min-h-0 overflow-hidden relative bg-[#f2f2f2]">
                 <div className="pointer-events-none absolute inset-0 opacity-50">
                   <div
                     className="absolute inset-0"

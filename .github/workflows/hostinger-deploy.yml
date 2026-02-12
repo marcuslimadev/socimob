@@ -1,4 +1,4 @@
-name: Simple Deploy
+name: Auto Deploy (git pull)
 
 on:
   push:
@@ -9,30 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Sync files to server
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.HOSTINGER_SSH_HOST }}
-          username: ${{ secrets.HOSTINGER_SSH_USERNAME }}
-          port: ${{ secrets.HOSTINGER_SSH_PORT }}
-          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
-          key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          passphrase: ${{ secrets.HOSTINGER_SSH_KEY_PASSPHRASE }}
-          source: .
-          target: ${{ secrets.HOSTINGER_DEPLOY_PATH }}
-          recursive: true
-          exclude: |
-            .git
-            .github
-            node_modules
-            vendor
-            docs
-            *.log
-
-      - name: Setup environment
+      - name: Deploy on server (pull + build + migrate if pending)
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOSTINGER_SSH_HOST }}
@@ -43,8 +20,13 @@ jobs:
           passphrase: ${{ secrets.HOSTINGER_SSH_KEY_PASSPHRASE }}
           script: |
             cd ${{ secrets.HOSTINGER_DEPLOY_PATH }}
+            git fetch --all --prune
+            if git show-ref --verify --quiet "refs/remotes/origin/${{ github.ref_name }}"; then
+              git checkout "${{ github.ref_name }}" 2>/dev/null || git checkout -b "${{ github.ref_name }}" "origin/${{ github.ref_name }}"
+              git pull --ff-only origin "${{ github.ref_name }}"
+            else
+              git pull --ff-only
+            fi
+            chmod +x scripts/auto-deploy-server.sh
             export PHP_BIN=/opt/alt/php83/usr/bin/php
-            ./scripts/first-deploy.sh
-            $PHP_BIN artisan config:cache
-            $PHP_BIN artisan route:cache
-            $PHP_BIN artisan view:clear
+            ./scripts/auto-deploy-server.sh "${{ secrets.HOSTINGER_DEPLOY_PATH }}" "${{ github.ref_name }}"

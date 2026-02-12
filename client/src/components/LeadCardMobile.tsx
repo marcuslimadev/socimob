@@ -138,8 +138,7 @@ const LeadCardMobile = ({
         drag="x"
         dragElastic={0.2}
         dragConstraints={{ left: -80, right: 80 }}
-        x={x}
-        style={{ opacity }}
+        style={{ x, opacity }}
         onDragEnd={(event, info) => {
           if (info.offset.x < -50) {
             setShowActions(true);

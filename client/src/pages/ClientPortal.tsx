@@ -136,6 +136,7 @@ interface TenantConfig extends TenantBranding {
   contact_phone?: string;
   contact_email?: string;
   portal_finalidades?: string[];
+  metadata?: Record<string, any>;
 }
 
 type SortOption = 'recent' | 'price_asc' | 'price_desc' | 'area_desc';
@@ -476,6 +477,24 @@ export default function ClientPortal() {
   }, [openDropdown]);
 
   const primary = tenant?.primary_color || '#1e40af';
+  const secondary = tenant?.secondary_color || '#f59e0b';
+  const tenantLogo = tenant?.logo_url || tenant?.logo || '';
+  const mascotUrl = useMemo(() => {
+    if (!tenant) return '';
+    const meta = tenant.metadata || {};
+    return (
+      meta.mascote_url ||
+      meta.mascot_url ||
+      meta.assistant_avatar_url ||
+      meta.assistant_avatar ||
+      meta.avatar_url ||
+      (tenant as any).mascote_url ||
+      (tenant as any).mascot_url ||
+      (tenant as any).assistant_avatar_url ||
+      (tenant as any).assistant_avatar ||
+      ''
+    );
+  }, [tenant]);
 
   const handleLike = async (propertyId: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -795,30 +814,52 @@ export default function ClientPortal() {
 
   // ===== RENDER =====
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div
+      className="min-h-screen bg-background flex flex-col"
+      style={{
+        fontFamily: "Futura, 'Avenir Next', 'Century Gothic', ui-sans-serif, system-ui",
+        backgroundImage:
+          'radial-gradient(circle at 6% 8%, rgba(234, 67, 53, 0.14) 0, rgba(234, 67, 53, 0.14) 90px, transparent 92px), radial-gradient(circle at 94% 12%, rgba(66, 133, 244, 0.14) 0, rgba(66, 133, 244, 0.14) 110px, transparent 112px), linear-gradient(135deg, rgba(251, 188, 5, 0.08), transparent 45%)',
+      }}
+    >
       {/* ===== STICKY HEADER ===== */}
       <div className="sticky top-0 z-50 bg-card border-b border-border">
         {/* Row 1: Logo + Actions */}
-        <div className="px-4 lg:px-6">
+        <div className="px-4 lg:px-6 relative overflow-hidden">
+          <div className="pointer-events-none absolute -right-8 -top-8 w-24 h-24 rounded-full border-8 border-red-500/20" />
+          <div className="pointer-events-none absolute right-16 -bottom-5 w-14 h-14 bg-blue-500/15 rotate-12" />
           <div className="flex items-center justify-between h-[60px]">
             <div className="flex items-center gap-3 min-w-0">
-              {tenant?.logo_url || tenant?.logo ? (
-                <img
-                  src={tenant.logo_url || tenant.logo}
-                  alt={tenant?.name || 'Logo'}
-                  className="h-8 w-auto object-contain flex-shrink-0"
-                />
+              {tenantLogo ? (
+                <div className="h-12 min-w-[84px] px-2 bg-white border-2 border-black/80 rounded-sm shadow-[4px_4px_0_rgba(0,0,0,0.35)] flex items-center justify-center">
+                  <img
+                    src={tenantLogo}
+                    alt={tenant?.name || 'Logo'}
+                    className="h-8 w-auto object-contain flex-shrink-0"
+                  />
+                </div>
               ) : (
                 <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                  className="w-12 h-12 rounded-sm flex items-center justify-center text-white font-bold text-sm flex-shrink-0 border-2 border-black/80 shadow-[4px_4px_0_rgba(0,0,0,0.35)]"
                   style={{ backgroundColor: primary }}
                 >
                   {tenant?.name?.substring(0, 2).toUpperCase() || 'IM'}
                 </div>
               )}
-              <span className="font-semibold text-foreground hidden sm:block truncate">
-                {tenant?.name || 'Imobiliária'}
-              </span>
+              <div className="min-w-0">
+                <span className="font-extrabold uppercase tracking-wide text-foreground hidden sm:block truncate">
+                  {tenant?.name || 'Imobiliária'}
+                </span>
+                {tenant?.slogan && (
+                  <p className="hidden sm:block text-[11px] text-muted-foreground truncate">{tenant.slogan}</p>
+                )}
+              </div>
+              {mascotUrl ? (
+                <div className="hidden md:flex items-center gap-2 px-2 py-1 border border-black/30 bg-background/80 rounded-sm">
+                  <img src={mascotUrl} alt="Mascote" className="w-7 h-7 rounded-full object-cover border border-black/20" />
+                  <span className="text-[11px] font-semibold text-foreground/80">Mascote</span>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -855,7 +896,7 @@ export default function ClientPortal() {
 
         {/* Row 2: Search + Filter Chips */}
         <div className="px-4 lg:px-6 pb-3 pt-0.5">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-2 overflow-x-auto overflow-y-visible scrollbar-hide">
             {/* Search input */}
             <div className="relative flex-shrink-0 w-56 lg:w-72">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -882,6 +923,7 @@ export default function ClientPortal() {
             {showFinalidadeFilter && (
               <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                 <button
+                  type="button"
                   onClick={() => setOpenDropdown(openDropdown === 'finalidade' ? null : 'finalidade')}
                   className={cn(
                     'flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap',
@@ -907,6 +949,7 @@ export default function ClientPortal() {
                 {openDropdown === 'finalidade' && (
                   <div className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-lg shadow-xl py-1 z-50 min-w-[140px]">
                     <button
+                      type="button"
                       onClick={() => {
                         setSelectedType('venda');
                         setOpenDropdown(null);
@@ -920,6 +963,7 @@ export default function ClientPortal() {
                       Comprar
                     </button>
                     <button
+                      type="button"
                       onClick={() => {
                         setSelectedType('aluguel');
                         setOpenDropdown(null);
@@ -940,6 +984,7 @@ export default function ClientPortal() {
             {/* Price chip */}
             <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
               <button
+                type="button"
                 onClick={() => setOpenDropdown(openDropdown === 'price' ? null : 'price')}
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap',
@@ -970,6 +1015,7 @@ export default function ClientPortal() {
                 <div className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-lg shadow-xl py-1 z-50 min-w-[180px]">
                   {PRICE_RANGES.map((range, idx) => (
                     <button
+                      type="button"
                       key={idx}
                       onClick={() => {
                         setPriceRangeIndex(idx);
@@ -991,6 +1037,7 @@ export default function ClientPortal() {
             {/* Property type chip */}
             <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
               <button
+                type="button"
                 onClick={() => setOpenDropdown(openDropdown === 'type' ? null : 'type')}
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap',
@@ -1023,6 +1070,7 @@ export default function ClientPortal() {
                 <div className="absolute top-full left-0 mt-1.5 bg-card border border-border rounded-lg shadow-xl py-1 z-50 min-w-[160px]">
                   {PROPERTY_TYPES.filter((t) => t.value).map((type) => (
                     <button
+                      type="button"
                       key={type.value}
                       onClick={() => {
                         setSelectedPropertyType(type.value);
@@ -1044,6 +1092,7 @@ export default function ClientPortal() {
             {/* Bedrooms chip */}
             <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
               <button
+                type="button"
                 onClick={() => setOpenDropdown(openDropdown === 'bedrooms' ? null : 'bedrooms')}
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors whitespace-nowrap',
@@ -1075,6 +1124,7 @@ export default function ClientPortal() {
                   <div className="flex gap-1">
                     {[1, 2, 3, 4].map((num) => (
                       <button
+                        type="button"
                         key={num}
                         onClick={() => {
                           setSelectedBedrooms(num);
@@ -1097,6 +1147,7 @@ export default function ClientPortal() {
             {/* Clear all */}
             {hasActiveFilters && (
               <button
+                type="button"
                 onClick={clearFilters}
                 className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 flex-shrink-0 whitespace-nowrap transition-colors"
               >
@@ -1104,6 +1155,54 @@ export default function ClientPortal() {
                 Limpar
               </button>
             )}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {showFinalidadeFilter && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSelectedType((prev) => (prev === 'venda' ? null : 'venda'))}
+                  className={cn(
+                    'px-3 py-1.5 text-xs font-bold uppercase tracking-wide border-2 rounded-sm transition-colors',
+                    selectedType === 'venda'
+                      ? 'text-white border-black'
+                      : 'text-foreground border-black/50 bg-background hover:bg-muted'
+                  )}
+                  style={selectedType === 'venda' ? { backgroundColor: primary } : {}}
+                >
+                  Compra
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedType((prev) => (prev === 'aluguel' ? null : 'aluguel'))}
+                  className={cn(
+                    'px-3 py-1.5 text-xs font-bold uppercase tracking-wide border-2 rounded-sm transition-colors',
+                    selectedType === 'aluguel'
+                      ? 'text-black border-black'
+                      : 'text-foreground border-black/50 bg-background hover:bg-muted'
+                  )}
+                  style={selectedType === 'aluguel' ? { backgroundColor: secondary } : {}}
+                >
+                  Aluguel
+                </button>
+              </>
+            )}
+            {[1, 2, 3, 4].map((q) => (
+              <button
+                key={`quick-bed-${q}`}
+                type="button"
+                onClick={() => setSelectedBedrooms((prev) => (prev === q ? null : q))}
+                className={cn(
+                  'px-2.5 py-1 text-xs font-semibold border rounded-sm transition-colors',
+                  selectedBedrooms === q
+                    ? 'text-white border-transparent'
+                    : 'text-muted-foreground border-border hover:text-foreground hover:border-foreground/40'
+                )}
+                style={selectedBedrooms === q ? { backgroundColor: primary } : {}}
+              >
+                {q}+ quartos
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -1239,9 +1338,9 @@ export default function ClientPortal() {
         <div className="px-4">
           <div className="flex flex-col items-center gap-3 text-center">
             <div className="flex items-center gap-2">
-              {tenant?.logo_url || tenant?.logo ? (
+              {tenantLogo ? (
                 <img
-                  src={tenant.logo_url || tenant.logo}
+                  src={tenantLogo}
                   alt={tenant?.name}
                   className="h-6 w-auto object-contain"
                 />
