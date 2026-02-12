@@ -142,6 +142,9 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
         // Chat bot - criar lead (público, sem auth)
         $router->post('/chat-lead', ['middleware' => 'throttle:10,1', 'uses' => 'Portal\PortalController@createChatLead']);
 
+        // Avaliação de imóvel - solicitar (público, sem auth)
+        $router->post('/avaliacao', ['middleware' => 'throttle:10,1', 'uses' => 'Portal\PortalController@createEvaluationRequest']);
+
         // Login do portal
         $router->post('/auth/login', 'Portal\ClientAuthController@login');
         $router->post('/auth/register', 'Portal\ClientAuthController@register');

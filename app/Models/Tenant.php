@@ -64,6 +64,13 @@ class Tenant extends Model
         'razao_social',
         'cnpj',
         'endereco',
+        'mascot_url',
+        'creci',
+        'about_text',
+        'services',
+        'social_links',
+        'neighborhoods',
+        'office_hours',
     ];
 
     protected $casts = [
@@ -74,6 +81,9 @@ class Tenant extends Model
         'max_properties' => 'integer',
         'max_leads' => 'integer',
         'metadata' => 'array',
+        'services' => 'array',
+        'social_links' => 'array',
+        'neighborhoods' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
@@ -327,6 +337,13 @@ class Tenant extends Model
             'secondary_color' => $this->secondary_color ?? '#3b82f6',
             'logo_url' => $this->logo_url ?? '/images/logo.png',
             'favicon_url' => $this->favicon_url ?? '/favicon.ico',
+            'mascot_url' => $this->mascot_url,
+            'creci' => $this->creci,
+            'about_text' => $this->about_text,
+            'services' => $this->services,
+            'social_links' => $this->social_links,
+            'endereco' => $this->endereco,
+            'office_hours' => $this->office_hours,
         ];
     }
 }

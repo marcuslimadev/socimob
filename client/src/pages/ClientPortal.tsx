@@ -1,14 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
-  Search,
   MapPin,
-  Bed,
-  Bath,
-  Ruler,
   Heart,
-  Share2,
   Home,
-  Car,
   Phone,
   Mail,
   ChevronDown,
@@ -16,11 +10,11 @@ import {
   ChevronRight,
   X,
   MessageCircle,
-  Sun,
-  Moon,
   Map as MapIcon,
   Send,
   Bot,
+  ClipboardList,
+  CheckCircle,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
@@ -138,6 +132,13 @@ interface TenantConfig extends TenantBranding {
   contact_email?: string;
   portal_finalidades?: string[];
   metadata?: Record<string, any>;
+  mascot_url?: string;
+  creci?: string;
+  about_text?: string;
+  services?: string[];
+  social_links?: Record<string, string>;
+  endereco?: string;
+  office_hours?: string;
 }
 
 type SortOption = 'recent' | 'price_asc' | 'price_desc' | 'area_desc';
@@ -389,40 +390,24 @@ function PhotoCarousel({
   );
 }
 
-// ===== Panda SVG Mascot =====
-const PandaSvg = ({ size = 48 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="30" cy="28" r="18" fill="#2d2d2d"/>
-    <circle cx="90" cy="28" r="18" fill="#2d2d2d"/>
-    <circle cx="30" cy="28" r="10" fill="#4a4a4a"/>
-    <circle cx="90" cy="28" r="10" fill="#4a4a4a"/>
-    <ellipse cx="60" cy="62" rx="42" ry="40" fill="#f5f5f5"/>
-    <ellipse cx="42" cy="55" rx="14" ry="12" fill="#2d2d2d" transform="rotate(-8 42 55)"/>
-    <ellipse cx="78" cy="55" rx="14" ry="12" fill="#2d2d2d" transform="rotate(8 78 55)"/>
-    <ellipse cx="42" cy="54" rx="6" ry="7" fill="white"/>
-    <ellipse cx="78" cy="54" rx="6" ry="7" fill="white"/>
-    <circle cx="44" cy="53" r="3.5" fill="#1a1a1a"/>
-    <circle cx="80" cy="53" r="3.5" fill="#1a1a1a"/>
-    <circle cx="45" cy="51.5" r="1.2" fill="white"/>
-    <circle cx="81" cy="51.5" r="1.2" fill="white"/>
-    <ellipse cx="60" cy="68" rx="5" ry="3.5" fill="#2d2d2d"/>
-    <path d="M55 72 Q60 78 65 72" stroke="#2d2d2d" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
-    <circle cx="32" cy="68" r="6" fill="#ffb3b3" opacity="0.4"/>
-    <circle cx="88" cy="68" r="6" fill="#ffb3b3" opacity="0.4"/>
-    <path d="M18 50 Q18 30 60 25 Q102 30 102 50" stroke="#555" strokeWidth="3.5" fill="none" strokeLinecap="round"/>
-    <rect x="10" y="45" width="12" height="16" rx="4" fill="#555"/>
-    <rect x="98" y="45" width="12" height="16" rx="4" fill="#555"/>
-    <circle cx="16" cy="53" r="3" fill="#4CAF50"/>
-    <circle cx="104" cy="53" r="3" fill="#4CAF50"/>
-  </svg>
-);
+// ===== Mascot Avatar (configurable per tenant) =====
+const MascotAvatar = ({ size = 48, mascotUrl, primary }: { size?: number; mascotUrl?: string; primary?: string }) => {
+  if (mascotUrl) {
+    return <img src={mascotUrl} alt="Mascote" width={size} height={size} className="rounded-full object-cover" style={{ width: size, height: size }} />;
+  }
+  return (
+    <div className="rounded-full flex items-center justify-center" style={{ width: size, height: size, backgroundColor: primary || '#1e40af' }}>
+      <Bot className="text-white" style={{ width: size * 0.55, height: size * 0.55 }} />
+    </div>
+  );
+};
 
 // ===== Chat Widget Types =====
 type ChatStep = 'greeting' | 'ask_name' | 'ask_whatsapp' | 'ask_email' | 'ask_interesse' | 'submitting' | 'done';
 interface ChatMessage { from: 'bot' | 'user'; text: string; }
 
-// ===== Panda Chat Widget =====
-function PandaChatWidget({ tenantPhone, tenantName, primary }: { tenantPhone?: string; tenantName?: string; primary: string }) {
+// ===== Chat Widget (per-tenant mascot) =====
+function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl }: { tenantPhone?: string; tenantName?: string; primary: string; mascotUrl?: string }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<ChatStep>('greeting');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -445,7 +430,7 @@ function PandaChatWidget({ tenantPhone, tenantName, primary }: { tenantPhone?: s
     setOpen(true);
     if (messages.length === 0) {
       setTimeout(() => {
-        addBot(`Oi! Eu sou o Pandinha, assistente virtual da ${tenantName || 'imobiliária'}!`);
+        addBot(`Oi! Eu sou o assistente virtual da ${tenantName || 'imobiliária'}!`);
         setTimeout(() => { addBot('Posso te ajudar a encontrar o imóvel ideal. Para começar, qual é o seu nome?'); setStep('ask_name'); }, 600);
       }, 300);
     }
@@ -522,9 +507,9 @@ function PandaChatWidget({ tenantPhone, tenantName, primary }: { tenantPhone?: s
       {open && (
         <div className="fixed bottom-24 right-4 sm:right-6 z-[60] w-[340px] sm:w-[380px] rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'min(520px, calc(100vh - 140px))', backgroundColor: '#fff' }}>
           <div className="flex items-center gap-3 px-4 py-3 text-white flex-shrink-0" style={{ backgroundColor: primary }}>
-            <PandaSvg size={36} />
+            <MascotAvatar size={36} mascotUrl={mascotUrl} primary={primary} />
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm leading-tight">Pandinha</div>
+              <div className="font-semibold text-sm leading-tight">{tenantName || 'Assistente'}</div>
               <div className="text-[11px] opacity-80 flex items-center gap-1"><Bot className="w-3 h-3" />Assistente Virtual</div>
             </div>
             <button onClick={() => setOpen(false)} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"><X className="w-4 h-4" /></button>
@@ -532,7 +517,7 @@ function PandaChatWidget({ tenantPhone, tenantName, primary }: { tenantPhone?: s
           <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ backgroundColor: '#f0ede8', minHeight: '280px' }}>
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {msg.from === 'bot' && <div className="w-7 h-7 rounded-full flex items-center justify-center mr-2 flex-shrink-0 mt-0.5" style={{ backgroundColor: '#f5f5f5' }}><PandaSvg size={22} /></div>}
+                {msg.from === 'bot' && <div className="w-7 h-7 rounded-full flex items-center justify-center mr-2 flex-shrink-0 mt-0.5" style={{ backgroundColor: '#f5f5f5' }}><MascotAvatar size={22} mascotUrl={mascotUrl} primary={primary} /></div>}
                 <div className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.from === 'user' ? 'text-white rounded-br-md' : 'rounded-bl-md'}`} style={{ backgroundColor: msg.from === 'user' ? primary : '#fff', color: msg.from === 'user' ? '#fff' : '#333', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>{msg.text}</div>
               </div>
             ))}
@@ -573,7 +558,7 @@ function PandaChatWidget({ tenantPhone, tenantName, primary }: { tenantPhone?: s
       >
         {open ? <X className="w-6 h-6 text-white" /> : (
           <div className="relative">
-            <PandaSvg size={40} />
+            <MascotAvatar size={40} mascotUrl={mascotUrl} primary={primary} />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white" />
           </div>
         )}
@@ -606,6 +591,10 @@ export default function ClientPortal() {
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
+  const [showEvalModal, setShowEvalModal] = useState(false);
+  const [evalForm, setEvalForm] = useState({ nome: '', telefone: '', email: '', tipo_imovel: '', endereco: '', bairro: '', cidade: '', observacoes: '' });
+  const [evalSubmitting, setEvalSubmitting] = useState(false);
+  const [evalDone, setEvalDone] = useState(false);
   // theme forced to light via useEffect below
 
   // Load tenant configuration
@@ -806,6 +795,29 @@ export default function ClientPortal() {
     setSelectedType(null);
     setSelectedPropertyType('');
   }, []);
+
+  const handleEvalSubmit = async () => {
+    if (!evalForm.nome || !evalForm.telefone) { toast.error('Preencha nome e telefone'); return; }
+    setEvalSubmitting(true);
+    try {
+      const resp = await fetch('/api/portal/avaliacao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Tenant-Domain': window.location.hostname },
+        body: JSON.stringify(evalForm),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        setEvalDone(true);
+        toast.success('Solicitacao enviada com sucesso!');
+      } else {
+        toast.error(data.error || 'Erro ao enviar solicitacao');
+      }
+    } catch {
+      toast.error('Erro ao enviar solicitacao');
+    } finally {
+      setEvalSubmitting(false);
+    }
+  };
 
   const formatPrice = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -1436,45 +1448,203 @@ export default function ClientPortal() {
         </div>
       )}
 
-      {/* ===== FOOTER ===== */}
-      <footer className="py-6 lg:hidden" style={{ backgroundColor: '#fff', borderTop: '1px solid #e8e4de' }}>
-        <div className="px-4">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <div className="flex items-center gap-2">
-              {(tenant?.logo_url || tenant?.logo) ? (
-                <img
-                  src={tenant.logo_url || tenant.logo}
-                  alt={tenant?.name}
-                  className="h-6 w-auto object-contain"
-                />
-              ) : null}
-              <span className="font-medium text-sm" style={{ color: '#1a1a1a' }}>
-                {tenant?.name || 'Imobiliária'}
-              </span>
+      {/* ===== SERVICES + EVALUATION CTA ===== */}
+      {tenant?.services && tenant.services.length > 0 && (
+        <section className="py-10 px-4 lg:px-8" style={{ backgroundColor: '#fff', borderTop: '1px solid #e8e4de' }}>
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-xl font-bold text-center mb-6" style={{ color: '#1a1a1a' }}>Nossos Serviços</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {tenant.services.map((svc, i) => (
+                <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl" style={{ backgroundColor: '#f7f5f0' }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primary}15` }}>
+                    <Home className="w-4 h-4" style={{ color: primary }} />
+                  </div>
+                  <span className="text-sm font-medium" style={{ color: '#444' }}>{svc}</span>
+                </div>
+              ))}
             </div>
-            <div className="flex items-center gap-4">
+          </div>
+        </section>
+      )}
+
+      {/* ===== AVALIACAO DE IMOVEL CTA ===== */}
+      <section className="py-10 px-4 lg:px-8" style={{ backgroundColor: `${primary}08`, borderTop: '1px solid #e8e4de' }}>
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${primary}15` }}>
+              <ClipboardList className="w-7 h-7" style={{ color: primary }} />
+            </div>
+          </div>
+          <h2 className="text-xl font-bold mb-2" style={{ color: '#1a1a1a' }}>Avaliação Gratuita do Seu Imóvel</h2>
+          <p className="text-sm mb-5" style={{ color: '#666' }}>
+            Quer saber quanto vale o seu imóvel? Solicite uma avaliação gratuita e sem compromisso.
+          </p>
+          <Button
+            onClick={() => { setShowEvalModal(true); setEvalDone(false); setEvalForm({ nome: '', telefone: '', email: '', tipo_imovel: '', endereco: '', bairro: '', cidade: '', observacoes: '' }); }}
+            className="text-white px-6 py-2.5 rounded-xl font-medium"
+            style={{ backgroundColor: primary }}
+          >
+            <ClipboardList className="w-4 h-4 mr-2" />
+            Solicitar Avaliação
+          </Button>
+        </div>
+      </section>
+
+      {/* ===== ABOUT SECTION ===== */}
+      {tenant?.about_text && (
+        <section className="py-10 px-4 lg:px-8" style={{ backgroundColor: '#fff', borderTop: '1px solid #e8e4de' }}>
+          <div className="max-w-3xl mx-auto text-center">
+            <div className="flex justify-center mb-4">
+              {tenant.mascot_url ? (
+                <img src={tenant.mascot_url} alt="Mascote" className="w-16 h-16 rounded-2xl object-cover" />
+              ) : (tenant.logo_url || tenant.logo) ? (
+                <img src={tenant.logo_url || tenant.logo} alt={tenant.name} className="h-10 w-auto object-contain" />
+              ) : null}
+            </div>
+            <h2 className="text-xl font-bold mb-3" style={{ color: '#1a1a1a' }}>Sobre {tenant.name || 'Nós'}</h2>
+            {tenant.creci && <p className="text-xs font-medium mb-3" style={{ color: primary }}>CRECI: {tenant.creci}</p>}
+            <p className="text-sm leading-relaxed" style={{ color: '#555' }}>{tenant.about_text}</p>
+            {tenant.endereco && <p className="text-xs mt-4 flex items-center justify-center gap-1" style={{ color: '#888' }}><MapPin className="w-3.5 h-3.5" />{tenant.endereco}</p>}
+            {tenant.office_hours && <p className="text-xs mt-1" style={{ color: '#888' }}>{tenant.office_hours}</p>}
+          </div>
+        </section>
+      )}
+
+      {/* ===== EVALUATION MODAL ===== */}
+      {showEvalModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden" style={{ backgroundColor: '#fff' }}>
+            <div className="flex items-center justify-between px-5 py-4 text-white" style={{ backgroundColor: primary }}>
+              <div className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5" />
+                <span className="font-semibold">Solicitar Avaliação</span>
+              </div>
+              <button onClick={() => setShowEvalModal(false)} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/20"><X className="w-4 h-4" /></button>
+            </div>
+            {evalDone ? (
+              <div className="p-8 text-center">
+                <CheckCircle className="w-14 h-14 mx-auto mb-4" style={{ color: '#22c55e' }} />
+                <h3 className="text-lg font-bold mb-2" style={{ color: '#1a1a1a' }}>Solicitação Enviada!</h3>
+                <p className="text-sm mb-5" style={{ color: '#666' }}>Entraremos em contato em breve para agendar a avaliação do seu imóvel.</p>
+                {tenant?.contact_phone && (
+                  <a
+                    href={`https://wa.me/${tenant.contact_phone.replace(/\D/g, '')}?text=${encodeURIComponent('Olá! Acabei de solicitar uma avaliação de imóvel pelo portal.')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm font-medium transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />Falar no WhatsApp
+                  </a>
+                )}
+                <div className="mt-4">
+                  <button onClick={() => setShowEvalModal(false)} className="text-sm underline" style={{ color: '#888' }}>Fechar</button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Nome *</label>
+                  <input value={evalForm.nome} onChange={(e) => setEvalForm(f => ({ ...f, nome: e.target.value }))} placeholder="Seu nome completo" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Telefone *</label>
+                    <input value={evalForm.telefone} onChange={(e) => setEvalForm(f => ({ ...f, telefone: e.target.value }))} placeholder="(31) 99999-8888" type="tel" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>E-mail</label>
+                    <input value={evalForm.email} onChange={(e) => setEvalForm(f => ({ ...f, email: e.target.value }))} placeholder="seu@email.com" type="email" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Tipo de Imóvel</label>
+                  <select value={evalForm.tipo_imovel} onChange={(e) => setEvalForm(f => ({ ...f, tipo_imovel: e.target.value }))} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }}>
+                    <option value="">Selecione...</option>
+                    <option value="apartamento">Apartamento</option>
+                    <option value="casa">Casa</option>
+                    <option value="terreno">Terreno</option>
+                    <option value="comercial">Comercial</option>
+                    <option value="rural">Rural</option>
+                    <option value="cobertura">Cobertura</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Endereço do Imóvel</label>
+                  <input value={evalForm.endereco} onChange={(e) => setEvalForm(f => ({ ...f, endereco: e.target.value }))} placeholder="Rua, número" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Bairro</label>
+                    <input value={evalForm.bairro} onChange={(e) => setEvalForm(f => ({ ...f, bairro: e.target.value }))} placeholder="Bairro" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Cidade</label>
+                    <input value={evalForm.cidade} onChange={(e) => setEvalForm(f => ({ ...f, cidade: e.target.value }))} placeholder="Cidade" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Observações</label>
+                  <textarea value={evalForm.observacoes} onChange={(e) => setEvalForm(f => ({ ...f, observacoes: e.target.value }))} placeholder="Detalhes adicionais sobre o imóvel..." rows={3} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                </div>
+                <Button onClick={handleEvalSubmit} disabled={evalSubmitting} className="w-full text-white py-2.5 rounded-xl font-medium" style={{ backgroundColor: primary }}>
+                  {evalSubmitting ? 'Enviando...' : 'Enviar Solicitação'}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ===== FOOTER ===== */}
+      <footer className="py-8 px-4 lg:px-8" style={{ backgroundColor: '#1a1a1a', borderTop: '1px solid #e8e4de' }}>
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                {(tenant?.logo_url || tenant?.logo) ? (
+                  <img src={tenant.logo_url || tenant.logo} alt={tenant?.name} className="h-7 w-auto object-contain brightness-200" />
+                ) : null}
+                <span className="font-semibold text-sm text-white">{tenant?.name || 'Imobiliária'}</span>
+              </div>
+              {tenant?.creci && <p className="text-xs text-gray-400 mb-1">CRECI: {tenant.creci}</p>}
+              {tenant?.endereco && <p className="text-xs text-gray-400">{tenant.endereco}</p>}
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-white mb-3">Contato</h4>
               {tenant?.contact_phone && (
-                <a href={`tel:${tenant.contact_phone}`} className="flex items-center gap-1.5 text-xs" style={{ color: '#888' }}>
-                  <Phone className="w-3.5 h-3.5" />
-                  {tenant.contact_phone}
+                <a href={`tel:${tenant.contact_phone}`} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white mb-1.5">
+                  <Phone className="w-3.5 h-3.5" />{tenant.contact_phone}
                 </a>
               )}
               {tenant?.contact_email && (
-                <a href={`mailto:${tenant.contact_email}`} className="flex items-center gap-1.5 text-xs" style={{ color: '#888' }}>
-                  <Mail className="w-3.5 h-3.5" />
-                  {tenant.contact_email}
+                <a href={`mailto:${tenant.contact_email}`} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white mb-1.5">
+                  <Mail className="w-3.5 h-3.5" />{tenant.contact_email}
                 </a>
               )}
+              {tenant?.office_hours && <p className="text-xs text-gray-400 mt-2">{tenant.office_hours}</p>}
             </div>
-            <p className="text-xs" style={{ color: '#aaa' }}>
-              &copy; {new Date().getFullYear()} {tenant?.name || 'Imobiliária'}
-            </p>
+            <div>
+              <h4 className="text-sm font-semibold text-white mb-3">Links</h4>
+              <button onClick={() => { setShowEvalModal(true); setEvalDone(false); }} className="block text-xs text-gray-400 hover:text-white mb-1.5">Avaliação de Imóvel</button>
+              {tenant?.contact_phone && (
+                <a href={`https://wa.me/${tenant.contact_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="block text-xs text-gray-400 hover:text-white mb-1.5">WhatsApp</a>
+              )}
+              {tenant?.social_links?.instagram && (
+                <a href={tenant.social_links.instagram} target="_blank" rel="noopener noreferrer" className="block text-xs text-gray-400 hover:text-white mb-1.5">Instagram</a>
+              )}
+              {tenant?.social_links?.facebook && (
+                <a href={tenant.social_links.facebook} target="_blank" rel="noopener noreferrer" className="block text-xs text-gray-400 hover:text-white mb-1.5">Facebook</a>
+              )}
+            </div>
+          </div>
+          <div className="pt-4" style={{ borderTop: '1px solid #333' }}>
+            <p className="text-xs text-gray-500 text-center">&copy; {new Date().getFullYear()} {tenant?.name || 'Imobiliária'}. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>
 
-      {/* ===== PANDA CHAT WIDGET ===== */}
-      <PandaChatWidget tenantPhone={tenant?.contact_phone} tenantName={tenant?.name} primary={primary} />
+      {/* ===== CHAT WIDGET ===== */}
+      <ChatWidget tenantPhone={tenant?.contact_phone} tenantName={tenant?.name} primary={primary} mascotUrl={tenant?.mascot_url} />
     </div>
   );
 }

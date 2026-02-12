@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\Property;
+use App\Models\PropertyEvaluation;
 use App\Services\PropertyLikesTablesManager;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -59,10 +60,17 @@ class PortalController extends Controller
                 'logo' => $tenant->logo_url,
                 'logo_url' => $tenant->logo_url,
                 'favicon_url' => $tenant->favicon_url,
+                'mascot_url' => $tenant->mascot_url,
                 'font_primary' => $config ? $config->font_primary : null,
                 'font_secondary' => $config ? $config->font_secondary : null,
                 'font_url' => $config ? $config->font_url : null,
                 'portal_finalidades' => $portalFinalidades,
+                'creci' => $tenant->creci,
+                'about_text' => $tenant->about_text,
+                'services' => $tenant->services,
+                'social_links' => $tenant->social_links,
+                'endereco' => $tenant->endereco,
+                'office_hours' => $tenant->office_hours,
             ]
         ]);
     }
@@ -507,6 +515,119 @@ class PortalController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erro ao registrar seu contato. Tente novamente.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Solicitar avaliacao de imovel (publico, sem auth)
+     * POST /api/portal/avaliacao
+     */
+    public function createEvaluationRequest(Request $request)
+    {
+        try {
+            $tenantId = $request->attributes->get('tenant_id');
+
+            if (!$tenantId) {
+                $tenantId = 1;
+            }
+
+            $validator = Validator::make($request->all(), [
+                'nome' => 'required|string|max:255',
+                'telefone' => 'required|string|max:20',
+                'email' => 'nullable|email|max:255',
+                'tipo_imovel' => 'nullable|string|max:100',
+                'endereco' => 'nullable|string|max:500',
+                'bairro' => 'nullable|string|max:100',
+                'cidade' => 'nullable|string|max:100',
+                'observacoes' => 'nullable|string|max:1000',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Dados invalidos',
+                    'messages' => $validator->errors(),
+                ], 422);
+            }
+
+            $telefone = preg_replace('/\D/', '', $request->telefone);
+
+            // Create or find lead
+            $existingLead = \App\Models\Lead::where('tenant_id', $tenantId)
+                ->where(function ($q) use ($telefone, $request) {
+                    $q->where('telefone', 'like', "%{$telefone}%")
+                      ->orWhere('whatsapp', 'like', "%{$telefone}%");
+                    if ($request->email) {
+                        $q->orWhere('email', $request->email);
+                    }
+                })
+                ->first();
+
+            if ($existingLead) {
+                $obs = $existingLead->observacoes ?? '';
+                $obs .= ($obs ? "\n" : '') . "[Avaliacao Portal " . now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
+                if ($request->endereco) $obs .= " - Endereco: {$request->endereco}";
+                if ($request->bairro) $obs .= ", {$request->bairro}";
+                $existingLead->observacoes = $obs;
+                $existingLead->save();
+                $lead = $existingLead;
+            } else {
+                $obsText = "[Avaliacao Portal " . now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
+                if ($request->endereco) $obsText .= " - Endereco: {$request->endereco}";
+                if ($request->bairro) $obsText .= ", {$request->bairro}";
+
+                $lead = \App\Models\Lead::create([
+                    'tenant_id' => $tenantId,
+                    'nome' => $request->nome,
+                    'telefone' => $telefone,
+                    'whatsapp' => $telefone,
+                    'email' => $request->email,
+                    'status' => 'novo',
+                    'classificacao' => 'quente',
+                    'observacoes' => $obsText,
+                ]);
+            }
+
+            // Create evaluation request
+            if (Schema::hasTable('property_evaluations')) {
+                PropertyEvaluation::create([
+                    'tenant_id' => $tenantId,
+                    'nome' => $request->nome,
+                    'telefone' => $telefone,
+                    'email' => $request->email,
+                    'tipo_imovel' => $request->tipo_imovel,
+                    'endereco' => $request->endereco,
+                    'bairro' => $request->bairro,
+                    'cidade' => $request->cidade,
+                    'observacoes' => $request->observacoes,
+                    'status' => 'pendente',
+                    'lead_id' => $lead->id,
+                ]);
+            }
+
+            // Get tenant WhatsApp number
+            $tenant = Tenant::find($tenantId);
+            $config = $tenant ? $tenant->config : null;
+            $tenantWhatsapp = $config && $config->whatsapp_number
+                ? preg_replace('/\D/', '', $config->whatsapp_number)
+                : ($tenant ? preg_replace('/\D/', '', $tenant->contact_phone ?? '') : '');
+
+            return response()->json([
+                'success' => true,
+                'lead_id' => $lead->id,
+                'whatsapp_number' => $tenantWhatsapp,
+                'message' => 'Solicitacao de avaliacao registrada com sucesso!',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('[Portal] Erro ao criar solicitacao de avaliacao', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Erro ao registrar sua solicitacao. Tente novamente.',
             ], 500);
         }
     }
