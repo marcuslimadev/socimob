@@ -15,6 +15,7 @@ import {
   Bot,
   ClipboardList,
   CheckCircle,
+  Menu,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
@@ -595,6 +596,8 @@ export default function ClientPortal() {
   const [evalForm, setEvalForm] = useState({ nome: '', telefone: '', email: '', tipo_imovel: '', endereco: '', bairro: '', cidade: '', observacoes: '' });
   const [evalSubmitting, setEvalSubmitting] = useState(false);
   const [evalDone, setEvalDone] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(12);
   // theme forced to light via useEffect below
 
   // Load tenant configuration
@@ -1015,7 +1018,7 @@ export default function ClientPortal() {
 
   // ===== RENDER =====
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f7f5f0' }}>
+    <div className="min-h-screen" style={{ backgroundColor: '#f7f5f0' }}>
       {/* ===== STICKY HEADER ===== */}
       <div className="sticky top-0 z-50 border-b" style={{ backgroundColor: '#ffffff', borderColor: '#e8e4de' }}>
         {/* Row 1: Logo + Actions */}
@@ -1061,9 +1064,36 @@ export default function ClientPortal() {
               >
                 Entrar
               </Button>
+              <button
+                className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" style={{ color: '#555' }} /> : <Menu className="w-5 h-5" style={{ color: '#555' }} />}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center gap-0.5 px-4 lg:px-6 pb-1">
+          {[
+            { id: 'inicio', label: 'Início' },
+            { id: 'imoveis', label: 'Imóveis' },
+            { id: 'servicos', label: 'Serviços' },
+            { id: 'avaliacao', label: 'Avaliação' },
+            { id: 'sobre', label: 'Sobre Nós' },
+          ].map(item => (
+            <a
+              key={item.id}
+              href={`#${item.id}`}
+              onClick={(e) => { e.preventDefault(); document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth' }); }}
+              className="px-3 py-1.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+              style={{ color: '#555' }}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
 
         {/* Row 2: Search + Filter Chips */}
         <div className="px-4 lg:px-6 pb-3 pt-0.5">
@@ -1331,11 +1361,140 @@ export default function ClientPortal() {
         </div>
       </div>
 
-      {/* ===== MAIN CONTENT ===== */}
-      <div className="flex flex-1 min-h-0">
-        {/* Cards Section */}
-        <div className="flex-1 min-w-0 flex flex-col">
-          {/* Results header */}
+      {/* ===== MOBILE NAV MENU ===== */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-b" style={{ backgroundColor: '#fff', borderColor: '#e8e4de' }}>
+          <nav className="px-4 py-3 space-y-1">
+            {[
+              { id: 'inicio', label: 'Início' },
+              { id: 'imoveis', label: 'Imóveis' },
+              { id: 'servicos', label: 'Serviços' },
+              { id: 'avaliacao', label: 'Avaliação' },
+              { id: 'sobre', label: 'Sobre Nós' },
+            ].map(item => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth' }); }}
+                className="block px-3 py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+                style={{ color: '#555' }}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        </div>
+      )}
+
+      {/* ===== HERO SECTION ===== */}
+      <section id="inicio" className="relative overflow-hidden" style={{ backgroundColor: primary }}>
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%)' }} />
+        </div>
+        <div className="relative max-w-6xl mx-auto px-4 lg:px-8 py-12 lg:py-16">
+          <div className="flex flex-col lg:flex-row items-center gap-8">
+            <div className="flex-1 text-center lg:text-left">
+              <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3">
+                {tenant?.name || 'Imobiliária'}
+              </h1>
+              {tenant?.creci && (
+                <p className="text-sm font-medium text-white/70 mb-4">CRECI: {tenant.creci}</p>
+              )}
+              {tenant?.about_text && (
+                <p className="text-base text-white/85 leading-relaxed mb-6 max-w-xl">
+                  {tenant.about_text.length > 200 ? tenant.about_text.substring(0, 200) + '...' : tenant.about_text}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
+                <a
+                  href="#imoveis"
+                  onClick={(e) => { e.preventDefault(); document.getElementById('imoveis')?.scrollIntoView({ behavior: 'smooth' }); }}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-sm transition-colors"
+                  style={{ backgroundColor: '#fff', color: primary }}
+                >
+                  <Home className="w-4 h-4" />
+                  Ver Imóveis
+                </a>
+                <button
+                  onClick={() => { setShowEvalModal(true); setEvalDone(false); setEvalForm({ nome: '', telefone: '', email: '', tipo_imovel: '', endereco: '', bairro: '', cidade: '', observacoes: '' }); }}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-sm border-2 border-white/30 text-white hover:bg-white/10 transition-colors"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Avaliação Gratuita
+                </button>
+                {tenant?.contact_phone && (
+                  <a
+                    href={`https://wa.me/${tenant.contact_phone.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-sm bg-green-500 hover:bg-green-600 text-white transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </a>
+                )}
+              </div>
+              {tenant?.endereco && (
+                <p className="text-xs text-white/60 mt-5 flex items-center gap-1.5 justify-center lg:justify-start">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {tenant.endereco}
+                </p>
+              )}
+            </div>
+            {tenant?.mascot_url && (
+              <div className="flex-shrink-0">
+                <img src={tenant.mascot_url} alt="Mascote" className="w-48 h-48 lg:w-64 lg:h-64 rounded-3xl object-cover shadow-2xl border-4 border-white/20" />
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ===== SERVICES SECTION ===== */}
+      {tenant?.services && tenant.services.length > 0 && (
+        <section id="servicos" className="py-10 px-4 lg:px-8" style={{ backgroundColor: '#fff', borderBottom: '1px solid #e8e4de' }}>
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-xl font-bold text-center mb-6" style={{ color: '#1a1a1a' }}>Nossos Serviços</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {tenant.services.map((svc, i) => (
+                <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl" style={{ backgroundColor: '#f7f5f0' }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primary}15` }}>
+                    <Home className="w-4 h-4" style={{ color: primary }} />
+                  </div>
+                  <span className="text-sm font-medium" style={{ color: '#444' }}>{svc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ===== EVALUATION CTA BANNER ===== */}
+      <section id="avaliacao" className="py-8 px-4 lg:px-8" style={{ backgroundColor: `${primary}08`, borderBottom: '1px solid #e8e4de' }}>
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primary}15` }}>
+            <ClipboardList className="w-6 h-6" style={{ color: primary }} />
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <h3 className="text-lg font-bold" style={{ color: '#1a1a1a' }}>Avaliação Gratuita do Seu Imóvel</h3>
+            <p className="text-sm" style={{ color: '#666' }}>Quer saber quanto vale o seu imóvel? Solicite uma avaliação gratuita e sem compromisso.</p>
+          </div>
+          <Button
+            onClick={() => { setShowEvalModal(true); setEvalDone(false); setEvalForm({ nome: '', telefone: '', email: '', tipo_imovel: '', endereco: '', bairro: '', cidade: '', observacoes: '' }); }}
+            className="text-white px-6 py-2.5 rounded-xl font-medium flex-shrink-0"
+            style={{ backgroundColor: primary }}
+          >
+            Solicitar Avaliação
+          </Button>
+        </div>
+      </section>
+
+      {/* ===== PROPERTY GRID SECTION ===== */}
+      <section id="imoveis">
+        <div className="flex" style={{ height: 'calc(100vh - 60px)' }}>
+          {/* Cards Section */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            {/* Results header */}
           <div className="px-4 lg:px-6 py-3 flex-shrink-0" style={{ borderBottom: '1px solid #e8e4de' }}>
             <div className="flex items-center justify-between">
               <div>
@@ -1403,11 +1562,24 @@ export default function ClientPortal() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5 lg:gap-6">
-                {displayProperties.map((property) => (
-                  <PropertyCard key={property.id} property={property} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5 lg:gap-6">
+                  {displayProperties.slice(0, visibleCount).map((property) => (
+                    <PropertyCard key={property.id} property={property} />
+                  ))}
+                </div>
+                {visibleCount < displayProperties.length && (
+                  <div className="text-center mt-8 pb-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setVisibleCount(c => c + 12)}
+                      className="px-8 py-2.5 rounded-xl"
+                    >
+                      Ver mais imóveis ({displayProperties.length - visibleCount} restantes)
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1416,9 +1588,10 @@ export default function ClientPortal() {
         <div className="hidden lg:block w-[42%] flex-shrink-0 sticky top-[105px] h-[calc(100vh-105px)]" style={{ borderLeft: '1px solid #e8e4de' }}>
           {renderMap()}
         </div>
-      </div>
+        </div>
+      </section>
 
-      {/* ===== MOBILE MAP BUTTON ===== */}
+      {/* ===== MAP BUTTON ===== */}
       <div className="lg:hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-40">
         <Button
           onClick={() => setShowMobileMap(true)}
@@ -1448,51 +1621,9 @@ export default function ClientPortal() {
         </div>
       )}
 
-      {/* ===== SERVICES + EVALUATION CTA ===== */}
-      {tenant?.services && tenant.services.length > 0 && (
-        <section className="py-10 px-4 lg:px-8" style={{ backgroundColor: '#fff', borderTop: '1px solid #e8e4de' }}>
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-xl font-bold text-center mb-6" style={{ color: '#1a1a1a' }}>Nossos Serviços</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {tenant.services.map((svc, i) => (
-                <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl" style={{ backgroundColor: '#f7f5f0' }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primary}15` }}>
-                    <Home className="w-4 h-4" style={{ color: primary }} />
-                  </div>
-                  <span className="text-sm font-medium" style={{ color: '#444' }}>{svc}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ===== AVALIACAO DE IMOVEL CTA ===== */}
-      <section className="py-10 px-4 lg:px-8" style={{ backgroundColor: `${primary}08`, borderTop: '1px solid #e8e4de' }}>
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${primary}15` }}>
-              <ClipboardList className="w-7 h-7" style={{ color: primary }} />
-            </div>
-          </div>
-          <h2 className="text-xl font-bold mb-2" style={{ color: '#1a1a1a' }}>Avaliação Gratuita do Seu Imóvel</h2>
-          <p className="text-sm mb-5" style={{ color: '#666' }}>
-            Quer saber quanto vale o seu imóvel? Solicite uma avaliação gratuita e sem compromisso.
-          </p>
-          <Button
-            onClick={() => { setShowEvalModal(true); setEvalDone(false); setEvalForm({ nome: '', telefone: '', email: '', tipo_imovel: '', endereco: '', bairro: '', cidade: '', observacoes: '' }); }}
-            className="text-white px-6 py-2.5 rounded-xl font-medium"
-            style={{ backgroundColor: primary }}
-          >
-            <ClipboardList className="w-4 h-4 mr-2" />
-            Solicitar Avaliação
-          </Button>
-        </div>
-      </section>
-
       {/* ===== ABOUT SECTION ===== */}
       {tenant?.about_text && (
-        <section className="py-10 px-4 lg:px-8" style={{ backgroundColor: '#fff', borderTop: '1px solid #e8e4de' }}>
+        <section id="sobre" className="py-10 px-4 lg:px-8" style={{ backgroundColor: '#fff', borderTop: '1px solid #e8e4de' }}>
           <div className="max-w-3xl mx-auto text-center">
             <div className="flex justify-center mb-4">
               {tenant.mascot_url ? (
