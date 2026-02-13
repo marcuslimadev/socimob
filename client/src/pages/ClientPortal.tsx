@@ -392,12 +392,30 @@ function PhotoCarousel({
 }
 
 // ===== Mascot Avatar (configurable per tenant) =====
-const MascotAvatar = ({ size = 48, mascotUrl, primary }: { size?: number; mascotUrl?: string; primary?: string }) => {
-  if (mascotUrl) {
-    return <img src={mascotUrl} alt="Mascote" width={size} height={size} className="rounded-full object-cover" style={{ width: size, height: size }} />;
+const MascotAvatar = ({ size = 48, mascotUrl, primary, roundedClass = 'rounded-full', fitClass = 'object-cover', imagePadding = 0, imageBackground = 'transparent' }: { size?: number; mascotUrl?: string; primary?: string; roundedClass?: string; fitClass?: 'object-cover' | 'object-contain'; imagePadding?: number; imageBackground?: string }) => {
+  const [imgError, setImgError] = useState(false);
+  
+  if (mascotUrl && !imgError) {
+    return (
+      <img 
+        src={mascotUrl} 
+        alt="Mascote" 
+        width={size} 
+        height={size} 
+        className={`${roundedClass} ${fitClass}`} 
+        style={{ width: size, height: size, padding: imagePadding, backgroundColor: imageBackground }} 
+        onError={(e) => {
+          console.error('Failed to load mascot image:', mascotUrl);
+          setImgError(true);
+        }}
+        onLoad={() => {
+          console.log('Mascot image loaded successfully:', mascotUrl);
+        }}
+      />
+    );
   }
   return (
-    <div className="rounded-full flex items-center justify-center" style={{ width: size, height: size, backgroundColor: primary || '#1e40af' }}>
+    <div className={`${roundedClass} flex items-center justify-center`} style={{ width: size, height: size, backgroundColor: primary || '#1e40af' }}>
       <Bot className="text-white" style={{ width: size * 0.55, height: size * 0.55 }} />
     </div>
   );
@@ -408,8 +426,19 @@ type ChatStep = 'greeting' | 'ask_name' | 'ask_whatsapp' | 'ask_email' | 'ask_in
 interface ChatMessage { from: 'bot' | 'user'; text: string; }
 
 // ===== Chat Widget (per-tenant mascot) =====
-function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl }: { tenantPhone?: string; tenantName?: string; primary: string; mascotUrl?: string }) {
-  const [open, setOpen] = useState(false);
+function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpenChange, propertyContext }: { 
+  tenantPhone?: string; 
+  tenantName?: string; 
+  primary: string; 
+  mascotUrl?: string;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  propertyContext?: { id: number; titulo: string; preco: string };
+}) {
+  useEffect(() => {
+    console.log('ChatWidget mascotUrl:', mascotUrl);
+  }, [mascotUrl]);
+
   const [step, setStep] = useState<ChatStep>('greeting');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -420,22 +449,46 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl }: { tenantPho
   const [leadWhatsapp, setLeadWhatsapp] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const prevPropertyRef = useRef<number | undefined>(undefined);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-  useEffect(() => { if (open && inputRef.current) setTimeout(() => inputRef.current?.focus(), 300); }, [open, step]);
+  useEffect(() => { if (isOpen && inputRef.current) setTimeout(() => inputRef.current?.focus(), 300); }, [isOpen, step]);
 
   const addBot = (text: string) => setMessages(prev => [...prev, { from: 'bot', text }]);
   const addUser = (text: string) => setMessages(prev => [...prev, { from: 'user', text }]);
 
-  const handleOpen = () => {
-    setOpen(true);
-    if (messages.length === 0) {
+  // Auto-start conversation when opened
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
       setTimeout(() => {
         addBot(`Oi! Eu sou o assistente virtual da ${tenantName || 'imobiliária'}!`);
-        setTimeout(() => { addBot('Posso te ajudar a encontrar o imóvel ideal. Para começar, qual é o seu nome?'); setStep('ask_name'); }, 600);
+        setTimeout(() => {
+          if (propertyContext) {
+            addBot(`Vi que você se interessou por: ${propertyContext.titulo} - ${propertyContext.preco}`);
+            setInteresse(`Imóvel ID ${propertyContext.id}: ${propertyContext.titulo}`);
+            setTimeout(() => { addBot('Para continuar, qual é o seu nome?'); setStep('ask_name'); }, 600);
+          } else {
+            addBot('Posso te ajudar a encontrar o imóvel ideal. Para começar, qual é o seu nome?'); 
+            setStep('ask_name');
+          }
+        }, 600);
       }, 300);
     }
-  };
+  }, [isOpen, messages.length, propertyContext, tenantName]);
+
+  // Reset when property context changes
+  useEffect(() => {
+    if (propertyContext && prevPropertyRef.current !== propertyContext.id) {
+      prevPropertyRef.current = propertyContext.id;
+      setMessages([]);
+      setStep('greeting');
+      setNome('');
+      setWhatsapp('');
+      setEmail('');
+      setInteresse('');
+      setLeadWhatsapp('');
+    }
+  }, [propertyContext]);
 
   const fmtWa = (v: string) => {
     const d = v.replace(/\D/g, '');
@@ -463,23 +516,80 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl }: { tenantPho
       case 'ask_email':
         if (val.toLowerCase() === 'pular' || val.toLowerCase() === 'não' || val.toLowerCase() === 'nao') {
           addUser('Prefiro não informar');
-          setTimeout(() => { addBot('Sem problemas! Que tipo de imóvel você procura? (ex: apartamento 2 quartos, casa com quintal...)'); setStep('ask_interesse'); }, 400);
+          if (interesse) {
+            // Se já tem interesse (propertyContext), submeter direto
+            setStep('submitting');
+            setTimeout(async () => {
+              addBot('Registrando seu contato...');
+              try {
+                const resp = await fetch('/api/portal/chat-lead', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'X-Tenant-Domain': window.location.hostname },
+                  body: JSON.stringify({ nome, whatsapp, email: undefined, interesse }),
+                });
+                const data = await resp.json();
+                if (data.success) {
+                  const wpNum = data.whatsapp_number || (tenantPhone ? tenantPhone.replace(/\D/g, '') : '');
+                  setLeadWhatsapp(wpNum);
+                  setTimeout(() => { addBot(`Pronto, ${nome}! Seu contato foi registrado!`); setTimeout(() => { addBot('Um corretor vai entrar em contato em breve. Você pode iniciar uma conversa pelo WhatsApp agora mesmo!'); setStep('done'); }, 600); }, 500);
+                } else {
+                  addBot('Ops, tivemos um problema. Tente pelo WhatsApp direto!');
+                  setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : ''); setStep('done');
+                }
+              } catch {
+                addBot('Ops, algo deu errado. Tente pelo WhatsApp direto!');
+                setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : ''); setStep('done');
+              }
+            }, 300);
+          } else {
+            setTimeout(() => { addBot('Sem problemas! Que tipo de imóvel você procura? (ex: apartamento 2 quartos, casa com quintal...)'); setStep('ask_interesse'); }, 400);
+          }
         } else if (!val.includes('@')) {
           addBot('Hmm, e-mail inválido. Tente novamente ou digite "pular".'); return;
         } else {
           addUser(val); setEmail(val);
-          setTimeout(() => { addBot('Ótimo! Que tipo de imóvel você procura? (ex: apartamento 2 quartos, casa com quintal...)'); setStep('ask_interesse'); }, 400);
+          if (interesse) {
+            // Se já tem interesse (propertyContext), submeter direto
+            setStep('submitting');
+            setTimeout(async () => {
+              addBot('Registrando seu contato...');
+              try {
+                const resp = await fetch('/api/portal/chat-lead', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'X-Tenant-Domain': window.location.hostname },
+                  body: JSON.stringify({ nome, whatsapp, email: val, interesse }),
+                });
+                const data = await resp.json();
+                if (data.success) {
+                  const wpNum = data.whatsapp_number || (tenantPhone ? tenantPhone.replace(/\D/g, '') : '');
+                  setLeadWhatsapp(wpNum);
+                  setTimeout(() => { addBot(`Pronto, ${nome}! Seu contato foi registrado!`); setTimeout(() => { addBot('Um corretor vai entrar em contato em breve. Você pode iniciar uma conversa pelo WhatsApp agora mesmo!'); setStep('done'); }, 600); }, 500);
+                } else {
+                  addBot('Ops, tivemos um problema. Tente pelo WhatsApp direto!');
+                  setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : ''); setStep('done');
+                }
+              } catch {
+                addBot('Ops, algo deu errado. Tente pelo WhatsApp direto!');
+                setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : ''); setStep('done');
+              }
+            }, 300);
+          } else {
+            setTimeout(() => { addBot('Ótimo! Que tipo de imóvel você procura? (ex: apartamento 2 quartos, casa com quintal...)'); setStep('ask_interesse'); }, 400);
+          }
         }
         break;
       case 'ask_interesse':
-        addUser(val); setInteresse(val); setStep('submitting');
+        addUser(val); 
+        const finalInteresse = interesse || val; // Use pre-set interesse if available
+        setInteresse(finalInteresse); 
+        setStep('submitting');
         setTimeout(async () => {
           addBot('Registrando seu contato...');
           try {
             const resp = await fetch('/api/portal/chat-lead', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'X-Tenant-Domain': window.location.hostname },
-              body: JSON.stringify({ nome, whatsapp, email: email || undefined, interesse: val }),
+              body: JSON.stringify({ nome, whatsapp, email: email || undefined, interesse: finalInteresse }),
             });
             const data = await resp.json();
             if (data.success) {
@@ -505,15 +615,15 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl }: { tenantPho
 
   return (
     <>
-      {open && (
-        <div className="fixed bottom-24 right-4 sm:right-6 z-[60] w-[340px] sm:w-[380px] rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'min(520px, calc(100vh - 140px))', backgroundColor: '#fff' }}>
-          <div className="flex items-center gap-3 px-4 py-3 text-white flex-shrink-0" style={{ backgroundColor: primary }}>
-            <MascotAvatar size={36} mascotUrl={mascotUrl} primary={primary} />
+      {isOpen && (
+        <div className="fixed bottom-[330px] right-6 z-[60] w-[480px] rounded-3xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'min(650px, calc(100vh - 360px))', backgroundColor: '#fff' }}>
+          <div className="flex items-center gap-4 px-6 py-5 text-white flex-shrink-0" style={{ backgroundColor: primary }}>
+            <MascotAvatar size={100} mascotUrl={mascotUrl} primary={primary} />
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm leading-tight">{tenantName || 'Assistente'}</div>
-              <div className="text-[11px] opacity-80 flex items-center gap-1"><Bot className="w-3 h-3" />Assistente Virtual</div>
+              <div className="font-bold text-2xl leading-tight">{tenantName || 'Assistente'}</div>
+              <div className="text-base opacity-90 flex items-center gap-2 mt-1"><Bot className="w-5 h-5" />Assistente Virtual</div>
             </div>
-            <button onClick={() => setOpen(false)} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"><X className="w-4 h-4" /></button>
+            <button onClick={() => onOpenChange(false)} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"><X className="w-4 h-4" /></button>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ backgroundColor: '#f0ede8', minHeight: '280px' }}>
             {messages.map((msg, i) => (
@@ -553,20 +663,20 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl }: { tenantPho
         </div>
       )}
       <button
-        onClick={open ? () => setOpen(false) : handleOpen}
-        className="fixed bottom-6 right-4 sm:right-6 z-[60] w-16 h-16 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-200"
-        style={{ backgroundColor: open ? '#666' : primary }}
+        onClick={() => onOpenChange(!isOpen)}
+        className="fixed bottom-6 right-6 z-[60] w-[300px] h-[300px] flex items-center justify-center transition-all duration-300 hover:scale-105"
+        style={{ backgroundColor: 'transparent' }}
       >
-        {open ? <X className="w-6 h-6 text-white" /> : (
+        {isOpen ? <X className="w-20 h-20" style={{ color: primary }} /> : (
           <div className="relative">
-            <MascotAvatar size={40} mascotUrl={mascotUrl} primary={primary} />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white" />
+            <MascotAvatar size={280} mascotUrl={mascotUrl} primary={primary} roundedClass="rounded-2xl" fitClass="object-contain" imagePadding={0} imageBackground="transparent" />
+            <span className="absolute top-4 right-4 w-12 h-12 bg-green-400 rounded-full border-4 border-white animate-pulse shadow-lg" />
           </div>
         )}
       </button>
-      {!open && (
-        <div className="fixed bottom-[88px] right-4 sm:right-6 z-[59] rounded-xl shadow-lg px-3 py-2 text-sm font-medium animate-bounce" style={{ backgroundColor: '#fff', color: primary, animationDuration: '2s' }}>
-          <div className="absolute bottom-0 right-6 w-3 h-3 rotate-45 translate-y-1.5 shadow-lg" style={{ backgroundColor: '#fff' }} />
+      {!isOpen && !propertyContext && (
+        <div className="fixed bottom-[330px] right-6 z-[59] rounded-2xl shadow-2xl px-6 py-4 text-2xl font-bold animate-bounce border" style={{ backgroundColor: '#fff', color: primary, animationDuration: '2s', borderColor: `${primary}33` }}>
+          <div className="absolute bottom-0 right-[130px] w-6 h-6 rotate-45 translate-y-3 shadow-lg border-l border-b" style={{ backgroundColor: '#fff', borderColor: `${primary}33` }} />
           Posso te ajudar?
         </div>
       )}
@@ -598,6 +708,8 @@ export default function ClientPortal() {
   const [evalDone, setEvalDone] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(12);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatPropertyContext, setChatPropertyContext] = useState<{ id: number; titulo: string; preco: string } | undefined>(undefined);
   // theme forced to light via useEffect below
 
   // Load tenant configuration
@@ -934,6 +1046,19 @@ export default function ClientPortal() {
           {address && (
             <p className="text-xs mt-1 truncate" style={{ color: '#888' }}>{address}</p>
           )}
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setChatPropertyContext({ id: property.id, titulo: description, preco: formatPrice(price) });
+              setChatOpen(true);
+            }}
+            className="w-full mt-3 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+            style={{ backgroundColor: `${primary}15`, color: primary }}
+          >
+            <MessageCircle className="w-4 h-4" />
+            Entrar em Contato
+          </button>
         </div>
       </div>
     );
@@ -1386,66 +1511,23 @@ export default function ClientPortal() {
         </div>
       )}
 
-      {/* ===== HERO SECTION ===== */}
+      {/* ===== HERO SECTION (COMPACTO) ===== */}
       <section id="inicio" className="relative overflow-hidden" style={{ backgroundColor: primary }}>
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%)' }} />
         </div>
-        <div className="relative max-w-6xl mx-auto px-4 lg:px-8 py-12 lg:py-16">
-          <div className="flex flex-col lg:flex-row items-center gap-8">
-            <div className="flex-1 text-center lg:text-left">
-              <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3">
-                {tenant?.name || 'Imobiliária'}
-              </h1>
-              {tenant?.creci && (
-                <p className="text-sm font-medium text-white/70 mb-4">CRECI: {tenant.creci}</p>
-              )}
-              {tenant?.about_text && (
-                <p className="text-base text-white/85 leading-relaxed mb-6 max-w-xl">
-                  {tenant.about_text.length > 200 ? tenant.about_text.substring(0, 200) + '...' : tenant.about_text}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
-                <a
-                  href="#imoveis"
-                  onClick={(e) => { e.preventDefault(); document.getElementById('imoveis')?.scrollIntoView({ behavior: 'smooth' }); }}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-sm transition-colors"
-                  style={{ backgroundColor: '#fff', color: primary }}
-                >
-                  <Home className="w-4 h-4" />
-                  Ver Imóveis
-                </a>
-                <button
-                  onClick={() => { setShowEvalModal(true); setEvalDone(false); setEvalForm({ nome: '', telefone: '', email: '', tipo_imovel: '', endereco: '', bairro: '', cidade: '', observacoes: '' }); }}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-sm border-2 border-white/30 text-white hover:bg-white/10 transition-colors"
-                >
-                  <ClipboardList className="w-4 h-4" />
-                  Avaliação Gratuita
-                </button>
-                {tenant?.contact_phone && (
-                  <a
-                    href={`https://wa.me/${tenant.contact_phone.replace(/\D/g, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-sm bg-green-500 hover:bg-green-600 text-white transition-colors"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    WhatsApp
-                  </a>
-                )}
-              </div>
-              {tenant?.endereco && (
-                <p className="text-xs text-white/60 mt-5 flex items-center gap-1.5 justify-center lg:justify-start">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {tenant.endereco}
-                </p>
-              )}
-            </div>
-            {tenant?.mascot_url && (
-              <div className="flex-shrink-0">
-                <img src={tenant.mascot_url} alt="Mascote" className="w-48 h-48 lg:w-64 lg:h-64 rounded-3xl object-cover shadow-2xl border-4 border-white/20" />
-              </div>
+        <div className="relative max-w-6xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
+        
+          <div className="flex flex-col items-center text-center gap-2">
+            <h1 className="text-2xl lg:text-3xl font-bold text-white">
+              {tenant?.name || 'Imobiliária'}
+            </h1>
+            {tenant?.creci && (
+              <p className="text-xs font-medium text-white/70">CRECI: {tenant.creci}</p>
             )}
+            <p className="text-sm text-white/80 max-w-2xl">
+              Encontre o imóvel ideal para você. Use os filtros abaixo para buscar.
+            </p>
           </div>
         </div>
       </section>
@@ -1625,13 +1707,11 @@ export default function ClientPortal() {
       {tenant?.about_text && (
         <section id="sobre" className="py-10 px-4 lg:px-8" style={{ backgroundColor: '#fff', borderTop: '1px solid #e8e4de' }}>
           <div className="max-w-3xl mx-auto text-center">
-            <div className="flex justify-center mb-4">
-              {tenant.mascot_url ? (
-                <img src={tenant.mascot_url} alt="Mascote" className="w-16 h-16 rounded-2xl object-cover" />
-              ) : (tenant.logo_url || tenant.logo) ? (
+            {(tenant.logo_url || tenant.logo) && (
+              <div className="flex justify-center mb-4">
                 <img src={tenant.logo_url || tenant.logo} alt={tenant.name} className="h-10 w-auto object-contain" />
-              ) : null}
-            </div>
+              </div>
+            )}
             <h2 className="text-xl font-bold mb-3" style={{ color: '#1a1a1a' }}>Sobre {tenant.name || 'Nós'}</h2>
             {tenant.creci && <p className="text-xs font-medium mb-3" style={{ color: primary }}>CRECI: {tenant.creci}</p>}
             <p className="text-sm leading-relaxed" style={{ color: '#555' }}>{tenant.about_text}</p>
@@ -1775,7 +1855,15 @@ export default function ClientPortal() {
       </footer>
 
       {/* ===== CHAT WIDGET ===== */}
-      <ChatWidget tenantPhone={tenant?.contact_phone} tenantName={tenant?.name} primary={primary} mascotUrl={tenant?.mascot_url} />
+      <ChatWidget 
+        tenantPhone={tenant?.contact_phone} 
+        tenantName={tenant?.name} 
+        primary={primary} 
+        mascotUrl={tenant?.mascot_url}
+        isOpen={chatOpen}
+        onOpenChange={setChatOpen}
+        propertyContext={chatPropertyContext}
+      />
     </div>
   );
 }

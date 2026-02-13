@@ -90,9 +90,14 @@ class VistoriasController extends Controller
 
     private function applyTenantScope($query, Request $request)
     {
-        if ($request->attributes->has('tenant_id')) {
-            $query->forTenant($request->attributes->get('tenant_id'));
+        $tenantId = $request->attributes->get('tenant_id')
+            ?? (app()->bound('tenant') ? app('tenant')->id : null);
+
+        if (!$tenantId) {
+            abort(403, 'Tenant não identificado');
         }
+
+        $query->where($query->getModel()->getTable() . '.tenant_id', $tenantId);
 
         return $query;
     }

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class PropertyEvaluation extends Model
 {
+    use BelongsToTenant;
     protected $table = 'property_evaluations';
 
     protected $fillable = [
@@ -26,11 +28,6 @@ class PropertyEvaluation extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-
-    public function tenant()
-    {
-        return $this->belongsTo(Tenant::class, 'tenant_id');
-    }
 
     public function lead()
     {

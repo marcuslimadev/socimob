@@ -28,12 +28,13 @@ class LeadsController extends Controller
     public function index(Request $request)
     {
         try {
-            $db = app('db');
-            $query = $db->table('leads');
-
-            if ($request->attributes->has('tenant_id')) {
-                $query->where('tenant_id', $request->attributes->get('tenant_id'));
+            $tenantId = $this->resolveTenantId($request);
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
             }
+
+            $db = app('db');
+            $query = $db->table('leads')->where('tenant_id', $tenantId);
             
             // Filtros
             if ($request->status) {
@@ -274,15 +275,16 @@ class LeadsController extends Controller
      * Estatísticas de leads
      * GET /api/leads/stats
      */
-    public function stats()
+    public function stats(Request $request)
     {
         try {
-            $db = app('db');
-            $tenantId = request()->attributes->get('tenant_id');
+            $tenantId = $this->resolveTenantId($request);
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
 
-            $builder = fn () => $tenantId
-                ? $db->table('leads')->where('tenant_id', $tenantId)
-                : $db->table('leads');
+            $db = app('db');
+            $builder = fn () => $db->table('leads')->where('tenant_id', $tenantId);
 
             $stats = [
                 'total' => $builder()->count(),

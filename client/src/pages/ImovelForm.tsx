@@ -1,16 +1,50 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Home, Save, X, MapPin, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useLocation } from 'wouter';
+import { useLocation, useRoute } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { useViaCep } from '@/hooks/useViaCep';
 
+const defaultFormData = {
+  codigo_imovel: '',
+  referencia_imovel: '',
+  tipo_imovel: 'apartamento',
+  finalidade_imovel: 'venda',
+  valor_venda: '',
+  valor_condominio: '',
+  valor_iptu: '',
+  dormitorios: '',
+  suites: '',
+  banheiros: '',
+  garagem: '',
+  area_total: '',
+  area_privativa: '',
+  area_terreno: '',
+  cep: '',
+  estado: '',
+  cidade: '',
+  bairro: '',
+  logradouro: '',
+  numero: '',
+  complemento: '',
+  em_condominio: false,
+  nome_condominio: '',
+  descricao: '',
+  active: true,
+  exibir_imovel: true,
+  exclusividade: false,
+};
+
 export default function ImovelForm() {
   const [, setLocation] = useLocation();
+  const [match, params] = useRoute('/properties/:id/editar');
+  const isEditMode = Boolean(match && params?.id);
+  const propertyId = params?.id;
   const [currentTab, setCurrentTab] = useState('identificacao');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingProperty, setIsLoadingProperty] = useState(false);
   const { buscarCep, isLoading: isLoadingCep } = useViaCep();
 
   const handleBuscarCep = async () => {
@@ -33,35 +67,62 @@ export default function ImovelForm() {
     }
   };
 
-  const [formData, setFormData] = useState({
-    codigo_imovel: '',
-    referencia_imovel: '',
-    tipo_imovel: 'apartamento',
-    finalidade_imovel: 'venda',
-    valor_venda: '',
-    valor_condominio: '',
-    valor_iptu: '',
-    dormitorios: '',
-    suites: '',
-    banheiros: '',
-    garagem: '',
-    area_total: '',
-    area_privativa: '',
-    area_terreno: '',
-    cep: '',
-    estado: '',
-    cidade: '',
-    bairro: '',
-    logradouro: '',
-    numero: '',
-    complemento: '',
-    em_condominio: false,
-    nome_condominio: '',
-    descricao: '',
-    active: true,
-    exibir_imovel: true,
-    exclusividade: false,
-  });
+  const [formData, setFormData] = useState(defaultFormData);
+
+  useEffect(() => {
+    const fetchProperty = async () => {
+      if (!isEditMode || !propertyId) return;
+
+      try {
+        setIsLoadingProperty(true);
+        const response = await api.get(`/imoveis/${propertyId}`);
+        const item = response.data?.data;
+        if (!item) {
+          toast.error('Imóvel não encontrado');
+          setLocation('/properties');
+          return;
+        }
+
+        setFormData({
+          codigo_imovel: item.codigo_imovel || '',
+          referencia_imovel: item.referencia_imovel || '',
+          tipo_imovel: item.tipo_imovel || 'apartamento',
+          finalidade_imovel: item.finalidade_imovel || 'venda',
+          valor_venda: item.valor_venda != null ? String(item.valor_venda) : '',
+          valor_condominio: item.valor_condominio != null ? String(item.valor_condominio) : '',
+          valor_iptu: item.valor_iptu != null ? String(item.valor_iptu) : '',
+          dormitorios: item.dormitorios != null ? String(item.dormitorios) : '',
+          suites: item.suites != null ? String(item.suites) : '',
+          banheiros: item.banheiros != null ? String(item.banheiros) : '',
+          garagem: item.garagem != null ? String(item.garagem) : '',
+          area_total: item.area_total != null ? String(item.area_total) : '',
+          area_privativa: item.area_privativa != null ? String(item.area_privativa) : '',
+          area_terreno: item.area_terreno != null ? String(item.area_terreno) : '',
+          cep: item.cep || '',
+          estado: item.estado || '',
+          cidade: item.cidade || '',
+          bairro: item.bairro || '',
+          logradouro: item.logradouro || '',
+          numero: item.numero || '',
+          complemento: item.complemento || '',
+          em_condominio: Boolean(item.em_condominio),
+          nome_condominio: item.nome_condominio || '',
+          descricao: item.descricao || '',
+          active: Boolean(item.active),
+          exibir_imovel: Boolean(item.exibir_imovel),
+          exclusividade: Boolean(item.exclusividade),
+        });
+      } catch (error) {
+        console.error('Erro ao carregar imóvel:', error);
+        toast.error('Erro ao carregar imóvel para edição');
+        setLocation('/properties');
+      } finally {
+        setIsLoadingProperty(false);
+      }
+    };
+
+    fetchProperty();
+  }, [isEditMode, propertyId, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,14 +150,19 @@ export default function ImovelForm() {
         area_terreno: formData.area_terreno ? parseFloat(formData.area_terreno) : null,
       };
 
-      await api.post('/imoveis', dataToSend);
-      toast.success('Imóvel criado com sucesso');
+      if (isEditMode && propertyId) {
+        await api.put(`/imoveis/${propertyId}`, dataToSend);
+        toast.success('Imóvel atualizado com sucesso');
+      } else {
+        await api.post('/imoveis', dataToSend);
+        toast.success('Imóvel criado com sucesso');
+      }
       setLocation('/properties');
     } catch (error: any) {
-      console.error('Erro ao criar imóvel:', error);
+      console.error('Erro ao salvar imóvel:', error);
       const message = error.response?.data?.messages
         ? Object.values(error.response.data.messages).flat().join(', ')
-        : 'Erro ao criar imóvel';
+        : 'Erro ao salvar imóvel';
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -485,9 +551,11 @@ export default function ImovelForm() {
             <div>
               <h1 className="page-title mb-2 flex items-center gap-3">
                 <Home size={36} />
-                Novo Imóvel
+                {isEditMode ? 'Editar Imóvel' : 'Novo Imóvel'}
               </h1>
-              <p className="page-subtitle">Cadastre um novo imóvel no sistema</p>
+              <p className="page-subtitle">
+                {isEditMode ? 'Atualize os dados do imóvel' : 'Cadastre um novo imóvel no sistema'}
+              </p>
             </div>
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -502,6 +570,12 @@ export default function ImovelForm() {
 
           <form onSubmit={handleSubmit}>
             <div className="glass-panel rounded-2xl p-6">
+              {isLoadingProperty ? (
+                <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="animate-spin" size={16} />
+                  Carregando dados do imóvel...
+                </div>
+              ) : null}
               <div className="flex gap-2 mb-6 border-b border-white/10">
                 <button
                   type="button"
@@ -569,7 +643,7 @@ export default function ImovelForm() {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setLocation('/properties')}
                   className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground font-semibold"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isLoadingProperty}
                 >
                   Cancelar
                 </motion.button>
@@ -578,7 +652,7 @@ export default function ImovelForm() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white font-semibold flex items-center justify-center gap-2"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isLoadingProperty}
                 >
                   {isSubmitting ? (
                     <>
@@ -590,7 +664,7 @@ export default function ImovelForm() {
                   ) : (
                     <>
                       <Save size={18} />
-                      Salvar Imóvel
+                      {isEditMode ? 'Atualizar Imóvel' : 'Salvar Imóvel'}
                     </>
                   )}
                 </motion.button>

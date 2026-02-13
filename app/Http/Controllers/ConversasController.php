@@ -128,13 +128,12 @@ class ConversasController extends Controller
                     'users.name as corretor_nome'
                 )
                 ->where('conversas.id', $id)
-                ->when($tenantId, function ($q) use ($tenantId) {
-                    $q->where(function ($sub) use ($tenantId) {
-                        $sub->where('conversas.tenant_id', $tenantId)
-                            ->orWhere('leads.tenant_id', $tenantId);
-                    });
-                })
+                ->where('conversas.tenant_id', $tenantId)
                 ->first();
+
+            if (!$conversa && !$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
             
             if (!$conversa) {
                 \Log::warning("Conversa {$id} não encontrada");
@@ -561,9 +560,13 @@ class ConversasController extends Controller
                         $query->orWhere('conversas.telefone', 'LIKE', '%' . $sufixo);
                     }
                 })
-                ->when($tenantId, fn($q) => $q->where('conversas.tenant_id', $tenantId))
+                ->where('conversas.tenant_id', $tenantId)
                 ->orderBy('conversas.iniciada_em', 'desc')
                 ->get();
+
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
             
             \Log::info("Conversas encontradas", [
                 'total' => count($conversas),
@@ -574,7 +577,6 @@ class ConversasController extends Controller
             $resultado = $conversas->map(function($conversa) use ($db, $tenantId) {
                 $mensagens = $db->table('mensagens')
                     ->where('conversa_id', $conversa->id)
-                    ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
                     ->orderBy('sent_at', 'desc') // Mais recentes primeiro
                     ->get()
                     ->map(function($msg) {

@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Traits\BelongsToTenant;
 
 class ClientIntention extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, BelongsToTenant;
 
     protected $table = 'client_intentions';
 
@@ -58,11 +59,6 @@ class ClientIntention extends Model
     /**
      * Relacionamentos
      */
-    public function tenant()
-    {
-        return $this->belongsTo(Tenant::class, 'tenant_id');
-    }
-
     public function client()
     {
         return $this->belongsTo(User::class, 'client_id');
@@ -76,11 +72,6 @@ class ClientIntention extends Model
     /**
      * Scopes
      */
-    public function scopeForTenant($query, $tenantId)
-    {
-        return $query->where('tenant_id', $tenantId);
-    }
-
     public function scopeActive($query)
     {
         return $query->where('status', 'ativa');

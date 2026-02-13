@@ -240,7 +240,10 @@ class SecurityAuditService
     private function notifySecurityTeam(string $event, array $data): void
     {
         try {
-            $tenantId = app('tenant')?->id ?? 1;
+            $tenantId = app('tenant')?->id;
+            if (!$tenantId) {
+                return; // Cannot notify without a tenant context
+            }
 
             // Buscar admins
             $admins = DB::table('users')

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Plus, MapPin, Bed, Bath, Ruler, Heart, Share2, Eye, X, Download, RefreshCw } from 'lucide-react';
+import { Search, Filter, Plus, MapPin, Bed, Bath, Ruler, Eye, X, Download, RefreshCw, Pencil, Trash2, Heart, Share2 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 interface Property {
   id: string;
   title: string;
+  codigo: string;
   price: number;
   type: string;
   status: string;
@@ -17,6 +18,8 @@ interface Property {
   bathrooms: number;
   area: number;
   image: string;
+  active: boolean;
+  exibir: boolean;
 }
 
 export default function Properties() {
@@ -35,6 +38,7 @@ export default function Properties() {
   const [minArea, setMinArea] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [publishingPropertyId, setPublishingPropertyId] = useState<string | null>(null);
   const itemsPerPage = 9;
 
   useEffect(() => {
@@ -57,22 +61,24 @@ export default function Properties() {
   const fetchProperties = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get('/properties');
-      if (response.data.success) {
-        const mappedProperties = response.data.data.map((item: any) => ({
-          id: item.id.toString(),
-          title: item.titulo || 'Sem título',
-          price: parseFloat(item.valor_venda) || 0,
-          type: (item.tipo_imovel || 'outros').toLowerCase(),
-          status: (item.finalidade_imovel || 'venda').toLowerCase().includes('aluguel') ? 'aluguel' : 'venda',
-          location: `${item.bairro || ''}, ${item.cidade || ''}`.replace(/^, /, '').replace(/, $/, '') || 'Localização não informada',
-          bedrooms: parseInt(item.dormitorios) || 0,
-          bathrooms: parseInt(item.banheiros) || 0,
-          area: parseFloat(item.area_total) || 0,
-          image: Array.isArray(item.imagens) && item.imagens.length > 0 ? item.imagens[0] : (item.foto_capa || '🏢'),
-        }));
-        setProperties(mappedProperties);
-      }
+      const response = await api.get('/imoveis', { params: { per_page: 'all' } });
+      const rows = Array.isArray(response.data?.data) ? response.data.data : [];
+      const mappedProperties = rows.map((item: any) => ({
+        id: item.id.toString(),
+        codigo: item.codigo_imovel || item.codigo || '-',
+        title: item.titulo || item.codigo_imovel || 'Sem título',
+        price: parseFloat(item.valor_venda) || 0,
+        type: (item.tipo_imovel || 'outros').toLowerCase(),
+        status: (item.finalidade_imovel || 'venda').toLowerCase().includes('aluguel') ? 'aluguel' : 'venda',
+        location: `${item.bairro || ''}, ${item.cidade || ''}`.replace(/^, /, '').replace(/, $/, '') || 'Localização não informada',
+        bedrooms: parseInt(item.dormitorios) || 0,
+        bathrooms: parseInt(item.banheiros) || 0,
+        area: parseFloat(item.area_total) || 0,
+        image: Array.isArray(item.imagens) && item.imagens.length > 0 ? item.imagens[0] : (item.foto_capa || '🏢'),
+        active: Boolean(item.active),
+        exibir: Boolean(item.exibir_imovel),
+      }));
+      setProperties(mappedProperties);
     } catch (error) {
       console.error('Erro ao buscar imóveis:', error);
       toast.error('Erro ao carregar imóveis');
@@ -188,6 +194,43 @@ export default function Properties() {
       toast.error('Erro ao atualizar imóveis');
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleDeleteProperty = async (property: Property) => {
+    const confirmed = window.confirm(`Excluir o imóvel ${property.codigo}? Esta ação não pode ser desfeita.`);
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/imoveis/${property.id}`);
+      toast.success('Imóvel excluído com sucesso');
+      await fetchProperties();
+    } catch (error: any) {
+      console.error('Erro ao excluir imóvel:', error);
+      toast.error(error?.response?.data?.error || 'Erro ao excluir imóvel');
+    }
+  };
+
+  const handleTogglePublish = async (property: Property) => {
+    try {
+      setPublishingPropertyId(property.id);
+      const nextValue = !property.exibir;
+      await api.put(`/imoveis/${property.id}`, {
+        exibir_imovel: nextValue,
+      });
+
+      setProperties((prev) =>
+        prev.map((item) =>
+          item.id === property.id ? { ...item, exibir: nextValue } : item
+        )
+      );
+
+      toast.success(nextValue ? 'Imóvel publicado no portal' : 'Imóvel ocultado do portal');
+    } catch (error: any) {
+      console.error('Erro ao alterar publicação do imóvel:', error);
+      toast.error(error?.response?.data?.error || 'Erro ao alterar publicação');
+    } finally {
+      setPublishingPropertyId(null);
     }
   };
 
@@ -543,6 +586,7 @@ export default function Properties() {
 
                     <div className="p-6">
                       <h3 className="text-lg font-bold text-foreground mb-2 line-clamp-2">{property.title}</h3>
+                      <p className="text-xs text-muted-foreground mb-2">Código: {property.codigo}</p>
 
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                         <MapPin size={16} />
@@ -575,10 +619,36 @@ export default function Properties() {
                         </div>
                       </div>
 
+                      <div className="mb-4 flex flex-wrap gap-2">
+                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${property.active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
+                          {property.active ? 'Ativo' : 'Inativo'}
+                        </span>
+                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${property.exibir ? 'bg-blue-500/20 text-blue-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                          {property.exibir ? 'Publicado no portal' : 'Oculto no portal'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePublish(property)}
+                          disabled={publishingPropertyId === property.id}
+                          className={`rounded-full px-2 py-1 text-xs font-semibold transition-all disabled:opacity-60 ${
+                            property.exibir
+                              ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
+                              : 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30'
+                          }`}
+                        >
+                          {publishingPropertyId === property.id
+                            ? 'Salvando...'
+                            : property.exibir
+                              ? 'Despublicar'
+                              : 'Publicar'}
+                        </button>
+                      </div>
+
                       <div className="flex gap-2">
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
+                          onClick={() => setLocation(`/portal/imovel/${property.id}`)}
                           className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold text-white transition-all"
                         >
                           <Eye size={16} />
@@ -587,9 +657,18 @@ export default function Properties() {
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
+                          onClick={() => setLocation(`/properties/${property.id}/editar`)}
                           className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold text-foreground transition-all"
                         >
-                          Editar
+                          <Pencil size={16} />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleDeleteProperty(property)}
+                          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-sm font-semibold text-red-200 transition-all"
+                        >
+                          <Trash2 size={16} />
                         </motion.button>
                       </div>
                     </div>

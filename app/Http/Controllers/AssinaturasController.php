@@ -16,13 +16,20 @@ class AssinaturasController extends Controller
         $this->emailService = $emailService;
     }
 
+    private function resolveTenantId(Request $request): ?int
+    {
+        return $request->attributes->get('tenant_id')
+            ?? (app()->bound('tenant') ? app('tenant')->id : null);
+    }
+
     public function index(Request $request)
     {
-        $query = DocumentoAssinatura::query();
-
-        if ($request->attributes->has('tenant_id')) {
-            $query->forTenant($request->attributes->get('tenant_id'));
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant não identificado'], 403);
         }
+
+        $query = DocumentoAssinatura::where('tenant_id', $tenantId);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -90,9 +97,16 @@ class AssinaturasController extends Controller
         ], 201);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $documento = DocumentoAssinatura::with(['lead', 'imovel'])->find($id);
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant não identificado'], 403);
+        }
+
+        $documento = DocumentoAssinatura::where('tenant_id', $tenantId)
+            ->with(['lead', 'imovel'])
+            ->find($id);
 
         if (!$documento) {
             return response()->json(['error' => 'Documento not found'], 404);
@@ -117,7 +131,12 @@ class AssinaturasController extends Controller
             ], 422);
         }
 
-        $documento = DocumentoAssinatura::find($id);
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant não identificado'], 403);
+        }
+
+        $documento = DocumentoAssinatura::where('tenant_id', $tenantId)->find($id);
 
         if (!$documento) {
             return response()->json(['error' => 'Documento not found'], 404);
@@ -154,9 +173,14 @@ class AssinaturasController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $documento = DocumentoAssinatura::find($id);
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant não identificado'], 403);
+        }
+
+        $documento = DocumentoAssinatura::where('tenant_id', $tenantId)->find($id);
 
         if (!$documento) {
             return response()->json(['error' => 'Documento not found'], 404);
@@ -186,12 +210,15 @@ class AssinaturasController extends Controller
             }
         }
 
-        // Adicionar emails de administradores
-        $admins = app('db')->table('users')
+        // Adicionar emails de administradores do tenant
+        $tenantId = app()->bound('tenant') ? app('tenant')->id : null;
+        $adminQuery = app('db')->table('users')
             ->where('is_active', true)
-            ->where('role', 'admin')
-            ->pluck('email')
-            ->toArray();
+            ->where('role', 'admin');
+        if ($tenantId) {
+            $adminQuery->where('tenant_id', $tenantId);
+        }
+        $admins = $adminQuery->pluck('email')->toArray();
 
         $destinatarios = array_merge($destinatarios, $admins);
 

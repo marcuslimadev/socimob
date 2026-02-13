@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class Subscription extends Model
 {
+    use BelongsToTenant;
     protected $table = 'subscriptions';
 
     protected $fillable = [
@@ -47,14 +49,6 @@ class Subscription extends Model
         'pagar_me_customer_id',
         'pagar_me_card_id',
     ];
-
-    /**
-     * Relacionamentos
-     */
-    public function tenant()
-    {
-        return $this->belongsTo(Tenant::class, 'tenant_id');
-    }
 
     /**
      * Scopes

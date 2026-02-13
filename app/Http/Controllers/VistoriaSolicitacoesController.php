@@ -22,11 +22,13 @@ class VistoriaSolicitacoesController extends Controller
      */
     public function index(Request $request)
     {
-        $query = VistoriaSolicitacao::query();
-
-        if ($request->attributes->has('tenant_id')) {
-            $query->forTenant($request->attributes->get('tenant_id'));
+        $tenantId = $request->attributes->get('tenant_id')
+            ?? (app()->bound('tenant') ? app('tenant')->id : null);
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant não identificado'], 403);
         }
+
+        $query = VistoriaSolicitacao::where('tenant_id', $tenantId);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -108,7 +110,13 @@ class VistoriaSolicitacoesController extends Controller
             ], 422);
         }
 
-        $solicitacao = VistoriaSolicitacao::find($id);
+        $tenantId = $request->attributes->get('tenant_id')
+            ?? (app()->bound('tenant') ? app('tenant')->id : null);
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant não identificado'], 403);
+        }
+
+        $solicitacao = VistoriaSolicitacao::where('tenant_id', $tenantId)->find($id);
 
         if (!$solicitacao) {
             return response()->json([

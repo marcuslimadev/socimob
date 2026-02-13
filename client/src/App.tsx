@@ -36,7 +36,7 @@ const VistoriaSolicitacoesCalendario = lazy(() => import("./pages/VistoriaSolici
 const VistoriaContestacoes = lazy(() => import("./pages/VistoriaContestacoes"));
 const LeadProfile = lazy(() => import("./pages/LeadProfile"));
 const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
-const ImovelForm = lazy(() => import("./pages/ImovelForm"));
+const ImovelFormWizard = lazy(() => import("./pages/ImovelFormWizard"));
 const Settings = lazy(() => import("./pages/Settings"));
 const SystemLogs = lazy(() => import("./pages/SystemLogs"));
 const Tenants = lazy(() => import("./pages/Tenants"));
@@ -70,7 +70,8 @@ function Router() {
       <Route path="/leads" component={Leads} />
       <Route path="/leads/:id" component={LeadProfile} />
       <Route path="/properties" component={Properties} />
-      <Route path="/properties/novo" component={ImovelForm} />
+      <Route path="/properties/novo" component={ImovelFormWizard} />
+      <Route path="/properties/:id/editar" component={ImovelFormWizard} />
       <Route path="/chat" component={Chat} />
       <Route path="/notifications" component={NotificationCenter} />
       <Route path="/login" component={Login} />

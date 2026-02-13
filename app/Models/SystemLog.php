@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 /**
  * Log do Sistema
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class SystemLog extends Model
 {
+    use BelongsToTenant;
     const UPDATED_AT = null; // Não usa updated_at
     
     protected $fillable = [
@@ -123,11 +125,6 @@ class SystemLog extends Model
     }
 
     // Relacionamentos
-    public function tenant()
-    {
-        return $this->belongsTo(Tenant::class);
-    }
-
     public function user()
     {
         return $this->belongsTo(User::class);

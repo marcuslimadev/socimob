@@ -26,8 +26,7 @@ class PortalController extends Controller
         $tenantId = $request->attributes->get('tenant_id');
 
         if (!$tenantId) {
-            // Fallback para desenvolvimento - usar tenant ID 1
-            $tenantId = 1;
+            return response()->json(['error' => 'Tenant não identificado'], 404);
         }
 
         $tenant = Tenant::find($tenantId);
@@ -84,8 +83,7 @@ class PortalController extends Controller
         $tenantId = $request->attributes->get('tenant_id');
 
         if (!$tenantId) {
-            // Fallback para desenvolvimento - usar tenant ID 1
-            $tenantId = 1;
+            return response()->json(['error' => 'Tenant não identificado'], 404);
         }
 
         $table = (new Property())->getTable();
@@ -322,7 +320,7 @@ class PortalController extends Controller
         $tenantId = $request->attributes->get('tenant_id');
 
         if (!$tenantId) {
-            $tenantId = 1; // Default for testing
+            return response()->json(['error' => 'Tenant não identificado'], 404);
         }
 
         $table = (new Property())->getTable();
@@ -433,7 +431,7 @@ class PortalController extends Controller
             $tenantId = $request->attributes->get('tenant_id');
 
             if (!$tenantId) {
-                $tenantId = 1;
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 404);
             }
 
             $validator = Validator::make($request->all(), [
@@ -529,7 +527,7 @@ class PortalController extends Controller
             $tenantId = $request->attributes->get('tenant_id');
 
             if (!$tenantId) {
-                $tenantId = 1;
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 404);
             }
 
             $validator = Validator::make($request->all(), [

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 
 class TenantConfig extends Model
 {
+    use BelongsToTenant;
     protected $table = 'tenant_configs';
 
     protected $fillable = [
@@ -70,14 +72,6 @@ class TenantConfig extends Model
         'twilio_whatsapp_from',
         'smtp_password',
     ];
-
-    /**
-     * Relacionamentos
-     */
-    public function tenant()
-    {
-        return $this->belongsTo(Tenant::class, 'tenant_id');
-    }
 
     /**
      * Métodos auxiliares

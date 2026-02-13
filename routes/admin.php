@@ -3,7 +3,8 @@
 /** @var \Laravel\Lumen\Routing\Router $router */
 
 // Admin Routes (Tenant Admin)
-$router->group(['prefix' => 'api/admin', 'middleware' => ['simple-auth']], function () use ($router) {
+// CRITICAL: resolve-tenant MUST come before simple-auth to enforce domain-based tenant isolation
+$router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'simple-auth']], function () use ($router) {
     
     // Settings
     $router->get('/settings', 'Admin\TenantSettingsController@index');

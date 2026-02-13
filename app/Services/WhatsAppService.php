@@ -2309,7 +2309,11 @@ class WhatsAppService
     private function notifyAdminOfFailure(string $operationName, \Exception $exception): void
     {
         try {
-            $tenantId = app('tenant')?->id ?? 1;
+            $tenantId = app('tenant')?->id;
+            if (!$tenantId) {
+                Log::warning('notifyAdminOfFailure: sem tenant context');
+                return;
+            }
 
             // Buscar admin do tenant
             $admin = \App\Models\User::where('tenant_id', $tenantId)

@@ -83,8 +83,10 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
             $tenant = app('tenant');
             
             if (!$tenant) {
-                // Fallback: usar primeiro tenant do banco
-                $tenant = \App\Models\Tenant::first();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tenant não identificado'
+                ], 404);
             }
             
             if ($tenant) {
@@ -161,10 +163,6 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
             $router->post('/chat/{id}/mensagens', 'Portal\ChatController@send');
         });
     });
-    // Dashboard routes
-    $router->get('/dashboard/stats', 'DashboardController@stats');
-    $router->get('/dashboard/atividades', 'DashboardController@atividades');
-    $router->get('/dashboard/timeline', 'DashboardController@timeline');
 
     // Analytics collect (public, consent required on client)
     $router->post('/analytics/collect', 'AnalyticsController@collect');
@@ -257,9 +255,10 @@ $router->group(['prefix' => 'api/auth'], function () use ($router) {
 });
 
 // ===========================
-// Rotas protegidas (TEMPORARIAMENTE SEM AUTH - PARA DEBUG)
+// Rotas protegidas (AUTENTICADAS COM TENANT ISOLATION)
 // ===========================
-$router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () use ($router) {
+// CRITICAL: resolve-tenant MUST come before simple-auth to enforce domain-based tenant isolation
+$router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-auth']], function () use ($router) {
 
     // Auth
     $router->get('/auth/me', 'AuthController@me');
@@ -345,6 +344,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     $router->get('/imoveis', 'PropertyController@index');
     $router->post('/imoveis', 'PropertyController@store');
     $router->put('/imoveis/{id}', 'PropertyController@update');
+    $router->delete('/imoveis/{id}', 'PropertyController@destroy');
 
     // Properties - Generate AI Description for Ads
     $router->post('/properties/{id}/generate-ad-description', 'PropertyController@generateAdDescription');
@@ -395,6 +395,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'simple-auth'], function () u
     
     // Imóveis - Detalhes completos
     $router->get('/imoveis/detalhes/{codigo}', 'PropertyController@detalhesCompletos');
+    $router->get('/imoveis/{id}', 'PropertyController@show');
 
     // CRM unificado
     $router->get('/crm/clientes', 'CRMController@index');

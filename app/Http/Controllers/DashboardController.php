@@ -18,71 +18,80 @@ class DashboardController extends Controller
      * Estatísticas gerais
      * GET /api/dashboard/stats
      */
-    public function stats()
+    public function stats(Request $request)
     {
         try {
+            $user = $request->user();
+            $tenantId = $user->tenant_id ?? ($request->attributes->get('tenant_id') ?? null);
+
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
+
             $db = app('db');
             $hasProperties = Schema::hasTable('imo_properties');
             $imoveis = ['total' => 0, 'ativos' => 0];
             if ($hasProperties) {
-                $imoveis['total'] = $db->table('imo_properties')->count();
+                $imoveis['total'] = $db->table('imo_properties')->where('tenant_id', $tenantId)->count();
                 $imoveis['ativos'] = $db->table('imo_properties')
+                    ->where('tenant_id', $tenantId)
                     ->where('active', 1)
                     ->where('exibir_imovel', 1)
                     ->count();
             }
             $stats = [
                 'leads' => [
-                    'total' => $db->table('leads')->count(),
-                    'novos' => $db->table('leads')->where('status', 'novo')->count(),
-                    'em_atendimento' => $db->table('leads')->where('status', 'em_atendimento')->count(),
-                    'qualificados' => $db->table('leads')->where('status', 'qualificado')->count(),
+                    'total' => $db->table('leads')->where('tenant_id', $tenantId)->count(),
+                    'novos' => $db->table('leads')->where('tenant_id', $tenantId)->where('status', 'novo')->count(),
+                    'em_atendimento' => $db->table('leads')->where('tenant_id', $tenantId)->where('status', 'em_atendimento')->count(),
+                    'qualificados' => $db->table('leads')->where('tenant_id', $tenantId)->where('status', 'qualificado')->count(),
                     'fechados_mes' => $db->table('leads')
+                        ->where('tenant_id', $tenantId)
                         ->where('status', 'fechado')
                         ->whereRaw('MONTH(updated_at) = ?', [date('m')])
                         ->count()
                 ],
                 'conversas' => [
-                    'ativas' => $db->table('conversas')->where('status', 'ativa')->count(),
-                    'hoje' => $db->table('conversas')->whereDate('iniciada_em', date('Y-m-d'))->count(),
-                    'aguardando' => $db->table('conversas')->where('status', 'aguardando_corretor')->count()
+                    'ativas' => $db->table('conversas')->where('tenant_id', $tenantId)->where('status', 'ativa')->count(),
+                    'hoje' => $db->table('conversas')->where('tenant_id', $tenantId)->whereDate('iniciada_em', date('Y-m-d'))->count(),
+                    'aguardando' => $db->table('conversas')->where('tenant_id', $tenantId)->where('status', 'aguardando_corretor')->count()
                 ],
                 'corretores' => [
-                    'total' => $db->table('users')->where('role', 'admin')->where('is_active', true)->count(),
+                    'total' => $db->table('users')->where('tenant_id', $tenantId)->where('role', 'admin')->where('is_active', true)->count(),
                     'online' => 0
                 ],
                 'imoveis' => $imoveis,
                 'vistorias' => [
-                    'total' => Schema::hasTable('vistorias') ? $db->table('vistorias')->count() : 0,
+                    'total' => Schema::hasTable('vistorias') ? $db->table('vistorias')->where('tenant_id', $tenantId)->count() : 0,
                     'solicitacoes_pendentes' => Schema::hasTable('vistoria_solicitacoes')
-                        ? $db->table('vistoria_solicitacoes')->where('status', 'solicitada')->count()
+                        ? $db->table('vistoria_solicitacoes')->where('tenant_id', $tenantId)->where('status', 'solicitada')->count()
                         : 0,
                     'em_andamento' => Schema::hasTable('vistoria_solicitacoes')
-                        ? $db->table('vistoria_solicitacoes')->where('status', 'andamento')->count()
+                        ? $db->table('vistoria_solicitacoes')->where('tenant_id', $tenantId)->where('status', 'andamento')->count()
                         : 0,
                 ],
                 'pessoas' => [
-                    'total' => Schema::hasTable('pessoas') ? $db->table('pessoas')->where('ativo', true)->count() : 0,
+                    'total' => Schema::hasTable('pessoas') ? $db->table('pessoas')->where('tenant_id', $tenantId)->where('ativo', true)->count() : 0,
                     'fisicas' => Schema::hasTable('pessoas')
-                        ? $db->table('pessoas')->where('tipo', 'fisica')->where('ativo', true)->count()
+                        ? $db->table('pessoas')->where('tenant_id', $tenantId)->where('tipo', 'fisica')->where('ativo', true)->count()
                         : 0,
                     'juridicas' => Schema::hasTable('pessoas')
-                        ? $db->table('pessoas')->where('tipo', 'juridica')->where('ativo', true)->count()
+                        ? $db->table('pessoas')->where('tenant_id', $tenantId)->where('tipo', 'juridica')->where('ativo', true)->count()
                         : 0,
                 ],
                 'contestacoes' => [
-                    'total' => Schema::hasTable('vistoria_contestacoes') ? $db->table('vistoria_contestacoes')->count() : 0,
+                    'total' => Schema::hasTable('vistoria_contestacoes') ? $db->table('vistoria_contestacoes')->where('tenant_id', $tenantId)->count() : 0,
                     'apontadas' => Schema::hasTable('vistoria_contestacoes')
-                        ? $db->table('vistoria_contestacoes')->where('status', 'apontada')->count()
+                        ? $db->table('vistoria_contestacoes')->where('tenant_id', $tenantId)->where('status', 'apontada')->count()
                         : 0,
                 ],
                 'assinaturas' => [
-                    'total' => Schema::hasTable('documentos_assinatura') ? $db->table('documentos_assinatura')->count() : 0,
+                    'total' => Schema::hasTable('documentos_assinatura') ? $db->table('documentos_assinatura')->where('tenant_id', $tenantId)->count() : 0,
                     'pendentes' => Schema::hasTable('documentos_assinatura')
-                        ? $db->table('documentos_assinatura')->where('status', 'pendente')->count()
+                        ? $db->table('documentos_assinatura')->where('tenant_id', $tenantId)->where('status', 'pendente')->count()
                         : 0,
                     'assinados' => Schema::hasTable('documentos_assinatura')
-                        ? $db->table('documentos_assinatura')->where('status', 'assinado')->count()
+                        ? $db->table('documentos_assinatura')->where('tenant_id', $tenantId)->where('status', 'assinado')->count()
                         : 0,
                 ],
             ];
@@ -103,12 +112,20 @@ class DashboardController extends Controller
      * Gráfico de atendimentos (últimos 7 dias)
      * GET /api/dashboard/chart/atendimentos
      */
-    public function chartAtendimentos()
+    public function chartAtendimentos(Request $request)
     {
+        $user = $request->user();
+        $tenantId = $user->tenant_id ?? ($request->attributes->get('tenant_id') ?? null);
+
+        if (!$tenantId) {
+            return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+        }
+
         $db = app('db');
         $dataInicio = date('Y-m-d', strtotime('-7 days'));
         $dados = $db->table('conversas')
             ->select($db->raw('DATE(iniciada_em) as data'), $db->raw('COUNT(*) as total'))
+            ->where('tenant_id', $tenantId)
             ->where('iniciada_em', '>=', $dataInicio)
             ->groupBy('data')
             ->orderBy('data')
@@ -124,9 +141,16 @@ class DashboardController extends Controller
      * Atividades recentes
      * GET /api/dashboard/atividades
      */
-    public function atividades()
+    public function atividades(Request $request)
     {
         try {
+            $user = $request->user();
+            $tenantId = $user->tenant_id ?? ($request->attributes->get('tenant_id') ?? null);
+
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
+
             $db = app('db');
             $conversas = $db->table('conversas')
                 ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
@@ -137,6 +161,7 @@ class DashboardController extends Controller
                     'conversas.iniciada_em',
                     'leads.nome as lead_nome'
                 )
+                ->where('conversas.tenant_id', $tenantId)
                 ->orderBy('conversas.iniciada_em', 'desc')
                 ->limit(10)
                 ->get()
@@ -172,7 +197,10 @@ class DashboardController extends Controller
     {
         try {
             $user = $request->user();
-            $tenantId = $user->tenant_id ?? null;
+            $tenantId = $user->tenant_id ?? ($request->attributes->get('tenant_id') ?? null);
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
             $isAdmin = in_array($user->role, ['admin', 'super_admin']);
             $perPage = min((int) ($request->input('per_page') ?? 20), 50);
             $beforeCursor = $request->input('before');

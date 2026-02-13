@@ -261,11 +261,10 @@ class CRMController extends Controller
                 ], 422);
             }
 
-            $leadQuery = Lead::query();
-            if ($tenantId) {
-                $leadQuery->where('tenant_id', $tenantId);
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
             }
-            $lead = $leadQuery->findOrFail($id);
+            $lead = Lead::where('tenant_id', $tenantId)->findOrFail($id);
             $lead->status = $request->status;
             $lead->updated_at = now();
             $lead->save();

@@ -43,17 +43,17 @@
 }
 
 :root {
-  --font-primary: "Segoe UI Variable Display", "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-secondary: "Segoe UI Variable Display", "Segoe UI", Helvetica, Arial, sans-serif;
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
+  --font-primary: 'Bauhaus Modern', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-secondary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --primary: #001775;
+  --primary-foreground: #ffffff;
+  --sidebar-primary: #001775;
+  --sidebar-primary-foreground: #ffffff;
+  --chart-1: #8498e6;
+  --chart-2: #5572d9;
+  --chart-3: #3355cc;
+  --chart-4: #001775;
+  --chart-5: #000e52;
   --radius: 0.65rem;
   --background: oklch(0.96 0.001 286);
   --foreground: oklch(0.235 0.015 65);
@@ -78,7 +78,7 @@
   --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.623 0.214 259.815);
-  --base-font-size: 17px;
+  --base-font-size: 18px;
 }
 
 .dark {
@@ -125,11 +125,30 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-primary);
-  }
-  h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-secondary);
   }
+  select {
+    color: var(--foreground);
+  }
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+  .dark select {
+    color-scheme: dark;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-primary);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+  h1 { font-size: 2.8rem; }
+  h2 { font-size: 2.2rem; }
+  h3 { font-size: 1.8rem; }
+  h4 { font-size: 1.5rem; }
+  h5 { font-size: 1.3rem; }
+  h6 { font-size: 1.1rem; }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),

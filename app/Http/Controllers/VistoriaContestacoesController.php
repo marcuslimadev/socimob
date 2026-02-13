@@ -14,11 +14,13 @@ class VistoriaContestacoesController extends Controller
      */
     public function index(Request $request)
     {
-        $query = VistoriaContestacao::query();
-
-        if ($request->attributes->has('tenant_id')) {
-            $query->forTenant($request->attributes->get('tenant_id'));
+        $tenantId = $request->attributes->get('tenant_id')
+            ?? (app()->bound('tenant') ? app('tenant')->id : null);
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant não identificado'], 403);
         }
+
+        $query = VistoriaContestacao::where('tenant_id', $tenantId);
 
         // Filtros
         if ($request->filled('status')) {

@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Property;
 use App\Services\PropertySyncService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class PropertyController extends Controller
 {
@@ -16,6 +18,17 @@ class PropertyController extends Controller
     {
         $this->syncService = $syncService;
     }
+
+    private function resolveTenantId(Request $request): ?int
+    {
+        return $request->attributes->get('tenant_id')
+            ?? (app()->bound('tenant') ? app('tenant')->id : null);
+    }
+
+    private function flushPortalCache(int $tenantId): void
+    {
+        Cache::forget("portal_imoveis_tenant_{$tenantId}");
+    }
     
     /**
      * Listar todos os imóveis do tenant
@@ -24,7 +37,7 @@ class PropertyController extends Controller
      */
     public function index(Request $request)
     {
-        $tenantId = $request->attributes->get('tenant_id');
+        $tenantId = $this->resolveTenantId($request);
         
         if (!$tenantId) {
             return response()->json(['error' => 'No tenant context'], 400);
@@ -32,10 +45,11 @@ class PropertyController extends Controller
         
         $perPage = $request->query('per_page', 15);
         
-        $query = Property::where('tenant_id', $tenantId)
-            ->where('active', true)
-            ->where('exibir_imovel', true)
-            ->orderBy('created_at', 'desc');
+        $query = Property::where('tenant_id', $tenantId)->orderBy('created_at', 'desc');
+
+        if ($request->boolean('published_only')) {
+            $query->where('active', true)->where('exibir_imovel', true);
+        }
         
         // Se pedir todos sem paginação
         if ($perPage == 100 || $perPage == 'all') {
@@ -84,6 +98,7 @@ class PropertyController extends Controller
         try {
             $syncService = app(\App\Services\PropertySyncService::class);
             $result = $syncService->syncAll();
+            $this->flushPortalCache((int) $tenant->id);
             
             return response()->json([
                 'success' => true,
@@ -107,13 +122,21 @@ class PropertyController extends Controller
      * Retorna TODOS os dados salvos no banco para um imóvel específico,
      * incluindo campos JSON como imagens, caracteristicas, api_data, etc.
      */
-    public function detalhesCompletos($codigo)
+    public function detalhesCompletos(Request $request, $codigo)
     {
         try {
-            // Buscar imóvel pelo código
+            $tenantId = $this->resolveTenantId($request);
+            if (!$tenantId) {
+                return response()->json(['error' => 'No tenant context'], 400);
+            }
+
+            // Buscar imóvel pelo código - FILTRADO POR TENANT
             $imovel = DB::table('imo_properties')
-                ->where('codigo_imovel', $codigo)
-                ->orWhere('referencia_imovel', $codigo)
+                ->where('tenant_id', $tenantId)
+                ->where(function ($q) use ($codigo) {
+                    $q->where('codigo_imovel', $codigo)
+                      ->orWhere('referencia_imovel', $codigo);
+                })
                 ->first();
             
             if (!$imovel) {
@@ -251,30 +274,126 @@ class PropertyController extends Controller
     }
 
     /**
+     * Gera um código único para o imóvel baseado no tenant
+     * Formato: {PREFIXO_TENANT}-{ANO}{SEQUENCIAL}
+     * Exemplo: EXC-2026001, MAI-2026001
+     */
+    private function generatePropertyCode(int $tenantId): string
+    {
+        // Buscar prefixo do tenant (ou gerar um baseado no ID)
+        $tenant = DB::table('tenants')->where('id', $tenantId)->first();
+        $prefix = 'IMO';
+        
+        if ($tenant && isset($tenant->name)) {
+            // Pegar as 3 primeiras letras do nome do tenant (maiúsculas)
+            $prefix = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $tenant->name), 0, 3));
+            if (strlen($prefix) < 3) {
+                $prefix = 'T' . str_pad($tenantId, 2, '0', STR_PAD_LEFT);
+            }
+        }
+        
+        $year = date('Y');
+        
+        // Buscar o último código do tenant neste ano
+        $lastProperty = Property::where('tenant_id', $tenantId)
+            ->where('codigo_imovel', 'like', "{$prefix}-{$year}%")
+            ->orderBy('codigo_imovel', 'desc')
+            ->first();
+        
+        $sequence = 1;
+        if ($lastProperty) {
+            // Extrair o número sequencial do código
+            $lastCode = $lastProperty->codigo_imovel;
+            if (preg_match('/-' . $year . '(\d+)$/', $lastCode, $matches)) {
+                $sequence = intval($matches[1]) + 1;
+            }
+        }
+        
+        return sprintf('%s-%s%03d', $prefix, $year, $sequence);
+    }
+    
+    /**
+     * Upload de arquivos (imagens e vídeos)
+     * Retorna array de URLs públicas
+     */
+    private function uploadMedia(array $files, int $tenantId, string $propertyCode): array
+    {
+        $uploadedUrls = [];
+        $uploadPath = public_path("uploads/properties/tenant_{$tenantId}/{$propertyCode}");
+        
+        // Criar diretório se não existir
+        if (!file_exists($uploadPath)) {
+            mkdir($uploadPath, 0755, true);
+        }
+        
+        foreach ($files as $file) {
+            // Validar arquivo
+            if (!$file->isValid()) {
+                continue;
+            }
+            
+            // Gerar nome único
+            $extension = $file->getClientOriginalExtension();
+            $filename = uniqid() . '_' . time() . '.' . $extension;
+            
+            // Mover arquivo
+            $file->move($uploadPath, $filename);
+            
+            // Adicionar URL pública
+            $uploadedUrls[] = url("uploads/properties/tenant_{$tenantId}/{$propertyCode}/{$filename}");
+        }
+        
+        return $uploadedUrls;
+    }
+
+    /**
      * Criar novo imóvel
      * POST /api/imoveis
+     * 
+     * ISOLAMENTO DE TENANT REFORÇADO:
+     * - tenant_id obrigatório no contexto da requisição
+     * - Código gerado automaticamente com prefixo do tenant
+     * - Upload de imagens isolado por tenant
+     * - Validação de unicidade de código somente dentro do tenant
      */
     public function store(Request $request)
     {
+        // ========== VALIDAÇÃO DE TENANT (CRÍTICO) ==========
+        $tenantId = $this->resolveTenantId($request);
+
+        if (!$tenantId) {
+            \Log::warning('Property store: No tenant context', [
+                'ip' => $request->ip(),
+                'user_id' => auth()->user()->id ?? null,
+            ]);
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        \Log::info('Property store: Tenant validated', [
+            'tenant_id' => $tenantId,
+            'user_id' => auth()->user()->id ?? null,
+        ]);
+
+        // ========== VALIDAÇÃO DE DADOS ==========
         $validator = Validator::make($request->all(), [
-            'codigo_imovel' => 'required|string|max:50|unique:imo_properties,codigo_imovel',
+            // CÓDIGO REMOVIDO - será gerado automaticamente
             'referencia_imovel' => 'nullable|string|max:50',
             'tipo_imovel' => 'required|string|max:100',
-            'finalidade_imovel' => 'nullable|string|in:venda,aluguel,temporada',
-            'valor_venda' => 'nullable|numeric',
-            'valor_condominio' => 'nullable|numeric',
-            'valor_iptu' => 'nullable|numeric',
-            'dormitorios' => 'nullable|integer',
-            'suites' => 'nullable|integer',
-            'banheiros' => 'nullable|integer',
-            'garagem' => 'nullable|integer',
-            'area_total' => 'nullable|numeric',
-            'area_privativa' => 'nullable|numeric',
-            'area_terreno' => 'nullable|numeric',
-            'cep' => 'nullable|string|max:20',
-            'estado' => 'nullable|string|max:2',
-            'cidade' => 'nullable|string|max:100',
-            'bairro' => 'nullable|string|max:100',
+            'finalidade_imovel' => 'required|string|in:venda,aluguel,temporada',
+            'valor_venda' => 'required|numeric|min:0',
+            'valor_condominio' => 'nullable|numeric|min:0',
+            'valor_iptu' => 'nullable|numeric|min:0',
+            'dormitorios' => 'nullable|integer|min:0',
+            'suites' => 'nullable|integer|min:0',
+            'banheiros' => 'nullable|integer|min:0',
+            'garagem' => 'nullable|integer|min:0',
+            'area_total' => 'nullable|numeric|min:0',
+            'area_privativa' => 'nullable|numeric|min:0',
+            'area_terreno' => 'nullable|numeric|min:0',
+            'cep' => 'required|string|max:20',
+            'estado' => 'required|string|max:2',
+            'cidade' => 'required|string|max:100',
+            'bairro' => 'required|string|max:100',
             'logradouro' => 'nullable|string|max:255',
             'numero' => 'nullable|string|max:50',
             'complemento' => 'nullable|string|max:255',
@@ -284,6 +403,10 @@ class PropertyController extends Controller
             'active' => 'nullable|boolean',
             'exibir_imovel' => 'nullable|boolean',
             'exclusividade' => 'nullable|boolean',
+            // Upload de mídia
+            'media.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,heic,heif,mp4,mov,m4v,avi,webm,mkv|max:102400', // Max 100MB
+            'existing_images' => 'nullable|string', // JSON array de URLs existentes
+            'destaque_index' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
@@ -293,45 +416,158 @@ class PropertyController extends Controller
             ], 422);
         }
 
+        // ========== GERAR CÓDIGO AUTOMATICAMENTE ==========
+        $codigoImovel = $this->generatePropertyCode($tenantId);
+        
+        \Log::info('Property store: Generated code', [
+            'tenant_id' => $tenantId,
+            'codigo' => $codigoImovel,
+        ]);
+
+        // ========== PREPARAR DADOS ==========
         $data = $validator->validated();
+        $data['tenant_id'] = $tenantId; // FORÇAR tenant_id
+        $data['codigo_imovel'] = $codigoImovel;
+        $data['codigo'] = $codigoImovel; // Compatibilidade
         $data['active'] = $data['active'] ?? true;
         $data['exibir_imovel'] = $data['exibir_imovel'] ?? true;
+        
+        // Título automático
+        $data['titulo'] = trim($request->input('titulo') ?? '');
+        if ($data['titulo'] === '') {
+            $tipoFormatado = ucfirst(str_replace('_', ' ', $data['tipo_imovel']));
+            $data['titulo'] = "{$tipoFormatado} - {$data['bairro']}, {$data['cidade']}";
+        }
 
+        // ========== UPLOAD DE MÍDIA ==========
+        $imagens = [];
+        
+        // Imagens existentes (modo edição)
+        if ($request->has('existing_images')) {
+            $existingImages = json_decode($request->input('existing_images'), true);
+            if (is_array($existingImages)) {
+                $imagens = array_merge($imagens, $existingImages);
+            }
+        }
+        
+        // Novas imagens
+        if ($request->hasFile('media')) {
+            $uploadedUrls = $this->uploadMedia($request->file('media'), $tenantId, $codigoImovel);
+            $imagens = array_merge($imagens, $uploadedUrls);
+        }
+        
+        if (!empty($imagens)) {
+            $data['imagens'] = $imagens;
+            
+            // Definir imagem de destaque
+            $destaqueIndex = $request->input('destaque_index', 0);
+            if (isset($imagens[$destaqueIndex])) {
+                $data['imagem_destaque'] = $imagens[$destaqueIndex];
+            } else {
+                $data['imagem_destaque'] = $imagens[0];
+            }
+        }
+
+        // ========== CRIAR IMÓVEL ==========
         $property = Property::create($data);
+        
+        \Log::info('Property created', [
+            'tenant_id' => $tenantId,
+            'property_id' => $property->id,
+            'codigo' => $codigoImovel,
+        ]);
+        
+        $this->flushPortalCache((int) $tenantId);
 
         return response()->json([
             'success' => true,
             'data' => $property,
+            'message' => "Imóvel {$codigoImovel} cadastrado com sucesso!",
         ], 201);
     }
 
     /**
-     * Atualizar imóvel
-     * PUT /api/imoveis/{id}
+     * Buscar imóvel por ID (restrito ao tenant)
+     * GET /api/imoveis/{id}
      */
-    public function update(Request $request, $id)
+    public function show(Request $request, $id)
     {
-        $property = Property::find($id);
+        $tenantId = $this->resolveTenantId($request);
+
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        $property = Property::where('tenant_id', $tenantId)->find($id);
 
         if (!$property) {
             return response()->json(['error' => 'Property not found'], 404);
         }
 
+        return response()->json([
+            'success' => true,
+            'data' => $property,
+        ]);
+    }
+
+    /**
+     * Atualizar imóvel
+     * PUT /api/imoveis/{id}
+     * 
+     * ISOLAMENTO DE TENANT REFORÇADO:
+     * - Somente imóveis do tenant podem ser atualizados
+     * - tenant_id NUNCA pode ser alterado
+     * - Upload de imagens isolado por tenant
+     */
+    public function update(Request $request, $id)
+    {
+        // ========== VALIDAÇÃO DE TENANT (CRÍTICO) ==========
+        $tenantId = $this->resolveTenantId($request);
+
+        if (!$tenantId) {
+            \Log::warning('Property update: No tenant context', [
+                'property_id' => $id,
+                'ip' => $request->ip(),
+                'user_id' => auth()->user()->id ?? null,
+            ]);
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        // ========== BUSCAR IMÓVEL (ISOLADO POR TENANT) ==========
+        $property = Property::where('tenant_id', $tenantId)->find($id);
+
+        if (!$property) {
+            \Log::warning('Property update: Property not found or belongs to different tenant', [
+                'property_id' => $id,
+                'tenant_id' => $tenantId,
+                'user_id' => auth()->user()->id ?? null,
+            ]);
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        \Log::info('Property update: Tenant validated', [
+            'property_id' => $id,
+            'tenant_id' => $tenantId,
+            'codigo' => $property->codigo_imovel,
+            'user_id' => auth()->user()->id ?? null,
+        ]);
+
+        // ========== VALIDAÇÃO DE DADOS ==========
         $validator = Validator::make($request->all(), [
-            'codigo_imovel' => 'nullable|string|max:50|unique:imo_properties,codigo_imovel,' . $id,
+            // CÓDIGO NÃO PODE SER ALTERADO
             'referencia_imovel' => 'nullable|string|max:50',
             'tipo_imovel' => 'nullable|string|max:100',
             'finalidade_imovel' => 'nullable|string|in:venda,aluguel,temporada',
-            'valor_venda' => 'nullable|numeric',
-            'valor_condominio' => 'nullable|numeric',
-            'valor_iptu' => 'nullable|numeric',
-            'dormitorios' => 'nullable|integer',
-            'suites' => 'nullable|integer',
-            'banheiros' => 'nullable|integer',
-            'garagem' => 'nullable|integer',
-            'area_total' => 'nullable|numeric',
-            'area_privativa' => 'nullable|numeric',
-            'area_terreno' => 'nullable|numeric',
+            'valor_venda' => 'nullable|numeric|min:0',
+            'valor_condominio' => 'nullable|numeric|min:0',
+            'valor_iptu' => 'nullable|numeric|min:0',
+            'dormitorios' => 'nullable|integer|min:0',
+            'suites' => 'nullable|integer|min:0',
+            'banheiros' => 'nullable|integer|min:0',
+            'garagem' => 'nullable|integer|min:0',
+            'area_total' => 'nullable|numeric|min:0',
+            'area_privativa' => 'nullable|numeric|min:0',
+            'area_terreno' => 'nullable|numeric|min:0',
             'cep' => 'nullable|string|max:20',
             'estado' => 'nullable|string|max:2',
             'cidade' => 'nullable|string|max:100',
@@ -345,6 +581,10 @@ class PropertyController extends Controller
             'active' => 'nullable|boolean',
             'exibir_imovel' => 'nullable|boolean',
             'exclusividade' => 'nullable|boolean',
+            // Upload de mídia
+            'media.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,heic,heif,mp4,mov,m4v,avi,webm,mkv|max:102400', // Max 100MB
+            'existing_images' => 'nullable|string', // JSON array de URLs existentes
+            'destaque_index' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
@@ -354,11 +594,100 @@ class PropertyController extends Controller
             ], 422);
         }
 
-        $property->update($validator->validated());
+        // ========== PREPARAR DADOS ==========
+        $data = $validator->validated();
+        
+        // GARANTIR que tenant_id NUNCA seja alterado
+        unset($data['tenant_id']);
+        
+        // Atualizar título se fornecido
+        if (array_key_exists('titulo', $request->all())) {
+            $data['titulo'] = trim($request->input('titulo'));
+            if ($data['titulo'] === '' && isset($data['tipo_imovel']) && isset($data['bairro']) && isset($data['cidade'])) {
+                $tipoFormatado = ucfirst(str_replace('_', ' ', $data['tipo_imovel']));
+                $data['titulo'] = "{$tipoFormatado} - {$data['bairro']}, {$data['cidade']}";
+            }
+        }
+
+        // ========== UPLOAD DE MÍDIA ==========
+        $imagens = $property->imagens ?? [];
+        
+        // Se houver existing_images, substituir completamente
+        if ($request->has('existing_images')) {
+            $existingImages = json_decode($request->input('existing_images'), true);
+            if (is_array($existingImages)) {
+                $imagens = $existingImages;
+            } else {
+                $imagens = [];
+            }
+        }
+        
+        // Novas imagens
+        if ($request->hasFile('media')) {
+            $uploadedUrls = $this->uploadMedia(
+                $request->file('media'), 
+                $tenantId, 
+                $property->codigo_imovel
+            );
+            $imagens = array_merge($imagens, $uploadedUrls);
+        }
+        
+        if (!empty($imagens)) {
+            $data['imagens'] = $imagens;
+            
+            // Definir imagem de destaque
+            $destaqueIndex = $request->input('destaque_index');
+            if ($destaqueIndex !== null && isset($imagens[$destaqueIndex])) {
+                $data['imagem_destaque'] = $imagens[$destaqueIndex];
+            } elseif (!isset($property->imagem_destaque) || !in_array($property->imagem_destaque, $imagens)) {
+                // Se não tem destaque ou o destaque atual não está nas imagens, usar a primeira
+                $data['imagem_destaque'] = $imagens[0];
+            }
+        }
+
+        // ========== ATUALIZAR IMÓVEL ==========
+        $property->update($data);
+        
+        \Log::info('Property updated', [
+            'property_id' => $id,
+            'tenant_id' => $tenantId,
+            'codigo' => $property->codigo_imovel,
+            'user_id' => auth()->user()->id ?? null,
+        ]);
+        
+        $this->flushPortalCache((int) $tenantId);
 
         return response()->json([
             'success' => true,
-            'data' => $property,
+            'data' => $property->fresh(),
+            'message' => "Imóvel {$property->codigo_imovel} atualizado com sucesso!",
+        ]);
+    }
+
+    /**
+     * Excluir imóvel (restrito ao tenant)
+     * DELETE /api/imoveis/{id}
+     */
+    public function destroy(Request $request, $id)
+    {
+        $tenantId = $this->resolveTenantId($request);
+
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        $property = Property::where('tenant_id', $tenantId)->find($id);
+
+        if (!$property) {
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        $property->delete();
+        $this->flushPortalCache((int) $tenantId);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Imóvel excluído com sucesso',
         ]);
     }
 
@@ -369,6 +698,14 @@ class PropertyController extends Controller
     public function export()
     {
         try {
+            $tenantId = app()->bound('tenant') ? app('tenant')->id : null;
+            if (!$tenantId) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No tenant context'
+                ], 400);
+            }
+
             $properties = DB::table('imo_properties')
                 ->select([
                     'codigo_imovel',
@@ -386,6 +723,7 @@ class PropertyController extends Controller
                     'active',
                     'created_at'
                 ])
+                ->where('tenant_id', $tenantId)
                 ->orderBy('created_at', 'desc')
                 ->get();
 
