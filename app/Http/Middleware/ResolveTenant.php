@@ -26,8 +26,20 @@ class ResolveTenant
 
         // Obter o dominio da requisicao
         $host = $request->getHost();
+        
+        // DEBUG LOG
+        \Log::info('ResolveTenant middleware start', [
+            'host' => $host,
+            'path' => $path,
+        ]);
+        
         $tenant = $this->resolveTenantFromRequest($request);
         if ($tenant) {
+            \Log::info('ResolveTenant: Tenant resolved from request', [
+                'tenant_id' => $tenant->id,
+                'tenant_domain' => $tenant->domain,
+            ]);
+            
             if (!$tenant->isActive()) {
                 return response()->json([
                     'error' => 'Tenant inactive',
@@ -39,9 +51,12 @@ class ResolveTenant
             $request->attributes->set('tenant_id', $tenant->id);
             return $next($request);
         }
+        
+        \Log::info('ResolveTenant: No tenant from request headers', ['host' => $host]);
 
         // Se for localhost, IP ou ngrok, usar tenant de teste quando configurado
         if ($this->isDevelopment($host) || $this->isNgrok($host)) {
+            \Log::info('ResolveTenant: Using development tenant for localhost/ngrok');
             // Em desenvolvimento local, simular exclusivalarimoveis.com para manter multi-tenancy correto
             $tenant = Tenant::byDomain('exclusivalarimoveis.com')->first() ?? Tenant::find(1);
             if ($tenant) {
@@ -60,14 +75,26 @@ class ResolveTenant
         // Buscar tenant pelo dominio
         $normalizedHost = $this->normalizeHost($host);
         
+        \Log::info('ResolveTenant: Normalized host', ['normalized' => $normalizedHost]);
+        
         // Se for um domínio alternativo, usar o domínio principal
         if (isset($domainAliases[$normalizedHost])) {
+            \Log::info('ResolveTenant: Found alias mapping', [
+                'alias' => $normalizedHost,
+                'target' => $domainAliases[$normalizedHost],
+            ]);
             $normalizedHost = $domainAliases[$normalizedHost];
         }
         
         $tenant = Tenant::where('domain', $normalizedHost)
             ->orWhere('domain', 'www.' . $normalizedHost)
             ->first();
+        
+        \Log::info('ResolveTenant: Tenant query result', [
+            'normalized_host' => $normalizedHost,
+            'tenant_found' => $tenant ? true : false,
+            'tenant_id' => $tenant ? $tenant->id : null,
+        ]);
 
         if (!$tenant) {
             return response()->json([
@@ -90,6 +117,11 @@ class ResolveTenant
 
         // Adicionar tenant_id a requisicao
         $request->attributes->set('tenant_id', $tenant->id);
+        
+        \Log::info('ResolveTenant: Tenant set successfully', [
+            'tenant_id' => $tenant->id,
+            'tenant_domain' => $tenant->domain,
+        ]);
 
         return $next($request);
     }
@@ -116,12 +148,14 @@ class ResolveTenant
 
     private function resolveTenantFromRequest(Request $request): ?Tenant
     {
-        $tenantId = $request->header('X-Tenant-Id') ?: $request->query('tenant_id');
+        // SECURITY: Only accept tenant resolution from headers, NOT query parameters.
+        // Query parameters can be easily spoofed by users to access other tenants.
+        $tenantId = $request->header('X-Tenant-Id');
         if (!empty($tenantId)) {
             return Tenant::find($tenantId);
         }
 
-        $tenantDomain = $request->header('X-Tenant-Domain') ?: $request->query('tenant_domain');
+        $tenantDomain = $request->header('X-Tenant-Domain');
         if (!empty($tenantDomain)) {
             $normalizedDomain = $this->normalizeHost($tenantDomain);
             return Tenant::where('domain', $normalizedDomain)
@@ -129,11 +163,11 @@ class ResolveTenant
                 ->first();
         }
 
-        $tenantSlug = $request->header('X-Tenant-Slug') ?: $request->query('tenant_slug');
+        $tenantSlug = $request->header('X-Tenant-Slug');
         if (!empty($tenantSlug)) {
             return Tenant::where('slug', $tenantSlug)->first();
         }
-        
+
         return null;
     }
 
