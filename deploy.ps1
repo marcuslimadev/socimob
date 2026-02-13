@@ -19,7 +19,7 @@ function Write-Warning { param($msg) Write-Host "! $msg" -ForegroundColor Yellow
 $SSH_HOST = "145.223.105.168"
 $SSH_PORT = "65002"
 $SSH_USER = "u815655858"
-$SSH_PASS = "MundoMelhor@10"
+$SSH_PASS = if ($env:DEPLOY_SSH_PASS) { $env:DEPLOY_SSH_PASS } else { "MundoMelhor@10" }
 $DEPLOY_PATH = "~/domains/lojadaesquina.store/public_html"
 
 try {
@@ -70,7 +70,7 @@ try {
 
     # 3. COMMIT E PUSH
     Write-Step "COMMIT E PUSH"
-    git add dist/public
+    git add -A
 
     $fullCommitMessage = @"
 $CommitMessage
@@ -109,7 +109,6 @@ test -f index.html && cp index.html index.html.bak || echo 'Sem index.html para 
 echo '' && \
 echo '=== LIMPAR BUILD ANTIGO ===' && \
 rm -f index.html && \
-rm -f assets/index-*.js assets/index-*.css && \
 echo '' && \
 echo '=== COPIAR BUILD PARA RAIZ ===' && \
 cp -rf dist/public/* ./ && \
@@ -131,8 +130,7 @@ date
     if (Get-Command plink -ErrorAction SilentlyContinue) {
         Write-Host "Conectando via plink..." -ForegroundColor Gray
         # -batch: non-interactive mode (no prompts)
-        # Pipe commands to plink stdin
-        echo "exit" | plink -P $SSH_PORT -pw $SSH_PASS -batch $SSH_USER@$SSH_HOST $deployCommands
+        plink -P $SSH_PORT -pw $SSH_PASS -batch $SSH_USER@$SSH_HOST $deployCommands
 
         if ($LASTEXITCODE -eq 0) {
             Write-Success "Deploy SSH concluido com sucesso"
@@ -145,7 +143,7 @@ date
         if (Get-Command sshpass -ErrorAction SilentlyContinue) {
             $deployCommands | sshpass -p $SSH_PASS ssh -p $SSH_PORT -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "bash -s"
         } else {
-            Write-Warning "Voce precisara digitar a senha manualmente: $SSH_PASS"
+            Write-Warning "Voce precisara digitar a senha manualmente (ou definir DEPLOY_SSH_PASS no ambiente)."
             $deployCommands | ssh -p $SSH_PORT -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "bash -s"
         }
 
@@ -161,7 +159,7 @@ date
         Write-Host "ssh -p $SSH_PORT $SSH_USER@$SSH_HOST" -ForegroundColor Yellow
         Write-Host "cd $DEPLOY_PATH" -ForegroundColor Yellow
         Write-Host "git pull origin master" -ForegroundColor Yellow
-        Write-Host "cp -rf dist/public/* public/" -ForegroundColor Yellow
+        Write-Host "cp -rf dist/public/* ./" -ForegroundColor Yellow
         Write-Host ""
         exit 1
     }

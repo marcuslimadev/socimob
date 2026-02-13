@@ -162,6 +162,20 @@
   }
 }
 
+/* Public portal typography scope */
+.portal-public,
+.portal-public p,
+.portal-public span,
+.portal-public a,
+.portal-public button,
+.portal-public input,
+.portal-public textarea,
+.portal-public select,
+.portal-public label,
+.portal-public li {
+  font-family: 'Constructium', var(--font-secondary);
+}
+
 @layer components {
   .container {
     width: 100%;

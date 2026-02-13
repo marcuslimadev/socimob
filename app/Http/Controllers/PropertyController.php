@@ -7,6 +7,7 @@ use App\Services\PropertySyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -28,6 +29,38 @@ class PropertyController extends Controller
     private function flushPortalCache(int $tenantId): void
     {
         Cache::forget("portal_imoveis_tenant_{$tenantId}");
+    }
+
+    private function resolveUserId(Request $request): ?int
+    {
+        $user = $request->user();
+        return $user->id ?? null;
+    }
+
+    /**
+     * Lista de colunas reais da tabela de imóveis (cache por request).
+     */
+    private function propertyTableColumns(): array
+    {
+        static $columns = null;
+        if ($columns === null) {
+            $columns = Schema::getColumnListing((new Property())->getTable());
+        }
+        return $columns;
+    }
+
+    /**
+     * Remove chaves que não existem no schema atual para evitar SQL 500.
+     */
+    private function filterToExistingPropertyColumns(array $data): array
+    {
+        $columns = $this->propertyTableColumns();
+        $allowed = array_flip($columns);
+        return array_filter(
+            $data,
+            static fn($value, $key) => isset($allowed[$key]),
+            ARRAY_FILTER_USE_BOTH
+        );
     }
     
     /**
@@ -364,14 +397,14 @@ class PropertyController extends Controller
         if (!$tenantId) {
             \Log::warning('Property store: No tenant context', [
                 'ip' => $request->ip(),
-                'user_id' => auth()->user()->id ?? null,
+                'user_id' => $this->resolveUserId($request),
             ]);
             return response()->json(['error' => 'No tenant context'], 400);
         }
 
         \Log::info('Property store: Tenant validated', [
             'tenant_id' => $tenantId,
-            'user_id' => auth()->user()->id ?? null,
+            'user_id' => $this->resolveUserId($request),
         ]);
 
         // ========== VALIDAÇÃO DE DADOS ==========
@@ -404,86 +437,119 @@ class PropertyController extends Controller
             'exibir_imovel' => 'nullable|boolean',
             'exclusividade' => 'nullable|boolean',
             // Upload de mídia
-            'media.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,heic,heif,mp4,mov,m4v,avi,webm,mkv|max:102400', // Max 100MB
+            'media.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,avif,jfif,heic,heif,mp4,mov,m4v,avi,webm,mkv|max:102400', // Max 100MB
             'existing_images' => 'nullable|string', // JSON array de URLs existentes
             'destaque_index' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
+            $errors = $validator->errors();
             return response()->json([
                 'error' => 'Validation failed',
-                'messages' => $validator->errors(),
+                'message' => 'Existem campos inválidos no formulário do imóvel.',
+                'messages' => $errors,
+                'errors' => $errors,
+                'failed_fields' => array_keys($errors->toArray()),
             ], 422);
         }
 
-        // ========== GERAR CÓDIGO AUTOMATICAMENTE ==========
-        $codigoImovel = $this->generatePropertyCode($tenantId);
-        
-        \Log::info('Property store: Generated code', [
-            'tenant_id' => $tenantId,
-            'codigo' => $codigoImovel,
-        ]);
-
-        // ========== PREPARAR DADOS ==========
-        $data = $validator->validated();
-        $data['tenant_id'] = $tenantId; // FORÇAR tenant_id
-        $data['codigo_imovel'] = $codigoImovel;
-        $data['codigo'] = $codigoImovel; // Compatibilidade
-        $data['active'] = $data['active'] ?? true;
-        $data['exibir_imovel'] = $data['exibir_imovel'] ?? true;
-        
-        // Título automático
-        $data['titulo'] = trim($request->input('titulo') ?? '');
-        if ($data['titulo'] === '') {
-            $tipoFormatado = ucfirst(str_replace('_', ' ', $data['tipo_imovel']));
-            $data['titulo'] = "{$tipoFormatado} - {$data['bairro']}, {$data['cidade']}";
-        }
-
-        // ========== UPLOAD DE MÍDIA ==========
-        $imagens = [];
-        
-        // Imagens existentes (modo edição)
-        if ($request->has('existing_images')) {
-            $existingImages = json_decode($request->input('existing_images'), true);
-            if (is_array($existingImages)) {
-                $imagens = array_merge($imagens, $existingImages);
-            }
-        }
-        
-        // Novas imagens
-        if ($request->hasFile('media')) {
-            $uploadedUrls = $this->uploadMedia($request->file('media'), $tenantId, $codigoImovel);
-            $imagens = array_merge($imagens, $uploadedUrls);
-        }
-        
-        if (!empty($imagens)) {
-            $data['imagens'] = $imagens;
+        try {
+            // ========== GERAR CÓDIGO AUTOMATICAMENTE ==========
+            $codigoImovel = $this->generatePropertyCode($tenantId);
             
-            // Definir imagem de destaque
-            $destaqueIndex = $request->input('destaque_index', 0);
-            if (isset($imagens[$destaqueIndex])) {
-                $data['imagem_destaque'] = $imagens[$destaqueIndex];
-            } else {
-                $data['imagem_destaque'] = $imagens[0];
+            \Log::info('Property store: Generated code', [
+                'tenant_id' => $tenantId,
+                'codigo' => $codigoImovel,
+            ]);
+
+            // ========== PREPARAR DADOS ==========
+            $data = $validator->validated();
+            $data['tenant_id'] = $tenantId; // FORÇAR tenant_id
+            $data['codigo_imovel'] = $codigoImovel;
+            // Compatibilidade com schemas antigos/novos.
+            if (Schema::hasColumn((new Property())->getTable(), 'codigo')) {
+                $data['codigo'] = $codigoImovel;
             }
+            $data['active'] = $data['active'] ?? true;
+            $data['exibir_imovel'] = $data['exibir_imovel'] ?? true;
+            
+            // Título automático
+            $data['titulo'] = trim($request->input('titulo') ?? '');
+            if ($data['titulo'] === '') {
+                $tipoFormatado = ucfirst(str_replace('_', ' ', $data['tipo_imovel']));
+                $data['titulo'] = "{$tipoFormatado} - {$data['bairro']}, {$data['cidade']}";
+            }
+
+            // ========== UPLOAD DE MÍDIA ==========
+            $imagens = [];
+            
+            // Imagens existentes (modo edição)
+            if ($request->has('existing_images')) {
+                $existingImages = json_decode($request->input('existing_images'), true);
+                if (is_array($existingImages)) {
+                    $imagens = array_merge($imagens, $existingImages);
+                }
+            }
+            
+            // Novas imagens
+            if ($request->hasFile('media')) {
+                $uploadedUrls = $this->uploadMedia($request->file('media'), $tenantId, $codigoImovel);
+                $imagens = array_merge($imagens, $uploadedUrls);
+            }
+            
+            if (!empty($imagens)) {
+                $data['imagens'] = $imagens;
+                
+                // Definir imagem de destaque
+                $destaqueIndex = $request->input('destaque_index', 0);
+                if (isset($imagens[$destaqueIndex])) {
+                    $data['imagem_destaque'] = $imagens[$destaqueIndex];
+                } else {
+                    $data['imagem_destaque'] = $imagens[0];
+                }
+            }
+
+            $rawData = $data;
+            $data = $this->filterToExistingPropertyColumns($data);
+            $droppedFields = array_values(array_diff(array_keys($rawData), array_keys($data)));
+            if (!empty($droppedFields)) {
+                \Log::warning('Property store: dropped fields not present in schema', [
+                    'tenant_id' => $tenantId,
+                    'fields' => $droppedFields,
+                ]);
+            }
+
+            // ========== CRIAR IMÓVEL ==========
+            $property = Property::create($data);
+            
+            \Log::info('Property created', [
+                'tenant_id' => $tenantId,
+                'property_id' => $property->id,
+                'codigo' => $codigoImovel,
+            ]);
+            
+            $this->flushPortalCache((int) $tenantId);
+
+            return response()->json([
+                'success' => true,
+                'data' => $property,
+                'message' => "Imóvel {$codigoImovel} cadastrado com sucesso!",
+            ], 201);
+        } catch (\Throwable $e) {
+            \Log::error('Property store failed', [
+                'tenant_id' => $tenantId,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'error' => 'Property store failed',
+                'message' => app()->environment('production')
+                    ? 'Erro interno ao salvar imóvel.'
+                    : $e->getMessage(),
+            ], 500);
         }
-
-        // ========== CRIAR IMÓVEL ==========
-        $property = Property::create($data);
-        
-        \Log::info('Property created', [
-            'tenant_id' => $tenantId,
-            'property_id' => $property->id,
-            'codigo' => $codigoImovel,
-        ]);
-        
-        $this->flushPortalCache((int) $tenantId);
-
-        return response()->json([
-            'success' => true,
-            'data' => $property,
-            'message' => "Imóvel {$codigoImovel} cadastrado com sucesso!",
-        ], 201);
     }
 
     /**
@@ -528,7 +594,7 @@ class PropertyController extends Controller
             \Log::warning('Property update: No tenant context', [
                 'property_id' => $id,
                 'ip' => $request->ip(),
-                'user_id' => auth()->user()->id ?? null,
+                'user_id' => $this->resolveUserId($request),
             ]);
             return response()->json(['error' => 'No tenant context'], 400);
         }
@@ -540,7 +606,7 @@ class PropertyController extends Controller
             \Log::warning('Property update: Property not found or belongs to different tenant', [
                 'property_id' => $id,
                 'tenant_id' => $tenantId,
-                'user_id' => auth()->user()->id ?? null,
+                'user_id' => $this->resolveUserId($request),
             ]);
             return response()->json(['error' => 'Property not found'], 404);
         }
@@ -549,7 +615,7 @@ class PropertyController extends Controller
             'property_id' => $id,
             'tenant_id' => $tenantId,
             'codigo' => $property->codigo_imovel,
-            'user_id' => auth()->user()->id ?? null,
+            'user_id' => $this->resolveUserId($request),
         ]);
 
         // ========== VALIDAÇÃO DE DADOS ==========
@@ -582,86 +648,118 @@ class PropertyController extends Controller
             'exibir_imovel' => 'nullable|boolean',
             'exclusividade' => 'nullable|boolean',
             // Upload de mídia
-            'media.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,heic,heif,mp4,mov,m4v,avi,webm,mkv|max:102400', // Max 100MB
+            'media.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,avif,jfif,heic,heif,mp4,mov,m4v,avi,webm,mkv|max:102400', // Max 100MB
             'existing_images' => 'nullable|string', // JSON array de URLs existentes
             'destaque_index' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
+            $errors = $validator->errors();
             return response()->json([
                 'error' => 'Validation failed',
-                'messages' => $validator->errors(),
+                'message' => 'Existem campos inválidos no formulário do imóvel.',
+                'messages' => $errors,
+                'errors' => $errors,
+                'failed_fields' => array_keys($errors->toArray()),
             ], 422);
         }
 
-        // ========== PREPARAR DADOS ==========
-        $data = $validator->validated();
-        
-        // GARANTIR que tenant_id NUNCA seja alterado
-        unset($data['tenant_id']);
-        
-        // Atualizar título se fornecido
-        if (array_key_exists('titulo', $request->all())) {
-            $data['titulo'] = trim($request->input('titulo'));
-            if ($data['titulo'] === '' && isset($data['tipo_imovel']) && isset($data['bairro']) && isset($data['cidade'])) {
-                $tipoFormatado = ucfirst(str_replace('_', ' ', $data['tipo_imovel']));
-                $data['titulo'] = "{$tipoFormatado} - {$data['bairro']}, {$data['cidade']}";
-            }
-        }
-
-        // ========== UPLOAD DE MÍDIA ==========
-        $imagens = $property->imagens ?? [];
-        
-        // Se houver existing_images, substituir completamente
-        if ($request->has('existing_images')) {
-            $existingImages = json_decode($request->input('existing_images'), true);
-            if (is_array($existingImages)) {
-                $imagens = $existingImages;
-            } else {
-                $imagens = [];
-            }
-        }
-        
-        // Novas imagens
-        if ($request->hasFile('media')) {
-            $uploadedUrls = $this->uploadMedia(
-                $request->file('media'), 
-                $tenantId, 
-                $property->codigo_imovel
-            );
-            $imagens = array_merge($imagens, $uploadedUrls);
-        }
-        
-        if (!empty($imagens)) {
-            $data['imagens'] = $imagens;
+        try {
+            // ========== PREPARAR DADOS ==========
+            $data = $validator->validated();
             
-            // Definir imagem de destaque
-            $destaqueIndex = $request->input('destaque_index');
-            if ($destaqueIndex !== null && isset($imagens[$destaqueIndex])) {
-                $data['imagem_destaque'] = $imagens[$destaqueIndex];
-            } elseif (!isset($property->imagem_destaque) || !in_array($property->imagem_destaque, $imagens)) {
-                // Se não tem destaque ou o destaque atual não está nas imagens, usar a primeira
-                $data['imagem_destaque'] = $imagens[0];
+            // GARANTIR que tenant_id NUNCA seja alterado
+            unset($data['tenant_id']);
+            
+            // Atualizar título se fornecido
+            if (array_key_exists('titulo', $request->all())) {
+                $data['titulo'] = trim($request->input('titulo'));
+                if ($data['titulo'] === '' && isset($data['tipo_imovel']) && isset($data['bairro']) && isset($data['cidade'])) {
+                    $tipoFormatado = ucfirst(str_replace('_', ' ', $data['tipo_imovel']));
+                    $data['titulo'] = "{$tipoFormatado} - {$data['bairro']}, {$data['cidade']}";
+                }
             }
+
+            // ========== UPLOAD DE MÍDIA ==========
+            $imagens = $property->imagens ?? [];
+            
+            // Se houver existing_images, substituir completamente
+            if ($request->has('existing_images')) {
+                $existingImages = json_decode($request->input('existing_images'), true);
+                if (is_array($existingImages)) {
+                    $imagens = $existingImages;
+                } else {
+                    $imagens = [];
+                }
+            }
+            
+            // Novas imagens
+            if ($request->hasFile('media')) {
+                $uploadedUrls = $this->uploadMedia(
+                    $request->file('media'), 
+                    $tenantId, 
+                    $property->codigo_imovel
+                );
+                $imagens = array_merge($imagens, $uploadedUrls);
+            }
+            
+            if (!empty($imagens)) {
+                $data['imagens'] = $imagens;
+                
+                // Definir imagem de destaque
+                $destaqueIndex = $request->input('destaque_index');
+                if ($destaqueIndex !== null && isset($imagens[$destaqueIndex])) {
+                    $data['imagem_destaque'] = $imagens[$destaqueIndex];
+                } elseif (!isset($property->imagem_destaque) || !in_array($property->imagem_destaque, $imagens)) {
+                    // Se não tem destaque ou o destaque atual não está nas imagens, usar a primeira
+                    $data['imagem_destaque'] = $imagens[0];
+                }
+            }
+
+            $rawData = $data;
+            $data = $this->filterToExistingPropertyColumns($data);
+            $droppedFields = array_values(array_diff(array_keys($rawData), array_keys($data)));
+            if (!empty($droppedFields)) {
+                \Log::warning('Property update: dropped fields not present in schema', [
+                    'tenant_id' => $tenantId,
+                    'property_id' => $id,
+                    'fields' => $droppedFields,
+                ]);
+            }
+
+            // ========== ATUALIZAR IMÓVEL ==========
+            $property->update($data);
+            
+            \Log::info('Property updated', [
+                'property_id' => $id,
+                'tenant_id' => $tenantId,
+                'codigo' => $property->codigo_imovel,
+                'user_id' => $this->resolveUserId($request),
+            ]);
+            
+            $this->flushPortalCache((int) $tenantId);
+
+            return response()->json([
+                'success' => true,
+                'data' => $property->fresh(),
+                'message' => "Imóvel {$property->codigo_imovel} atualizado com sucesso!",
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Property update failed', [
+                'tenant_id' => $tenantId,
+                'property_id' => $id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'error' => 'Property update failed',
+                'message' => app()->environment('production')
+                    ? 'Erro interno ao atualizar imóvel.'
+                    : $e->getMessage(),
+            ], 500);
         }
-
-        // ========== ATUALIZAR IMÓVEL ==========
-        $property->update($data);
-        
-        \Log::info('Property updated', [
-            'property_id' => $id,
-            'tenant_id' => $tenantId,
-            'codigo' => $property->codigo_imovel,
-            'user_id' => auth()->user()->id ?? null,
-        ]);
-        
-        $this->flushPortalCache((int) $tenantId);
-
-        return response()->json([
-            'success' => true,
-            'data' => $property->fresh(),
-            'message' => "Imóvel {$property->codigo_imovel} atualizado com sucesso!",
-        ]);
     }
 
     /**

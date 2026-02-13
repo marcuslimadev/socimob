@@ -405,11 +405,7 @@ const MascotAvatar = ({ size = 48, mascotUrl, primary, roundedClass = 'rounded-f
         className={`${roundedClass} ${fitClass}`} 
         style={{ width: size, height: size, padding: imagePadding, backgroundColor: imageBackground }} 
         onError={(e) => {
-          console.error('Failed to load mascot image:', mascotUrl);
           setImgError(true);
-        }}
-        onLoad={() => {
-          console.log('Mascot image loaded successfully:', mascotUrl);
         }}
       />
     );
@@ -435,10 +431,6 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
   onOpenChange: (open: boolean) => void;
   propertyContext?: { id: number; titulo: string; preco: string };
 }) {
-  useEffect(() => {
-    console.log('ChatWidget mascotUrl:', mascotUrl);
-  }, [mascotUrl]);
-
   const [step, setStep] = useState<ChatStep>('greeting');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -450,6 +442,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevPropertyRef = useRef<number | undefined>(undefined);
+  const effectiveMascotUrl = mascotUrl || '/assets/mascote.png';
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
   useEffect(() => { if (isOpen && inputRef.current) setTimeout(() => inputRef.current?.focus(), 300); }, [isOpen, step]);
@@ -618,7 +611,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
       {isOpen && (
         <div className="fixed bottom-[330px] right-6 z-[60] w-[480px] rounded-3xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'min(650px, calc(100vh - 360px))', backgroundColor: '#fff' }}>
           <div className="flex items-center gap-4 px-6 py-5 text-white flex-shrink-0" style={{ backgroundColor: primary }}>
-            <MascotAvatar size={100} mascotUrl={mascotUrl} primary={primary} />
+            <MascotAvatar size={100} mascotUrl={effectiveMascotUrl} primary={primary} />
             <div className="flex-1 min-w-0">
               <div className="font-bold text-2xl leading-tight">{tenantName || 'Assistente'}</div>
               <div className="text-base opacity-90 flex items-center gap-2 mt-1"><Bot className="w-5 h-5" />Assistente Virtual</div>
@@ -628,7 +621,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
           <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ backgroundColor: '#f0ede8', minHeight: '280px' }}>
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {msg.from === 'bot' && <div className="w-7 h-7 rounded-full flex items-center justify-center mr-2 flex-shrink-0 mt-0.5" style={{ backgroundColor: '#f5f5f5' }}><MascotAvatar size={22} mascotUrl={mascotUrl} primary={primary} /></div>}
+                {msg.from === 'bot' && <div className="w-7 h-7 rounded-full flex items-center justify-center mr-2 flex-shrink-0 mt-0.5" style={{ backgroundColor: '#f5f5f5' }}><MascotAvatar size={22} mascotUrl={effectiveMascotUrl} primary={primary} /></div>}
                 <div className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.from === 'user' ? 'text-white rounded-br-md' : 'rounded-bl-md'}`} style={{ backgroundColor: msg.from === 'user' ? primary : '#fff', color: msg.from === 'user' ? '#fff' : '#333', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>{msg.text}</div>
               </div>
             ))}
@@ -669,8 +662,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
       >
         {isOpen ? <X className="w-20 h-20" style={{ color: primary }} /> : (
           <div className="relative">
-            <MascotAvatar size={280} mascotUrl={mascotUrl} primary={primary} roundedClass="rounded-2xl" fitClass="object-contain" imagePadding={0} imageBackground="transparent" />
-            <span className="absolute top-4 right-4 w-12 h-12 bg-green-400 rounded-full border-4 border-white animate-pulse shadow-lg" />
+            <MascotAvatar size={280} mascotUrl={effectiveMascotUrl} primary={primary} roundedClass="rounded-2xl" fitClass="object-contain" imagePadding={0} imageBackground="transparent" />
           </div>
         )}
       </button>
@@ -1143,7 +1135,7 @@ export default function ClientPortal() {
 
   // ===== RENDER =====
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f7f5f0' }}>
+    <div className="portal-public min-h-screen" style={{ backgroundColor: '#f7f5f0' }}>
       {/* ===== STICKY HEADER ===== */}
       <div className="sticky top-0 z-50 border-b" style={{ backgroundColor: '#ffffff', borderColor: '#e8e4de' }}>
         {/* Row 1: Logo + Actions */}

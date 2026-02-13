@@ -328,12 +328,17 @@ export default function ImovelFormWizard() {
       setLocation('/properties');
     } catch (error: any) {
       console.error('Erro ao salvar imóvel:', error);
-      const validationMessages = error?.response?.data?.messages;
+      const responseData = error?.response?.data;
+      const validationMessages = responseData?.messages || responseData?.errors;
       const message = validationMessages
         ? Object.entries(validationMessages)
-            .flatMap(([, value]) => Array.isArray(value) ? value : [String(value)])
+            .flatMap(([field, value]) => {
+              const list = Array.isArray(value) ? value : [String(value)];
+              return list.map((item) => `${field}: ${item}`);
+            })
             .join(' | ')
-        : error?.response?.data?.error || error?.message || 'Erro ao salvar imóvel';
+        : responseData?.message || responseData?.error || error?.message || 'Erro ao salvar imóvel';
+      console.error('Detalhes da validação:', responseData);
       toast.error(message);
     } finally {
       setIsSubmitting(false);
