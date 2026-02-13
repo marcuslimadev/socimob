@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Property;
 use App\Services\PropertySyncService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -405,6 +406,20 @@ class PropertyController extends Controller
     }
 
     /**
+     * Normaliza o payload de upload para sempre retornar uma lista de arquivos.
+     */
+    private function normalizeUploadedFiles($files): array
+    {
+        if ($files instanceof UploadedFile) {
+            return [$files];
+        }
+        if (is_array($files)) {
+            return array_values(array_filter($files, static fn($file) => $file instanceof UploadedFile));
+        }
+        return [];
+    }
+
+    /**
      * Criar novo imóvel
      * POST /api/imoveis
      * 
@@ -516,10 +531,26 @@ class PropertyController extends Controller
                 }
             }
             
+            $mediaUploadWarning = null;
+
             // Novas imagens
             if ($request->hasFile('media')) {
-                $uploadedUrls = $this->uploadMedia($request->file('media'), $tenantId, $codigoImovel);
-                $imagens = array_merge($imagens, $uploadedUrls);
+                try {
+                    $uploadedFiles = $this->normalizeUploadedFiles($request->file('media'));
+                    if (!empty($uploadedFiles)) {
+                        $uploadedUrls = $this->uploadMedia($uploadedFiles, $tenantId, $codigoImovel);
+                        $imagens = array_merge($imagens, $uploadedUrls);
+                    }
+                } catch (\Throwable $uploadError) {
+                    \Log::error('Property store: media upload failed, continuing without media', [
+                        'tenant_id' => $tenantId,
+                        'codigo' => $codigoImovel,
+                        'error' => $uploadError->getMessage(),
+                        'file' => $uploadError->getFile(),
+                        'line' => $uploadError->getLine(),
+                    ]);
+                    $mediaUploadWarning = 'Imóvel salvo, mas ocorreu falha no upload da mídia.';
+                }
             }
             
             if (!empty($imagens)) {
@@ -558,7 +589,8 @@ class PropertyController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $property,
-                'message' => "Imóvel {$codigoImovel} cadastrado com sucesso!",
+                'message' => $mediaUploadWarning ?: "Imóvel {$codigoImovel} cadastrado com sucesso!",
+                'upload_warning' => $mediaUploadWarning,
             ], 201);
         } catch (\Throwable $e) {
             \Log::error('Property store failed', [
@@ -718,14 +750,31 @@ class PropertyController extends Controller
                 }
             }
             
+            $mediaUploadWarning = null;
+
             // Novas imagens
             if ($request->hasFile('media')) {
-                $uploadedUrls = $this->uploadMedia(
-                    $request->file('media'), 
-                    $tenantId, 
-                    $property->codigo_imovel
-                );
-                $imagens = array_merge($imagens, $uploadedUrls);
+                try {
+                    $uploadedFiles = $this->normalizeUploadedFiles($request->file('media'));
+                    if (!empty($uploadedFiles)) {
+                        $uploadedUrls = $this->uploadMedia(
+                            $uploadedFiles,
+                            $tenantId,
+                            $property->codigo_imovel
+                        );
+                        $imagens = array_merge($imagens, $uploadedUrls);
+                    }
+                } catch (\Throwable $uploadError) {
+                    \Log::error('Property update: media upload failed, continuing without media', [
+                        'tenant_id' => $tenantId,
+                        'property_id' => $id,
+                        'codigo' => $property->codigo_imovel,
+                        'error' => $uploadError->getMessage(),
+                        'file' => $uploadError->getFile(),
+                        'line' => $uploadError->getLine(),
+                    ]);
+                    $mediaUploadWarning = 'Imóvel atualizado, mas ocorreu falha no upload da mídia.';
+                }
             }
             
             if (!empty($imagens)) {
@@ -767,7 +816,8 @@ class PropertyController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $property->fresh(),
-                'message' => "Imóvel {$property->codigo_imovel} atualizado com sucesso!",
+                'message' => $mediaUploadWarning ?: "Imóvel {$property->codigo_imovel} atualizado com sucesso!",
+                'upload_warning' => $mediaUploadWarning,
             ]);
         } catch (\Throwable $e) {
             \Log::error('Property update failed', [
