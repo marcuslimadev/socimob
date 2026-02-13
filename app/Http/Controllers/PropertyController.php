@@ -352,11 +352,36 @@ class PropertyController extends Controller
     private function uploadMedia(array $files, int $tenantId, string $propertyCode): array
     {
         $uploadedUrls = [];
-        $uploadPath = public_path("uploads/properties/tenant_{$tenantId}/{$propertyCode}");
-        
-        // Criar diretório se não existir
-        if (!file_exists($uploadPath)) {
-            mkdir($uploadPath, 0755, true);
+        $relativePath = "uploads/properties/tenant_{$tenantId}/{$propertyCode}";
+        $publicUploadPath = public_path($relativePath);
+        $storageUploadPath = storage_path("app/public/{$relativePath}");
+
+        $uploadPath = null;
+        $baseUrl = null;
+
+        // Prioridade: manter compatibilidade com links já existentes em /uploads.
+        foreach ([
+            ['path' => $publicUploadPath, 'base_url' => url($relativePath)],
+            ['path' => $storageUploadPath, 'base_url' => url("storage/{$relativePath}")],
+        ] as $candidate) {
+            $candidatePath = $candidate['path'];
+
+            if (!is_dir($candidatePath) && !@mkdir($candidatePath, 0755, true) && !is_dir($candidatePath)) {
+                continue;
+            }
+
+            if (is_writable($candidatePath)) {
+                $uploadPath = $candidatePath;
+                $baseUrl = rtrim($candidate['base_url'], '/');
+                break;
+            }
+        }
+
+        if (!$uploadPath || !$baseUrl) {
+            throw new \RuntimeException(
+                "Nao foi possivel preparar diretorio de upload. " .
+                "Tentativas: {$publicUploadPath} e {$storageUploadPath}"
+            );
         }
         
         foreach ($files as $file) {
@@ -373,7 +398,7 @@ class PropertyController extends Controller
             $file->move($uploadPath, $filename);
             
             // Adicionar URL pública
-            $uploadedUrls[] = url("uploads/properties/tenant_{$tenantId}/{$propertyCode}/{$filename}");
+            $uploadedUrls[] = "{$baseUrl}/{$filename}";
         }
         
         return $uploadedUrls;
