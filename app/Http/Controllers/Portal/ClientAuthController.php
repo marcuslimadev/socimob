@@ -19,8 +19,28 @@ class ClientAuthController extends Controller
     public function register(Request $request)
     {
         $tenantId = $request->attributes->get('tenant_id');
+        
+        // DEBUG: Log tenant resolution for registration
+        \Log::info('ClientAuthController::register tenant check', [
+            'tenant_id_from_attributes' => $tenantId,
+            'app_bound_tenant' => app()->bound('tenant'),
+            'host' => $request->getHost(),
+        ]);
+        
         if (!$tenantId) {
-            return response()->json(['error' => 'Tenant not found'], 404);
+            // Try to get from app container if middleware set it
+            if (app()->bound('tenant')) {
+                $tenant = app('tenant');
+                $tenantId = $tenant->id;
+                $request->attributes->set('tenant_id', $tenantId);
+                \Log::info('ClientAuthController::register recovered tenant from app', ['tenant_id' => $tenantId]);
+            } else {
+                \Log::error('ClientAuthController::register - No tenant found', [
+                    'host' => $request->getHost(),
+                    'attributes' => $request->attributes->all(),
+                ]);
+                return response()->json(['error' => 'Tenant not found'], 404);
+            }
         }
 
         // ✅ Validação aprimorada com password confirmation
@@ -71,8 +91,28 @@ class ClientAuthController extends Controller
     public function login(Request $request)
     {
         $tenantId = $request->attributes->get('tenant_id');
+        
+        // DEBUG: Log tenant resolution for login
+        \Log::info('ClientAuthController::login tenant check', [
+            'tenant_id_from_attributes' => $tenantId,
+            'app_bound_tenant' => app()->bound('tenant'),
+            'host' => $request->getHost(),
+        ]);
+        
         if (!$tenantId) {
-            return response()->json(['error' => 'Tenant not found'], 404);
+            // Try to get from app container if middleware set it
+            if (app()->bound('tenant')) {
+                $tenant = app('tenant');
+                $tenantId = $tenant->id;
+                $request->attributes->set('tenant_id', $tenantId);
+                \Log::info('ClientAuthController::login recovered tenant from app', ['tenant_id' => $tenantId]);
+            } else {
+                \Log::error('ClientAuthController::login - No tenant found', [
+                    'host' => $request->getHost(),
+                    'attributes' => $request->attributes->all(),
+                ]);
+                return response()->json(['error' => 'Tenant not found'], 404);
+            }
         }
 
         // ✅ Validação de inputs
