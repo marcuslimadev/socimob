@@ -69,31 +69,37 @@ class AuthController extends Controller
         
         // Validar tenant - usuários só podem fazer login no domínio do seu tenant
         // Super admins (sem tenant_id) podem fazer login em qualquer domínio
-        // TEMPORÁRIO: Desativado para debug
-        /*
         if ($user->tenant_id) {
-            // Verificar se tenant está bound (pode não estar se middleware não resolveu)
             $currentTenant = app()->bound('tenant')
                 ? app('tenant')
                 : $this->resolveTenantFromRequest($request);
             
+            // CRITICAL DEBUG: Log tenant resolution
+            \Log::info('AuthController login tenant check', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'user_tenant_id' => $user->tenant_id,
+                'app_bound_tenant' => app()->bound('tenant'),
+                'current_tenant_id' => $currentTenant ? $currentTenant->id : null,
+                'current_tenant_domain' => $currentTenant ? $currentTenant->domain : null,
+                'host' => $request->getHost(),
+                'tenant_id_from_attributes' => $request->attributes->get('tenant_id'),
+            ]);
+
             if (!$currentTenant || $currentTenant->id !== $user->tenant_id) {
-                // Log para debug
-                \Log::warning('Login tenant mismatch', [
+                \Log::warning('Login tenant mismatch - BLOCKED', [
                     'user_id' => $user->id,
                     'user_tenant_id' => $user->tenant_id,
                     'current_tenant_id' => $currentTenant ? $currentTenant->id : null,
-                    'host' => request()->getHost(),
-                    'current_tenant_bound' => app()->bound('tenant'),
+                    'host' => $request->getHost(),
                 ]);
-                
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Este usuário não tem acesso a este domínio. Acesse pelo domínio correto da sua imobiliária.'
                 ], 403);
             }
         }
-        */
         
         // Gerar token simples
         $secret = env('JWT_SECRET', env('APP_KEY', 'default-secret-key'));
@@ -115,18 +121,19 @@ class AuthController extends Controller
 
     private function resolveTenantFromRequest(Request $request): ?Tenant
     {
-        $tenantId = $request->header('X-Tenant-Id') ?: $request->query('tenant_id');
+        // SECURITY: Only accept tenant from headers or host, NOT query parameters
+        $tenantId = $request->header('X-Tenant-Id');
         if (!empty($tenantId)) {
             return Tenant::find($tenantId);
         }
 
         $domainService = app(DomainService::class);
-        $tenantDomain = $request->header('X-Tenant-Domain') ?: $request->query('tenant_domain');
+        $tenantDomain = $request->header('X-Tenant-Domain');
         if (!empty($tenantDomain)) {
             return $domainService->findByDomain($tenantDomain);
         }
 
-        $tenantSlug = $request->header('X-Tenant-Slug') ?: $request->query('tenant_slug');
+        $tenantSlug = $request->header('X-Tenant-Slug');
         if (!empty($tenantSlug)) {
             return Tenant::where('slug', $tenantSlug)->first();
         }
@@ -207,19 +214,35 @@ class AuthController extends Controller
                 'google_id' => 'google_' . time() // Em produção, extrair do token
             ];
 
+            // Resolver tenant atual - obrigatório para Google Login
+            $currentTenant = app()->bound('tenant') ? app('tenant') : null;
+            if (!$currentTenant) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Não foi possível identificar a imobiliária. Acesse pelo domínio correto.'
+                ], 403);
+            }
+
             // Buscar ou criar usuário
             $user = User::where('email', $googleData['email'])->first();
-            
+
             if (!$user) {
-                // Criar novo usuário como cliente
+                // Criar novo usuário como cliente, vinculado ao tenant atual
                 $user = User::create([
                     'name' => $googleData['name'],
                     'email' => $googleData['email'],
-                    'password' => Hash::make(uniqid()), // Senha aleatória (não será usada)
+                    'password' => Hash::make(uniqid()),
                     'role' => 'client',
                     'is_active' => 1,
-                    'google_id' => $googleData['google_id']
+                    'google_id' => $googleData['google_id'],
+                    'tenant_id' => $currentTenant->id,
                 ]);
+            } elseif ($user->tenant_id && $user->tenant_id !== $currentTenant->id) {
+                // Usuário existe mas pertence a outro tenant
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Este usuário não tem acesso a este domínio.'
+                ], 403);
             }
 
             // Gerar token
