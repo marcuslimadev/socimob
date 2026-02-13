@@ -46,7 +46,7 @@ class ClientAuthController extends Controller
         // ✅ Validação aprimorada com password confirmation
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|regex:/^[\pL\s\-]+$/u',
-            'email' => 'required|email:rfc,dns|max:255',
+            'email' => 'required|email:rfc|max:255',
             'password' => 'required|string|min:6|max:255|confirmed',
             'telefone' => 'nullable|string|max:20|regex:/^[\d\s\(\)\-\+]+$/',
         ], [
