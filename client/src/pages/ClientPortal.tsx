@@ -122,6 +122,7 @@ interface Property {
   active?: boolean;
   fotos?: Array<{ url: string; destaque: boolean }>;
   imagens?: string[];
+  imagem_destaque?: string;
   finalidade_imovel?: string;
   latitude?: number;
   longitude?: number;
@@ -936,8 +937,14 @@ export default function ClientPortal() {
 
   const getPhotos = (property: Property): string[] => {
     const photos: string[] = [];
+    if (property.imagem_destaque) {
+      photos.push(property.imagem_destaque);
+    }
     if (property.fotos) {
-      photos.push(...property.fotos.map((f) => f.url));
+      photos.push(...property.fotos
+        .sort((a, b) => Number(b.destaque) - Number(a.destaque))
+        .map((f) => f.url)
+        .filter((url) => !photos.includes(url)));
     }
     if (property.imagens) {
       photos.push(...property.imagens.filter((img) => !photos.includes(img)));
@@ -1076,6 +1083,7 @@ export default function ClientPortal() {
         if (!property.latitude || !property.longitude) return null;
         const price = property.valor_venda || property.valor_aluguel || 0;
         const propertyIcon = createPropertyIcon(property.tipo_imovel, primary);
+        const popupPhotos = getPhotos(property);
 
         return (
           <Marker
@@ -1088,9 +1096,9 @@ export default function ClientPortal() {
           >
             <Popup>
               <div className="w-56">
-                {property.fotos?.[0]?.url && (
+                {popupPhotos[0] && (
                   <img
-                    src={property.fotos[0].url}
+                    src={popupPhotos[0]}
                     alt={property.titulo}
                     className="w-full h-28 object-cover rounded-t-lg -mt-3 -mx-3 mb-2"
                     style={{ width: 'calc(100% + 24px)' }}

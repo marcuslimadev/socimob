@@ -143,13 +143,18 @@ export default function ImovelFormWizard() {
 
         // Carregar imagens existentes
         if (item.imagens && Array.isArray(item.imagens)) {
+          const destaqueUrl = item.imagem_destaque || null;
           const existingMedia: MediaFile[] = item.imagens.map((url: string, index: number) => ({
             id: `existing-${index}`,
             url,
             type: 'image' as const,
             preview: url,
-            destaque: index === 0,
+            destaque: destaqueUrl ? url === destaqueUrl : index === 0,
           }));
+          // Garantir que sempre exista exatamente 1 destaque visível no form.
+          if (!existingMedia.some((m) => m.destaque) && existingMedia.length > 0) {
+            existingMedia[0].destaque = true;
+          }
           setMediaFiles(existingMedia);
         }
       } catch (error) {

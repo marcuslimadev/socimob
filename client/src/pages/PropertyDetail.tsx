@@ -30,6 +30,7 @@ interface Property {
   active?: boolean;
   fotos?: Array<{url: string; destaque: boolean}>;
   imagens?: string[];
+  imagem_destaque?: string;
   finalidade_imovel?: string;
   codigo?: string;
   condominio?: number;
@@ -47,6 +48,33 @@ export default function PropertyDetail() {
   const [tenant, setTenant] = useState<TenantBranding | null>(null);
   const [isLiked, setIsLiked] = useState(false);
 
+  const getPhotos = (propertyData: Property): Array<{ url: string; destaque: boolean }> => {
+    const photos: Array<{ url: string; destaque: boolean }> = [];
+    const destaqueUrl = propertyData.imagem_destaque;
+
+    if (destaqueUrl) {
+      photos.push({ url: destaqueUrl, destaque: true });
+    }
+
+    if (propertyData.fotos?.length) {
+      for (const foto of propertyData.fotos) {
+        if (!photos.some((p) => p.url === foto.url)) {
+          photos.push(foto);
+        }
+      }
+    }
+
+    if (propertyData.imagens?.length) {
+      for (const url of propertyData.imagens) {
+        if (!photos.some((p) => p.url === url)) {
+          photos.push({ url, destaque: false });
+        }
+      }
+    }
+
+    return photos;
+  };
+
   useEffect(() => {
     const fetchProperty = async () => {
       if (!params?.id) return;
@@ -58,12 +86,9 @@ export default function PropertyDetail() {
         const propertyData = response.data.data || response.data;
         setProperty(propertyData);
 
-        // Set first image as selected
-        const imagens = propertyData.fotos?.length
-          ? propertyData.fotos
-          : propertyData.imagens?.map((url: string) => ({ url, destaque: false }));
-
-        if (imagens && imagens.length > 0) {
+        // Set highlight image first; fallback to first available.
+        const imagens = getPhotos(propertyData);
+        if (imagens.length > 0) {
           setSelectedImage(imagens[0].url);
         }
       } catch (err: any) {
@@ -226,9 +251,7 @@ export default function PropertyDetail() {
     ? Number(property.preco.replace(/[^\d]/g, ''))
     : 0;
   const price = property.valor_venda || property.valor_aluguel || priceFromString || 0;
-  const images = property.fotos?.length
-    ? property.fotos
-    : property.imagens?.map((url) => ({ url, destaque: false })) || [];
+  const images = getPhotos(property);
   const displayImage = selectedImage || images[0]?.url;
   const bedrooms = property.quartos ?? property.dormitorios;
   const area = property.area_util || property.area_privativa || property.area_total;
