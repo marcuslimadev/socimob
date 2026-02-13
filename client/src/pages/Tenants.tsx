@@ -55,6 +55,7 @@ interface Tenant {
   endereco?: string;
   slogan?: string;
   favicon_url?: string;
+  mascot_url?: string;
 }
 
 export default function Tenants() {
@@ -137,6 +138,7 @@ export default function Tenants() {
       if (editingTenant.endereco) formData.append('endereco', editingTenant.endereco);
       if (editingTenant.slogan) formData.append('slogan', editingTenant.slogan);
       if (editingTenant.favicon_url) formData.append('favicon_url', editingTenant.favicon_url);
+      if (editingTenant.mascot_url) formData.append('mascot_url', editingTenant.mascot_url);
       
       // Twilio fields
       if (editingTenant.twilio_account_sid) formData.append('twilio_account_sid', editingTenant.twilio_account_sid);
@@ -580,6 +582,24 @@ export default function Tenants() {
                           placeholder="https://exemplo.com/favicon.ico"
                         />
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        URL do Mascote
+                      </label>
+                      <input
+                        type="url"
+                        value={editingTenant.mascot_url || ''}
+                        onChange={(e) =>
+                          setEditingTenant({
+                            ...editingTenant,
+                            mascot_url: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="/assets/mascote.png ou https://exemplo.com/mascote.png"
+                      />
                     </div>
                   </div>
                 </div>

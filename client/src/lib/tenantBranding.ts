@@ -4,6 +4,7 @@ export interface TenantBranding {
   logo?: string;
   logo_url?: string;
   favicon_url?: string;
+  mascot_url?: string;
   primary_color?: string;
   secondary_color?: string;
   font_primary?: string;

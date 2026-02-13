@@ -7,6 +7,7 @@ interface TenantConfig {
   theme?: string;
   logo_url?: string;
   favicon_url?: string;
+  mascot_url?: string;
   slogan?: string;
   primary_color?: string;
   secondary_color?: string;
@@ -96,6 +97,7 @@ export default function Settings() {
     primary_color: '',
     secondary_color: '',
     logo_url: '',
+    mascot_url: '',
     // Integration fields from tenants table
     openai_api_key: '',
     openai_model: 'gpt-4o-mini',
@@ -215,6 +217,7 @@ export default function Settings() {
         primary_color: config.primary_color || '#1e293b',
         secondary_color: config.secondary_color || '#3b82f6',
         logo_url: config.logo_url || '',
+        mascot_url: config.mascot_url || '',
         // Integration fields from tenants table
         openai_api_key: config.openai_api_key || '',
         openai_model: config.openai_model || 'gpt-4o-mini',
@@ -823,6 +826,22 @@ export default function Settings() {
                             placeholder="https://exemplo.com/logo.png"
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-foreground mb-2">
+                          URL da Imagem do Mascote
+                        </label>
+                        <input
+                          type="text"
+                          value={tenantForm.mascot_url}
+                          onChange={(e) => setTenantForm({ ...tenantForm, mascot_url: e.target.value })}
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                          placeholder="/assets/mascote.png ou https://exemplo.com/mascote.png"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Essa imagem será usada no mascote do chat no portal público.
+                        </p>
                       </div>
 
                       <div className="border-t border-white/10 pt-6 mt-6">

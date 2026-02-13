@@ -169,6 +169,7 @@ class TenantController extends Controller
             'primary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
             'secondary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
             'logo_url' => 'nullable|string|max:500',
+            'mascot_url' => 'nullable|string|max:500',
             'is_active' => 'nullable|boolean',
             'admin_password' => 'nullable|string|min:6',
             'admin_role' => 'nullable|in:admin,user',
