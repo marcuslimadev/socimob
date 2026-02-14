@@ -610,7 +610,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
   return (
     <>
       {isOpen && (
-        <div className="fixed bottom-[330px] right-6 z-[60] w-[480px] rounded-3xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'min(650px, calc(100vh - 360px))', backgroundColor: '#fff' }}>
+        <div className="fixed bottom-24 right-6 z-[60] w-[400px] rounded-3xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'min(600px, calc(100vh - 120px))', backgroundColor: '#fff' }}>
           <div className="flex items-center gap-4 px-6 py-5 text-white flex-shrink-0" style={{ backgroundColor: primary }}>
             <MascotAvatar size={100} mascotUrl={effectiveMascotUrl} primary={primary} />
             <div className="flex-1 min-w-0">
@@ -619,7 +619,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
             </div>
             <button onClick={() => onOpenChange(false)} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"><X className="w-4 h-4" /></button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ backgroundColor: '#f0ede8', minHeight: '280px' }}>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ backgroundColor: 'var(--portal-bg-muted)', minHeight: '280px' }}>
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {msg.from === 'bot' && <div className="w-7 h-7 rounded-full flex items-center justify-center mr-2 flex-shrink-0 mt-0.5" style={{ backgroundColor: '#f5f5f5' }}><MascotAvatar size={22} mascotUrl={effectiveMascotUrl} primary={primary} /></div>}
@@ -655,22 +655,19 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
             <span className="text-[10px]" style={{ color: '#aaa' }}>Atendimento automatizado por IA</span>
           </div>
         </div>
-      )}
-      <button
+         <button
         onClick={() => onOpenChange(!isOpen)}
-        className="fixed bottom-6 right-6 z-[60] w-[300px] h-[300px] flex items-center justify-center transition-all duration-300 hover:scale-105"
+        className="fixed bottom-6 right-6 z-[60] w-[200px] h-[200px] flex items-center justify-center transition-all duration-300 hover:scale-105"
         style={{ backgroundColor: 'transparent' }}
       >
-        {isOpen ? <X className="w-20 h-20" style={{ color: primary }} /> : (
-          <div className="relative">
-            <MascotAvatar size={280} mascotUrl={effectiveMascotUrl} primary={primary} roundedClass="rounded-2xl" fitClass="object-contain" imagePadding={0} imageBackground="transparent" />
-          </div>
+        {isOpen ? <X className="w-12 h-12" style={{ color: primary }} /> : (
+          <MascotAvatar size={180} mascotUrl={effectiveMascotUrl} primary={primary} roundedClass="rounded-2xl" fitClass="object-contain" imagePadding={0} imageBackground="transparent" />
         )}
       </button>
       {!isOpen && !propertyContext && (
-        <div className="fixed bottom-[330px] right-6 z-[59] rounded-2xl shadow-2xl px-6 py-4 text-2xl font-bold animate-bounce border" style={{ backgroundColor: '#fff', color: primary, animationDuration: '2s', borderColor: `${primary}33` }}>
-          <div className="absolute bottom-0 right-[130px] w-6 h-6 rotate-45 translate-y-3 shadow-lg border-l border-b" style={{ backgroundColor: '#fff', borderColor: `${primary}33` }} />
-          Posso te ajudar?
+        <div className="fixed bottom-[180px] right-6 z-[59] rounded-2xl shadow-2xl px-5 py-3 text-lg font-bold animate-bounce border" style={{ backgroundColor: '#fff', color: primary, animationDuration: '3s', borderColor: `${primary}33` }}>
+          <div className="absolute bottom-0 right-[40px] w-4 h-4 rotate-45 translate-y-2 shadow-lg border-l border-b" style={{ backgroundColor: '#fff', borderColor: `${primary}33` }} />
+          Como posso te ajudar hoje?
         </div>
       )}
     </>
@@ -1027,11 +1024,11 @@ export default function ClientPortal() {
 
         {/* Content */}
         <div className="p-4">
-          <p className="text-sm line-clamp-2 leading-snug mb-2.5" style={{ color: '#444' }}>
+          <p className="text-sm line-clamp-2 leading-snug mb-2.5" style={{ color: 'var(--portal-text-muted)' }}>
             {description}
           </p>
 
-          <p className="text-[17px] font-bold leading-tight" style={{ color: '#1a1a1a' }}>
+          <p className="text-[17px] font-bold leading-tight" style={{ color: 'var(--portal-text-main)' }}>
             {formatPrice(price)}
           </p>
           {property.finalidade_imovel?.toLowerCase().includes('aluguel') && (
@@ -1039,7 +1036,7 @@ export default function ClientPortal() {
           )}
 
           {details && (
-            <p className="text-sm mt-2.5" style={{ color: '#666' }}>{details}</p>
+            <p className="text-sm mt-2.5" style={{ color: 'var(--portal-text-muted)' }}>{details}</p>
           )}
 
           {address && (
@@ -1052,11 +1049,11 @@ export default function ClientPortal() {
               setChatPropertyContext({ id: property.id, titulo: description, preco: formatPrice(price) });
               setChatOpen(true);
             }}
-            className="w-full mt-3 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+            className="w-full mt-3 py-2.5 px-4 rounded-xl text-sm font-bold transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
             style={{ backgroundColor: `${primary}15`, color: primary }}
           >
             <MessageCircle className="w-4 h-4" />
-            Entrar em Contato
+            Tenho Interesse
           </button>
         </div>
       </div>
@@ -1143,7 +1140,7 @@ export default function ClientPortal() {
 
   // ===== RENDER =====
   return (
-    <div className="portal-public min-h-screen" style={{ backgroundColor: '#f7f5f0' }}>
+    <div className="portal-public min-h-screen" style={{ backgroundColor: 'var(--portal-bg-subtle)' }}>
       {/* ===== STICKY HEADER ===== */}
       <div className="sticky top-0 z-50 border-b" style={{ backgroundColor: '#ffffff', borderColor: '#e8e4de' }}>
         {/* Row 1: Logo + Actions */}
@@ -1164,7 +1161,7 @@ export default function ClientPortal() {
                   {tenant?.name?.substring(0, 2).toUpperCase() || 'IM'}
                 </div>
               )}
-              <span className="font-semibold hidden sm:block truncate" style={{ color: '#1a1a1a' }}>
+              <span className="font-semibold hidden sm:block truncate" style={{ color: 'var(--portal-text-main)' }}>
                 {tenant?.name || 'Imobiliária'}
               </span>
             </div>
@@ -1534,16 +1531,16 @@ export default function ClientPortal() {
 
       {/* ===== SERVICES SECTION ===== */}
       {tenant?.services && tenant.services.length > 0 && (
-        <section id="servicos" className="py-10 px-4 lg:px-8" style={{ backgroundColor: '#fff', borderBottom: '1px solid #e8e4de' }}>
+        <section id="servicos" className="py-10 px-4 lg:px-8" style={{ backgroundColor: '#fff', borderBottom: '1px solid var(--portal-border)' }}>
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-xl font-bold text-center mb-6" style={{ color: '#1a1a1a' }}>Nossos Serviços</h2>
+            <h2 className="text-xl font-bold text-center mb-6" style={{ color: 'var(--portal-text-main)' }}>Nossos Serviços</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {tenant.services.map((svc, i) => (
-                <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl" style={{ backgroundColor: '#f7f5f0' }}>
+                <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl" style={{ backgroundColor: 'var(--portal-bg-subtle)' }}>
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primary}15` }}>
                     <Home className="w-4 h-4" style={{ color: primary }} />
                   </div>
-                  <span className="text-sm font-medium" style={{ color: '#444' }}>{svc}</span>
+                  <span className="text-sm font-medium" style={{ color: 'var(--portal-text-muted)' }}>{svc}</span>
                 </div>
               ))}
             </div>
@@ -1558,8 +1555,8 @@ export default function ClientPortal() {
             <ClipboardList className="w-6 h-6" style={{ color: primary }} />
           </div>
           <div className="flex-1 text-center sm:text-left">
-            <h3 className="text-lg font-bold" style={{ color: '#1a1a1a' }}>Avaliação Gratuita do Seu Imóvel</h3>
-            <p className="text-sm" style={{ color: '#666' }}>Quer saber quanto vale o seu imóvel? Solicite uma avaliação gratuita e sem compromisso.</p>
+            <h3 className="text-lg font-bold" style={{ color: 'var(--portal-text-main)' }}>Avaliação Gratuita do Seu Imóvel</h3>
+            <p className="text-sm" style={{ color: 'var(--portal-text-muted)' }}>Quer saber quanto vale o seu imóvel? Solicite uma avaliação gratuita e sem compromisso.</p>
           </div>
           <Button
             onClick={() => { setShowEvalModal(true); setEvalDone(false); setEvalForm({ nome: '', telefone: '', email: '', tipo_imovel: '', endereco: '', bairro: '', cidade: '', observacoes: '' }); }}
@@ -1577,10 +1574,10 @@ export default function ClientPortal() {
           {/* Cards Section */}
           <div className="flex-1 min-w-0 flex flex-col">
             {/* Results header */}
-          <div className="px-4 lg:px-6 py-3 flex-shrink-0" style={{ borderBottom: '1px solid #e8e4de' }}>
+          <div className="px-4 lg:px-6 py-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--portal-border)' }}>
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-base font-bold" style={{ color: '#1a1a1a' }}>
+                <span className="text-base font-bold" style={{ color: 'var(--portal-text-main)' }}>
                   {displayProperties.length.toLocaleString('pt-BR')}{' '}
                   {displayProperties.length === 1 ? 'imóvel' : 'imóveis'}
                 </span>
@@ -1667,7 +1664,7 @@ export default function ClientPortal() {
         </div>
 
         {/* Map Section (Desktop) */}
-        <div className="hidden lg:block w-[42%] flex-shrink-0 sticky top-[105px] h-[calc(100vh-105px)]" style={{ borderLeft: '1px solid #e8e4de' }}>
+        <div className="hidden lg:block w-[42%] flex-shrink-0 sticky top-[105px] h-[calc(100vh-105px)]" style={{ borderLeft: '1px solid var(--portal-border)' }}>
           {renderMap()}
         </div>
         </div>
@@ -1687,10 +1684,10 @@ export default function ClientPortal() {
 
       {/* ===== MOBILE MAP OVERLAY ===== */}
       {showMobileMap && (
-        <div className="fixed inset-0 z-[60]" style={{ backgroundColor: '#f7f5f0' }}>
+        <div className="fixed inset-0 z-[60]" style={{ backgroundColor: 'var(--portal-bg-subtle)' }}>
           <div className="h-full flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: '#e8e4de', backgroundColor: '#fff' }}>
-              <span className="font-semibold" style={{ color: '#1a1a1a' }}>
+              <span className="font-semibold" style={{ color: 'var(--portal-text-main)' }}>
                 {filteredProperties.length} imóveis no mapa
               </span>
               <Button size="sm" variant="ghost" onClick={() => setShowMobileMap(false)}>
@@ -1712,7 +1709,7 @@ export default function ClientPortal() {
                 <img src={tenant.logo_url || tenant.logo} alt={tenant.name} className="h-10 w-auto object-contain" />
               </div>
             )}
-            <h2 className="text-xl font-bold mb-3" style={{ color: '#1a1a1a' }}>Sobre {tenant.name || 'Nós'}</h2>
+            <h2 className="text-xl font-bold mb-3" style={{ color: 'var(--portal-text-main)' }}>Sobre {tenant.name || 'Nós'}</h2>
             {tenant.creci && <p className="text-xs font-medium mb-3" style={{ color: primary }}>CRECI: {tenant.creci}</p>}
             <p className="text-sm leading-relaxed" style={{ color: '#555' }}>{tenant.about_text}</p>
             {tenant.endereco && <p className="text-xs mt-4 flex items-center justify-center gap-1" style={{ color: '#888' }}><MapPin className="w-3.5 h-3.5" />{tenant.endereco}</p>}
@@ -1735,8 +1732,8 @@ export default function ClientPortal() {
             {evalDone ? (
               <div className="p-8 text-center">
                 <CheckCircle className="w-14 h-14 mx-auto mb-4" style={{ color: '#22c55e' }} />
-                <h3 className="text-lg font-bold mb-2" style={{ color: '#1a1a1a' }}>Solicitação Enviada!</h3>
-                <p className="text-sm mb-5" style={{ color: '#666' }}>Entraremos em contato em breve para agendar a avaliação do seu imóvel.</p>
+                <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--portal-text-main)' }}>Solicitação Enviada!</h3>
+                <p className="text-sm mb-5" style={{ color: 'var(--portal-text-muted)' }}>Entraremos em contato em breve para agendar a avaliação do seu imóvel.</p>
                 {tenant?.contact_phone && (
                   <a
                     href={`https://wa.me/${tenant.contact_phone.replace(/\D/g, '')}?text=${encodeURIComponent('Olá! Acabei de solicitar uma avaliação de imóvel pelo portal.')}`}
