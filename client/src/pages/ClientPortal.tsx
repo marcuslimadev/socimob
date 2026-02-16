@@ -655,6 +655,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
             <span className="text-[10px]" style={{ color: '#aaa' }}>Atendimento automatizado por IA</span>
           </div>
         </div>
+      )}
          <button
         onClick={() => onOpenChange(!isOpen)}
         className="fixed bottom-6 right-6 z-[60] w-[200px] h-[200px] flex items-center justify-center transition-all duration-300 hover:scale-105"
