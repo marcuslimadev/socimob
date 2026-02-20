@@ -324,7 +324,9 @@ export default function PropertyDetail() {
                     <video
                       src={displayImage}
                       controls
-                      className="w-full h-full object-cover bg-black"
+                      preload="metadata"
+                      playsInline
+                      className="w-full h-full object-contain bg-black"
                     />
                   ) : (
                     <img src={displayImage} alt={property.titulo} className="w-full h-full object-cover" />
