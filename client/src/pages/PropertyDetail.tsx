@@ -272,7 +272,7 @@ export default function PropertyDetail() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f4efe8' }}>
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b111f]/92 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 lg:px-8 py-3 flex items-center justify-between">
+        <div className="mx-auto max-w-7xl px-4 lg:px-8 py-3 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => navigate('/portal')}
@@ -281,7 +281,7 @@ export default function PropertyDetail() {
             <ArrowLeft size={18} />
             Voltar aos imóveis
           </button>
-          <div className="text-[11px] uppercase tracking-[0.16em] text-white/70">
+          <div className="hidden sm:block text-[11px] uppercase tracking-[0.16em] text-white/70">
             {tenant?.name || 'Imobiliaria'}
           </div>
         </div>
@@ -293,27 +293,27 @@ export default function PropertyDetail() {
         )}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.16),transparent_34%)]" />
 
-        <div className="relative mx-auto max-w-7xl px-4 lg:px-8 py-10 lg:py-14">
+        <div className="relative mx-auto max-w-7xl px-4 lg:px-8 py-8 lg:py-14">
           <p className="inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-white/85">
             {businessLabel(property)}
           </p>
-          <h1 className="mt-4 text-3xl md:text-5xl leading-tight text-white max-w-4xl">{property.titulo}</h1>
-          <p className="mt-3 text-white/75 flex items-center gap-2">
+          <h1 className="mt-3 text-2xl sm:text-3xl md:text-5xl leading-tight text-white max-w-4xl">{property.titulo}</h1>
+          <p className="mt-2 text-sm sm:text-base text-white/75 flex items-center gap-2">
             <MapPin size={16} />
             {locationParts.length > 0 ? locationParts.join(', ') : 'Localização não informada'}
           </p>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 lg:px-8 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-8">
-          <div className="space-y-5">
+      <section className="mx-auto max-w-7xl px-4 lg:px-8 py-6 sm:py-8">
+        <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-6 sm:gap-8">
+          <div className="space-y-4 sm:space-y-5 order-2 xl:order-1">
             <motion.article
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               className="overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.10)]"
             >
-              <div className="relative h-[300px] sm:h-[420px] bg-slate-100">
+              <div className="relative h-[240px] sm:h-[420px] bg-slate-100">
                 {displayImage ? (
                   <img src={displayImage} alt={property.titulo} className="w-full h-full object-cover" />
                 ) : (
@@ -336,14 +336,14 @@ export default function PropertyDetail() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.15 }}
-                className="grid grid-cols-3 sm:grid-cols-5 gap-2"
+                className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-5 sm:overflow-visible"
               >
                 {images.slice(0, 10).map((foto, index) => (
                   <button
                     key={foto.url + index}
                     type="button"
                     onClick={() => setSelectedImage(foto.url)}
-                    className={`relative h-20 sm:h-24 rounded-xl overflow-hidden border transition ${
+                    className={`relative h-20 w-24 shrink-0 sm:w-auto sm:h-24 rounded-xl overflow-hidden border transition ${
                       selectedImage === foto.url
                         ? 'border-slate-800'
                         : 'border-black/10 opacity-80 hover:opacity-100'
@@ -353,7 +353,7 @@ export default function PropertyDetail() {
                   </button>
                 ))}
                 {images.length > 10 && (
-                  <div className="h-20 sm:h-24 rounded-xl border border-black/10 bg-white flex flex-col items-center justify-center text-slate-500">
+                  <div className="h-20 w-24 shrink-0 sm:w-auto sm:h-24 rounded-xl border border-black/10 bg-white flex flex-col items-center justify-center text-slate-500">
                     <Eye size={16} />
                     <span className="text-[11px] mt-1">+{images.length - 10}</span>
                   </div>
@@ -365,12 +365,12 @@ export default function PropertyDetail() {
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="rounded-2xl border border-black/10 bg-white p-6 shadow-[0_10px_32px_rgba(15,23,42,0.08)]"
+              className="rounded-2xl border border-black/10 bg-white p-4 sm:p-6 shadow-[0_10px_32px_rgba(15,23,42,0.08)]"
             >
               <h2 className="text-xl mb-4 text-slate-900">Descrição</h2>
               {property.descricao ? (
                 <div
-                  className="text-slate-600 leading-relaxed property-description"
+                  className="text-sm sm:text-base text-slate-600 leading-relaxed property-description"
                   dangerouslySetInnerHTML={{ __html: formatDescription(property.descricao) }}
                 />
               ) : (
@@ -379,18 +379,18 @@ export default function PropertyDetail() {
             </motion.article>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-4 sm:space-y-5 order-1 xl:order-2">
             <motion.aside
               initial={{ opacity: 0, x: 18 }}
               animate={{ opacity: 1, x: 0 }}
-              className="rounded-2xl border border-black/10 bg-white p-6 shadow-[0_12px_36px_rgba(15,23,42,0.10)] xl:sticky xl:top-20"
+              className="rounded-2xl border border-black/10 bg-white p-4 sm:p-6 shadow-[0_12px_36px_rgba(15,23,42,0.10)] xl:sticky xl:top-20"
             >
               <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Valor do imóvel</p>
-              <p className="mt-2 text-4xl leading-none text-slate-900">
+              <p className="mt-2 text-3xl sm:text-4xl leading-none text-slate-900">
                 R$ {price.toLocaleString('pt-BR')}
               </p>
 
-              <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {bedrooms ? (
                   <div className="rounded-xl border border-black/10 bg-slate-50 p-3">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Quartos</p>

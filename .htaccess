@@ -12,6 +12,11 @@ DirectoryIndex index.html index.php
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
+    # Servir uploads que ficam fisicamente em /public/uploads
+    RewriteCond %{REQUEST_URI} ^/uploads/ [NC]
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
+    RewriteRule ^uploads/(.*)$ public/uploads/$1 [L]
+
     # Exceção para arquivos do storage (mídia do WhatsApp)
     RewriteCond %{REQUEST_URI} ^/storage/ [NC]
     RewriteRule ^ - [L]
