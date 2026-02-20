@@ -61,6 +61,18 @@ function normalizeImages(property: Property): string[] {
   return Array.from(new Set(list.filter(Boolean)));
 }
 
+function getSlideGridPhotos(property: Property): string[] {
+  const images = normalizeImages(property);
+  if (images.length === 0) return [];
+
+  const grid = images.slice(0, 4);
+  while (grid.length < 4) {
+    grid.push(images[grid.length % images.length] || images[0]);
+  }
+
+  return grid;
+}
+
 function formatPrice(property: Property): string {
   const value = property.valor_venda || property.valor_aluguel || 0;
   if (!value) return 'Sob consulta';
@@ -371,13 +383,17 @@ export default function ClientPortalRefined() {
             <div className="grid h-full lg:grid-cols-[1.05fr_0.95fr]">
               {/* Image with prev/next controls */}
               <div className="relative h-[250px] sm:h-[280px] lg:h-full">
-                <img
-                  key={currentSlide.id}
-                  src={normalizeImages(currentSlide)[0]}
-                  alt={currentSlide.titulo}
-                  className="w-full h-full object-cover transition-opacity duration-500"
-                  loading="lazy"
-                />
+                <div className="grid grid-cols-2 grid-rows-2 h-full gap-1.5 p-1.5">
+                  {getSlideGridPhotos(currentSlide).map((photo, index) => (
+                    <img
+                      key={`${currentSlide.id}-${index}-${photo}`}
+                      src={photo}
+                      alt={`${currentSlide.titulo} ${index + 1}`}
+                      className="w-full h-full rounded-md object-cover transition-opacity duration-500"
+                      loading="lazy"
+                    />
+                  ))}
+                </div>
                 {/* Slide counter */}
                 {slideshowProperties.length > 1 && (
                   <span className="absolute top-3 right-3 rounded-full bg-black/50 px-3 py-1 text-[11px] text-white/90 tracking-wide">
