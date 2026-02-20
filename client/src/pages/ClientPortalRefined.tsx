@@ -522,7 +522,22 @@ export default function ClientPortalRefined() {
         </div>
       </section>
 
-      {whatsappLink && (
+      {tenant?.mascot_url ? (
+        <a
+          href={whatsappLink || undefined}
+          target={whatsappLink ? '_blank' : undefined}
+          rel={whatsappLink ? 'noreferrer' : undefined}
+          className="fixed bottom-4 right-4 z-50"
+          aria-label="Abrir WhatsApp"
+          style={{ cursor: whatsappLink ? 'pointer' : 'default' }}
+        >
+          <img
+            src={tenant.mascot_url}
+            alt="Mascote"
+            className="w-28 h-28 object-contain drop-shadow-xl"
+          />
+        </a>
+      ) : whatsappLink ? (
         <a
           href={whatsappLink}
           target="_blank"
@@ -530,13 +545,9 @@ export default function ClientPortalRefined() {
           className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-2xl border border-white/30 bg-[#0f172a] text-white shadow-[0_8px_24px_rgba(15,23,42,0.35)] flex items-center justify-center"
           aria-label="Abrir WhatsApp"
         >
-          {tenant?.mascot_url ? (
-            <img src={tenant.mascot_url} alt="Mascote" className="w-full h-full rounded-2xl object-cover" />
-          ) : (
-            <MessageCircle className="w-6 h-6" />
-          )}
+          <MessageCircle className="w-6 h-6" />
         </a>
-      )}
+      ) : null}
     </div>
   );
 }
