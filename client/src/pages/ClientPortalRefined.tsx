@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, Bath, BedDouble, Mail, MapPin, MessageCircle, Phone, Search, Square } from 'lucide-react';
+import { ArrowUpRight, Bath, BedDouble, Mail, MapPin, MessageCircle, Phone, Search, Square, UserRound } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
@@ -179,10 +179,35 @@ export default function ClientPortalRefined() {
             <a href="#contato" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Contato</a>
             <button
               type="button"
+              onClick={() => navigate('/portal/login')}
+              className="rounded-full border border-white/30 px-4 py-2 text-xs uppercase tracking-[0.12em] text-white"
+            >
+              Entrar
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/portal/register')}
+              className="rounded-full px-4 py-2 text-xs uppercase tracking-[0.12em] font-semibold"
+              style={{ backgroundColor: secondary, color: '#111827' }}
+            >
+              Registrar
+            </button>
+            <button
+              type="button"
               onClick={() => document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' })}
               className="rounded-full border border-white/30 px-4 py-2 text-xs uppercase tracking-[0.12em] text-white"
             >
               Explorar
+            </button>
+          </div>
+          <div className="flex lg:hidden items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/portal/login')}
+              className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-white/30 text-white"
+              aria-label="Entrar no portal"
+            >
+              <UserRound className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -252,17 +277,17 @@ export default function ClientPortalRefined() {
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Buscar por bairro, cidade ou tipo"
-                className="w-full h-11 rounded-xl border border-black/10 bg-white pl-10 pr-3 text-sm outline-none"
+                className="w-full h-11 rounded-xl border border-black/10 bg-white pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-500 outline-none"
               />
             </div>
 
-            <select value={businessType} onChange={(event) => setBusinessType(event.target.value)} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm">
+            <select value={businessType} onChange={(event) => setBusinessType(event.target.value)} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-slate-900">
               {BUSINESS_TYPES.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
 
-            <select value={propertyType} onChange={(event) => setPropertyType(event.target.value)} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm">
+            <select value={propertyType} onChange={(event) => setPropertyType(event.target.value)} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-slate-900">
               {PROPERTY_TYPES.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
