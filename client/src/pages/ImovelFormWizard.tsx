@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Home, 
@@ -78,6 +78,8 @@ const defaultFormData = {
   exclusividade: false,
 };
 
+const DRAFT_KEY = 'imovel-wizard-draft';
+
 const STEPS = [
   { id: 1, title: 'Informações Básicas', icon: Home },
   { id: 2, title: 'Localização', icon: MapPin },
@@ -107,6 +109,10 @@ export default function ImovelFormWizard() {
   const [isLoadingProperty, setIsLoadingProperty] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [formData, setFormData] = useState(defaultFormData);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Prevents auto-save from firing before initial data is loaded
+  const autoSaveEnabled = useRef(!Boolean(match && params?.id));
   
   const { buscarCep, isLoading: isLoadingCep } = useViaCep();
 
@@ -196,11 +202,81 @@ export default function ImovelFormWizard() {
         setLocation('/properties');
       } finally {
         setIsLoadingProperty(false);
+        // Enable auto-save only after the initial data render settles
+        setTimeout(() => { autoSaveEnabled.current = true; }, 200);
       }
     };
 
     fetchProperty();
   }, [isEditMode, propertyId, setLocation]);
+
+  // Restore draft for new-mode forms
+  useEffect(() => {
+    if (isEditMode) return;
+    const draft = localStorage.getItem(DRAFT_KEY);
+    if (draft) {
+      try {
+        setFormData(JSON.parse(draft));
+        toast.info('Rascunho restaurado automaticamente');
+      } catch {
+        localStorage.removeItem(DRAFT_KEY);
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save: debounced 1.5 s after any formData change
+  useEffect(() => {
+    if (!autoSaveEnabled.current) return;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+
+    autoSaveTimer.current = setTimeout(async () => {
+      if (isEditMode && propertyId) {
+        try {
+          setAutoSaveStatus('saving');
+          await api.post(`/imoveis/${propertyId}?_method=PUT`, {
+            tipo_imovel: formData.tipo_imovel,
+            finalidade_imovel: formData.finalidade_imovel,
+            valor_venda: parseCurrencyInput(formData.valor_venda) || '0',
+            valor_condominio: parseCurrencyInput(formData.valor_condominio) || null,
+            valor_iptu: parseCurrencyInput(formData.valor_iptu) || null,
+            cep: formData.cep,
+            estado: formData.estado,
+            cidade: formData.cidade,
+            bairro: formData.bairro,
+            logradouro: formData.logradouro,
+            numero: formData.numero,
+            complemento: formData.complemento,
+            dormitorios: formData.dormitorios || null,
+            suites: formData.suites || null,
+            banheiros: formData.banheiros || null,
+            garagem: formData.garagem || null,
+            area_total: formData.area_total || null,
+            area_privativa: formData.area_privativa || null,
+            area_terreno: formData.area_terreno || null,
+            em_condominio: formData.em_condominio ? 1 : 0,
+            nome_condominio: formData.nome_condominio,
+            descricao: formData.descricao,
+            descricao_resumida: formData.descricao_resumida,
+            active: formData.active ? 1 : 0,
+            exibir_imovel: formData.exibir_imovel ? 1 : 0,
+            exclusividade: formData.exclusividade ? 1 : 0,
+          });
+          setAutoSaveStatus('saved');
+          setTimeout(() => setAutoSaveStatus('idle'), 2000);
+        } catch {
+          setAutoSaveStatus('error');
+        }
+      } else {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
+        setAutoSaveStatus('saved');
+        setTimeout(() => setAutoSaveStatus('idle'), 1500);
+      }
+    }, 1500);
+
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
+  }, [formData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -299,6 +375,20 @@ export default function ImovelFormWizard() {
     setCurrentStep(Math.max(currentStep - 1, 1));
   };
 
+  const handleGoToStep = (targetStep: number) => {
+    if (targetStep === currentStep) return;
+    if (targetStep < currentStep) {
+      setCurrentStep(targetStep);
+      return;
+    }
+
+    for (let step = currentStep; step < targetStep; step++) {
+      if (!validateStep(step)) return;
+    }
+
+    setCurrentStep(targetStep);
+  };
+
   const handleSubmit = async () => {
     if (!validateStep(4)) return;
 
@@ -373,7 +463,8 @@ export default function ImovelFormWizard() {
         });
         toast.success('Imóvel cadastrado com sucesso!');
       }
-      
+
+      localStorage.removeItem(DRAFT_KEY);
       setLocation('/properties');
     } catch (error: any) {
       console.error('Erro ao salvar imóvel:', error);
@@ -400,7 +491,7 @@ export default function ImovelFormWizard() {
       const response = await api.post('/imoveis/ai/gerar-descricao', {
         tipo_imovel: formData.tipo_imovel,
         finalidade_imovel: formData.finalidade_imovel,
-        valor_venda: formData.valor_venda ? Number(formData.valor_venda) : 0,
+        valor_venda: formData.valor_venda ? Number(parseCurrencyInput(formData.valor_venda)) : 0,
         cidade: formData.cidade,
         estado: formData.estado,
         bairro: formData.bairro,
@@ -507,10 +598,10 @@ export default function ImovelFormWizard() {
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={formData.valor_condominio}
-                    onChange={(e) => setFormData({ ...formData, valor_condominio: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, valor_condominio: formatCurrencyInput(e.target.value) })}
                     className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                     placeholder="0,00"
                   />
@@ -522,10 +613,10 @@ export default function ImovelFormWizard() {
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={formData.valor_iptu}
-                    onChange={(e) => setFormData({ ...formData, valor_iptu: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, valor_iptu: formatCurrencyInput(e.target.value) })}
                     className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                     placeholder="0,00"
                   />
@@ -995,7 +1086,7 @@ export default function ImovelFormWizard() {
                 <div>
                   <span className="text-muted-foreground">Valor:</span>
                   <span className="ml-2 text-foreground font-medium">
-                    R$ {parseFloat(formData.valor_venda || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {formData.valor_venda || '0,00'}
                   </span>
                 </div>
               </div>
@@ -1102,6 +1193,19 @@ export default function ImovelFormWizard() {
               <p className="page-subtitle">
                 {isEditMode ? 'Atualize os dados do imóvel' : 'Preencha as informações do imóvel passo a passo'}
               </p>
+              {autoSaveStatus === 'saving' && (
+                <p className="mt-1 text-xs text-blue-400 flex items-center gap-1.5">
+                  <Loader2 size={12} className="animate-spin" /> Salvando...
+                </p>
+              )}
+              {autoSaveStatus === 'saved' && (
+                <p className="mt-1 text-xs text-green-400">
+                  {isEditMode ? 'Salvo automaticamente' : 'Rascunho salvo'}
+                </p>
+              )}
+              {autoSaveStatus === 'error' && (
+                <p className="mt-1 text-xs text-red-400">Falha ao salvar automaticamente</p>
+              )}
             </div>
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -1124,9 +1228,14 @@ export default function ImovelFormWizard() {
                 
                 return (
                   <div key={step.id} className="flex items-center flex-1">
-                    <div className="flex flex-col items-center flex-1">
+                    <button
+                      type="button"
+                      onClick={() => handleGoToStep(step.id)}
+                      className="flex flex-col items-center flex-1"
+                      title={`Ir para ${step.title}`}
+                    >
                       <motion.div
-                        whileHover={isCurrent ? { scale: 1.05 } : {}}
+                        whileHover={{ scale: 1.05 }}
                         className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${
                           isCompleted
                             ? 'bg-blue-500 border-blue-500'
@@ -1149,7 +1258,7 @@ export default function ImovelFormWizard() {
                       }`}>
                         {step.title}
                       </p>
-                    </div>
+                    </button>
                     
                     {index < STEPS.length - 1 && (
                       <div className={`h-0.5 flex-1 -mt-6 transition-all ${
