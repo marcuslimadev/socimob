@@ -148,7 +148,20 @@ export default function ClientPortalRefined() {
     [currentSlide]
   );
   const selectedSlidePhoto = currentSlidePhotos[slidePhotoIndex] || currentSlidePhotos[0] || '';
-  const visibleThumbs = currentSlidePhotos.slice(thumbStart, thumbStart + 4);
+  const thumbCount = 4;
+  const visibleThumbs = useMemo(() => {
+    if (currentSlidePhotos.length === 0) return [] as Array<{ photo: string; index: number }>;
+    const maxStart = Math.max(0, currentSlidePhotos.length - thumbCount);
+    const safeStart = Math.min(thumbStart, maxStart);
+    const result: Array<{ photo: string; index: number }> = [];
+    for (let i = 0; i < thumbCount; i += 1) {
+      const idx = currentSlidePhotos.length <= thumbCount
+        ? i % currentSlidePhotos.length
+        : safeStart + i;
+      result.push({ photo: currentSlidePhotos[idx], index: idx });
+    }
+    return result;
+  }, [currentSlidePhotos, thumbStart]);
 
   // Auto-advance every 5 seconds — always on, no pause on hover
   useEffect(() => {
@@ -376,12 +389,12 @@ export default function ClientPortalRefined() {
         {/* Slideshow — up to 6 destaque properties */}
         {slideshowProperties.length > 0 && currentSlide && (
           <motion.article
-            className="mt-8 h-[420px] sm:h-[460px] lg:h-[520px] overflow-hidden rounded-[28px] bg-[#0f172a] text-white shadow-[0_16px_44px_rgba(15,23,42,0.22)]"
+            className="mt-8 mx-auto max-w-[1180px] overflow-hidden rounded-[24px] border border-black/10 bg-white text-slate-900 shadow-[0_16px_44px_rgba(15,23,42,0.12)] lg:h-[430px]"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <div className="grid h-full lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="grid h-full lg:grid-cols-[1.15fr_0.85fr]">
               {/* Image with prev/next controls */}
               <div className="relative h-[250px] sm:h-[280px] lg:h-full">
                 <div className="h-full flex flex-col">
@@ -400,14 +413,13 @@ export default function ClientPortalRefined() {
                         type="button"
                         aria-label="Miniaturas anteriores"
                         onClick={() => setThumbStart((start) => Math.max(0, start - 1))}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full border border-black/10 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 transition-colors"
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
                     )}
                     <div className="h-full grid grid-cols-4 gap-1.5 px-7">
-                      {visibleThumbs.map((photo, index) => {
-                        const realIndex = thumbStart + index;
+                      {visibleThumbs.map(({ photo, index: realIndex }) => {
                         const isActive = realIndex === slidePhotoIndex;
                         return (
                           <button
@@ -415,13 +427,13 @@ export default function ClientPortalRefined() {
                             type="button"
                             onClick={() => setSlidePhotoIndex(realIndex)}
                             className={`overflow-hidden rounded-md border transition ${
-                              isActive ? 'border-white' : 'border-white/25 hover:border-white/60'
+                              isActive ? 'border-slate-900 ring-2 ring-slate-300' : 'border-black/15 hover:border-black/40'
                             }`}
                           >
                             <img
                               src={photo}
                               alt={`Miniatura ${realIndex + 1}`}
-                              className={`w-full h-full object-cover ${isActive ? '' : 'opacity-80'}`}
+                              className={`w-full h-full object-cover ${isActive ? '' : 'opacity-85'}`}
                               loading="lazy"
                             />
                           </button>
@@ -433,7 +445,7 @@ export default function ClientPortalRefined() {
                         type="button"
                         aria-label="Próximas miniaturas"
                         onClick={() => setThumbStart((start) => Math.min(Math.max(0, currentSlidePhotos.length - 4), start + 1))}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full border border-black/10 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 transition-colors"
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>
@@ -442,7 +454,7 @@ export default function ClientPortalRefined() {
                 </div>
                 {/* Slide counter */}
                 {slideshowProperties.length > 1 && (
-                  <span className="absolute top-3 right-3 rounded-full bg-black/50 px-3 py-1 text-[11px] text-white/90 tracking-wide">
+                  <span className="absolute top-3 right-3 rounded-full bg-black/60 px-3 py-1 text-[11px] text-white tracking-wide">
                     {slideIndex + 1} / {slideshowProperties.length}
                   </span>
                 )}
@@ -453,7 +465,7 @@ export default function ClientPortalRefined() {
                       type="button"
                       aria-label="Anterior"
                       onClick={() => setSlideIndex((i) => (i - 1 + slideshowProperties.length) % slideshowProperties.length)}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full border border-black/10 bg-white/95 hover:bg-white flex items-center justify-center text-slate-700 transition-colors"
                     >
                       <ChevronLeft className="w-5 h-5" />
                     </button>
@@ -461,7 +473,7 @@ export default function ClientPortalRefined() {
                       type="button"
                       aria-label="Proximo"
                       onClick={() => setSlideIndex((i) => (i + 1) % slideshowProperties.length)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full border border-black/10 bg-white/95 hover:bg-white flex items-center justify-center text-slate-700 transition-colors"
                     >
                       <ChevronRight className="w-5 h-5" />
                     </button>
@@ -471,13 +483,13 @@ export default function ClientPortalRefined() {
 
               {/* Property info */}
               <div className="p-6 lg:p-8 flex flex-col overflow-hidden">
-                <p className="inline-flex self-start rounded-full border border-white/30 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-white/80">
+                <p className="inline-flex self-start rounded-full border border-black/10 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-slate-600">
                   {getPurpose(currentSlide)}
                 </p>
                 <h2 className="mt-4 text-2xl lg:text-3xl leading-tight line-clamp-2">{currentSlide.titulo}</h2>
-                <p className="mt-2 text-sm text-white/70 flex items-center gap-1.5 line-clamp-1"><MapPin className="w-4 h-4 shrink-0" />{getPublicLocation(currentSlide)}</p>
+                <p className="mt-2 text-sm text-slate-500 flex items-center gap-1.5 line-clamp-1"><MapPin className="w-4 h-4 shrink-0" />{getPublicLocation(currentSlide)}</p>
                 <p className="mt-4 text-3xl" style={{ color: secondary }}>{formatPrice(currentSlide)}</p>
-                <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] text-white/80">
+                <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] text-slate-600">
                   <p className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" />{currentSlide.quartos || currentSlide.dormitorios || '--'}</p>
                   <p className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{currentSlide.banheiros || '--'}</p>
                   <p className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{currentSlide.area_util || currentSlide.area_total || '--'}m2</p>
@@ -493,7 +505,7 @@ export default function ClientPortalRefined() {
                         aria-label={`Slide ${i + 1}`}
                         onClick={() => setSlideIndex(i)}
                         className="w-2 h-2 rounded-full transition-all duration-300"
-                        style={{ backgroundColor: i === slideIndex ? secondary : 'rgba(255,255,255,0.3)' }}
+                        style={{ backgroundColor: i === slideIndex ? secondary : '#cbd5e1' }}
                       />
                     ))}
                   </div>
