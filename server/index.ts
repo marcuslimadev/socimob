@@ -19,7 +19,12 @@ async function startServer() {
   app.use(express.static(staticPath));
 
   // Handle client-side routing - serve index.html for all routes
-  app.get("*", (_req, res) => {
+  app.get("*", (req, res) => {
+    if (path.extname(req.path)) {
+      res.status(404).type("text/plain").send("Not Found");
+      return;
+    }
+
     res.sendFile(path.join(staticPath, "index.html"));
   });
 

@@ -107,9 +107,9 @@ echo '=== BACKUP ARQUIVOS ANTIGOS ===' && \
 rm -f index.html.bak && \
 test -f index.html && cp index.html index.html.bak || echo 'Sem index.html para backup' && \
 echo '' && \
-echo '=== LIMPAR BUILD ANTIGO ===' && \
+echo '=== PREPARAR DEPLOY (PRESERVAR ASSETS HASHED) ===' && \
 rm -f index.html && \
-rm -f assets/index-*.js assets/index-*.css && \
+echo 'Mantendo assets hashed antigos para compatibilidade de cache' && \
 echo '' && \
 echo '=== COPIAR BUILD PARA RAIZ ===' && \
 cp -rf dist/public/* ./ && \

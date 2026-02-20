@@ -10,7 +10,11 @@ async function startServer() {
   const server = createServer(app);
   const staticPath = process.env.NODE_ENV === "production" ? path.resolve(__dirname, "public") : path.resolve(__dirname, "..", "dist", "public");
   app.use(express.static(staticPath));
-  app.get("*", (_req, res) => {
+  app.get("*", (req, res) => {
+    if (path.extname(req.path)) {
+      res.status(404).type("text/plain").send("Not Found");
+      return;
+    }
     res.sendFile(path.join(staticPath, "index.html"));
   });
   const port = process.env.PORT || 3e3;
