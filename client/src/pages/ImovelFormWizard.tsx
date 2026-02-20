@@ -176,7 +176,8 @@ export default function ImovelFormWizard() {
         // Carregar imagens existentes
         if (item.imagens && Array.isArray(item.imagens)) {
           const destaqueUrl = item.imagem_destaque || null;
-          const existingMedia: MediaFile[] = item.imagens.map((url: string, index: number) => ({
+          const validUrls: string[] = item.imagens.filter((url: unknown) => typeof url === 'string' && url.trim() !== '');
+          const existingMedia: MediaFile[] = validUrls.map((url: string, index: number) => ({
             id: `existing-${index}`,
             url,
             type: 'image' as const,
@@ -488,10 +489,10 @@ export default function ImovelFormWizard() {
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={formData.valor_venda}
-                    onChange={(e) => setFormData({ ...formData, valor_venda: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, valor_venda: formatCurrencyInput(e.target.value) })}
                     className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                     placeholder="0,00"
                     required
