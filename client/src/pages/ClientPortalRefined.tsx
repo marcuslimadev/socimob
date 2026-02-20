@@ -92,6 +92,7 @@ export default function ClientPortalRefined() {
   const [propertyType, setPropertyType] = useState('');
   const [slideIndex, setSlideIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [sortBy, setSortBy] = useState('preco_asc');
 
   const primary = tenant?.primary_color || '#0f172a';
   const secondary = tenant?.secondary_color || '#c39a66';
@@ -168,15 +169,26 @@ export default function ClientPortalRefined() {
       return matchesSearch && matchesBusiness && matchesType;
     })
       .sort((a, b) => {
+        if (sortBy === 'destaque') {
+          if (a.destaque && !b.destaque) return -1;
+          if (!a.destaque && b.destaque) return 1;
+          return 0;
+        }
         const aPrice = getPriceValue(a);
         const bPrice = getPriceValue(b);
-
+        if (sortBy === 'preco_desc') {
+          if (!aPrice && !bPrice) return 0;
+          if (!aPrice) return 1;
+          if (!bPrice) return -1;
+          return bPrice - aPrice;
+        }
+        // preco_asc (default)
         if (!aPrice && !bPrice) return 0;
         if (!aPrice) return 1;
         if (!bPrice) return -1;
         return aPrice - bPrice;
       });
-  }, [properties, searchTerm, businessType, propertyType]);
+  }, [properties, searchTerm, businessType, propertyType, sortBy]);
 
   const whatsappLink = useMemo(() => {
     const phone = tenant?.contact_phone?.replace(/\D/g, '');
@@ -311,7 +323,7 @@ export default function ClientPortalRefined() {
 
       <section id="catalogo" className="mx-auto max-w-7xl px-4 lg:px-8 py-10">
         <div className="rounded-3xl border border-black/10 bg-white/80 p-4 lg:p-5 backdrop-blur-md shadow-[0_16px_42px_rgba(15,23,42,0.10)]">
-          <div className="grid gap-3 md:grid-cols-[1fr_180px_190px]">
+          <div className="grid gap-3 md:grid-cols-[1fr_180px_190px_170px]">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
@@ -333,6 +345,12 @@ export default function ClientPortalRefined() {
               {PROPERTY_TYPES.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
+            </select>
+
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-slate-900">
+              <option value="preco_asc">Menor preco</option>
+              <option value="preco_desc">Maior preco</option>
+              <option value="destaque">Destaques primeiro</option>
             </select>
           </div>
         </div>
