@@ -61,18 +61,6 @@ function normalizeImages(property: Property): string[] {
   return Array.from(new Set(list.filter(Boolean)));
 }
 
-function getSlideGridPhotos(property: Property): string[] {
-  const images = normalizeImages(property);
-  if (images.length === 0) return [];
-
-  const grid = images.slice(0, 4);
-  while (grid.length < 4) {
-    grid.push(images[grid.length % images.length] || images[0]);
-  }
-
-  return grid;
-}
-
 function formatPrice(property: Property): string {
   const value = property.valor_venda || property.valor_aluguel || 0;
   if (!value) return 'Sob consulta';
@@ -109,6 +97,8 @@ export default function ClientPortalRefined() {
   const [propertyType, setPropertyType] = useState('');
   const [slideIndex, setSlideIndex] = useState(0);
   const [sortBy, setSortBy] = useState('preco_asc');
+  const [slidePhotoIndex, setSlidePhotoIndex] = useState(0);
+  const [thumbStart, setThumbStart] = useState(0);
 
   const primary = tenant?.primary_color || '#0f172a';
   const secondary = tenant?.secondary_color || '#c39a66';
@@ -153,6 +143,12 @@ export default function ClientPortalRefined() {
   );
 
   const currentSlide = slideshowProperties[slideIndex] ?? null;
+  const currentSlidePhotos = useMemo(
+    () => (currentSlide ? normalizeImages(currentSlide) : []),
+    [currentSlide]
+  );
+  const selectedSlidePhoto = currentSlidePhotos[slidePhotoIndex] || currentSlidePhotos[0] || '';
+  const visibleThumbs = currentSlidePhotos.slice(thumbStart, thumbStart + 4);
 
   // Auto-advance every 5 seconds — always on, no pause on hover
   useEffect(() => {
@@ -167,6 +163,11 @@ export default function ClientPortalRefined() {
   useEffect(() => {
     setSlideIndex(0);
   }, [slideshowProperties.length]);
+
+  useEffect(() => {
+    setSlidePhotoIndex(0);
+    setThumbStart(0);
+  }, [currentSlide?.id]);
 
   const filteredProperties = useMemo(() => {
     return properties
@@ -383,16 +384,61 @@ export default function ClientPortalRefined() {
             <div className="grid h-full lg:grid-cols-[1.05fr_0.95fr]">
               {/* Image with prev/next controls */}
               <div className="relative h-[250px] sm:h-[280px] lg:h-full">
-                <div className="grid grid-cols-2 grid-rows-2 h-full gap-1.5 p-1.5">
-                  {getSlideGridPhotos(currentSlide).map((photo, index) => (
+                <div className="h-full flex flex-col">
+                  <div className="flex-1 min-h-0 p-1.5 pb-0">
                     <img
-                      key={`${currentSlide.id}-${index}-${photo}`}
-                      src={photo}
-                      alt={`${currentSlide.titulo} ${index + 1}`}
+                      key={`${currentSlide.id}-${selectedSlidePhoto}`}
+                      src={selectedSlidePhoto}
+                      alt={currentSlide.titulo}
                       className="w-full h-full rounded-md object-cover transition-opacity duration-500"
                       loading="lazy"
                     />
-                  ))}
+                  </div>
+                  <div className="h-[76px] p-1.5 pt-1 relative">
+                    {currentSlidePhotos.length > 4 && (
+                      <button
+                        type="button"
+                        aria-label="Miniaturas anteriores"
+                        onClick={() => setThumbStart((start) => Math.max(0, start - 1))}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                    )}
+                    <div className="h-full grid grid-cols-4 gap-1.5 px-7">
+                      {visibleThumbs.map((photo, index) => {
+                        const realIndex = thumbStart + index;
+                        const isActive = realIndex === slidePhotoIndex;
+                        return (
+                          <button
+                            key={`${currentSlide.id}-thumb-${realIndex}`}
+                            type="button"
+                            onClick={() => setSlidePhotoIndex(realIndex)}
+                            className={`overflow-hidden rounded-md border transition ${
+                              isActive ? 'border-white' : 'border-white/25 hover:border-white/60'
+                            }`}
+                          >
+                            <img
+                              src={photo}
+                              alt={`Miniatura ${realIndex + 1}`}
+                              className={`w-full h-full object-cover ${isActive ? '' : 'opacity-80'}`}
+                              loading="lazy"
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {currentSlidePhotos.length > 4 && (
+                      <button
+                        type="button"
+                        aria-label="Próximas miniaturas"
+                        onClick={() => setThumbStart((start) => Math.min(Math.max(0, currentSlidePhotos.length - 4), start + 1))}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {/* Slide counter */}
                 {slideshowProperties.length > 1 && (
