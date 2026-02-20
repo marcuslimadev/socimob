@@ -154,13 +154,26 @@ export default function PortalPessoaFinanceiro() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
+    const validateAndLoad = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/portal');
+        return;
+      }
 
-    loadAll();
+      try {
+        await api.get('/portal/auth/me');
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/portal');
+        return;
+      }
+
+      loadAll();
+    };
+
+    validateAndLoad();
   }, [navigate]);
 
   useEffect(() => {

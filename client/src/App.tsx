@@ -1,13 +1,13 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/hooks/useQueryConfig";
 import ProgressBar from "@/components/ProgressBar";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { SkeletonLoader } from "./components/SkeletonLoader";
 import BottomNavigation from "./components/BottomNavigation";
 
@@ -22,6 +22,7 @@ const Login = lazy(() => import("./pages/Login"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ClientPortal = lazy(() => import("./pages/ClientPortal"));
+const ClientPortalRefined = lazy(() => import("./pages/ClientPortalRefined"));
 const Agenda = lazy(() => import("./pages/Agenda"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
 const AdminGestaoLocacao = lazy(() => import("./pages/AdminGestaoLocacao"));
@@ -66,7 +67,7 @@ function Router() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
-      <Route path={"/"} component={ClientPortal} />
+      <Route path={"/"} component={ClientPortalRefined} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/crm" component={CRM} />
       <Route path="/leads" component={Leads} />
@@ -80,12 +81,12 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/portal/imovel/:id" component={PropertyDetail} />
-      <Route path="/portal" component={ClientPortal} />
+      <Route path="/portal" component={ClientPortalRefined} />
       <Route path="/portal/classic" component={ClientPortal} />
       <Route path="/agenda" component={Agenda} />
       <Route path="/financeiro" component={Financeiro} />
       <Route path="/financeiro/locacao" component={AdminGestaoLocacao} />
-      <Route path="/portal/meu-financeiro" component={PortalPessoaFinanceiro} />
+      <Route path="/portal/meu-financeiro" component={PortalFinanceiroGate} />
       <Route path="/vistorias" component={Vistorias} />
       <Route path="/vistorias/solicitacoes" component={VistoriaSolicitacoes} />
       <Route path="/vistorias/solicitacoes/kanban" component={VistoriaSolicitacoesKanban} />
@@ -108,6 +109,24 @@ function Router() {
     </Switch>
     </Suspense>
   );
+}
+
+function PortalFinanceiroGate() {
+  const [, setLocation] = useLocation();
+  const [canAccess, setCanAccess] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) {
+      setLocation("/portal");
+      setCanAccess(false);
+      return;
+    }
+    setCanAccess(true);
+  }, [setLocation]);
+
+  if (canAccess !== true) return null;
+  return <PortalPessoaFinanceiro />;
 }
 
 // NOTE: About Theme
