@@ -43,8 +43,8 @@
 }
 
 :root {
-  --font-primary: 'Bauhaus Modern', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-secondary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-primary: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-secondary: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --primary: #001775;
   --primary-foreground: #ffffff;
   --sidebar-primary: #001775;
@@ -180,7 +180,7 @@
 .portal-public select,
 .portal-public label,
 .portal-public li {
-  font-family: 'Constructium', var(--font-secondary);
+  font-family: var(--font-secondary);
 }
 
 @layer components {

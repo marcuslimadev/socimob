@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, RefreshCcw } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 interface ContratoItem {
   id: number;
@@ -60,6 +62,7 @@ interface PessoaItem {
   id: number;
   nome: string;
   tipo?: string;
+  papeis?: string[];
 }
 
 interface ImovelItem {
@@ -147,6 +150,68 @@ const statusBadgeClass = (status: string) => {
   if (status === 'vencido') return 'bg-red-100 text-red-800';
   return 'bg-muted text-foreground';
 };
+
+// --- Combobox com busca (estilo Select2) ---
+function PessoaCombobox({
+  value,
+  onChange,
+  options,
+  placeholder = 'Selecione...',
+  required,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: PessoaItem[];
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const sorted = useMemo(
+    () => [...options].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    [options],
+  );
+  const selected = sorted.find((p) => String(p.id) === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          className={`w-full flex items-center justify-between gap-2 bg-background border rounded-lg px-3 py-2 text-sm text-left ${
+            required && !value ? 'border-red-400' : 'border-border'
+          }`}
+        >
+          <span className={selected ? '' : 'text-muted-foreground'}>
+            {selected ? selected.nome : placeholder}
+          </span>
+          <ChevronsUpDown size={14} className="shrink-0 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[320px]" align="start">
+        <Command>
+          <CommandInput placeholder="Buscar pelo nome..." />
+          <CommandList>
+            <CommandEmpty>Nenhum resultado.</CommandEmpty>
+            <CommandGroup>
+              {sorted.map((p) => (
+                <CommandItem
+                  key={p.id}
+                  value={p.nome}
+                  onSelect={() => { onChange(String(p.id)); setOpen(false); }}
+                >
+                  <Check size={14} className={`mr-2 ${String(p.id) === value ? 'opacity-100' : 'opacity-0'}`} />
+                  {p.nome}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function AdminGestaoLocacao() {
   const [activeTab, setActiveTab] = useState<Tab>('contratos');
@@ -556,32 +621,24 @@ export default function AdminGestaoLocacao() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs text-muted-foreground mb-1">Locador <span className="text-red-500">*</span></label>
-                          <select
+                          <label className="block text-xs text-muted-foreground mb-1">Locador (Senhorio) <span className="text-red-500">*</span></label>
+                          <PessoaCombobox
                             value={novoContrato.locador_pessoa_id}
-                            onChange={(e) => setNovoContrato((p) => ({ ...p, locador_pessoa_id: e.target.value }))}
-                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                            onChange={(v) => setNovoContrato((p) => ({ ...p, locador_pessoa_id: v }))}
+                            options={pessoas.filter((p) => p.papeis?.includes('proprietario'))}
+                            placeholder="Selecione o senhorio"
                             required
-                          >
-                            <option value="">Selecione o locador</option>
-                            {pessoas.map((p) => (
-                              <option key={p.id} value={p.id}>{p.nome}</option>
-                            ))}
-                          </select>
+                          />
                         </div>
                         <div>
-                          <label className="block text-xs text-muted-foreground mb-1">Locatário <span className="text-red-500">*</span></label>
-                          <select
+                          <label className="block text-xs text-muted-foreground mb-1">Locatário (Inquilino) <span className="text-red-500">*</span></label>
+                          <PessoaCombobox
                             value={novoContrato.locatario_pessoa_id}
-                            onChange={(e) => setNovoContrato((p) => ({ ...p, locatario_pessoa_id: e.target.value }))}
-                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                            onChange={(v) => setNovoContrato((p) => ({ ...p, locatario_pessoa_id: v }))}
+                            options={pessoas.filter((p) => p.papeis?.includes('inquilino'))}
+                            placeholder="Selecione o inquilino"
                             required
-                          >
-                            <option value="">Selecione o locatário</option>
-                            {pessoas.map((p) => (
-                              <option key={p.id} value={p.id}>{p.nome}</option>
-                            ))}
-                          </select>
+                          />
                         </div>
                         <div>
                           <label className="block text-xs text-muted-foreground mb-1">Imóvel</label>
