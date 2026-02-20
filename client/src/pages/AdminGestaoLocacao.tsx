@@ -5,6 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { fetchTenantBranding, type TenantBranding } from '@/lib/tenantBranding';
 
 interface ContratoItem {
   id: number;
@@ -254,6 +255,7 @@ export default function AdminGestaoLocacao() {
 
   const [pessoas, setPessoas] = useState<PessoaItem[]>([]);
   const [imoveis, setImoveis] = useState<ImovelItem[]>([]);
+  const [tenant, setTenant] = useState<TenantBranding | null>(null);
   const [showFormContrato, setShowFormContrato] = useState(false);
   const [isCreatingContrato, setIsCreatingContrato] = useState(false);
   const [novoContrato, setNovoContrato] = useState({
@@ -340,13 +342,14 @@ export default function AdminGestaoLocacao() {
   const loadAll = async () => {
     setIsLoading(true);
     try {
-      const [contratosResp, cobrancasResp, lancamentosResp, chamadosResp, pessoasResp, imoveisResp] = await Promise.all([
+      const [contratosResp, cobrancasResp, lancamentosResp, chamadosResp, pessoasResp, imoveisResp, tenantData] = await Promise.all([
         api.get('/admin/financeiro/contratos'),
         api.get('/admin/financeiro/cobrancas-contrato'),
         api.get('/admin/financeiro/lancamentos'),
         api.get('/admin/operacao/chamados'),
         api.get('/pessoas?per_page=300'),
         api.get('/admin/imoveis'),
+        fetchTenantBranding(),
       ]);
       setContratos(contratosResp.data?.items || []);
       setCobrancas(cobrancasResp.data?.items || []);
@@ -354,6 +357,7 @@ export default function AdminGestaoLocacao() {
       setChamados(chamadosResp.data?.items || []);
       setPessoas(pessoasResp.data?.data || []);
       setImoveis(imoveisResp.data?.data || []);
+      if (tenantData) setTenant(tenantData);
     } catch {
       toast.error('Não foi possível carregar os dados');
     } finally {
@@ -537,12 +541,37 @@ export default function AdminGestaoLocacao() {
       <div className="page-shell">
         <div className="max-w-7xl mx-auto space-y-6">
 
-          {/* Header */}
+          {/* Header com branding do tenant */}
           <div className="page-header">
-            <div>
-              <h1 className="page-title mb-2">Locação e Operação</h1>
-              <p className="page-subtitle">Contratos, cobranças, lançamentos e chamados</p>
+            <div className="flex items-center gap-4">
+              {/* Logo */}
+              {(tenant?.logo_url || tenant?.logo) ? (
+                <img
+                  src={tenant.logo_url || tenant.logo}
+                  alt={tenant.name || 'Logo'}
+                  className="h-12 w-auto max-w-[120px] object-contain rounded-xl"
+                />
+              ) : tenant?.name ? (
+                <div
+                  className="h-12 w-12 shrink-0 rounded-xl flex items-center justify-center text-white font-bold text-xl"
+                  style={{ backgroundColor: tenant.primary_color || 'var(--primary)' }}
+                >
+                  {tenant.name.charAt(0).toUpperCase()}
+                </div>
+              ) : null}
+
+              <div>
+                {tenant?.name && (
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-0.5"
+                     style={{ color: tenant.primary_color || 'var(--primary)' }}>
+                    {tenant.name}
+                  </p>
+                )}
+                <h1 className="page-title">Locação e Operação</h1>
+                <p className="page-subtitle">Contratos, cobranças, lançamentos e chamados</p>
+              </div>
             </div>
+
             <button
               onClick={loadAll}
               className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card hover:bg-accent transition-colors"
