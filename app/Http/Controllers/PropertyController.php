@@ -1188,19 +1188,24 @@ Regras:
             return response()->json(['success' => false, 'error' => 'No tenant context'], 400);
         }
 
+        $table = (new Property())->getTable();
+        if (!Schema::hasTable($table)) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
+        $columns = Schema::getColumnListing($table);
+        $select = ['id', 'codigo_imovel', 'titulo', 'bairro', 'cidade', 'updated_at'];
+        if (in_array('local_chaves', $columns, true)) {
+            $select[] = 'local_chaves';
+        }
+        if (in_array('status_chaves', $columns, true)) {
+            $select[] = 'status_chaves';
+        }
+
         $search = trim((string) $request->query('q', ''));
 
         $query = Property::where('tenant_id', $tenantId)
-            ->select([
-                'id',
-                'codigo_imovel',
-                'titulo',
-                'bairro',
-                'cidade',
-                'local_chaves',
-                'status_chaves',
-                'updated_at',
-            ])
+            ->select($select)
             ->orderBy('updated_at', 'desc');
 
         if ($search !== '') {
@@ -1227,6 +1232,10 @@ Regras:
         $tenantId = $this->resolveTenantId($request);
         if (!$tenantId) {
             return response()->json(['success' => false, 'error' => 'No tenant context'], 400);
+        }
+
+        if (!Schema::hasTable('controle_chaves_movimentacoes')) {
+            return response()->json(['success' => true, 'data' => []]);
         }
 
         $propertyId = $request->query('property_id');
@@ -1269,6 +1278,13 @@ Regras:
             return response()->json(['success' => false, 'error' => 'No tenant context'], 400);
         }
 
+        if (!Schema::hasTable('controle_chaves_movimentacoes')) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Tabela de movimentações de chaves não encontrada. Execute as migrations.',
+            ], 500);
+        }
+
         $validator = Validator::make($request->all(), [
             'property_id' => 'required|integer',
             'tipo' => 'required|string|in:retirada,devolucao',
@@ -1306,9 +1322,12 @@ Regras:
             'updated_at' => now(),
         ]);
 
-        $newStatus = $data['tipo'] === 'retirada' ? 'retirada' : 'disponivel';
-        $property->status_chaves = $newStatus;
-        if (array_key_exists('local_chaves', $data) && $data['local_chaves'] !== null) {
+        $propertyColumns = Schema::getColumnListing((new Property())->getTable());
+        if (in_array('status_chaves', $propertyColumns, true)) {
+            $newStatus = $data['tipo'] === 'retirada' ? 'retirada' : 'disponivel';
+            $property->status_chaves = $newStatus;
+        }
+        if (in_array('local_chaves', $propertyColumns, true) && array_key_exists('local_chaves', $data) && $data['local_chaves'] !== null) {
             $property->local_chaves = $data['local_chaves'];
         }
         $property->save();

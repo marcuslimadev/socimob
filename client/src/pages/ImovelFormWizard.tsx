@@ -99,6 +99,8 @@ interface MediaFile {
   destaque?: boolean;
 }
 
+const isVideoUrl = (url: string) => /\.(mp4|mov|m4v|avi|webm|mkv)(\?.*)?$/i.test(url);
+
 export default function ImovelFormWizard() {
   const [, setLocation] = useLocation();
   const [match, params] = useRoute('/properties/:id/editar');
@@ -190,7 +192,7 @@ export default function ImovelFormWizard() {
           const existingMedia: MediaFile[] = validUrls.map((url: string, index: number) => ({
             id: `existing-${index}`,
             url,
-            type: 'image' as const,
+            type: isVideoUrl(url) ? 'video' : 'image',
             preview: url,
             destaque: destaqueUrl ? url === destaqueUrl : index === 0,
           }));
@@ -1029,8 +1031,19 @@ export default function ImovelFormWizard() {
                           className="w-full h-40 object-cover"
                         />
                       ) : (
-                        <div className="w-full h-40 flex items-center justify-center bg-black/50">
-                          <Video size={48} className="text-white/70" />
+                        <div className="relative w-full h-40 bg-black/60">
+                          <video
+                            src={media.preview}
+                            className="w-full h-full object-cover"
+                            muted
+                            playsInline
+                            preload="metadata"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="rounded-full bg-black/45 p-2">
+                              <Video size={22} className="text-white/90" />
+                            </div>
+                          </div>
                         </div>
                       )}
 
