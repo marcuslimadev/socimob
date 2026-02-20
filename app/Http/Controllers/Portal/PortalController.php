@@ -17,6 +17,57 @@ use Carbon\Carbon;
 
 class PortalController extends Controller
 {
+    private function sanitizePropertyForPortal($imovel): array
+    {
+        $data = is_array($imovel) ? $imovel : $imovel->toArray();
+
+        $visibility = $data['visibilidade_endereco'] ?? 'bairro_cidade';
+        $bairro = $data['bairro'] ?? null;
+        $cidade = $data['cidade'] ?? null;
+        $estado = $data['estado'] ?? null;
+        $logradouro = $data['logradouro'] ?? null;
+        $numero = $data['numero'] ?? null;
+        $complemento = $data['complemento'] ?? null;
+        $cep = $data['cep'] ?? null;
+
+        if ($visibility === 'oculto') {
+            $data['bairro'] = null;
+            $data['cidade'] = null;
+            $data['estado'] = null;
+            $data['logradouro'] = null;
+            $data['numero'] = null;
+            $data['complemento'] = null;
+            $data['cep'] = null;
+            $data['endereco_publico'] = 'Localização sob consulta';
+        } elseif ($visibility === 'cidade_estado') {
+            $data['bairro'] = null;
+            $data['logradouro'] = null;
+            $data['numero'] = null;
+            $data['complemento'] = null;
+            $data['cep'] = null;
+            $data['endereco_publico'] = trim("{$cidade}, {$estado}", ', ');
+        } elseif ($visibility === 'completo') {
+            $data['endereco_publico'] = trim("{$logradouro}, {$numero} {$complemento} - {$bairro}, {$cidade}/{$estado}", " ,-");
+        } else {
+            // bairro_cidade (default seguro)
+            $data['logradouro'] = null;
+            $data['numero'] = null;
+            $data['complemento'] = null;
+            $data['cep'] = null;
+            $data['endereco_publico'] = trim("{$bairro}, {$cidade}/{$estado}", ', ');
+        }
+
+        // Nunca expor metadados internos
+        unset(
+            $data['tenant_id'],
+            $data['api_data'],
+            $data['local_chaves'],
+            $data['status_chaves']
+        );
+
+        return $data;
+    }
+
     /**
      * Retorna configurações do tenant para o portal público
      * GET /api/portal/config
@@ -201,7 +252,7 @@ class PortalController extends Controller
         }
 
         $imoveis = $imoveisQuery->get();
-        $allowShared = filter_var(env('PORTAL_ALLOW_SHARED_PROPERTIES', true), FILTER_VALIDATE_BOOLEAN);
+        $allowShared = filter_var(env('PORTAL_ALLOW_SHARED_PROPERTIES', false), FILTER_VALIDATE_BOOLEAN);
         if ($imoveis->isEmpty() && $allowShared && $hasTenantId) {
             $sharedQuery = Property::withoutTenant()
                 ->with('fotos')
@@ -290,8 +341,7 @@ class PortalController extends Controller
 
         $imoveis = $imoveis->map(function ($imovel) use ($likesMap) {
             $imovel->likes_count = (int) ($likesMap[$imovel->id] ?? 0);
-            unset($imovel->local_chaves, $imovel->status_chaves);
-            return $imovel;
+            return $this->sanitizePropertyForPortal($imovel);
         });
 
         $payload = $imoveis->values()->toArray();
@@ -382,11 +432,10 @@ class PortalController extends Controller
         }
 
         $imovel->likes_count = (int) $likesCount;
-        unset($imovel->local_chaves, $imovel->status_chaves);
 
         return response()->json([
             'success' => true,
-            'data' => $imovel
+            'data' => $this->sanitizePropertyForPortal($imovel)
         ]);
     }
 
@@ -655,4 +704,3 @@ class PortalController extends Controller
         }
     }
 }
-

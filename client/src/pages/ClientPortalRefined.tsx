@@ -26,6 +26,7 @@ interface Property {
   imagens?: string[];
   imagem_destaque?: string;
   finalidade_imovel?: string;
+  endereco_publico?: string;
 }
 
 interface TenantConfig extends TenantBranding {
@@ -80,6 +81,10 @@ function getPurpose(property: Property): 'Venda' | 'Aluguel' | 'Imovel' {
   if (value.includes('alug')) return 'Aluguel';
   if (value.includes('vend')) return 'Venda';
   return 'Imovel';
+}
+
+function getPublicLocation(property: Property): string {
+  return property.endereco_publico || [property.bairro, property.cidade].filter(Boolean).join(', ') || 'Localização sob consulta';
 }
 
 export default function ClientPortalRefined() {
@@ -157,6 +162,7 @@ export default function ClientPortalRefined() {
       const term = searchTerm.toLowerCase();
       const matchesSearch = !searchTerm
         || property.titulo?.toLowerCase().includes(term)
+        || property.endereco_publico?.toLowerCase().includes(term)
         || property.bairro?.toLowerCase().includes(term)
         || property.cidade?.toLowerCase().includes(term)
         || property.tipo_imovel?.toLowerCase().includes(term);
@@ -279,7 +285,7 @@ export default function ClientPortalRefined() {
             <p className="mt-4 text-sm md:text-base text-white/75 max-w-2xl">{tenant?.slogan || 'Curadoria de residencias e investimentos em localizacoes de alto potencial.'}</p>
             {currentSlide && (
               <p className="mt-4 inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-white/85">
-                Destaque: {currentSlide.bairro}, {currentSlide.cidade}
+                Destaque: {getPublicLocation(currentSlide)}
               </p>
             )}
             <div className="mt-6 flex flex-wrap gap-2.5">
@@ -407,7 +413,7 @@ export default function ClientPortalRefined() {
                   {getPurpose(currentSlide)}
                 </p>
                 <h2 className="mt-4 text-2xl lg:text-3xl leading-tight">{currentSlide.titulo}</h2>
-                <p className="mt-2 text-sm text-white/70 flex items-center gap-1.5"><MapPin className="w-4 h-4" />{currentSlide.bairro}, {currentSlide.cidade}</p>
+                <p className="mt-2 text-sm text-white/70 flex items-center gap-1.5"><MapPin className="w-4 h-4" />{getPublicLocation(currentSlide)}</p>
                 <p className="mt-4 text-3xl" style={{ color: secondary }}>{formatPrice(currentSlide)}</p>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] text-white/80">
                   <p className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" />{currentSlide.quartos || currentSlide.dormitorios || '--'}</p>
@@ -464,7 +470,7 @@ export default function ClientPortalRefined() {
                 </div>
                 <div className="p-4">
                   <h3 className="text-base sm:text-lg text-slate-900 line-clamp-1">{property.titulo}</h3>
-                  <p className="mt-1 text-xs text-slate-500 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{property.bairro}, {property.cidade}</p>
+                  <p className="mt-1 text-xs text-slate-500 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{getPublicLocation(property)}</p>
                   <p className="mt-3 text-xl sm:text-2xl" style={{ color: primary }}>{formatPrice(property)}</p>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-slate-600">
                     <p className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" />{property.quartos || property.dormitorios || '--'}</p>

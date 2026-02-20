@@ -110,6 +110,7 @@ interface Property {
   bairro: string;
   estado: string;
   logradouro?: string;
+  endereco_publico?: string;
   quartos?: number;
   dormitorios?: number;
   banheiros?: number;
@@ -259,6 +260,10 @@ function getCityCoords(city: string | undefined): { lat: number; lng: number } |
   if (!city) return null;
   const normalized = city.toLowerCase().trim();
   return BRAZIL_CITY_COORDS[normalized] || null;
+}
+
+function getPublicLocation(property: Property): string {
+  return property.endereco_publico || [property.bairro, property.cidade].filter(Boolean).join(', ') || 'Localização sob consulta';
 }
 
 // ===== Photo Carousel =====
@@ -881,7 +886,7 @@ export default function ClientPortal() {
       let message = '';
       if (property) {
         const price = property.valor_venda || property.valor_aluguel || 0;
-        const location = [property.bairro, property.cidade].filter(Boolean).join(', ') || 'Não informado';
+        const location = getPublicLocation(property);
         message = encodeURIComponent(
           `Olá! Tenho interesse no imóvel:\n\n` +
           `Título: ${property.titulo}\n` +
@@ -938,10 +943,10 @@ export default function ClientPortal() {
       const searchMatch =
         !searchTerm ||
         prop.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        prop.endereco_publico?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         prop.bairro?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         prop.cidade?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        prop.tipo_imovel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        prop.logradouro?.toLowerCase().includes(searchTerm.toLowerCase());
+        prop.tipo_imovel?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const price = prop.valor_venda || prop.valor_aluguel || 0;
       const priceRange = PRICE_RANGES[priceRangeIndex];
@@ -1156,9 +1161,7 @@ export default function ClientPortal() {
     const area = property.area_util || property.area_total;
     const isLiked = likedProperties.has(property.id);
     const description = generateDescription(property);
-    const address = [property.logradouro, property.bairro, property.cidade]
-      .filter(Boolean)
-      .join(', ');
+    const publicLocation = getPublicLocation(property);
 
     const badges: { label: string; className: string }[] = [];
     if (property.destaque) {
@@ -1210,9 +1213,7 @@ export default function ClientPortal() {
             <p className="text-sm mt-2.5" style={{ color: 'var(--portal-text-muted)' }}>{details}</p>
           )}
 
-          {address && (
-            <p className="text-xs mt-1 truncate" style={{ color: '#888' }}>{address}</p>
-          )}
+          <p className="text-xs mt-1 truncate" style={{ color: '#888' }}>{publicLocation}</p>
 
           <button
             onClick={(e) => {
@@ -1281,7 +1282,7 @@ export default function ClientPortal() {
                 </span>
                 <h4 className="font-semibold text-sm line-clamp-1 mt-1">{property.titulo}</h4>
                 <p className="text-xs text-gray-500 mb-1.5">
-                  {property.bairro}, {property.cidade}
+                  {getPublicLocation(property)}
                 </p>
                 <p className="font-bold text-base" style={{ color: primary }}>
                   {formatPrice(price)}

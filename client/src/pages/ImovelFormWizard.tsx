@@ -75,6 +75,7 @@ const defaultFormData = {
   descricao_resumida: '',
   local_chaves: '',
   status_chaves: 'disponivel',
+  visibilidade_endereco: 'bairro_cidade',
   active: true,
   exibir_imovel: true,
   exclusividade: false,
@@ -180,6 +181,7 @@ export default function ImovelFormWizard() {
           descricao_resumida: item.descricao_resumida || '',
           local_chaves: item.local_chaves || '',
           status_chaves: item.status_chaves || 'disponivel',
+          visibilidade_endereco: item.visibilidade_endereco || 'bairro_cidade',
           active: Boolean(item.active),
           exibir_imovel: Boolean(item.exibir_imovel),
           exclusividade: Boolean(item.exclusividade),
@@ -438,6 +440,7 @@ export default function ImovelFormWizard() {
       if (formData.descricao_resumida) formDataToSend.append('descricao_resumida', formData.descricao_resumida);
       if (formData.local_chaves) formDataToSend.append('local_chaves', formData.local_chaves);
       if (formData.status_chaves) formDataToSend.append('status_chaves', formData.status_chaves);
+      if (formData.visibilidade_endereco) formDataToSend.append('visibilidade_endereco', formData.visibilidade_endereco);
       
       formDataToSend.append('active', formData.active ? '1' : '0');
       formDataToSend.append('exibir_imovel', formData.exibir_imovel ? '1' : '0');
@@ -780,6 +783,20 @@ export default function ImovelFormWizard() {
                 className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 placeholder="Apartamento, Bloco, etc."
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">Privacidade do endereço no portal</label>
+              <select
+                value={formData.visibilidade_endereco}
+                onChange={(e) => setFormData({ ...formData, visibilidade_endereco: e.target.value })}
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              >
+                <option value="bairro_cidade">Mostrar bairro e cidade (recomendado)</option>
+                <option value="cidade_estado">Mostrar apenas cidade/estado</option>
+                <option value="completo">Mostrar endereço completo</option>
+                <option value="oculto">Ocultar localização pública</option>
+              </select>
             </div>
 
             <div className="pt-2">
@@ -1149,6 +1166,14 @@ export default function ImovelFormWizard() {
                 </p>
                 <p className="text-foreground">
                   {formData.cidade}/{formData.estado} - CEP: {formData.cep}
+                </p>
+                <p className="text-muted-foreground">
+                  Visibilidade no portal: {
+                    formData.visibilidade_endereco === 'completo' ? 'Endereço completo' :
+                    formData.visibilidade_endereco === 'cidade_estado' ? 'Cidade/Estado' :
+                    formData.visibilidade_endereco === 'oculto' ? 'Oculto' :
+                    'Bairro/Cidade'
+                  }
                 </p>
                 {formData.em_condominio && formData.nome_condominio && (
                   <p className="text-muted-foreground">Condomínio: {formData.nome_condominio}</p>

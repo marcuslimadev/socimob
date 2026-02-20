@@ -48,6 +48,7 @@ interface Property {
   codigo?: string;
   condominio?: number;
   iptu?: number;
+  endereco_publico?: string;
 }
 
 function normalizeImages(propertyData: Property): Array<{ url: string; destaque: boolean }> {
@@ -131,6 +132,10 @@ function businessLabel(property: Property): string {
   if (value.includes('alug')) return 'Aluguel';
   if (value.includes('vend')) return 'Venda';
   return property.tipo_negocio || 'Imovel';
+}
+
+function getPublicLocation(property: Property): string {
+  return property.endereco_publico || [property.bairro, property.cidade].filter(Boolean).join(', ') || 'Localização sob consulta';
 }
 
 export default function PropertyDetail() {
@@ -222,7 +227,7 @@ export default function PropertyDetail() {
 
     const phone = tenant.contact_phone.replace(/\D/g, '');
     const price = formatPrice(property);
-    const location = [property.bairro, property.cidade].filter(Boolean).join(', ') || 'Não informado';
+    const location = getPublicLocation(property);
     const message = encodeURIComponent(
       `Olá! Tenho interesse no imóvel:\n\n` +
       `Título: ${property.titulo}\n` +
@@ -272,7 +277,7 @@ export default function PropertyDetail() {
   const price = formatPrice(property);
   const bedrooms = property.quartos ?? property.dormitorios;
   const area = property.area_util || property.area_privativa || property.area_total;
-  const locationParts = [property.bairro, property.cidade, property.estado].filter(Boolean);
+  const locationText = getPublicLocation(property);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f4efe8' }}>
@@ -305,7 +310,7 @@ export default function PropertyDetail() {
           <h1 className="mt-3 text-2xl sm:text-3xl md:text-5xl leading-tight text-white max-w-4xl">{property.titulo}</h1>
           <p className="mt-2 text-sm sm:text-base text-white/75 flex items-center gap-2">
             <MapPin size={16} />
-            {locationParts.length > 0 ? locationParts.join(', ') : 'Localização não informada'}
+            {locationText}
           </p>
         </div>
       </section>

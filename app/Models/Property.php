@@ -22,6 +22,7 @@ class Property extends Model
         'descricao_resumida',
         'local_chaves',
         'status_chaves',
+        'visibilidade_endereco',
         'active',
         'exibir_imovel',
         'destaque',
