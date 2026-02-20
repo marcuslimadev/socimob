@@ -76,6 +76,10 @@ function normalizeImages(propertyData: Property): Array<{ url: string; destaque:
   return photos;
 }
 
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|mov|m4v|avi|webm|mkv)(\?.*)?$/i.test(url);
+}
+
 function formatPrice(property: Property): number {
   const fromString = property.preco ? Number(property.preco.replace(/[^\d]/g, '')) : 0;
   return property.valor_venda || property.valor_aluguel || fromString || 0;
@@ -264,6 +268,7 @@ export default function PropertyDetail() {
 
   const images = normalizeImages(property);
   const displayImage = selectedImage || images[0]?.url || null;
+  const displayIsVideo = displayImage ? isVideoUrl(displayImage) : false;
   const price = formatPrice(property);
   const bedrooms = property.quartos ?? property.dormitorios;
   const area = property.area_util || property.area_privativa || property.area_total;
@@ -288,7 +293,7 @@ export default function PropertyDetail() {
       </header>
 
       <section className="relative overflow-hidden" style={{ background: 'linear-gradient(115deg, #0f172a 0%, #0a0d16 100%)' }}>
-        {displayImage && (
+        {displayImage && !displayIsVideo && (
           <img src={displayImage} alt={property.titulo} className="absolute inset-0 w-full h-full object-cover opacity-25" />
         )}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.16),transparent_34%)]" />
@@ -315,7 +320,15 @@ export default function PropertyDetail() {
             >
               <div className="relative h-[240px] sm:h-[420px] bg-slate-100">
                 {displayImage ? (
-                  <img src={displayImage} alt={property.titulo} className="w-full h-full object-cover" />
+                  displayIsVideo ? (
+                    <video
+                      src={displayImage}
+                      controls
+                      className="w-full h-full object-cover bg-black"
+                    />
+                  ) : (
+                    <img src={displayImage} alt={property.titulo} className="w-full h-full object-cover" />
+                  )
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
                     <ImageIcon size={36} />
@@ -349,7 +362,13 @@ export default function PropertyDetail() {
                         : 'border-black/10 opacity-80 hover:opacity-100'
                     }`}
                   >
-                    <img src={foto.url} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                    {isVideoUrl(foto.url) ? (
+                      <div className="w-full h-full bg-slate-900 flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold">VIDEO</span>
+                      </div>
+                    ) : (
+                      <img src={foto.url} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                    )}
                   </button>
                 ))}
                 {images.length > 10 && (
