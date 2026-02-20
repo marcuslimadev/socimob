@@ -55,7 +55,13 @@ export default function Login() {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         toast.success('Login realizado com sucesso!');
-        setLocation('/dashboard');
+
+        const role = (response.data.user?.role || '').toLowerCase();
+        if (role === 'admin' || role === 'super_admin' || role === 'corretor') {
+          setLocation('/dashboard');
+        } else {
+          setLocation('/portal/meu-financeiro');
+        }
       } else {
         toast.error('Erro ao realizar login: Resposta inválida do servidor');
       }
@@ -218,7 +224,7 @@ export default function Login() {
           <p className="text-muted-foreground">
             Não tem uma conta?{' '}
             <a
-              href="#"
+              href="/portal/register"
               className="font-semibold transition-colors"
               style={{ color: primary }}
             >

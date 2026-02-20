@@ -27,7 +27,6 @@ const Agenda = lazy(() => import("./pages/Agenda"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
 const AdminGestaoLocacao = lazy(() => import("./pages/AdminGestaoLocacao"));
 const PortalPessoaFinanceiro = lazy(() => import("./pages/PortalPessoaFinanceiro"));
-const PortalLogin = lazy(() => import("./pages/PortalLogin"));
 const PortalRegister = lazy(() => import("./pages/PortalRegister"));
 const Vistorias = lazy(() => import("./pages/Vistorias"));
 const Assinaturas = lazy(() => import("./pages/Assinaturas"));
@@ -83,7 +82,7 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/portal/imovel/:id" component={PropertyDetail} />
-      <Route path="/portal/login" component={PortalLogin} />
+      <Route path="/portal/login" component={LoginRedirect} />
       <Route path="/portal/register" component={PortalRegister} />
       <Route path="/portal" component={ClientPortalRefined} />
       <Route path="/portal/classic" component={ClientPortal} />
@@ -131,7 +130,7 @@ function PortalFinanceiroGate() {
     const role = (user?.role || "").toLowerCase();
 
     if (!token) {
-      setLocation("/portal/login");
+      setLocation("/login");
       setCanAccess(false);
       return;
     }
@@ -153,6 +152,16 @@ function PortalFinanceiroGate() {
 
   if (canAccess !== true) return null;
   return <PortalPessoaFinanceiro />;
+}
+
+function LoginRedirect() {
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    setLocation("/login");
+  }, [setLocation]);
+
+  return null;
 }
 
 // NOTE: About Theme

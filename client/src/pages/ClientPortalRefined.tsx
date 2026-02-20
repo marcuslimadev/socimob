@@ -233,7 +233,7 @@ export default function ClientPortalRefined() {
             <a href="#contato" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Contato</a>
             <button
               type="button"
-              onClick={() => navigate('/portal/login')}
+              onClick={() => navigate('/login')}
               className="rounded-full border border-white/30 px-4 py-2 text-xs uppercase tracking-[0.12em] text-white"
             >
               Entrar
@@ -257,7 +257,7 @@ export default function ClientPortalRefined() {
           <div className="flex lg:hidden items-center gap-2">
             <button
               type="button"
-              onClick={() => navigate('/portal/login')}
+              onClick={() => navigate('/login')}
               className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-white/30 text-white"
               aria-label="Entrar no portal"
             >

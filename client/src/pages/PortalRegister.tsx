@@ -49,7 +49,7 @@ export default function PortalRegister() {
 
       if (!token || !user) {
         toast.success('Conta criada. Faca login para continuar.');
-        navigate('/portal/login');
+        navigate('/login');
         return;
       }
 
@@ -178,7 +178,7 @@ export default function PortalRegister() {
 
           <p className="mt-4 text-sm text-slate-500">
             Ja tem conta?{' '}
-            <button type="button" onClick={() => navigate('/portal/login')} className="font-semibold text-slate-800 underline underline-offset-4">
+            <button type="button" onClick={() => navigate('/login')} className="font-semibold text-slate-800 underline underline-offset-4">
               Entrar
             </button>
           </p>
