@@ -433,8 +433,10 @@ export default function ClientPortalFlipboard() {
         html {
           color-scheme: light;
         }
-        .dark {
-          display: none !important;
+        :root.dark {
+          color-scheme: light;
+          --background: 0 0% 100%;
+          --foreground: 222.2 84% 4.9%;
         }
       `}</style>
 
