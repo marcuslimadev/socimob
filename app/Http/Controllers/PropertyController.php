@@ -475,6 +475,7 @@ class PropertyController extends Controller
             'descricao' => 'nullable|string',
             'active' => 'nullable|boolean',
             'exibir_imovel' => 'nullable|boolean',
+            'destaque' => 'nullable|boolean',
             'exclusividade' => 'nullable|boolean',
             // Upload de mídia
             'media.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,avif,jfif,heic,heif,mp4,mov,m4v,avi,webm,mkv|max:102400', // Max 100MB
@@ -703,6 +704,7 @@ class PropertyController extends Controller
             'descricao' => 'nullable|string',
             'active' => 'nullable|boolean',
             'exibir_imovel' => 'nullable|boolean',
+            'destaque' => 'nullable|boolean',
             'exclusividade' => 'nullable|boolean',
             // Upload de mídia
             'media.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,avif,jfif,heic,heif,mp4,mov,m4v,avi,webm,mkv|max:102400', // Max 100MB

@@ -21,6 +21,7 @@ class Property extends Model
         'descricao',
         'active',
         'exibir_imovel',
+        'destaque',
         'external_id',
         'finalidade_imovel',
         'tipo_imovel',
@@ -54,6 +55,7 @@ class Property extends Model
     protected $casts = [
         'active' => 'boolean',
         'exibir_imovel' => 'boolean',
+        'destaque' => 'boolean',
         'valor_venda' => 'float',
         'valor_condominio' => 'float',
         'valor_iptu' => 'float',

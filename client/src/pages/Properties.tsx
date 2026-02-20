@@ -1,723 +1,509 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Search, Filter, Plus, MapPin, Bed, Bath, Ruler, Eye, X, Download, RefreshCw, Pencil, Trash2, Heart, Share2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Search, Plus, Eye, Pencil, Trash2, RefreshCw, Download, Star, Globe, Loader2, X } from 'lucide-react';
 import { useLocation } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 
-interface Property {
+interface ImovelRow {
   id: string;
-  title: string;
   codigo: string;
-  price: number;
-  type: string;
-  status: string;
-  location: string;
-  bedrooms: number;
-  bathrooms: number;
+  titulo: string;
+  tipo: string;
+  finalidade: string;
+  preco: number;
+  dormitorios: number;
+  banheiros: number;
   area: number;
-  image: string;
-  active: boolean;
+  localizacao: string;
+  imagem: string;
+  ativo: boolean;
   exibir: boolean;
+  destaque: boolean;
 }
+
+const formatMoney = (value: number) =>
+  Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+const tipoLabel = (tipo: string) => {
+  const map: Record<string, string> = {
+    apartamento: 'Apartamento',
+    casa: 'Casa',
+    comercial: 'Comercial',
+    terreno: 'Terreno',
+  };
+  return map[tipo] || tipo || '-';
+};
 
 export default function Properties() {
   const [, setLocation] = useLocation();
-  const [properties, setProperties] = useState<Property[]>([]);
+  const [imoveis, setImoveis] = useState<ImovelRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('todos');
-  const [selectedStatus, setSelectedStatus] = useState('todos');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
-  const [minBedrooms, setMinBedrooms] = useState('');
-  const [minBathrooms, setMinBathrooms] = useState('');
-  const [minArea, setMinArea] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [publishingPropertyId, setPublishingPropertyId] = useState<string | null>(null);
-  const itemsPerPage = 9;
+  const [busca, setBusca] = useState('');
+  const [tipoFiltro, setTipoFiltro] = useState('todos');
+  const [finalidadeFiltro, setFinalidadeFiltro] = useState('todos');
+  const [portalFiltro, setPortalFiltro] = useState('todos');
+  const [destaqueFiltro, setDestaqueFiltro] = useState('todos');
+  const [pagina, setPagina] = useState(1);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const itensPorPagina = 25;
 
-  useEffect(() => {
-    fetchProperties();
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setUserRole(parsed.role || null);
-      } catch (error) {
-        console.error('Erro ao ler usuário do storage:', error);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedType, selectedStatus, minPrice, maxPrice, minBedrooms, minBathrooms, minArea]);
-
-  const fetchProperties = async () => {
+  const fetchImoveis = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       const response = await api.get('/imoveis', { params: { per_page: 'all' } });
       const rows = Array.isArray(response.data?.data) ? response.data.data : [];
-      const mappedProperties = rows.map((item: any) => ({
-        id: item.id.toString(),
-        codigo: item.codigo_imovel || item.codigo || '-',
-        title: item.titulo || item.codigo_imovel || 'Sem título',
-        price: parseFloat(item.valor_venda) || 0,
-        type: (item.tipo_imovel || 'outros').toLowerCase(),
-        status: (item.finalidade_imovel || 'venda').toLowerCase().includes('aluguel') ? 'aluguel' : 'venda',
-        location: `${item.bairro || ''}, ${item.cidade || ''}`.replace(/^, /, '').replace(/, $/, '') || 'Localização não informada',
-        bedrooms: parseInt(item.dormitorios) || 0,
-        bathrooms: parseInt(item.banheiros) || 0,
-        area: parseFloat(item.area_total) || 0,
-        image: Array.isArray(item.imagens) && item.imagens.length > 0 ? item.imagens[0] : (item.foto_capa || '🏢'),
-        active: Boolean(item.active),
-        exibir: Boolean(item.exibir_imovel),
-      }));
-      setProperties(mappedProperties);
-    } catch (error) {
-      console.error('Erro ao buscar imóveis:', error);
+      setImoveis(
+        rows.map((item: any) => ({
+          id: String(item.id),
+          codigo: item.codigo_imovel || item.codigo || '-',
+          titulo: item.titulo || item.codigo_imovel || 'Sem título',
+          tipo: (item.tipo_imovel || '').toLowerCase(),
+          finalidade: (item.finalidade_imovel || 'venda').toLowerCase().includes('aluguel')
+            ? 'aluguel'
+            : 'venda',
+          preco: parseFloat(item.valor_venda) || 0,
+          dormitorios: parseInt(item.dormitorios) || 0,
+          banheiros: parseInt(item.banheiros) || 0,
+          area: parseFloat(item.area_total) || 0,
+          localizacao: [item.bairro, item.cidade].filter(Boolean).join(', ') || '-',
+          imagem:
+            Array.isArray(item.imagens) && item.imagens.length > 0
+              ? item.imagens[0]
+              : item.imagem_destaque || item.foto_capa || '',
+          ativo: Boolean(item.active),
+          exibir: Boolean(item.exibir_imovel),
+          destaque: Boolean(item.destaque),
+        })),
+      );
+    } catch {
       toast.error('Erro ao carregar imóveis');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filteredProperties = properties.filter((prop) => {
-    const matchSearch = [prop.title, prop.location].some((value) =>
-      value.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    const matchType = selectedType === 'todos' || prop.type === selectedType;
-    const matchStatus = selectedStatus === 'todos' || prop.status === selectedStatus;
-    const matchMinPrice = minPrice ? prop.price >= Number(minPrice) : true;
-    const matchMaxPrice = maxPrice ? prop.price <= Number(maxPrice) : true;
-    const matchBedrooms = minBedrooms ? prop.bedrooms >= Number(minBedrooms) : true;
-    const matchBathrooms = minBathrooms ? prop.bathrooms >= Number(minBathrooms) : true;
-    const matchArea = minArea ? prop.area >= Number(minArea) : true;
-    return (
-      matchSearch &&
-      matchType &&
-      matchStatus &&
-      matchMinPrice &&
-      matchMaxPrice &&
-      matchBedrooms &&
-      matchBathrooms &&
-      matchArea
-    );
-  });
+  useEffect(() => {
+    fetchImoveis();
+  }, []);
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.05, delayChildren: 0.1 },
-    },
-  };
+  useEffect(() => {
+    setPagina(1);
+  }, [busca, tipoFiltro, finalidadeFiltro, portalFiltro, destaqueFiltro]);
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
-  };
+  const imoveisFiltrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return imoveis.filter((im) => {
+      if (termo && !`${im.titulo} ${im.codigo} ${im.localizacao}`.toLowerCase().includes(termo))
+        return false;
+      if (tipoFiltro !== 'todos' && im.tipo !== tipoFiltro) return false;
+      if (finalidadeFiltro !== 'todos' && im.finalidade !== finalidadeFiltro) return false;
+      if (portalFiltro === 'publicado' && !im.exibir) return false;
+      if (portalFiltro === 'oculto' && im.exibir) return false;
+      if (destaqueFiltro === 'sim' && !im.destaque) return false;
+      if (destaqueFiltro === 'nao' && im.destaque) return false;
+      return true;
+    });
+  }, [imoveis, busca, tipoFiltro, finalidadeFiltro, portalFiltro, destaqueFiltro]);
 
-  const formatPrice = (price: number, isRent: boolean) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(price) + (isRent ? '/mês' : '');
-  };
+  const totalPaginas = Math.max(1, Math.ceil(imoveisFiltrados.length / itensPorPagina));
 
-  const totalPages = Math.max(1, Math.ceil(filteredProperties.length / itemsPerPage));
-  const clampedPage = Math.min(currentPage, totalPages);
-  const paginatedProperties = filteredProperties.slice(
-    (clampedPage - 1) * itemsPerPage,
-    clampedPage * itemsPerPage
-  );
+  const imoveisPaginados = useMemo(() => {
+    const start = (pagina - 1) * itensPorPagina;
+    return imoveisFiltrados.slice(start, start + itensPorPagina);
+  }, [imoveisFiltrados, pagina]);
 
-  const resetFilters = () => {
-    setSearchTerm('');
-    setSelectedType('todos');
-    setSelectedStatus('todos');
-    setMinPrice('');
-    setMaxPrice('');
-    setMinBedrooms('');
-    setMinBathrooms('');
-    setMinArea('');
-    setCurrentPage(1);
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleExport = async () => {
+  const handleToggle = async (id: string, field: 'exibir' | 'destaque', current: boolean) => {
+    setTogglingId(id);
     try {
-      setIsExporting(true);
-      const response = await api.get('/imoveis/export', {
-        responseType: 'blob'
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `imoveis_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      toast.success('Imóveis exportados com sucesso!');
-    } catch (error) {
-      console.error('Erro ao exportar imóveis:', error);
-      toast.error('Erro ao exportar imóveis');
+      const body = field === 'exibir' ? { exibir_imovel: !current } : { destaque: !current };
+      await api.put(`/imoveis/${id}`, body);
+      setImoveis((prev) =>
+        prev.map((im) => (im.id === id ? { ...im, [field]: !current } : im)),
+      );
+      toast.success(
+        field === 'exibir'
+          ? !current
+            ? 'Publicado no portal'
+            : 'Ocultado do portal'
+          : !current
+            ? 'Marcado como destaque'
+            : 'Removido dos destaques',
+      );
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Erro ao atualizar imóvel');
     } finally {
-      setIsExporting(false);
+      setTogglingId(null);
     }
   };
 
-  const handleSyncProperties = async () => {
+  const handleDelete = async (im: ImovelRow) => {
+    if (!window.confirm(`Excluir o imóvel ${im.codigo}? Esta ação não pode ser desfeita.`)) return;
     try {
-      setIsSyncing(true);
+      await api.delete(`/imoveis/${im.id}`);
+      toast.success('Imóvel excluído');
+      await fetchImoveis();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Erro ao excluir imóvel');
+    }
+  };
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
       const response = await api.get('/properties/sync');
       if (response.data?.success) {
-        toast.success('Imóveis atualizados com sucesso');
-        await fetchProperties();
+        toast.success('Imóveis sincronizados');
+        await fetchImoveis();
       } else {
-        toast.error(response.data?.error || 'Erro ao atualizar imóveis');
+        toast.error(response.data?.error || 'Erro ao sincronizar');
       }
-    } catch (error) {
-      console.error('Erro ao sincronizar imóveis:', error);
-      toast.error('Erro ao atualizar imóveis');
+    } catch {
+      toast.error('Erro ao sincronizar imóveis');
     } finally {
       setIsSyncing(false);
     }
   };
 
-  const handleDeleteProperty = async (property: Property) => {
-    const confirmed = window.confirm(`Excluir o imóvel ${property.codigo}? Esta ação não pode ser desfeita.`);
-    if (!confirmed) return;
-
+  const handleExport = async () => {
+    setIsExporting(true);
     try {
-      await api.delete(`/imoveis/${property.id}`);
-      toast.success('Imóvel excluído com sucesso');
-      await fetchProperties();
-    } catch (error: any) {
-      console.error('Erro ao excluir imóvel:', error);
-      toast.error(error?.response?.data?.error || 'Erro ao excluir imóvel');
-    }
-  };
-
-  const handleTogglePublish = async (property: Property) => {
-    try {
-      setPublishingPropertyId(property.id);
-      const nextValue = !property.exibir;
-      await api.put(`/imoveis/${property.id}`, {
-        exibir_imovel: nextValue,
-      });
-
-      setProperties((prev) =>
-        prev.map((item) =>
-          item.id === property.id ? { ...item, exibir: nextValue } : item
-        )
-      );
-
-      toast.success(nextValue ? 'Imóvel publicado no portal' : 'Imóvel ocultado do portal');
-    } catch (error: any) {
-      console.error('Erro ao alterar publicação do imóvel:', error);
-      toast.error(error?.response?.data?.error || 'Erro ao alterar publicação');
+      const response = await api.get('/imoveis/export', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `imoveis_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('CSV exportado');
+    } catch {
+      toast.error('Erro ao exportar');
     } finally {
-      setPublishingPropertyId(null);
+      setIsExporting(false);
     }
   };
 
-  const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+  const limparFiltros = () => {
+    setBusca('');
+    setTipoFiltro('todos');
+    setFinalidadeFiltro('todos');
+    setPortalFiltro('todos');
+    setDestaqueFiltro('todos');
+  };
 
   return (
     <div className="flex">
       <Sidebar />
-
       <div className="page-shell">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="flex gap-6"
-        >
-          {/* Sidebar de Filtros - Desktop */}
-          <motion.div 
-            variants={itemVariants}
-            className="hidden lg:block w-80 flex-shrink-0"
-          >
-            <div className="glass-panel p-6 rounded-2xl sticky top-6 space-y-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                  <Filter size={20} />
-                  Filtros
-                </h2>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={resetFilters}
-                  className="text-sm text-blue-500 hover:text-blue-600 font-medium"
-                >
-                  Limpar
-                </motion.button>
-              </div>
+        <div className="max-w-7xl mx-auto space-y-6">
 
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Buscar</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                    <input
-                      type="text"
-                      placeholder="Título ou localização..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-                </div>
+          {/* Header */}
+          <div className="page-header">
+            <div>
+              <h1 className="page-title">Imóveis</h1>
+              <p className="page-subtitle">
+                {imoveis.length} imóvel(is){' '}
+                {!isLoading && (
+                  <>
+                    — {imoveis.filter((i) => i.exibir).length} publicados,{' '}
+                    {imoveis.filter((i) => i.destaque).length} em destaque
+                  </>
+                )}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card hover:bg-accent transition-colors disabled:opacity-60 text-sm"
+              >
+                <RefreshCw size={15} className={isSyncing ? 'animate-spin' : ''} />
+                {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
+              </button>
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={isExporting}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card hover:bg-accent transition-colors disabled:opacity-60 text-sm"
+              >
+                <Download size={15} />
+                {isExporting ? 'Exportando...' : 'Exportar CSV'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocation('/properties/novo')}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity text-sm"
+              >
+                <Plus size={15} />
+                Novo Imóvel
+              </button>
+            </div>
+          </div>
 
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Tipo</label>
-                  <select
-                    value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  >
-                    <option value="todos">Todos os Tipos</option>
-                    <option value="apartamento">Apartamento</option>
-                    <option value="casa">Casa</option>
-                    <option value="comercial">Comercial</option>
-                    <option value="terreno">Terreno</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Finalidade</label>
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  >
-                    <option value="todos">Todos</option>
-                    <option value="venda">Venda</option>
-                    <option value="aluguel">Aluguel</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Preço</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="Mínimo"
-                      value={minPrice}
-                      onChange={(e) => setMinPrice(e.target.value)}
-                      className="px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="Máximo"
-                      value={maxPrice}
-                      onChange={(e) => setMaxPrice(e.target.value)}
-                      className="px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Dormitórios (mín.)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Quantidade"
-                    value={minBedrooms}
-                    onChange={(e) => setMinBedrooms(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Banheiros (mín.)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Quantidade"
-                    value={minBathrooms}
-                    onChange={(e) => setMinBathrooms(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">Área mín. (m²)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Metros quadrados"
-                    value={minArea}
-                    onChange={(e) => setMinArea(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
+          {/* Filtros */}
+          <div className="glass-panel rounded-2xl p-4 flex flex-wrap gap-3 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs text-muted-foreground mb-1">Buscar</label>
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  placeholder="Código, título ou localização..."
+                  className="w-full bg-background border border-border rounded-lg pl-8 pr-3 py-2 text-sm"
+                />
               </div>
             </div>
-          </motion.div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Tipo</label>
+              <select
+                value={tipoFiltro}
+                onChange={(e) => setTipoFiltro(e.target.value)}
+                className="bg-background border border-border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="todos">Todos</option>
+                <option value="apartamento">Apartamento</option>
+                <option value="casa">Casa</option>
+                <option value="comercial">Comercial</option>
+                <option value="terreno">Terreno</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Finalidade</label>
+              <select
+                value={finalidadeFiltro}
+                onChange={(e) => setFinalidadeFiltro(e.target.value)}
+                className="bg-background border border-border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="todos">Todas</option>
+                <option value="venda">Venda</option>
+                <option value="aluguel">Aluguel</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Portal</label>
+              <select
+                value={portalFiltro}
+                onChange={(e) => setPortalFiltro(e.target.value)}
+                className="bg-background border border-border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="todos">Todos</option>
+                <option value="publicado">Publicado</option>
+                <option value="oculto">Oculto</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Destaque</label>
+              <select
+                value={destaqueFiltro}
+                onChange={(e) => setDestaqueFiltro(e.target.value)}
+                className="bg-background border border-border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="todos">Todos</option>
+                <option value="sim">Em destaque</option>
+                <option value="nao">Sem destaque</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={limparFiltros}
+              className="flex items-center gap-1 px-4 py-2 rounded-lg border border-border hover:bg-accent text-sm"
+            >
+              <X size={13} /> Limpar
+            </button>
+          </div>
 
-          {/* Conteúdo Principal */}
-          <div className="flex-1 min-w-0">
-            <motion.div variants={itemVariants} className="mb-8">
-              <div className="page-header mb-4">
-                <div>
-                  <h1 className="page-title mb-2">Imóveis</h1>
-                  <p className="page-subtitle">Gerencie seu portfólio de propriedades</p>
-                </div>
-                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-                  {isAdmin && (
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleSyncProperties}
-                      disabled={isSyncing}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-6 py-3 font-semibold text-foreground transition-all hover:bg-white/20 disabled:opacity-50 sm:w-auto"
-                    >
-                      <RefreshCw size={20} className={isSyncing ? 'animate-spin' : ''} />
-                      {isSyncing ? 'Atualizando...' : 'Atualizar imóveis'}
-                    </motion.button>
-                  )}
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleExport}
-                    disabled={isExporting}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-6 py-3 font-semibold text-foreground transition-all hover:bg-white/20 disabled:opacity-50 sm:w-auto"
-                  >
-                    <Download size={20} />
-                    {isExporting ? 'Exportando...' : 'Exportar'}
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setLocation('/properties/novo')}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 px-6 py-3 font-semibold text-white transition-all sm:w-auto"
-                  >
-                    <Plus size={20} />
-                    Novo Imóvel
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Filtros Mobile */}
-            <motion.div variants={itemVariants} className="glass-panel p-6 rounded-2xl mb-8 lg:hidden">
-              <div className="space-y-4">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
-                  <input
-                    type="text"
-                    placeholder="Buscar por título..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <select
-                    value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
-                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-800"
-                  >
-                    <option value="todos">Todos os Tipos</option>
-                    <option value="apartamento">Apartamento</option>
-                    <option value="casa">Casa</option>
-                    <option value="comercial">Comercial</option>
-                    <option value="terreno">Terreno</option>
-                  </select>
-
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-800"
-                  >
-                    <option value="todos">Todos os Status</option>
-                    <option value="venda">Venda</option>
-                    <option value="aluguel">Aluguel</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Preço mín."
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
-                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Preço máx."
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
-                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Dorms"
-                    value={minBedrooms}
-                    onChange={(e) => setMinBedrooms(e.target.value)}
-                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Banhos"
-                    value={minBathrooms}
-                    onChange={(e) => setMinBathrooms(e.target.value)}
-                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Área m²"
-                    value={minArea}
-                    onChange={(e) => setMinArea(e.target.value)}
-                    className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={resetFilters}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-foreground transition-all"
-                >
-                  <X size={18} />
-                  Limpar Filtros
-                </motion.button>
-              </div>
-            </motion.div>
-
-            {isLoading ? (
-              <div className="flex justify-center py-20">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-6 text-sm text-muted-foreground">
-                  <span>
-                    {filteredProperties.length} imóvel{filteredProperties.length !== 1 ? 'is' : ''} encontrado
-                    {filteredProperties.length !== 1 ? 's' : ''}
-                  </span>
-                  <span>Página {clampedPage} de {totalPages}</span>
-                </div>
-
-                <motion.div
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
-                >
-                {paginatedProperties.map((property, index) => (
-                  <motion.div
-                    key={property.id}
-                    variants={itemVariants}
-                    transition={{ delay: 0.3 + index * 0.05 }}
-                    whileHover={{ y: -4 }}
-                    className="glass-panel rounded-2xl overflow-hidden group cursor-pointer"
-                  >
-                    <div className="relative h-48 bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-6xl overflow-hidden">
-                      {/* Placeholder for real image since I am not sure about image URL format yet, assuming URL or emoji for now if text */}
-                      {property.image.length > 5 ? (
-                        <img src={property.image} alt={property.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <motion.div
-                          whileHover={{ scale: 1.1 }}
-                          transition={{ type: 'spring', stiffness: 200 }}
-                        >
-                          {property.image}
-                        </motion.div>
-                      )}
-
-                      <div className="absolute top-4 right-4">
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className={`px-3 py-1 rounded-full text-xs font-bold text-white ${property.status === 'venda'
-                              ? 'bg-gradient-to-r from-blue-500 to-blue-600'
-                              : 'bg-gradient-to-r from-green-500 to-emerald-600'
+          {/* Tabela */}
+          {isLoading ? (
+            <div className="glass-panel rounded-2xl p-12 flex justify-center">
+              <Loader2 className="animate-spin" />
+            </div>
+          ) : (
+            <div className="glass-panel rounded-2xl overflow-auto">
+              {imoveisPaginados.length === 0 ? (
+                <p className="p-8 text-center text-sm text-muted-foreground">
+                  Nenhum imóvel encontrado para os filtros atuais.
+                </p>
+              ) : (
+                <table className="w-full min-w-[960px]">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left p-3 text-xs text-muted-foreground w-16">Foto</th>
+                      <th className="text-left p-3 text-xs text-muted-foreground">Código</th>
+                      <th className="text-left p-3 text-xs text-muted-foreground">Título</th>
+                      <th className="text-left p-3 text-xs text-muted-foreground">Tipo</th>
+                      <th className="text-left p-3 text-xs text-muted-foreground">Finalidade</th>
+                      <th className="text-left p-3 text-xs text-muted-foreground">Preço</th>
+                      <th className="text-center p-3 text-xs text-muted-foreground">Dorm.</th>
+                      <th className="text-left p-3 text-xs text-muted-foreground">Área</th>
+                      <th className="text-left p-3 text-xs text-muted-foreground">Localização</th>
+                      <th className="text-center p-3 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1"><Globe size={11} /> Portal</span>
+                      </th>
+                      <th className="text-center p-3 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1"><Star size={11} /> Destaque</span>
+                      </th>
+                      <th className="text-left p-3 text-xs text-muted-foreground">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {imoveisPaginados.map((im) => (
+                      <tr
+                        key={im.id}
+                        className="border-b border-border/50 hover:bg-accent/30 transition-colors"
+                      >
+                        <td className="p-3">
+                          {im.imagem ? (
+                            <img
+                              src={im.imagem}
+                              alt={im.titulo}
+                              className="w-14 h-10 object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="w-14 h-10 rounded-lg bg-muted flex items-center justify-center text-base">
+                              🏢
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3 text-sm text-muted-foreground font-mono">{im.codigo}</td>
+                        <td className="p-3 text-sm font-medium max-w-[200px]">
+                          <span className="line-clamp-2">{im.titulo}</span>
+                        </td>
+                        <td className="p-3 text-sm">{tipoLabel(im.tipo)}</td>
+                        <td className="p-3">
+                          <span
+                            className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                              im.finalidade === 'venda'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-emerald-100 text-emerald-800'
                             }`}
-                        >
-                          {property.status === 'venda' ? 'Venda' : 'Aluguel'}
-                        </motion.div>
-                      </div>
+                          >
+                            {im.finalidade === 'venda' ? 'Venda' : 'Aluguel'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-sm whitespace-nowrap">R$ {formatMoney(im.preco)}</td>
+                        <td className="p-3 text-sm text-center">
+                          {im.dormitorios > 0 ? im.dormitorios : '-'}
+                        </td>
+                        <td className="p-3 text-sm whitespace-nowrap">
+                          {im.area > 0 ? `${im.area}m²` : '-'}
+                        </td>
+                        <td className="p-3 text-sm text-muted-foreground">{im.localizacao}</td>
 
-                      <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-md transition-all"
-                        >
-                          <Heart size={18} className="text-red-400" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="p-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-md transition-all"
-                        >
-                          <Share2 size={18} className="text-blue-400" />
-                        </motion.button>
-                      </div>
-                    </div>
+                        {/* Toggle Portal */}
+                        <td className="p-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleToggle(im.id, 'exibir', im.exibir)}
+                            disabled={togglingId === im.id}
+                            title={
+                              im.exibir
+                                ? 'Publicado — clique para ocultar'
+                                : 'Oculto — clique para publicar'
+                            }
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60 ${
+                              im.exibir
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                : 'bg-muted text-muted-foreground hover:bg-accent'
+                            }`}
+                          >
+                            <Globe size={11} />
+                            {im.exibir ? 'Sim' : 'Não'}
+                          </button>
+                        </td>
 
-                    <div className="p-6">
-                      <h3 className="text-lg font-bold text-foreground mb-2 line-clamp-2">{property.title}</h3>
-                      <p className="text-xs text-muted-foreground mb-2">Código: {property.codigo}</p>
+                        {/* Toggle Destaque */}
+                        <td className="p-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleToggle(im.id, 'destaque', im.destaque)}
+                            disabled={togglingId === im.id}
+                            title={
+                              im.destaque
+                                ? 'Em destaque — clique para remover'
+                                : 'Sem destaque — clique para destacar'
+                            }
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60 ${
+                              im.destaque
+                                ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                : 'bg-muted text-muted-foreground hover:bg-accent'
+                            }`}
+                          >
+                            <Star size={11} />
+                            {im.destaque ? 'Sim' : 'Não'}
+                          </button>
+                        </td>
 
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                        <MapPin size={16} />
-                        <span>{property.location}</span>
-                      </div>
-
-                      <div className="mb-4 p-3 bg-blue-500/10 rounded-lg">
-                        <p className="text-xs text-muted-foreground mb-1">Preço</p>
-                        <p className="text-2xl font-bold text-foreground">
-                          {formatPrice(property.price, property.status === 'aluguel')}
-                        </p>
-                      </div>
-
-                      <div className="flex gap-4 mb-6 text-sm text-muted-foreground">
-                        {property.bedrooms > 0 && (
+                        {/* Ações */}
+                        <td className="p-3">
                           <div className="flex items-center gap-1">
-                            <Bed size={16} />
-                            <span>{property.bedrooms}</span>
+                            <button
+                              type="button"
+                              onClick={() => setLocation(`/portal/imovel/${im.id}`)}
+                              title="Ver no portal"
+                              className="p-1.5 rounded-lg hover:bg-accent transition-colors"
+                            >
+                              <Eye size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setLocation(`/properties/${im.id}/editar`)}
+                              title="Editar (wizard)"
+                              className="p-1.5 rounded-lg hover:bg-accent transition-colors"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(im)}
+                              title="Excluir"
+                              className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
+                            >
+                              <Trash2 size={15} />
+                            </button>
                           </div>
-                        )}
-                        {property.bathrooms > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Bath size={16} />
-                            <span>{property.bathrooms}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1">
-                          <Ruler size={16} />
-                          <span>{property.area}m²</span>
-                        </div>
-                      </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
 
-                      <div className="mb-4 flex flex-wrap gap-2">
-                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${property.active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
-                          {property.active ? 'Ativo' : 'Inativo'}
-                        </span>
-                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${property.exibir ? 'bg-blue-500/20 text-blue-300' : 'bg-amber-500/20 text-amber-300'}`}>
-                          {property.exibir ? 'Publicado no portal' : 'Oculto no portal'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePublish(property)}
-                          disabled={publishingPropertyId === property.id}
-                          className={`rounded-full px-2 py-1 text-xs font-semibold transition-all disabled:opacity-60 ${
-                            property.exibir
-                              ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
-                              : 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30'
-                          }`}
-                        >
-                          {publishingPropertyId === property.id
-                            ? 'Salvando...'
-                            : property.exibir
-                              ? 'Despublicar'
-                              : 'Publicar'}
-                        </button>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setLocation(`/portal/imovel/${property.id}`)}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold text-white transition-all"
-                        >
-                          <Eye size={16} />
-                          Ver
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setLocation(`/properties/${property.id}/editar`)}
-                          className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold text-foreground transition-all"
-                        >
-                          <Pencil size={16} />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleDeleteProperty(property)}
-                          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-sm font-semibold text-red-200 transition-all"
-                        >
-                          <Trash2 size={16} />
-                        </motion.button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-
-              <div className="flex items-center justify-center gap-2 mt-10">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handlePageChange(Math.max(1, clampedPage - 1))}
-                  disabled={clampedPage === 1}
-                  className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+          {/* Paginação */}
+          {!isLoading && (
+            <div className="glass-panel rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                {imoveisFiltrados.length} imóvel(is) — página {pagina} de {totalPaginas}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                  disabled={pagina <= 1}
+                  className="px-3 py-1.5 rounded-lg border border-border hover:bg-accent disabled:opacity-60 text-sm"
                 >
                   Anterior
-                </motion.button>
-                {Array.from({ length: totalPages }, (_, index) => {
-                  const page = index + 1;
-                  return (
-                    <motion.button
-                      key={page}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => handlePageChange(page)}
-                      className={`w-10 h-10 rounded-lg border text-sm font-semibold transition-all ${
-                        page === clampedPage
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-blue-500/30'
-                          : 'bg-white/10 text-foreground border-white/20 hover:bg-white/20'
-                      }`}
-                    >
-                      {page}
-                    </motion.button>
-                  );
-                })}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handlePageChange(Math.min(totalPages, clampedPage + 1))}
-                  disabled={clampedPage === totalPages}
-                  className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                  disabled={pagina >= totalPaginas}
+                  className="px-3 py-1.5 rounded-lg border border-border hover:bg-accent disabled:opacity-60 text-sm"
                 >
                   Próxima
-                </motion.button>
+                </button>
               </div>
-            </>
+            </div>
           )}
-          </div>
-        </motion.div>
+
+        </div>
       </div>
     </div>
   );
