@@ -163,14 +163,7 @@ export default function ClientPortalRefined() {
     return result;
   }, [currentSlidePhotos, thumbStart]);
 
-  // Auto-advance every 5 seconds — always on, no pause on hover
-  useEffect(() => {
-    if (slideshowProperties.length <= 1) return;
-    const timer = setInterval(() => {
-      setSlideIndex((i) => (i + 1) % slideshowProperties.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [slideshowProperties.length]);
+  // Sem avanço automático: navegação manual por setas/indicadores.
 
   // Reset slide index when properties change
   useEffect(() => {
@@ -389,14 +382,14 @@ export default function ClientPortalRefined() {
         {/* Slideshow — up to 6 destaque properties */}
         {slideshowProperties.length > 0 && currentSlide && (
           <motion.article
-            className="mt-8 mx-auto max-w-[1180px] overflow-hidden rounded-[24px] border border-black/10 bg-white text-slate-900 shadow-[0_16px_44px_rgba(15,23,42,0.12)] lg:h-[430px]"
+            className="mt-8 mx-auto max-w-[1240px] overflow-hidden rounded-[24px] border border-black/10 bg-white text-slate-900 shadow-[0_16px_44px_rgba(15,23,42,0.12)] lg:h-[390px]"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <div className="grid h-full lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="grid h-full lg:grid-cols-[1.22fr_0.78fr]">
               {/* Image with prev/next controls */}
-              <div className="relative h-[250px] sm:h-[280px] lg:h-full">
+              <div className="relative h-[240px] sm:h-[260px] lg:h-full">
                 <div className="h-full flex flex-col">
                   <div className="flex-1 min-h-0 p-1.5 pb-0">
                     <img
@@ -407,7 +400,7 @@ export default function ClientPortalRefined() {
                       loading="lazy"
                     />
                   </div>
-                  <div className="h-[76px] p-1.5 pt-1 relative">
+                  <div className="h-[72px] p-1.5 pt-1 relative">
                     {currentSlidePhotos.length > 4 && (
                       <button
                         type="button"
@@ -482,7 +475,7 @@ export default function ClientPortalRefined() {
               </div>
 
               {/* Property info */}
-              <div className="p-6 lg:p-8 flex flex-col overflow-hidden">
+              <div className="p-5 lg:p-6 flex flex-col overflow-hidden">
                 <p className="inline-flex self-start rounded-full border border-black/10 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-slate-600">
                   {getPurpose(currentSlide)}
                 </p>
