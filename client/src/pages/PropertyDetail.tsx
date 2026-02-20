@@ -139,8 +139,8 @@ export default function PropertyDetail() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isLiked, setIsLiked] = useState(false);
 
-  const primary = tenant?.primary_color || '#0f172a';
-  const secondary = tenant?.secondary_color || '#c39a66';
+  const brandDark = '#0f172a';
+  const brandAccent = '#b9935a';
 
   useEffect(() => {
     const fetchData = async () => {
@@ -236,7 +236,7 @@ export default function PropertyDetail() {
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0f172a' }}>
         <motion.div
           className="w-12 h-12 rounded-full border-4 border-white/20"
-          style={{ borderTopColor: secondary }}
+          style={{ borderTopColor: brandAccent }}
           animate={{ rotate: 360 }}
           transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
         />
@@ -253,7 +253,7 @@ export default function PropertyDetail() {
             type="button"
             onClick={() => navigate('/portal')}
             className="px-4 py-2 rounded-lg text-white"
-            style={{ backgroundColor: primary }}
+            style={{ backgroundColor: brandDark }}
           >
             Voltar ao portal
           </button>
@@ -287,7 +287,7 @@ export default function PropertyDetail() {
         </div>
       </header>
 
-      <section className="relative overflow-hidden" style={{ background: `linear-gradient(115deg, ${primary}f0 0%, #0a0d16 100%)` }}>
+      <section className="relative overflow-hidden" style={{ background: 'linear-gradient(115deg, #0f172a 0%, #0a0d16 100%)' }}>
         {displayImage && (
           <img src={displayImage} alt={property.titulo} className="absolute inset-0 w-full h-full object-cover opacity-25" />
         )}
@@ -367,7 +367,7 @@ export default function PropertyDetail() {
               transition={{ delay: 0.2 }}
               className="rounded-2xl border border-black/10 bg-white p-6 shadow-[0_10px_32px_rgba(15,23,42,0.08)]"
             >
-              <h2 className="text-xl mb-4">Descrição</h2>
+              <h2 className="text-xl mb-4 text-slate-900">Descrição</h2>
               {property.descricao ? (
                 <div
                   className="text-slate-600 leading-relaxed property-description"
@@ -386,7 +386,7 @@ export default function PropertyDetail() {
               className="rounded-2xl border border-black/10 bg-white p-6 shadow-[0_12px_36px_rgba(15,23,42,0.10)] xl:sticky xl:top-20"
             >
               <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Valor do imóvel</p>
-              <p className="mt-2 text-4xl leading-none" style={{ color: primary }}>
+              <p className="mt-2 text-4xl leading-none text-slate-900">
                 R$ {price.toLocaleString('pt-BR')}
               </p>
 
@@ -458,7 +458,7 @@ export default function PropertyDetail() {
                     type="button"
                     onClick={handleWhatsApp}
                     className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold"
-                    style={{ backgroundColor: secondary, color: '#111827' }}
+                    style={{ backgroundColor: brandAccent, color: '#111827' }}
                   >
                     <MessageCircle size={17} />
                     Falar com consultor
@@ -515,4 +515,3 @@ export default function PropertyDetail() {
     </div>
   );
 }
-
