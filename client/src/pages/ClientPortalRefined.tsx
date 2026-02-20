@@ -70,6 +70,11 @@ function formatPrice(property: Property): string {
   }).format(value);
 }
 
+function getPriceValue(property: Property): number {
+  const value = property.valor_venda || property.valor_aluguel || 0;
+  return Number(value) || 0;
+}
+
 function getPurpose(property: Property): 'Venda' | 'Aluguel' | 'Imovel' {
   const value = `${property.finalidade_imovel || ''} ${property.tipo_negocio || ''}`.toLowerCase();
   if (value.includes('alug')) return 'Aluguel';
@@ -117,7 +122,8 @@ export default function ClientPortalRefined() {
   }, []);
 
   const filteredProperties = useMemo(() => {
-    return properties.filter((property) => {
+    return properties
+      .filter((property) => {
       const term = searchTerm.toLowerCase();
       const matchesSearch = !searchTerm
         || property.titulo?.toLowerCase().includes(term)
@@ -130,7 +136,16 @@ export default function ClientPortalRefined() {
       const matchesType = !propertyType || property.tipo_imovel?.toLowerCase().includes(propertyType.toLowerCase());
 
       return matchesSearch && matchesBusiness && matchesType;
-    });
+    })
+      .sort((a, b) => {
+        const aPrice = getPriceValue(a);
+        const bPrice = getPriceValue(b);
+
+        if (!aPrice && !bPrice) return 0;
+        if (!aPrice) return 1;
+        if (!bPrice) return -1;
+        return aPrice - bPrice;
+      });
   }, [properties, searchTerm, businessType, propertyType]);
 
   const featuredProperty = filteredProperties[0];

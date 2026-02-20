@@ -121,11 +121,33 @@ function PortalFinanceiroGate() {
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const rawUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    let user: any = null;
+    try {
+      user = rawUser ? JSON.parse(rawUser) : null;
+    } catch {
+      user = null;
+    }
+    const role = (user?.role || "").toLowerCase();
+
     if (!token) {
-      setLocation("/portal");
+      setLocation("/portal/login");
       setCanAccess(false);
       return;
     }
+
+    if (["admin", "super_admin", "corretor"].includes(role)) {
+      setLocation("/dashboard");
+      setCanAccess(false);
+      return;
+    }
+
+    if (role && role !== "client") {
+      setLocation("/dashboard");
+      setCanAccess(false);
+      return;
+    }
+
     setCanAccess(true);
   }, [setLocation]);
 
