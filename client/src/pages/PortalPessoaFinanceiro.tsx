@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Loader2, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -37,6 +37,13 @@ interface MeuChamado {
   status: string;
 }
 
+interface ChamadoMensagemItem {
+  id: number;
+  mensagem: string;
+  interna?: boolean;
+  created_at?: string;
+}
+
 const formatMoney = (value?: number) =>
   Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -45,6 +52,13 @@ const formatDatePtBr = (value?: string) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('pt-BR');
+};
+
+const formatDateTimePtBr = (value?: string) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('pt-BR');
 };
 
 const statusBadgeClass = (status: string) => {
@@ -110,6 +124,12 @@ export default function PortalPessoaFinanceiro() {
   const [cobrancaPagina, setCobrancaPagina] = useState(1);
   const [notaPagina, setNotaPagina] = useState(1);
   const [chamadoPagina, setChamadoPagina] = useState(1);
+  const [chamadoSelecionado, setChamadoSelecionado] = useState<MeuChamado | null>(null);
+  const [chamadoMensagens, setChamadoMensagens] = useState<ChamadoMensagemItem[]>([]);
+  const [novaMensagemChamado, setNovaMensagemChamado] = useState('');
+  const [isLoadingMensagens, setIsLoadingMensagens] = useState(false);
+  const [isSendingMensagem, setIsSendingMensagem] = useState(false);
+  const conversaMensagensEndRef = useRef<HTMLDivElement | null>(null);
   const pageSize = 8;
 
   const loadAll = async () => {
@@ -142,6 +162,11 @@ export default function PortalPessoaFinanceiro() {
 
     loadAll();
   }, [navigate]);
+
+  useEffect(() => {
+    if (!chamadoSelecionado) return;
+    conversaMensagensEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [chamadoSelecionado, chamadoMensagens.length]);
 
   const handleCreateTicket = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -379,6 +404,47 @@ export default function PortalPessoaFinanceiro() {
       toast.success('Protocolos filtrados copiados');
     } catch {
       toast.error('Não foi possível copiar os protocolos');
+    }
+  };
+
+  const loadChamadoMensagens = async (chamadoId: number) => {
+    setIsLoadingMensagens(true);
+    try {
+      const resp = await api.get(`/portal/chamados/${chamadoId}/mensagens`);
+      setChamadoMensagens(resp.data?.items || []);
+    } catch {
+      toast.error('Não foi possível carregar as mensagens do chamado');
+    } finally {
+      setIsLoadingMensagens(false);
+    }
+  };
+
+  const handleSelecionarChamado = async (item: MeuChamado) => {
+    setChamadoSelecionado(item);
+    setNovaMensagemChamado('');
+    await loadChamadoMensagens(item.id);
+  };
+
+  const handleEnviarMensagemChamado = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!chamadoSelecionado) return;
+    if (!novaMensagemChamado.trim()) {
+      toast.error('Informe a mensagem');
+      return;
+    }
+
+    setIsSendingMensagem(true);
+    try {
+      await api.post(`/portal/chamados/${chamadoSelecionado.id}/mensagens`, {
+        mensagem: novaMensagemChamado.trim(),
+      });
+      setNovaMensagemChamado('');
+      await loadChamadoMensagens(chamadoSelecionado.id);
+      toast.success('Mensagem enviada');
+    } catch {
+      toast.error('Não foi possível enviar a mensagem');
+    } finally {
+      setIsSendingMensagem(false);
     }
   };
 
@@ -946,12 +1012,13 @@ export default function PortalPessoaFinanceiro() {
                       <th className="text-left p-3 text-sm text-muted-foreground">Assunto</th>
                       <th className="text-left p-3 text-sm text-muted-foreground">Prioridade</th>
                       <th className="text-left p-3 text-sm text-muted-foreground">Status</th>
+                      <th className="text-left p-3 text-sm text-muted-foreground">Ação</th>
                     </tr>
                   </thead>
                   <tbody>
                     {chamadosFiltrados.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="p-6 text-center text-sm text-muted-foreground">
+                        <td colSpan={5} className="p-6 text-center text-sm text-muted-foreground">
                           Nenhum chamado encontrado para os filtros/busca.
                         </td>
                       </tr>
@@ -978,6 +1045,15 @@ export default function PortalPessoaFinanceiro() {
                               {item.status}
                             </span>
                           </td>
+                          <td className="p-3">
+                            <button
+                              type="button"
+                              onClick={() => handleSelecionarChamado(item)}
+                              className="px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-accent"
+                            >
+                              Ver conversa
+                            </button>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -1003,6 +1079,56 @@ export default function PortalPessoaFinanceiro() {
                       Próxima
                     </button>
                   </div>
+                </div>
+
+                <div className="border-t border-border/60 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-semibold">Conversa do chamado</h3>
+                    {chamadoSelecionado && (
+                      <span className="text-xs text-muted-foreground">
+                        {chamadoSelecionado.protocolo || `CH-${chamadoSelecionado.id}`}
+                      </span>
+                    )}
+                  </div>
+
+                  {!chamadoSelecionado ? (
+                    <p className="text-sm text-muted-foreground">Selecione um chamado para visualizar e responder mensagens.</p>
+                  ) : (
+                    <>
+                      <div className="max-h-60 overflow-auto space-y-2 border border-border rounded-lg p-3 bg-background/50">
+                        {isLoadingMensagens ? (
+                          <p className="text-sm text-muted-foreground">Carregando mensagens...</p>
+                        ) : chamadoMensagens.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">Este chamado ainda não possui mensagens.</p>
+                        ) : (
+                          chamadoMensagens.map((msg) => (
+                            <div key={msg.id} className="rounded-lg border border-border p-2">
+                              <p className="text-sm">{msg.mensagem}</p>
+                              <p className="text-[11px] text-muted-foreground mt-1">{formatDateTimePtBr(msg.created_at)}</p>
+                            </div>
+                          ))
+                        )}
+                        <div ref={conversaMensagensEndRef} />
+                      </div>
+
+                      <form onSubmit={handleEnviarMensagemChamado} className="space-y-2">
+                        <textarea
+                          value={novaMensagemChamado}
+                          onChange={(e) => setNovaMensagemChamado(e.target.value)}
+                          rows={3}
+                          placeholder="Digite sua mensagem sobre o chamado"
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isSendingMensagem}
+                          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-60"
+                        >
+                          {isSendingMensagem ? 'Enviando...' : 'Enviar mensagem'}
+                        </button>
+                      </form>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

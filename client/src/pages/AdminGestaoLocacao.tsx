@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
@@ -33,6 +33,16 @@ interface ChamadoItem {
   prioridade: string;
   status: string;
   created_at?: string;
+  mensagens?: ChamadoMensagemItem[];
+}
+
+interface ChamadoMensagemItem {
+  id: number;
+  chamado_id: number;
+  autor_user_id?: number | null;
+  interna?: boolean;
+  mensagem: string;
+  created_at?: string;
 }
 
 interface LancamentoItem {
@@ -50,6 +60,13 @@ type Tab = 'contratos' | 'cobrancas' | 'lancamentos' | 'chamados';
 
 const formatMoney = (value?: number) =>
   Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('pt-BR');
+};
 
 const normalizeCurrencyInput = (value: string) => value.replace(/[^\d,\.]/g, '');
 
@@ -112,6 +129,13 @@ export default function AdminGestaoLocacao() {
     vencimento: '',
     valor: '',
   });
+  const [selectedChamadoId, setSelectedChamadoId] = useState<number | null>(null);
+  const [novaMensagemChamado, setNovaMensagemChamado] = useState('');
+  const [novaMensagemInterna, setNovaMensagemInterna] = useState(false);
+  const [isSendingChamadoMensagem, setIsSendingChamadoMensagem] = useState(false);
+  const [chamadoStatusFiltro, setChamadoStatusFiltro] = useState('todos');
+  const [chamadoBusca, setChamadoBusca] = useState('');
+  const chamadoMensagensEndRef = useRef<HTMLDivElement | null>(null);
 
   const contratosAtivos = useMemo(() => contratos.filter((item) => item.status === 'ativo').length, [contratos]);
   const lancamentosFiltrados = useMemo(() => {
@@ -180,6 +204,38 @@ export default function AdminGestaoLocacao() {
     }
   }, [lancamentoPagina, totalLancamentoPaginas]);
 
+  const chamadoSelecionado = useMemo(
+    () => chamados.find((item) => item.id === selectedChamadoId) || null,
+    [chamados, selectedChamadoId],
+  );
+
+  const mensagensChamadoSelecionado = useMemo(() => {
+    if (!chamadoSelecionado?.mensagens?.length) return [];
+    return [...chamadoSelecionado.mensagens].sort((a, b) => {
+      const av = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bv = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return av - bv;
+    });
+  }, [chamadoSelecionado]);
+
+  const chamadosFiltrados = useMemo(() => {
+    const termo = chamadoBusca.trim().toLowerCase();
+
+    return chamados.filter((item) => {
+      const statusOk = chamadoStatusFiltro === 'todos' || item.status === chamadoStatusFiltro;
+      const textoBase = `${item.protocolo || ''} ${item.assunto || ''} ${item.categoria || ''}`.toLowerCase();
+      const buscaOk = !termo || textoBase.includes(termo);
+      return statusOk && buscaOk;
+    });
+  }, [chamados, chamadoStatusFiltro, chamadoBusca]);
+
+  useEffect(() => {
+    if (activeTab !== 'chamados') return;
+    if (!chamadoSelecionado) return;
+
+    chamadoMensagensEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [activeTab, chamadoSelecionado, mensagensChamadoSelecionado.length]);
+
   const loadAll = async () => {
     setIsLoading(true);
     try {
@@ -232,6 +288,39 @@ export default function AdminGestaoLocacao() {
       await loadAll();
     } catch {
       toast.error('Não foi possível atualizar o chamado');
+    }
+  };
+
+  const handleSelectChamado = (id: number) => {
+    setSelectedChamadoId(id);
+    setNovaMensagemChamado('');
+    setNovaMensagemInterna(false);
+  };
+
+  const handleSendChamadoMensagem = async () => {
+    if (!selectedChamadoId) {
+      toast.error('Selecione um chamado');
+      return;
+    }
+
+    if (!novaMensagemChamado.trim()) {
+      toast.error('Digite uma mensagem para enviar');
+      return;
+    }
+
+    setIsSendingChamadoMensagem(true);
+    try {
+      await api.post(`/admin/operacao/chamados/${selectedChamadoId}/mensagens`, {
+        mensagem: novaMensagemChamado.trim(),
+        interna: novaMensagemInterna,
+      });
+      toast.success('Mensagem enviada');
+      setNovaMensagemChamado('');
+      await loadAll();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Não foi possível enviar a mensagem');
+    } finally {
+      setIsSendingChamadoMensagem(false);
     }
   };
 
@@ -542,44 +631,163 @@ export default function AdminGestaoLocacao() {
               )}
 
               {activeTab === 'chamados' && (
-                <div className="glass-panel rounded-2xl overflow-auto">
-                  <table className="w-full min-w-[740px]">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left p-3 text-sm text-muted-foreground">Protocolo</th>
-                        <th className="text-left p-3 text-sm text-muted-foreground">Assunto</th>
-                        <th className="text-left p-3 text-sm text-muted-foreground">Prioridade</th>
-                        <th className="text-left p-3 text-sm text-muted-foreground">Status</th>
-                        <th className="text-left p-3 text-sm text-muted-foreground">Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {chamados.map((item) => (
-                        <tr key={item.id} className="border-b border-border/50">
-                          <td className="p-3">{item.protocolo || `CH-${item.id}`}</td>
-                          <td className="p-3">{item.assunto}</td>
-                          <td className="p-3">{item.prioridade}</td>
-                          <td className="p-3">
-                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${statusBadgeClass(item.status)}`}>
-                              {item.status}
-                            </span>
-                          </td>
-                          <td className="p-3">
-                            <select
-                              value={item.status}
-                              onChange={(e) => handleUpdateTicketStatus(item.id, e.target.value)}
-                              className="bg-background border border-border rounded-lg px-2 py-1"
-                            >
-                              <option value="aberto">aberto</option>
-                              <option value="em_andamento">em_andamento</option>
-                              <option value="resolvido">resolvido</option>
-                              <option value="fechado">fechado</option>
-                            </select>
-                          </td>
+                <div className="space-y-4">
+                  <div className="glass-panel rounded-2xl p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Filtrar por status</label>
+                      <select
+                        value={chamadoStatusFiltro}
+                        onChange={(e) => setChamadoStatusFiltro(e.target.value)}
+                        className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                      >
+                        <option value="todos">todos</option>
+                        <option value="aberto">aberto</option>
+                        <option value="em_andamento">em_andamento</option>
+                        <option value="resolvido">resolvido</option>
+                        <option value="fechado">fechado</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs text-muted-foreground mb-1">Buscar chamado</label>
+                      <input
+                        value={chamadoBusca}
+                        onChange={(e) => setChamadoBusca(e.target.value)}
+                        placeholder="Protocolo, assunto ou categoria"
+                        className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setChamadoStatusFiltro('todos');
+                          setChamadoBusca('');
+                        }}
+                        className="px-4 py-2 rounded-lg border border-border hover:bg-accent"
+                      >
+                        Limpar filtros
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="glass-panel rounded-2xl overflow-auto">
+                    <table className="w-full min-w-[840px]">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left p-3 text-sm text-muted-foreground">Protocolo</th>
+                          <th className="text-left p-3 text-sm text-muted-foreground">Assunto</th>
+                          <th className="text-left p-3 text-sm text-muted-foreground">Prioridade</th>
+                          <th className="text-left p-3 text-sm text-muted-foreground">Status</th>
+                          <th className="text-left p-3 text-sm text-muted-foreground">Ação</th>
+                          <th className="text-left p-3 text-sm text-muted-foreground">Conversa</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {chamadosFiltrados.map((item) => (
+                          <tr key={item.id} className="border-b border-border/50">
+                            <td className="p-3">{item.protocolo || `CH-${item.id}`}</td>
+                            <td className="p-3">{item.assunto}</td>
+                            <td className="p-3">{item.prioridade}</td>
+                            <td className="p-3">
+                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${statusBadgeClass(item.status)}`}>
+                                {item.status}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <select
+                                value={item.status}
+                                onChange={(e) => handleUpdateTicketStatus(item.id, e.target.value)}
+                                className="bg-background border border-border rounded-lg px-2 py-1"
+                              >
+                                <option value="aberto">aberto</option>
+                                <option value="em_andamento">em_andamento</option>
+                                <option value="resolvido">resolvido</option>
+                                <option value="fechado">fechado</option>
+                              </select>
+                            </td>
+                            <td className="p-3">
+                              <button
+                                type="button"
+                                onClick={() => handleSelectChamado(item.id)}
+                                className={`px-3 py-1.5 rounded-lg border ${selectedChamadoId === item.id ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-accent'}`}
+                              >
+                                Ver conversa
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {!chamadosFiltrados.length && (
+                          <tr>
+                            <td colSpan={6} className="p-4 text-sm text-muted-foreground">
+                              Nenhum chamado encontrado para os filtros atuais.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="glass-panel rounded-2xl p-4 space-y-3">
+                    {!chamadoSelecionado ? (
+                      <p className="text-sm text-muted-foreground">Selecione um chamado para visualizar a conversa.</p>
+                    ) : (
+                      <>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-medium">
+                            Conversa • {chamadoSelecionado.protocolo || `CH-${chamadoSelecionado.id}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{mensagensChamadoSelecionado.length} mensagem(ns)</p>
+                        </div>
+
+                        <div className="max-h-72 overflow-auto border border-border rounded-xl p-3 space-y-2 bg-background/50">
+                          {mensagensChamadoSelecionado.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">Sem mensagens neste chamado.</p>
+                          ) : (
+                            mensagensChamadoSelecionado.map((mensagem) => (
+                              <div key={mensagem.id} className="rounded-lg border border-border/60 bg-card px-3 py-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs font-medium text-muted-foreground">
+                                    {mensagem.interna ? 'Interna' : 'Cliente/Admin'}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">{formatDateTime(mensagem.created_at)}</p>
+                                </div>
+                                <p className="text-sm mt-1 whitespace-pre-wrap">{mensagem.mensagem}</p>
+                              </div>
+                            ))
+                          )}
+                          <div ref={chamadoMensagensEndRef} />
+                        </div>
+
+                        <div className="space-y-2">
+                          <textarea
+                            value={novaMensagemChamado}
+                            onChange={(e) => setNovaMensagemChamado(e.target.value)}
+                            className="w-full min-h-24 bg-background border border-border rounded-lg px-3 py-2"
+                            placeholder="Digite uma resposta para este chamado"
+                          />
+                          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                            <input
+                              type="checkbox"
+                              checked={novaMensagemInterna}
+                              onChange={(e) => setNovaMensagemInterna(e.target.checked)}
+                              className="rounded border-border"
+                            />
+                            Mensagem interna (não enviada para o cliente)
+                          </label>
+                          <div>
+                            <button
+                              type="button"
+                              onClick={handleSendChamadoMensagem}
+                              disabled={isSendingChamadoMensagem || !novaMensagemChamado.trim()}
+                              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-60"
+                            >
+                              {isSendingChamadoMensagem ? 'Enviando...' : 'Enviar mensagem'}
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
 
