@@ -20,6 +20,8 @@ class Property extends Model
         'titulo',
         'descricao',
         'descricao_resumida',
+        'local_chaves',
+        'status_chaves',
         'active',
         'exibir_imovel',
         'destaque',

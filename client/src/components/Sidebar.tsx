@@ -25,6 +25,7 @@ import {
   Sun,
   Moon,
   LineChart,
+  KeyRound,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -167,6 +168,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     { icon: <BarChart3 size={20} />, label: 'Dashboard', href: '/dashboard' },
     { icon: <Users size={20} />, label: 'CRM', href: '/crm', badge: (leadsCount || 0) + (unreadMessagesCount || 0) || undefined },
     { icon: <Home size={20} />, label: 'Imóveis', href: '/properties' },
+    { icon: <KeyRound size={20} />, label: 'Controle de Chaves', href: '/controle-chaves' },
     { icon: <ClipboardCheck size={20} />, label: 'Vistorias', href: '/vistorias' },
     { icon: <FileSignature size={20} />, label: 'Assinaturas', href: '/assinaturas' },
     { icon: <Bell size={20} />, label: 'Notificações', href: '/notifications', badge: notificationCount || undefined },

@@ -290,6 +290,7 @@ class PortalController extends Controller
 
         $imoveis = $imoveis->map(function ($imovel) use ($likesMap) {
             $imovel->likes_count = (int) ($likesMap[$imovel->id] ?? 0);
+            unset($imovel->local_chaves, $imovel->status_chaves);
             return $imovel;
         });
 
@@ -381,6 +382,7 @@ class PortalController extends Controller
         }
 
         $imovel->likes_count = (int) $likesCount;
+        unset($imovel->local_chaves, $imovel->status_chaves);
 
         return response()->json([
             'success' => true,
@@ -653,5 +655,4 @@ class PortalController extends Controller
         }
     }
 }
-
 

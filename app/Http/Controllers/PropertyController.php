@@ -541,6 +541,8 @@ class PropertyController extends Controller
             'nome_condominio' => 'nullable|string|max:255',
             'descricao' => 'nullable|string',
             'descricao_resumida' => 'nullable|string|max:1000',
+            'local_chaves' => 'nullable|string|max:255',
+            'status_chaves' => 'nullable|string|in:disponivel,retirada,reserva',
             'active' => 'nullable|boolean',
             'exibir_imovel' => 'nullable|boolean',
             'destaque' => 'nullable|boolean',
@@ -771,6 +773,8 @@ class PropertyController extends Controller
             'nome_condominio' => 'nullable|string|max:255',
             'descricao' => 'nullable|string',
             'descricao_resumida' => 'nullable|string|max:1000',
+            'local_chaves' => 'nullable|string|max:255',
+            'status_chaves' => 'nullable|string|in:disponivel,retirada,reserva',
             'active' => 'nullable|boolean',
             'exibir_imovel' => 'nullable|boolean',
             'destaque' => 'nullable|boolean',
@@ -1171,6 +1175,153 @@ Regras:
                 'error' => 'Erro ao gerar descrições com IA',
             ], 500);
         }
+    }
+
+    /**
+     * Listagem de chaves por imóvel (admin interno).
+     * GET /api/chaves
+     */
+    public function keysIndex(Request $request)
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['success' => false, 'error' => 'No tenant context'], 400);
+        }
+
+        $search = trim((string) $request->query('q', ''));
+
+        $query = Property::where('tenant_id', $tenantId)
+            ->select([
+                'id',
+                'codigo_imovel',
+                'titulo',
+                'bairro',
+                'cidade',
+                'local_chaves',
+                'status_chaves',
+                'updated_at',
+            ])
+            ->orderBy('updated_at', 'desc');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('codigo_imovel', 'like', "%{$search}%")
+                    ->orWhere('titulo', 'like', "%{$search}%")
+                    ->orWhere('bairro', 'like', "%{$search}%")
+                    ->orWhere('cidade', 'like', "%{$search}%");
+            });
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $query->limit(300)->get(),
+        ]);
+    }
+
+    /**
+     * Histórico de movimentações de chaves.
+     * GET /api/chaves/movimentacoes
+     */
+    public function keysMovements(Request $request)
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['success' => false, 'error' => 'No tenant context'], 400);
+        }
+
+        $propertyId = $request->query('property_id');
+
+        $query = DB::table('controle_chaves_movimentacoes as m')
+            ->leftJoin('imo_properties as p', 'p.id', '=', 'm.property_id')
+            ->where('m.tenant_id', $tenantId)
+            ->select([
+                'm.id',
+                'm.property_id',
+                'm.tipo',
+                'm.responsavel',
+                'm.destino',
+                'm.observacoes',
+                'm.movimentado_em',
+                'm.user_id',
+                'p.codigo_imovel',
+                'p.titulo',
+            ])
+            ->orderBy('m.movimentado_em', 'desc');
+
+        if ($propertyId) {
+            $query->where('m.property_id', $propertyId);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $query->limit(500)->get(),
+        ]);
+    }
+
+    /**
+     * Registrar retirada/devolução de chave e atualizar status do imóvel.
+     * POST /api/chaves/movimentacoes
+     */
+    public function keysMove(Request $request)
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['success' => false, 'error' => 'No tenant context'], 400);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'property_id' => 'required|integer',
+            'tipo' => 'required|string|in:retirada,devolucao',
+            'responsavel' => 'required|string|max:150',
+            'destino' => 'nullable|string|max:255',
+            'observacoes' => 'nullable|string|max:2000',
+            'local_chaves' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Validation failed',
+                'messages' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $validator->validated();
+
+        $property = Property::where('tenant_id', $tenantId)->find($data['property_id']);
+        if (!$property) {
+            return response()->json(['success' => false, 'error' => 'Imóvel não encontrado'], 404);
+        }
+
+        DB::table('controle_chaves_movimentacoes')->insert([
+            'tenant_id' => $tenantId,
+            'property_id' => $property->id,
+            'tipo' => $data['tipo'],
+            'responsavel' => $data['responsavel'],
+            'destino' => $data['destino'] ?? null,
+            'observacoes' => $data['observacoes'] ?? null,
+            'movimentado_em' => now(),
+            'user_id' => $this->resolveUserId($request),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $newStatus = $data['tipo'] === 'retirada' ? 'retirada' : 'disponivel';
+        $property->status_chaves = $newStatus;
+        if (array_key_exists('local_chaves', $data) && $data['local_chaves'] !== null) {
+            $property->local_chaves = $data['local_chaves'];
+        }
+        $property->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Movimentação registrada com sucesso',
+            'data' => [
+                'property_id' => $property->id,
+                'status_chaves' => $property->status_chaves,
+                'local_chaves' => $property->local_chaves,
+            ],
+        ]);
     }
 
     /**

@@ -73,6 +73,8 @@ const defaultFormData = {
   nome_condominio: '',
   descricao: '',
   descricao_resumida: '',
+  local_chaves: '',
+  status_chaves: 'disponivel',
   active: true,
   exibir_imovel: true,
   exclusividade: false,
@@ -174,6 +176,8 @@ export default function ImovelFormWizard() {
           nome_condominio: item.nome_condominio || '',
           descricao: item.descricao || '',
           descricao_resumida: item.descricao_resumida || '',
+          local_chaves: item.local_chaves || '',
+          status_chaves: item.status_chaves || 'disponivel',
           active: Boolean(item.active),
           exibir_imovel: Boolean(item.exibir_imovel),
           exclusividade: Boolean(item.exclusividade),
@@ -430,6 +434,8 @@ export default function ImovelFormWizard() {
       
       if (formData.descricao) formDataToSend.append('descricao', formData.descricao);
       if (formData.descricao_resumida) formDataToSend.append('descricao_resumida', formData.descricao_resumida);
+      if (formData.local_chaves) formDataToSend.append('local_chaves', formData.local_chaves);
+      if (formData.status_chaves) formDataToSend.append('status_chaves', formData.status_chaves);
       
       formDataToSend.append('active', formData.active ? '1' : '0');
       formDataToSend.append('exibir_imovel', formData.exibir_imovel ? '1' : '0');
@@ -939,6 +945,34 @@ export default function ImovelFormWizard() {
               <p className="mt-1 text-xs text-muted-foreground text-right">
                 {formData.descricao_resumida.length}/220
               </p>
+            </div>
+
+            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+              <p className="text-sm font-semibold text-foreground mb-3">Controle interno de chaves (não exibido no portal)</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Local das chaves</label>
+                  <input
+                    type="text"
+                    value={formData.local_chaves}
+                    onChange={(e) => setFormData({ ...formData, local_chaves: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    placeholder="Ex: Gaveta 2 / Recepção"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Status das chaves</label>
+                  <select
+                    value={formData.status_chaves}
+                    onChange={(e) => setFormData({ ...formData, status_chaves: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  >
+                    <option value="disponivel">Disponível</option>
+                    <option value="retirada">Retirada</option>
+                    <option value="reserva">Reservada</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </motion.div>
         );

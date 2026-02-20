@@ -47,6 +47,7 @@ const Tenants = lazy(() => import("./pages/Tenants"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const PropertyAds = lazy(() => import("./pages/PropertyAds"));
 const Analytics = lazy(() => import("./pages/Analytics"));
+const ControleChaves = lazy(() => import("./pages/ControleChaves"));
 const AnalyticsConsentBanner = lazy(() => import("./components/AnalyticsConsentBanner"));
 const AnalyticsTracker = lazy(() => import("./components/AnalyticsTracker"));
 
@@ -105,6 +106,7 @@ function Router() {
       <Route path="/system-logs" component={SystemLogs} />
       <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/property-ads" component={PropertyAds} />
+      <Route path="/controle-chaves" component={ControleChaves} />
       <Route path="/analytics" component={Analytics} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
