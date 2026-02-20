@@ -21,6 +21,20 @@ export default function BottomNavigation() {
   const [location] = useLocation();
   const [showMore, setShowMore] = useState(false);
 
+  const isPublicRoute =
+    location === '/' ||
+    location === '/portal' ||
+    location.startsWith('/portal/') ||
+    location === '/login' ||
+    location === '/forgot-password' ||
+    location === '/reset-password';
+
+  const isAuthenticated = typeof window !== 'undefined' && Boolean(localStorage.getItem('token'));
+
+  if (isPublicRoute || !isAuthenticated) {
+    return null;
+  }
+
   const mainNavItems: NavItem[] = [
     { icon: <BarChart3 size={24} />, label: 'Dashboard', href: '/dashboard' },
     { icon: <Users size={24} />, label: 'CRM', href: '/crm' },

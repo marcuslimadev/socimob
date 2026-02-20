@@ -3,7 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
-import { defineConfig, type Plugin, type ViteDevServer } from "vite";
+import { defineConfig, loadEnv, type Plugin, type PluginOption, type ViteDevServer } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
 // =============================================================================
@@ -150,57 +150,81 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, path.resolve(import.meta.dirname), "");
+  const isProduction = mode === "production";
+  const devApiTarget = env.VITE_DEV_API_TARGET || "http://127.0.0.1:8000";
+  const plugins: PluginOption[] = [
+    react(),
+    tailwindcss(),
+    jsxLocPlugin(),
+    vitePluginManusDebugCollector(),
+  ];
 
-export default defineConfig({
-  plugins,
-  resolve: {
-    alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+  if (!isProduction) {
+    plugins.push(vitePluginManusRuntime());
+  }
+
+  return {
+    plugins,
+    resolve: {
+      alias: {
+        "@": path.resolve(import.meta.dirname, "client", "src"),
+        "@shared": path.resolve(import.meta.dirname, "shared"),
+        "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+      },
     },
-  },
-  envDir: path.resolve(import.meta.dirname),
-  root: path.resolve(import.meta.dirname, "client"),
-  build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
-    emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        assetFileNames: (assetInfo) => {
-          // Preserve .htaccess filename (don't hash it)
-          if (assetInfo.name === '.htaccess') {
-            return '[name][extname]';
-          }
-          return 'assets/[name]-[hash][extname]';
+    envDir: path.resolve(import.meta.dirname),
+    root: path.resolve(import.meta.dirname, "client"),
+    build: {
+      outDir: path.resolve(import.meta.dirname, "dist/public"),
+      emptyOutDir: true,
+      rollupOptions: {
+        output: {
+          assetFileNames: (assetInfo) => {
+            // Preserve .htaccess filename (don't hash it)
+            if (assetInfo.name === '.htaccess') {
+              return '[name][extname]';
+            }
+            return 'assets/[name]-[hash][extname]';
+          },
         },
       },
     },
-  },
-  server: {
-    port: 3000,
-    strictPort: false, // Will find next available port if 3000 is busy
-    host: true,
-    allowedHosts: [
-      ".manuspre.computer",
-      ".manus.computer",
-      ".manus-asia.computer",
-      ".manuscomputer.ai",
-      ".manusvm.computer",
-      "localhost",
-      "127.0.0.1",
-    ],
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: true,
-        secure: false,
+    server: {
+      port: 3000,
+      strictPort: false, // Will find next available port if 3000 is busy
+      host: true,
+      allowedHosts: [
+        ".manuspre.computer",
+        ".manus.computer",
+        ".manus-asia.computer",
+        ".manuscomputer.ai",
+        ".manusvm.computer",
+        "localhost",
+        "127.0.0.1",
+      ],
+      proxy: {
+        '/api': {
+          target: devApiTarget,
+          changeOrigin: true,
+          secure: false,
+        },
+        '/storage': {
+          target: devApiTarget,
+          changeOrigin: true,
+          secure: false,
+        },
+        '/uploads': {
+          target: devApiTarget,
+          changeOrigin: true,
+          secure: false,
+        },
+      },
+      fs: {
+        strict: true,
+        deny: ["**/.*"],
       },
     },
-    fs: {
-      strict: true,
-      deny: ["**/.*"],
-    },
-  },
+  };
 });

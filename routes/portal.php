@@ -44,4 +44,15 @@ $router->group(['prefix' => 'api/portal', 'middleware' => 'resolve-tenant'], fun
     $router->get('/chat/{id}', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChatController@show']);
     $router->get('/chat/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChatController@mensagens']);
     $router->post('/chat/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChatController@send']);
+
+    // Portal da Pessoa - Contratos / Cobranças / Fiscal
+    $router->get('/meus-imoveis', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\PessoaFinanceiroController@meusImoveis']);
+    $router->get('/financeiro/cobrancas', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\PessoaFinanceiroController@minhasCobrancas']);
+    $router->get('/financeiro/notas-fiscais', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\PessoaFinanceiroController@minhasNotasFiscais']);
+
+    // Operação - Chamados do cliente
+    $router->get('/chamados', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChamadosController@index']);
+    $router->post('/chamados', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChamadosController@store']);
+    $router->get('/chamados/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChamadosController@mensagens']);
+    $router->post('/chamados/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChamadosController@adicionarMensagem']);
 });

@@ -2,6 +2,10 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
+const TENANT_HOST = typeof window !== "undefined" ? window.location.hostname : "default";
+const TENANT_BRANDING_CACHE_KEY = `tenant_branding_cache:${TENANT_HOST}`;
+const LEGACY_BRANDING_CACHE_KEY = "tenant_branding_cache";
+
 const applyBrandingToDocument = (data: any) => {
   if (!data || typeof document === "undefined") return;
 
@@ -52,7 +56,8 @@ const applyBrandingToDocument = (data: any) => {
 const applyTenantBranding = async () => {
   try {
     // Apply cached branding instantly to avoid flicker.
-    const cached = localStorage.getItem("tenant_branding_cache");
+    const cached =
+      localStorage.getItem(TENANT_BRANDING_CACHE_KEY) || localStorage.getItem(LEGACY_BRANDING_CACHE_KEY);
     if (cached) {
       try {
         const cachedData = JSON.parse(cached);
@@ -62,7 +67,7 @@ const applyTenantBranding = async () => {
       }
     }
 
-    const response = await fetch("/portal/config", {
+    const response = await fetch("/api/portal/config", {
       headers: {
         "X-Tenant-Domain": window.location.hostname,
       },
@@ -73,7 +78,11 @@ const applyTenantBranding = async () => {
     const data = payload?.data || payload?.tenant || payload;
 
     applyBrandingToDocument(data);
-    localStorage.setItem("tenant_branding_cache", JSON.stringify(data));
+    localStorage.setItem(TENANT_BRANDING_CACHE_KEY, JSON.stringify(data));
+
+    if (localStorage.getItem(LEGACY_BRANDING_CACHE_KEY)) {
+      localStorage.removeItem(LEGACY_BRANDING_CACHE_KEY);
+    }
   } catch {
     // No-op: keep default branding if request fails.
   }
@@ -83,5 +92,35 @@ if (typeof document !== "undefined") {
   document.documentElement.classList.add("dark");
 }
 
-applyTenantBranding();
-createRoot(document.getElementById("root")!).render(<App />);
+if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .catch(() => {
+        // ignore service worker cleanup errors
+      });
+
+    if ("caches" in window) {
+      caches
+        .keys()
+        .then((cacheNames) => Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName))))
+        .catch(() => {
+          // ignore cache cleanup errors
+        });
+    }
+  });
+}
+
+const bootstrap = async () => {
+  const tenantBootstrapTimeoutMs = 2500;
+
+  await Promise.race([
+    applyTenantBranding(),
+    new Promise((resolve) => setTimeout(resolve, tenantBootstrapTimeoutMs)),
+  ]);
+
+  createRoot(document.getElementById("root")!).render(<App />);
+};
+
+bootstrap();

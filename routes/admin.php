@@ -37,6 +37,26 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->post('/settings/atendimento-automatico', 'Admin\TenantSettingsController@setAtendimentoAutomatico');
 
     // Financeiro - Comissões
+    $router->get('/financeiro/notas-servico', 'Admin\\FinanceiroController@index');
+    $router->post('/financeiro/notas-servico', 'Admin\FinanceiroController@emitirNfseComissao');
+    $router->post('/financeiro/comissoes/nfse', 'Admin\FinanceiroController@emitirNfseComissao'); // legado
+    $router->get('/financeiro/contratos', 'Admin\ContratosLocacaoController@index');
+    $router->post('/financeiro/contratos', 'Admin\ContratosLocacaoController@store');
+    $router->get('/financeiro/contratos/{id}', 'Admin\ContratosLocacaoController@show');
+    $router->put('/financeiro/contratos/{id}', 'Admin\ContratosLocacaoController@update');
+    $router->get('/financeiro/cobrancas-contrato', 'Admin\CobrancasContratoController@index');
+    $router->post('/financeiro/contratos/{id}/gerar-cobranca', 'Admin\CobrancasContratoController@gerar');
+    $router->patch('/financeiro/cobrancas-contrato/{id}/status', 'Admin\CobrancasContratoController@updateStatus');
+    $router->get('/financeiro/lancamentos', 'Admin\LancamentosFinanceirosController@index');
+    $router->post('/financeiro/lancamentos', 'Admin\LancamentosFinanceirosController@store');
+    $router->post('/financeiro/lancamentos/{id}/baixas', 'Admin\LancamentosFinanceirosController@registrarBaixa');
+
+    // Operação - Chamados
+    $router->get('/operacao/chamados', 'Admin\ChamadosOperacionaisController@index');
+    $router->patch('/operacao/chamados/{id}', 'Admin\ChamadosOperacionaisController@update');
+    $router->post('/operacao/chamados/{id}/mensagens', 'Admin\ChamadosOperacionaisController@adicionarMensagem');
+    $router->post('/operacao/chamados/{id}/anexos', 'Admin\ChamadosOperacionaisController@adicionarAnexo');
+
     $router->get('/comissoes', 'Admin\CommissionController@index');
     $router->post('/comissoes', 'Admin\CommissionController@store');
     $router->get('/comissoes/{id}', 'Admin\CommissionController@show');

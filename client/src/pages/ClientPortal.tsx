@@ -10,7 +10,6 @@ import {
   ChevronRight,
   X,
   MessageCircle,
-  Map as MapIcon,
   Send,
   Bot,
   ClipboardList,
@@ -21,6 +20,7 @@ import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
+import { useViaCep } from '@/hooks/useViaCep';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 // Theme forced to light mode in portal
@@ -423,7 +423,7 @@ type ChatStep = 'greeting' | 'ask_name' | 'ask_whatsapp' | 'ask_email' | 'ask_in
 interface ChatMessage { from: 'bot' | 'user'; text: string; }
 
 // ===== Chat Widget (per-tenant mascot) =====
-function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpenChange, propertyContext }: { 
+function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpenChange, propertyContext, serviceContext }: { 
   tenantPhone?: string; 
   tenantName?: string; 
   primary: string; 
@@ -431,6 +431,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   propertyContext?: { id: number; titulo: string; preco: string };
+  serviceContext?: string;
 }) {
   const [step, setStep] = useState<ChatStep>('greeting');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -443,6 +444,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevPropertyRef = useRef<number | undefined>(undefined);
+  const prevServiceRef = useRef<string | undefined>(undefined);
   const effectiveMascotUrl = mascotUrl || '/assets/mascote.png';
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -461,6 +463,10 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
             addBot(`Vi que você se interessou por: ${propertyContext.titulo} - ${propertyContext.preco}`);
             setInteresse(`Imóvel ID ${propertyContext.id}: ${propertyContext.titulo}`);
             setTimeout(() => { addBot('Para continuar, qual é o seu nome?'); setStep('ask_name'); }, 600);
+          } else if (serviceContext) {
+            addBot(`Vi que você se interessou no serviço: ${serviceContext}.`);
+            setInteresse(`Serviço: ${serviceContext}`);
+            setTimeout(() => { addBot('Para continuar, qual é o seu nome?'); setStep('ask_name'); }, 600);
           } else {
             addBot('Posso te ajudar a encontrar o imóvel ideal. Para começar, qual é o seu nome?'); 
             setStep('ask_name');
@@ -468,7 +474,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
         }, 600);
       }, 300);
     }
-  }, [isOpen, messages.length, propertyContext, tenantName]);
+  }, [isOpen, messages.length, propertyContext, serviceContext, tenantName]);
 
   // Reset when property context changes
   useEffect(() => {
@@ -484,11 +490,47 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
     }
   }, [propertyContext]);
 
+  useEffect(() => {
+    if (serviceContext && prevServiceRef.current !== serviceContext) {
+      prevServiceRef.current = serviceContext;
+      setMessages([]);
+      setStep('greeting');
+      setNome('');
+      setWhatsapp('');
+      setEmail('');
+      setInteresse('');
+      setLeadWhatsapp('');
+    }
+  }, [serviceContext]);
+
   const fmtWa = (v: string) => {
     const d = v.replace(/\D/g, '');
     if (d.length <= 2) return `(${d}`;
     if (d.length <= 7) return `(${d.slice(0,2)}) ${d.slice(2)}`;
     return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7,11)}`;
+  };
+
+  const isSkippedEmailInput = (value: string) => {
+    const normalized = value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
+    const skipTokens = new Set([
+      'pular',
+      'nao',
+      'prefiro nao informar',
+      'prefiro nao',
+      'sem email',
+      'sem e-mail',
+      'nao informar',
+      'nao tenho email',
+      'nao tenho e-mail',
+      'nenhum',
+    ]);
+
+    return skipTokens.has(normalized);
   };
 
   const handleSend = async () => {
@@ -508,7 +550,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
         break;
       }
       case 'ask_email':
-        if (val.toLowerCase() === 'pular' || val.toLowerCase() === 'não' || val.toLowerCase() === 'nao') {
+        if (isSkippedEmailInput(val)) {
           addUser('Prefiro não informar');
           if (interesse) {
             // Se já tem interesse (propertyContext), submeter direto
@@ -610,16 +652,19 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
   return (
     <>
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-[60] w-[400px] rounded-3xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: 'min(600px, calc(100vh - 120px))', backgroundColor: '#fff' }}>
-          <div className="flex items-center gap-4 px-6 py-5 text-white flex-shrink-0" style={{ backgroundColor: primary }}>
-            <MascotAvatar size={100} mascotUrl={effectiveMascotUrl} primary={primary} />
+        <div
+          className="fixed z-[60] flex flex-col overflow-hidden rounded-2xl shadow-2xl w-[calc(100vw-16px)] max-w-[400px] right-2 bottom-20 md:right-4 md:bottom-24 lg:right-6"
+          style={{ maxHeight: 'min(560px, calc(100vh - 96px))', backgroundColor: '#fff' }}
+        >
+          <div className="flex items-center gap-3 px-4 py-3 md:px-5 md:py-4 text-white flex-shrink-0" style={{ backgroundColor: primary }}>
+            <MascotAvatar size={56} mascotUrl={effectiveMascotUrl} primary={primary} />
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-2xl leading-tight">{tenantName || 'Assistente'}</div>
-              <div className="text-base opacity-90 flex items-center gap-2 mt-1"><Bot className="w-5 h-5" />Assistente Virtual</div>
+              <div className="font-bold text-lg md:text-xl leading-tight truncate">{tenantName || 'Assistente'}</div>
+              <div className="text-xs md:text-sm opacity-90 flex items-center gap-1.5 mt-0.5"><Bot className="w-4 h-4" />Assistente Virtual</div>
             </div>
-            <button onClick={() => onOpenChange(false)} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"><X className="w-4 h-4" /></button>
+            <button onClick={() => onOpenChange(false)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"><X className="w-4 h-4" /></button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ backgroundColor: 'var(--portal-bg-muted)', minHeight: '280px' }}>
+          <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3" style={{ backgroundColor: 'var(--portal-bg-muted)', minHeight: '220px' }}>
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {msg.from === 'bot' && <div className="w-7 h-7 rounded-full flex items-center justify-center mr-2 flex-shrink-0 mt-0.5" style={{ backgroundColor: '#f5f5f5' }}><MascotAvatar size={22} mascotUrl={effectiveMascotUrl} primary={primary} /></div>}
@@ -637,7 +682,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
             <div ref={messagesEndRef} />
           </div>
           {step !== 'done' && step !== 'submitting' && step !== 'greeting' && (
-            <div className="flex items-center gap-2 px-3 py-3" style={{ borderTop: '1px solid #e8e4de' }}>
+            <div className="flex items-center gap-2 px-2.5 py-2.5" style={{ borderTop: '1px solid #e8e4de' }}>
               <input
                 ref={inputRef}
                 type={step === 'ask_whatsapp' ? 'tel' : step === 'ask_email' ? 'email' : 'text'}
@@ -645,32 +690,26 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
                 onChange={(e) => step === 'ask_whatsapp' ? setInput(fmtWa(e.target.value)) : setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder={step === 'ask_name' ? 'Seu nome...' : step === 'ask_whatsapp' ? '(31) 99999-8888' : step === 'ask_email' ? 'seu@email.com' : 'Ex: apartamento 2 quartos...'}
-                className="flex-1 px-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2"
+                className="flex-1 px-3 py-2 rounded-full text-sm focus:outline-none focus:ring-2"
                 style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }}
               />
-              <button onClick={handleSend} className="w-9 h-9 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ backgroundColor: primary }}><Send className="w-4 h-4" /></button>
+              <button onClick={handleSend} className="w-9 h-9 rounded-full flex items-center justify-center text-white flex-shrink-0" style={{ backgroundColor: primary }}><Send className="w-4 h-4" /></button>
             </div>
           )}
-          <div className="px-4 py-1.5 text-center" style={{ borderTop: '1px solid #e8e4de', backgroundColor: '#fafaf8' }}>
+          <div className="px-3 py-1.5 text-center" style={{ borderTop: '1px solid #e8e4de', backgroundColor: '#fafaf8' }}>
             <span className="text-[10px]" style={{ color: '#aaa' }}>Atendimento automatizado por IA</span>
           </div>
         </div>
       )}
-         <button
+      <button
         onClick={() => onOpenChange(!isOpen)}
-        className="fixed bottom-6 right-6 z-[60] w-[200px] h-[200px] flex items-center justify-center transition-all duration-300 hover:scale-105"
-        style={{ backgroundColor: 'transparent' }}
+        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-[60] w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-105 shadow-xl"
+        style={{ backgroundColor: '#fff', border: '1px solid #e8e4de' }}
       >
-        {isOpen ? <X className="w-12 h-12" style={{ color: primary }} /> : (
-          <MascotAvatar size={180} mascotUrl={effectiveMascotUrl} primary={primary} roundedClass="rounded-2xl" fitClass="object-contain" imagePadding={0} imageBackground="transparent" />
+        {isOpen ? <X className="w-8 h-8" style={{ color: primary }} /> : (
+          <MascotAvatar size={56} mascotUrl={effectiveMascotUrl} primary={primary} roundedClass="rounded-full" fitClass="object-contain" imagePadding={0} imageBackground="transparent" />
         )}
       </button>
-      {!isOpen && !propertyContext && (
-        <div className="fixed bottom-[180px] right-6 z-[59] rounded-2xl shadow-2xl px-5 py-3 text-lg font-bold animate-bounce border" style={{ backgroundColor: '#fff', color: primary, animationDuration: '3s', borderColor: `${primary}33` }}>
-          <div className="absolute bottom-0 right-[40px] w-4 h-4 rotate-45 translate-y-2 shadow-lg border-l border-b" style={{ backgroundColor: '#fff', borderColor: `${primary}33` }} />
-          Como posso te ajudar hoje?
-        </div>
-      )}
     </>
   );
 }
@@ -678,6 +717,9 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
 // ===== Main Component =====
 export default function ClientPortal() {
   const [, navigate] = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState(() =>
+    typeof window !== 'undefined' && Boolean(localStorage.getItem('token'))
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [priceRangeIndex, setPriceRangeIndex] = useState(0);
   const [selectedBedrooms, setSelectedBedrooms] = useState<number | null>(null);
@@ -692,15 +734,18 @@ export default function ClientPortal() {
   const [hoveredProperty, setHoveredProperty] = useState<number | null>(null);
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [showMobileMap, setShowMobileMap] = useState(false);
   const [showEvalModal, setShowEvalModal] = useState(false);
+  const [evalCep, setEvalCep] = useState('');
   const [evalForm, setEvalForm] = useState({ nome: '', telefone: '', email: '', tipo_imovel: '', endereco: '', bairro: '', cidade: '', observacoes: '' });
+  const [evalErrors, setEvalErrors] = useState<Partial<Record<keyof typeof evalForm, string>>>({});
   const [evalSubmitting, setEvalSubmitting] = useState(false);
   const [evalDone, setEvalDone] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(12);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatPropertyContext, setChatPropertyContext] = useState<{ id: number; titulo: string; preco: string } | undefined>(undefined);
+  const [chatServiceContext, setChatServiceContext] = useState<string | undefined>(undefined);
+  const { buscarCep, isLoading: isLoadingCep } = useViaCep();
   // theme forced to light via useEffect below
 
   // Load tenant configuration
@@ -731,8 +776,30 @@ export default function ClientPortal() {
     loadTenant();
   }, []);
 
+  useEffect(() => {
+    const syncAuthState = () => {
+      setIsAuthenticated(Boolean(localStorage.getItem('token')));
+    };
+
+    window.addEventListener('storage', syncAuthState);
+    window.addEventListener('focus', syncAuthState);
+
+    return () => {
+      window.removeEventListener('storage', syncAuthState);
+      window.removeEventListener('focus', syncAuthState);
+    };
+  }, []);
+
   // Load properties
   useEffect(() => {
+    const hasAtLeastOnePhoto = (prop: Property) => {
+      return Boolean(
+        prop.imagem_destaque ||
+        (prop.fotos && prop.fotos.length > 0) ||
+        (prop.imagens && prop.imagens.length > 0)
+      );
+    };
+
     const fetchProperties = async () => {
       try {
         setError(null);
@@ -740,7 +807,9 @@ export default function ClientPortal() {
         const response = await api.get('/portal/imoveis');
         const data = response.data.data || response.data || [];
 
-        const propertiesWithCoords = data.map((prop: Property) => {
+        const propertiesWithCoords = data
+          .filter((prop: Property) => hasAtLeastOnePhoto(prop))
+          .map((prop: Property) => {
           if (prop.latitude && prop.longitude) return prop;
           const cityCoords = getCityCoords(prop.cidade);
           if (cityCoords) {
@@ -829,6 +898,40 @@ export default function ClientPortal() {
     }
   };
 
+  const scrollToSection = useCallback((sectionId: string) => {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    const top = section.getBoundingClientRect().top + window.scrollY - 95;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }, []);
+
+  const openEvaluationModal = useCallback(() => {
+    setShowEvalModal(true);
+    setEvalDone(false);
+    setEvalCep('');
+    setEvalErrors({});
+    setEvalForm({ nome: '', telefone: '', email: '', tipo_imovel: '', endereco: '', bairro: '', cidade: '', observacoes: '' });
+  }, []);
+
+  const handleServiceClick = useCallback((serviceName: string) => {
+    const normalizedService = serviceName
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+    if (normalizedService.includes('avaliacao')) {
+      setChatOpen(false);
+      setChatPropertyContext(undefined);
+      setChatServiceContext(undefined);
+      openEvaluationModal();
+      return;
+    }
+
+    setChatPropertyContext(undefined);
+    setChatServiceContext(serviceName);
+    setChatOpen(true);
+  }, [openEvaluationModal]);
+
   // Filter and sort
   const filteredProperties = useMemo(() => {
     let result = properties.filter((prop) => {
@@ -894,6 +997,40 @@ export default function ClientPortal() {
   const hasActiveFilters =
     searchTerm || priceRangeIndex > 0 || selectedBedrooms || selectedType || selectedPropertyType;
 
+  const formatPhoneInput = useCallback((value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }, []);
+
+  const formatCepInput = useCallback((value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  }, []);
+
+  const handleBuscarCepAvaliacao = useCallback(async () => {
+    if (!evalCep) return;
+    const data = await buscarCep(evalCep);
+    if (!data) return;
+
+    setEvalForm((prev) => ({
+      ...prev,
+      endereco: data.logradouro || prev.endereco,
+      bairro: data.bairro || prev.bairro,
+      cidade: data.localidade || prev.cidade,
+    }));
+
+    setEvalErrors((prev) => ({
+      ...prev,
+      endereco: undefined,
+      bairro: undefined,
+      cidade: undefined,
+    }));
+  }, [buscarCep, evalCep]);
+
   const clearFilters = useCallback(() => {
     setSearchTerm('');
     setPriceRangeIndex(0);
@@ -903,18 +1040,51 @@ export default function ClientPortal() {
   }, []);
 
   const handleEvalSubmit = async () => {
-    if (!evalForm.nome || !evalForm.telefone) { toast.error('Preencha nome e telefone'); return; }
+    const normalized = {
+      nome: evalForm.nome.trim(),
+      telefone: evalForm.telefone.trim(),
+      email: evalForm.email.trim(),
+      tipo_imovel: evalForm.tipo_imovel.trim(),
+      endereco: evalForm.endereco.trim(),
+      bairro: evalForm.bairro.trim(),
+      cidade: evalForm.cidade.trim(),
+      observacoes: evalForm.observacoes.trim(),
+    };
+
+    const nextErrors: Partial<Record<keyof typeof evalForm, string>> = {};
+    if (!normalized.nome) nextErrors.nome = 'Nome é obrigatório';
+    if (!normalized.telefone) nextErrors.telefone = 'Telefone é obrigatório';
+    if (normalized.telefone.replace(/\D/g, '').length > 0 && normalized.telefone.replace(/\D/g, '').length < 10) {
+      nextErrors.telefone = 'Telefone inválido (inclua DDD)';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setEvalErrors(nextErrors);
+      toast.error('Corrija os campos obrigatórios');
+      return;
+    }
+
+    setEvalErrors({});
     setEvalSubmitting(true);
     try {
       const resp = await fetch('/api/portal/avaliacao', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Tenant-Domain': window.location.hostname },
-        body: JSON.stringify(evalForm),
+        body: JSON.stringify(normalized),
       });
       const data = await resp.json();
       if (data.success) {
         setEvalDone(true);
+        setEvalForm({ nome: '', telefone: '', email: '', tipo_imovel: '', endereco: '', bairro: '', cidade: '', observacoes: '' });
         toast.success('Solicitacao enviada com sucesso!');
+      } else if (resp.status === 422 && data?.messages) {
+        const backendErrors: Partial<Record<keyof typeof evalForm, string>> = {};
+        (Object.keys(data.messages) as Array<keyof typeof evalForm>).forEach((field) => {
+          const first = data.messages?.[field]?.[0];
+          if (first) backendErrors[field] = first;
+        });
+        setEvalErrors(backendErrors);
+        toast.error(data.error || 'Dados inválidos');
       } else {
         toast.error(data.error || 'Erro ao enviar solicitacao');
       }
@@ -1048,6 +1218,7 @@ export default function ClientPortal() {
             onClick={(e) => {
               e.stopPropagation();
               setChatPropertyContext({ id: property.id, titulo: description, preco: formatPrice(price) });
+                setChatServiceContext(undefined);
               setChatOpen(true);
             }}
             className="w-full mt-3 py-2.5 px-4 rounded-xl text-sm font-bold transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
@@ -1131,12 +1302,14 @@ export default function ClientPortal() {
     </MapContainer>
   );
 
-  // Force light theme for portal
+  // Force dark theme for portal
   useEffect(() => {
     const root = document.documentElement;
     const wasDark = root.classList.contains('dark');
-    root.classList.remove('dark');
-    return () => { if (wasDark) root.classList.add('dark'); };
+    root.classList.add('dark');
+    return () => {
+      if (!wasDark) root.classList.remove('dark');
+    };
   }, []);
 
   // ===== RENDER =====
@@ -1179,14 +1352,25 @@ export default function ClientPortal() {
                   <span className="ml-1">WhatsApp</span>
                 </Button>
               )}
-              <Button
-                size="sm"
-                style={{ backgroundColor: primary }}
-                className="text-white"
-                onClick={() => navigate('/login')}
-              >
-                Entrar
-              </Button>
+              {isAuthenticated ? (
+                <Button
+                  size="sm"
+                  style={{ backgroundColor: primary }}
+                  className="text-white"
+                  onClick={() => navigate('/portal/meu-financeiro')}
+                >
+                  Meu Financeiro
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  style={{ backgroundColor: primary }}
+                  className="text-white"
+                  onClick={() => navigate('/login')}
+                >
+                  Entrar
+                </Button>
+              )}
               <button
                 className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -1209,13 +1393,23 @@ export default function ClientPortal() {
             <a
               key={item.id}
               href={`#${item.id}`}
-              onClick={(e) => { e.preventDefault(); document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth' }); }}
+              onClick={(e) => { e.preventDefault(); scrollToSection(item.id); }}
               className="px-3 py-1.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
               style={{ color: '#555' }}
             >
               {item.label}
             </a>
           ))}
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => navigate('/portal/meu-financeiro')}
+              className="px-3 py-1.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+              style={{ color: '#555' }}
+            >
+              Meu Financeiro
+            </button>
+          )}
         </nav>
 
         {/* Row 2: Search + Filter Chips */}
@@ -1498,13 +1692,26 @@ export default function ClientPortal() {
               <a
                 key={item.id}
                 href={`#${item.id}`}
-                onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth' }); }}
+                onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); scrollToSection(item.id); }}
                 className="block px-3 py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
                 style={{ color: '#555' }}
               >
                 {item.label}
               </a>
             ))}
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  navigate('/portal/meu-financeiro');
+                }}
+                className="block w-full text-left px-3 py-2.5 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+                style={{ color: '#555' }}
+              >
+                Meu Financeiro
+              </button>
+            )}
           </nav>
         </div>
       )}
@@ -1537,12 +1744,18 @@ export default function ClientPortal() {
             <h2 className="text-xl font-bold text-center mb-6" style={{ color: 'var(--portal-text-main)' }}>Nossos Serviços</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {tenant.services.map((svc, i) => (
-                <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl" style={{ backgroundColor: 'var(--portal-bg-subtle)' }}>
+                <button
+                  type="button"
+                  key={i}
+                  onClick={() => handleServiceClick(svc)}
+                  className="flex items-center gap-2.5 p-3 rounded-xl text-left transition-colors hover:bg-muted"
+                  style={{ backgroundColor: 'var(--portal-bg-subtle)' }}
+                >
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primary}15` }}>
                     <Home className="w-4 h-4" style={{ color: primary }} />
                   </div>
                   <span className="text-sm font-medium" style={{ color: 'var(--portal-text-muted)' }}>{svc}</span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -1560,7 +1773,7 @@ export default function ClientPortal() {
             <p className="text-sm" style={{ color: 'var(--portal-text-muted)' }}>Quer saber quanto vale o seu imóvel? Solicite uma avaliação gratuita e sem compromisso.</p>
           </div>
           <Button
-            onClick={() => { setShowEvalModal(true); setEvalDone(false); setEvalForm({ nome: '', telefone: '', email: '', tipo_imovel: '', endereco: '', bairro: '', cidade: '', observacoes: '' }); }}
+            onClick={openEvaluationModal}
             className="text-white px-6 py-2.5 rounded-xl font-medium flex-shrink-0"
             style={{ backgroundColor: primary }}
           >
@@ -1671,36 +1884,6 @@ export default function ClientPortal() {
         </div>
       </section>
 
-      {/* ===== MAP BUTTON ===== */}
-      <div className="lg:hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-40">
-        <Button
-          onClick={() => setShowMobileMap(true)}
-          className="shadow-lg rounded-full text-white px-5"
-          style={{ backgroundColor: primary }}
-        >
-          <MapIcon className="w-4 h-4 mr-1.5" />
-          Ver mapa
-        </Button>
-      </div>
-
-      {/* ===== MOBILE MAP OVERLAY ===== */}
-      {showMobileMap && (
-        <div className="fixed inset-0 z-[60]" style={{ backgroundColor: 'var(--portal-bg-subtle)' }}>
-          <div className="h-full flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: '#e8e4de', backgroundColor: '#fff' }}>
-              <span className="font-semibold" style={{ color: 'var(--portal-text-main)' }}>
-                {filteredProperties.length} imóveis no mapa
-              </span>
-              <Button size="sm" variant="ghost" onClick={() => setShowMobileMap(false)}>
-                <X className="w-4 h-4 mr-1" />
-                Fechar
-              </Button>
-            </div>
-            <div className="flex-1">{renderMap()}</div>
-          </div>
-        </div>
-      )}
-
       {/* ===== ABOUT SECTION ===== */}
       {tenant?.about_text && (
         <section id="sobre" className="py-10 px-4 lg:px-8" style={{ backgroundColor: '#fff', borderTop: '1px solid #e8e4de' }}>
@@ -1753,21 +1936,47 @@ export default function ClientPortal() {
               <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Nome *</label>
-                  <input value={evalForm.nome} onChange={(e) => setEvalForm(f => ({ ...f, nome: e.target.value }))} placeholder="Seu nome completo" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                  <input value={evalForm.nome} maxLength={255} onChange={(e) => { setEvalForm(f => ({ ...f, nome: e.target.value })); setEvalErrors(prev => ({ ...prev, nome: undefined })); }} placeholder="Seu nome completo" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: evalErrors.nome ? '1px solid #ef4444' : '1px solid #e0dcd5', color: '#333' }} />
+                  {evalErrors.nome && <p className="text-[11px] mt-1 text-red-500">{evalErrors.nome}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>CEP</label>
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <input
+                      value={evalCep}
+                      maxLength={9}
+                      onChange={(e) => setEvalCep(formatCepInput(e.target.value))}
+                      onBlur={handleBuscarCepAvaliacao}
+                      placeholder="00000-000"
+                      className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2"
+                      style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleBuscarCepAvaliacao}
+                      disabled={isLoadingCep || evalCep.replace(/\D/g, '').length !== 8}
+                      className="px-3"
+                    >
+                      {isLoadingCep ? 'Buscando...' : 'Buscar'}
+                    </Button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Telefone *</label>
-                    <input value={evalForm.telefone} onChange={(e) => setEvalForm(f => ({ ...f, telefone: e.target.value }))} placeholder="(31) 99999-8888" type="tel" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                    <input value={evalForm.telefone} maxLength={16} onChange={(e) => { setEvalForm(f => ({ ...f, telefone: formatPhoneInput(e.target.value) })); setEvalErrors(prev => ({ ...prev, telefone: undefined })); }} placeholder="(31) 99999-8888" type="tel" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: evalErrors.telefone ? '1px solid #ef4444' : '1px solid #e0dcd5', color: '#333' }} />
+                    {evalErrors.telefone && <p className="text-[11px] mt-1 text-red-500">{evalErrors.telefone}</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>E-mail</label>
-                    <input value={evalForm.email} onChange={(e) => setEvalForm(f => ({ ...f, email: e.target.value }))} placeholder="seu@email.com" type="email" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                    <input value={evalForm.email} maxLength={255} onChange={(e) => { setEvalForm(f => ({ ...f, email: e.target.value })); setEvalErrors(prev => ({ ...prev, email: undefined })); }} placeholder="seu@email.com" type="email" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: evalErrors.email ? '1px solid #ef4444' : '1px solid #e0dcd5', color: '#333' }} />
+                    {evalErrors.email && <p className="text-[11px] mt-1 text-red-500">{evalErrors.email}</p>}
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Tipo de Imóvel</label>
-                  <select value={evalForm.tipo_imovel} onChange={(e) => setEvalForm(f => ({ ...f, tipo_imovel: e.target.value }))} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }}>
+                  <select value={evalForm.tipo_imovel} onChange={(e) => { setEvalForm(f => ({ ...f, tipo_imovel: e.target.value })); setEvalErrors(prev => ({ ...prev, tipo_imovel: undefined })); }} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: evalErrors.tipo_imovel ? '1px solid #ef4444' : '1px solid #e0dcd5', color: '#333' }}>
                     <option value="">Selecione...</option>
                     <option value="apartamento">Apartamento</option>
                     <option value="casa">Casa</option>
@@ -1776,24 +1985,29 @@ export default function ClientPortal() {
                     <option value="rural">Rural</option>
                     <option value="cobertura">Cobertura</option>
                   </select>
+                  {evalErrors.tipo_imovel && <p className="text-[11px] mt-1 text-red-500">{evalErrors.tipo_imovel}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Endereço do Imóvel</label>
-                  <input value={evalForm.endereco} onChange={(e) => setEvalForm(f => ({ ...f, endereco: e.target.value }))} placeholder="Rua, número" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                  <input value={evalForm.endereco} maxLength={500} onChange={(e) => { setEvalForm(f => ({ ...f, endereco: e.target.value })); setEvalErrors(prev => ({ ...prev, endereco: undefined })); }} placeholder="Rua, número" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: evalErrors.endereco ? '1px solid #ef4444' : '1px solid #e0dcd5', color: '#333' }} />
+                  {evalErrors.endereco && <p className="text-[11px] mt-1 text-red-500">{evalErrors.endereco}</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Bairro</label>
-                    <input value={evalForm.bairro} onChange={(e) => setEvalForm(f => ({ ...f, bairro: e.target.value }))} placeholder="Bairro" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                    <input value={evalForm.bairro} maxLength={100} onChange={(e) => { setEvalForm(f => ({ ...f, bairro: e.target.value })); setEvalErrors(prev => ({ ...prev, bairro: undefined })); }} placeholder="Bairro" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: evalErrors.bairro ? '1px solid #ef4444' : '1px solid #e0dcd5', color: '#333' }} />
+                    {evalErrors.bairro && <p className="text-[11px] mt-1 text-red-500">{evalErrors.bairro}</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Cidade</label>
-                    <input value={evalForm.cidade} onChange={(e) => setEvalForm(f => ({ ...f, cidade: e.target.value }))} placeholder="Cidade" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                    <input value={evalForm.cidade} maxLength={100} onChange={(e) => { setEvalForm(f => ({ ...f, cidade: e.target.value })); setEvalErrors(prev => ({ ...prev, cidade: undefined })); }} placeholder="Cidade" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: evalErrors.cidade ? '1px solid #ef4444' : '1px solid #e0dcd5', color: '#333' }} />
+                    {evalErrors.cidade && <p className="text-[11px] mt-1 text-red-500">{evalErrors.cidade}</p>}
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Observações</label>
-                  <textarea value={evalForm.observacoes} onChange={(e) => setEvalForm(f => ({ ...f, observacoes: e.target.value }))} placeholder="Detalhes adicionais sobre o imóvel..." rows={3} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                  <textarea value={evalForm.observacoes} maxLength={1000} onChange={(e) => { setEvalForm(f => ({ ...f, observacoes: e.target.value })); setEvalErrors(prev => ({ ...prev, observacoes: undefined })); }} placeholder="Detalhes adicionais sobre o imóvel..." rows={3} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none" style={{ backgroundColor: '#f5f3ee', border: evalErrors.observacoes ? '1px solid #ef4444' : '1px solid #e0dcd5', color: '#333' }} />
+                  {evalErrors.observacoes && <p className="text-[11px] mt-1 text-red-500">{evalErrors.observacoes}</p>}
                 </div>
                 <Button onClick={handleEvalSubmit} disabled={evalSubmitting} className="w-full text-white py-2.5 rounded-xl font-medium" style={{ backgroundColor: primary }}>
                   {evalSubmitting ? 'Enviando...' : 'Enviar Solicitação'}
@@ -1834,7 +2048,7 @@ export default function ClientPortal() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-white mb-3">Links</h4>
-              <button onClick={() => { setShowEvalModal(true); setEvalDone(false); }} className="block text-xs text-gray-400 hover:text-white mb-1.5">Avaliação de Imóvel</button>
+              <button onClick={openEvaluationModal} className="block text-xs text-gray-400 hover:text-white mb-1.5">Avaliação de Imóvel</button>
               {tenant?.contact_phone && (
                 <a href={`https://wa.me/${tenant.contact_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="block text-xs text-gray-400 hover:text-white mb-1.5">WhatsApp</a>
               )}
@@ -1861,6 +2075,7 @@ export default function ClientPortal() {
         isOpen={chatOpen}
         onOpenChange={setChatOpen}
         propertyContext={chatPropertyContext}
+        serviceContext={chatServiceContext}
       />
     </div>
   );

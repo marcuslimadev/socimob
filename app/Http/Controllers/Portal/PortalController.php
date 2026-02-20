@@ -434,6 +434,29 @@ class PortalController extends Controller
                 return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 404);
             }
 
+            $emailInput = $request->input('email');
+            if (is_string($emailInput)) {
+                $emailNormalized = mb_strtolower(trim($emailInput));
+                $noEmailTokens = [
+                    '',
+                    'pular',
+                    'nao',
+                    'não',
+                    'prefiro nao informar',
+                    'prefiro não informar',
+                    'sem email',
+                    'sem e-mail',
+                    'nao tenho email',
+                    'não tenho email',
+                    'nao tenho e-mail',
+                    'não tenho e-mail',
+                ];
+
+                if (in_array($emailNormalized, $noEmailTokens, true)) {
+                    $request->merge(['email' => null]);
+                }
+            }
+
             $validator = Validator::make($request->all(), [
                 'nome' => 'required|string|max:255',
                 'whatsapp' => 'required|string|max:20',

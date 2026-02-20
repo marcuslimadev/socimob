@@ -87,6 +87,32 @@ export default function Pessoas() {
   const [contatos, setContatos] = useState<Array<{ tipo: string; contato: string; descricao: string }>>([]);
   const { buscarCep, isLoading: isLoadingCep } = useViaCep();
 
+  const handleTipoChange = (tipo: 'fisica' | 'juridica') => {
+    setFormData((prev) => {
+      if (tipo === 'fisica') {
+        return {
+          ...prev,
+          tipo,
+          cnpj: '',
+          razao_social: '',
+          inscricao_estadual: '',
+          inscricao_municipal: '',
+        };
+      }
+
+      return {
+        ...prev,
+        tipo,
+        cpf: '',
+        rg: '',
+        orgao_expedidor: '',
+        data_expedicao: '',
+        cnh: '',
+        data_nascimento: '',
+      };
+    });
+  };
+
   const handleBuscarCep = async () => {
     if (!formData.cep) {
       toast.error('Digite um CEP');
@@ -238,6 +264,18 @@ export default function Pessoas() {
       return;
     }
 
+    if (formData.tipo === 'fisica' && !formData.cpf) {
+      toast.error('CPF é obrigatório para pessoa física');
+      setCurrentTab('documentos');
+      return;
+    }
+
+    if (formData.tipo === 'juridica' && (!formData.cnpj || !formData.razao_social)) {
+      toast.error('CNPJ e Razão Social são obrigatórios para pessoa jurídica');
+      setCurrentTab('documentos');
+      return;
+    }
+
     try {
       const dataToSend = {
         ...formData,
@@ -284,7 +322,9 @@ export default function Pessoas() {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Nome *</label>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                {formData.tipo === 'juridica' ? 'Nome Fantasia *' : 'Nome *'}
+              </label>
               <input
                 type="text"
                 value={formData.nome}
@@ -298,7 +338,7 @@ export default function Pessoas() {
               <label className="block text-sm font-medium text-foreground mb-1">Tipo *</label>
               <select
                 value={formData.tipo}
-                onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                onChange={(e) => handleTipoChange(e.target.value as 'fisica' | 'juridica')}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="fisica">Pessoa Física</option>
@@ -347,7 +387,7 @@ export default function Pessoas() {
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">CPF</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">CPF *</label>
                     <input
                       type="text"
                       value={formData.cpf}
@@ -414,7 +454,7 @@ export default function Pessoas() {
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">CNPJ</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">CNPJ *</label>
                   <input
                     type="text"
                     value={formData.cnpj}
@@ -424,7 +464,7 @@ export default function Pessoas() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Razão Social</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Razão Social *</label>
                   <input
                     type="text"
                     value={formData.razao_social}

@@ -101,7 +101,17 @@ class PessoasController extends Controller
             ], 422);
         }
 
-        $data = $validator->validated();
+        $data = $this->normalizarCamposPessoa($validator->validated());
+
+        $tipoErrors = $this->validarCamposObrigatoriosPorTipo($data);
+        if (!empty($tipoErrors)) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'messages' => $tipoErrors,
+            ], 422);
+        }
+
+        $data = $this->limparCamposPorTipo($data, $data['tipo'] ?? null);
         $data['tenant_id'] = $request->attributes->get('tenant_id');
         $data['pais'] = $data['pais'] ?? 'Brasil';
 
@@ -200,7 +210,26 @@ class PessoasController extends Controller
             ], 422);
         }
 
-        $pessoa->update($validator->validated());
+        $data = $this->normalizarCamposPessoa($validator->validated());
+        $tipoFinal = $data['tipo'] ?? $pessoa->tipo;
+
+        $dadosParaValidacao = array_merge([
+            'cpf' => $pessoa->cpf,
+            'cnpj' => $pessoa->cnpj,
+            'razao_social' => $pessoa->razao_social,
+        ], $data, ['tipo' => $tipoFinal]);
+
+        $tipoErrors = $this->validarCamposObrigatoriosPorTipo($dadosParaValidacao);
+        if (!empty($tipoErrors)) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'messages' => $tipoErrors,
+            ], 422);
+        }
+
+        $data = $this->limparCamposPorTipo($data, $tipoFinal);
+
+        $pessoa->update($data);
 
         return response()->json([
             'success' => true,
@@ -510,6 +539,86 @@ class PessoasController extends Controller
         }
 
         return $zipPath;
+    }
+
+    private function normalizarCamposPessoa(array $data): array
+    {
+        foreach (['cpf', 'cnpj', 'cep'] as $campo) {
+            if (array_key_exists($campo, $data) && $data[$campo] !== null) {
+                $data[$campo] = preg_replace('/\D+/', '', (string) $data[$campo]);
+                if ($data[$campo] === '') {
+                    $data[$campo] = null;
+                }
+            }
+        }
+
+        foreach (['telefone', 'celular'] as $campo) {
+            if (array_key_exists($campo, $data) && $data[$campo] !== null) {
+                $valor = trim((string) $data[$campo]);
+                $data[$campo] = $valor !== '' ? $valor : null;
+            }
+        }
+
+        if (array_key_exists('email', $data) && $data['email'] !== null) {
+            $email = trim((string) $data['email']);
+            $data['email'] = $email !== '' ? strtolower($email) : null;
+        }
+
+        if (array_key_exists('estado', $data) && $data['estado'] !== null) {
+            $estado = strtoupper(trim((string) $data['estado']));
+            $data['estado'] = $estado !== '' ? $estado : null;
+        }
+
+        foreach (['nome', 'razao_social', 'cidade', 'bairro', 'endereco', 'numero', 'complemento'] as $campo) {
+            if (array_key_exists($campo, $data) && $data[$campo] !== null) {
+                $valor = trim((string) $data[$campo]);
+                $data[$campo] = $valor !== '' ? $valor : null;
+            }
+        }
+
+        return $data;
+    }
+
+    private function validarCamposObrigatoriosPorTipo(array $data): array
+    {
+        $tipo = $data['tipo'] ?? null;
+        $errors = [];
+
+        if ($tipo === 'fisica' && empty($data['cpf'])) {
+            $errors['cpf'] = ['CPF é obrigatório para pessoa física.'];
+        }
+
+        if ($tipo === 'juridica') {
+            if (empty($data['cnpj'])) {
+                $errors['cnpj'] = ['CNPJ é obrigatório para pessoa jurídica.'];
+            }
+            if (empty($data['razao_social'])) {
+                $errors['razao_social'] = ['Razão social é obrigatória para pessoa jurídica.'];
+            }
+        }
+
+        return $errors;
+    }
+
+    private function limparCamposPorTipo(array $data, ?string $tipo): array
+    {
+        if ($tipo === 'fisica') {
+            $data['cnpj'] = null;
+            $data['razao_social'] = null;
+            $data['inscricao_estadual'] = null;
+            $data['inscricao_municipal'] = null;
+        }
+
+        if ($tipo === 'juridica') {
+            $data['cpf'] = null;
+            $data['rg'] = null;
+            $data['orgao_expedidor'] = null;
+            $data['data_expedicao'] = null;
+            $data['cnh'] = null;
+            $data['data_nascimento'] = null;
+        }
+
+        return $data;
     }
 
     private function buildPessoaDocumentoFileName(PessoaDocumento $documento, int $index): string

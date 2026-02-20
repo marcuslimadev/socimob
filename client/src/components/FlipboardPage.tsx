@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 
 interface FlipboardPageProps {
@@ -35,10 +35,18 @@ interface FlipboardPropertyCardProps {
     bairro: string;
     cidade: string;
     area_total?: number;
+    area_util?: number;
     quartos?: number;
     dormitorios?: number;
+    banheiros?: number;
+    garagem?: number;
+    descricao?: string;
+    finalidade_imovel?: string;
     imagem_destaque?: string;
     fotos?: Array<{ url: string; destaque: boolean }>;
+    imagens?: string[];
+    images?: string[];
+    photos?: string[];
   };
   primary?: string;
   onContactClick?: () => void;
@@ -51,7 +59,19 @@ export function FlipboardPropertyCard({
 }: FlipboardPropertyCardProps) {
   const price = property.valor_venda || property.valor_aluguel || 0;
   const bedrooms = property.quartos ?? property.dormitorios;
-  const image = property.imagem_destaque || property.fotos?.[0]?.url || '/placeholder.jpg';
+  const area = property.area_util || property.area_total;
+  const [imageIndex, setImageIndex] = useState(0);
+  const images = useMemo(() => {
+    const list: string[] = [];
+    if (property.imagem_destaque) list.push(property.imagem_destaque);
+    if (property.fotos?.length) list.push(...property.fotos.map((f) => f.url));
+    if (property.imagens?.length) list.push(...property.imagens);
+    if (property.images?.length) list.push(...property.images);
+    if (property.photos?.length) list.push(...property.photos);
+    const unique = Array.from(new Set(list.filter(Boolean)));
+    return unique.length > 0 ? unique : ['/placeholder.jpg'];
+  }, [property]);
+  const image = images[Math.min(imageIndex, images.length - 1)];
 
   const formatPrice = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -62,42 +82,78 @@ export function FlipboardPropertyCard({
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-white overflow-hidden">
+    <div className="w-full h-full flex flex-col bg-card text-card-foreground overflow-hidden">
       {/* Image section - 60% */}
-      <div className="flex-1 relative overflow-hidden bg-gray-200">
+      <div className="flex-1 relative overflow-hidden bg-muted">
         <motion.img
+          key={image}
           src={image}
           alt={property.titulo}
           className="w-full h-full object-cover"
-          initial={{ scale: 1 }}
-          whileHover={{ scale: 1.05 }}
-          transition={{ duration: 0.6 }}
+          initial={{ opacity: 0.7 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.25 }}
         />
         {/* Overlay gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+        {images.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setImageIndex((prev) => (prev - 1 + images.length) % images.length);
+              }}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/45 text-white text-lg"
+              aria-label="Foto anterior"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setImageIndex((prev) => (prev + 1) % images.length);
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/45 text-white text-lg"
+              aria-label="Próxima foto"
+            >
+              ›
+            </button>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+              {images.slice(0, 6).map((_, idx) => (
+                <span
+                  key={idx}
+                  className={`w-1.5 h-1.5 rounded-full ${idx === imageIndex ? 'bg-white' : 'bg-white/45'}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Info section - 40% */}
-      <div className="flex-1 p-8 flex flex-col justify-between bg-white">
+      <div className="flex-1 p-8 flex flex-col justify-between bg-card text-card-foreground">
         {/* Title and price */}
         <div>
           <h2 className="text-3xl font-bold mb-2" style={{ color: primary }}>
             {formatPrice(price)}
           </h2>
-          <p className="text-lg font-semibold text-gray-800 mb-1">{property.titulo}</p>
-          <p className="text-sm text-gray-600">
+          <p className="text-lg font-semibold text-foreground mb-1">{property.titulo}</p>
+          <p className="text-sm text-muted-foreground">
             {property.bairro}, {property.cidade}
           </p>
         </div>
 
         {/* Details */}
-        <div className="flex items-center gap-6 mb-6 py-4 border-t border-b border-gray-200">
-          {property.area_total && (
+        <div className="flex items-center gap-6 mb-6 py-4 border-t border-b border-border">
+          {area && (
             <div className="text-center">
               <p className="text-2xl font-bold" style={{ color: primary }}>
-                {property.area_total}
+                {area}
               </p>
-              <p className="text-xs text-gray-600">m²</p>
+              <p className="text-xs text-muted-foreground">m²</p>
             </div>
           )}
           {bedrooms && (
@@ -105,11 +161,17 @@ export function FlipboardPropertyCard({
               <p className="text-2xl font-bold" style={{ color: primary }}>
                 {bedrooms}
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 quarto{bedrooms > 1 ? 's' : ''}
               </p>
             </div>
           )}
+        </div>
+
+        <div className="text-xs text-muted-foreground -mt-2 mb-4 space-y-0.5">
+          {property.banheiros ? <p>{property.banheiros} banheiros</p> : null}
+          {property.garagem ? <p>{property.garagem} vagas</p> : null}
+          {property.descricao ? <p className="line-clamp-2">{property.descricao}</p> : null}
         </div>
 
         {/* CTA Button */}

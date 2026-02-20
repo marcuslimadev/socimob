@@ -19,6 +19,7 @@ import {
   FileSignature,
   UserRound,
   FileText,
+  FileSpreadsheet,
   Shield,
   Image,
   Sun,
@@ -171,6 +172,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     { icon: <Bell size={20} />, label: 'Notificações', href: '/notifications', badge: notificationCount || undefined },
     { icon: <CalendarClock size={20} />, label: 'Agenda', href: '/agenda' },
     { icon: <Wallet size={20} />, label: 'Financeiro', href: '/financeiro' },
+    { icon: <FileSpreadsheet size={20} />, label: 'Locação/Operação', href: '/financeiro/locacao' },
   ];
 
   // Menu adicional para admin

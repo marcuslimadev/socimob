@@ -25,6 +25,8 @@ const ClientPortal = lazy(() => import("./pages/ClientPortal"));
 const ClientPortalFlipboard = lazy(() => import("./pages/ClientPortalFlipboard"));
 const Agenda = lazy(() => import("./pages/Agenda"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
+const AdminGestaoLocacao = lazy(() => import("./pages/AdminGestaoLocacao"));
+const PortalPessoaFinanceiro = lazy(() => import("./pages/PortalPessoaFinanceiro"));
 const Vistorias = lazy(() => import("./pages/Vistorias"));
 const Assinaturas = lazy(() => import("./pages/Assinaturas"));
 const Pessoas = lazy(() => import("./pages/Pessoas"));
@@ -83,6 +85,8 @@ function Router() {
       <Route path="/portal/classic" component={ClientPortal} />
       <Route path="/agenda" component={Agenda} />
       <Route path="/financeiro" component={Financeiro} />
+      <Route path="/financeiro/locacao" component={AdminGestaoLocacao} />
+      <Route path="/portal/meu-financeiro" component={PortalPessoaFinanceiro} />
       <Route path="/vistorias" component={Vistorias} />
       <Route path="/vistorias/solicitacoes" component={VistoriaSolicitacoes} />
       <Route path="/vistorias/solicitacoes/kanban" component={VistoriaSolicitacoesKanban} />

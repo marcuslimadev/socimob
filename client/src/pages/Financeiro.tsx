@@ -1,13 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Banknote,
-  ClipboardCopy,
-  CreditCard,
-  History,
-  QrCode,
-  RefreshCcw,
-  User,
-} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Banknote, FileText, History, RefreshCcw, User } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -16,30 +8,49 @@ interface Corretor {
   id: number;
   name: string;
   email: string;
-  pix_key?: string | null;
-  pix_type?: string | null;
-  banco?: string | null;
-  agencia?: string | null;
-  conta?: string | null;
 }
 
-interface Comissao {
+interface PessoaTomador {
   id: number;
-  corretor_nome: string;
-  valor_venda: number;
-  percentual: number;
-  valor_comissao: number;
-  status: string;
-  nfse_numero?: string | null;
-  nfse_pdf_url?: string | null;
-  created_at: string;
+  nome: string;
+  tipo: 'fisica' | 'juridica';
+  cpf?: string | null;
+  cnpj?: string | null;
+  razao_social?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  celular?: string | null;
+  cep?: string | null;
+  endereco?: string | null;
+  numero?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
 }
 
-interface PaymentData {
-  comissao_id: number;
-  qrcode: string;
-  qrcode_base64?: string;
-  valor_comissao: number;
+interface FinanceiroItem {
+  id: number;
+  tipo_nota: 'corretagem' | 'aluguel';
+  corretor: {
+    id: number;
+    name: string;
+    email: string | null;
+  };
+  valor_total: number;
+  aliquota_iss: number;
+  valor_iss: number;
+  descricao_servico: string;
+  status: string;
+  financeiro_status: string;
+  forma_pagamento?: string | null;
+  vencimento?: string | null;
+  nfse: {
+    numero?: string | null;
+    pdf_url?: string | null;
+    xml_url?: string | null;
+    integracao_id?: string | null;
+  };
+  created_at?: string;
 }
 
 const formatCurrencyInput = (value: string) => {
@@ -60,42 +71,53 @@ const formatCurrency = (value: number) =>
   value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const statusStyles: Record<string, string> = {
+  pending: 'bg-yellow-500/20 text-yellow-200 border border-yellow-500/30',
+  issued: 'bg-blue-500/20 text-blue-200 border border-blue-500/30',
+  paid: 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30',
+  cancelled: 'bg-red-500/20 text-red-200 border border-red-500/30',
+  error: 'bg-red-500/20 text-red-200 border border-red-500/30',
+  created: 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/30',
+  lancado: 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/30',
   pendente: 'bg-yellow-500/20 text-yellow-200 border border-yellow-500/30',
-  processando: 'bg-blue-500/20 text-blue-200 border border-blue-500/30',
-  pago: 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30',
   cancelado: 'bg-red-500/20 text-red-200 border border-red-500/30',
-  approved: 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30',
 };
 
 export default function Financeiro() {
   const [corretores, setCorretores] = useState<Corretor[]>([]);
-  const [comissoes, setComissoes] = useState<Comissao[]>([]);
+  const [pessoasTomador, setPessoasTomador] = useState<PessoaTomador[]>([]);
+  const [items, setItems] = useState<FinanceiroItem[]>([]);
   const [corretorId, setCorretorId] = useState('');
-  const [valorVenda, setValorVenda] = useState('');
-  const [percentual, setPercentual] = useState('');
-  const [observacoes, setObservacoes] = useState('');
+  const [tipoNota, setTipoNota] = useState<'corretagem' | 'aluguel'>('corretagem');
+  const [valor, setValor] = useState('');
+  const [aliquotaIss, setAliquotaIss] = useState('5');
+  const [descricao, setDescricao] = useState('');
+
+  const [tomadorNome, setTomadorNome] = useState('');
+  const [tomadorDocumento, setTomadorDocumento] = useState('');
+  const [tomadorEmail, setTomadorEmail] = useState('');
+  const [tomadorTelefone, setTomadorTelefone] = useState('');
+  const [tomadorCep, setTomadorCep] = useState('');
+  const [tomadorLogradouro, setTomadorLogradouro] = useState('');
+  const [tomadorNumero, setTomadorNumero] = useState('');
+  const [tomadorBairro, setTomadorBairro] = useState('');
+  const [tomadorCidade, setTomadorCidade] = useState('Belo Horizonte');
+  const [tomadorUf, setTomadorUf] = useState('MG');
+  const [tomadorCodigoMunicipio, setTomadorCodigoMunicipio] = useState('3106200');
+  const [pessoaTomadorId, setPessoaTomadorId] = useState('');
+
+  const [formaPagamento, setFormaPagamento] = useState<'pix' | 'boleto'>('pix');
+  const [vencimento, setVencimento] = useState('');
   const [statusFiltro, setStatusFiltro] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const statusInterval = useRef<number | null>(null);
 
-  const corretorSelecionado = useMemo(
-    () => corretores.find((corretor) => corretor.id === Number(corretorId)),
-    [corretores, corretorId]
-  );
+  const valorNumerico = useMemo(() => parseCurrency(valor), [valor]);
+  const valorIss = useMemo(() => (valorNumerico * (Number(aliquotaIss) || 0)) / 100, [valorNumerico, aliquotaIss]);
 
-  const valorComissao = useMemo(() => {
-    const valor = parseCurrency(valorVenda);
-    const percentualNum = Number(percentual) || 0;
-    return (valor * percentualNum) / 100;
-  }, [valorVenda, percentual]);
-
-  const comissoesFiltradas = useMemo(() => {
-    if (!statusFiltro) return comissoes;
-    return comissoes.filter((comissao) => comissao.status === statusFiltro);
-  }, [comissoes, statusFiltro]);
+  const itensFiltrados = useMemo(() => {
+    if (!statusFiltro) return items;
+    return items.filter((item) => item.status === statusFiltro || item.financeiro_status === statusFiltro);
+  }, [items, statusFiltro]);
 
   const carregarCorretores = async () => {
     try {
@@ -109,118 +131,138 @@ export default function Financeiro() {
     }
   };
 
-  const carregarComissoes = async () => {
+  const carregarHistorico = async () => {
     setIsLoading(true);
     try {
-      const response = await api.get('/admin/comissoes');
+      const response = await api.get('/admin/financeiro/notas-servico');
       if (response.data?.success) {
-        setComissoes(response.data.comissoes || []);
+        setItems(response.data.items || []);
       } else {
-        setComissoes([]);
+        setItems([]);
       }
     } catch (error) {
-      console.error('Erro ao carregar comissões:', error);
-      toast.error('Não foi possível carregar o histórico');
+      console.error('Erro ao carregar histórico financeiro:', error);
+      toast.error('Não foi possível carregar histórico financeiro');
+      setItems([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const limparPagamento = () => {
-    if (statusInterval.current) {
-      window.clearInterval(statusInterval.current);
-      statusInterval.current = null;
-    }
-    setPaymentData(null);
-    setPaymentStatus(null);
-  };
-
-  const verificarStatusPagamento = async (comissaoId: number) => {
+  const carregarPessoasTomador = async () => {
     try {
-      const response = await api.get(`/admin/comissoes/${comissaoId}/status`);
-      if (response.data?.success) {
-        const status = response.data.status;
-        setPaymentStatus(status);
-        if (status === 'approved' || status === 'pago') {
-          toast.success('Pagamento confirmado');
-          limparPagamento();
-          carregarComissoes();
-        }
-      }
+      const response = await api.get('/pessoas', {
+        params: {
+          per_page: 100,
+          ativo: 1,
+        },
+      });
+
+      setPessoasTomador(response.data?.data || []);
     } catch (error) {
-      console.error('Erro ao verificar status:', error);
+      console.error('Erro ao carregar pessoas para tomador:', error);
+      setPessoasTomador([]);
     }
   };
 
-  const iniciarMonitoramento = (comissaoId: number) => {
-    if (statusInterval.current) {
-      window.clearInterval(statusInterval.current);
+  const preencherTomadorPorPessoa = (pessoa: PessoaTomador | undefined) => {
+    if (!pessoa) {
+      return;
     }
-    statusInterval.current = window.setInterval(() => {
-      verificarStatusPagamento(comissaoId);
-    }, 3000);
+
+    const documento = pessoa.tipo === 'juridica' ? pessoa.cnpj : pessoa.cpf;
+    setTomadorNome((pessoa.tipo === 'juridica' ? pessoa.razao_social : pessoa.nome) || pessoa.nome || '');
+    setTomadorDocumento(documento || '');
+    setTomadorEmail(pessoa.email || '');
+    setTomadorTelefone(pessoa.celular || pessoa.telefone || '');
+    setTomadorCep(pessoa.cep || '');
+    setTomadorLogradouro(pessoa.endereco || '');
+    setTomadorNumero(pessoa.numero || '');
+    setTomadorBairro(pessoa.bairro || '');
+    setTomadorCidade(pessoa.cidade || 'Belo Horizonte');
+    setTomadorUf(pessoa.estado || 'MG');
+  };
+
+  const limparFormulario = () => {
+    setValor('');
+    setDescricao('');
+    setPessoaTomadorId('');
+    setTomadorNome('');
+    setTomadorDocumento('');
+    setTomadorEmail('');
+    setTomadorTelefone('');
+    setTomadorCep('');
+    setTomadorLogradouro('');
+    setTomadorNumero('');
+    setTomadorBairro('');
+    setVencimento('');
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const valorVendaNum = parseCurrency(valorVenda);
-    const percentualNum = Number(percentual) || 0;
-
-    if (!corretorId || valorVendaNum <= 0 || percentualNum <= 0) {
-      toast.error('Preencha corretor, valor e percentual');
+    if (!corretorId || valorNumerico <= 0 || !tomadorNome || !tomadorDocumento) {
+      toast.error('Preencha os campos obrigatórios');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const response = await api.post('/admin/comissoes', {
+      const response = await api.post('/admin/financeiro/notas-servico', {
         corretor_id: Number(corretorId),
-        valor_venda: valorVendaNum,
-        percentual: percentualNum,
-        observacoes: observacoes || undefined,
+        tipo_nota: tipoNota,
+        valor: valorNumerico,
+        aliquota_iss: Number(aliquotaIss) || 0,
+        descricao: descricao || undefined,
+        tomador: {
+          nome: tomadorNome,
+          documento: tomadorDocumento,
+          email: tomadorEmail || undefined,
+          telefone: tomadorTelefone || undefined,
+          endereco: {
+            cep: tomadorCep || undefined,
+            logradouro: tomadorLogradouro || undefined,
+            numero: tomadorNumero || undefined,
+            bairro: tomadorBairro || undefined,
+            cidade: tomadorCidade || undefined,
+            uf: tomadorUf || undefined,
+            codigoMunicipio: tomadorCodigoMunicipio || undefined,
+          },
+        },
+        financeiro: {
+          vencimento: vencimento || undefined,
+          forma_pagamento: formaPagamento,
+          descricao:
+            tipoNota === 'aluguel'
+              ? 'Cobrança de aluguel - emissão com boleto'
+              : 'Cobrança de comissão',
+        },
       });
 
       if (response.data?.success) {
-        setPaymentData({
-          comissao_id: response.data.comissao_id,
-          qrcode: response.data.qrcode,
-          qrcode_base64: response.data.qrcode_base64,
-          valor_comissao: response.data.valor_comissao,
-        });
-        setPaymentStatus('processando');
-        iniciarMonitoramento(response.data.comissao_id);
-        toast.success('Comissão criada. Pagamento PIX gerado.');
-        setValorVenda('');
-        setPercentual('');
-        setObservacoes('');
+        toast.success(
+          tipoNota === 'aluguel' && formaPagamento === 'boleto'
+            ? 'Lançamento de aluguel emitido com fluxo de boleto'
+            : 'Lançamento financeiro emitido com sucesso'
+        );
+        limparFormulario();
+        await carregarHistorico();
       } else {
-        toast.error(response.data?.error || 'Erro ao criar comissão');
+        toast.error(response.data?.message || 'Erro ao emitir lançamento');
       }
     } catch (error: any) {
-      console.error('Erro ao criar comissão:', error);
-      toast.error(error?.response?.data?.error || 'Erro ao criar comissão');
+      console.error('Erro ao emitir lançamento:', error);
+      toast.error(error?.response?.data?.message || 'Erro ao emitir lançamento');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const copiarCodigoPix = async () => {
-    if (!paymentData?.qrcode) return;
-    try {
-      await navigator.clipboard.writeText(paymentData.qrcode);
-      toast.success('Código PIX copiado');
-    } catch (error) {
-      console.error('Erro ao copiar PIX:', error);
-      toast.error('Não foi possível copiar');
-    }
-  };
-
   useEffect(() => {
     carregarCorretores();
-    carregarComissoes();
-    return () => limparPagamento();
+    carregarPessoasTomador();
+    carregarHistorico();
   }, []);
 
   return (
@@ -235,11 +277,11 @@ export default function Financeiro() {
                 <Banknote size={32} className="text-emerald-300" />
                 Financeiro
               </h1>
-              <p className="page-subtitle">Controle de comissões e pagamento via PIX.</p>
+              <p className="page-subtitle">Gestão de comissão e aluguel com emissão fiscal e cobrança.</p>
             </div>
             <button
               type="button"
-              onClick={carregarComissoes}
+              onClick={carregarHistorico}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-white/20 sm:w-auto"
             >
               <RefreshCcw size={16} />
@@ -250,40 +292,56 @@ export default function Financeiro() {
           <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
             <div className="glass-panel p-6 rounded-2xl space-y-6">
               <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                <CreditCard size={20} />
-                Nova Comissão
+                <FileText size={20} />
+                Novo Lançamento
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <User size={16} />
-                    Corretor
-                  </label>
-                  <select
-                    value={corretorId}
-                    onChange={(event) => setCorretorId(event.target.value)}
-                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    required
-                  >
-                    <option value="">Selecione um corretor</option>
-                    {corretores.map((corretor) => (
-                      <option key={corretor.id} value={corretor.id}>
-                        {corretor.name} - {corretor.email}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Valor da venda</label>
+                    <label className="text-sm font-semibold text-foreground">Tipo de nota</label>
+                    <select
+                      value={tipoNota}
+                      onChange={(event) => {
+                        const value = event.target.value as 'corretagem' | 'aluguel';
+                        setTipoNota(value);
+                        if (value === 'aluguel') setFormaPagamento('boleto');
+                      }}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    >
+                      <option value="corretagem">Corretagem</option>
+                      <option value="aluguel">Aluguel</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <User size={16} /> Corretor
+                    </label>
+                    <select
+                      value={corretorId}
+                      onChange={(event) => setCorretorId(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      {corretores.map((corretor) => (
+                        <option key={corretor.id} value={corretor.id}>
+                          {corretor.name} - {corretor.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Valor</label>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">R$</span>
                       <input
                         type="text"
-                        value={valorVenda}
-                        onChange={(event) => setValorVenda(formatCurrencyInput(event.target.value))}
+                        value={valor}
+                        onChange={(event) => setValor(formatCurrencyInput(event.target.value))}
                         placeholder="0,00"
                         className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
                         required
@@ -291,57 +349,194 @@ export default function Financeiro() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Percentual</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        value={percentual}
-                        onChange={(event) => setPercentual(event.target.value)}
-                        placeholder="0"
-                        min="0"
-                        step="0.1"
-                        className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                        required
-                      />
-                      <span className="text-sm text-muted-foreground">%</span>
-                    </div>
+                    <label className="text-sm font-semibold text-foreground">Alíquota ISS (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={aliquotaIss}
+                      onChange={(event) => setAliquotaIss(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Vencimento</label>
+                    <input
+                      type="date"
+                      value={vencimento}
+                      onChange={(event) => setVencimento(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    />
                   </div>
                 </div>
 
                 <div className="rounded-2xl bg-white/5 border border-white/10 p-4 text-center">
-                  <p className="text-sm text-muted-foreground">Valor da comissão</p>
-                  <p className="text-3xl font-bold text-emerald-300">R$ {formatCurrency(valorComissao)}</p>
+                  <p className="text-sm text-muted-foreground">Base / ISS</p>
+                  <p className="text-2xl font-bold text-emerald-300">
+                    R$ {formatCurrency(valorNumerico)} / R$ {formatCurrency(valorIss)}
+                  </p>
                 </div>
 
-                {corretorSelecionado && (
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-2">
-                    <p className="text-sm font-semibold text-foreground">Dados bancários</p>
-                    {corretorSelecionado.pix_key && (
-                      <div className="text-sm text-muted-foreground">
-                        PIX ({corretorSelecionado.pix_type || 'N/A'}):{' '}
-                        <span className="text-foreground font-semibold">{corretorSelecionado.pix_key}</span>
-                      </div>
-                    )}
-                    {corretorSelecionado.banco && (
-                      <div className="text-sm text-muted-foreground">
-                        Banco: {corretorSelecionado.banco} • Agência: {corretorSelecionado.agencia || 'N/A'} •
-                        Conta: {corretorSelecionado.conta || 'N/A'}
-                      </div>
-                    )}
-                    {!corretorSelecionado.pix_key && !corretorSelecionado.banco && (
-                      <p className="text-sm text-yellow-200">Corretor sem dados bancários cadastrados.</p>
-                    )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-semibold text-foreground">Tomador (cadastro de pessoas)</label>
+                    <select
+                      value={pessoaTomadorId}
+                      onChange={(event) => {
+                        const id = event.target.value;
+                        setPessoaTomadorId(id);
+                        if (!id) return;
+
+                        const pessoa = pessoasTomador.find((item) => String(item.id) === id);
+                        preencherTomadorPorPessoa(pessoa);
+                      }}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    >
+                      <option value="">Preencher manualmente</option>
+                      {pessoasTomador.map((pessoa) => (
+                        <option key={pessoa.id} value={pessoa.id}>
+                          {pessoa.tipo === 'juridica'
+                            ? `${pessoa.razao_social || pessoa.nome} (PJ)`
+                            : `${pessoa.nome} (PF)`}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                )}
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Tomador - Nome</label>
+                    <input
+                      type="text"
+                      value={tomadorNome}
+                      onChange={(event) => setTomadorNome(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Tomador - CPF/CNPJ</label>
+                    <input
+                      type="text"
+                      value={tomadorDocumento}
+                      onChange={(event) => setTomadorDocumento(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Email</label>
+                    <input
+                      type="email"
+                      value={tomadorEmail}
+                      onChange={(event) => setTomadorEmail(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Telefone</label>
+                    <input
+                      type="text"
+                      value={tomadorTelefone}
+                      onChange={(event) => setTomadorTelefone(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">CEP</label>
+                    <input
+                      type="text"
+                      value={tomadorCep}
+                      onChange={(event) => setTomadorCep(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-semibold text-foreground">Logradouro</label>
+                    <input
+                      type="text"
+                      value={tomadorLogradouro}
+                      onChange={(event) => setTomadorLogradouro(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Número</label>
+                    <input
+                      type="text"
+                      value={tomadorNumero}
+                      onChange={(event) => setTomadorNumero(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Bairro</label>
+                    <input
+                      type="text"
+                      value={tomadorBairro}
+                      onChange={(event) => setTomadorBairro(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Cidade</label>
+                    <input
+                      type="text"
+                      value={tomadorCidade}
+                      onChange={(event) => setTomadorCidade(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">UF</label>
+                    <input
+                      type="text"
+                      value={tomadorUf}
+                      onChange={(event) => setTomadorUf(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Código do município (IBGE)</label>
+                    <input
+                      type="text"
+                      value={tomadorCodigoMunicipio}
+                      onChange={(event) => setTomadorCodigoMunicipio(event.target.value)}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Forma de pagamento</label>
+                    <select
+                      value={formaPagamento}
+                      onChange={(event) => setFormaPagamento(event.target.value as 'pix' | 'boleto')}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    >
+                      <option value="pix">PIX</option>
+                      <option value="boleto">Boleto</option>
+                    </select>
+                  </div>
+                </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-foreground">Observações</label>
+                  <label className="text-sm font-semibold text-foreground">Descrição de serviço (opcional)</label>
                   <textarea
-                    value={observacoes}
-                    onChange={(event) => setObservacoes(event.target.value)}
+                    value={descricao}
+                    onChange={(event) => setDescricao(event.target.value)}
                     rows={3}
                     className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    placeholder="Observações adicionais"
+                    placeholder="Se vazio, o backend gera automaticamente"
                   />
                 </div>
 
@@ -350,61 +545,22 @@ export default function Financeiro() {
                   disabled={isSubmitting}
                   className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold hover:from-emerald-600 hover:to-teal-600 transition disabled:opacity-60"
                 >
-                  {isSubmitting ? 'Processando...' : 'Gerar pagamento PIX'}
+                  {isSubmitting ? 'Emitindo...' : `Emitir ${tipoNota === 'aluguel' ? 'aluguel' : 'comissão'} com NFSe`}
                 </button>
               </form>
             </div>
 
             <div className="space-y-6">
-              {paymentData && (
-                <div className="glass-panel p-6 rounded-2xl space-y-4">
-                  <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                    <QrCode size={20} />
-                    Pagamento PIX
-                  </div>
-                  {paymentData.qrcode_base64 && (
-                    <div className="flex justify-center">
-                      <img
-                        src={`data:image/png;base64,${paymentData.qrcode_base64}`}
-                        alt="QR Code PIX"
-                        className="w-48 h-48 rounded-xl bg-white p-2"
-                      />
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Código PIX (copia e cola)</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={paymentData.qrcode}
-                        readOnly
-                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={copiarCodigoPix}
-                        className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition"
-                      >
-                        <ClipboardCopy size={16} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="rounded-xl bg-white/5 border border-white/10 p-3 text-sm text-muted-foreground">
-                    Status: <span className="text-foreground font-semibold">{paymentStatus || 'Aguardando'}</span>
-                  </div>
-                </div>
-              )}
-
               <div className="glass-panel p-6 rounded-2xl">
                 <div className="flex items-center gap-2 text-lg font-semibold text-foreground mb-4">
                   <Banknote size={20} />
-                  Como funciona
+                  Fluxo operacional
                 </div>
                 <ol className="space-y-2 text-sm text-muted-foreground">
-                  <li>Selecione o corretor e informe a venda.</li>
-                  <li>Confira o cálculo automático da comissão.</li>
-                  <li>Gere o PIX e acompanhe o status em tempo real.</li>
-                  <li>Após confirmação, a NFSe é emitida automaticamente.</li>
+                  <li>Crie um lançamento de corretagem ou aluguel.</li>
+                  <li>O backend emite a NFS-e na NFE.io.</li>
+                  <li>Para aluguel, selecione boleto para seguir fluxo de cobrança.</li>
+                  <li>Acompanhe status fiscal e financeiro no histórico abaixo.</li>
                 </ol>
               </div>
             </div>
@@ -414,7 +570,7 @@ export default function Financeiro() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                 <History size={20} />
-                Histórico de comissões
+                Histórico unificado (aluguel + comissão)
               </div>
               <select
                 value={statusFiltro}
@@ -422,52 +578,97 @@ export default function Financeiro() {
                 className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
               >
                 <option value="">Todos</option>
-                <option value="pendente">Pendentes</option>
-                <option value="processando">Processando</option>
-                <option value="pago">Pagos</option>
-                <option value="cancelado">Cancelados</option>
+                <option value="pending">Pendente</option>
+                <option value="issued">Emitida</option>
+                <option value="paid">Paga</option>
+                <option value="cancelled">Cancelada</option>
+                <option value="error">Erro</option>
+                <option value="lancado">Lançado</option>
+                <option value="created">Criado</option>
               </select>
             </div>
 
             {isLoading && <p className="text-muted-foreground">Carregando histórico...</p>}
 
-            {!isLoading && comissoesFiltradas.length === 0 && (
-              <p className="text-muted-foreground">Nenhuma comissão encontrada.</p>
+            {!isLoading && itensFiltrados.length === 0 && (
+              <p className="text-muted-foreground">Nenhum lançamento encontrado.</p>
             )}
 
             <div className="space-y-4">
               {!isLoading &&
-                comissoesFiltradas.map((comissao) => (
+                itensFiltrados.map((item) => (
                   <div
-                    key={comissao.id}
-                    className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl bg-white/5 border border-white/10 p-4"
+                    key={item.id}
+                    className="flex flex-col gap-4 rounded-2xl bg-white/5 border border-white/10 p-4"
                   >
-                    <div>
-                      <p className="font-semibold text-foreground">{comissao.corretor_nome}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Venda: R$ {formatCurrency(comissao.valor_venda)} • Comissão: R$ {formatCurrency(comissao.valor_comissao)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(comissao.created_at).toLocaleDateString('pt-BR')}
-                      </p>
-                      {comissao.nfse_pdf_url && (
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          {item.tipo_nota === 'aluguel' ? 'Aluguel' : 'Corretagem'} • {item.corretor.name}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Valor: R$ {formatCurrency(item.valor_total)} • ISS: R$ {formatCurrency(item.valor_iss)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{item.descricao_servico}</p>
+                        {item.created_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Criado em {new Date(item.created_at).toLocaleDateString('pt-BR')}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            statusStyles[item.status] || 'bg-white/10 text-muted-foreground'
+                          }`}
+                        >
+                          Fiscal: {item.status}
+                        </span>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            statusStyles[item.financeiro_status?.toLowerCase?.() || item.financeiro_status] ||
+                            'bg-white/10 text-muted-foreground'
+                          }`}
+                        >
+                          Financeiro: {item.financeiro_status}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                      <span>Pagamento: {item.forma_pagamento || 'N/A'}</span>
+                      <span>Vencimento: {item.vencimento || 'N/A'}</span>
+                      <span>NFSe nº: {item.nfse.numero || 'N/A'}</span>
+                    </div>
+
+                    <div className="flex gap-3">
+                      {item.nfse.pdf_url && (
                         <a
-                          href={comissao.nfse_pdf_url}
+                          href={item.nfse.pdf_url}
                           target="_blank"
                           rel="noreferrer"
                           className="text-xs text-blue-300 hover:text-blue-200"
                         >
-                          Baixar NFSe
+                          Baixar NFSe (PDF)
                         </a>
                       )}
+                      {item.nfse.xml_url && (
+                        <a
+                          href={item.nfse.xml_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-blue-300 hover:text-blue-200"
+                        >
+                          XML da NFSe
+                        </a>
+                      )}
+                      {item.tipo_nota === 'aluguel' && item.forma_pagamento === 'boleto' && (
+                        <span className="text-xs text-amber-300">
+                          Boleto: acompanhar integração financeira / webhook de baixa
+                        </span>
+                      )}
                     </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        statusStyles[comissao.status] || 'bg-white/10 text-muted-foreground'
-                      }`}
-                    >
-                      {comissao.status.toUpperCase()}
-                    </span>
                   </div>
                 ))}
             </div>
