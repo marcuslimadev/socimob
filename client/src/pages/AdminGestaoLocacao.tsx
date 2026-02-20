@@ -56,6 +56,18 @@ interface LancamentoItem {
   status: string;
 }
 
+interface PessoaItem {
+  id: number;
+  nome: string;
+  tipo?: string;
+}
+
+interface ImovelItem {
+  id: number;
+  titulo?: string;
+  codigo?: string;
+}
+
 type Tab = 'contratos' | 'cobrancas' | 'lancamentos' | 'chamados';
 
 // --- Helpers de label ---
@@ -175,6 +187,21 @@ export default function AdminGestaoLocacao() {
   const [chamadoBusca, setChamadoBusca] = useState('');
   const chamadoMensagensEndRef = useRef<HTMLDivElement | null>(null);
 
+  const [pessoas, setPessoas] = useState<PessoaItem[]>([]);
+  const [imoveis, setImoveis] = useState<ImovelItem[]>([]);
+  const [showFormContrato, setShowFormContrato] = useState(false);
+  const [isCreatingContrato, setIsCreatingContrato] = useState(false);
+  const [novoContrato, setNovoContrato] = useState({
+    locador_pessoa_id: '',
+    locatario_pessoa_id: '',
+    imovel_id: '',
+    status: 'ativo',
+    inicio: '',
+    fim: '',
+    dia_vencimento: '',
+    valor_aluguel: '',
+  });
+
   const contratosAtivos = useMemo(() => contratos.filter((c) => c.status === 'ativo').length, [contratos]);
 
   const lancamentosFiltrados = useMemo(() => {
@@ -248,16 +275,20 @@ export default function AdminGestaoLocacao() {
   const loadAll = async () => {
     setIsLoading(true);
     try {
-      const [contratosResp, cobrancasResp, lancamentosResp, chamadosResp] = await Promise.all([
+      const [contratosResp, cobrancasResp, lancamentosResp, chamadosResp, pessoasResp, imoveisResp] = await Promise.all([
         api.get('/admin/financeiro/contratos'),
         api.get('/admin/financeiro/cobrancas-contrato'),
         api.get('/admin/financeiro/lancamentos'),
         api.get('/admin/operacao/chamados'),
+        api.get('/pessoas?per_page=300'),
+        api.get('/admin/imoveis'),
       ]);
       setContratos(contratosResp.data?.items || []);
       setCobrancas(cobrancasResp.data?.items || []);
       setLancamentos(lancamentosResp.data?.items || []);
       setChamados(chamadosResp.data?.items || []);
+      setPessoas(pessoasResp.data?.data || []);
+      setImoveis(imoveisResp.data?.data || []);
     } catch {
       toast.error('Não foi possível carregar os dados');
     } finally {
@@ -266,6 +297,34 @@ export default function AdminGestaoLocacao() {
   };
 
   useEffect(() => { loadAll(); }, []);
+
+  const handleCreateContrato = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!novoContrato.locador_pessoa_id || !novoContrato.locatario_pessoa_id) {
+      toast.error('Locador e locatário são obrigatórios'); return;
+    }
+    setIsCreatingContrato(true);
+    try {
+      await api.post('/admin/financeiro/contratos', {
+        locador_pessoa_id: Number(novoContrato.locador_pessoa_id),
+        locatario_pessoa_id: Number(novoContrato.locatario_pessoa_id),
+        imovel_id: novoContrato.imovel_id ? Number(novoContrato.imovel_id) : undefined,
+        status: novoContrato.status || 'ativo',
+        inicio: novoContrato.inicio || undefined,
+        fim: novoContrato.fim || undefined,
+        dia_vencimento: novoContrato.dia_vencimento ? Number(novoContrato.dia_vencimento) : undefined,
+        valor_aluguel: novoContrato.valor_aluguel ? parsePtBrCurrency(novoContrato.valor_aluguel) : undefined,
+      });
+      toast.success('Contrato criado com sucesso');
+      setNovoContrato({ locador_pessoa_id: '', locatario_pessoa_id: '', imovel_id: '', status: 'ativo', inicio: '', fim: '', dia_vencimento: '', valor_aluguel: '' });
+      setShowFormContrato(false);
+      await loadAll();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Erro ao criar contrato');
+    } finally {
+      setIsCreatingContrato(false);
+    }
+  };
 
   const handleGenerateCharge = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -478,39 +537,174 @@ export default function AdminGestaoLocacao() {
             <>
               {/* ===== CONTRATOS ===== */}
               {activeTab === 'contratos' && (
-                <div className="glass-panel rounded-2xl overflow-auto">
-                  {contratos.length === 0 ? (
-                    <p className="p-8 text-center text-sm text-muted-foreground">Nenhum contrato cadastrado.</p>
-                  ) : (
-                    <table className="w-full min-w-[720px]">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <th className="text-left p-3 text-sm text-muted-foreground">ID</th>
-                          <th className="text-left p-3 text-sm text-muted-foreground">Imóvel</th>
-                          <th className="text-left p-3 text-sm text-muted-foreground">Locador</th>
-                          <th className="text-left p-3 text-sm text-muted-foreground">Locatário</th>
-                          <th className="text-left p-3 text-sm text-muted-foreground">Aluguel</th>
-                          <th className="text-left p-3 text-sm text-muted-foreground">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {contratos.map((item) => (
-                          <tr key={item.id} className="border-b border-border/50">
-                            <td className="p-3 text-muted-foreground text-sm">#{item.id}</td>
-                            <td className="p-3">{item.imovel?.titulo || item.imovel?.codigo || '-'}</td>
-                            <td className="p-3">{item.locador?.nome || '-'}</td>
-                            <td className="p-3">{item.locatario?.nome || '-'}</td>
-                            <td className="p-3">R$ {formatMoney(item.valor_aluguel)}</td>
-                            <td className="p-3">
-                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${statusBadgeClass(item.status)}`}>
-                                {statusLabel(item.status)}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                <div className="space-y-4">
+                  {/* Botão novo contrato */}
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowFormContrato((v) => !v)}
+                      className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm"
+                    >
+                      {showFormContrato ? 'Cancelar' : '+ Novo contrato'}
+                    </button>
+                  </div>
+
+                  {/* Formulário de novo contrato */}
+                  {showFormContrato && (
+                    <form onSubmit={handleCreateContrato} className="glass-panel rounded-2xl p-5 space-y-4">
+                      <h3 className="font-medium text-base">Novo contrato de locação</h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Locador <span className="text-red-500">*</span></label>
+                          <select
+                            value={novoContrato.locador_pessoa_id}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, locador_pessoa_id: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                            required
+                          >
+                            <option value="">Selecione o locador</option>
+                            {pessoas.map((p) => (
+                              <option key={p.id} value={p.id}>{p.nome}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Locatário <span className="text-red-500">*</span></label>
+                          <select
+                            value={novoContrato.locatario_pessoa_id}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, locatario_pessoa_id: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                            required
+                          >
+                            <option value="">Selecione o locatário</option>
+                            {pessoas.map((p) => (
+                              <option key={p.id} value={p.id}>{p.nome}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Imóvel</label>
+                          <select
+                            value={novoContrato.imovel_id}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, imovel_id: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                          >
+                            <option value="">Nenhum</option>
+                            {imoveis.map((im) => (
+                              <option key={im.id} value={im.id}>{im.titulo || im.codigo || `#${im.id}`}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Status</label>
+                          <select
+                            value={novoContrato.status}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, status: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                          >
+                            <option value="rascunho">Rascunho</option>
+                            <option value="ativo">Ativo</option>
+                            <option value="finalizado">Finalizado</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Início do contrato</label>
+                          <input
+                            type="date"
+                            value={novoContrato.inicio}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, inicio: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Fim do contrato</label>
+                          <input
+                            type="date"
+                            value={novoContrato.fim}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, fim: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Valor do aluguel (R$)</label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={novoContrato.valor_aluguel}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, valor_aluguel: normalizeCurrencyInput(e.target.value) }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                            placeholder="0,00"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Dia de vencimento</label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={31}
+                            value={novoContrato.dia_vencimento}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, dia_vencimento: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                            placeholder="Ex: 10"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button
+                          type="submit"
+                          disabled={isCreatingContrato}
+                          className="px-5 py-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-60"
+                        >
+                          {isCreatingContrato ? 'Salvando...' : 'Salvar contrato'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowFormContrato(false)}
+                          className="px-5 py-2 rounded-lg border border-border hover:bg-accent"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
                   )}
+
+                  {/* Tabela */}
+                  <div className="glass-panel rounded-2xl overflow-auto">
+                    {contratos.length === 0 ? (
+                      <p className="p-8 text-center text-sm text-muted-foreground">Nenhum contrato cadastrado.</p>
+                    ) : (
+                      <table className="w-full min-w-[720px]">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left p-3 text-sm text-muted-foreground">ID</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Imóvel</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Locador</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Locatário</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Aluguel</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {contratos.map((item) => (
+                            <tr key={item.id} className="border-b border-border/50">
+                              <td className="p-3 text-muted-foreground text-sm">#{item.id}</td>
+                              <td className="p-3">{item.imovel?.titulo || item.imovel?.codigo || '-'}</td>
+                              <td className="p-3">{item.locador?.nome || '-'}</td>
+                              <td className="p-3">{item.locatario?.nome || '-'}</td>
+                              <td className="p-3">R$ {formatMoney(item.valor_aluguel)}</td>
+                              <td className="p-3">
+                                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${statusBadgeClass(item.status)}`}>
+                                  {statusLabel(item.status)}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
                 </div>
               )}
 
