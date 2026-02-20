@@ -363,14 +363,14 @@ export default function ClientPortalRefined() {
         {/* Slideshow — up to 6 destaque properties */}
         {slideshowProperties.length > 0 && currentSlide && (
           <motion.article
-            className="mt-8 overflow-hidden rounded-[28px] bg-[#0f172a] text-white shadow-[0_16px_44px_rgba(15,23,42,0.22)]"
+            className="mt-8 h-[420px] sm:h-[460px] lg:h-[520px] overflow-hidden rounded-[28px] bg-[#0f172a] text-white shadow-[0_16px_44px_rgba(15,23,42,0.22)]"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="grid h-full lg:grid-cols-[1.05fr_0.95fr]">
               {/* Image with prev/next controls */}
-              <div className="relative h-[250px] lg:h-full min-h-[250px] lg:min-h-[300px]">
+              <div className="relative h-[250px] sm:h-[280px] lg:h-full">
                 <img
                   key={currentSlide.id}
                   src={normalizeImages(currentSlide)[0]}
@@ -408,12 +408,12 @@ export default function ClientPortalRefined() {
               </div>
 
               {/* Property info */}
-              <div className="p-6 lg:p-8 flex flex-col">
+              <div className="p-6 lg:p-8 flex flex-col overflow-hidden">
                 <p className="inline-flex self-start rounded-full border border-white/30 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-white/80">
                   {getPurpose(currentSlide)}
                 </p>
-                <h2 className="mt-4 text-2xl lg:text-3xl leading-tight">{currentSlide.titulo}</h2>
-                <p className="mt-2 text-sm text-white/70 flex items-center gap-1.5"><MapPin className="w-4 h-4" />{getPublicLocation(currentSlide)}</p>
+                <h2 className="mt-4 text-2xl lg:text-3xl leading-tight line-clamp-2">{currentSlide.titulo}</h2>
+                <p className="mt-2 text-sm text-white/70 flex items-center gap-1.5 line-clamp-1"><MapPin className="w-4 h-4 shrink-0" />{getPublicLocation(currentSlide)}</p>
                 <p className="mt-4 text-3xl" style={{ color: secondary }}>{formatPrice(currentSlide)}</p>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] text-white/80">
                   <p className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" />{currentSlide.quartos || currentSlide.dormitorios || '--'}</p>
