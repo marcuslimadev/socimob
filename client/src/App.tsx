@@ -22,7 +22,6 @@ const Login = lazy(() => import("./pages/Login"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ClientPortal = lazy(() => import("./pages/ClientPortal"));
-const ClientPortalFlipboard = lazy(() => import("./pages/ClientPortalFlipboard"));
 const Agenda = lazy(() => import("./pages/Agenda"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
 const AdminGestaoLocacao = lazy(() => import("./pages/AdminGestaoLocacao"));
@@ -67,7 +66,7 @@ function Router() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
-      <Route path={"/"} component={ClientPortalFlipboard} />
+      <Route path={"/"} component={ClientPortal} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/crm" component={CRM} />
       <Route path="/leads" component={Leads} />
@@ -81,7 +80,7 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/portal/imovel/:id" component={PropertyDetail} />
-      <Route path="/portal" component={ClientPortalFlipboard} />
+      <Route path="/portal" component={ClientPortal} />
       <Route path="/portal/classic" component={ClientPortal} />
       <Route path="/agenda" component={Agenda} />
       <Route path="/financeiro" component={Financeiro} />
