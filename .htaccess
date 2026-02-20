@@ -17,6 +17,11 @@ DirectoryIndex index.html index.php
     RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
     RewriteRule ^uploads/(.*)$ public/uploads/$1 [L]
 
+    # Servir assets do frontend que ficam fisicamente em /public/assets
+    RewriteCond %{REQUEST_URI} ^/assets/ [NC]
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
+    RewriteRule ^assets/(.*)$ public/assets/$1 [L]
+
     # Exceção para arquivos do storage (mídia do WhatsApp)
     RewriteCond %{REQUEST_URI} ^/storage/ [NC]
     RewriteRule ^ - [L]
