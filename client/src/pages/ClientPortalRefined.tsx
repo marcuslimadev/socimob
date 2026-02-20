@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, Bath, BedDouble, Mail, MapPin, MessageCircle, Phone, Search, Square, UserRound } from 'lucide-react';
+import { ArrowUpRight, Bath, BedDouble, ChevronLeft, ChevronRight, Mail, MapPin, MessageCircle, Phone, Search, Square, UserRound } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
@@ -90,6 +90,8 @@ export default function ClientPortalRefined() {
   const [searchTerm, setSearchTerm] = useState('');
   const [businessType, setBusinessType] = useState('');
   const [propertyType, setPropertyType] = useState('');
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   const primary = tenant?.primary_color || '#0f172a';
   const secondary = tenant?.secondary_color || '#c39a66';
@@ -121,6 +123,34 @@ export default function ClientPortalRefined() {
     loadProperties();
   }, []);
 
+  // Up to 6 destaque properties for the slideshow
+  const destaqueProperties = useMemo(
+    () => properties.filter((p) => p.destaque).slice(0, 6),
+    [properties]
+  );
+
+  // Fallback to first property if no destaque ones
+  const slideshowProperties = useMemo(
+    () => (destaqueProperties.length > 0 ? destaqueProperties : properties.slice(0, 1)),
+    [destaqueProperties, properties]
+  );
+
+  const currentSlide = slideshowProperties[slideIndex] ?? null;
+
+  // Auto-advance every 5 seconds
+  useEffect(() => {
+    if (slideshowProperties.length <= 1 || isPaused) return;
+    const timer = setInterval(() => {
+      setSlideIndex((i) => (i + 1) % slideshowProperties.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [slideshowProperties.length, isPaused]);
+
+  // Reset slide index when properties change
+  useEffect(() => {
+    setSlideIndex(0);
+  }, [slideshowProperties.length]);
+
   const filteredProperties = useMemo(() => {
     return properties
       .filter((property) => {
@@ -147,9 +177,6 @@ export default function ClientPortalRefined() {
         return aPrice - bPrice;
       });
   }, [properties, searchTerm, businessType, propertyType]);
-
-  const featuredProperty = filteredProperties[0];
-  const listProperties = filteredProperties.slice(1);
 
   const whatsappLink = useMemo(() => {
     const phone = tenant?.contact_phone?.replace(/\D/g, '');
@@ -229,8 +256,8 @@ export default function ClientPortalRefined() {
       </header>
 
       <section className="relative overflow-hidden" style={{ background: `linear-gradient(115deg, ${primary}f0 0%, #0a0d16 100%)` }}>
-        {featuredProperty && (
-          <img src={normalizeImages(featuredProperty)[0]} alt="Destaque" className="absolute inset-0 w-full h-full object-cover opacity-25" />
+        {currentSlide && (
+          <img src={normalizeImages(currentSlide)[0]} alt="Destaque" className="absolute inset-0 w-full h-full object-cover opacity-25 transition-all duration-700" />
         )}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_35%)]" />
 
@@ -239,9 +266,9 @@ export default function ClientPortalRefined() {
             <p className="text-[11px] uppercase tracking-[0.24em] text-white/80 mb-4">Signature Real Estate</p>
             <h1 className="text-4xl md:text-6xl leading-[1.02] text-white">Imóveis extraordinarios para estilos de vida unicos</h1>
             <p className="mt-5 text-white/75 max-w-2xl">{tenant?.slogan || 'Curadoria de residencias e investimentos em localizacoes de alto potencial.'}</p>
-            {featuredProperty && (
+            {currentSlide && (
               <p className="mt-4 inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-white/85">
-                Destaque: {featuredProperty.bairro}, {featuredProperty.cidade}
+                Destaque: {currentSlide.bairro}, {currentSlide.cidade}
               </p>
             )}
             <div className="mt-7 flex flex-wrap gap-3">
@@ -254,10 +281,10 @@ export default function ClientPortalRefined() {
                 Ver colecao
                 <ArrowUpRight className="w-4 h-4" />
               </button>
-              {featuredProperty && (
+              {currentSlide && (
                 <button
                   type="button"
-                  onClick={() => navigate(`/portal/imovel/${featuredProperty.id}`)}
+                  onClick={() => navigate(`/portal/imovel/${currentSlide.id}`)}
                   className="inline-flex items-center gap-2 rounded-full border border-white/30 px-5 py-3 text-sm font-semibold text-white"
                 >
                   Imovel em destaque
@@ -269,7 +296,7 @@ export default function ClientPortalRefined() {
           <div className="grid grid-cols-2 gap-3">
             {[
               { label: 'Imoveis ativos', value: properties.length || '--' },
-              { label: 'Destaques', value: properties.filter((property) => property.destaque).length || '--' },
+              { label: 'Destaques', value: destaqueProperties.length || '--' },
               { label: 'Cidades', value: new Set(properties.map((property) => property.cidade)).size || '--' },
               { label: 'Atendimento', value: tenant?.contact_phone ? '24/7' : '--' },
             ].map((stat) => (
@@ -310,36 +337,89 @@ export default function ClientPortalRefined() {
           </div>
         </div>
 
-        {featuredProperty && (
+        {/* Slideshow — up to 6 destaque properties */}
+        {slideshowProperties.length > 0 && currentSlide && (
           <motion.article
             className="mt-8 overflow-hidden rounded-[28px] border border-black/10 bg-[#0f172a] text-white shadow-[0_16px_44px_rgba(15,23,42,0.22)]"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
           >
             <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
-              <img
-                src={normalizeImages(featuredProperty)[0]}
-                alt={featuredProperty.titulo}
-                className="h-[300px] lg:h-full w-full object-cover"
-                loading="lazy"
-              />
-              <div className="p-6 lg:p-8">
-                <p className="inline-flex rounded-full border border-white/30 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-white/80">
-                  {getPurpose(featuredProperty)}
+              {/* Image with prev/next controls */}
+              <div className="relative h-[300px] lg:h-full min-h-[300px]">
+                <img
+                  key={currentSlide.id}
+                  src={normalizeImages(currentSlide)[0]}
+                  alt={currentSlide.titulo}
+                  className="w-full h-full object-cover transition-opacity duration-500"
+                  loading="lazy"
+                />
+                {/* Slide counter */}
+                {slideshowProperties.length > 1 && (
+                  <span className="absolute top-3 right-3 rounded-full bg-black/50 px-3 py-1 text-[11px] text-white/90 tracking-wide">
+                    {slideIndex + 1} / {slideshowProperties.length}
+                  </span>
+                )}
+                {/* Prev / Next arrows */}
+                {slideshowProperties.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Anterior"
+                      onClick={() => setSlideIndex((i) => (i - 1 + slideshowProperties.length) % slideshowProperties.length)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Proximo"
+                      onClick={() => setSlideIndex((i) => (i + 1) % slideshowProperties.length)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Property info */}
+              <div className="p-6 lg:p-8 flex flex-col">
+                <p className="inline-flex self-start rounded-full border border-white/30 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-white/80">
+                  {getPurpose(currentSlide)}
                 </p>
-                <h2 className="mt-4 text-2xl lg:text-3xl leading-tight">{featuredProperty.titulo}</h2>
-                <p className="mt-2 text-sm text-white/70 flex items-center gap-1.5"><MapPin className="w-4 h-4" />{featuredProperty.bairro}, {featuredProperty.cidade}</p>
-                <p className="mt-4 text-3xl" style={{ color: secondary }}>{formatPrice(featuredProperty)}</p>
+                <h2 className="mt-4 text-2xl lg:text-3xl leading-tight">{currentSlide.titulo}</h2>
+                <p className="mt-2 text-sm text-white/70 flex items-center gap-1.5"><MapPin className="w-4 h-4" />{currentSlide.bairro}, {currentSlide.cidade}</p>
+                <p className="mt-4 text-3xl" style={{ color: secondary }}>{formatPrice(currentSlide)}</p>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] text-white/80">
-                  <p className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" />{featuredProperty.quartos || featuredProperty.dormitorios || '--'}</p>
-                  <p className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{featuredProperty.banheiros || '--'}</p>
-                  <p className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{featuredProperty.area_util || featuredProperty.area_total || '--'}m2</p>
+                  <p className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" />{currentSlide.quartos || currentSlide.dormitorios || '--'}</p>
+                  <p className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{currentSlide.banheiros || '--'}</p>
+                  <p className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{currentSlide.area_util || currentSlide.area_total || '--'}m2</p>
                 </div>
+
+                {/* Dot indicators */}
+                {slideshowProperties.length > 1 && (
+                  <div className="mt-5 flex gap-2">
+                    {slideshowProperties.map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        aria-label={`Slide ${i + 1}`}
+                        onClick={() => setSlideIndex(i)}
+                        className="w-2 h-2 rounded-full transition-all duration-300"
+                        style={{ backgroundColor: i === slideIndex ? secondary : 'rgba(255,255,255,0.3)' }}
+                      />
+                    ))}
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => navigate(`/portal/imovel/${featuredProperty.id}`)}
-                  className="mt-6 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold"
+                  onClick={() => navigate(`/portal/imovel/${currentSlide.id}`)}
+                  className="mt-auto pt-6 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold self-start"
                   style={{ backgroundColor: secondary, color: '#111827' }}
                 >
                   Ver imovel destaque
@@ -351,7 +431,7 @@ export default function ClientPortalRefined() {
         )}
 
         <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {listProperties.map((property, index) => {
+          {filteredProperties.map((property, index) => {
             const image = normalizeImages(property)[0];
             return (
               <motion.article
