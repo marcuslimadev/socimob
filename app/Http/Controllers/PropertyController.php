@@ -38,6 +38,73 @@ class PropertyController extends Controller
         return $user->id ?? null;
     }
 
+    private function resolveTenantOpenAiKey(int $tenantId): ?string
+    {
+        $tenantConfig = DB::table('tenant_configs')
+            ->where('tenant_id', $tenantId)
+            ->first();
+
+        $openaiKey = null;
+        if ($tenantConfig) {
+            if (!empty($tenantConfig->settings)) {
+                $settings = json_decode($tenantConfig->settings, true);
+                if (is_array($settings)) {
+                    $openaiKey = $settings['openai_api_key'] ?? null;
+                }
+            }
+
+            if (!$openaiKey) {
+                $slug = $tenantConfig->slug ?? '';
+                if ($slug) {
+                    $envKey = strtoupper($slug) . '_OPENAI_API_KEY';
+                    $openaiKey = env($envKey);
+                }
+            }
+        }
+
+        if (!$openaiKey) {
+            $openaiKey = env('OPENAI_API_KEY');
+        }
+
+        return $openaiKey ?: null;
+    }
+
+    private function fallbackDescriptions(array $payload): array
+    {
+        $tipo = $payload['tipo_imovel'] ?? 'imovel';
+        $quartos = (int) ($payload['dormitorios'] ?? 0);
+        $banheiros = (int) ($payload['banheiros'] ?? 0);
+        $area = $payload['area_total'] ?? null;
+        $bairro = $payload['bairro'] ?? '';
+        $cidade = $payload['cidade'] ?? '';
+        $estado = $payload['estado'] ?? '';
+        $valor = (float) ($payload['valor_venda'] ?? 0);
+
+        $headline = ucfirst(str_replace('_', ' ', $tipo));
+        $descricao = "{$headline} em {$bairro}, {$cidade}/{$estado}.";
+        if ($quartos > 0) {
+            $descricao .= " {$quartos} quartos.";
+        }
+        if ($banheiros > 0) {
+            $descricao .= " {$banheiros} banheiros.";
+        }
+        if ($area) {
+            $descricao .= " {$area}m² de área.";
+        }
+        if ($valor > 0) {
+            $descricao .= " Valor: R$ " . number_format($valor, 2, ',', '.') . ".";
+        }
+        $descricao .= " Entre em contato para mais detalhes e agendamento de visita.";
+
+        $resumo = trim("{$headline} | {$bairro}, {$cidade}/{$estado}" . ($quartos > 0 ? " | {$quartos}q" : '') . ($valor > 0 ? " | R$ " . number_format($valor, 0, ',', '.') : ''));
+
+        return [
+            'descricao' => trim($descricao),
+            'descricao_resumida' => substr($resumo, 0, 220),
+            'fallback' => true,
+        ];
+    }
+
     /**
      * Lista de colunas reais da tabela de imóveis (cache por request).
      */
@@ -473,6 +540,7 @@ class PropertyController extends Controller
             'em_condominio' => 'nullable|boolean',
             'nome_condominio' => 'nullable|string|max:255',
             'descricao' => 'nullable|string',
+            'descricao_resumida' => 'nullable|string|max:1000',
             'active' => 'nullable|boolean',
             'exibir_imovel' => 'nullable|boolean',
             'destaque' => 'nullable|boolean',
@@ -702,6 +770,7 @@ class PropertyController extends Controller
             'em_condominio' => 'nullable|boolean',
             'nome_condominio' => 'nullable|string|max:255',
             'descricao' => 'nullable|string',
+            'descricao_resumida' => 'nullable|string|max:1000',
             'active' => 'nullable|boolean',
             'exibir_imovel' => 'nullable|boolean',
             'destaque' => 'nullable|boolean',
@@ -958,6 +1027,148 @@ class PropertyController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Gerar descrição completa + resumida com IA para cadastro/edição de imóvel
+     *
+     * POST /api/imoveis/ai/gerar-descricao
+     */
+    public function generateDescriptions(Request $request)
+    {
+        try {
+            $tenantId = $this->resolveTenantId($request);
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'No tenant context'], 400);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'tipo_imovel' => 'required|string|max:100',
+                'finalidade_imovel' => 'nullable|string|max:50',
+                'valor_venda' => 'nullable|numeric|min:0',
+                'cidade' => 'required|string|max:100',
+                'estado' => 'required|string|max:10',
+                'bairro' => 'nullable|string|max:100',
+                'dormitorios' => 'nullable|integer|min:0',
+                'banheiros' => 'nullable|integer|min:0',
+                'garagem' => 'nullable|integer|min:0',
+                'area_total' => 'nullable|numeric|min:0',
+                'descricao_base' => 'nullable|string|max:5000',
+                'tom' => 'nullable|string|in:premium,tecnico,acolhedor,objetivo',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Validation failed',
+                    'messages' => $validator->errors(),
+                ], 422);
+            }
+
+            $data = $validator->validated();
+            $openaiKey = $this->resolveTenantOpenAiKey((int) $tenantId);
+            if (!$openaiKey) {
+                $fallback = $this->fallbackDescriptions($data);
+                return response()->json([
+                    'success' => true,
+                    'data' => $fallback,
+                    'warning' => 'OpenAI nao configurada para este tenant. Retorno em modo fallback.',
+                ]);
+            }
+
+            $tom = $data['tom'] ?? 'premium';
+            $descricaoBase = trim((string) ($data['descricao_base'] ?? ''));
+            $location = trim(($data['bairro'] ?? '') . ', ' . ($data['cidade'] ?? '') . '/' . ($data['estado'] ?? ''), ', ');
+            $finalidade = $data['finalidade_imovel'] ?? 'venda';
+
+            $prompt = "Crie duas versões de texto para anúncio de imóvel em português-BR.
+
+Formato de resposta obrigatório:
+{
+  \"descricao\": \"texto longo com 2 a 4 parágrafos\",
+  \"descricao_resumida\": \"texto curto com até 220 caracteres\"
+}
+
+Dados do imóvel:
+- Tipo: {$data['tipo_imovel']}
+- Finalidade: {$finalidade}
+- Localização: {$location}
+- Valor: R$ " . number_format((float) ($data['valor_venda'] ?? 0), 2, ',', '.') . "
+- Dormitórios: " . ((int) ($data['dormitorios'] ?? 0)) . "
+- Banheiros: " . ((int) ($data['banheiros'] ?? 0)) . "
+- Garagem: " . ((int) ($data['garagem'] ?? 0)) . "
+- Área total: " . ($data['area_total'] ?? 0) . "m²
+- Tom desejado: {$tom}
+" . ($descricaoBase !== '' ? "\nDescrição base informada pelo usuário:\n{$descricaoBase}\n" : '') . "
+Regras:
+- Não invente informações que não estão nos dados.
+- Não use emojis.
+- O texto resumido deve ser claro e comercial.";
+
+            $ch = curl_init('https://api.openai.com/v1/chat/completions');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_TIMEOUT => 60,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'Authorization: Bearer ' . $openaiKey,
+                ],
+                CURLOPT_POSTFIELDS => json_encode([
+                    'model' => 'gpt-4o-mini',
+                    'messages' => [
+                        ['role' => 'system', 'content' => 'Você é redator imobiliário. Responda apenas JSON válido.'],
+                        ['role' => 'user', 'content' => $prompt],
+                    ],
+                    'temperature' => 0.5,
+                    'max_tokens' => 700,
+                    'response_format' => ['type' => 'json_object'],
+                ]),
+            ]);
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode !== 200 || !$response) {
+                \Log::warning('generateDescriptions: OpenAI failed, using fallback', [
+                    'tenant_id' => $tenantId,
+                    'http_code' => $httpCode,
+                    'response' => $response,
+                ]);
+                $fallback = $this->fallbackDescriptions($data);
+                return response()->json(['success' => true, 'data' => $fallback, 'warning' => 'IA indisponível, fallback aplicado.']);
+            }
+
+            $decoded = json_decode($response, true);
+            $content = $decoded['choices'][0]['message']['content'] ?? '';
+            $payload = is_string($content) ? json_decode($content, true) : null;
+
+            if (!is_array($payload) || !isset($payload['descricao']) || !isset($payload['descricao_resumida'])) {
+                $fallback = $this->fallbackDescriptions($data);
+                return response()->json(['success' => true, 'data' => $fallback, 'warning' => 'Resposta da IA inválida, fallback aplicado.']);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'descricao' => trim((string) $payload['descricao']),
+                    'descricao_resumida' => substr(trim((string) $payload['descricao_resumida']), 0, 220),
+                    'fallback' => false,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('generateDescriptions error', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Erro ao gerar descrições com IA',
             ], 500);
         }
     }

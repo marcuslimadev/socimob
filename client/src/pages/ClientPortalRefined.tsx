@@ -91,7 +91,6 @@ export default function ClientPortalRefined() {
   const [businessType, setBusinessType] = useState('');
   const [propertyType, setPropertyType] = useState('');
   const [slideIndex, setSlideIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
   const [sortBy, setSortBy] = useState('preco_asc');
 
   const primary = tenant?.primary_color || '#0f172a';
@@ -138,14 +137,14 @@ export default function ClientPortalRefined() {
 
   const currentSlide = slideshowProperties[slideIndex] ?? null;
 
-  // Auto-advance every 5 seconds
+  // Auto-advance every 5 seconds — always on, no pause on hover
   useEffect(() => {
-    if (slideshowProperties.length <= 1 || isPaused) return;
+    if (slideshowProperties.length <= 1) return;
     const timer = setInterval(() => {
       setSlideIndex((i) => (i + 1) % slideshowProperties.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [slideshowProperties.length, isPaused]);
+  }, [slideshowProperties.length]);
 
   // Reset slide index when properties change
   useEffect(() => {
@@ -358,12 +357,10 @@ export default function ClientPortalRefined() {
         {/* Slideshow — up to 6 destaque properties */}
         {slideshowProperties.length > 0 && currentSlide && (
           <motion.article
-            className="mt-8 overflow-hidden rounded-[28px] border border-black/10 bg-[#0f172a] text-white shadow-[0_16px_44px_rgba(15,23,42,0.22)]"
+            className="mt-8 overflow-hidden rounded-[28px] bg-[#0f172a] text-white shadow-[0_16px_44px_rgba(15,23,42,0.22)]"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
           >
             <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
               {/* Image with prev/next controls */}

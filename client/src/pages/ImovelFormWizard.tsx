@@ -20,6 +20,35 @@ import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { useViaCep } from '@/hooks/useViaCep';
 
+// Formata CEP em tempo real: "01310100" → "01310-100"
+function formatCep(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+// Formata dígitos em tempo real para pt-BR: "1500000" → "1.500.000,00"
+function formatCurrencyInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  const number = parseInt(digits, 10) / 100;
+  return number.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Converte "1.500.000,00" → "1500000.00" para envio ao backend
+function parseCurrencyInput(value: string): string {
+  if (!value) return '';
+  return value.replace(/\./g, '').replace(',', '.');
+}
+
+// Formata número vindo do banco → string pt-BR para exibição no input
+function numberToCurrencyInput(value: number | string | null | undefined): string {
+  if (value == null || value === '') return '';
+  const n = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(n)) return '';
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 const defaultFormData = {
   tipo_imovel: 'apartamento',
   finalidade_imovel: 'venda',
@@ -43,6 +72,7 @@ const defaultFormData = {
   em_condominio: false,
   nome_condominio: '',
   descricao: '',
+  descricao_resumida: '',
   active: true,
   exibir_imovel: true,
   exclusividade: false,
@@ -73,6 +103,7 @@ export default function ImovelFormWizard() {
   
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [isLoadingProperty, setIsLoadingProperty] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [formData, setFormData] = useState(defaultFormData);
@@ -116,9 +147,9 @@ export default function ImovelFormWizard() {
         setFormData({
           tipo_imovel: item.tipo_imovel || 'apartamento',
           finalidade_imovel: item.finalidade_imovel || 'venda',
-          valor_venda: item.valor_venda != null ? String(item.valor_venda) : '',
-          valor_condominio: item.valor_condominio != null ? String(item.valor_condominio) : '',
-          valor_iptu: item.valor_iptu != null ? String(item.valor_iptu) : '',
+          valor_venda: numberToCurrencyInput(item.valor_venda),
+          valor_condominio: numberToCurrencyInput(item.valor_condominio),
+          valor_iptu: numberToCurrencyInput(item.valor_iptu),
           dormitorios: item.dormitorios != null ? String(item.dormitorios) : '',
           suites: item.suites != null ? String(item.suites) : '',
           banheiros: item.banheiros != null ? String(item.banheiros) : '',
@@ -136,6 +167,7 @@ export default function ImovelFormWizard() {
           em_condominio: Boolean(item.em_condominio),
           nome_condominio: item.nome_condominio || '',
           descricao: item.descricao || '',
+          descricao_resumida: item.descricao_resumida || '',
           active: Boolean(item.active),
           exibir_imovel: Boolean(item.exibir_imovel),
           exclusividade: Boolean(item.exclusividade),
@@ -197,6 +229,16 @@ export default function ImovelFormWizard() {
       ...m,
       destaque: m.id === id,
     })));
+  };
+
+  const handleMoveMedia = (id: string, dir: 'left' | 'right') => {
+    const idx = mediaFiles.findIndex(m => m.id === id);
+    if (idx === -1) return;
+    const next = dir === 'left' ? idx - 1 : idx + 1;
+    if (next < 0 || next >= mediaFiles.length) return;
+    const arr = [...mediaFiles];
+    [arr[idx], arr[next]] = [arr[next], arr[idx]];
+    setMediaFiles(arr);
   };
 
   const validateStep = (step: number): boolean => {
@@ -267,10 +309,10 @@ export default function ImovelFormWizard() {
       // Dados básicos do imóvel
       formDataToSend.append('tipo_imovel', formData.tipo_imovel);
       formDataToSend.append('finalidade_imovel', formData.finalidade_imovel);
-      formDataToSend.append('valor_venda', formData.valor_venda);
-      
-      if (formData.valor_condominio) formDataToSend.append('valor_condominio', formData.valor_condominio);
-      if (formData.valor_iptu) formDataToSend.append('valor_iptu', formData.valor_iptu);
+      formDataToSend.append('valor_venda', parseCurrencyInput(formData.valor_venda));
+
+      if (formData.valor_condominio) formDataToSend.append('valor_condominio', parseCurrencyInput(formData.valor_condominio));
+      if (formData.valor_iptu) formDataToSend.append('valor_iptu', parseCurrencyInput(formData.valor_iptu));
       
       // Localização
       formDataToSend.append('cep', formData.cep);
@@ -296,6 +338,7 @@ export default function ImovelFormWizard() {
       }
       
       if (formData.descricao) formDataToSend.append('descricao', formData.descricao);
+      if (formData.descricao_resumida) formDataToSend.append('descricao_resumida', formData.descricao_resumida);
       
       formDataToSend.append('active', formData.active ? '1' : '0');
       formDataToSend.append('exibir_imovel', formData.exibir_imovel ? '1' : '0');
@@ -347,6 +390,49 @@ export default function ImovelFormWizard() {
       toast.error(message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGenerateDescriptionWithAi = async () => {
+    try {
+      setIsGeneratingAi(true);
+      const response = await api.post('/imoveis/ai/gerar-descricao', {
+        tipo_imovel: formData.tipo_imovel,
+        finalidade_imovel: formData.finalidade_imovel,
+        valor_venda: formData.valor_venda ? Number(formData.valor_venda) : 0,
+        cidade: formData.cidade,
+        estado: formData.estado,
+        bairro: formData.bairro,
+        dormitorios: formData.dormitorios ? Number(formData.dormitorios) : 0,
+        banheiros: formData.banheiros ? Number(formData.banheiros) : 0,
+        garagem: formData.garagem ? Number(formData.garagem) : 0,
+        area_total: formData.area_total ? Number(formData.area_total) : 0,
+        descricao_base: formData.descricao || '',
+      });
+
+      const descricao = response.data?.data?.descricao || '';
+      const descricaoResumida = response.data?.data?.descricao_resumida || '';
+
+      if (!descricao && !descricaoResumida) {
+        toast.error('Nao foi possivel gerar a descricao com IA.');
+        return;
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        descricao: descricao || prev.descricao,
+        descricao_resumida: descricaoResumida || prev.descricao_resumida,
+      }));
+
+      if (response.data?.data?.fallback) {
+        toast.warning('Descricao gerada em modo fallback (sem OpenAI configurada).');
+      } else {
+        toast.success('Descricao gerada com IA.');
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Erro ao gerar descricao com IA.');
+    } finally {
+      setIsGeneratingAi(false);
     }
   };
 
@@ -493,8 +579,9 @@ export default function ImovelFormWizard() {
                 <label className="block text-sm font-semibold text-foreground mb-2">CEP *</label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   value={formData.cep}
-                  onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, cep: formatCep(e.target.value) })}
                   onBlur={handleBuscarCep}
                   placeholder="00000-000"
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
@@ -726,7 +813,18 @@ export default function ImovelFormWizard() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-foreground mb-2">Descrição</label>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <label className="block text-sm font-semibold text-foreground">Descrição</label>
+                <button
+                  type="button"
+                  onClick={handleGenerateDescriptionWithAi}
+                  disabled={isGeneratingAi}
+                  className="inline-flex items-center gap-2 rounded-lg border border-blue-400/30 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-200 disabled:opacity-60"
+                >
+                  {isGeneratingAi ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  {isGeneratingAi ? 'Gerando...' : 'Gerar com IA'}
+                </button>
+              </div>
               <textarea
                 value={formData.descricao}
                 onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
@@ -734,6 +832,21 @@ export default function ImovelFormWizard() {
                 className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none"
                 placeholder="Descreva as características e diferenciais do imóvel..."
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">Descrição resumida</label>
+              <textarea
+                value={formData.descricao_resumida}
+                onChange={(e) => setFormData({ ...formData, descricao_resumida: e.target.value })}
+                rows={3}
+                maxLength={220}
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none"
+                placeholder="Resumo curto para vitrine/anuncio (ate 220 caracteres)"
+              />
+              <p className="mt-1 text-xs text-muted-foreground text-right">
+                {formData.descricao_resumida.length}/220
+              </p>
             </div>
           </motion.div>
         );
@@ -778,7 +891,7 @@ export default function ImovelFormWizard() {
                   {mediaFiles.length} arquivo(s) adicionado(s)
                 </p>
                 <div className="grid grid-cols-3 gap-4">
-                  {mediaFiles.map((media) => (
+                  {mediaFiles.map((media, idx) => (
                     <div
                       key={media.id}
                       className="relative group rounded-lg overflow-hidden bg-white/5 border-2 border-white/10 hover:border-blue-400 transition"
@@ -794,7 +907,12 @@ export default function ImovelFormWizard() {
                           <Video size={48} className="text-white/70" />
                         </div>
                       )}
-                      
+
+                      {/* Position badge */}
+                      <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                        {idx + 1}/{mediaFiles.length}
+                      </div>
+
                       {media.destaque && (
                         <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded">
                           DESTAQUE
@@ -802,12 +920,25 @@ export default function ImovelFormWizard() {
                       )}
 
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                        {/* Mover esquerda */}
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleMoveMedia(media.id, 'left')}
+                          disabled={idx === 0}
+                          className="px-2 py-2 bg-white/20 hover:bg-white/40 disabled:opacity-30 disabled:cursor-not-allowed rounded text-white"
+                          title="Mover para esquerda"
+                        >
+                          <ChevronLeft size={16} />
+                        </motion.button>
+
                         {!media.destaque && (
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={() => handleSetDestaque(media.id)}
                             className="px-3 py-2 bg-blue-500 hover:bg-blue-600 rounded text-white text-xs font-bold"
+                            title="Definir como destaque"
                           >
                             <Check size={16} />
                           </motion.button>
@@ -819,6 +950,18 @@ export default function ImovelFormWizard() {
                           className="px-3 py-2 bg-red-500 hover:bg-red-600 rounded text-white text-xs font-bold"
                         >
                           <Trash2 size={16} />
+                        </motion.button>
+
+                        {/* Mover direita */}
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleMoveMedia(media.id, 'right')}
+                          disabled={idx === mediaFiles.length - 1}
+                          className="px-2 py-2 bg-white/20 hover:bg-white/40 disabled:opacity-30 disabled:cursor-not-allowed rounded text-white"
+                          title="Mover para direita"
+                        >
+                          <ChevronRight size={16} />
                         </motion.button>
                       </div>
                     </div>
@@ -916,6 +1059,20 @@ export default function ImovelFormWizard() {
                 {mediaFiles.length} arquivo(s) adicionado(s)
               </p>
             </div>
+
+            {(formData.descricao || formData.descricao_resumida) && (
+              <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+                <h3 className="text-lg font-bold text-foreground mb-4">Textos do Imóvel</h3>
+                {formData.descricao_resumida && (
+                  <p className="text-sm text-foreground mb-3">
+                    <span className="text-muted-foreground">Resumo:</span> {formData.descricao_resumida}
+                  </p>
+                )}
+                {formData.descricao && (
+                  <p className="text-sm text-foreground line-clamp-5">{formData.descricao}</p>
+                )}
+              </div>
+            )}
           </motion.div>
         );
 

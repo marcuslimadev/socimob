@@ -345,6 +345,7 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->post('/imoveis', 'PropertyController@store');
     $router->put('/imoveis/{id}', 'PropertyController@update');
     $router->delete('/imoveis/{id}', 'PropertyController@destroy');
+    $router->post('/imoveis/ai/gerar-descricao', 'PropertyController@generateDescriptions');
 
     // Properties - Generate AI Description for Ads
     $router->post('/properties/{id}/generate-ad-description', 'PropertyController@generateAdDescription');

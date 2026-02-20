@@ -19,6 +19,7 @@ class Property extends Model
         'referencia_imovel',
         'titulo',
         'descricao',
+        'descricao_resumida',
         'active',
         'exibir_imovel',
         'destaque',
