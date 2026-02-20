@@ -273,21 +273,21 @@ export default function ClientPortalRefined() {
         )}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_35%)]" />
 
-        <div className="relative mx-auto max-w-7xl px-4 lg:px-8 py-14 lg:py-20 grid lg:grid-cols-[1.1fr_0.9fr] gap-10">
+        <div className="relative mx-auto max-w-7xl px-4 lg:px-8 py-10 lg:py-20 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-10">
           <div>
             <p className="text-[11px] uppercase tracking-[0.24em] text-white/80 mb-4">Signature Real Estate</p>
-            <h1 className="text-4xl md:text-6xl leading-[1.02] text-white">Imóveis extraordinarios para estilos de vida unicos</h1>
-            <p className="mt-5 text-white/75 max-w-2xl">{tenant?.slogan || 'Curadoria de residencias e investimentos em localizacoes de alto potencial.'}</p>
+            <h1 className="text-3xl md:text-6xl leading-[1.05] text-white">Imóveis extraordinarios para estilos de vida unicos</h1>
+            <p className="mt-4 text-sm md:text-base text-white/75 max-w-2xl">{tenant?.slogan || 'Curadoria de residencias e investimentos em localizacoes de alto potencial.'}</p>
             {currentSlide && (
               <p className="mt-4 inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-white/85">
                 Destaque: {currentSlide.bairro}, {currentSlide.cidade}
               </p>
             )}
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap gap-2.5">
               <button
                 type="button"
                 onClick={() => document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' })}
-                className="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold"
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold"
                 style={{ backgroundColor: secondary, color: '#111827' }}
               >
                 Ver colecao
@@ -297,7 +297,7 @@ export default function ClientPortalRefined() {
                 <button
                   type="button"
                   onClick={() => navigate(`/portal/imovel/${currentSlide.id}`)}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/30 px-5 py-3 text-sm font-semibold text-white"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-2.5 text-sm font-semibold text-white"
                 >
                   Imovel em destaque
                 </button>
@@ -305,15 +305,15 @@ export default function ClientPortalRefined() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5 md:gap-3">
             {[
               { label: 'Imoveis ativos', value: properties.length || '--' },
               { label: 'Destaques', value: destaqueProperties.length || '--' },
               { label: 'Cidades', value: new Set(properties.map((property) => property.cidade)).size || '--' },
               { label: 'Atendimento', value: tenant?.contact_phone ? '24/7' : '--' },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-white/20 bg-white/10 p-5 text-white">
-                <p className="text-3xl">{stat.value}</p>
+              <div key={stat.label} className="rounded-2xl border border-white/20 bg-white/10 p-4 md:p-5 text-white">
+                <p className="text-2xl md:text-3xl">{stat.value}</p>
                 <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/70">{stat.label}</p>
               </div>
             ))}
@@ -323,8 +323,8 @@ export default function ClientPortalRefined() {
 
       <section id="catalogo" className="mx-auto max-w-7xl px-4 lg:px-8 py-10">
         <div className="rounded-3xl border border-black/10 bg-white/80 p-4 lg:p-5 backdrop-blur-md shadow-[0_16px_42px_rgba(15,23,42,0.10)]">
-          <div className="grid gap-3 md:grid-cols-[1fr_180px_190px_170px]">
-            <div className="relative">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_180px_190px_170px]">
+            <div className="relative sm:col-span-2 md:col-span-1">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
@@ -367,7 +367,7 @@ export default function ClientPortalRefined() {
           >
             <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
               {/* Image with prev/next controls */}
-              <div className="relative h-[300px] lg:h-full min-h-[300px]">
+              <div className="relative h-[250px] lg:h-full min-h-[250px] lg:min-h-[300px]">
                 <img
                   key={currentSlide.id}
                   src={normalizeImages(currentSlide)[0]}
@@ -448,7 +448,7 @@ export default function ClientPortalRefined() {
           </motion.article>
         )}
 
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filteredProperties.map((property, index) => {
             const image = normalizeImages(property)[0];
             return (
@@ -459,16 +459,16 @@ export default function ClientPortalRefined() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.2) }}
               >
-                <div className="h-52 relative">
+                <div className="h-56 sm:h-52 relative">
                   <img src={image} alt={property.titulo} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" loading="lazy" />
                   <span className="absolute left-3 top-3 rounded-full border border-white/30 bg-black/35 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-white">
                     {getPurpose(property)}
                   </span>
                 </div>
                 <div className="p-4">
-                  <h3 className="text-lg text-slate-900 line-clamp-1">{property.titulo}</h3>
+                  <h3 className="text-base sm:text-lg text-slate-900 line-clamp-1">{property.titulo}</h3>
                   <p className="mt-1 text-xs text-slate-500 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{property.bairro}, {property.cidade}</p>
-                  <p className="mt-3 text-2xl" style={{ color: primary }}>{formatPrice(property)}</p>
+                  <p className="mt-3 text-xl sm:text-2xl" style={{ color: primary }}>{formatPrice(property)}</p>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-slate-600">
                     <p className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" />{property.quartos || property.dormitorios || '--'}</p>
                     <p className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{property.banheiros || '--'}</p>
@@ -534,7 +534,7 @@ export default function ClientPortalRefined() {
           <img
             src={tenant.mascot_url}
             alt="Mascote"
-            className="w-28 h-28 object-contain drop-shadow-xl"
+            className="w-20 h-20 sm:w-28 sm:h-28 object-contain drop-shadow-xl"
           />
         </a>
       ) : whatsappLink ? (
