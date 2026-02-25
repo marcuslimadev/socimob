@@ -1,5 +1,6 @@
 <?php
 
+use Carbon\Carbon;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -47,7 +48,7 @@ return new class extends Migration {
                 ->first();
 
             if ($tenantExclusiva && $tenantMaison && (int) $tenantExclusiva->id !== (int) $tenantMaison->id) {
-                $now = now();
+                $now = Carbon::now();
                 \Illuminate\Support\Facades\DB::table('tenant_associations')->updateOrInsert(
                     [
                         'tenant_id' => (int) $tenantExclusiva->id,
@@ -88,23 +89,33 @@ return new class extends Migration {
         }
 
         if (Schema::hasTable('imo_properties') && Schema::hasTable('property_portal_tenants')) {
-            $now = now();
+            $now = Carbon::now();
             $properties = \Illuminate\Support\Facades\DB::table('imo_properties')
                 ->select('id', 'tenant_id')
                 ->whereNotNull('tenant_id')
                 ->get();
 
+            // Inserir em lotes para melhor performance
+            $rows = [];
+            $batchSize = 1000;
+            
             foreach ($properties as $property) {
-                \Illuminate\Support\Facades\DB::table('property_portal_tenants')->updateOrInsert(
-                    [
-                        'property_id' => (int) $property->id,
-                        'tenant_id' => (int) $property->tenant_id,
-                    ],
-                    [
-                        'updated_at' => $now,
-                        'created_at' => $now,
-                    ]
-                );
+                $rows[] = [
+                    'property_id' => (int) $property->id,
+                    'tenant_id' => (int) $property->tenant_id,
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ];
+
+                if (count($rows) >= $batchSize) {
+                    \Illuminate\Support\Facades\DB::table('property_portal_tenants')->insertOrIgnore($rows);
+                    $rows = [];
+                }
+            }
+
+            // Inserir os registros restantes
+            if (!empty($rows)) {
+                \Illuminate\Support\Facades\DB::table('property_portal_tenants')->insertOrIgnore($rows);
             }
         }
     }
