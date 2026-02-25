@@ -185,12 +185,17 @@ class ImobiBrasilService
     public static function sendProperty(Property $property, Tenant $tenant): array
     {
         try {
-            // Se já foi enviado antes, usar atualização
-            if ($property->imobi_brasil_sent && $property->imobi_brasil_external_id) {
-                Log::info('Imóvel já foi enviado, usando atualização em vez de inserção', [
+            // Se já tem external_id (independente do flag sent), usar atualização
+            if ($property->imobi_brasil_external_id) {
+                Log::info('Imóvel já tem external_id, usando atualização em vez de inserção', [
                     'property_id' => $property->id,
                     'external_id' => $property->imobi_brasil_external_id,
                 ]);
+                // Garantir que sent=true no DB
+                if (!$property->imobi_brasil_sent) {
+                    $property->update(['imobi_brasil_sent' => true]);
+                    $property->refresh();
+                }
                 return self::updateProperty($property, $tenant);
             }
 
@@ -399,8 +404,9 @@ class ImobiBrasilService
 
             // Verificar se foi sucesso
             if (!empty($data['status']) || $statusCode === 200 || $statusCode === 201) {
-                // Atualizar timestamp de última sincronização
+                // Atualizar timestamp de última sincronização + garantir sent=true
                 $property->update([
+                    'imobi_brasil_sent' => true,
                     'imobi_brasil_sent_at' => \Carbon\Carbon::now(),
                     'imobi_brasil_error' => null,
                 ]);
@@ -592,16 +598,15 @@ class ImobiBrasilService
         
         $codigoTipoImovel = $tipoImovelMapping[strtolower($property->tipo_imovel ?? 'apartamento')] ?? 1;
 
-        // Mapear finalidade para código inteiro conforme especificação da API
-        // 0 = Venda, 1 = Locação/Aluguel, 2 = Temporada
+        // Mapear finalidade - API aceita strings: 'venda', 'locacao', 'temporada'
         $finalidadeMapping = [
-            'venda'     => 0,
-            'locacao'   => 1,
-            'aluguel'   => 1,
-            'temporada' => 2,
+            'venda'     => 'venda',
+            'locacao'   => 'locacao',
+            'aluguel'   => 'locacao',
+            'temporada' => 'temporada',
         ];
         $finalidadeStr = strtolower($property->finalidade_imovel ?? 'venda');
-        $finalidade = $finalidadeMapping[$finalidadeStr] ?? 0;
+        $finalidade = $finalidadeMapping[$finalidadeStr] ?? 'venda';
 
         // Estrutura exata conforme a API espera
         return [
