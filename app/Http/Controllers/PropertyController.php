@@ -1696,4 +1696,142 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
             ], 500);
         }
     }
+
+    /**
+     * Enviar imóvel para Imobi Brasil
+     * POST /api/imoveis/{id}/enviar-imobi-brasil
+     */
+    public function enviarImobiBrasil(Request $request, $id)
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        try {
+            $property = Property::where('id', $id)
+                ->where('tenant_id', $tenantId)
+                ->firstOrFail();
+
+            $tenant = Tenant::findOrFail($tenantId);
+
+            // Usar o serviço para enviar
+            $result = \App\Services\ImobiBrasilService::sendProperty($property, $tenant);
+
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'],
+                    'external_id' => $result['external_id'],
+                ], 200);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => $result['error'],
+                    'status' => $result['status'] ?? 500,
+                ], $result['status'] ?? 500);
+            }
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['error' => 'Imóvel não encontrado'], 404);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao enviar imóvel para Imobi Brasil', [
+                'property_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Atualizar imóvel no Imobi Brasil
+     * PUT /api/imoveis/{id}/atualizar-imobi-brasil
+     */
+    public function atualizarImobiBrasil(Request $request, $id)
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        try {
+            $property = Property::where('id', $id)
+                ->where('tenant_id', $tenantId)
+                ->firstOrFail();
+
+            $tenant = Tenant::findOrFail($tenantId);
+
+            // Usar o serviço para atualizar
+            $result = \App\Services\ImobiBrasilService::updateProperty($property, $tenant);
+
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'],
+                ], 200);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => $result['error'],
+                ], 400);
+            }
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['error' => 'Imóvel não encontrado'], 404);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao atualizar imóvel no Imobi Brasil', [
+                'property_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Obter status de envio para Imobi Brasil
+     * GET /api/imoveis/{id}/status-imobi-brasil
+     */
+    public function statusImobiBrasil(Request $request, $id)
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        try {
+            $property = Property::where('id', $id)
+                ->where('tenant_id', $tenantId)
+                ->select([
+                    'id',
+                    'imobi_brasil_sent',
+                    'imobi_brasil_sent_at',
+                    'imobi_brasil_external_id',
+                    'imobi_brasil_error',
+                ])
+                ->firstOrFail();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'enviado' => (bool) $property->imobi_brasil_sent,
+                    'data_envio' => $property->imobi_brasil_sent_at,
+                    'external_id' => $property->imobi_brasil_external_id,
+                    'erro' => $property->imobi_brasil_error,
+                ],
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['error' => 'Imóvel não encontrado'], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

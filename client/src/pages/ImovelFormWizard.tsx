@@ -125,6 +125,8 @@ export default function ImovelFormWizard() {
   const [portalOptions, setPortalOptions] = useState<PortalTenantOption[]>([]);
   const [isLoadingPortalOptions, setIsLoadingPortalOptions] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [isSendingImobiBrasil, setIsSendingImobiBrasil] = useState(false);
+  const [imobibrasilStatus, setImobiBrasilStatus] = useState<{ enviado: boolean; data_envio?: string; erro?: string }>({ enviado: false });
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Prevents auto-save from firing before initial data is loaded
   const autoSaveEnabled = useRef(!Boolean(match && params?.id));
@@ -244,6 +246,15 @@ export default function ImovelFormWizard() {
             existingMedia[0].destaque = true;
           }
           setMediaFiles(existingMedia);
+        }
+
+        // Carregar status de Imobi Brasil
+        try {
+          const statusResponse = await api.get(`/imoveis/${propertyId}/status-imobi-brasil`);
+          setImobiBrasilStatus(statusResponse.data?.data || { enviado: false });
+        } catch {
+          // Silenciosamente ignorar se não estiver disponível
+          setImobiBrasilStatus({ enviado: false });
         }
       } catch (error) {
         console.error('Erro ao carregar imóvel:', error);
@@ -593,6 +604,40 @@ export default function ImovelFormWizard() {
       toast.error(error?.response?.data?.error || 'Erro ao gerar descricao com IA.');
     } finally {
       setIsGeneratingAi(false);
+    }
+  };
+
+  const handleEnviarImobiBrasil = async () => {
+    if (!propertyId) {
+      toast.error('Imóvel não encontrado');
+      return;
+    }
+
+    try {
+      setIsSendingImobiBrasil(true);
+      
+      const endpoint = imobibrasilStatus.enviado
+        ? `/imoveis/${propertyId}/atualizar-imobi-brasil`
+        : `/imoveis/${propertyId}/enviar-imobi-brasil`;
+
+      const method = imobibrasilStatus.enviado ? 'put' : 'post';
+      
+      const response = await api[method](endpoint);
+
+      if (response.data?.success) {
+        toast.success(response.data?.message || 'Imóvel enviado com sucesso para Imobi Brasil');
+        
+        // Atualizar status
+        const statusResponse = await api.get(`/imoveis/${propertyId}/status-imobi-brasil`);
+        setImobiBrasilStatus(statusResponse.data?.data || { enviado: true });
+      } else {
+        toast.error(response.data?.error || 'Erro ao enviar imóvel');
+      }
+    } catch (error: any) {
+      console.error('Erro ao enviar para Imobi Brasil:', error);
+      toast.error(error?.response?.data?.error || 'Erro ao enviar imóvel para Imobi Brasil');
+    } finally {
+      setIsSendingImobiBrasil(false);
     }
   };
 
@@ -1346,6 +1391,46 @@ export default function ImovelFormWizard() {
                 {formData.descricao && (
                   <p className="text-sm text-foreground line-clamp-5">{formData.descricao}</p>
                 )}
+              </div>
+            )}
+
+            {isEditMode && (
+              <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg p-6 border border-blue-400/30">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-foreground mb-2">Integração Imobi Brasil</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {imobibrasilStatus.enviado
+                        ? `✓ Imóvel enviado em ${imobibrasilStatus.data_envio ? new Date(imobibrasilStatus.data_envio).toLocaleDateString('pt-BR') : 'desconhecido'}`
+                        : 'Envie este imóvel para o Imobi Brasil para ampliar sua visibilidade'}
+                    </p>
+                    {imobibrasilStatus.erro && (
+                      <p className="text-xs text-red-400 mt-2">
+                        ⚠️ Último erro: {imobibrasilStatus.erro}
+                      </p>
+                    )}
+                  </div>
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleEnviarImobiBrasil}
+                    disabled={isSendingImobiBrasil}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg text-white font-semibold flex items-center gap-2 disabled:opacity-50 whitespace-nowrap transition"
+                  >
+                    {isSendingImobiBrasil ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Save size={16} />
+                        {imobibrasilStatus.enviado ? 'Atualizar' : 'Enviar'} para Imobi Brasil
+                      </>
+                    )}
+                  </motion.button>
+                </div>
               </div>
             )}
           </motion.div>

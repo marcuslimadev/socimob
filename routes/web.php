@@ -347,6 +347,12 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->put('/imoveis/{id}', 'PropertyController@update');
     $router->delete('/imoveis/{id}', 'PropertyController@destroy');
     $router->post('/imoveis/ai/gerar-descricao', 'PropertyController@generateDescriptions');
+    
+    // Integração Imobi Brasil
+    $router->post('/imoveis/{id}/enviar-imobi-brasil', 'PropertyController@enviarImobiBrasil');
+    $router->put('/imoveis/{id}/atualizar-imobi-brasil', 'PropertyController@atualizarImobiBrasil');
+    $router->get('/imoveis/{id}/status-imobi-brasil', 'PropertyController@statusImobiBrasil');
+    
     $router->get('/chaves', 'PropertyController@keysIndex');
     $router->get('/chaves/movimentacoes', 'PropertyController@keysMovements');
     $router->post('/chaves/movimentacoes', 'PropertyController@keysMove');
