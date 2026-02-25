@@ -619,6 +619,49 @@ class ImobiBrasilService
         return trim($text);
     }
 
+    /**
+     * Converte texto plano (com quebras de linha e *negrito*) para HTML formatado.
+     * Se o conteúdo já contiver tags HTML, apenas sanitiza emojis e retorna.
+     * Imobi Brasil renderiza HTML na descricaoImovel e campos similares.
+     */
+    private static function formatDescriptionAsHtml(string $text): string
+    {
+        if (empty($text)) return '';
+
+        // Se já é HTML, apenas sanitiza emojis/símbolos inválidos e retorna
+        if (strip_tags($text) !== $text) {
+            return self::stripEmojis($text);
+        }
+
+        // Garante UTF-8 válido
+        $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+
+        // Remove emojis/símbolos inválidos (mantém Latin + acentos + pontuação + newlines)
+        $text = preg_replace('/[^\x{0009}\x{000A}\x{000D}\x{0020}-\x{007E}\x{00A0}-\x{024F}]/u', '', $text);
+
+        // Normalizar quebras de linha
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
+
+        // Converter marcação *negrito* → <strong>negrito</strong>
+        $text = preg_replace('/\*([^*\n]+)\*/', '<strong>$1</strong>', $text);
+
+        // Dividir por parágrafos (2+ quebras de linha seguidas)
+        $paragraphs = preg_split('/\n{2,}/', $text);
+
+        $html = '';
+        foreach ($paragraphs as $para) {
+            $para = trim($para);
+            if ($para === '') continue;
+            // Quebras simples dentro do parágrafo viram <br>
+            $para = nl2br($para);
+            // Limpa espaços múltiplos
+            $para = preg_replace('/ {2,}/', ' ', $para);
+            $html .= '<p>' . $para . '</p>' . "\n";
+        }
+
+        return trim($html);
+    }
+
     public static function preparePropertyPayload(Property $property, string $apiKey = '', string $baseUrl = ''): array
     {
         // Mapear tipo de imóvel para código
@@ -716,10 +759,10 @@ class ImobiBrasilService
             'nomeCondominio' => $property->nome_condominio ?? '',
             'anoConstrucao' => $property->ano_construcao ?? '',
             'mobiliado' => ($property->mobiliado ?? false) ? 'sim' : 'nao',
-            'descricaoImovel' => self::stripEmojis($property->descricao ?? $property->titulo ?? ''),
-            'observacaoImovel' => self::stripEmojis($property->observacao ?? ''),
-            'pontosFortesImovel' => self::stripEmojis($property->pontos_fortes ?? ''),
-            'outrasInformacoesImovel' => self::stripEmojis($property->outras_informacoes ?? ''),
+            'descricaoImovel' => self::formatDescriptionAsHtml($property->descricao ?? $property->titulo ?? ''),
+            'observacaoImovel' => self::formatDescriptionAsHtml($property->observacao ?? ''),
+            'pontosFortesImovel' => self::formatDescriptionAsHtml($property->pontos_fortes ?? ''),
+            'outrasInformacoesImovel' => self::formatDescriptionAsHtml($property->outras_informacoes ?? ''),
             'destaqueInicial' => ($property->destaque ?? false) ? 'sim' : 'nao',
             'destaquesSuperDestaqueInicial' => ($property->super_destaque ?? false) ? 'sim' : 'nao',
             'valorImovel' => (int) ($property->valor_venda ?? 0),
