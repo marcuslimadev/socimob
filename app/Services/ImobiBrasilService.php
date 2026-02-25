@@ -584,19 +584,28 @@ class ImobiBrasilService
     }
 
     /**
-     * Remove emojis e caracteres Unicode de 4 bytes que a API não suporta.
-     * Mantém acentos e caracteres latinos normais.
+     * Remove emojis e símbolos não suportados pela API.
+     * Mantém apenas caracteres latinos (incluindo acentos), dígitos,
+     * pontuação comum e quebras de linha.
      */
     private static function stripEmojis(string $text): string
     {
-        // Remove caracteres fora do plano BMP (emojis, símbolos especiais)
-        $text = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $text ?? '');
-        // Remove outros símbolos/emojis comuns no BMP (blocos de emoji)
-        $text = preg_replace('/[\x{1F000}-\x{1FFFF}\x{2600}-\x{27BF}\x{FE00}-\x{FEFF}\x{1F900}-\x{1F9FF}]/u', '', $text);
-        // Remove sequências de variation selectors
-        $text = preg_replace('/[\x{FE0E}\x{FE0F}]/u', '', $text);
-        // Limpa espaços duplos que sobram
-        $text = preg_replace('/  +/', ' ', $text);
+        if (empty($text)) return '';
+
+        // Garante que a string está em UTF-8 válido
+        $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+
+        // Mantém apenas:
+        //   \x{0009}           = TAB
+        //   \x{000A}\x{000D}   = newline / CR
+        //   \x{0020}-\x{007E}  = ASCII imprimível (letras, dígitos, pontuação)
+        //   \x{00A0}-\x{024F}  = Latin-1 Supplement + Latin Extended A/B (acentos: ã à é ê ç etc.)
+        // Tudo fora desse range (emojis, símbolos, CJK etc.) é descartado
+        $text = preg_replace('/[^\x{0009}\x{000A}\x{000D}\x{0020}-\x{007E}\x{00A0}-\x{024F}]/u', '', $text);
+
+        // Limpa espaços múltiplos que sobram após remoção
+        $text = preg_replace('/ {2,}/', ' ', $text);
+
         return trim($text);
     }
 
