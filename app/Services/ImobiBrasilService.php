@@ -124,7 +124,7 @@ class ImobiBrasilService
                 return null;
             }
 
-            $referencia = 'PROP-' . $property->id;
+            $referencia = $property->codigo ?? ('PROP-' . $property->id);
             
             // Procurar por imóvel com essa referência, ordenando por data mais recente
             $matches = [];
@@ -203,8 +203,26 @@ class ImobiBrasilService
                 ];
             }
 
-            // Preparar dados do imóvel
             $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            // Verificar se já existe por referência na API (evita duplicatas caso
+            // imobi_brasil_sent tenha sido zerado acidentalmente)
+            $existingId = self::findPropertyCodeByReference($property, $tenant, $apiKey, $baseUrl);
+            if ($existingId) {
+                Log::info('Imóvel já existe no Imobi Brasil pela referência, usando atualização', [
+                    'property_id' => $property->id,
+                    'external_id' => $existingId,
+                ]);
+                $property->update([
+                    'imobi_brasil_sent' => true,
+                    'imobi_brasil_external_id' => $existingId,
+                    'imobi_brasil_error' => null,
+                ]);
+                $property->refresh();
+                return self::updateProperty($property, $tenant);
+            }
+
+            // Preparar dados do imóvel
             $payload = self::preparePropertyPayload($property, $apiKey, $baseUrl);
 
             Log::info('Enviando novo imóvel para Imobi Brasil', [
@@ -575,14 +593,15 @@ class ImobiBrasilService
         $codigoTipoImovel = $tipoImovelMapping[strtolower($property->tipo_imovel ?? 'apartamento')] ?? 1;
 
         // Mapear finalidade para código inteiro conforme especificação da API
+        // 0 = Venda, 1 = Locação/Aluguel, 2 = Temporada
         $finalidadeMapping = [
-            'venda'     => 1,
-            'locacao'   => 2,
-            'aluguel'   => 2,
-            'temporada' => 3,
+            'venda'     => 0,
+            'locacao'   => 1,
+            'aluguel'   => 1,
+            'temporada' => 2,
         ];
         $finalidadeStr = strtolower($property->finalidade_imovel ?? 'venda');
-        $finalidade = $finalidadeMapping[$finalidadeStr] ?? 1;
+        $finalidade = $finalidadeMapping[$finalidadeStr] ?? 0;
 
         // Estrutura exata conforme a API espera
         return [
