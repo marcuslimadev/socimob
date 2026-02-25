@@ -54,6 +54,11 @@ class Property extends Model
         'latitude',
         'longitude',
         'last_sync',
+        // Campos Imobi Brasil
+        'imobi_brasil_sent',
+        'imobi_brasil_sent_at',
+        'imobi_brasil_external_id',
+        'imobi_brasil_error',
     ];
 
     protected $casts = [
