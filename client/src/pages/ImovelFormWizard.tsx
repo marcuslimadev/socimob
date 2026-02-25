@@ -289,7 +289,7 @@ export default function ImovelFormWizard() {
       if (isEditMode && propertyId) {
         try {
           setAutoSaveStatus('saving');
-          await api.post(`/imoveis/${propertyId}?_method=PUT`, {
+          const payload = {
             tipo_imovel: formData.tipo_imovel,
             finalidade_imovel: formData.finalidade_imovel,
             valor_venda: parseCurrencyInput(formData.valor_venda) || '0',
@@ -313,15 +313,20 @@ export default function ImovelFormWizard() {
             nome_condominio: formData.nome_condominio,
             descricao: formData.descricao,
             descricao_resumida: formData.descricao_resumida,
-            portal_tenant_ids: formData.portal_tenant_ids,
+            portal_tenant_ids: Array.isArray(formData.portal_tenant_ids) ? formData.portal_tenant_ids.filter((id) => Number.isFinite(id)) : [],
             active: formData.active ? 1 : 0,
             exibir_imovel: formData.exibir_imovel ? 1 : 0,
             exclusividade: formData.exclusividade ? 1 : 0,
-          });
+          };
+
+          await api.post(`/imoveis/${propertyId}?_method=PUT`, payload);
           setAutoSaveStatus('saved');
           setTimeout(() => setAutoSaveStatus('idle'), 2000);
-        } catch {
+        } catch (error: any) {
+          console.error('Auto-save error:', error?.response?.data || error?.message);
           setAutoSaveStatus('error');
+          // Manter o status de erro por mais tempo para visibilidade
+          setTimeout(() => setAutoSaveStatus('idle'), 5000);
         }
       } else {
         localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));

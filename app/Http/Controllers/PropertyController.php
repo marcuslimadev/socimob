@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Property;
 use App\Models\Tenant;
 use App\Services\PropertySyncService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -124,7 +125,7 @@ class PropertyController extends Controller
         $normalizedIds = $this->normalizePortalTenantIds($ownerTenantId, $portalTenantIds);
         DB::table('property_portal_tenants')->where('property_id', $propertyId)->delete();
 
-        $now = now();
+        $now = Carbon::now();
         $rows = array_map(static fn ($tenantId) => [
             'property_id' => $propertyId,
             'tenant_id' => $tenantId,
@@ -1508,10 +1509,10 @@ Regras:
             'responsavel' => $data['responsavel'],
             'destino' => $data['destino'] ?? null,
             'observacoes' => $data['observacoes'] ?? null,
-            'movimentado_em' => now(),
+            'movimentado_em' => Carbon::now(),
             'user_id' => $this->resolveUserId($request),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
         ]);
 
         $propertyColumns = Schema::getColumnListing((new Property())->getTable());
