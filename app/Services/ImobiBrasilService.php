@@ -47,14 +47,24 @@ class ImobiBrasilService
             return $tenant->imobi_brasil_api_key;
         }
 
-        // 2. Tentar variável de ambiente específica do tenant
-        // Ex: EXCLUSIVA_API_TOKEN para o tenant "exclusiva"
-        $tenantSlug = strtoupper(str_replace('-', '_', $tenant->slug ?? ''));
-        if ($tenantSlug && env($tenantSlug . '_API_TOKEN')) {
-            return env($tenantSlug . '_API_TOKEN');
+        // 2. Tentar EXCLUSIVA_API_TOKEN (padrão para tenant padrão)
+        if (env('EXCLUSIVA_API_TOKEN')) {
+            return env('EXCLUSIVA_API_TOKEN');
         }
 
-        // 3. Tentar variável genérica
+        // 3. Tentar variável de ambiente específica do tenant baseada no NOME
+        // Ex: Se name="Exclusiva Lar Imoveis" procura EXCLUSIVA_LAR_IMOVEIS_API_TOKEN
+        $tenantName = strtoupper(str_replace(['-', ' ', '_'], '_', $tenant->name ?? ''));
+        if ($tenantName && $tenantName !== 'EXCLUSIVA' && env($tenantName . '_API_TOKEN')) {
+            return env($tenantName . '_API_TOKEN');
+        }
+
+        // 4. Tentar variável específica para Imobi Brasil
+        if ($tenantName && env($tenantName . '_IMOBI_BRASIL_API_KEY')) {
+            return env($tenantName . '_IMOBI_BRASIL_API_KEY');
+        }
+
+        // 5. Tentar variável genérica
         if (env('IMOBI_BRASIL_API_KEY')) {
             return env('IMOBI_BRASIL_API_KEY');
         }
