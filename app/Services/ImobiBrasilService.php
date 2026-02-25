@@ -583,6 +583,23 @@ class ImobiBrasilService
         return 0;
     }
 
+    /**
+     * Remove emojis e caracteres Unicode de 4 bytes que a API não suporta.
+     * Mantém acentos e caracteres latinos normais.
+     */
+    private static function stripEmojis(string $text): string
+    {
+        // Remove caracteres fora do plano BMP (emojis, símbolos especiais)
+        $text = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $text ?? '');
+        // Remove outros símbolos/emojis comuns no BMP (blocos de emoji)
+        $text = preg_replace('/[\x{1F000}-\x{1FFFF}\x{2600}-\x{27BF}\x{FE00}-\x{FEFF}\x{1F900}-\x{1F9FF}]/u', '', $text);
+        // Remove sequências de variation selectors
+        $text = preg_replace('/[\x{FE0E}\x{FE0F}]/u', '', $text);
+        // Limpa espaços duplos que sobram
+        $text = preg_replace('/  +/', ' ', $text);
+        return trim($text);
+    }
+
     public static function preparePropertyPayload(Property $property, string $apiKey = '', string $baseUrl = ''): array
     {
         // Mapear tipo de imóvel para código
@@ -679,10 +696,10 @@ class ImobiBrasilService
             'nomeCondominio' => $property->nome_condominio ?? '',
             'anoConstrucao' => $property->ano_construcao ?? '',
             'mobiliado' => ($property->mobiliado ?? false) ? 'sim' : 'nao',
-            'descricaoImovel' => $property->descricao ?? $property->titulo ?? '',
-            'observacaoImovel' => $property->observacao ?? '',
-            'pontosFortesImovel' => $property->pontos_fortes ?? '',
-            'outrasInformacoesImovel' => $property->outras_informacoes ?? '',
+            'descricaoImovel' => self::stripEmojis($property->descricao ?? $property->titulo ?? ''),
+            'observacaoImovel' => self::stripEmojis($property->observacao ?? ''),
+            'pontosFortesImovel' => self::stripEmojis($property->pontos_fortes ?? ''),
+            'outrasInformacoesImovel' => self::stripEmojis($property->outras_informacoes ?? ''),
             'destaqueInicial' => ($property->destaque ?? false) ? 'sim' : 'nao',
             'destaquesSuperDestaqueInicial' => ($property->super_destaque ?? false) ? 'sim' : 'nao',
             'valorImovel' => (int) ($property->valor_venda ?? 0),
