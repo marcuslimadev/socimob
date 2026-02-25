@@ -204,10 +204,8 @@ class ImobiBrasilService
             }
 
             // Preparar dados do imóvel
-            $payload = self::preparePropertyPayload($property);
-
-            $baseUrl = static::getBaseUrl($tenant);
-            $baseUrl = rtrim($baseUrl, '/');
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+            $payload = self::preparePropertyPayload($property, $apiKey, $baseUrl);
 
             Log::info('Enviando novo imóvel para Imobi Brasil', [
                 'property_id' => $property->id,
@@ -331,7 +329,8 @@ class ImobiBrasilService
             }
 
             // Preparar payload atualizado com codigoTipoImovel obrigatório
-            $payload = self::preparePropertyPayload($property);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+            $payload = self::preparePropertyPayload($property, $apiKey, $baseUrl);
             
             // IMPORTANTE: API requer codigoTipoImovel para update
             // Usar tipo CASA (1) como padrão se não houver informação
@@ -339,9 +338,6 @@ class ImobiBrasilService
                 $payload['codigoTipoImovel'] = 1; // Casa como padrão
             }
 
-            $baseUrl = static::getBaseUrl($tenant);
-            $baseUrl = rtrim($baseUrl, '/');
-            
             // Endpoint para alteração: POST /imovel/alterar/{codigoImovel}
             // NOTA: API usa POST (não PUT) para alterações
             $externalId = $property->imobi_brasil_external_id;
@@ -443,7 +439,124 @@ class ImobiBrasilService
      * Preparar payload do imóvel para envio
      * Conforme estrutura esperada pela API Imobi Brasil
      */
-    public static function preparePropertyPayload(Property $property): array
+    /**
+     * Busca o codigoCidade na API do Imobi Brasil dado nome cidade + sigla estado.
+     * Usa cache para evitar múltiplas requisições à API.
+     * A busca começa na página estimada para o primeiro caractere do nome (A~pag 1, Z~pag 280),
+     * depois percorre para frente até o final e, se necessário, do início até a página estimada.
+     */
+    public static function findCodigoCidade(string $nomeCidade, string $siglaEstado, string $apiKey, string $baseUrl): int
+    {
+        if (empty(trim($nomeCidade)) || empty(trim($siglaEstado))) {
+            return 0;
+        }
+
+        $targetNome   = strtolower(trim($nomeCidade));
+        $targetEstado = strtoupper(trim($siglaEstado));
+        $cacheKey     = 'imobi_cidade_' . md5($targetNome . '_' . $targetEstado);
+
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            return (int) \Illuminate\Support\Facades\Cache::get($cacheKey, 0);
+        }
+
+        // Estimativa de página inicial baseada na primeira letra (A=pág 1, Z≈pág 280)
+        $firstLetter = strtoupper(substr($targetNome, 0, 1));
+        $letterIndex = max(0, ord($firstLetter) - ord('A')); // 0-25
+        $totalPages  = 280;
+        $startPage   = max(1, (int) round($totalPages * ($letterIndex / 26)));
+
+        // Ordem de busca: do estimado até o final, depois do início até estimado-1
+        $searchPages = array_merge(
+            range($startPage, $totalPages),
+            range(1, $startPage - 1)
+        );
+
+        $client = new \GuzzleHttp\Client([
+            'verify'      => false,
+            'timeout'     => 15,
+            'http_errors' => false,
+        ]);
+
+        $inFirstHalf = true; // true quando estamos na fatia [$startPage..$totalPages]
+
+        foreach ($searchPages as $page) {
+            // Detectar quando passamos do wrap
+            if ($inFirstHalf && $page < $startPage) {
+                $inFirstHalf = false;
+            }
+
+            try {
+                $response = $client->get($baseUrl . '/cidade/lista', [
+                    'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+                    'query'   => ['page' => $page],
+                ]);
+
+                $json   = json_decode($response->getBody()->getContents(), true);
+                $cities = $json['data'] ?? (is_array($json) ? $json : []);
+
+                if (empty($cities)) {
+                    break; // sem mais páginas
+                }
+
+                // Varrer a página em busca da cidade
+                foreach ($cities as $c) {
+                    if (
+                        strtolower($c['nomeCidade'] ?? '') === $targetNome &&
+                        strtoupper($c['siglaEstado'] ?? '') === $targetEstado
+                    ) {
+                        $codigo = (int) $c['codigoCidade'];
+                        \Illuminate\Support\Facades\Cache::put($cacheKey, $codigo, now()->addDays(30));
+                        Log::info('codigoCidade encontrado', [
+                            'cidade'  => $nomeCidade,
+                            'estado'  => $siglaEstado,
+                            'codigo'  => $codigo,
+                            'page'    => $page,
+                        ]);
+                        return $codigo;
+                    }
+                }
+
+                // Otimização alfabética: evita percorrer páginas desnecessárias
+                $firstOnPage = strtolower($cities[0]['nomeCidade'] ?? '');
+                $lastOnPage  = strtolower(end($cities)['nomeCidade'] ?? '');
+
+                if ($inFirstHalf) {
+                    // Estamos indo para frente a partir de $startPage
+                    // Se a primeira cidade da página já é alfabeticamente maior que o alvo,
+                    // o alvo não existe nesta direção — encerra
+                    if ($firstOnPage > $targetNome) {
+                        break;
+                    }
+                } else {
+                    // Estamos no trecho 1..$startPage-1 (busca de fallback)
+                    // Pular páginas onde o último item ainda é menor que o alvo
+                    if ($lastOnPage < $targetNome) {
+                        continue;
+                    }
+                    // Se o primeiro item já passou do alvo, parar (não vai aparecer)
+                    if ($firstOnPage > $targetNome) {
+                        break;
+                    }
+                }
+
+            } catch (\Exception $e) {
+                Log::warning('Erro ao buscar codigoCidade', [
+                    'cidade' => $nomeCidade,
+                    'estado' => $siglaEstado,
+                    'page'   => $page,
+                    'error'  => $e->getMessage(),
+                ]);
+                break;
+            }
+        }
+
+        // Não encontrado — cachear miss por 1 dia
+        \Illuminate\Support\Facades\Cache::put($cacheKey, 0, now()->addDay());
+        Log::info('codigoCidade não encontrado', ['cidade' => $nomeCidade, 'estado' => $siglaEstado]);
+        return 0;
+    }
+
+    public static function preparePropertyPayload(Property $property, string $apiKey = '', string $baseUrl = ''): array
     {
         // Mapear tipo de imóvel para código
         $tipoImovelMapping = [
@@ -461,34 +574,35 @@ class ImobiBrasilService
         
         $codigoTipoImovel = $tipoImovelMapping[strtolower($property->tipo_imovel ?? 'apartamento')] ?? 1;
 
-        // Mapear finalidade do imóvel
-        // API aceita: 'venda', 'temporada', e possivelmente outras
-        $finalidade = strtolower($property->finalidade_imovel ?? 'venda');
-        // Normalizar variações comuns
-        if (in_array($finalidade, ['aluguel', 'alug', 'rent', 'rental'])) {
-            // Para aluguel, usar 'temporada' como fallback já que 'aluguel' não funciona
-            $finalidade = 'temporada';
-        }
-        // Garantir que seja um dos valores aceitos
-        if (!in_array($finalidade, ['venda', 'temporada'])) {
-            $finalidade = 'venda'; // Padrão
-        }
+        // Mapear finalidade para código inteiro conforme especificação da API
+        $finalidadeMapping = [
+            'venda'     => 1,
+            'locacao'   => 2,
+            'aluguel'   => 2,
+            'temporada' => 3,
+        ];
+        $finalidadeStr = strtolower($property->finalidade_imovel ?? 'venda');
+        $finalidade = $finalidadeMapping[$finalidadeStr] ?? 1;
 
         // Estrutura exata conforme a API espera
         return [
             'codigoProprietario' => 0,
             'codigoCorretor' => 0,
             'codigoUsuarioAdicional' => 0,
-            'finalidade' => $finalidade,  // ✅ Agora usando string!
-            'descricaoTipoImovel' => $property->tipo_imovel ?? 'apartamento',
+            'finalidade' => $finalidade,
             'codigoTipoImovel' => $codigoTipoImovel,
-            'referencia' => $property->code ?? 'PROP-' . $property->id,
+            'referencia' => $property->codigo ?? ('PROP-' . $property->id),
             'cep' => $property->cep ?? '',
             'bairro' => $property->bairro ?? '',
             'logradouro' => $property->logradouro ?? '',
-            'cidade' => $property->cidade ?? '',
-            'estado' => $property->estado ?? '',
-            'codigoCidade' => 0,
+            'codigoCidade' => ($apiKey && $baseUrl)
+                ? self::findCodigoCidade(
+                    $property->cidade ?? '',
+                    $property->estado ?? '',
+                    $apiKey,
+                    $baseUrl
+                  )
+                : 0,
             'numero' => $property->numero ?? '',
             'pontoReferencia' => '',
             'complemento' => $property->complemento ?? '',

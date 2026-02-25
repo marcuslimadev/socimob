@@ -32,13 +32,12 @@ try {
     # 1. BUILD DO FRONTEND (já gera em dist/public/)
     Write-Step "BUILD DO FRONTEND REACT"
     pnpm run build
-    if ($LASTEXITCODE -ne 0) { throw "Build falhou" }
-    Write-Success "Build do frontend concluido em dist/public/"
-    
-    # Verificar se build foi gerado
+    # Verificar pelo artefato em vez do exit code: no Windows o Node.js pode
+    # gerar exit code != 0 mesmo após build bem-sucedido (bug UV_HANDLE_CLOSING)
     if (-not (Test-Path "dist/public/index.html")) {
         throw "Build nao gerou dist/public/index.html - verifique vite.config.ts"
     }
+    Write-Success "Build do frontend concluido em dist/public/"
 
     # 2. COPIAR BUILD PARA public/
     Write-Step "COPIAR BUILD PARA public/"
