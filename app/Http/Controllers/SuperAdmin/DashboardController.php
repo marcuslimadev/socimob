@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Lead;
 use App\Models\Property;
 use App\Models\Subscription;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -195,7 +196,7 @@ class DashboardController extends Controller
         
         $data = [];
         for ($i = $months - 1; $i >= 0; $i--) {
-            $date = \now()->subMonths($i);
+            $date = Carbon::now()->subMonths($i);
             $count = Tenant::whereYear('created_at', $date->year)
                 ->whereMonth('created_at', $date->month)
                 ->count();
@@ -223,7 +224,7 @@ class DashboardController extends Controller
         
         $data = [];
         for ($i = $months - 1; $i >= 0; $i--) {
-            $date = \now()->subMonths($i);
+            $date = Carbon::now()->subMonths($i);
             
             $subscriptions = Subscription::where('status', 'active')
                 ->whereYear('created_at', '<=', $date->year)

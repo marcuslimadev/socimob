@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Services\TenantService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -495,7 +496,7 @@ class TenantController extends Controller
                     return;
                 }
 
-                $now = now();
+                $now = Carbon::now();
                 $userId = $request->user()?->id;
                 $rows = [];
                 foreach ($targetIds as $targetId) {
