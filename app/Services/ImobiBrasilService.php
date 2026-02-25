@@ -584,6 +584,16 @@ class ImobiBrasilService
     }
 
     /**
+     * Formata área com vírgula como separador decimal (padrão da API).
+     * Ex: 61.77 → "61,77" | 39.00 → "39,00" | null → ""
+     */
+    private static function formatArea($value): string
+    {
+        if ($value === null || $value === '') return '';
+        return number_format((float) $value, 2, ',', '');
+    }
+
+    /**
      * Remove emojis e símbolos não suportados pela API.
      * Mantém apenas caracteres latinos (incluindo acentos), dígitos,
      * pontuação comum e quebras de linha.
@@ -687,13 +697,14 @@ class ImobiBrasilService
                     'nomeCondominio' => true,
                 ]
             ],
-            'areaPrivativa' => (string) ($property->area_privativa ?? ''),
+            // Áreas: API usa vírgula como decimal (ex: "61,77"), não ponto
+            'areaPrivativa' => self::formatArea($property->area_privativa),
             'tipoAreaPrivativa' => 0,
-            'areaTotal' => (string) ($property->area_total ?? ''),
+            'areaTotal' => self::formatArea($property->area_total),
             'tipoAreaTotal' => 0,
-            'areaTerreno' => (string) ($property->area_terreno ?? ''),
+            'areaTerreno' => self::formatArea($property->area_terreno),
             'tipoAreaTerreno' => 0,
-            'areaConstruida' => (string) ($property->area_construida ?? ''),
+            'areaConstruida' => self::formatArea($property->area_construida),
             'tipoareaConstruida' => 0,
             'dormitorios' => (int) ($property->dormitorios ?? 0),
             'suites' => (int) ($property->suites ?? 0),
@@ -731,13 +742,13 @@ class ImobiBrasilService
             'entregaPrevisaoEmpreendimento' => $property->entrega_previsao_empreendimento ?? '',
             'disponibilizarExportacao' => 'sim',
             'exibirCorretor' => 'sim',
-            'terrenoFrente' => $property->terreno_frente ?? '',
+            'terrenoFrente' => self::formatArea($property->terreno_frente),
             'tipoTerrenoFrente' => 0,
-            'terrenoFundo' => $property->terreno_fundo ?? '',
+            'terrenoFundo' => self::formatArea($property->terreno_fundo),
             'tipoTerrenoFundo' => 0,
-            'terrenoEsquerda' => $property->terreno_esquerda ?? '',
+            'terrenoEsquerda' => self::formatArea($property->terreno_esquerda),
             'tipoTerrenoEsquerda' => 0,
-            'terrenoDireita' => $property->terreno_direita ?? '',
+            'terrenoDireita' => self::formatArea($property->terreno_direita),
             'tipoTerrenoDireita' => 0,
             'emCondominio' => $property->em_condominio ? 'sim' : 'nao',
             'exclusividade' => ($property->exclusividade ?? false) ? 'sim' : 'nao',
