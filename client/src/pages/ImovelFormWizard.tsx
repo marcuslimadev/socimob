@@ -1348,8 +1348,8 @@ export default function ImovelFormWizard() {
                     <h3 className="text-lg font-bold text-foreground mb-2">Integração Imobi Brasil</h3>
                     <p className="text-sm text-muted-foreground mb-4">
                       {imobibrasilStatus.enviado
-                        ? `✓ Imóvel enviado em ${imobibrasilStatus.data_envio ? new Date(imobibrasilStatus.data_envio).toLocaleDateString('pt-BR') : 'desconhecido'}`
-                        : 'Envie este imóvel para o Imobi Brasil para ampliar sua visibilidade'}
+                        ? `✓ Imóvel enviado em ${imobibrasilStatus.data_envio ? new Date(imobibrasilStatus.data_envio).toLocaleDateString('pt-BR') : 'desconhecido'} — inclui imagens`
+                        : 'Envie este imóvel para o Imobi Brasil para ampliar sua visibilidade (dados + imagens)'}
                     </p>
                     {imobibrasilStatus.erro && (
                       <p className="text-xs text-red-400 mt-2">
@@ -1388,28 +1388,6 @@ export default function ImovelFormWizard() {
                         </>
                       )}
                     </motion.button>
-                    {imobibrasilStatus.enviado && mediaFiles.length > 0 && (
-                      <motion.button
-                        type="button"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={handleEnviarImagensImobiBrasil}
-                        disabled={isSendingImagesImobiBrasil}
-                        className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 rounded-lg text-white font-semibold flex items-center gap-2 disabled:opacity-50 whitespace-nowrap transition justify-center"
-                      >
-                        {isSendingImagesImobiBrasil ? (
-                          <>
-                            <Loader2 size={16} className="animate-spin" />
-                            Enviando...
-                          </>
-                        ) : (
-                          <>
-                            <ImageIcon size={16} />
-                            Enviar {mediaFiles.length} Imagem(ns)
-                          </>
-                        )}
-                      </motion.button>
-                    )}
                   </div>
                 </div>
               </div>
