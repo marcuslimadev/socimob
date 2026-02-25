@@ -1285,6 +1285,46 @@ export default function ImovelFormWizard() {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
+            {isEditMode && (
+              <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg p-6 border border-blue-400/30">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-foreground mb-2">Integração Imobi Brasil</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {imobibrasilStatus.enviado
+                        ? `✓ Imóvel enviado em ${imobibrasilStatus.data_envio ? new Date(imobibrasilStatus.data_envio).toLocaleDateString('pt-BR') : 'desconhecido'}`
+                        : 'Envie este imóvel para o Imobi Brasil para ampliar sua visibilidade'}
+                    </p>
+                    {imobibrasilStatus.erro && (
+                      <p className="text-xs text-red-400 mt-2">
+                        ⚠️ Último erro: {imobibrasilStatus.erro}
+                      </p>
+                    )}
+                  </div>
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleEnviarImobiBrasil}
+                    disabled={isSendingImobiBrasil}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg text-white font-semibold flex items-center gap-2 disabled:opacity-50 whitespace-nowrap transition"
+                  >
+                    {isSendingImobiBrasil ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Save size={16} />
+                        {imobibrasilStatus.enviado ? 'Atualizar' : 'Enviar'} para Imobi Brasil
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+              </div>
+            )}
+
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
               <h3 className="text-lg font-bold text-foreground mb-4">Informações Básicas</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1391,46 +1431,6 @@ export default function ImovelFormWizard() {
                 {formData.descricao && (
                   <p className="text-sm text-foreground line-clamp-5">{formData.descricao}</p>
                 )}
-              </div>
-            )}
-
-            {isEditMode && (
-              <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg p-6 border border-blue-400/30">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-foreground mb-2">Integração Imobi Brasil</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {imobibrasilStatus.enviado
-                        ? `✓ Imóvel enviado em ${imobibrasilStatus.data_envio ? new Date(imobibrasilStatus.data_envio).toLocaleDateString('pt-BR') : 'desconhecido'}`
-                        : 'Envie este imóvel para o Imobi Brasil para ampliar sua visibilidade'}
-                    </p>
-                    {imobibrasilStatus.erro && (
-                      <p className="text-xs text-red-400 mt-2">
-                        ⚠️ Último erro: {imobibrasilStatus.erro}
-                      </p>
-                    )}
-                  </div>
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleEnviarImobiBrasil}
-                    disabled={isSendingImobiBrasil}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg text-white font-semibold flex items-center gap-2 disabled:opacity-50 whitespace-nowrap transition"
-                  >
-                    {isSendingImobiBrasil ? (
-                      <>
-                        <Loader2 size={16} className="animate-spin" />
-                        Enviando...
-                      </>
-                    ) : (
-                      <>
-                        <Save size={16} />
-                        {imobibrasilStatus.enviado ? 'Atualizar' : 'Enviar'} para Imobi Brasil
-                      </>
-                    )}
-                  </motion.button>
-                </div>
               </div>
             )}
           </motion.div>

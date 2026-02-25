@@ -12,13 +12,79 @@ use Illuminate\Support\Facades\Log;
 class ImobiBrasilService
 {
     /**
+     * Obter a URL base da API do Imobi Brasil
+     */
+    public static function getBaseUrl(Tenant $tenant): string
+    {
+        // 1. Tentar URL configurada no banco de dados do tenant
+        if ($tenant->imobi_brasil_base_url) {
+            return $tenant->imobi_brasil_base_url;
+        }
+
+        // 2. Tentar variável de ambiente específica do tenant
+        $tenantSlug = strtoupper(str_replace('-', '_', $tenant->slug ?? ''));
+        if ($tenantSlug && env($tenantSlug . '_IMOBI_BRASIL_BASE_URL')) {
+            return env($tenantSlug . '_IMOBI_BRASIL_BASE_URL');
+        }
+
+        // 3. Tentar variável de ambiente genérica
+        if (env('IMOBI_BRASIL_BASE_URL')) {
+            return env('IMOBI_BRASIL_BASE_URL');
+        }
+
+        // 4. URL padrão
+        return 'https://api.imobibrasil.com.br';
+    }
+
+    /**
+     * Obter a chave API do Imobi Brasil
+     * Tenta primeiro da configuração do tenant, depois das variáveis de ambiente
+     */
+    public static function getApiKey(Tenant $tenant): ?string
+    {
+        // 1. Tentar chave configurada no banco de dados do tenant
+        if ($tenant->imobi_brasil_api_key) {
+            return $tenant->imobi_brasil_api_key;
+        }
+
+        // 2. Tentar variável de ambiente específica do tenant
+        // Ex: EXCLUSIVA_API_TOKEN para o tenant "exclusiva"
+        $tenantSlug = strtoupper(str_replace('-', '_', $tenant->slug ?? ''));
+        if ($tenantSlug && env($tenantSlug . '_API_TOKEN')) {
+            return env($tenantSlug . '_API_TOKEN');
+        }
+
+        // 3. Tentar variável genérica
+        if (env('IMOBI_BRASIL_API_KEY')) {
+            return env('IMOBI_BRASIL_API_KEY');
+        }
+
+        return null;
+    }
+
+    /**
+     * Verificar se a integração está habilitada para o tenant
+     */
+    public static function isEnabled(Tenant $tenant): bool
+    {
+        // Se está marcada como habilitada no banco, validar se tem chave
+        if ($tenant->imobi_brasil_enabled) {
+            return static::getApiKey($tenant) !== null;
+        }
+
+        // Caso contrário, verificar se há chave configurada via ambiente
+        return static::getApiKey($tenant) !== null;
+    }
+
+    /**
      * Enviar imóvel para Imobi Brasil
      */
     public static function sendProperty(Property $property, Tenant $tenant): array
     {
         try {
             // Validar configuração do tenant
-            if (!$tenant->imobi_brasil_enabled || !$tenant->imobi_brasil_api_key) {
+            $apiKey = static::getApiKey($tenant);
+            if (!$apiKey) {
                 return [
                     'success' => false,
                     'error' => 'Integração Imobi Brasil não configurada para este tenant',
@@ -28,7 +94,7 @@ class ImobiBrasilService
             // Preparar dados do imóvel
             $payload = self::preparePropertyPayload($property);
 
-            $baseUrl = $tenant->imobi_brasil_base_url ?? 'https://api.imobibrasil.com.br';
+            $baseUrl = static::getBaseUrl($tenant);
             $endpoint = $baseUrl . '/v1/properties';
 
             Log::info('Enviando imóvel para Imobi Brasil', [
@@ -39,7 +105,7 @@ class ImobiBrasilService
 
             // Fazer requisição para Imobi Brasil
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $tenant->imobi_brasil_api_key,
+                'Authorization' => 'Bearer ' . $apiKey,
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
             ])->post($endpoint, $payload);
@@ -115,7 +181,8 @@ class ImobiBrasilService
                 ];
             }
 
-            if (!$tenant->imobi_brasil_enabled || !$tenant->imobi_brasil_api_key) {
+            $apiKey = static::getApiKey($tenant);
+            if (!$apiKey) {
                 return [
                     'success' => false,
                     'error' => 'Integração Imobi Brasil não configurada',
@@ -124,7 +191,7 @@ class ImobiBrasilService
 
             $payload = self::preparePropertyPayload($property);
 
-            $baseUrl = $tenant->imobi_brasil_base_url ?? 'https://api.imobibrasil.com.br';
+            $baseUrl = static::getBaseUrl($tenant);
             $endpoint = $baseUrl . '/v1/properties/' . $property->imobi_brasil_external_id;
 
             Log::info('Atualizando imóvel no Imobi Brasil', [
@@ -133,7 +200,7 @@ class ImobiBrasilService
             ]);
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $tenant->imobi_brasil_api_key,
+                'Authorization' => 'Bearer ' . $apiKey,
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
             ])->put($endpoint, $payload);
