@@ -507,20 +507,9 @@ class ImobiBrasilService
         $cacheKey     = 'imobi_cidade_' . md5($targetNome . '_' . $targetEstado);
 
         if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
-            return (int) \Illuminate\Support\Facades\Cache::get($cacheKey, 0);
+            $cached = (int) \Illuminate\Support\Facades\Cache::get($cacheKey, 0);
+            if ($cached > 0) return $cached;
         }
-
-        // Estimativa de página inicial baseada na primeira letra (A=pág 1, Z≈pág 280)
-        $firstLetter = strtoupper(substr($targetNome, 0, 1));
-        $letterIndex = max(0, ord($firstLetter) - ord('A')); // 0-25
-        $totalPages  = 280;
-        $startPage   = max(1, (int) round($totalPages * ($letterIndex / 26)));
-
-        // Ordem de busca: do estimado até o final, depois do início até estimado-1
-        $searchPages = array_merge(
-            range($startPage, $totalPages),
-            range(1, $startPage - 1)
-        );
 
         $client = new \GuzzleHttp\Client([
             'verify'      => false,
@@ -528,28 +517,46 @@ class ImobiBrasilService
             'http_errors' => false,
         ]);
 
-        $inFirstHalf = true; // true quando estamos na fatia [$startPage..$totalPages]
+        // Estratégia 1: usar filtro ?cidade= (retorna resultados diretos, 1 request)
+        try {
+            $response = $client->get($baseUrl . '/cidade/lista', [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+                'query'   => ['cidade' => trim($nomeCidade)],
+            ]);
+            $json   = json_decode($response->getBody()->getContents(), true);
+            $cities = $json['resultSet']['data'] ?? $json['data'] ?? [];
+            foreach ($cities as $c) {
+                if (
+                    strtolower($c['nomeCidade'] ?? '') === $targetNome &&
+                    strtoupper($c['siglaEstado'] ?? '') === $targetEstado
+                ) {
+                    $codigo = (int) $c['codigoCidade'];
+                    \Illuminate\Support\Facades\Cache::put($cacheKey, $codigo, Carbon::now()->addDays(30));
+                    Log::info('codigoCidade encontrado via filtro', ['cidade' => $nomeCidade, 'estado' => $siglaEstado, 'codigo' => $codigo]);
+                    return $codigo;
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Erro no filtro cidade', ['error' => $e->getMessage()]);
+        }
+
+        // Estratégia 2: paginação com estimativa alphabética (fallback)
+        $firstLetter = strtoupper(substr($targetNome, 0, 1));
+        $letterIndex = max(0, ord($firstLetter) - ord('A'));
+        $totalPages  = 280;
+        $startPage   = max(1, (int) round($totalPages * ($letterIndex / 26)));
+        $searchPages = array_merge(range($startPage, $totalPages), range(1, $startPage - 1));
 
         foreach ($searchPages as $page) {
-            // Detectar quando passamos do wrap
-            if ($inFirstHalf && $page < $startPage) {
-                $inFirstHalf = false;
-            }
-
             try {
                 $response = $client->get($baseUrl . '/cidade/lista', [
                     'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
                     'query'   => ['page' => $page],
                 ]);
-
                 $json   = json_decode($response->getBody()->getContents(), true);
-                $cities = $json['resultSet']['data'] ?? $json['data'] ?? (is_array($json) ? $json : []);
+                $cities = $json['resultSet']['data'] ?? $json['data'] ?? [];
+                if (empty($cities)) break;
 
-                if (empty($cities)) {
-                    break; // sem mais páginas
-                }
-
-                // Varrer a página em busca da cidade
                 foreach ($cities as $c) {
                     if (
                         strtolower($c['nomeCidade'] ?? '') === $targetNome &&
@@ -557,51 +564,20 @@ class ImobiBrasilService
                     ) {
                         $codigo = (int) $c['codigoCidade'];
                         \Illuminate\Support\Facades\Cache::put($cacheKey, $codigo, Carbon::now()->addDays(30));
-                        Log::info('codigoCidade encontrado', [
-                            'cidade'  => $nomeCidade,
-                            'estado'  => $siglaEstado,
-                            'codigo'  => $codigo,
-                            'page'    => $page,
-                        ]);
+                        Log::info('codigoCidade encontrado via paginação', ['cidade' => $nomeCidade, 'estado' => $siglaEstado, 'codigo' => $codigo, 'page' => $page]);
                         return $codigo;
                     }
                 }
 
-                // Otimização alfabética: evita percorrer páginas desnecessárias
                 $firstOnPage = strtolower($cities[0]['nomeCidade'] ?? '');
-                $lastOnPage  = strtolower(end($cities)['nomeCidade'] ?? '');
-
-                if ($inFirstHalf) {
-                    // Estamos indo para frente a partir de $startPage
-                    // Se a primeira cidade da página já é alfabeticamente maior que o alvo,
-                    // o alvo não existe nesta direção — encerra
-                    if ($firstOnPage > $targetNome) {
-                        break;
-                    }
-                } else {
-                    // Estamos no trecho 1..$startPage-1 (busca de fallback)
-                    // Pular páginas onde o último item ainda é menor que o alvo
-                    if ($lastOnPage < $targetNome) {
-                        continue;
-                    }
-                    // Se o primeiro item já passou do alvo, parar (não vai aparecer)
-                    if ($firstOnPage > $targetNome) {
-                        break;
-                    }
-                }
+                if ($page >= $startPage && $firstOnPage > $targetNome) break;
 
             } catch (\Exception $e) {
-                Log::warning('Erro ao buscar codigoCidade', [
-                    'cidade' => $nomeCidade,
-                    'estado' => $siglaEstado,
-                    'page'   => $page,
-                    'error'  => $e->getMessage(),
-                ]);
+                Log::warning('Erro ao buscar codigoCidade paginado', ['page' => $page, 'error' => $e->getMessage()]);
                 break;
             }
         }
 
-        // Não encontrado — cachear miss por 1 dia
         \Illuminate\Support\Facades\Cache::put($cacheKey, 0, Carbon::now()->addDay());
         Log::info('codigoCidade não encontrado', ['cidade' => $nomeCidade, 'estado' => $siglaEstado]);
         return 0;
@@ -703,7 +679,7 @@ class ImobiBrasilService
             'nomeCondominio' => $property->nome_condominio ?? '',
             'anoConstrucao' => $property->ano_construcao ?? '',
             'mobiliado' => ($property->mobiliado ?? false) ? 'sim' : 'nao',
-            'descricaoImovel' => $property->titulo ?? '',
+            'descricaoImovel' => $property->descricao ?? $property->titulo ?? '',
             'observacaoImovel' => $property->observacao ?? '',
             'pontosFortesImovel' => $property->pontos_fortes ?? '',
             'outrasInformacoesImovel' => $property->outras_informacoes ?? '',
@@ -755,80 +731,50 @@ class ImobiBrasilService
             'seoTitulo' => $property->seo_titulo ?? '',
             'seoDescricao' => $property->seo_descricao ?? '',
             'dispararPeriodico' => 'sim',
+            // Portais: objeto plano (não array), somente ChaveNaMao = true
             'portaisDivulgarConvencional' => [
-                [
-                    'VivaReal' => true,
-                    'ImovelWeb' => true,
-                    '123i' => true,
-                    'ZapImoveis' => true,
-                    'OLX' => true,
-                    'ChaveNaMao' => true,
-                    'Moving' => true,
-                    'SPImovel' => true,
-                    'CasaMineira' => true,
-                    '018Imoveis' => true,
-                    'DreamCasa' => true,
-                    'Imoveis014' => true,
-                    '016Imoveis' => true,
-                    'OlhoMagico' => true,
-                    'OruloExclusividades' => true,
-                    'Lopes' => true,
-                    'FacebookAds' => true,
-                    'Buskaza' => true,
-                ]
+                'VivaReal'           => false,
+                'ImovelWeb'          => false,
+                '123i'               => false,
+                'ZapImoveis'         => false,
+                'MercadoLivre'       => false,
+                'OLX'                => false,
+                'ChaveNaMao'         => true,
+                'Moving'             => false,
+                'SPImovel'           => false,
+                'CasaMineira'        => false,
+                '018Imoveis'         => false,
+                'DreamCasa'          => false,
+                'Imoveis014'         => false,
+                '016Imoveis '        => false,
+                'OlhoMagico'         => false,
+                'OruloExclusividades'=> false,
+                'Lopes'              => false,
+                'FacebookAds'        => false,
+                'Buskaza'            => false,
             ],
-            'portaisDivulgarDestaque' => [
-                [
-                    'VivaReal' => true,
-                    'ImovelWeb' => true,
-                    '123i' => true,
-                    'ZapImoveis' => true,
-                    'OLX' => true,
-                    'ChaveNaMao' => true,
-                    'Moving' => true,
-                    'SPImovel' => true,
-                    'CasaMineira' => true,
-                    '018Imoveis' => true,
-                    'DreamCasa' => true,
-                    'Imoveis014' => true,
-                    '016Imoveis' => true,
-                    'OlhoMagico' => true,
-                    'OruloExclusividades' => true,
-                    'Lopes' => true,
-                    'FacebookAds' => true,
-                    'Buskaza' => true,
-                ]
-            ],
-            'portaisDivulgarSuperDestaque' => [
-                [
-                    'VivaReal' => true,
-                    'ImovelWeb' => true,
-                    '123i' => true,
-                    'ZapImoveis' => true,
-                    'OLX' => true,
-                    'ChaveNaMao' => true,
-                    'Moving' => true,
-                    'SPImovel' => true,
-                    'CasaMineira' => true,
-                    '018Imoveis' => true,
-                    'DreamCasa' => true,
-                    'Imoveis014' => true,
-                    '016Imoveis' => true,
-                    'OlhoMagico' => true,
-                    'OruloExclusividades' => true,
-                    'Lopes' => true,
-                    'FacebookAds' => true,
-                    'Buskaza' => true,
-                ]
-            ],
+            'portaisDivulgarDestaque'      => [],
+            'portaisDivulgarSuperDestaque' => [],
             'portaisDivulgarSuperDestaque2' => [
-                [
-                    'VivaReal' => [
-                        [
-                            'tipo' => 'PREMIERE_1',
-                        ]
-                    ]
-                ]
+                'VivaReal'           => false,
+                'ImovelWeb'          => false,
+                '123i'               => false,
+                'ZapImoveis'         => false,
+                'MercadoLivre'       => false,
+                'OLX'                => false,
+                'ChaveNaMao'         => false,
+                'Moving'             => false,
+                'SPImovel'           => false,
+                'CasaMineira'        => false,
+                '018Imoveis'         => false,
+                'DreamCasa'          => false,
+                'Imoveis014'         => false,
+                '016Imoveis '        => false,
+                'OlhoMagico'         => false,
+                'OruloExclusividades'=> false,
+                'Lopes'              => false,
+                'FacebookAds'        => false,
+                'Buskaza'            => false,
             ],
         ];
     }
@@ -948,23 +894,26 @@ class ImobiBrasilService
                     $mimeMap    = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'];
                     $mime       = $mimeMap[$ext] ?? 'image/jpeg';
 
-                    // Enviar como binário multipart (resultSet:true = imagem processada)
+                    // Enviar como binário multipart; primeira imagem = destaque
+                    $multipart = [
+                        [
+                            'name'     => 'codigoImovel',
+                            'contents' => (string)$codigoImovel,
+                        ],
+                        [
+                            'name'     => 'imagem',
+                            'contents' => $imgContent,
+                            'filename' => 'imagem_' . $index . '.' . $ext,
+                            'headers'  => ['Content-Type' => $mime],
+                        ],
+                    ];
+                    if ($index === 0) {
+                        $multipart[] = ['name' => 'destaque', 'contents' => 'sim'];
+                        $multipart[] = ['name' => 'principal', 'contents' => 'sim'];
+                    }
                     $response = $client->post($endpoint, [
-                        'headers' => [
-                            'token' => $apiKey,
-                        ],
-                        'multipart' => [
-                            [
-                                'name'     => 'codigoImovel',
-                                'contents' => (string)$codigoImovel,
-                            ],
-                            [
-                                'name'     => 'imagem',
-                                'contents' => $imgContent,
-                                'filename' => 'imagem_' . $index . '.' . $ext,
-                                'headers'  => ['Content-Type' => $mime],
-                            ],
-                        ],
+                        'headers'    => ['token' => $apiKey],
+                        'multipart'  => $multipart,
                     ]);
 
                     $statusCode = $response->getStatusCode();
