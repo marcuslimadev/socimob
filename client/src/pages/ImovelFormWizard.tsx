@@ -353,9 +353,16 @@ export default function ImovelFormWizard() {
     };
   }, [formData]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const MAX_FILES_PER_UPLOAD = 95; // server max_file_uploads = 100, leave buffer
+
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    
+    let files = Array.from(e.target.files || []);
+
+    if (files.length > MAX_FILES_PER_UPLOAD) {
+      toast.warning(`Limite de ${MAX_FILES_PER_UPLOAD} arquivos por envio. Apenas os primeiros ${MAX_FILES_PER_UPLOAD} foram adicionados. Salve e adicione o restante em seguida.`);
+      files = files.slice(0, MAX_FILES_PER_UPLOAD);
+    }
+
     const newMedia: MediaFile[] = files.map((file) => {
       const isVideo = file.type.startsWith('video/');
       return {
