@@ -543,7 +543,7 @@ class ImobiBrasilService
                 ]);
 
                 $json   = json_decode($response->getBody()->getContents(), true);
-                $cities = $json['data'] ?? (is_array($json) ? $json : []);
+                $cities = $json['resultSet']['data'] ?? $json['data'] ?? (is_array($json) ? $json : []);
 
                 if (empty($cities)) {
                     break; // sem mais páginas
@@ -925,19 +925,44 @@ class ImobiBrasilService
                 try {
                     $endpoint = $baseUrl . '/imovel/' . $codigoImovel . '/imagem/inserir';
 
-                    // Enviar imagem como URL string
+                    // Baixar o binário da imagem para enviar como arquivo (URL string não é processada pela API)
+                    $imgResponse = $client->get($imagemUrl, [
+                        'verify'      => false,
+                        'timeout'     => 30,
+                        'http_errors' => false,
+                    ]);
+
+                    if ($imgResponse->getStatusCode() !== 200) {
+                        $erros[] = "Imagem $index: não foi possível baixar ($imagemUrl)";
+                        Log::warning('Não foi possível baixar imagem para Imobi Brasil', [
+                            'property_id' => $property->id,
+                            'image_index' => $index,
+                            'image_url'   => $imagemUrl,
+                            'http'        => $imgResponse->getStatusCode(),
+                        ]);
+                        continue;
+                    }
+
+                    $imgContent = $imgResponse->getBody()->getContents();
+                    $ext        = strtolower(pathinfo(parse_url($imagemUrl, PHP_URL_PATH), PATHINFO_EXTENSION)) ?: 'jpg';
+                    $mimeMap    = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'];
+                    $mime       = $mimeMap[$ext] ?? 'image/jpeg';
+
+                    // Enviar como binário multipart (resultSet:true = imagem processada)
                     $response = $client->post($endpoint, [
                         'headers' => [
                             'token' => $apiKey,
                         ],
                         'multipart' => [
                             [
-                                'name' => 'codigoImovel',
+                                'name'     => 'codigoImovel',
                                 'contents' => (string)$codigoImovel,
                             ],
                             [
-                                'name' => 'imagem',
-                                'contents' => $imagemUrl,
+                                'name'     => 'imagem',
+                                'contents' => $imgContent,
+                                'filename' => 'imagem_' . $index . '.' . $ext,
+                                'headers'  => ['Content-Type' => $mime],
                             ],
                         ],
                     ]);
@@ -946,7 +971,7 @@ class ImobiBrasilService
                     $body = $response->getBody()->getContents();
                     $responseData = json_decode($body, true) ?: [];
 
-                    if ($statusCode === 200 && ($responseData['status'] ?? false)) {
+                    if ($statusCode === 200 && ($responseData['status'] ?? false) && ($responseData['resultSet'] ?? false)) {
                         $sucessos++;
 
                         Log::info('Imagem enviada com sucesso para Imobi Brasil', [
