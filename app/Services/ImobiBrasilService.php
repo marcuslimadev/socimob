@@ -486,6 +486,8 @@ class ImobiBrasilService
             'cep' => $property->cep ?? '',
             'bairro' => $property->bairro ?? '',
             'logradouro' => $property->logradouro ?? '',
+            'cidade' => $property->cidade ?? '',
+            'estado' => $property->estado ?? '',
             'codigoCidade' => 0,
             'numero' => $property->numero ?? '',
             'pontoReferencia' => '',
@@ -691,18 +693,48 @@ class ImobiBrasilService
                 ];
             }
 
-            // Buscar imagens locais
-            $imagens = \App\Models\ImovelImagem::where('codigo', $property->codigo)
+            // Buscar imagens locais - primeiro do imoveis_imagens, depois fallback para JSON
+            $imagensDb = \App\Models\ImovelImagem::where('codigo', $property->codigo)
                 ->orderBy('destaque', 'desc')
                 ->get();
 
-            if ($imagens->isEmpty()) {
+            // Montar lista de URLs de imagem (apenas imagens, sem vídeos)
+            $imageUrls = [];
+            $videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'webm', 'mkv'];
+
+            if ($imagensDb->isNotEmpty()) {
+                // Usar tabela imoveis_imagens
+                foreach ($imagensDb as $img) {
+                    $ext = strtolower(pathinfo(parse_url($img->url, PHP_URL_PATH), PATHINFO_EXTENSION));
+                    if (!in_array($ext, $videoExtensions)) {
+                        $imageUrls[] = $img->url;
+                    }
+                }
+            } else {
+                // Fallback: usar JSON imagens do model
+                $rawImagens = $property->imagens;
+                if (is_array($rawImagens)) {
+                    foreach ($rawImagens as $url) {
+                        $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
+                        if (!in_array($ext, $videoExtensions)) {
+                            $imageUrls[] = $url;
+                        }
+                    }
+                }
+            }
+
+            if (empty($imageUrls)) {
                 return [
                     'success' => true,
                     'message' => 'Nenhuma imagem para enviar',
                     'images_sent' => 0,
+                    'images_total' => 0,
+                    'errors' => [],
                 ];
             }
+
+            // Usar $imageUrls como fonte de dados
+            $imagens = collect($imageUrls);
 
             $baseUrl = static::getBaseUrl($tenant);
             $baseUrl = rtrim($baseUrl, '/');
@@ -724,7 +756,7 @@ class ImobiBrasilService
             $erros = [];
 
             // Enviar cada imagem
-            foreach ($imagens as $index => $imagem) {
+            foreach ($imagens as $index => $imagemUrl) {
                 try {
                     $endpoint = $baseUrl . '/imovel/' . $codigoImovel . '/imagem/inserir';
 
@@ -740,7 +772,7 @@ class ImobiBrasilService
                             ],
                             [
                                 'name' => 'imagem',
-                                'contents' => $imagem->url,
+                                'contents' => $imagemUrl,
                             ],
                         ],
                     ]);
@@ -755,7 +787,7 @@ class ImobiBrasilService
                         Log::info('Imagem enviada com sucesso para Imobi Brasil', [
                             'property_id' => $property->id,
                             'image_index' => $index,
-                            'image_url' => $imagem->url,
+                            'image_url' => $imagemUrl,
                         ]);
                     } else {
                         $erro = $responseData['message'] ?? "HTTP $statusCode";
@@ -764,7 +796,7 @@ class ImobiBrasilService
                         Log::warning('Erro ao enviar imagem para Imobi Brasil', [
                             'property_id' => $property->id,
                             'image_index' => $index,
-                            'image_url' => $imagem->url,
+                            'image_url' => $imagemUrl,
                             'status' => $statusCode,
                             'error' => $erro,
                         ]);
@@ -775,7 +807,7 @@ class ImobiBrasilService
                     Log::error('Exceção ao enviar imagem para Imobi Brasil', [
                         'property_id' => $property->id,
                         'image_index' => $index,
-                        'image_url' => $imagem->url,
+                        'image_url' => $imagemUrl,
                         'error' => $e->getMessage(),
                     ]);
                 }

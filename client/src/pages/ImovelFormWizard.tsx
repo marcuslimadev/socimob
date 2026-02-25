@@ -627,7 +627,16 @@ export default function ImovelFormWizard() {
       const response = await api[method](endpoint);
 
       if (response.data?.success) {
-        toast.success(response.data?.message || 'Imóvel enviado com sucesso para Imobi Brasil');
+        const imagesSent = response.data?.images_sent ?? 0;
+        const baseMsg = response.data?.message || 'Imóvel enviado com sucesso para Imobi Brasil';
+        const fullMsg = imagesSent > 0
+          ? `${baseMsg} + ${imagesSent} imagem(ns) enviada(s)`
+          : baseMsg;
+        toast.success(fullMsg);
+        
+        if (imagesSent > 0) {
+          setImobiBrasilImagesStatus({ enviadas: true, data_envio: new Date().toISOString() });
+        }
         
         // Atualizar status
         const statusResponse = await api.get(`/imoveis/${propertyId}/status-imobi-brasil`);
