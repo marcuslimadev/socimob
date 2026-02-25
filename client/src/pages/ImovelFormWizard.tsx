@@ -76,6 +76,7 @@ const defaultFormData = {
   local_chaves: '',
   status_chaves: 'disponivel',
   visibilidade_endereco: 'bairro_cidade',
+  portal_tenant_ids: [] as number[],
   active: true,
   exibir_imovel: true,
   exclusividade: false,
@@ -100,6 +101,13 @@ interface MediaFile {
   destaque?: boolean;
 }
 
+interface PortalTenantOption {
+  id: number;
+  name: string;
+  domain?: string;
+  is_owner?: boolean;
+}
+
 const isVideoUrl = (url: string) => /\.(mp4|mov|m4v|avi|webm|mkv)(\?.*)?$/i.test(url);
 
 export default function ImovelFormWizard() {
@@ -114,12 +122,42 @@ export default function ImovelFormWizard() {
   const [isLoadingProperty, setIsLoadingProperty] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [formData, setFormData] = useState(defaultFormData);
+  const [portalOptions, setPortalOptions] = useState<PortalTenantOption[]>([]);
+  const [isLoadingPortalOptions, setIsLoadingPortalOptions] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Prevents auto-save from firing before initial data is loaded
   const autoSaveEnabled = useRef(!Boolean(match && params?.id));
   
   const { buscarCep, isLoading: isLoadingCep } = useViaCep();
+
+  useEffect(() => {
+    const loadPortalOptions = async () => {
+      try {
+        setIsLoadingPortalOptions(true);
+        const response = await api.get('/imoveis/portal-opcoes');
+        const options: PortalTenantOption[] = response.data?.data || [];
+        setPortalOptions(options);
+
+        setFormData((prev) => {
+          if (prev.portal_tenant_ids.length > 0) {
+            return prev;
+          }
+          const owner = options.find((option) => option.is_owner);
+          return {
+            ...prev,
+            portal_tenant_ids: owner ? [owner.id] : prev.portal_tenant_ids,
+          };
+        });
+      } catch (error) {
+        console.error('Erro ao carregar opções de portais:', error);
+      } finally {
+        setIsLoadingPortalOptions(false);
+      }
+    };
+
+    loadPortalOptions();
+  }, []);
 
   const handleBuscarCep = async () => {
     if (!formData.cep) {
@@ -182,6 +220,9 @@ export default function ImovelFormWizard() {
           local_chaves: item.local_chaves || '',
           status_chaves: item.status_chaves || 'disponivel',
           visibilidade_endereco: item.visibilidade_endereco || 'bairro_cidade',
+          portal_tenant_ids: Array.isArray(item.portal_tenant_ids)
+            ? item.portal_tenant_ids.map((id: unknown) => Number(id)).filter((id: number) => Number.isFinite(id))
+            : [],
           active: Boolean(item.active),
           exibir_imovel: Boolean(item.exibir_imovel),
           exclusividade: Boolean(item.exclusividade),
@@ -224,7 +265,14 @@ export default function ImovelFormWizard() {
     const draft = localStorage.getItem(DRAFT_KEY);
     if (draft) {
       try {
-        setFormData(JSON.parse(draft));
+        const parsed = JSON.parse(draft);
+        setFormData({
+          ...defaultFormData,
+          ...parsed,
+          portal_tenant_ids: Array.isArray(parsed?.portal_tenant_ids)
+            ? parsed.portal_tenant_ids.map((id: unknown) => Number(id)).filter((id: number) => Number.isFinite(id))
+            : [],
+        });
         toast.info('Rascunho restaurado automaticamente');
       } catch {
         localStorage.removeItem(DRAFT_KEY);
@@ -265,6 +313,7 @@ export default function ImovelFormWizard() {
             nome_condominio: formData.nome_condominio,
             descricao: formData.descricao,
             descricao_resumida: formData.descricao_resumida,
+            portal_tenant_ids: formData.portal_tenant_ids,
             active: formData.active ? 1 : 0,
             exibir_imovel: formData.exibir_imovel ? 1 : 0,
             exclusividade: formData.exclusividade ? 1 : 0,
@@ -441,6 +490,9 @@ export default function ImovelFormWizard() {
       if (formData.local_chaves) formDataToSend.append('local_chaves', formData.local_chaves);
       if (formData.status_chaves) formDataToSend.append('status_chaves', formData.status_chaves);
       if (formData.visibilidade_endereco) formDataToSend.append('visibilidade_endereco', formData.visibilidade_endereco);
+      formData.portal_tenant_ids.forEach((tenantId) => {
+        formDataToSend.append('portal_tenant_ids[]', String(tenantId));
+      });
       
       formDataToSend.append('active', formData.active ? '1' : '0');
       formDataToSend.append('exibir_imovel', formData.exibir_imovel ? '1' : '0');
@@ -797,6 +849,53 @@ export default function ImovelFormWizard() {
                 <option value="completo">Mostrar endereço completo</option>
                 <option value="oculto">Ocultar localização pública</option>
               </select>
+            </div>
+
+            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+              <p className="text-sm font-semibold text-foreground mb-1">Portais onde este imóvel será exibido</p>
+              <p className="text-xs text-muted-foreground mb-3">Selecione em quais portais vinculados o imóvel ficará visível.</p>
+
+              {isLoadingPortalOptions ? (
+                <p className="text-xs text-muted-foreground">Carregando opções...</p>
+              ) : (
+                <div className="space-y-2">
+                  {portalOptions.map((option) => {
+                    const checked = formData.portal_tenant_ids.includes(option.id);
+                    return (
+                      <label key={option.id} className="flex items-center gap-3 rounded-lg border border-white/10 px-3 py-2 cursor-pointer hover:bg-white/5">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) => {
+                            const candidate = event.target.checked
+                              ? [...formData.portal_tenant_ids, option.id]
+                              : formData.portal_tenant_ids.filter((id) => id !== option.id);
+                            const unique = Array.from(new Set(candidate));
+                            const owner = portalOptions.find((item) => item.is_owner);
+                            const fallback = owner?.id ?? portalOptions[0]?.id;
+                            setFormData({
+                              ...formData,
+                              portal_tenant_ids: unique.length > 0
+                                ? unique
+                                : (fallback ? [fallback] : []),
+                            });
+                          }}
+                          className="w-4 h-4 rounded border-white/20 bg-white/10"
+                        />
+                        <div>
+                          <p className="text-sm text-foreground">
+                            {option.name} {option.is_owner ? '(principal)' : ''}
+                          </p>
+                          {option.domain ? <p className="text-xs text-muted-foreground">{option.domain}</p> : null}
+                        </div>
+                      </label>
+                    );
+                  })}
+                  {!portalOptions.length && (
+                    <p className="text-xs text-muted-foreground">Nenhum portal vinculado encontrado para este tenant.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="pt-2">
@@ -1174,6 +1273,13 @@ export default function ImovelFormWizard() {
                     formData.visibilidade_endereco === 'oculto' ? 'Oculto' :
                     'Bairro/Cidade'
                   }
+                </p>
+                <p className="text-muted-foreground">
+                  Portais: {formData.portal_tenant_ids.length > 0
+                    ? formData.portal_tenant_ids
+                        .map((tenantId) => portalOptions.find((option) => option.id === tenantId)?.name || `#${tenantId}`)
+                        .join(', ')
+                    : 'Nenhum selecionado'}
                 </p>
                 {formData.em_condominio && formData.nome_condominio && (
                   <p className="text-muted-foreground">Condomínio: {formData.nome_condominio}</p>

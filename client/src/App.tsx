@@ -44,6 +44,7 @@ const ImovelFormWizard = lazy(() => import("./pages/ImovelFormWizard"));
 const Settings = lazy(() => import("./pages/Settings"));
 const SystemLogs = lazy(() => import("./pages/SystemLogs"));
 const Tenants = lazy(() => import("./pages/Tenants"));
+const TenantAssociations = lazy(() => import("./pages/TenantAssociations"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const PropertyAds = lazy(() => import("./pages/PropertyAds"));
 const Analytics = lazy(() => import("./pages/Analytics"));
@@ -103,6 +104,7 @@ function Router() {
       <Route path="/pessoas" component={Pessoas} />
       <Route path="/settings" component={Settings} />
       <Route path="/tenants" component={Tenants} />
+      <Route path="/tenants/associacoes" component={TenantAssociations} />
       <Route path="/system-logs" component={SystemLogs} />
       <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/property-ads" component={PropertyAds} />

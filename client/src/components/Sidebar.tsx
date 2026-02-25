@@ -26,6 +26,7 @@ import {
   Moon,
   LineChart,
   KeyRound,
+  Link2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -188,6 +189,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   // Menu exclusivo para super_admin (fica ANTES de Configurações)
   const superAdminMenuItems: SidebarItem[] = user?.role === 'super_admin' ? [
     { icon: <Building2 size={20} />, label: 'Tenants', href: '/tenants' },
+    { icon: <Link2 size={20} />, label: 'Assoc. Tenants', href: '/tenants/associacoes' },
   ] : [];
   
   // Configurações fica por último

@@ -382,14 +382,14 @@ export default function ClientPortalRefined() {
         {/* Slideshow — up to 6 destaque properties */}
         {slideshowProperties.length > 0 && currentSlide && (
           <motion.article
-            className="mt-8 mx-auto max-w-[1240px] overflow-hidden rounded-[24px] border border-black/10 bg-white text-slate-900 shadow-[0_16px_44px_rgba(15,23,42,0.12)] lg:h-[390px]"
+            className="mt-8 mx-auto max-w-[1240px] overflow-hidden rounded-[24px] border border-black/10 bg-white text-slate-900 shadow-[0_16px_44px_rgba(15,23,42,0.12)] lg:h-[460px]"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <div className="grid h-full lg:grid-cols-[1.22fr_0.78fr]">
+            <div className="grid h-full lg:grid-cols-[1.28fr_0.72fr]">
               {/* Image with prev/next controls */}
-              <div className="relative h-[240px] sm:h-[260px] lg:h-full">
+              <div className="relative h-[250px] sm:h-[300px] lg:h-full">
                 <div className="h-full flex flex-col">
                   <div className="flex-1 min-h-0 p-1.5 pb-0">
                     <img
@@ -400,7 +400,7 @@ export default function ClientPortalRefined() {
                       loading="lazy"
                     />
                   </div>
-                  <div className="h-[72px] p-1.5 pt-1 relative">
+                  <div className="h-[90px] p-1.5 pt-1 relative">
                     {currentSlidePhotos.length > 4 && (
                       <button
                         type="button"
@@ -411,7 +411,7 @@ export default function ClientPortalRefined() {
                         <ChevronLeft className="w-4 h-4" />
                       </button>
                     )}
-                    <div className="h-full grid grid-cols-4 gap-1.5 px-7">
+                    <div className={`h-full grid grid-cols-4 gap-1.5 ${currentSlidePhotos.length > 4 ? 'px-7' : 'px-0'}`}>
                       {visibleThumbs.map(({ photo, index: realIndex }) => {
                         const isActive = realIndex === slidePhotoIndex;
                         return (
@@ -451,27 +451,6 @@ export default function ClientPortalRefined() {
                     {slideIndex + 1} / {slideshowProperties.length}
                   </span>
                 )}
-                {/* Prev / Next arrows */}
-                {slideshowProperties.length > 1 && (
-                  <>
-                    <button
-                      type="button"
-                      aria-label="Anterior"
-                      onClick={() => setSlideIndex((i) => (i - 1 + slideshowProperties.length) % slideshowProperties.length)}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full border border-black/10 bg-white/95 hover:bg-white flex items-center justify-center text-slate-700 transition-colors"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Proximo"
-                      onClick={() => setSlideIndex((i) => (i + 1) % slideshowProperties.length)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full border border-black/10 bg-white/95 hover:bg-white flex items-center justify-center text-slate-700 transition-colors"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </>
-                )}
               </div>
 
               {/* Property info */}
@@ -490,7 +469,7 @@ export default function ClientPortalRefined() {
 
                 {/* Dot indicators */}
                 {slideshowProperties.length > 1 && (
-                  <div className="mt-5 flex gap-2">
+                  <div className="mt-5 flex items-center gap-3">
                     {slideshowProperties.map((_, i) => (
                       <button
                         key={i}
@@ -501,6 +480,22 @@ export default function ClientPortalRefined() {
                         style={{ backgroundColor: i === slideIndex ? secondary : '#cbd5e1' }}
                       />
                     ))}
+                    <button
+                      type="button"
+                      aria-label="Anterior"
+                      onClick={() => setSlideIndex((i) => (i - 1 + slideshowProperties.length) % slideshowProperties.length)}
+                      className="ml-1 inline-flex items-center justify-center w-7 h-7 rounded-full border border-black/10 bg-white hover:bg-slate-50 text-slate-700"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Proximo"
+                      onClick={() => setSlideIndex((i) => (i + 1) % slideshowProperties.length)}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-black/10 bg-white hover:bg-slate-50 text-slate-700"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
 

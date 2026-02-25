@@ -169,4 +169,9 @@ class Property extends Model
     {
         return $this->hasMany(ImovelImagem::class, 'codigo', 'codigo');
     }
+
+    public function portalTenants()
+    {
+        return $this->hasMany(PropertyPortalTenant::class, 'property_id');
+    }
 }

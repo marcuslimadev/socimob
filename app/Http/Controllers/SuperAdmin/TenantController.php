@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Services\TenantService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class TenantController extends Controller
@@ -384,6 +385,122 @@ class TenantController extends Controller
         return response()->json([
             'message' => 'Subscription activated successfully',
             'tenant' => $tenant,
+        ]);
+    }
+
+    /**
+     * Listar associações entre tenants para compartilhamento de portais.
+     * GET /api/super-admin/tenant-associations
+     */
+    public function associationsIndex(Request $request)
+    {
+        if (!$request->user() || !$request->user()->isSuperAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $tenants = Tenant::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'domain', 'slug', 'is_active']);
+
+        $associations = [];
+        if (DB::getSchemaBuilder()->hasTable('tenant_associations')) {
+            $rows = DB::table('tenant_associations')
+                ->select('tenant_id', 'associated_tenant_id')
+                ->get();
+
+            foreach ($rows as $row) {
+                $owner = (int) $row->tenant_id;
+                $related = (int) $row->associated_tenant_id;
+                if ($owner === $related) {
+                    continue;
+                }
+                if (!isset($associations[$owner])) {
+                    $associations[$owner] = [];
+                }
+                if (!in_array($related, $associations[$owner], true)) {
+                    $associations[$owner][] = $related;
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'tenants' => $tenants,
+            'associations' => $associations,
+        ]);
+    }
+
+    /**
+     * Atualizar associações de um tenant.
+     * PUT /api/super-admin/tenant-associations/{id}
+     */
+    public function associationsUpdate(Request $request, $id)
+    {
+        if (!$request->user() || !$request->user()->isSuperAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $tenant = Tenant::find($id);
+        if (!$tenant) {
+            return response()->json(['error' => 'Tenant not found'], 404);
+        }
+
+        $validated = $this->validate($request, [
+            'associated_tenant_ids' => 'nullable|array',
+            'associated_tenant_ids.*' => 'integer|exists:tenants,id',
+        ]);
+
+        if (!DB::getSchemaBuilder()->hasTable('tenant_associations')) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Tabela tenant_associations não encontrada. Execute as migrations.',
+            ], 500);
+        }
+
+        $tenantId = (int) $tenant->id;
+        $targetIds = collect($validated['associated_tenant_ids'] ?? [])
+            ->map(fn ($value) => (int) $value)
+            ->filter(fn ($value) => $value > 0 && $value !== $tenantId)
+            ->unique()
+            ->values()
+            ->toArray();
+
+        DB::transaction(function () use ($tenantId, $targetIds, $request) {
+            DB::table('tenant_associations')
+                ->where('tenant_id', $tenantId)
+                ->orWhere('associated_tenant_id', $tenantId)
+                ->delete();
+
+            if (empty($targetIds)) {
+                return;
+            }
+
+            $now = now();
+            $userId = $request->user()?->id;
+            $rows = [];
+            foreach ($targetIds as $targetId) {
+                $rows[] = [
+                    'tenant_id' => $tenantId,
+                    'associated_tenant_id' => $targetId,
+                    'created_by' => $userId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+                $rows[] = [
+                    'tenant_id' => $targetId,
+                    'associated_tenant_id' => $tenantId,
+                    'created_by' => $userId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+            DB::table('tenant_associations')->insert($rows);
+        });
+
+        return response()->json([
+            'success' => true,
+            'tenant_id' => $tenantId,
+            'associated_tenant_ids' => $targetIds,
         ]);
     }
 }

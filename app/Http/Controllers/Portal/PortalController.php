@@ -178,9 +178,23 @@ class PortalController extends Controller
             ? array_map(fn ($value) => Str::lower($value), $allowedFinalidades)
             : null;
 
+        $sharedPropertyIds = [];
+        if (Schema::hasTable('property_portal_tenants')) {
+            $sharedPropertyIds = DB::table('property_portal_tenants')
+                ->where('tenant_id', $tenantId)
+                ->pluck('property_id')
+                ->map(fn ($id) => (int) $id)
+                ->toArray();
+        }
+
         $imoveisQuery = Property::withoutTenant()->with('fotos')->orderBy('created_at', 'desc');
         if ($hasTenantId) {
-            $imoveisQuery->where('tenant_id', $tenantId);
+            $imoveisQuery->where(function ($query) use ($tenantId, $sharedPropertyIds) {
+                $query->where('tenant_id', $tenantId);
+                if (!empty($sharedPropertyIds)) {
+                    $query->orWhereIn('id', $sharedPropertyIds);
+                }
+            });
         }
 
         // Aplicar ordenação
@@ -402,9 +416,23 @@ class PortalController extends Controller
             ? array_map(fn ($value) => Str::lower($value), $allowedFinalidades)
             : null;
 
+        $sharedPropertyIds = [];
+        if (Schema::hasTable('property_portal_tenants')) {
+            $sharedPropertyIds = DB::table('property_portal_tenants')
+                ->where('tenant_id', $tenantId)
+                ->pluck('property_id')
+                ->map(fn ($value) => (int) $value)
+                ->toArray();
+        }
+
         $imovelQuery = Property::withoutTenant()->with('fotos')->where('id', $id);
         if ($hasTenantId) {
-            $imovelQuery->where('tenant_id', $tenantId);
+            $imovelQuery->where(function ($query) use ($tenantId, $sharedPropertyIds) {
+                $query->where('tenant_id', $tenantId);
+                if (!empty($sharedPropertyIds)) {
+                    $query->orWhereIn('id', $sharedPropertyIds);
+                }
+            });
         }
         if ($hasActive) {
             $imovelQuery->where('active', true);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Property;
+use App\Models\Tenant;
 use App\Services\PropertySyncService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -30,6 +31,109 @@ class PropertyController extends Controller
     private function flushPortalCache(int $tenantId): void
     {
         Cache::forget("portal_imoveis_tenant_{$tenantId}");
+    }
+
+    private function flushPortalCaches(array $tenantIds): void
+    {
+        foreach (array_unique(array_map('intval', $tenantIds)) as $tenantId) {
+            if ($tenantId > 0) {
+                $this->flushPortalCache($tenantId);
+            }
+        }
+    }
+
+    private function getAssociatedTenantIds(int $tenantId): array
+    {
+        if (!Schema::hasTable('tenant_associations')) {
+            return [];
+        }
+
+        $direct = DB::table('tenant_associations')
+            ->where('tenant_id', $tenantId)
+            ->pluck('associated_tenant_id')
+            ->map(fn ($id) => (int) $id)
+            ->toArray();
+
+        $inverse = DB::table('tenant_associations')
+            ->where('associated_tenant_id', $tenantId)
+            ->pluck('tenant_id')
+            ->map(fn ($id) => (int) $id)
+            ->toArray();
+
+        return array_values(array_unique(array_filter(
+            array_merge($direct, $inverse),
+            fn ($id) => $id > 0 && $id !== $tenantId
+        )));
+    }
+
+    private function getAllowedPortalTenantIds(int $tenantId): array
+    {
+        $candidateIds = array_values(array_unique(array_merge([$tenantId], $this->getAssociatedTenantIds($tenantId))));
+
+        return Tenant::query()
+            ->whereIn('id', $candidateIds)
+            ->where('is_active', true)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->toArray();
+    }
+
+    private function normalizePortalTenantIds(int $ownerTenantId, $portalTenantIds): array
+    {
+        $selectedIds = collect(is_array($portalTenantIds) ? $portalTenantIds : [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->values()
+            ->toArray();
+
+        $allowedIds = $this->getAllowedPortalTenantIds($ownerTenantId);
+        $selectedIds = array_values(array_intersect($selectedIds, $allowedIds));
+
+        if (empty($selectedIds)) {
+            $selectedIds = [$ownerTenantId];
+        }
+
+        return array_values(array_unique($selectedIds));
+    }
+
+    private function getPropertyPortalTenantIds(int $propertyId, int $ownerTenantId): array
+    {
+        if (!Schema::hasTable('property_portal_tenants')) {
+            return [$ownerTenantId];
+        }
+
+        $ids = DB::table('property_portal_tenants')
+            ->where('property_id', $propertyId)
+            ->pluck('tenant_id')
+            ->map(fn ($id) => (int) $id)
+            ->toArray();
+
+        if (empty($ids)) {
+            return [$ownerTenantId];
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    private function syncPropertyPortalTenantIds(int $propertyId, int $ownerTenantId, array $portalTenantIds): array
+    {
+        if (!Schema::hasTable('property_portal_tenants')) {
+            return [$ownerTenantId];
+        }
+
+        $normalizedIds = $this->normalizePortalTenantIds($ownerTenantId, $portalTenantIds);
+        DB::table('property_portal_tenants')->where('property_id', $propertyId)->delete();
+
+        $now = now();
+        $rows = array_map(static fn ($tenantId) => [
+            'property_id' => $propertyId,
+            'tenant_id' => $tenantId,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $normalizedIds);
+        DB::table('property_portal_tenants')->insert($rows);
+
+        return $normalizedIds;
     }
 
     private function resolveUserId(Request $request): ?int
@@ -164,6 +268,39 @@ class PropertyController extends Controller
         $properties = $query->paginate($perPage);
         
         return response()->json($properties);
+    }
+
+    /**
+     * Lista os portais permitidos para publicação do imóvel no tenant atual.
+     * GET /api/imoveis/portal-opcoes
+     */
+    public function portalOptions(Request $request)
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        $allowedIds = $this->getAllowedPortalTenantIds((int) $tenantId);
+        $tenants = Tenant::query()
+            ->whereIn('id', $allowedIds)
+            ->orderBy('name')
+            ->get(['id', 'name', 'domain', 'slug'])
+            ->map(function ($tenant) use ($tenantId) {
+                return [
+                    'id' => (int) $tenant->id,
+                    'name' => $tenant->name,
+                    'domain' => $tenant->domain,
+                    'slug' => $tenant->slug,
+                    'is_owner' => (int) $tenant->id === (int) $tenantId,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $tenants,
+        ]);
     }
     
     /**
@@ -544,6 +681,8 @@ class PropertyController extends Controller
             'local_chaves' => 'nullable|string|max:255',
             'status_chaves' => 'nullable|string|in:disponivel,retirada,reserva',
             'visibilidade_endereco' => 'nullable|string|in:completo,bairro_cidade,cidade_estado,oculto',
+            'portal_tenant_ids' => 'nullable|array',
+            'portal_tenant_ids.*' => 'integer|exists:tenants,id',
             'active' => 'nullable|boolean',
             'exibir_imovel' => 'nullable|boolean',
             'destaque' => 'nullable|boolean',
@@ -576,6 +715,21 @@ class PropertyController extends Controller
 
             // ========== PREPARAR DADOS ==========
             $data = $validator->validated();
+            
+            // ========== VALIDAÇÃO DE PORTAL_TENANT_IDS (APENAS TENANTS ASSOCIADOS) ==========
+            // Portal tenant IDs devem incluir apenas tenants associados ao tenant atual
+            $portalTenantIds = [];
+            if (isset($data['portal_tenant_ids']) && !empty($data['portal_tenant_ids'])) {
+                $allowedTenantIds = $this->getAllowedPortalTenantIds($tenantId);
+                $requestedIds = is_array($data['portal_tenant_ids']) ? $data['portal_tenant_ids'] : [];
+                
+                // Filtrar apenas os tenants associados (que não seja o próprio tenant)
+                $portalTenantIds = array_filter(
+                    $requestedIds,
+                    fn ($id) => in_array((int)$id, $allowedTenantIds) && (int)$id !== (int)$tenantId
+                );
+            }
+            unset($data['portal_tenant_ids']);
             $data['tenant_id'] = $tenantId; // FORÇAR tenant_id
             $data['codigo_imovel'] = $codigoImovel;
             // Compatibilidade com schemas antigos/novos.
@@ -649,6 +803,7 @@ class PropertyController extends Controller
 
             // ========== CRIAR IMÓVEL ==========
             $property = Property::create($data);
+            $selectedPortalTenantIds = $this->syncPropertyPortalTenantIds($property->id, (int) $tenantId, is_array($portalTenantIds) ? $portalTenantIds : []);
             
             \Log::info('Property created', [
                 'tenant_id' => $tenantId,
@@ -656,11 +811,13 @@ class PropertyController extends Controller
                 'codigo' => $codigoImovel,
             ]);
             
-            $this->flushPortalCache((int) $tenantId);
+            $this->flushPortalCaches($selectedPortalTenantIds);
 
             return response()->json([
                 'success' => true,
-                'data' => $property,
+                'data' => array_merge($property->toArray(), [
+                    'portal_tenant_ids' => $selectedPortalTenantIds,
+                ]),
                 'message' => $mediaUploadWarning ?: "Imóvel {$codigoImovel} cadastrado com sucesso!",
                 'upload_warning' => $mediaUploadWarning,
             ], 201);
@@ -701,7 +858,9 @@ class PropertyController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $property,
+            'data' => array_merge($property->toArray(), [
+                'portal_tenant_ids' => $this->getPropertyPortalTenantIds($property->id, (int) $tenantId),
+            ]),
         ]);
     }
 
@@ -777,6 +936,8 @@ class PropertyController extends Controller
             'local_chaves' => 'nullable|string|max:255',
             'status_chaves' => 'nullable|string|in:disponivel,retirada,reserva',
             'visibilidade_endereco' => 'nullable|string|in:completo,bairro_cidade,cidade_estado,oculto',
+            'portal_tenant_ids' => 'nullable|array',
+            'portal_tenant_ids.*' => 'integer|exists:tenants,id',
             'active' => 'nullable|boolean',
             'exibir_imovel' => 'nullable|boolean',
             'destaque' => 'nullable|boolean',
@@ -801,6 +962,25 @@ class PropertyController extends Controller
         try {
             // ========== PREPARAR DADOS ==========
             $data = $validator->validated();
+            
+            // ========== VALIDAÇÃO DE PORTAL_TENANT_IDS (APENAS TENANTS ASSOCIADOS) ==========
+            // Portal tenant IDs devem incluir apenas tenants associados ao tenant atual
+            $portalTenantIds = null;
+            if (isset($data['portal_tenant_ids']) && !empty($data['portal_tenant_ids'])) {
+                $allowedTenantIds = $this->getAllowedPortalTenantIds($tenantId);
+                $requestedIds = is_array($data['portal_tenant_ids']) ? $data['portal_tenant_ids'] : [];
+                
+                // Filtrar apenas os tenants associados (que não seja o próprio tenant)
+                $validIds = array_filter(
+                    $requestedIds,
+                    fn ($id) => in_array((int)$id, $allowedTenantIds) && (int)$id !== (int)$tenantId
+                );
+                
+                if (!empty($validIds)) {
+                    $portalTenantIds = $validIds;
+                }
+            }
+            unset($data['portal_tenant_ids']);
             
             // GARANTIR que tenant_id NUNCA seja alterado
             unset($data['tenant_id']);
@@ -880,6 +1060,13 @@ class PropertyController extends Controller
 
             // ========== ATUALIZAR IMÓVEL ==========
             $property->update($data);
+            $selectedPortalTenantIds = $this->syncPropertyPortalTenantIds(
+                $property->id,
+                (int) $tenantId,
+                is_array($portalTenantIds)
+                    ? $portalTenantIds
+                    : $this->getPropertyPortalTenantIds($property->id, (int) $tenantId)
+            );
             
             \Log::info('Property updated', [
                 'property_id' => $id,
@@ -888,11 +1075,13 @@ class PropertyController extends Controller
                 'user_id' => $this->resolveUserId($request),
             ]);
             
-            $this->flushPortalCache((int) $tenantId);
+            $this->flushPortalCaches($selectedPortalTenantIds);
 
             return response()->json([
                 'success' => true,
-                'data' => $property->fresh(),
+                'data' => array_merge($property->fresh()->toArray(), [
+                    'portal_tenant_ids' => $selectedPortalTenantIds,
+                ]),
                 'message' => $mediaUploadWarning ?: "Imóvel {$property->codigo_imovel} atualizado com sucesso!",
                 'upload_warning' => $mediaUploadWarning,
             ]);
@@ -932,8 +1121,9 @@ class PropertyController extends Controller
             return response()->json(['error' => 'Property not found'], 404);
         }
 
+        $portalTenantIds = $this->getPropertyPortalTenantIds($property->id, (int) $tenantId);
         $property->delete();
-        $this->flushPortalCache((int) $tenantId);
+        $this->flushPortalCaches($portalTenantIds);
 
         return response()->json([
             'success' => true,

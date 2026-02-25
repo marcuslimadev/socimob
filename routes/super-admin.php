@@ -34,6 +34,12 @@ $router->group(['prefix' => 'api/super-admin', 'middleware' => ['simple-auth']],
     $router->get('/tenants/{id}/users', 'SuperAdmin\TenantController@users');
     $router->post('/tenants/{id}/suspend-subscription', 'SuperAdmin\TenantController@suspendSubscription');
     $router->post('/tenants/{id}/activate-subscription', 'SuperAdmin\TenantController@activateSubscription');
+    $router->get('/tenant-associations', 'SuperAdmin\TenantController@associationsIndex');
+    $router->put('/tenant-associations/{id}', 'SuperAdmin\TenantController@associationsUpdate');
+
+    // Property Sharing Visualization (apenas para superadmin ver compartilhamentos)
+    $router->get('/property-sharing', 'SuperAdmin\PropertySharingController@index');
+    $router->get('/property-sharing/{propertyId}/details', 'SuperAdmin\PropertySharingController@getPropertySharing');
 
     // Plans
     $router->get('/settings/plans', 'SuperAdmin\SettingsController@getPlans');
