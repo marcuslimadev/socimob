@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Services\TenantService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class TenantController extends Controller
@@ -445,10 +446,28 @@ class TenantController extends Controller
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
-        $validated = $this->validate($request, [
+        // Validação com melhor tratamento de erro
+        $validator = Validator::make($request->all(), [
             'associated_tenant_ids' => 'nullable|array',
             'associated_tenant_ids.*' => 'integer|exists:tenants,id',
         ]);
+
+        if ($validator->fails()) {
+            \Log::warning('TenantAssociations validation failed', [
+                'tenant_id' => $id,
+                'errors' => $validator->errors()->toArray(),
+                'input' => $request->all(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Validação falhou',
+                'message' => 'Um ou mais tenant IDs são inválidos',
+                'messages' => $validator->errors(),
+            ], 422);
+        }
+
+        $validated = $validator->validated();
 
         if (!DB::getSchemaBuilder()->hasTable('tenant_associations')) {
             return response()->json([
@@ -457,50 +476,70 @@ class TenantController extends Controller
             ], 500);
         }
 
-        $tenantId = (int) $tenant->id;
-        $targetIds = collect($validated['associated_tenant_ids'] ?? [])
-            ->map(fn ($value) => (int) $value)
-            ->filter(fn ($value) => $value > 0 && $value !== $tenantId)
-            ->unique()
-            ->values()
-            ->toArray();
+        try {
+            $tenantId = (int) $tenant->id;
+            $targetIds = collect($validated['associated_tenant_ids'] ?? [])
+                ->map(fn ($value) => (int) $value)
+                ->filter(fn ($value) => $value > 0 && $value !== $tenantId)
+                ->unique()
+                ->values()
+                ->toArray();
 
-        DB::transaction(function () use ($tenantId, $targetIds, $request) {
-            DB::table('tenant_associations')
-                ->where('tenant_id', $tenantId)
-                ->orWhere('associated_tenant_id', $tenantId)
-                ->delete();
+            DB::transaction(function () use ($tenantId, $targetIds, $request) {
+                DB::table('tenant_associations')
+                    ->where('tenant_id', $tenantId)
+                    ->orWhere('associated_tenant_id', $tenantId)
+                    ->delete();
 
-            if (empty($targetIds)) {
-                return;
-            }
+                if (empty($targetIds)) {
+                    return;
+                }
 
-            $now = now();
-            $userId = $request->user()?->id;
-            $rows = [];
-            foreach ($targetIds as $targetId) {
-                $rows[] = [
-                    'tenant_id' => $tenantId,
-                    'associated_tenant_id' => $targetId,
-                    'created_by' => $userId,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-                $rows[] = [
-                    'tenant_id' => $targetId,
-                    'associated_tenant_id' => $tenantId,
-                    'created_by' => $userId,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-            }
-            DB::table('tenant_associations')->insert($rows);
-        });
+                $now = now();
+                $userId = $request->user()?->id;
+                $rows = [];
+                foreach ($targetIds as $targetId) {
+                    $rows[] = [
+                        'tenant_id' => $tenantId,
+                        'associated_tenant_id' => $targetId,
+                        'created_by' => $userId,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                    $rows[] = [
+                        'tenant_id' => $targetId,
+                        'associated_tenant_id' => $tenantId,
+                        'created_by' => $userId,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+                DB::table('tenant_associations')->insert($rows);
+            });
 
-        return response()->json([
-            'success' => true,
-            'tenant_id' => $tenantId,
-            'associated_tenant_ids' => $targetIds,
-        ]);
+            \Log::info('TenantAssociations updated successfully', [
+                'tenant_id' => $tenantId,
+                'associated_tenant_ids' => $targetIds,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Associações salvas com sucesso',
+                'tenant_id' => $tenantId,
+                'associated_tenant_ids' => $targetIds,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('TenantAssociations update failed', [
+                'tenant_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Erro ao salvar associações',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

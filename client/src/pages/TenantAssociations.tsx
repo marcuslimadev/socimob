@@ -82,7 +82,22 @@ export default function TenantAssociations() {
       toast.success('Associações salvas com sucesso');
     } catch (error: any) {
       console.error('Erro ao salvar associacoes:', error);
-      toast.error(error?.response?.data?.message || 'Erro ao salvar associações');
+      
+      let errorMessage = 'Erro ao salvar associações';
+      
+      if (error?.response?.data?.messages) {
+        const messages = error.response.data.messages;
+        Object.entries(messages).forEach(([field, errors]: [string, any]) => {
+          const errorList = Array.isArray(errors) ? errors : [errors];
+          errorMessage += `\n${field}: ${errorList.join(', ')}`;
+        });
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
