@@ -505,7 +505,7 @@ class ImobiBrasilService
                         strtoupper($c['siglaEstado'] ?? '') === $targetEstado
                     ) {
                         $codigo = (int) $c['codigoCidade'];
-                        \Illuminate\Support\Facades\Cache::put($cacheKey, $codigo, now()->addDays(30));
+                        \Illuminate\Support\Facades\Cache::put($cacheKey, $codigo, Carbon::now()->addDays(30));
                         Log::info('codigoCidade encontrado', [
                             'cidade'  => $nomeCidade,
                             'estado'  => $siglaEstado,
@@ -551,7 +551,7 @@ class ImobiBrasilService
         }
 
         // Não encontrado — cachear miss por 1 dia
-        \Illuminate\Support\Facades\Cache::put($cacheKey, 0, now()->addDay());
+        \Illuminate\Support\Facades\Cache::put($cacheKey, 0, Carbon::now()->addDay());
         Log::info('codigoCidade não encontrado', ['cidade' => $nomeCidade, 'estado' => $siglaEstado]);
         return 0;
     }
