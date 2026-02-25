@@ -13,58 +13,70 @@ class ImobiBrasilService
 {
     /**
      * Obter a URL base da API do Imobi Brasil
+     * Usa a mesma URL que a importação de imóveis (api_url_externa)
      */
     public static function getBaseUrl(Tenant $tenant): string
     {
-        // 1. Tentar URL configurada no banco de dados do tenant
-        if ($tenant->imobi_brasil_base_url) {
-            return $tenant->imobi_brasil_base_url;
+        // 1. Tentar usar api_url_externa (mesma que importação de imóveis usa)
+        $url = $tenant->getIntegrationValue('api_url_externa');
+        if ($url) {
+            return rtrim($url, '/');
         }
 
-        // 2. Tentar variável de ambiente específica do tenant
-        $tenantSlug = strtoupper(str_replace('-', '_', $tenant->slug ?? ''));
-        if ($tenantSlug && env($tenantSlug . '_IMOBI_BRASIL_BASE_URL')) {
-            return env($tenantSlug . '_IMOBI_BRASIL_BASE_URL');
+        // 2. Tentar URL configurada específica para Imobi Brasil
+        if ($tenant->imobi_brasil_base_url && $tenant->imobi_brasil_base_url !== 'https://api.imobibrasil.com.br') {
+            return rtrim($tenant->imobi_brasil_base_url, '/');
         }
 
-        // 3. Tentar variável de ambiente genérica
+        // 3. Tentar variável de ambiente específica do tenant
+        $tenantName = strtoupper(str_replace(['-', ' ', '_'], '_', $tenant->name ?? ''));
+        if ($tenantName && env($tenantName . '_IMOBI_BRASIL_BASE_URL')) {
+            return rtrim(env($tenantName . '_IMOBI_BRASIL_BASE_URL'), '/');
+        }
+
+        // 4. Tentar variável de ambiente genérica
         if (env('IMOBI_BRASIL_BASE_URL')) {
-            return env('IMOBI_BRASIL_BASE_URL');
+            return rtrim(env('IMOBI_BRASIL_BASE_URL'), '/');
         }
 
-        // 4. URL padrão
-        return 'https://api.imobibrasil.com.br';
+        // 5. URL padrão
+        return 'https://exclusivalarimoveis.com.br';
     }
 
     /**
      * Obter a chave API do Imobi Brasil
-     * Tenta primeiro da configuração do tenant, depois das variáveis de ambiente
+     * Usa a mesma chave que a importação de imóveis (api_token_externa)
      */
     public static function getApiKey(Tenant $tenant): ?string
     {
-        // 1. Tentar chave configurada no banco de dados do tenant
+        // 1. Tentar usar api_token_externa (mesma que importação de imóveis usa)
+        $token = $tenant->getIntegrationValue('api_token_externa');
+        if ($token) {
+            return $token;
+        }
+
+        // 2. Tentar chave configurada no banco de dados do tenant
         if ($tenant->imobi_brasil_api_key) {
             return $tenant->imobi_brasil_api_key;
         }
 
-        // 2. Tentar EXCLUSIVA_API_TOKEN (padrão para tenant padrão)
+        // 3. Tentar EXCLUSIVA_API_TOKEN (padrão para tenant padrão)
         if (env('EXCLUSIVA_API_TOKEN')) {
             return env('EXCLUSIVA_API_TOKEN');
         }
 
-        // 3. Tentar variável de ambiente específica do tenant baseada no NOME
-        // Ex: Se name="Exclusiva Lar Imoveis" procura EXCLUSIVA_LAR_IMOVEIS_API_TOKEN
+        // 4. Tentar variável de ambiente específica do tenant baseada no NOME
         $tenantName = strtoupper(str_replace(['-', ' ', '_'], '_', $tenant->name ?? ''));
-        if ($tenantName && $tenantName !== 'EXCLUSIVA' && env($tenantName . '_API_TOKEN')) {
+        if ($tenantName && env($tenantName . '_API_TOKEN')) {
             return env($tenantName . '_API_TOKEN');
         }
 
-        // 4. Tentar variável específica para Imobi Brasil
+        // 5. Tentar variável específica para Imobi Brasil
         if ($tenantName && env($tenantName . '_IMOBI_BRASIL_API_KEY')) {
             return env($tenantName . '_IMOBI_BRASIL_API_KEY');
         }
 
-        // 5. Tentar variável genérica
+        // 6. Tentar variável genérica
         if (env('IMOBI_BRASIL_API_KEY')) {
             return env('IMOBI_BRASIL_API_KEY');
         }
@@ -88,6 +100,7 @@ class ImobiBrasilService
 
     /**
      * Enviar imóvel para Imobi Brasil
+     * Usando padrão Guzzle da importação
      */
     public static function sendProperty(Property $property, Tenant $tenant): array
     {
@@ -105,7 +118,10 @@ class ImobiBrasilService
             $payload = self::preparePropertyPayload($property);
 
             $baseUrl = static::getBaseUrl($tenant);
-            $endpoint = $baseUrl . '/v1/properties';
+            $baseUrl = rtrim($baseUrl, '/');
+            
+            // Endpoint para inserção: POST /imovel/inserir
+            $endpoint = $baseUrl . '/imovel/inserir';
 
             Log::info('Enviando imóvel para Imobi Brasil', [
                 'property_id' => $property->id,
@@ -113,32 +129,52 @@ class ImobiBrasilService
                 'endpoint' => $endpoint,
             ]);
 
-            // Fazer requisição para Imobi Brasil
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
-            ])->post($endpoint, $payload);
+            // Fazer requisição com Guzzle (padrão igual à importação)
+            $client = new \GuzzleHttp\Client([
+                'verify' => env('VERIFY_SSL_CERTIFICATES', true),
+                'timeout' => 30,
+                'http_errors' => false
+            ]);
+
+            $response = $client->post($endpoint, [
+                'headers' => [
+                    'token' => $apiKey,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => $payload,
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            $body = $response->getBody()->getContents();
 
             // Validar resposta
-            if (!$response->successful()) {
-                $errorMessage = $response->json('message') ?? $response->json('error') ?? $response->body();
+            if ($statusCode !== 200 && $statusCode !== 201) {
+                $errorMessage = 'API retornou HTTP ' . $statusCode;
+                
+                try {
+                    $jsonError = json_decode($body, true);
+                    $errorMessage = $jsonError['message'] ?? $jsonError['error'] ?? $body;
+                } catch (\Exception $e) {
+                    $errorMessage = substr($body, 0, 200);
+                }
                 
                 Log::warning('Falha ao enviar imóvel para Imobi Brasil', [
                     'property_id' => $property->id,
-                    'status' => $response->status(),
+                    'status' => $statusCode,
                     'error' => $errorMessage,
                 ]);
 
                 return [
                     'success' => false,
                     'error' => $errorMessage,
-                    'status' => $response->status(),
+                    'status' => $statusCode,
                 ];
             }
 
-            $responseData = $response->json();
-            $externalId = $responseData['id'] ?? $responseData['external_id'] ?? null;
+            // Decodificar resposta
+            $responseData = json_decode($body, true) ?? [];
+            // A API retorna o código do imóvel
+            $externalId = $responseData['codigo'] ?? $responseData['codigoImovel'] ?? $responseData['id'] ?? null;
 
             // Atualizar imóvel com informações de envio
             $property->update([
@@ -180,6 +216,7 @@ class ImobiBrasilService
 
     /**
      * Atualizar imóvel no Imobi Brasil
+     * Usando padrão Guzzle da importação
      */
     public static function updateProperty(Property $property, Tenant $tenant): array
     {
@@ -202,21 +239,42 @@ class ImobiBrasilService
             $payload = self::preparePropertyPayload($property);
 
             $baseUrl = static::getBaseUrl($tenant);
-            $endpoint = $baseUrl . '/v1/properties/' . $property->imobi_brasil_external_id;
+            $baseUrl = rtrim($baseUrl, '/');
+            // Endpoint para alteração: POST /imovel/alterar/{codigoImovel}
+            $endpoint = $baseUrl . '/imovel/alterar/' . urlencode($property->imobi_brasil_external_id);
 
             Log::info('Atualizando imóvel no Imobi Brasil', [
                 'property_id' => $property->id,
                 'external_id' => $property->imobi_brasil_external_id,
             ]);
 
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
-            ])->put($endpoint, $payload);
+            // Fazer requisição com Guzzle (padrão igual à importação)
+            $client = new \GuzzleHttp\Client([
+                'verify' => env('VERIFY_SSL_CERTIFICATES', true),
+                'timeout' => 30,
+                'http_errors' => false
+            ]);
 
-            if (!$response->successful()) {
-                $errorMessage = $response->json('message') ?? $response->body();
+            $response = $client->post($endpoint, [
+                'headers' => [
+                    'token' => $apiKey,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => $payload,
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            $body = $response->getBody()->getContents();
+
+            if ($statusCode !== 200 && $statusCode !== 201) {
+                $errorMessage = 'API retornou HTTP ' . $statusCode;
+                
+                try {
+                    $jsonError = json_decode($body, true);
+                    $errorMessage = $jsonError['message'] ?? $jsonError['error'] ?? $body;
+                } catch (\Exception $e) {
+                    $errorMessage = substr($body, 0, 200);
+                }
                 
                 Log::warning('Falha ao atualizar imóvel no Imobi Brasil', [
                     'property_id' => $property->id,
