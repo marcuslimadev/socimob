@@ -426,7 +426,34 @@ class ImobiBrasilService
 
             // Se não foi sucesso
             $errorMsg = $data['message'] ?? ('API retornou HTTP ' . $statusCode);
-            
+
+            // Se o código do imóvel não existe mais no Imobi Brasil (foi deletado),
+            // limpar os campos e reinserir automaticamente
+            if (
+                str_contains(mb_strtolower($errorMsg), 'c') &&
+                (
+                    str_contains(mb_strtolower($errorMsg), 'código de imóvel válido') ||
+                    str_contains(mb_strtolower($errorMsg), 'codigo de imovel valido') ||
+                    str_contains($errorMsg, 'código de imóvel válido') ||
+                    str_contains($errorMsg, 'Informe um código de imóvel válido')
+                )
+            ) {
+                Log::warning('Código de imóvel inválido no Imobi Brasil - reinserindo como novo', [
+                    'property_id' => $property->id,
+                    'old_external_id' => $externalId,
+                ]);
+
+                $property->update([
+                    'imobi_brasil_sent' => false,
+                    'imobi_brasil_external_id' => null,
+                    'imobi_brasil_error' => null,
+                    'imobi_brasil_sent_at' => null,
+                ]);
+                $property->refresh();
+
+                return self::sendProperty($property, $tenant);
+            }
+
             $property->update([
                 'imobi_brasil_error' => substr($errorMsg, 0, 500),
             ]);
