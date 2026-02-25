@@ -1834,4 +1834,65 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
             ], 500);
         }
     }
+
+    /**
+     * Enviar imagens do imóvel para Imobi Brasil
+     * POST /api/imoveis/{id}/enviar-imagens-imobi-brasil
+     */
+    public function enviarImagensImobiBrasil(Request $request, $id)
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        try {
+            $property = Property::where('id', $id)
+                ->where('tenant_id', $tenantId)
+                ->firstOrFail();
+
+            $tenant = Tenant::findOrFail($tenantId);
+
+            // Validar se existem imagens
+            $imagens = \App\Models\ImovelImagem::where('codigo', $property->codigo)->count();
+            if ($imagens === 0) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Nenhuma imagem disponível para enviar',
+                ], 400);
+            }
+
+            // Usar o serviço para enviar imagens
+            $result = \App\Services\ImobiBrasilService::sendPropertyImages($property, $tenant);
+
+            if ($result['success'] && $result['images_sent'] > 0) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'],
+                    'images_sent' => $result['images_sent'],
+                    'images_total' => $result['images_total'],
+                ], 200);
+            } else {
+                return response()->json([
+                    'success' => $result['success'],
+                    'message' => $result['message'] ?? $result['error'],
+                    'images_sent' => $result['images_sent'] ?? 0,
+                    'images_total' => $result['images_total'] ?? 0,
+                    'errors' => $result['errors'] ?? [],
+                ], $result['images_sent'] > 0 ? 200 : 400);
+            }
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['error' => 'Imóvel não encontrado'], 404);
+        } catch (\Exception $e) {
+            \Log::error('Erro ao enviar imagens para Imobi Brasil', [
+                'property_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

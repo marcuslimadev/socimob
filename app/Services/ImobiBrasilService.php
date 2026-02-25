@@ -330,13 +330,20 @@ class ImobiBrasilService
                 ];
             }
 
-            // Preparar payload atualizado
+            // Preparar payload atualizado com codigoTipoImovel obrigatório
             $payload = self::preparePropertyPayload($property);
+            
+            // IMPORTANTE: API requer codigoTipoImovel para update
+            // Usar tipo CASA (1) como padrão se não houver informação
+            if (empty($payload['codigoTipoImovel'])) {
+                $payload['codigoTipoImovel'] = 1; // Casa como padrão
+            }
 
             $baseUrl = static::getBaseUrl($tenant);
             $baseUrl = rtrim($baseUrl, '/');
             
-            // Endpoint para alteração: PUT /imovel/alterar/{codigoImovel}
+            // Endpoint para alteração: POST /imovel/alterar/{codigoImovel}
+            // NOTA: API usa POST (não PUT) para alterações
             $externalId = $property->imobi_brasil_external_id;
             $endpoint = $baseUrl . '/imovel/alterar/' . urlencode($externalId);
 
@@ -344,6 +351,7 @@ class ImobiBrasilService
                 'property_id' => $property->id,
                 'external_id' => $externalId,
                 'endpoint' => $endpoint,
+                'tipo_imovel' => $payload['codigoTipoImovel'] ?? 'default',
             ]);
 
             // Fazer requisição com Guzzle
@@ -353,7 +361,8 @@ class ImobiBrasilService
                 'http_errors' => false,
             ]);
 
-            $response = $client->put($endpoint, [
+            // IMPORTANTE: Usar POST (não PUT) para update
+            $response = $client->post($endpoint, [
                 'headers' => [
                     'token' => $apiKey,
                     'Content-Type' => 'application/json',
@@ -655,5 +664,154 @@ class ImobiBrasilService
                 ]
             ],
         ];
+    }
+
+    /**
+     * Enviar imagens da propriedade para Imobi Brasil
+     * Endpoint: POST /imovel/{codigoImovel}/imagem/inserir
+     */
+    public static function sendPropertyImages(Property $property, Tenant $tenant): array
+    {
+        try {
+            // Validar se propriedade foi enviada
+            if (!$property->imobi_brasil_sent || !$property->imobi_brasil_external_id) {
+                return [
+                    'success' => false,
+                    'error' => 'Propriedade não foi enviada para Imobi Brasil ainda',
+                    'images_sent' => 0,
+                ];
+            }
+
+            $apiKey = static::getApiKey($tenant);
+            if (!$apiKey) {
+                return [
+                    'success' => false,
+                    'error' => 'Integração Imobi Brasil não configurada',
+                    'images_sent' => 0,
+                ];
+            }
+
+            // Buscar imagens locais
+            $imagens = \App\Models\ImovelImagem::where('codigo', $property->codigo)
+                ->orderBy('destaque', 'desc')
+                ->get();
+
+            if ($imagens->isEmpty()) {
+                return [
+                    'success' => true,
+                    'message' => 'Nenhuma imagem para enviar',
+                    'images_sent' => 0,
+                ];
+            }
+
+            $baseUrl = static::getBaseUrl($tenant);
+            $baseUrl = rtrim($baseUrl, '/');
+            $codigoImovel = $property->imobi_brasil_external_id;
+
+            Log::info('Iniciando sincronização de imagens para Imobi Brasil', [
+                'property_id' => $property->id,
+                'codigo_imovel' => $codigoImovel,
+                'total_images' => $imagens->count(),
+            ]);
+
+            $client = new \GuzzleHttp\Client([
+                'verify' => false,
+                'timeout' => 60,
+                'http_errors' => false,
+            ]);
+
+            $sucessos = 0;
+            $erros = [];
+
+            // Enviar cada imagem
+            foreach ($imagens as $index => $imagem) {
+                try {
+                    $endpoint = $baseUrl . '/imovel/' . $codigoImovel . '/imagem/inserir';
+
+                    // Enviar imagem como URL string
+                    $response = $client->post($endpoint, [
+                        'headers' => [
+                            'token' => $apiKey,
+                        ],
+                        'multipart' => [
+                            [
+                                'name' => 'codigoImovel',
+                                'contents' => (string)$codigoImovel,
+                            ],
+                            [
+                                'name' => 'imagem',
+                                'contents' => $imagem->url,
+                            ],
+                        ],
+                    ]);
+
+                    $statusCode = $response->getStatusCode();
+                    $body = $response->getBody()->getContents();
+                    $responseData = json_decode($body, true) ?: [];
+
+                    if ($statusCode === 200 && ($responseData['status'] ?? false)) {
+                        $sucessos++;
+
+                        Log::info('Imagem enviada com sucesso para Imobi Brasil', [
+                            'property_id' => $property->id,
+                            'image_index' => $index,
+                            'image_url' => $imagem->url,
+                        ]);
+                    } else {
+                        $erro = $responseData['message'] ?? "HTTP $statusCode";
+                        $erros[] = "Imagem $index: $erro";
+
+                        Log::warning('Erro ao enviar imagem para Imobi Brasil', [
+                            'property_id' => $property->id,
+                            'image_index' => $index,
+                            'image_url' => $imagem->url,
+                            'status' => $statusCode,
+                            'error' => $erro,
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    $erros[] = "Imagem $index: {$e->getMessage()}";
+
+                    Log::error('Exceção ao enviar imagem para Imobi Brasil', [
+                        'property_id' => $property->id,
+                        'image_index' => $index,
+                        'image_url' => $imagem->url,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // Atualizar timestamp de sincronização de imagens
+            $property->update([
+                'imobi_brasil_images_sent_at' => \Carbon\Carbon::now(),
+            ]);
+
+            Log::info('Sincronização de imagens concluída', [
+                'property_id' => $property->id,
+                'images_sent' => $sucessos,
+                'total_images' => $imagens->count(),
+                'errors' => count($erros),
+            ]);
+
+            return [
+                'success' => $sucessos > 0,
+                'message' => "$sucessos de {$imagens->count()} imagens enviadas com sucesso",
+                'images_sent' => $sucessos,
+                'images_total' => $imagens->count(),
+                'errors' => $erros,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao sincronizar imagens com Imobi Brasil', [
+                'property_id' => $property->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'images_sent' => 0,
+            ];
+        }
     }
 }

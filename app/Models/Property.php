@@ -59,6 +59,7 @@ class Property extends Model
         'imobi_brasil_sent_at',
         'imobi_brasil_external_id',
         'imobi_brasil_error',
+        'imobi_brasil_images_sent_at',
     ];
 
     protected $casts = [

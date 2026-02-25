@@ -127,6 +127,8 @@ export default function ImovelFormWizard() {
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isSendingImobiBrasil, setIsSendingImobiBrasil] = useState(false);
   const [imobibrasilStatus, setImobiBrasilStatus] = useState<{ enviado: boolean; data_envio?: string; erro?: string }>({ enviado: false });
+  const [isSendingImagesImobiBrasil, setIsSendingImagesImobiBrasil] = useState(false);
+  const [imobibrasilImagesStatus, setImobiBrasilImagesStatus] = useState<{ enviadas: boolean; data_envio?: string; error?: string }>({ enviadas: false });
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Prevents auto-save from firing before initial data is loaded
   const autoSaveEnabled = useRef(!Boolean(match && params?.id));
@@ -638,6 +640,51 @@ export default function ImovelFormWizard() {
       toast.error(error?.response?.data?.error || 'Erro ao enviar imóvel para Imobi Brasil');
     } finally {
       setIsSendingImobiBrasil(false);
+    }
+  };
+
+  const handleEnviarImagensImobiBrasil = async () => {
+    if (!propertyId) {
+      toast.error('Imóvel não encontrado');
+      return;
+    }
+
+    if (mediaFiles.length === 0) {
+      toast.error('Adicione imagens antes de enviar');
+      return;
+    }
+
+    try {
+      setIsSendingImagesImobiBrasil(true);
+      
+      const response = await api.post(`/imoveis/${propertyId}/enviar-imagens-imobi-brasil`);
+
+      if (response.data?.success) {
+        const message = response.data?.message || `${response.data?.images_sent || 0} imagens enviadas com sucesso`;
+        toast.success(message);
+        
+        // Atualizar status
+        setImobiBrasilImagesStatus({ 
+          enviadas: true,
+          data_envio: new Date().toISOString()
+        });
+      } else {
+        toast.error(response.data?.message || 'Erro ao enviar imagens');
+        setImobiBrasilImagesStatus({ 
+          enviadas: false,
+          error: response.data?.message
+        });
+      }
+    } catch (error: any) {
+      console.error('Erro ao enviar imagens para Imobi Brasil:', error);
+      const errorMsg = error?.response?.data?.message || 'Erro ao enviar imagens para Imobi Brasil';
+      toast.error(errorMsg);
+      setImobiBrasilImagesStatus({ 
+        enviadas: false,
+        error: errorMsg
+      });
+    } finally {
+      setIsSendingImagesImobiBrasil(false);
     }
   };
 
@@ -1300,27 +1347,61 @@ export default function ImovelFormWizard() {
                         ⚠️ Último erro: {imobibrasilStatus.erro}
                       </p>
                     )}
-                  </div>
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleEnviarImobiBrasil}
-                    disabled={isSendingImobiBrasil}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg text-white font-semibold flex items-center gap-2 disabled:opacity-50 whitespace-nowrap transition"
-                  >
-                    {isSendingImobiBrasil ? (
-                      <>
-                        <Loader2 size={16} className="animate-spin" />
-                        Enviando...
-                      </>
-                    ) : (
-                      <>
-                        <Save size={16} />
-                        {imobibrasilStatus.enviado ? 'Atualizar' : 'Enviar'} para Imobi Brasil
-                      </>
+                    {imobibrasilImagesStatus.enviadas && (
+                      <p className="text-xs text-green-400 mt-2">
+                        ✓ Imagens enviadas em {imobibrasilImagesStatus.data_envio ? new Date(imobibrasilImagesStatus.data_envio).toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'desconhecido'}
+                      </p>
                     )}
-                  </motion.button>
+                    {imobibrasilImagesStatus.error && (
+                      <p className="text-xs text-red-400 mt-2">
+                        ⚠️ Erro ao enviar imagens: {imobibrasilImagesStatus.error}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-3 items-stretch">
+                    <motion.button
+                      type="button"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleEnviarImobiBrasil}
+                      disabled={isSendingImobiBrasil}
+                      className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg text-white font-semibold flex items-center gap-2 disabled:opacity-50 whitespace-nowrap transition justify-center"
+                    >
+                      {isSendingImobiBrasil ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={16} />
+                          {imobibrasilStatus.enviado ? 'Atualizar' : 'Enviar'} para Imobi Brasil
+                        </>
+                      )}
+                    </motion.button>
+                    {imobibrasilStatus.enviado && mediaFiles.length > 0 && (
+                      <motion.button
+                        type="button"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleEnviarImagensImobiBrasil}
+                        disabled={isSendingImagesImobiBrasil}
+                        className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 rounded-lg text-white font-semibold flex items-center gap-2 disabled:opacity-50 whitespace-nowrap transition justify-center"
+                      >
+                        {isSendingImagesImobiBrasil ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Enviando...
+                          </>
+                        ) : (
+                          <>
+                            <ImageIcon size={16} />
+                            Enviar {mediaFiles.length} Imagem(ns)
+                          </>
+                        )}
+                      </motion.button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
