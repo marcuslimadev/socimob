@@ -41,7 +41,7 @@ A integração com a OLX utilizará a API Autoupload para:
 - Publicação automática de imóveis cadastrados pelos clientes (tenants) da plataforma;
 - Sincronização de status de anúncios (ativo, pausado, encerrado);
 - Remoção de anúncios ao marcar imóvel como vendido/locado no CRM;
-- Monitoramento de leads gerados pelos anúncios OLX direto no CRM da plataforma.
+- **Captura de leads gerados pelos anúncios OLX via `GET /autoupload/v2/leads` (pull periódico)** diretamente no CRM da plataforma.
 
 Cada tenant (imobiliária) autenticará individualmente com suas próprias credenciais OLX Pro. A plataforma não compartilha credenciais entre tenants.
 
@@ -63,6 +63,7 @@ http://localhost:8000/api/oauth/olx/callback
 | Escopo | Finalidade |
 |--------|-----------|
 | `autoupload` | Publicação e gestão de anúncios de imóveis |
+| `leads` | Leitura de leads gerados pelos anúncios (pull-based via `GET /autoupload/v2/leads`) |
 
 ---
 
@@ -73,6 +74,7 @@ http://localhost:8000/api/oauth/olx/callback
 | **Fluxo de autenticação** | OAuth 2.0 — `client_credentials` (por tenant) |
 | **Endpoint de token** | `https://auth.olx.com.br/oauth/token` |
 | **API utilizada** | Autoupload v2 — `https://apps.olx.com.br/autoupload/v2` |
+| **Endpoint de leads** | `GET https://apps.olx.com.br/autoupload/v2/leads` (pull periódico) |
 | **Volume estimado** | 100–5.000 anúncios/mês (crescimento gradual) |
 | **Categorias** | Imóveis — Venda e Aluguel (residencial e comercial) |
 | **Formato dos IDs** | `soci_{tenant_id}_{imovel_id}` (único por anúncio) |

@@ -33,7 +33,7 @@ class OlxAdapter implements ProviderAdapterInterface
     private const PROVIDER   = 'olx';
     private const AUTH_URL   = 'https://auth.olx.com.br/oauth/token';
     private const API_BASE   = 'https://apps.olx.com.br/autoupload/v2';
-    private const SCOPE      = 'autoupload';
+    private const SCOPE      = 'autoupload leads';
 
     /** Mapeamento tipo_imovel → category_id OLX (venda) */
     private const CATEGORY_VENDA = [
@@ -216,14 +216,75 @@ class OlxAdapter implements ProviderAdapterInterface
     }
 
     /**
-     * OLX: busca leads via API de mensagens/contatos (pull).
-     * Retorna array de leads normalizados.
+     * OLX: busca leads via GET /autoupload/v2/leads (pull-based).
+     * Retorna array de [ 'normalized' => [...], 'meta' => [...] ] por lead.
+     *
+     * @return array<int, array{ normalized: array, meta: array }>
      */
     public function fetchLeads(int $tenantId, \DateTime $since): array
     {
-        // OLX disponibiliza leads via GET /autoupload/v2/leads (se habilitado no plano)
-        // Por ora retorna [] — implementar quando OLX liberar endpoint de leads
-        return [];
+        $token = $this->getValidToken($tenantId);
+        $leads    = [];
+        $page     = 1;
+        $lastPage = 1;
+
+        do {
+            try {
+                $resp = $this->http->get('/leads', [
+                    'headers' => ['Authorization' => 'Bearer ' . $token],
+                    'query'   => [
+                        'since'    => $since->format('c'),
+                        'per_page' => 100,
+                        'page'     => $page,
+                    ],
+                ]);
+
+                $body     = json_decode((string)$resp->getBody(), true);
+                $items    = $body['leads'] ?? [];
+                $lastPage = $body['pagination']['last_page'] ?? $body['pagination']['total_pages'] ?? $page;
+
+                foreach ($items as $item) {
+                    $buyer    = $item['buyer'] ?? $item['contact'] ?? [];
+                    $adId     = $item['subject_id'] ?? $item['ad_id'] ?? null;
+
+                    // Extrair listing_id a partir do olxId: "soci_{tenantId}_{listingId}"
+                    $listingId = null;
+                    if ($adId && preg_match('/^soci_\d+_(\d+)$/', (string)$adId, $m)) {
+                        $listingId = (int) $m[1];
+                    }
+
+                    $leads[] = [
+                        'normalized' => [
+                            'nome'     => $buyer['name']  ?? $buyer['nome']  ?? null,
+                            'email'    => $buyer['email']                     ?? null,
+                            'telefone' => $buyer['phone'] ?? $buyer['telefone'] ?? null,
+                            'mensagem' => $item['message'] ?? $item['mensagem'] ?? null,
+                            'origem'   => 'OLX',
+                        ],
+                        'meta' => [
+                            'provider'         => self::PROVIDER,
+                            'external_lead_id' => (string) ($item['id'] ?? $item['lead_id']),
+                            'listing_id'       => $listingId,
+                            'campaign_id'      => null,
+                            'raw_payload'      => $item,
+                        ],
+                    ];
+                }
+
+                $page++;
+            } catch (ClientException $e) {
+                $status = $e->getResponse()->getStatusCode();
+                if ($status === 404) {
+                    // Endpoint de leads não habilitado neste plano OLX
+                    Log::info('[OlxAdapter] Endpoint /leads não disponível (404) — plano sem acesso a leads.');
+                    break;
+                }
+                $this->logError($tenantId, 'FETCH_LEADS', $e);
+                throw new RuntimeException('Erro ao buscar leads OLX: ' . $e->getMessage());
+            }
+        } while ($page <= $lastPage);
+
+        return $leads;
     }
 
     // ─────────────────────────────────────────────────────────────

@@ -7,6 +7,42 @@ import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { useViaCep } from '@/hooks/useViaCep';
 
+// Formata dígitos em tempo real para pt-BR: "1500000" → "1.500.000,00"
+function formatCurrencyInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  const number = parseInt(digits, 10) / 100;
+  return number.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Converte "1.500.000,00" → "1500000.00" para envio ao backend
+function parseCurrencyInput(value: string): string {
+  if (!value) return '';
+  return value.replace(/\./g, '').replace(',', '.');
+}
+
+// Formata número vindo do banco → string pt-BR para exibição no input
+function numberToCurrencyInput(value: number | string | null | undefined): string {
+  if (value == null || value === '') return '';
+  const n = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(n)) return '';
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Converte "1.234,50" → "1234.50" para envio ao backend (áreas)
+function parseAreaInput(value: string): string {
+  if (!value) return '';
+  return value.replace(/\./g, '').replace(',', '.');
+}
+
+// Formata área ao sair do campo (onBlur)
+function formatAreaOnBlur(value: string): string {
+  if (!value) return '';
+  const n = parseFloat(parseAreaInput(value));
+  if (isNaN(n)) return value;
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 const defaultFormData = {
   codigo_imovel: '',
   referencia_imovel: '',
@@ -88,16 +124,16 @@ export default function ImovelForm() {
           referencia_imovel: item.referencia_imovel || '',
           tipo_imovel: item.tipo_imovel || 'apartamento',
           finalidade_imovel: item.finalidade_imovel || 'venda',
-          valor_venda: item.valor_venda != null ? String(item.valor_venda) : '',
-          valor_condominio: item.valor_condominio != null ? String(item.valor_condominio) : '',
-          valor_iptu: item.valor_iptu != null ? String(item.valor_iptu) : '',
+          valor_venda: numberToCurrencyInput(item.valor_venda),
+          valor_condominio: numberToCurrencyInput(item.valor_condominio),
+          valor_iptu: numberToCurrencyInput(item.valor_iptu),
           dormitorios: item.dormitorios != null ? String(item.dormitorios) : '',
           suites: item.suites != null ? String(item.suites) : '',
           banheiros: item.banheiros != null ? String(item.banheiros) : '',
           garagem: item.garagem != null ? String(item.garagem) : '',
-          area_total: item.area_total != null ? String(item.area_total) : '',
-          area_privativa: item.area_privativa != null ? String(item.area_privativa) : '',
-          area_terreno: item.area_terreno != null ? String(item.area_terreno) : '',
+          area_total: numberToCurrencyInput(item.area_total),
+          area_privativa: numberToCurrencyInput(item.area_privativa),
+          area_terreno: numberToCurrencyInput(item.area_terreno),
           cep: item.cep || '',
           estado: item.estado || '',
           cidade: item.cidade || '',
@@ -138,16 +174,16 @@ export default function ImovelForm() {
       // Converter strings vazias em null para números
       const dataToSend = {
         ...formData,
-        valor_venda: formData.valor_venda ? parseFloat(formData.valor_venda) : null,
-        valor_condominio: formData.valor_condominio ? parseFloat(formData.valor_condominio) : null,
-        valor_iptu: formData.valor_iptu ? parseFloat(formData.valor_iptu) : null,
+        valor_venda: formData.valor_venda ? parseFloat(parseCurrencyInput(formData.valor_venda)) : null,
+        valor_condominio: formData.valor_condominio ? parseFloat(parseCurrencyInput(formData.valor_condominio)) : null,
+        valor_iptu: formData.valor_iptu ? parseFloat(parseCurrencyInput(formData.valor_iptu)) : null,
         dormitorios: formData.dormitorios ? parseInt(formData.dormitorios) : null,
         suites: formData.suites ? parseInt(formData.suites) : null,
         banheiros: formData.banheiros ? parseInt(formData.banheiros) : null,
         garagem: formData.garagem ? parseInt(formData.garagem) : null,
-        area_total: formData.area_total ? parseFloat(formData.area_total) : null,
-        area_privativa: formData.area_privativa ? parseFloat(formData.area_privativa) : null,
-        area_terreno: formData.area_terreno ? parseFloat(formData.area_terreno) : null,
+        area_total: formData.area_total ? parseFloat(parseAreaInput(formData.area_total)) : null,
+        area_privativa: formData.area_privativa ? parseFloat(parseAreaInput(formData.area_privativa)) : null,
+        area_terreno: formData.area_terreno ? parseFloat(parseAreaInput(formData.area_terreno)) : null,
       };
 
       if (isEditMode && propertyId) {
@@ -221,37 +257,49 @@ export default function ImovelForm() {
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Valor de Venda/Aluguel</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.valor_venda}
-                  onChange={(e) => setFormData({ ...formData, valor_venda: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={formData.valor_venda}
+                    onChange={(e) => setFormData({ ...formData, valor_venda: formatCurrencyInput(e.target.value) })}
+                    className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0,00"
+                  />
+                </div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Valor Condomínio</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.valor_condominio}
-                  onChange={(e) => setFormData({ ...formData, valor_condominio: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={formData.valor_condominio}
+                    onChange={(e) => setFormData({ ...formData, valor_condominio: formatCurrencyInput(e.target.value) })}
+                    className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0,00"
+                  />
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Valor IPTU</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.valor_iptu}
-                  onChange={(e) => setFormData({ ...formData, valor_iptu: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={formData.valor_iptu}
+                    onChange={(e) => setFormData({ ...formData, valor_iptu: formatCurrencyInput(e.target.value) })}
+                    className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0,00"
+                  />
+                </div>
               </div>
             </div>
 
@@ -317,40 +365,48 @@ export default function ImovelForm() {
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Dormitórios</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={formData.dormitorios}
-                  onChange={(e) => setFormData({ ...formData, dormitorios: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setFormData({ ...formData, dormitorios: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                  placeholder="0"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Suítes</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={formData.suites}
-                  onChange={(e) => setFormData({ ...formData, suites: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setFormData({ ...formData, suites: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                  placeholder="0"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Banheiros</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={formData.banheiros}
-                  onChange={(e) => setFormData({ ...formData, banheiros: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setFormData({ ...formData, banheiros: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                  placeholder="0"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Garagem</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={formData.garagem}
-                  onChange={(e) => setFormData({ ...formData, garagem: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setFormData({ ...formData, garagem: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                  placeholder="0"
                 />
               </div>
             </div>
@@ -496,33 +552,39 @@ export default function ImovelForm() {
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Área Total (m²)</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={formData.area_total}
                   onChange={(e) => setFormData({ ...formData, area_total: e.target.value })}
+                  onBlur={(e) => setFormData({ ...formData, area_total: formatAreaOnBlur(e.target.value) })}
                   className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0,00"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Área Privativa (m²)</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={formData.area_privativa}
                   onChange={(e) => setFormData({ ...formData, area_privativa: e.target.value })}
+                  onBlur={(e) => setFormData({ ...formData, area_privativa: formatAreaOnBlur(e.target.value) })}
                   className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0,00"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Área Terreno (m²)</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={formData.area_terreno}
                   onChange={(e) => setFormData({ ...formData, area_terreno: e.target.value })}
+                  onBlur={(e) => setFormData({ ...formData, area_terreno: formatAreaOnBlur(e.target.value) })}
                   className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0,00"
                 />
               </div>
             </div>

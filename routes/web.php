@@ -445,6 +445,7 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     // Leads captados pelos providers
     $router->get('/ads/leads', 'Ads\AdsLeadsController@index');
     $router->get('/ads/leads/stats', 'Ads\AdsLeadsController@stats');
+    $router->post('/ads/leads/olx/sync', 'Ads\AdsLeadsController@syncOlx'); // pull OLX leads
 
     // Analytics dashboard
     $router->get('/ads/analytics', 'Ads\AdsAnalyticsController@index');

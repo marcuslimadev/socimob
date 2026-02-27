@@ -50,6 +50,20 @@ function numberToCurrencyInput(value: number | string | null | undefined): strin
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Converte "1.234,50" → "1234.50" para envio ao backend (áreas)
+function parseAreaInput(value: string): string {
+  if (!value) return '';
+  return value.replace(/\./g, '').replace(',', '.');
+}
+
+// Formata área ao sair do campo (onBlur): "1500.5" ou "1.500,5" → "1.500,50"
+function formatAreaOnBlur(value: string): string {
+  if (!value) return '';
+  const n = parseFloat(parseAreaInput(value));
+  if (isNaN(n)) return value;
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 const defaultFormData = {
   tipo_imovel: 'apartamento',
   finalidade_imovel: 'venda',
@@ -209,9 +223,9 @@ export default function ImovelFormWizard() {
           suites: item.suites != null ? String(item.suites) : '',
           banheiros: item.banheiros != null ? String(item.banheiros) : '',
           garagem: item.garagem != null ? String(item.garagem) : '',
-          area_total: item.area_total != null ? String(item.area_total) : '',
-          area_privativa: item.area_privativa != null ? String(item.area_privativa) : '',
-          area_terreno: item.area_terreno != null ? String(item.area_terreno) : '',
+          area_total: numberToCurrencyInput(item.area_total),
+          area_privativa: numberToCurrencyInput(item.area_privativa),
+          area_terreno: numberToCurrencyInput(item.area_terreno),
           cep: item.cep || '',
           estado: item.estado || '',
           cidade: item.cidade || '',
@@ -322,9 +336,9 @@ export default function ImovelFormWizard() {
             suites: formData.suites || null,
             banheiros: formData.banheiros || null,
             garagem: formData.garagem || null,
-            area_total: formData.area_total || null,
-            area_privativa: formData.area_privativa || null,
-            area_terreno: formData.area_terreno || null,
+            area_total: parseAreaInput(formData.area_total) || null,
+            area_privativa: parseAreaInput(formData.area_privativa) || null,
+            area_terreno: parseAreaInput(formData.area_terreno) || null,
             em_condominio: formData.em_condominio ? 1 : 0,
             nome_condominio: formData.nome_condominio,
             descricao: formData.descricao,
@@ -504,9 +518,9 @@ export default function ImovelFormWizard() {
       if (formData.suites) formDataToSend.append('suites', formData.suites);
       if (formData.banheiros) formDataToSend.append('banheiros', formData.banheiros);
       if (formData.garagem) formDataToSend.append('garagem', formData.garagem);
-      if (formData.area_total) formDataToSend.append('area_total', formData.area_total);
-      if (formData.area_privativa) formDataToSend.append('area_privativa', formData.area_privativa);
-      if (formData.area_terreno) formDataToSend.append('area_terreno', formData.area_terreno);
+      if (formData.area_total) formDataToSend.append('area_total', parseAreaInput(formData.area_total));
+      if (formData.area_privativa) formDataToSend.append('area_privativa', parseAreaInput(formData.area_privativa));
+      if (formData.area_terreno) formDataToSend.append('area_terreno', parseAreaInput(formData.area_terreno));
       
       formDataToSend.append('em_condominio', formData.em_condominio ? '1' : '0');
       if (formData.em_condominio && formData.nome_condominio) {
@@ -612,7 +626,7 @@ export default function ImovelFormWizard() {
         dormitorios: formData.dormitorios ? Number(formData.dormitorios) : 0,
         banheiros: formData.banheiros ? Number(formData.banheiros) : 0,
         garagem: formData.garagem ? Number(formData.garagem) : 0,
-        area_total: formData.area_total ? Number(formData.area_total) : 0,
+        area_total: formData.area_total ? Number(parseAreaInput(formData.area_total)) : 0,
         descricao_base: formData.descricao || '',
       });
 
@@ -1092,10 +1106,10 @@ export default function ImovelFormWizard() {
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Dormitórios</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
                   value={formData.dormitorios}
-                  onChange={(e) => setFormData({ ...formData, dormitorios: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, dormitorios: e.target.value.replace(/\D/g, '').slice(0, 2) })}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-center"
                   placeholder="0"
                 />
@@ -1104,10 +1118,10 @@ export default function ImovelFormWizard() {
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Suítes</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
                   value={formData.suites}
-                  onChange={(e) => setFormData({ ...formData, suites: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, suites: e.target.value.replace(/\D/g, '').slice(0, 2) })}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-center"
                   placeholder="0"
                 />
@@ -1116,10 +1130,10 @@ export default function ImovelFormWizard() {
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Banheiros</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
                   value={formData.banheiros}
-                  onChange={(e) => setFormData({ ...formData, banheiros: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, banheiros: e.target.value.replace(/\D/g, '').slice(0, 2) })}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-center"
                   placeholder="0"
                 />
@@ -1128,10 +1142,10 @@ export default function ImovelFormWizard() {
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Garagem</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
                   value={formData.garagem}
-                  onChange={(e) => setFormData({ ...formData, garagem: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, garagem: e.target.value.replace(/\D/g, '').slice(0, 2) })}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-center"
                   placeholder="0"
                 />
@@ -1142,11 +1156,11 @@ export default function ImovelFormWizard() {
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Área Total (m²)</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={formData.area_total}
                   onChange={(e) => setFormData({ ...formData, area_total: e.target.value })}
+                  onBlur={(e) => setFormData({ ...formData, area_total: formatAreaOnBlur(e.target.value) })}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   placeholder="0,00"
                 />
@@ -1155,11 +1169,11 @@ export default function ImovelFormWizard() {
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Área Privativa (m²)</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={formData.area_privativa}
                   onChange={(e) => setFormData({ ...formData, area_privativa: e.target.value })}
+                  onBlur={(e) => setFormData({ ...formData, area_privativa: formatAreaOnBlur(e.target.value) })}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   placeholder="0,00"
                 />
@@ -1168,11 +1182,11 @@ export default function ImovelFormWizard() {
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Área Terreno (m²)</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={formData.area_terreno}
                   onChange={(e) => setFormData({ ...formData, area_terreno: e.target.value })}
+                  onBlur={(e) => setFormData({ ...formData, area_terreno: formatAreaOnBlur(e.target.value) })}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   placeholder="0,00"
                 />

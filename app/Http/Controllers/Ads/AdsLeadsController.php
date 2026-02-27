@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Ads;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ads\AdsLead;
+use App\Services\Ads\LeadIngestionService;
+use App\Services\Ads\Providers\ProviderAdapterFactory;
+use App\Services\Ads\TokenEncryptionService;
 use Illuminate\Http\{Request, JsonResponse};
 
 /**
@@ -111,5 +114,58 @@ class AdsLeadsController extends Controller
                 'today'       => $today,
             ],
         ]);
+    }
+
+    /**
+     * POST /api/ads/leads/olx/sync
+     * Busca leads novos no OLX (pull-based) e injeta no CRM.
+     *
+     * Query params:
+     *   hours  - janela de tempo em horas (default: 24, max: 168)
+     */
+    public function syncOlx(
+        Request              $request,
+        ProviderAdapterFactory $factory,
+        TokenEncryptionService $enc,
+        LeadIngestionService   $ingestion,
+    ): JsonResponse {
+        $tenantId = $request->get('tenant_id');
+        $hours    = min((int) $request->query('hours', 24), 168);
+        $since    = new \DateTime("-{$hours} hours");
+
+        try {
+            /** @var \App\Services\Ads\Providers\OlxAdapter $adapter */
+            $adapter = $factory->make('olx');
+            $leads   = $adapter->fetchLeads($tenantId, $since);
+
+            $ingested   = 0;
+            $duplicates = 0;
+            $skipped    = 0;
+
+            foreach ($leads as $item) {
+                $adsLead = $ingestion->ingest($tenantId, $item['normalized'], $item['meta']);
+                if ($adsLead->is_duplicate) {
+                    $duplicates++;
+                } else {
+                    $ingested++;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'total_fetched' => count($leads),
+                    'ingested'      => $ingested,
+                    'duplicates'    => $duplicates,
+                    'since'         => $since->format('c'),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[AdsLeadsController] Erro syncOlx', [
+                'tenant_id' => $tenantId,
+                'error'     => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
     }
 }
