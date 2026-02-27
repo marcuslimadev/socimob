@@ -30,7 +30,7 @@ class AdsAnalyticsController extends Controller
 
         $leadsToday = AdsLead::withoutTenant()
             ->where('tenant_id', $tenantId)
-            ->whereDate('created_at', today())
+            ->whereDate('created_at', Carbon::today())
             ->count();
 
         $leadsWeek = AdsLead::withoutTenant()

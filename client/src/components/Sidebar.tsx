@@ -177,6 +177,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     { icon: <CalendarClock size={20} />, label: 'Agenda', href: '/agenda' },
     { icon: <Wallet size={20} />, label: 'Financeiro', href: '/financeiro' },
     { icon: <FileSpreadsheet size={20} />, label: 'Locação/Operação', href: '/financeiro/locacao' },
+    { icon: <Zap size={20} />, label: 'Anúncios Auto', href: '/ads' },
   ];
 
   // Menu adicional para admin
@@ -184,7 +185,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     { icon: <LineChart size={20} />, label: 'Estatísticas', href: '/analytics' },
     { icon: <Shield size={20} />, label: 'Usuários', href: '/admin/users' },
     { icon: <Image size={20} />, label: 'Propaganda', href: '/admin/property-ads' },
-    { icon: <Zap size={20} />, label: 'Anúncios Auto', href: '/ads' },
     { icon: <FileText size={20} />, label: 'Logs do Sistema', href: '/system-logs' },
   ] : [];
 
