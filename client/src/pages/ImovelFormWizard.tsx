@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Home, 
-  Save, 
-  X, 
-  MapPin, 
-  Loader2, 
-  ChevronRight, 
-  ChevronLeft, 
+import {
+  Home,
+  Save,
+  X,
+  MapPin,
+  Loader2,
+  ChevronRight,
+  ChevronLeft,
   Check,
   Upload,
   Image as ImageIcon,
@@ -19,6 +19,7 @@ import { useLocation, useRoute } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { useViaCep } from '@/hooks/useViaCep';
+import { AdsPublishToggle } from '@/components/AdsPublishToggle';
 
 // Formata CEP em tempo real: "01310100" → "01310-100"
 function formatCep(value: string): string {
@@ -1494,6 +1495,14 @@ export default function ImovelFormWizard() {
                 {mediaFiles.length} arquivo(s) adicionado(s)
               </p>
             </div>
+
+            {/* Toggle de publicação — somente em modo edição (property já salvo) */}
+            {isEditMode && propertyId && (
+              <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+                <h3 className="text-lg font-bold text-foreground mb-4">Anúncios automáticos</h3>
+                <AdsPublishToggle listingId={Number(propertyId)} />
+              </div>
+            )}
 
             {(formData.descricao || formData.descricao_resumida) && (
               <div className="bg-white/5 rounded-lg p-6 border border-white/10">

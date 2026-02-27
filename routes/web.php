@@ -222,6 +222,16 @@ $router->group(['prefix' => 'api/properties'], function () use ($router) {
 $router->post('/api/format-text', 'TextFormatterController@formatText');
 
 // ===========================
+// ADS AUTOMATION WEBHOOKS (SEM AUTENTICAÇÃO — verificação por assinatura HMAC)
+// ===========================
+$router->group(['prefix' => 'api/ads/webhooks', 'middleware' => 'resolve-tenant'], function () use ($router) {
+    // GET: handshake de verificação (Meta: hub.mode=subscribe)
+    $router->get('/{provider}/receive', 'Ads\AdsWebhookController@verify');
+    // POST: receber eventos (Meta: leadgen, Google: futuro)
+    $router->post('/{provider}/receive', 'Ads\AdsWebhookController@receive');
+});
+
+// ===========================
 // WEBHOOK (SEM AUTENTICAÇÃO)
 // ===========================
 $router->group(['prefix' => 'webhook'], function () use ($router) {
@@ -416,4 +426,28 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     // Configurações do CRM / IA
     $router->get('/settings', 'SettingsController@index');
     $router->put('/settings', 'SettingsController@update');
+
+    // ===========================
+    // ADS AUTOMATION MODULE
+    // ===========================
+
+    // Status geral e configurações
+    $router->get('/ads/status', 'Ads\AdsConnectionController@status');
+    $router->post('/ads/settings', 'Ads\AdsConnectionController@saveSettings');
+    $router->get('/ads/logs', 'Ads\AdsListingController@logs');
+
+    // Leads captados pelos providers
+    $router->get('/ads/leads', 'Ads\AdsLeadsController@index');
+    $router->get('/ads/leads/stats', 'Ads\AdsLeadsController@stats');
+
+    // Conexão OAuth por provider
+    $router->post('/ads/{provider}/connect/start', 'Ads\AdsConnectionController@startConnect');
+    $router->get('/ads/{provider}/connect/callback', 'Ads\AdsConnectionController@oauthCallback');
+    $router->delete('/ads/{provider}/connect', 'Ads\AdsConnectionController@disconnect');
+    $router->post('/ads/{provider}/accounts', 'Ads\AdsConnectionController@saveAccount');
+
+    // Publicação de imóveis
+    $router->post('/listings/{id}/ads/publish', 'Ads\AdsListingController@publish');
+    $router->post('/listings/{id}/ads/unpublish', 'Ads\AdsListingController@unpublish');
+    $router->get('/listings/{id}/ads/status', 'Ads\AdsListingController@listingAdsStatus');
 });

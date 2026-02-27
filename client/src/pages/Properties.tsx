@@ -1,5 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Eye, Pencil, Trash2, RefreshCw, Download, Star, Globe, Loader2, X } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import {
+  Search, Plus, Eye, Pencil, Trash2, RefreshCw, Download,
+  Star, Globe, Loader2, X, ChevronUp, ChevronDown, ChevronsUpDown, Zap,
+} from 'lucide-react';
 import { useLocation } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -8,6 +11,7 @@ import { toast } from 'sonner';
 interface ImovelRow {
   id: string;
   codigo: string;
+  referencia: string;
   titulo: string;
   tipo: string;
   finalidade: string;
@@ -22,6 +26,8 @@ interface ImovelRow {
   destaque: boolean;
 }
 
+type SortField = 'codigo' | 'referencia' | 'titulo' | 'tipo' | 'finalidade' | 'preco' | 'dormitorios' | 'area' | 'localizacao';
+
 const formatMoney = (value: number) =>
   Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -34,6 +40,8 @@ const tipoLabel = (tipo: string) => {
   };
   return map[tipo] || tipo || '-';
 };
+
+type AdsStatus = 'ACTIVE' | 'PUBLISHING' | 'PAUSED' | 'ERROR' | null;
 
 export default function Properties() {
   const [, setLocation] = useLocation();
@@ -48,7 +56,11 @@ export default function Properties() {
   const [destaqueFiltro, setDestaqueFiltro] = useState('todos');
   const [pagina, setPagina] = useState(1);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const itensPorPagina = 25;
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [itensPorPagina, setItensPorPagina] = useState(25);
+  const [adsStatusMap, setAdsStatusMap] = useState<Record<string, AdsStatus>>({});
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const fetchImoveis = async () => {
     setIsLoading(true);
@@ -59,6 +71,7 @@ export default function Properties() {
         rows.map((item: any) => ({
           id: String(item.id),
           codigo: item.codigo_imovel || item.codigo || '-',
+          referencia: item.referencia_imovel || '-',
           titulo: item.titulo || item.codigo_imovel || 'Sem título',
           tipo: (item.tipo_imovel || '').toLowerCase(),
           finalidade: (item.finalidade_imovel || 'venda').toLowerCase().includes('aluguel')
@@ -91,12 +104,51 @@ export default function Properties() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busca, tipoFiltro, finalidadeFiltro, portalFiltro, destaqueFiltro]);
+  }, [busca, tipoFiltro, finalidadeFiltro, portalFiltro, destaqueFiltro, sortField, sortDir, itensPorPagina]);
+
+  const fetchAdsStatuses = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const results = await Promise.allSettled(
+      ids.map((id) => api.get(`/listings/${id}/ads/status`)),
+    );
+    const map: Record<string, AdsStatus> = {};
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') {
+        const statuses: { provider: string; publish_status: string }[] =
+          r.value.data?.data ?? [];
+        // Pick the "best" status across providers: ACTIVE > PUBLISHING > ERROR > PAUSED
+        const priority: Record<string, number> = { ACTIVE: 4, PUBLISHING: 3, ERROR: 2, PAUSED: 1 };
+        let best: AdsStatus = null;
+        statuses.forEach((s) => {
+          const status = s.publish_status as AdsStatus;
+          if (status && (best === null || (priority[status] ?? 0) > (priority[best] ?? 0))) {
+            best = status;
+          }
+        });
+        map[ids[i]] = best;
+      }
+    });
+    setAdsStatusMap((prev) => ({ ...prev, ...map }));
+  }, []);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
 
   const imoveisFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return imoveis.filter((im) => {
-      if (termo && !`${im.titulo} ${im.codigo} ${im.localizacao}`.toLowerCase().includes(termo))
+      if (
+        termo &&
+        !`${im.titulo} ${im.codigo} ${im.referencia} ${im.localizacao}`
+          .toLowerCase()
+          .includes(termo)
+      )
         return false;
       if (tipoFiltro !== 'todos' && im.tipo !== tipoFiltro) return false;
       if (finalidadeFiltro !== 'todos' && im.finalidade !== finalidadeFiltro) return false;
@@ -108,12 +160,52 @@ export default function Properties() {
     });
   }, [imoveis, busca, tipoFiltro, finalidadeFiltro, portalFiltro, destaqueFiltro]);
 
-  const totalPaginas = Math.max(1, Math.ceil(imoveisFiltrados.length / itensPorPagina));
+  const imoveisOrdenados = useMemo(() => {
+    if (!sortField) return imoveisFiltrados;
+    return [...imoveisFiltrados].sort((a, b) => {
+      const av = a[sortField];
+      const bv = b[sortField];
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return sortDir === 'asc' ? av - bv : bv - av;
+      }
+      return sortDir === 'asc'
+        ? String(av).localeCompare(String(bv), 'pt-BR')
+        : String(bv).localeCompare(String(av), 'pt-BR');
+    });
+  }, [imoveisFiltrados, sortField, sortDir]);
+
+  const totalPaginas = Math.max(1, Math.ceil(imoveisOrdenados.length / itensPorPagina));
 
   const imoveisPaginados = useMemo(() => {
     const start = (pagina - 1) * itensPorPagina;
-    return imoveisFiltrados.slice(start, start + itensPorPagina);
-  }, [imoveisFiltrados, pagina]);
+    return imoveisOrdenados.slice(start, start + itensPorPagina);
+  }, [imoveisOrdenados, pagina]);
+
+  // Fetch ads statuses for visible listings whenever the page changes
+  useEffect(() => {
+    const ids = imoveisPaginados
+      .map((im) => im.id)
+      .filter((id) => !(id in adsStatusMap));
+    fetchAdsStatuses(ids);
+  }, [imoveisPaginados]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const AdsStatusBadge = ({ id }: { id: string }) => {
+    const status = adsStatusMap[id];
+    if (!status) return null;
+    const map: Record<NonNullable<AdsStatus>, { label: string; cls: string }> = {
+      ACTIVE:     { label: 'Ativo',       cls: 'bg-emerald-100 text-emerald-800' },
+      PUBLISHING: { label: 'Publicando',  cls: 'bg-blue-100 text-blue-800' },
+      PAUSED:     { label: 'Pausado',     cls: 'bg-amber-100 text-amber-800' },
+      ERROR:      { label: 'Erro',        cls: 'bg-red-100 text-red-800' },
+    };
+    const cfg = map[status];
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.cls}`}>
+        <Zap size={9} />
+        {cfg.label}
+      </span>
+    );
+  };
 
   const handleToggle = async (id: string, field: 'exibir' | 'destaque', current: boolean) => {
     setTogglingId(id);
@@ -195,6 +287,39 @@ export default function Properties() {
     setDestaqueFiltro('todos');
   };
 
+  const filtrosAtivos = [
+    busca !== '',
+    tipoFiltro !== 'todos',
+    finalidadeFiltro !== 'todos',
+    portalFiltro !== 'todos',
+    destaqueFiltro !== 'todos',
+  ].filter(Boolean).length;
+
+  const copyText = useCallback((text: string, label: string) => {
+    if (text === '-' || !text) return;
+    navigator.clipboard.writeText(text).then(() => toast.success(label + ' copiado'));
+  }, []);
+
+  // Keyboard shortcut: '/' focuses search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === '/' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ChevronsUpDown size={11} className="opacity-30" />;
+    return sortDir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />;
+  };
+
+  const thSort = (field: SortField, label: React.ReactNode, extra = '') =>
+    `p-3 text-xs text-muted-foreground cursor-pointer select-none hover:text-foreground whitespace-nowrap ${extra}`;
+
   return (
     <div className="flex">
       <Sidebar />
@@ -252,9 +377,10 @@ export default function Properties() {
               <div className="relative">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  ref={searchRef}
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Código, título ou localização..."
+                  placeholder="Código, referência, título ou localização... (/)"  
                   className="w-full bg-background border border-border rounded-lg pl-8 pr-3 py-2 text-sm"
                 />
               </div>
@@ -312,41 +438,233 @@ export default function Properties() {
             <button
               type="button"
               onClick={limparFiltros}
-              className="flex items-center gap-1 px-4 py-2 rounded-lg border border-border hover:bg-accent text-sm"
+              className="relative flex items-center gap-1 px-4 py-2 rounded-lg border border-border hover:bg-accent text-sm"
             >
               <X size={13} /> Limpar
+              {filtrosAtivos > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                  {filtrosAtivos}
+                </span>
+              )}
             </button>
           </div>
 
-          {/* Tabela */}
+          {/* Contagem de resultados */}
+          {!isLoading && imoveisOrdenados.length !== imoveis.length && (
+            <p className="text-sm text-muted-foreground px-1">
+              {imoveisOrdenados.length} resultado(s) para os filtros aplicados
+            </p>
+          )}
+
+          {/* Conteúdo principal */}
           {isLoading ? (
             <div className="glass-panel rounded-2xl p-12 flex justify-center">
               <Loader2 className="animate-spin" />
             </div>
+          ) : imoveisPaginados.length === 0 ? (
+            <div className="glass-panel rounded-2xl p-12 text-center text-sm text-muted-foreground">
+              Nenhum imóvel encontrado para os filtros atuais.
+            </div>
           ) : (
-            <div className="glass-panel rounded-2xl overflow-auto">
-              {imoveisPaginados.length === 0 ? (
-                <p className="p-8 text-center text-sm text-muted-foreground">
-                  Nenhum imóvel encontrado para os filtros atuais.
-                </p>
-              ) : (
+            <>
+              {/* Cards — mobile */}
+              <div className="grid gap-3 md:hidden">
+                {imoveisPaginados.map((im) => (
+                  <div
+                    key={im.id}
+                    className="glass-panel rounded-2xl p-4 flex gap-3"
+                  >
+                    {/* Foto */}
+                    <div className="shrink-0">
+                      {im.imagem ? (
+                        <img
+                          src={im.imagem}
+                          alt={im.titulo}
+                          className="w-20 h-16 object-cover rounded-xl"
+                        />
+                      ) : (
+                        <div className="w-20 h-16 rounded-xl bg-muted flex items-center justify-center text-2xl">
+                          🏢
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Conteúdo */}
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-medium leading-snug line-clamp-2">{im.titulo}</p>
+                        <span
+                          className={`shrink-0 inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                            im.finalidade === 'venda'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}
+                        >
+                          {im.finalidade === 'venda' ? 'Venda' : 'Aluguel'}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground font-mono">{im.codigo}</p>
+
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                        <span>{tipoLabel(im.tipo)}</span>
+                        {im.dormitorios > 0 && <span>{im.dormitorios} dorm.</span>}
+                        {im.area > 0 && <span>{im.area}m²</span>}
+                        {im.localizacao !== '-' && <span>{im.localizacao}</span>}
+                      </div>
+
+                      <p className="text-sm font-semibold">R$ {formatMoney(im.preco)}</p>
+
+                      {/* Badges + Ações */}
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleToggle(im.id, 'exibir', im.exibir)}
+                            disabled={togglingId === im.id}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors disabled:opacity-60 ${
+                              im.exibir
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                : 'bg-muted text-muted-foreground hover:bg-accent'
+                            }`}
+                          >
+                            <Globe size={10} />
+                            {im.exibir ? 'Publicado' : 'Oculto'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggle(im.id, 'destaque', im.destaque)}
+                            disabled={togglingId === im.id}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors disabled:opacity-60 ${
+                              im.destaque
+                                ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                : 'bg-muted text-muted-foreground hover:bg-accent'
+                            }`}
+                          >
+                            <Star size={10} />
+                            {im.destaque ? 'Destaque' : 'Normal'}
+                          </button>
+                          <AdsStatusBadge id={im.id} />
+                        </div>
+
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => setLocation(`/portal/imovel/${im.id}`)}
+                            title="Ver no portal"
+                            className="p-1.5 rounded-lg hover:bg-accent transition-colors"
+                          >
+                            <Eye size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setLocation(`/properties/${im.id}/editar`)}
+                            title="Editar"
+                            className="p-1.5 rounded-lg hover:bg-accent transition-colors"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(im)}
+                            title="Excluir"
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tabela — desktop */}
+              <div className="glass-panel rounded-2xl overflow-auto hidden md:block">
                 <table className="w-full min-w-[960px]">
-                  <thead>
+                  <thead className="sticky top-0 z-10 bg-card">
                     <tr className="border-b border-border">
                       <th className="text-left p-3 text-xs text-muted-foreground w-16">Foto</th>
-                      <th className="text-left p-3 text-xs text-muted-foreground">Código</th>
-                      <th className="text-left p-3 text-xs text-muted-foreground">Título</th>
-                      <th className="text-left p-3 text-xs text-muted-foreground">Tipo</th>
-                      <th className="text-left p-3 text-xs text-muted-foreground">Finalidade</th>
-                      <th className="text-left p-3 text-xs text-muted-foreground">Preço</th>
-                      <th className="text-center p-3 text-xs text-muted-foreground">Dorm.</th>
-                      <th className="text-left p-3 text-xs text-muted-foreground">Área</th>
-                      <th className="text-left p-3 text-xs text-muted-foreground">Localização</th>
-                      <th className="text-center p-3 text-xs text-muted-foreground">
+                      <th
+                        className={thSort('codigo', null, 'text-left')}
+                        onClick={() => handleSort('codigo')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Código <SortIcon field="codigo" />
+                        </span>
+                      </th>
+                      <th
+                        className={thSort('referencia', null, 'text-left')}
+                        onClick={() => handleSort('referencia')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Referência <SortIcon field="referencia" />
+                        </span>
+                      </th>
+                      <th
+                        className={thSort('titulo', null, 'text-left')}
+                        onClick={() => handleSort('titulo')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Título <SortIcon field="titulo" />
+                        </span>
+                      </th>
+                      <th
+                        className={thSort('tipo', null, 'text-left')}
+                        onClick={() => handleSort('tipo')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Tipo <SortIcon field="tipo" />
+                        </span>
+                      </th>
+                      <th
+                        className={thSort('finalidade', null, 'text-left')}
+                        onClick={() => handleSort('finalidade')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Finalidade <SortIcon field="finalidade" />
+                        </span>
+                      </th>
+                      <th
+                        className={thSort('preco', null, 'text-left')}
+                        onClick={() => handleSort('preco')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Preço <SortIcon field="preco" />
+                        </span>
+                      </th>
+                      <th
+                        className={thSort('dormitorios', null, 'text-center')}
+                        onClick={() => handleSort('dormitorios')}
+                      >
+                        <span className="inline-flex items-center justify-center gap-1">
+                          Dorm. <SortIcon field="dormitorios" />
+                        </span>
+                      </th>
+                      <th
+                        className={thSort('area', null, 'text-left')}
+                        onClick={() => handleSort('area')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Área <SortIcon field="area" />
+                        </span>
+                      </th>
+                      <th
+                        className={thSort('localizacao', null, 'text-left')}
+                        onClick={() => handleSort('localizacao')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Localização <SortIcon field="localizacao" />
+                        </span>
+                      </th>
+                      <th className="text-center p-3 text-xs text-muted-foreground whitespace-nowrap">
                         <span className="inline-flex items-center gap-1"><Globe size={11} /> Portal</span>
                       </th>
-                      <th className="text-center p-3 text-xs text-muted-foreground">
+                      <th className="text-center p-3 text-xs text-muted-foreground whitespace-nowrap">
                         <span className="inline-flex items-center gap-1"><Star size={11} /> Destaque</span>
+                      </th>
+                      <th className="text-center p-3 text-xs text-muted-foreground whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1"><Zap size={11} /> Anúncio</span>
                       </th>
                       <th className="text-left p-3 text-xs text-muted-foreground">Ações</th>
                     </tr>
@@ -370,7 +688,8 @@ export default function Properties() {
                             </div>
                           )}
                         </td>
-                        <td className="p-3 text-sm text-muted-foreground font-mono">{im.codigo}</td>
+                        <td className="p-3 text-sm text-muted-foreground font-mono cursor-pointer hover:text-foreground" title="Copiar código" onClick={() => copyText(im.codigo, 'Código')}>{im.codigo}</td>
+                        <td className="p-3 text-sm text-muted-foreground font-mono cursor-pointer hover:text-foreground" title="Copiar referência" onClick={() => copyText(im.referencia, 'Referência')}>{im.referencia}</td>
                         <td className="p-3 text-sm font-medium max-w-[200px]">
                           <span className="line-clamp-2">{im.titulo}</span>
                         </td>
@@ -439,6 +758,21 @@ export default function Properties() {
                           </button>
                         </td>
 
+                        {/* Ads Status */}
+                        <td className="p-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setLocation(`/properties/${im.id}/editar`)}
+                            title="Gerenciar anúncios"
+                            className="inline-flex items-center justify-center gap-1"
+                          >
+                            <AdsStatusBadge id={im.id} />
+                            {!adsStatusMap[im.id] && (
+                              <Zap size={13} className="text-muted-foreground/30" />
+                            )}
+                          </button>
+                        </td>
+
                         {/* Ações */}
                         <td className="p-3">
                           <div className="flex items-center gap-1">
@@ -472,17 +806,40 @@ export default function Properties() {
                     ))}
                   </tbody>
                 </table>
-              )}
-            </div>
+              </div>
+            </>
           )}
 
           {/* Paginação */}
           {!isLoading && (
             <div className="glass-panel rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <p className="text-sm text-muted-foreground">
-                {imoveisFiltrados.length} imóvel(is) — página {pagina} de {totalPaginas}
-              </p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <p className="text-sm text-muted-foreground">
+                  {Math.min((pagina - 1) * itensPorPagina + 1, imoveisOrdenados.length)}–{Math.min(pagina * itensPorPagina, imoveisOrdenados.length)} de {imoveisOrdenados.length} imóvel(is)
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <label className="text-xs text-muted-foreground">Por página</label>
+                  <select
+                    value={itensPorPagina}
+                    onChange={(e) => { setItensPorPagina(Number(e.target.value)); setPagina(1); }}
+                    className="bg-background border border-border rounded-lg px-2 py-1 text-xs"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPagina(1)}
+                  disabled={pagina <= 1}
+                  className="px-3 py-1.5 rounded-lg border border-border hover:bg-accent disabled:opacity-60 text-sm"
+                >
+                  «
+                </button>
                 <button
                   type="button"
                   onClick={() => setPagina((p) => Math.max(1, p - 1))}
@@ -491,6 +848,9 @@ export default function Properties() {
                 >
                   Anterior
                 </button>
+                <span className="text-sm text-muted-foreground px-1">
+                  {pagina} / {totalPaginas}
+                </span>
                 <button
                   type="button"
                   onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
@@ -498,6 +858,14 @@ export default function Properties() {
                   className="px-3 py-1.5 rounded-lg border border-border hover:bg-accent disabled:opacity-60 text-sm"
                 >
                   Próxima
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPagina(totalPaginas)}
+                  disabled={pagina >= totalPaginas}
+                  className="px-3 py-1.5 rounded-lg border border-border hover:bg-accent disabled:opacity-60 text-sm"
+                >
+                  »
                 </button>
               </div>
             </div>

@@ -27,6 +27,7 @@ import {
   LineChart,
   KeyRound,
   Link2,
+  Zap,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -183,6 +184,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     { icon: <LineChart size={20} />, label: 'Estatísticas', href: '/analytics' },
     { icon: <Shield size={20} />, label: 'Usuários', href: '/admin/users' },
     { icon: <Image size={20} />, label: 'Propaganda', href: '/admin/property-ads' },
+    { icon: <Zap size={20} />, label: 'Anúncios Auto', href: '/ads' },
     { icon: <FileText size={20} />, label: 'Logs do Sistema', href: '/system-logs' },
   ] : [];
 

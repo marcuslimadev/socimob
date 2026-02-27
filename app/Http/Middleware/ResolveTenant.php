@@ -24,6 +24,12 @@ class ResolveTenant
             return $next($request);
         }
 
+        // Ads Automation webhooks: chegam dos servidores Meta/Google, sem header de tenant.
+        // O AdsWebhookController resolve o tenant internamente via page_id.
+        if (str_starts_with($path, 'api/ads/webhooks/')) {
+            return $next($request);
+        }
+
         // Obter o dominio da requisicao
         $host = $request->getHost();
         

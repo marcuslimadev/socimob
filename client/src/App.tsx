@@ -47,6 +47,7 @@ const Tenants = lazy(() => import("./pages/Tenants"));
 const TenantAssociations = lazy(() => import("./pages/TenantAssociations"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const PropertyAds = lazy(() => import("./pages/PropertyAds"));
+const AdsAutomation = lazy(() => import("./pages/AdsAutomation"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const ControleChaves = lazy(() => import("./pages/ControleChaves"));
 const AnalyticsConsentBanner = lazy(() => import("./components/AnalyticsConsentBanner"));
@@ -108,6 +109,7 @@ function Router() {
       <Route path="/system-logs" component={SystemLogs} />
       <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/property-ads" component={PropertyAds} />
+      <Route path="/ads" component={AdsAutomation} />
       <Route path="/controle-chaves" component={ControleChaves} />
       <Route path="/analytics" component={Analytics} />
       <Route path={"/404"} component={NotFound} />

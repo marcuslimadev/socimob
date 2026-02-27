@@ -29,6 +29,10 @@
         <env name="CACHE_DRIVER" value="array"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="ADS_ENCRYPTION_KEY" value="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"/>
+        <env name="META_APP_SECRET" value="test_meta_app_secret_for_phpunit"/>
+        <env name="META_APP_ID" value="12345678"/>
+        <env name="APP_URL" value="http://localhost"/>
     </php>
 </phpunit>
 

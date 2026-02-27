@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Plus, Download, Zap } from 'lucide-react';
+import { Search, Filter, Plus, Download, Zap, Facebook, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 import { api } from '@/lib/api';
@@ -22,6 +22,8 @@ interface Lead {
   value?: number;
   lastContact?: string;
   sms_enviado?: boolean;
+  fonte?: string;
+  adsProvider?: string; // 'meta' | 'google' — origem do lead via Ads Automation
 }
 
 export default function Leads() {
@@ -61,7 +63,9 @@ export default function Leads() {
             status: item.status || 'novo',
             value: parseFloat(item.budget_max || item.budget_min || '0'),
             lastContact: formatDate(item.updated_at),
-            sms_enviado: Boolean(item.sms_enviado)
+            sms_enviado: Boolean(item.sms_enviado),
+            fonte: item.fonte || null,
+            adsProvider: item.metadata?.ads_provider || null,
           }));
       }
       return [];
@@ -439,7 +443,18 @@ export default function Leads() {
                     key={lead.id}
                     variants={itemVariants}
                     transition={{ delay: 0.3 + index * 0.05 }}
+                    className="relative"
                   >
+                    {/* Badge de origem de anúncio */}
+                    {lead.adsProvider && (
+                      <div className="absolute -top-2 right-2 z-10 flex items-center gap-1 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full shadow">
+                        {lead.adsProvider === 'meta'
+                          ? <Facebook size={10} />
+                          : <Globe size={10} />
+                        }
+                        <span>{lead.adsProvider === 'meta' ? 'Meta Ads' : 'Google Ads'}</span>
+                      </div>
+                    )}
                     <LeadCard
                       id={parseInt(lead.id)}
                       name={lead.name}

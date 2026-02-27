@@ -18,6 +18,11 @@ class Kernel extends ConsoleKernel
         Commands\EnsurePropertiesCommand::class,
         Commands\PruneAnalyticsCommand::class,
         Commands\SyncLeadsPessoas::class,
+        // Ads Automation
+        Commands\Ads\AdsReconcileCommand::class,
+        Commands\Ads\AdsRefreshTokensCommand::class,
+        Commands\Ads\AdsBackfillLeadsCommand::class,
+        Commands\Ads\AdsCleanupLeadsCommand::class,
     ];
 
     /**
@@ -37,6 +42,23 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping();
 
         $schedule->command('analytics:prune')
+            ->daily()
+            ->withoutOverlapping();
+
+        // Ads Automation schedules
+        $schedule->command('ads:reconcile')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping();
+
+        $schedule->command('ads:refresh-tokens --days=10')
+            ->hourly()
+            ->withoutOverlapping();
+
+        $schedule->command('ads:backfill-leads --provider=google --hours=6')
+            ->everySixHours()
+            ->withoutOverlapping();
+
+        $schedule->command('ads:cleanup-leads')
             ->daily()
             ->withoutOverlapping();
     }
