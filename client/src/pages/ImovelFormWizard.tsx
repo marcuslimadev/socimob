@@ -417,6 +417,20 @@ export default function ImovelFormWizard() {
     setMediaFiles(arr);
   };
 
+  const dragSrcId = useRef<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  const handleDragReorder = (targetId: string) => {
+    if (!dragSrcId.current || dragSrcId.current === targetId) return;
+    const srcIdx = mediaFiles.findIndex(m => m.id === dragSrcId.current);
+    const tgtIdx = mediaFiles.findIndex(m => m.id === targetId);
+    if (srcIdx === -1 || tgtIdx === -1) return;
+    const arr = [...mediaFiles];
+    const [moved] = arr.splice(srcIdx, 1);
+    arr.splice(tgtIdx, 0, moved);
+    setMediaFiles(arr);
+  };
+
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1: // Informações Básicas
@@ -1303,7 +1317,17 @@ export default function ImovelFormWizard() {
                   {mediaFiles.map((media, idx) => (
                     <div
                       key={media.id}
-                      className="relative group rounded-lg overflow-hidden bg-white/5 border-2 border-white/10 hover:border-blue-400 transition"
+                      draggable
+                      onDragStart={() => { dragSrcId.current = media.id; }}
+                      onDragOver={(e) => { e.preventDefault(); setDragOverId(media.id); }}
+                      onDragLeave={() => setDragOverId(null)}
+                      onDrop={(e) => { e.preventDefault(); handleDragReorder(media.id); setDragOverId(null); }}
+                      onDragEnd={() => { dragSrcId.current = null; setDragOverId(null); }}
+                      className={`relative group rounded-lg overflow-hidden bg-white/5 border-2 transition cursor-grab active:cursor-grabbing ${
+                        dragOverId === media.id
+                          ? 'border-blue-400 scale-105 shadow-lg shadow-blue-500/30'
+                          : 'border-white/10 hover:border-blue-400'
+                      }`}
                     >
                       {media.type === 'image' ? (
                         <img
