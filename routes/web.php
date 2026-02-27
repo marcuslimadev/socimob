@@ -232,6 +232,12 @@ $router->group(['prefix' => 'api/ads/webhooks', 'middleware' => 'resolve-tenant'
 });
 
 // ===========================
+// OLX OAUTH CALLBACK (SEM AUTENTICAÇÃO — verificado pelo state anti-CSRF)
+// URI registrada no painel OLX Pro: https://app.socimob.com/api/oauth/olx/callback
+// ===========================
+$router->get('/api/oauth/{provider}/callback', ['middleware' => 'resolve-tenant', 'uses' => 'Ads\AdsConnectionController@oauthCallback']);
+
+// ===========================
 // WEBHOOK (SEM AUTENTICAÇÃO)
 // ===========================
 $router->group(['prefix' => 'webhook'], function () use ($router) {
