@@ -87,13 +87,13 @@ class AdsAnalyticsController extends Controller
         $timeline = [];
         for ($d = 0; $d <= $period; $d++) {
             $date = Carbon::now()->subDays($period - $d)->format('Y-m-d');
-            $timeline[$date] = ['date' => $date, 'meta' => 0, 'google' => 0, 'total' => 0];
+            $timeline[$date] = ['date' => $date, 'meta' => 0, 'google' => 0, 'olx' => 0, 'total' => 0];
         }
         foreach ($timelineRaw as $row) {
             $date = $row->date;
             if (isset($timeline[$date])) {
                 $provider = $row->provider ?? 'other';
-                if ($provider === 'meta' || $provider === 'google') {
+                if (in_array($provider, ['meta', 'google', 'olx'])) {
                     $timeline[$date][$provider] += (int) $row->total;
                 }
                 $timeline[$date]['total'] += (int) $row->total;
@@ -131,11 +131,12 @@ class AdsAnalyticsController extends Controller
                     'titulo'     => $titles[$lid] ?? "Imóvel #{$lid}",
                     'meta'       => 0,
                     'google'     => 0,
+                    'olx'        => 0,
                     'total'      => 0,
                 ];
             }
             $p = $row->provider ?? 'other';
-            if ($p === 'meta' || $p === 'google') {
+            if (in_array($p, ['meta', 'google', 'olx'])) {
                 $topListings[$lid][$p] += (int) $row->leads;
             }
             $topListings[$lid]['total'] += (int) $row->leads;
@@ -163,9 +164,11 @@ class AdsAnalyticsController extends Controller
                     'ingested_crm'            => $ingestedCrm,
                     'active_listings_meta'    => (int) ($activeListings['meta']   ?? 0),
                     'active_listings_google'  => (int) ($activeListings['google'] ?? 0),
+                    'active_listings_olx'     => (int) ($activeListings['olx']    ?? 0),
                     'total_spend_estimate'    => round($totalSpendEstimate, 2),
                     'budget_meta_daily'       => $budgetByProvider['meta']   ?? 0,
                     'budget_google_daily'     => $budgetByProvider['google'] ?? 0,
+                    'budget_olx_daily'        => $budgetByProvider['olx']    ?? 0,
                 ],
                 'timeline'      => array_values($timeline),
                 'top_listings'  => array_values($topListings),

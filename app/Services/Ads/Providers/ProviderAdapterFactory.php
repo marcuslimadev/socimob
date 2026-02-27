@@ -20,6 +20,7 @@ class ProviderAdapterFactory
         return match ($provider) {
             'meta'   => new MetaAdapter($this->enc),
             'google' => new GoogleAdapter(),
+            'olx'    => new OlxAdapter($this->enc),
             default  => throw new RuntimeException("Provider desconhecido: '{$provider}'"),
         };
     }

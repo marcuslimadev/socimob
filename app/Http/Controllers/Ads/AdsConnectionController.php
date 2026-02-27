@@ -157,7 +157,7 @@ class AdsConnectionController extends Controller
         $entitlement = $this->entitlement->getActive($tenantId);
 
         $stats = [];
-        foreach (['meta', 'google'] as $provider) {
+        foreach (['meta', 'google', 'olx'] as $provider) {
             $conn   = $connections->get($provider);
             $campaign = AdsCampaign::withoutTenant()
                 ->where('tenant_id', $tenantId)
@@ -233,6 +233,42 @@ class AdsConnectionController extends Controller
             'message'  => 'Configurações salvas.',
             'campaign' => ['budget_daily' => $campaign->getBudgetInReais(), 'region' => $campaign->region],
         ]);
+    }
+
+    /**
+     * POST /api/ads/olx/connect/credentials
+     * Conecta ao OLX Pro usando Client ID + Client Secret (sem OAuth popup).
+     */
+    public function connectCredentials(Request $request): JsonResponse
+    {
+        $tenantId     = $request->get('tenant_id');
+        $clientId     = $request->input('client_id');
+        $clientSecret = $request->input('client_secret');
+
+        if (!$clientId || !$clientSecret) {
+            return response()->json(['success' => false, 'error' => 'client_id e client_secret são obrigatórios.'], 422);
+        }
+
+        try {
+            /** @var \App\Services\Ads\Providers\OlxAdapter $adapter */
+            $adapter    = $this->factory->make('olx');
+            $connection = $adapter->connectWithCredentials($tenantId, $clientId, $clientSecret);
+
+            return response()->json([
+                'success'    => true,
+                'message'    => 'OLX conectado com sucesso!',
+                'connection' => [
+                    'id'         => $connection->id,
+                    'status'     => $connection->status,
+                    'expires_at' => $connection->expires_at?->toISOString(),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('[AdsConnectionController] connectCredentials OLX', [
+                'tenant_id' => $tenantId, 'error' => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 422);
+        }
     }
 
     /**

@@ -11,7 +11,7 @@ import {
   Zap, AlertTriangle, RefreshCw,
   Settings2, ChevronDown, ChevronUp, ExternalLink, BarChart3,
   Facebook, Globe, Loader2, LogOut, TrendingUp, Users, DollarSign,
-  Home, Activity, ArrowUpRight, ArrowDownRight, Minus,
+  Home, Activity, ArrowUpRight, ArrowDownRight, Minus, Tag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,13 +58,15 @@ interface AnalyticsSummary {
   ingested_crm: number;
   active_listings_meta: number;
   active_listings_google: number;
+  active_listings_olx: number;
   total_spend_estimate: number;
   budget_meta_daily: number;
   budget_google_daily: number;
+  budget_olx_daily: number;
 }
 
-interface TimelinePoint { date: string; meta: number; google: number; total: number; }
-interface TopListing { listing_id: number; titulo: string; meta: number; google: number; total: number; }
+interface TimelinePoint { date: string; meta: number; google: number; olx: number; total: number; }
+interface TopListing { listing_id: number; titulo: string; meta: number; google: number; olx: number; total: number; }
 interface AnalyticsData {
   period_days: number;
   summary: AnalyticsSummary;
@@ -96,6 +98,7 @@ function TrendBadge({ curr, prev }: { curr: number; prev: number }) {
 function providerIcon(p: string, size = 16) {
   if (p === 'meta')   return <Facebook size={size} className="text-blue-400" />;
   if (p === 'google') return <Globe    size={size} className="text-emerald-400" />;
+  if (p === 'olx')    return <Tag      size={size} className="text-orange-400" />;
   return <Zap size={size} className="text-gray-400" />;
 }
 
@@ -120,16 +123,22 @@ function KpiCard({ label, value, sub, icon, color, trend }: {
 
 // ── Provider Card ─────────────────────────────────────────────────────────────
 
-function ProviderCard({ provider, status, allowed, onConnect, onDisconnect, onSaveSettings, isConnecting }: {
+function ProviderCard({ provider, status, allowed, onConnect, onDisconnect, onSaveSettings, onConnectCredentials, isConnecting }: {
   provider: string; status: ProviderStatus; allowed: boolean;
   onConnect: (p: string) => void; onDisconnect: (p: string) => void;
   onSaveSettings: (p: string, budget: number, region: string) => void;
+  onConnectCredentials: (p: string, id: string, secret: string) => void;
   isConnecting: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [budget, setBudget] = useState(String(status.budget_daily || ''));
   const [region, setRegion] = useState('');
-  const label = provider === 'meta' ? 'Meta Ads (Facebook / Instagram)' : 'Google Ads';
+  const [showCredForm, setShowCredForm] = useState(false);
+  const [credId, setCredId] = useState('');
+  const [credSecret, setCredSecret] = useState('');
+  const label = provider === 'meta' ? 'Meta Ads (Facebook / Instagram)'
+    : provider === 'olx' ? 'OLX Pro (Autoupload)'
+    : 'Google Ads';
   const connected = status.connected;
   const statusColor: Record<string,string> = {
     CONNECTED: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
@@ -159,11 +168,18 @@ function ProviderCard({ provider, status, allowed, onConnect, onDisconnect, onSa
       </div>
       <div className="flex gap-2">
         {!connected ? (
-          <Button size="sm" onClick={() => onConnect(provider)} disabled={!allowed || isConnecting}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
-            {isConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
-            Conectar via OAuth
-          </Button>
+          provider === 'olx' ? (
+            <Button size="sm" onClick={() => setShowCredForm(v => !v)} disabled={!allowed}
+              className="flex-1 bg-orange-600 hover:bg-orange-700 text-white gap-1.5">
+              <Tag size={13} /> {showCredForm ? 'Cancelar' : 'Conectar com API Key'}
+            </Button>
+          ) : (
+            <Button size="sm" onClick={() => onConnect(provider)} disabled={!allowed || isConnecting}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
+              {isConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+              Conectar via OAuth
+            </Button>
+          )
         ) : (
           <>
             <Button size="sm" variant="outline" onClick={() => setOpen(!open)}
@@ -180,6 +196,31 @@ function ProviderCard({ provider, status, allowed, onConnect, onDisconnect, onSa
           <Badge className="bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs">Upgrade</Badge>
         )}
       </div>
+      {/* OLX credential form */}
+      {provider === 'olx' && !connected && showCredForm && (
+        <div className="space-y-3 pt-3 border-t border-white/10">
+          <div>
+            <Label className="text-xs text-gray-400 mb-1.5 block">Client ID (OLX Pro)</Label>
+            <Input placeholder="Ex: abc123" value={credId} onChange={e => setCredId(e.target.value)}
+              className="h-8 text-sm bg-white/5 border-white/15 text-white" />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-400 mb-1.5 block">Client Secret</Label>
+            <Input type="password" placeholder="Seu secret" value={credSecret} onChange={e => setCredSecret(e.target.value)}
+              className="h-8 text-sm bg-white/5 border-white/15 text-white" />
+          </div>
+          <Button size="sm"
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
+            disabled={!credId || !credSecret || isConnecting}
+            onClick={() => { onConnectCredentials(provider, credId, credSecret); setShowCredForm(false); }}>
+            {isConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Tag size={13} />}
+            Salvar e conectar
+          </Button>
+          <p className="text-[11px] text-gray-500">
+            Obtenha as credenciais em <a href="https://www.olx.com.br/autos/gest%C3%A3o" target="_blank" rel="noreferrer" className="text-orange-400 underline">OLX Pro</a> → Integrações → API Autoupload.
+          </p>
+        </div>
+      )}
       {open && connected && (
         <div className="space-y-3 pt-3 border-t border-white/10">
           <div>
@@ -238,6 +279,7 @@ export default function AdsAutomation() {
     refetchInterval: 30000,
   });
 
+
   const { data: analyticsData, isLoading: analyticsLoading, refetch: refetchAnalytics } = useQuery<{ data: AnalyticsData }>({
     queryKey: ['ads-analytics', period],
     queryFn: async () => (await api.get(`/ads/analytics?period=${period}`)).data,
@@ -258,6 +300,17 @@ export default function AdsAutomation() {
     onSettled: () => setConnectingProvider(null),
   });
 
+  const olxCredMutation = useMutation({
+    mutationFn: async ({ clientId, clientSecret }: { clientId: string; clientSecret: string }) =>
+      (await api.post('/ads/olx/connect/credentials', { client_id: clientId, client_secret: clientSecret })).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ads-status'] });
+      toast.success('OLX conectado com sucesso!');
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.error || 'Credenciais OLX inválidas.'),
+    onSettled: () => setConnectingProvider(null),
+  });
+
   const disconnectMutation = useMutation({
     mutationFn: async (provider: string) => { await api.delete(`/ads/${provider}/connect`); },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ads-status'] }); toast.success('Conta desconectada.'); },
@@ -275,6 +328,10 @@ export default function AdsAutomation() {
   const handleConnect      = (p: string) => { setConnectingProvider(p); connectMutation.mutate(p); };
   const handleDisconnect   = (p: string) => { if (window.confirm(`Desconectar ${p}?`)) disconnectMutation.mutate(p); };
   const handleSaveSettings = (p: string, b: number, r: string) => settingsMutation.mutate({ provider: p, budget: b, region: r });
+  const handleConnectCredentials = (p: string, id: string, secret: string) => {
+    setConnectingProvider(p);
+    olxCredMutation.mutate({ clientId: id, clientSecret: secret });
+  };
 
   const entitlement = statusData?.entitlement;
   const providers   = statusData?.providers ?? {};
@@ -317,7 +374,7 @@ export default function AdsAutomation() {
                 </div>
                 Marketing / Anúncios
               </h1>
-              <p className="text-sm text-gray-400 mt-1.5">Gerencie campanhas Meta e Google · Leads entram direto no CRM</p>
+              <p className="text-sm text-gray-400 mt-1.5">Gerencie campanhas Meta, Google e OLX · Leads entram direto no CRM</p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
               {entitlement ? (
@@ -383,8 +440,8 @@ export default function AdsAutomation() {
                       trend={<TrendBadge curr={summary.leads_week} prev={Math.max(1, Math.round(summary.total_leads / (period / 7) * 0.8))} />} />
                     <KpiCard label="Leads hoje" value={summary.leads_today} sub={`${Math.round(summary.duplicate_rate * 100)}% duplicados`}
                       icon={<TrendingUp size={18} className="text-emerald-300" />} color="from-emerald-600/40 to-emerald-800/40" />
-                    <KpiCard label="Imóveis ativos" value={summary.active_listings_meta + summary.active_listings_google}
-                      sub={`Meta: ${summary.active_listings_meta} · Google: ${summary.active_listings_google}`}
+                    <KpiCard label="Imóveis ativos" value={summary.active_listings_meta + summary.active_listings_google + summary.active_listings_olx}
+                      sub={`Meta: ${summary.active_listings_meta} · Google: ${summary.active_listings_google} · OLX: ${summary.active_listings_olx}`}
                       icon={<Home size={18} className="text-purple-300" />} color="from-purple-600/40 to-purple-800/40" />
                     <KpiCard label="Gasto estimado" value={fmtR$(summary.total_spend_estimate)}
                       sub={`Meta: ${fmtR$(summary.budget_meta_daily)}/dia`}
@@ -396,11 +453,12 @@ export default function AdsAutomation() {
                     <div className="flex items-center justify-between mb-5">
                       <div>
                         <p className="text-sm font-semibold text-white">Leads captados por dia</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Últimos 14 dias · Meta vs Google</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Últimos 14 dias · Meta vs Google vs OLX</p>
                       </div>
                       <div className="flex items-center gap-4 text-xs text-gray-400">
                         <span className="flex items-center gap-1.5"><span className="w-3 h-1 rounded bg-blue-500 inline-block" /> Meta</span>
                         <span className="flex items-center gap-1.5"><span className="w-3 h-1 rounded bg-emerald-500 inline-block" /> Google</span>
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-1 rounded bg-orange-500 inline-block" /> OLX</span>
                       </div>
                     </div>
                     {chartData.length === 0 ? (
@@ -417,6 +475,10 @@ export default function AdsAutomation() {
                               <stop offset="5%"  stopColor="#10b981" stopOpacity={0.35} />
                               <stop offset="95%" stopColor="#10b981" stopOpacity={0}    />
                             </linearGradient>
+                            <linearGradient id="gOlx" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%"  stopColor="#f97316" stopOpacity={0.35} />
+                              <stop offset="95%" stopColor="#f97316" stopOpacity={0}    />
+                            </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
                           <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -424,6 +486,7 @@ export default function AdsAutomation() {
                           <Tooltip content={<ChartTooltip />} />
                           <Area type="monotone" dataKey="meta"   name="Meta"   stroke="#3b82f6" strokeWidth={2} fill="url(#gMeta)"   />
                           <Area type="monotone" dataKey="google" name="Google" stroke="#10b981" strokeWidth={2} fill="url(#gGoogle)" />
+                          <Area type="monotone" dataKey="olx"    name="OLX"    stroke="#f97316" strokeWidth={2} fill="url(#gOlx)"    />
                         </AreaChart>
                       </ResponsiveContainer>
                     )}
@@ -443,6 +506,7 @@ export default function AdsAutomation() {
                           <Tooltip content={<ChartTooltip />} />
                           <Bar dataKey="meta"   name="Meta"   fill="#3b82f6" radius={[4, 4, 0, 0]} />
                           <Bar dataKey="google" name="Google" fill="#10b981" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="olx"    name="OLX"    fill="#f97316" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -461,6 +525,7 @@ export default function AdsAutomation() {
                                 <div className="flex items-center gap-3 mt-0.5">
                                   {l.meta   > 0 && <span className="text-[11px] text-blue-400">{l.meta} Meta</span>}
                                   {l.google > 0 && <span className="text-[11px] text-emerald-400">{l.google} Google</span>}
+                                  {l.olx    > 0 && <span className="text-[11px] text-orange-400">{l.olx} OLX</span>}
                                 </div>
                               </div>
                               <span className="text-sm font-bold text-white">{l.total}</span>
@@ -538,12 +603,13 @@ export default function AdsAutomation() {
                 </div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {(['meta', 'google'] as const).map(provider => (
+                {(['meta', 'google', 'olx'] as const).map(provider => (
                   <ProviderCard key={provider} provider={provider}
                     status={providers[provider] ?? { connected: false, status: 'DRAFT', expires_at: null, last_refresh_at: null, campaign_status: null, active_listings: 0, budget_daily: 0 }}
                     allowed={allowed.includes(provider)}
-                    onConnect={handleConnect} onDisconnect={handleDisconnect} onSaveSettings={handleSaveSettings}
-                    isConnecting={connectingProvider === provider && connectMutation.isPending} />
+                    onConnect={handleConnect} onDisconnect={handleDisconnect}
+                    onSaveSettings={handleSaveSettings} onConnectCredentials={handleConnectCredentials}
+                    isConnecting={connectingProvider === provider && (connectMutation.isPending || olxCredMutation.isPending)} />
                 ))}
               </div>
               <div className="rounded-2xl bg-blue-900/20 border border-blue-500/20 p-5 space-y-2 text-xs text-gray-300">

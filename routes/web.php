@@ -449,6 +449,9 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->delete('/ads/{provider}/connect', 'Ads\AdsConnectionController@disconnect');
     $router->post('/ads/{provider}/accounts', 'Ads\AdsConnectionController@saveAccount');
 
+    // OLX: conexão por credenciais (sem OAuth popup)
+    $router->post('/ads/olx/connect/credentials', 'Ads\AdsConnectionController@connectCredentials');
+
     // Publicação de imóveis
     $router->post('/listings/{id}/ads/publish', 'Ads\AdsListingController@publish');
     $router->post('/listings/{id}/ads/unpublish', 'Ads\AdsListingController@unpublish');
