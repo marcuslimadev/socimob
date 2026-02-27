@@ -60,6 +60,7 @@ export default function Properties() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [itensPorPagina, setItensPorPagina] = useState(25);
   const [adsStatusMap, setAdsStatusMap] = useState<Record<string, AdsStatus>>({});
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const fetchImoveis = async () => {
@@ -550,7 +551,7 @@ export default function Properties() {
                         <div className="flex items-center gap-0.5">
                           <button
                             type="button"
-                            onClick={() => setLocation(`/portal/imovel/${im.id}`)}
+                            onClick={() => setPreviewId(im.id)}
                             title="Ver no portal"
                             className="p-1.5 rounded-lg hover:bg-accent transition-colors"
                           >
@@ -778,7 +779,7 @@ export default function Properties() {
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => setLocation(`/portal/imovel/${im.id}`)}
+                              onClick={() => setPreviewId(im.id)}
                               title="Ver no portal"
                               className="p-1.5 rounded-lg hover:bg-accent transition-colors"
                             >
@@ -873,6 +874,50 @@ export default function Properties() {
 
         </div>
       </div>
+
+      {/* Modal de preview do portal */}
+      {previewId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setPreviewId(null)}
+        >
+          <div
+            className="relative bg-background rounded-xl shadow-2xl flex flex-col"
+            style={{ width: '90vw', height: '90vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0">
+              <span className="text-sm font-medium text-muted-foreground">
+                Visualizar imóvel no portal
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/portal/imovel/${previewId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary underline hover:no-underline"
+                >
+                  Abrir em nova aba
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewId(null)}
+                  className="p-1.5 rounded-lg hover:bg-accent transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            {/* iframe */}
+            <iframe
+              src={`/portal/imovel/${previewId}`}
+              className="flex-1 w-full rounded-b-xl"
+              title="Preview do imóvel"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
