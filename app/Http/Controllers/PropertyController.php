@@ -1563,11 +1563,17 @@ Regras:
             // Procurar chave OpenAI nas configurações
             if ($tenantConfig) {
                 // Tentar nas configurações gerais
-                if ($tenantConfig->settings) {
-                    $settings = json_decode($tenantConfig->settings, true);
+                $rawSettings = $tenantConfig->settings ?? null;
+                if (!empty($rawSettings)) {
+                    $settings = json_decode($rawSettings, true);
                     $openaiKey = $settings['openai_api_key'] ?? null;
                 }
                 
+                // Se não encontrar, procurar na própria coluna openai_api_key do tenant
+                if (!$openaiKey && !empty($tenantConfig->openai_api_key ?? null)) {
+                    $openaiKey = $tenantConfig->openai_api_key;
+                }
+
                 // Se não encontrar, procurar no env específico do tenant
                 if (!$openaiKey) {
                     $envKey = strtoupper($tenantConfig->slug ?? '') . '_OPENAI_API_KEY';

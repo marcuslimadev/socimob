@@ -81,6 +81,7 @@ const defaultFormData = {
   active: true,
   exibir_imovel: true,
   exclusividade: false,
+  publicar_anuncio: false,
 };
 
 const DRAFT_KEY = 'imovel-wizard-draft';
@@ -231,6 +232,7 @@ export default function ImovelFormWizard() {
           active: Boolean(item.active),
           exibir_imovel: Boolean(item.exibir_imovel),
           exclusividade: Boolean(item.exclusividade),
+          publicar_anuncio: false, // UI-only: reseta a cada abertura do form
         });
 
         // Carregar imagens existentes
@@ -545,12 +547,35 @@ export default function ImovelFormWizard() {
         await api.post(`/imoveis/${propertyId}?_method=PUT`, formDataToSend, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        toast.success('Imóvel atualizado com sucesso!');
+        // Publicar no Meta Ads se marcado
+        if (formData.publicar_anuncio) {
+          try {
+            await api.post(`/listings/${propertyId}/ads/publish`, { provider: 'meta' });
+            toast.success('Imóvel atualizado e anúncio publicado no Meta Ads!');
+          } catch {
+            toast.success('Imóvel atualizado com sucesso!');
+            toast.warning('Meta Ads: não foi possível publicar automaticamente. Verifique a conexão em Marketing.');
+          }
+        } else {
+          toast.success('Imóvel atualizado com sucesso!');
+        }
       } else {
-        await api.post('/imoveis', formDataToSend, {
+        const res = await api.post('/imoveis', formDataToSend, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        toast.success('Imóvel cadastrado com sucesso!');
+        const savedId = res.data?.data?.id ?? res.data?.id;
+        // Publicar no Meta Ads se marcado
+        if (formData.publicar_anuncio && savedId) {
+          try {
+            await api.post(`/listings/${savedId}/ads/publish`, { provider: 'meta' });
+            toast.success('Imóvel cadastrado e anúncio publicado no Meta Ads!');
+          } catch {
+            toast.success('Imóvel cadastrado com sucesso!');
+            toast.warning('Meta Ads: não foi possível publicar automaticamente. Verifique a conexão em Marketing.');
+          }
+        } else {
+          toast.success('Imóvel cadastrado com sucesso!');
+        }
       }
 
       localStorage.removeItem(DRAFT_KEY);
@@ -830,6 +855,18 @@ export default function ImovelFormWizard() {
                   className="w-5 h-5 rounded border-white/20 bg-white/10"
                 />
                 <span className="text-sm font-medium text-foreground group-hover:text-blue-400 transition">Exclusividade</span>
+              </label>
+
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={formData.publicar_anuncio}
+                  onChange={(e) => setFormData({ ...formData, publicar_anuncio: e.target.checked })}
+                  className="w-5 h-5 rounded border-yellow-400/60 bg-white/10 accent-yellow-400"
+                />
+                <span className="text-sm font-medium text-yellow-400 group-hover:text-yellow-300 transition flex items-center gap-1.5">
+                  ⚡ Publicar no Meta Ads (automático ao salvar)
+                </span>
               </label>
             </div>
           </motion.div>
@@ -1496,11 +1533,29 @@ export default function ImovelFormWizard() {
               </p>
             </div>
 
-            {/* Toggle de publicação — somente em modo edição (property já salvo) */}
-            {isEditMode && propertyId && (
+            {/* Anúncios — toggle real em edição; confirmação do checkbox em novo cadastro */}
+            {isEditMode && propertyId ? (
               <div className="bg-white/5 rounded-lg p-6 border border-white/10">
                 <h3 className="text-lg font-bold text-foreground mb-4">Anúncios automáticos</h3>
                 <AdsPublishToggle listingId={Number(propertyId)} />
+              </div>
+            ) : (
+              <div className={`rounded-lg p-4 border flex items-center gap-3 ${
+                formData.publicar_anuncio
+                  ? 'bg-yellow-500/10 border-yellow-400/30'
+                  : 'bg-white/5 border-white/10'
+              }`}>
+                <span className="text-xl">{formData.publicar_anuncio ? '⚡' : '💤'}</span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {formData.publicar_anuncio ? 'Publicar no Meta Ads ao salvar' : 'Meta Ads desativado'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.publicar_anuncio
+                      ? 'O imóvel será enviado automaticamente ao catálogo do Meta (Facebook/Instagram) após o cadastro.'
+                      : 'Para ativar, marque "⚡ Publicar no Meta Ads" na etapa 1.'}
+                  </p>
+                </div>
               </div>
             )}
 
