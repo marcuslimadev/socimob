@@ -148,6 +148,8 @@ export default function Chat() {
       intervalRef.current = null;
     }
 
+    // Limpar mensagens imediatamente ao trocar de contato (evita exibir conversa errada)
+    setMessages([]);
     hasLoadedMessagesRef.current = false;
 
     fetchMessages(selectedContactId);
