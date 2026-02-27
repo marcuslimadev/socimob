@@ -440,6 +440,9 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->get('/ads/leads', 'Ads\AdsLeadsController@index');
     $router->get('/ads/leads/stats', 'Ads\AdsLeadsController@stats');
 
+    // Analytics dashboard
+    $router->get('/ads/analytics', 'Ads\AdsAnalyticsController@index');
+
     // Conexão OAuth por provider
     $router->post('/ads/{provider}/connect/start', 'Ads\AdsConnectionController@startConnect');
     $router->get('/ads/{provider}/connect/callback', 'Ads\AdsConnectionController@oauthCallback');
