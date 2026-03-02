@@ -99,8 +99,9 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 
     $deployCommands = @"
 cd $DEPLOY_PATH && \
-echo '=== GIT PULL ===' && \
-git pull origin master && \
+echo '=== GIT FETCH + RESET ===' && \
+git fetch origin master && \
+git reset --hard origin/master && \
 echo '' && \
 echo '=== BACKUP ARQUIVOS ANTIGOS ===' && \
 rm -f index.html.bak && \
