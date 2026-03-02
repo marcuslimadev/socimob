@@ -317,6 +317,10 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->put('/pessoas/{id}', 'PessoasController@update');
     $router->delete('/pessoas/{id}', 'PessoasController@destroy');
     
+    // Pessoas - ImobiBrasil sync
+    $router->post('/pessoas/{id}/sync-imobi-brasil', 'PessoasController@syncImobiBrasil');
+    $router->delete('/pessoas/{id}/sync-imobi-brasil', 'PessoasController@unsyncImobiBrasil');
+
     // Pessoas - Interações/Timeline
     $router->get('/pessoas/{id}/interacoes', 'PessoasController@getInteracoes');
     $router->post('/pessoas/{id}/interacoes', 'PessoasController@addInteracao');
@@ -364,11 +368,70 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->delete('/imoveis/{id}', 'PropertyController@destroy');
     $router->post('/imoveis/ai/gerar-descricao', 'PropertyController@generateDescriptions');
     
-    // Integração Imobi Brasil
+    // Integração Imobi Brasil - PropertyController (por ID local do imóvel)
     $router->post('/imoveis/{id}/enviar-imobi-brasil', 'PropertyController@enviarImobiBrasil');
     $router->put('/imoveis/{id}/atualizar-imobi-brasil', 'PropertyController@atualizarImobiBrasil');
     $router->get('/imoveis/{id}/status-imobi-brasil', 'PropertyController@statusImobiBrasil');
     $router->post('/imoveis/{id}/enviar-imagens-imobi-brasil', 'PropertyController@enviarImagensImobiBrasil');
+
+    // Integração Imobi Brasil - proxy direto para API (por código ImobiBrasil)
+    // Conta
+    $router->get('/imobi-brasil/account/status', 'ImobiBrasilController@accountStatus');
+
+    // Imóveis
+    $router->get('/imobi-brasil/imoveis', 'ImobiBrasilController@listarImoveis');
+    $router->get('/imobi-brasil/imoveis/tipos', 'ImobiBrasilController@listarTiposImovel');
+    $router->get('/imobi-brasil/imoveis/{codigoImovel}', 'ImobiBrasilController@dadosImovel');
+    $router->delete('/imobi-brasil/imoveis/{codigoImovel}', 'ImobiBrasilController@excluirImovel');
+
+    // Imagens de imóveis
+    $router->get('/imobi-brasil/imoveis/{codigoImovel}/imagens', 'ImobiBrasilController@listarImagensImovel');
+    $router->delete('/imobi-brasil/imoveis/{codigoImovel}/imagens/{codigoImagem}', 'ImobiBrasilController@excluirImagemImovel');
+
+    // Características
+    $router->get('/imobi-brasil/caracteristicas', 'ImobiBrasilController@listarCaracteristicas');
+    $router->post('/imobi-brasil/caracteristicas', 'ImobiBrasilController@inserirCaracteristica');
+    $router->delete('/imobi-brasil/caracteristicas/{codigoCaracteristica}', 'ImobiBrasilController@excluirCaracteristica');
+    $router->post('/imobi-brasil/imoveis/{codigoImovel}/caracteristicas/{codigoCaracteristica}', 'ImobiBrasilController@adicionarCaracteristicaImovel');
+    $router->delete('/imobi-brasil/imoveis/{codigoImovel}/caracteristicas/{codigoCaracteristica}', 'ImobiBrasilController@removerCaracteristicaImovel');
+
+    // Pessoas
+    $router->get('/imobi-brasil/pessoas', 'ImobiBrasilController@listarPessoas');
+    $router->post('/imobi-brasil/pessoas', 'ImobiBrasilController@inserirPessoa');
+    $router->get('/imobi-brasil/pessoas/{codigoPessoa}', 'ImobiBrasilController@dadosPessoa');
+    $router->put('/imobi-brasil/pessoas/{codigoPessoa}', 'ImobiBrasilController@alterarPessoa');
+    $router->delete('/imobi-brasil/pessoas/{codigoPessoa}', 'ImobiBrasilController@excluirPessoa');
+    $router->delete('/imobi-brasil/pessoas/{codigoPessoa}/imagem', 'ImobiBrasilController@excluirImagemPessoa');
+
+    // Mensagens
+    $router->get('/imobi-brasil/mensagens', 'ImobiBrasilController@listarMensagens');
+    $router->post('/imobi-brasil/mensagens', 'ImobiBrasilController@inserirMensagem');
+    $router->get('/imobi-brasil/mensagens/{codigoMensagem}', 'ImobiBrasilController@dadosMensagem');
+    $router->delete('/imobi-brasil/mensagens/{codigoMensagem}', 'ImobiBrasilController@excluirMensagem');
+    $router->post('/imobi-brasil/mensagens/{codigoMensagem}/lido', 'ImobiBrasilController@marcarMensagemLida');
+
+    // Negócios
+    $router->get('/imobi-brasil/negocios/etapas', 'ImobiBrasilController@listarEtapasNegocios');
+    $router->get('/imobi-brasil/negocios', 'ImobiBrasilController@listarNegocios');
+    $router->post('/imobi-brasil/negocios', 'ImobiBrasilController@inserirNegocio');
+    $router->get('/imobi-brasil/negocios/{codigoNegocio}', 'ImobiBrasilController@dadosNegocio');
+    $router->put('/imobi-brasil/negocios/{codigoNegocio}', 'ImobiBrasilController@alterarNegocio');
+    $router->delete('/imobi-brasil/negocios/{codigoNegocio}', 'ImobiBrasilController@excluirNegocio');
+
+    // Corretores
+    $router->get('/imobi-brasil/corretores', 'ImobiBrasilController@listarCorretores');
+    $router->get('/imobi-brasil/corretores/{codigoCorretor}', 'ImobiBrasilController@dadosCorretor');
+    $router->get('/imobi-brasil/corretores/{codigoCorretor}/imoveis', 'ImobiBrasilController@imoveisCorretor');
+
+    // Clientes
+    $router->get('/imobi-brasil/clientes', 'ImobiBrasilController@listarClientes');
+    $router->get('/imobi-brasil/clientes/{codigoCliente}', 'ImobiBrasilController@dadosCliente');
+
+    // Cidades
+    $router->get('/imobi-brasil/cidades', 'ImobiBrasilController@listarCidades');
+
+    // Usuários adicionais
+    $router->get('/imobi-brasil/usuarios-adicionais/{codigoUsuario}', 'ImobiBrasilController@dadosUsuarioAdicional');
     
     $router->get('/chaves', 'PropertyController@keysIndex');
     $router->get('/chaves/movimentacoes', 'PropertyController@keysMovements');

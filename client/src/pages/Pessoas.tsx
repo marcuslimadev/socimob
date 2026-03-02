@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { UserRound, Loader2, Search, Plus, Edit, Trash2, MapPin, Eye } from 'lucide-react';
+import { UserRound, Loader2, Search, Plus, Edit, Trash2, MapPin, Eye, RefreshCw, CheckCircle2, XCircle, Link2Off } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRoute, useLocation } from 'wouter';
 import Sidebar from '@/components/Sidebar';
@@ -37,6 +37,10 @@ interface Pessoa {
   contatos?: Array<{ tipo: string; contato: string; descricao: string }> | null;
   ativo: boolean;
   created_at?: string;
+  imobi_brasil_external_id?: string | null;
+  imobi_brasil_sent?: boolean;
+  imobi_brasil_sent_at?: string | null;
+  imobi_brasil_error?: string | null;
 }
 
 export default function Pessoas() {
@@ -56,6 +60,56 @@ export default function Pessoas() {
     id: null,
     name: '',
   });
+
+  const [syncingImobi, setSyncingImobi] = useState<Record<number, boolean>>({});
+
+  const handleSyncImobiBrasil = async (pessoa: Pessoa) => {
+    setSyncingImobi((prev) => ({ ...prev, [pessoa.id]: true }));
+    try {
+      const res = await api.post(`/pessoas/${pessoa.id}/sync-imobi-brasil`);
+      const data = res.data;
+      if (data.success) {
+        toast.success('Pessoa sincronizada com ImobiBrasil');
+        // Update in-place
+        setPessoas((prev) =>
+          prev.map((p) =>
+            p.id === pessoa.id
+              ? { ...p, imobi_brasil_sent: true, imobi_brasil_external_id: data.external_id, imobi_brasil_error: null }
+              : p
+          )
+        );
+      } else {
+        toast.error(data.message || 'Erro ao sincronizar com ImobiBrasil');
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Erro ao sincronizar com ImobiBrasil';
+      toast.error(msg);
+    } finally {
+      setSyncingImobi((prev) => ({ ...prev, [pessoa.id]: false }));
+    }
+  };
+
+  const handleUnsyncImobiBrasil = async (pessoa: Pessoa) => {
+    setSyncingImobi((prev) => ({ ...prev, [pessoa.id]: true }));
+    try {
+      await api.delete(`/pessoas/${pessoa.id}/sync-imobi-brasil`);
+      toast.success('Pessoa desvinculada do ImobiBrasil');
+      setPessoas((prev) =>
+        prev.map((p) =>
+          p.id === pessoa.id
+            ? { ...p, imobi_brasil_sent: false, imobi_brasil_external_id: null, imobi_brasil_error: null }
+            : p
+        )
+      );
+      if (editingPessoa?.id === pessoa.id) {
+        setEditingPessoa((prev) => prev ? { ...prev, imobi_brasil_sent: false, imobi_brasil_external_id: null } : prev);
+      }
+    } catch {
+      toast.error('Erro ao desvincular do ImobiBrasil');
+    } finally {
+      setSyncingImobi((prev) => ({ ...prev, [pessoa.id]: false }));
+    }
+  };
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -602,8 +656,73 @@ export default function Pessoas() {
           </div>
         );
 
+      case 'imobi':
+        return (
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl border border-white/10 bg-white/5">
+              <div className="flex items-center gap-3 mb-3">
+                {editingPessoa?.imobi_brasil_sent ? (
+                  <CheckCircle2 size={20} className="text-green-400" />
+                ) : (
+                  <XCircle size={20} className="text-muted-foreground" />
+                )}
+                <span className="font-medium text-foreground">
+                  {editingPessoa?.imobi_brasil_sent ? 'Sincronizada' : 'Não sincronizada'}
+                </span>
+              </div>
+              {editingPessoa?.imobi_brasil_external_id && (
+                <p className="text-xs text-muted-foreground mb-1">
+                  ID externo:{' '}
+                  <span className="font-mono text-foreground">{editingPessoa.imobi_brasil_external_id}</span>
+                </p>
+              )}
+              {editingPessoa?.imobi_brasil_sent_at && (
+                <p className="text-xs text-muted-foreground mb-1">
+                  Enviado em: {new Date(editingPessoa.imobi_brasil_sent_at).toLocaleString('pt-BR')}
+                </p>
+              )}
+              {editingPessoa?.imobi_brasil_error && (
+                <p className="text-xs text-red-400 mt-2 bg-red-500/10 rounded p-2">
+                  {editingPessoa.imobi_brasil_error}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => editingPessoa && handleSyncImobiBrasil(editingPessoa)}
+                disabled={!editingPessoa || syncingImobi[editingPessoa?.id ?? 0]}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-300 font-semibold hover:bg-emerald-500/30 disabled:opacity-50"
+              >
+                {syncingImobi[editingPessoa?.id ?? 0] ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={16} />
+                )}
+                {editingPessoa?.imobi_brasil_sent ? 'Atualizar no ImobiBrasil' : 'Enviar para ImobiBrasil'}
+              </motion.button>
+              {editingPessoa?.imobi_brasil_sent && (
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => editingPessoa && handleUnsyncImobiBrasil(editingPessoa)}
+                  disabled={syncingImobi[editingPessoa?.id ?? 0]}
+                  className="px-4 py-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 hover:bg-red-500/30 disabled:opacity-50"
+                  title="Desvincular do ImobiBrasil"
+                >
+                  <Link2Off size={16} />
+                </motion.button>
+              )}
+            </div>
+          </div>
+        );
+
       case 'contatos':
         return (
+          // existing contacts tab
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-foreground">Contatos Adicionais</h3>
@@ -781,6 +900,7 @@ export default function Pessoas() {
                       <th className="pb-3">Email</th>
                       <th className="pb-3">Telefone</th>
                       <th className="pb-3">Cidade/UF</th>
+                      <th className="pb-3">ImobiBrasil</th>
                       <th className="pb-3 text-right">Ações</th>
                     </tr>
                   </thead>
@@ -796,6 +916,25 @@ export default function Pessoas() {
                         <td className="py-3 text-foreground">{pessoa.celular || pessoa.telefone || '-'}</td>
                         <td className="py-3 text-foreground">
                           {pessoa.cidade && pessoa.estado ? `${pessoa.cidade}/${pessoa.estado}` : '-'}
+                        </td>
+                        <td className="py-3">
+                          {pessoa.imobi_brasil_sent ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-green-400">
+                              <CheckCircle2 size={12} /> Enviado
+                            </span>
+                          ) : (
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleSyncImobiBrasil(pessoa)}
+                              disabled={syncingImobi[pessoa.id]}
+                              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50"
+                              title="Enviar para ImobiBrasil"
+                            >
+                              {syncingImobi[pessoa.id] ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+                              Sincronizar
+                            </motion.button>
+                          )}
                         </td>
                         <td className="py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
@@ -913,6 +1052,21 @@ export default function Pessoas() {
               >
                 Contatos
               </button>
+              {editingPessoa && (
+                <button
+                  onClick={() => setCurrentTab('imobi')}
+                  className={`px-4 py-2 font-medium transition-all ${
+                    currentTab === 'imobi'
+                      ? 'text-emerald-400 border-b-2 border-emerald-400'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  ImobiBrasil
+                  {editingPessoa.imobi_brasil_sent && (
+                    <span className="ml-1 inline-block w-2 h-2 rounded-full bg-emerald-400" />
+                  )}
+                </button>
+              )}
             </div>
 
             <form onSubmit={handleSubmit}>

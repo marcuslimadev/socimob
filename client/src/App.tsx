@@ -50,8 +50,7 @@ const PropertyAds = lazy(() => import("./pages/PropertyAds"));
 const AdsAutomation = lazy(() => import("./pages/AdsAutomation"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const ControleChaves = lazy(() => import("./pages/ControleChaves"));
-const SimulacaoFinanciamento = lazy(() => import("./pages/SimulacaoFinanciamento"));
-const AnalyticsConsentBanner = lazy(() => import("./components/AnalyticsConsentBanner"));
+const SimulacaoFinanciamento = lazy(() => import("./pages/SimulacaoFinanciamento"));const ImobiBrasilPage = lazy(() => import('./pages/ImobiBrasil'));const AnalyticsConsentBanner = lazy(() => import("./components/AnalyticsConsentBanner"));
 const AnalyticsTracker = lazy(() => import("./components/AnalyticsTracker"));
 
 // Loading fallback component
@@ -114,6 +113,7 @@ function Router() {
       <Route path="/ads" component={AdsAutomation} />
       <Route path="/controle-chaves" component={ControleChaves} />
       <Route path="/analytics" component={Analytics} />
+      <Route path="/imobi-brasil" component={ImobiBrasilPage} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

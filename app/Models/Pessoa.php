@@ -65,6 +65,10 @@ class Pessoa extends Model
         'instagram',
         'linkedin',
         'whatsapp',
+        'imobi_brasil_external_id',
+        'imobi_brasil_sent',
+        'imobi_brasil_sent_at',
+        'imobi_brasil_error',
     ];
 
     protected $casts = [
@@ -85,6 +89,8 @@ class Pessoa extends Model
         'score' => 'integer',
         'total_atendimentos' => 'integer',
         'total_imoveis_visitados' => 'integer',
+        'imobi_brasil_sent' => 'boolean',
+        'imobi_brasil_sent_at' => 'datetime',
     ];
 
     /**

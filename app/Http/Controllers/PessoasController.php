@@ -6,6 +6,8 @@ use App\Models\Pessoa;
 use App\Models\PessoaInteracao;
 use App\Models\PessoaDocumento;
 use App\Models\PessoaRelacionamento;
+use App\Models\Tenant;
+use App\Services\ImobiBrasilService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -766,5 +768,107 @@ class PessoasController extends Controller
             'score' => $score,
             'data' => $pessoa
         ]);
+    }
+
+    /**
+     * Sincronizar pessoa com ImobiBrasil
+     * POST /api/pessoas/{id}/sync-imobi-brasil
+     */
+    public function syncImobiBrasil(Request $request, $id)
+    {
+        $tenantId = $request->attributes->get('tenant_id')
+            ?? (app()->bound('tenant') ? app('tenant')->id : null);
+        $tenant = $tenantId ? Tenant::find($tenantId) : null;
+
+        if (!$tenant || !ImobiBrasilService::isEnabled($tenant)) {
+            return response()->json(['success' => false, 'message' => 'ImobiBrasil não está habilitado para este tenant'], 422);
+        }
+
+        $pessoa = Pessoa::find($id);
+        if (!$pessoa) {
+            return response()->json(['success' => false, 'message' => 'Pessoa não encontrada'], 404);
+        }
+
+        // Build payload for ImobiBrasil
+        $tipo = $pessoa->tipo === 'juridica' ? 'J' : 'F';
+        $payload = [
+            'tipoPessoa'       => $tipo,
+            'nomeResponsavel'  => $pessoa->nome ?? '',
+            'cpf'              => $pessoa->cpf ?? '',
+            'cnpj'             => $pessoa->cnpj ?? '',
+            'razaoSocial'      => $pessoa->razao_social ?? '',
+            'email'            => $pessoa->email ?? '',
+            'fone'             => $pessoa->telefone ?? '',
+            'celular'          => $pessoa->celular ?? '',
+            'cep'              => $pessoa->cep ?? '',
+            'logradouro'       => $pessoa->endereco ?? '',
+            'numero'           => $pessoa->numero ?? '',
+            'complemento'      => $pessoa->complemento ?? '',
+            'bairro'           => $pessoa->bairro ?? '',
+            'cidade'           => $pessoa->cidade ?? '',
+            'estado'           => $pessoa->estado ?? '',
+        ];
+
+        $externalId = $pessoa->imobi_brasil_external_id;
+
+        if ($externalId) {
+            // Update existing person
+            $result = ImobiBrasilService::updatePessoa($tenant, $externalId, $payload);
+        } else {
+            // Insert new person
+            $result = ImobiBrasilService::insertPessoa($tenant, $payload);
+            if ($result['success'] && !empty($result['result_set'])) {
+                $rs = $result['result_set'];
+                $newId = $rs['codigoPessoa'] ?? $rs['codigo'] ?? $rs['id'] ?? null;
+                if ($newId) {
+                    $externalId = $newId;
+                }
+            }
+        }
+
+        if ($result['success']) {
+            $pessoa->imobi_brasil_external_id = $externalId;
+            $pessoa->imobi_brasil_sent        = true;
+            $pessoa->imobi_brasil_sent_at     = now();
+            $pessoa->imobi_brasil_error       = null;
+            $pessoa->save();
+
+            return response()->json([
+                'success'     => true,
+                'message'     => 'Pessoa sincronizada com sucesso',
+                'external_id' => $externalId,
+                'data'        => $pessoa,
+            ]);
+        }
+
+        // Save error
+        $errorMsg = $result['result_set']['message'] ?? json_encode($result['result_set']);
+        $pessoa->imobi_brasil_error = $errorMsg;
+        $pessoa->save();
+
+        return response()->json([
+            'success' => false,
+            'message' => $errorMsg,
+        ], 400);
+    }
+
+    /**
+     * Desvincular pessoa do ImobiBrasil
+     * DELETE /api/pessoas/{id}/sync-imobi-brasil
+     */
+    public function unsyncImobiBrasil(Request $request, $id)
+    {
+        $pessoa = Pessoa::find($id);
+        if (!$pessoa) {
+            return response()->json(['success' => false, 'message' => 'Pessoa não encontrada'], 404);
+        }
+
+        $pessoa->imobi_brasil_external_id = null;
+        $pessoa->imobi_brasil_sent        = false;
+        $pessoa->imobi_brasil_sent_at     = null;
+        $pessoa->imobi_brasil_error       = null;
+        $pessoa->save();
+
+        return response()->json(['success' => true, 'message' => 'Pessoa desvinculada do ImobiBrasil']);
     }
 }

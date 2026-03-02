@@ -178,6 +178,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     { icon: <Wallet size={20} />, label: 'Financeiro', href: '/financeiro' },
     { icon: <FileSpreadsheet size={20} />, label: 'Locação/Operação', href: '/financeiro/locacao' },
     { icon: <Zap size={20} />, label: 'Marketing / Anúncios', href: '/ads' },
+    { icon: <Building2 size={20} />, label: 'ImobiBrasil', href: '/imobi-brasil' },
   ];
 
   // Menu adicional para admin
