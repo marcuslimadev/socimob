@@ -198,7 +198,12 @@
   }
 
   .page-shell {
-    @apply flex-1 min-h-screen px-4 pb-10 pt-20 md:ml-80 md:px-8 md:pt-8;
+    @apply flex-1 min-h-screen px-4 pb-10 pt-20 md:ml-[296px] md:px-8 md:pt-8;
+    transition: margin-left 0.3s ease;
+  }
+
+  body[data-sidebar="collapsed"] .page-shell {
+    @apply md:ml-24;
   }
 
   .page-header {

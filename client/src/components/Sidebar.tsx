@@ -79,6 +79,11 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const { theme, toggleTheme } = useTheme();
 
+  // Sincronizar estado colapsado com o body para o CSS responder (page-shell margin)
+  useEffect(() => {
+    document.body.dataset.sidebar = isCollapsed ? 'collapsed' : 'expanded';
+  }, [isCollapsed]);
+
   // Use internal state if not controlled externally
   const actualIsOpen = onClose ? isOpen : internalIsOpen;
   const handleClose = onClose || (() => setInternalIsOpen(false));
