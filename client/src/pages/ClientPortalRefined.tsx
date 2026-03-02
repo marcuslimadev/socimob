@@ -664,7 +664,7 @@ export default function ClientPortalRefined() {
           <img
             src={tenant.mascot_url}
             alt="Mascote"
-            className="w-20 h-20 sm:w-28 sm:h-28 object-contain drop-shadow-xl"
+            className="w-32 h-32 sm:w-40 sm:h-40 object-contain drop-shadow-xl"
           />
         </a>
       ) : whatsappLink ? (
