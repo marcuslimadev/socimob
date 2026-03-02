@@ -62,7 +62,13 @@ class PortalController extends Controller
             $data['tenant_id'],
             $data['api_data'],
             $data['local_chaves'],
-            $data['status_chaves']
+            $data['status_chaves'],
+            $data['inserido_por_user_id'],
+            $data['inserido_por_nome'],
+            $data['proprietario_nome'],
+            $data['proprietario_telefone'],
+            $data['proprietario_email'],
+            $data['proprietario_observacoes']
         );
 
         return $data;
@@ -568,7 +574,7 @@ class PortalController extends Controller
                 // Update existing lead
                 if ($request->interesse) {
                     $obs = $existingLead->observacoes ?? '';
-                    $obs .= ($obs ? "\n" : '') . "[Chat Portal " . now()->format('d/m/Y H:i') . "] " . $request->interesse;
+                    $obs .= ($obs ? "\n" : '') . "[Chat Portal " . Carbon::now()->format('d/m/Y H:i') . "] " . $request->interesse;
                     $existingLead->observacoes = $obs;
                 }
                 if ($request->email && !$existingLead->email) {
@@ -588,8 +594,8 @@ class PortalController extends Controller
                     'status' => 'novo',
                     'classificacao' => 'quente',
                     'observacoes' => $request->interesse
-                        ? "[Chat Portal " . now()->format('d/m/Y H:i') . "] " . $request->interesse
-                        : "[Chat Portal " . now()->format('d/m/Y H:i') . "] Lead capturado via chat automatizado do portal",
+                        ? "[Chat Portal " . Carbon::now()->format('d/m/Y H:i') . "] " . $request->interesse
+                        : "[Chat Portal " . Carbon::now()->format('d/m/Y H:i') . "] Lead capturado via chat automatizado do portal",
                 ]);
             }
 
@@ -753,14 +759,14 @@ class PortalController extends Controller
 
             if ($existingLead) {
                 $obs = $existingLead->observacoes ?? '';
-                $obs .= ($obs ? "\n" : '') . "[Avaliacao Portal " . now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
+                $obs .= ($obs ? "\n" : '') . "[Avaliacao Portal " . Carbon::now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
                 if ($request->endereco) $obs .= " - Endereco: {$request->endereco}";
                 if ($request->bairro) $obs .= ", {$request->bairro}";
                 $existingLead->observacoes = $obs;
                 $existingLead->save();
                 $lead = $existingLead;
             } else {
-                $obsText = "[Avaliacao Portal " . now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
+                $obsText = "[Avaliacao Portal " . Carbon::now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
                 if ($request->endereco) $obsText .= " - Endereco: {$request->endereco}";
                 if ($request->bairro) $obsText .= ", {$request->bairro}";
 

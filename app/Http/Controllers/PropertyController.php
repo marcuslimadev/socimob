@@ -692,6 +692,11 @@ class PropertyController extends Controller
             'media.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,avif,jfif,heic,heif,mp4,mov,m4v,avi,webm,mkv|max:102400', // Max 100MB
             'existing_images' => 'nullable|string', // JSON array de URLs existentes
             'destaque_index' => 'nullable|integer',
+            // Dados do proprietário (interno)
+            'proprietario_nome' => 'nullable|string|max:150',
+            'proprietario_telefone' => 'nullable|string|max:30',
+            'proprietario_email' => 'nullable|email|max:150',
+            'proprietario_observacoes' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -746,6 +751,11 @@ class PropertyController extends Controller
                 $tipoFormatado = ucfirst(str_replace('_', ' ', $data['tipo_imovel']));
                 $data['titulo'] = "{$tipoFormatado} - {$data['bairro']}, {$data['cidade']}";
             }
+
+            // ========== REGISTRAR QUEM INSERIU (somente no cadastro) ==========
+            $insertingUser = $request->user();
+            $data['inserido_por_user_id'] = $insertingUser->id ?? null;
+            $data['inserido_por_nome'] = $insertingUser->name ?? null;
 
             // ========== UPLOAD DE MÍDIA ==========
             $imagens = [];
@@ -947,6 +957,11 @@ class PropertyController extends Controller
             'media.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,avif,jfif,heic,heif,mp4,mov,m4v,avi,webm,mkv|max:102400', // Max 100MB
             'existing_images' => 'nullable|string', // JSON array de URLs existentes
             'destaque_index' => 'nullable|integer',
+            // Dados do proprietário (interno)
+            'proprietario_nome' => 'nullable|string|max:150',
+            'proprietario_telefone' => 'nullable|string|max:30',
+            'proprietario_email' => 'nullable|email|max:150',
+            'proprietario_observacoes' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -963,6 +978,9 @@ class PropertyController extends Controller
         try {
             // ========== PREPARAR DADOS ==========
             $data = $validator->validated();
+            
+            // NUNCA alterar quem inseriu o imóvel
+            unset($data['inserido_por_user_id'], $data['inserido_por_nome']);
             
             // ========== VALIDAÇÃO DE PORTAL_TENANT_IDS (APENAS TENANTS ASSOCIADOS) ==========
             // Portal tenant IDs devem incluir apenas tenants associados ao tenant atual

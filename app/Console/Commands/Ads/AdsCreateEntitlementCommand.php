@@ -3,6 +3,7 @@
 namespace App\Console\Commands\Ads;
 
 use App\Models\Ads\AdsEntitlement;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 /**
@@ -55,7 +56,7 @@ class AdsCreateEntitlementCommand extends Command
             return 1;
         }
 
-        $validUntil = $days > 0 ? now()->addDays($days) : null;
+        $validUntil = $days > 0 ? Carbon::now()->addDays($days) : null;
 
         $data = [
             'plan_code'            => $planCode,
@@ -66,7 +67,7 @@ class AdsCreateEntitlementCommand extends Command
             'capi_enabled'         => false,
             'multi_account_enabled'=> false,
             'is_active'            => !$deactivate,
-            'valid_from'           => now(),
+            'valid_from'           => Carbon::now(),
             'valid_until'          => $validUntil,
         ];
 

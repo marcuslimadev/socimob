@@ -71,6 +71,11 @@ const defaultFormData = {
   active: true,
   exibir_imovel: true,
   exclusividade: false,
+  // Dados do proprietário (interno, não exibido no portal)
+  proprietario_nome: '',
+  proprietario_telefone: '',
+  proprietario_email: '',
+  proprietario_observacoes: '',
 };
 
 export default function ImovelForm() {
@@ -147,6 +152,11 @@ export default function ImovelForm() {
           active: Boolean(item.active),
           exibir_imovel: Boolean(item.exibir_imovel),
           exclusividade: Boolean(item.exclusividade),
+          // Dados do proprietário
+          proprietario_nome: item.proprietario_nome || '',
+          proprietario_telefone: item.proprietario_telefone || '',
+          proprietario_email: item.proprietario_email || '',
+          proprietario_observacoes: item.proprietario_observacoes || '',
         });
       } catch (error) {
         console.error('Erro ao carregar imóvel:', error);
@@ -602,6 +612,57 @@ export default function ImovelForm() {
           </div>
         );
 
+      case 'proprietario':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2">
+              Uso interno — estas informações não são exibidas no portal ou para clientes.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Nome do Proprietário</label>
+                <input
+                  type="text"
+                  value={formData.proprietario_nome}
+                  onChange={(e) => setFormData({ ...formData, proprietario_nome: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Nome completo"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Telefone do Proprietário</label>
+                <input
+                  type="text"
+                  value={formData.proprietario_telefone}
+                  onChange={(e) => setFormData({ ...formData, proprietario_telefone: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">E-mail do Proprietário</label>
+              <input
+                type="email"
+                value={formData.proprietario_email}
+                onChange={(e) => setFormData({ ...formData, proprietario_email: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="email@exemplo.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Observações</label>
+              <textarea
+                value={formData.proprietario_observacoes}
+                onChange={(e) => setFormData({ ...formData, proprietario_observacoes: e.target.value })}
+                rows={4}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Observações sobre o proprietário..."
+              />
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -701,6 +762,17 @@ export default function ImovelForm() {
                   }`}
                 >
                   Detalhes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentTab('proprietario')}
+                  className={`px-4 py-2 font-medium transition-all ${
+                    currentTab === 'proprietario'
+                      ? 'text-amber-400 border-b-2 border-amber-400'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Proprietário
                 </button>
               </div>
 

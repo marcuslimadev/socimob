@@ -60,6 +60,14 @@ class Property extends Model
         'imobi_brasil_external_id',
         'imobi_brasil_error',
         'imobi_brasil_images_sent_at',
+        // Quem inseriu (interno, não exibir ao portal)
+        'inserido_por_user_id',
+        'inserido_por_nome',
+        // Dados do proprietário (interno, não exibir ao portal)
+        'proprietario_nome',
+        'proprietario_telefone',
+        'proprietario_email',
+        'proprietario_observacoes',
     ];
 
     protected $casts = [

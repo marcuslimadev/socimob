@@ -20,6 +20,7 @@ interface ImovelRow {
   banheiros: number;
   area: number;
   localizacao: string;
+  inserido_por_nome: string | null;
   imagem: string;
   ativo: boolean;
   exibir: boolean;
@@ -83,6 +84,7 @@ export default function Properties() {
           banheiros: parseInt(item.banheiros) || 0,
           area: parseFloat(item.area_total) || 0,
           localizacao: [item.bairro, item.cidade].filter(Boolean).join(', ') || '-',
+          inserido_por_nome: item.inserido_por_nome || null,
           imagem:
             Array.isArray(item.imagens) && item.imagens.length > 0
               ? item.imagens[0]
@@ -658,6 +660,7 @@ export default function Properties() {
                           Localização <SortIcon field="localizacao" />
                         </span>
                       </th>
+                      <th className="text-left p-3 text-xs text-muted-foreground whitespace-nowrap">Inserido por</th>
                       <th className="text-center p-3 text-xs text-muted-foreground whitespace-nowrap">
                         <span className="inline-flex items-center gap-1"><Globe size={11} /> Portal</span>
                       </th>
@@ -714,6 +717,7 @@ export default function Properties() {
                           {im.area > 0 ? `${im.area}m²` : '-'}
                         </td>
                         <td className="p-3 text-sm text-muted-foreground">{im.localizacao}</td>
+                        <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">{im.inserido_por_nome || <span className="text-xs text-muted-foreground/50">—</span>}</td>
 
                         {/* Toggle Portal */}
                         <td className="p-3 text-center">
