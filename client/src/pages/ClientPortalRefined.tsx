@@ -282,6 +282,14 @@ export default function ClientPortalRefined() {
           <div className="flex lg:hidden items-center gap-2">
             <button
               type="button"
+              onClick={() => navigate('/portal/simulacao')}
+              className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-white/30 text-white"
+              aria-label="Simular financiamento"
+            >
+              <Calculator className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
               onClick={() => navigate('/login')}
               className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-white/30 text-white"
               aria-label="Entrar no portal"
@@ -615,6 +623,34 @@ export default function ClientPortalRefined() {
           </article>
         </div>
       </section>
+
+      {/* Botão flutuante de Simulação — desktop: lateral direita | mobile: barra no topo */}
+      {/* Mobile: barra fixa logo abaixo do header */}
+      <div className="lg:hidden fixed top-[68px] left-0 right-0 z-30">
+        <button
+          type="button"
+          onClick={() => navigate('/portal/simulacao')}
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] shadow-md"
+          style={{ backgroundColor: secondary, color: '#111827' }}
+        >
+          <Calculator className="w-3.5 h-3.5" />
+          Simular financiamento — Caixa e bancos
+        </button>
+      </div>
+
+      {/* Desktop: tab vertical fixo na lateral direita */}
+      <button
+        type="button"
+        onClick={() => navigate('/portal/simulacao')}
+        aria-label="Simular financiamento"
+        className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-40 flex-col items-center gap-2 rounded-l-2xl border border-r-0 border-white/20 bg-[#0b111f]/90 px-3 py-5 text-white hover:bg-[#0b111f] transition-colors backdrop-blur-md shadow-[-4px_4px_20px_rgba(0,0,0,0.25)]"
+        style={{ writingMode: 'vertical-rl' } as React.CSSProperties}
+      >
+        <Calculator className="w-4 h-4 rotate-90" style={{ color: secondary }} />
+        <span className="text-[10px] uppercase tracking-[0.18em] rotate-180" style={{ color: secondary }}>
+          Simular
+        </span>
+      </button>
 
       {tenant?.mascot_url ? (
         <a
