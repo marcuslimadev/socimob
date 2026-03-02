@@ -315,29 +315,29 @@ export default function AdsAutomation() {
 
   const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useQuery<AdsStatus>({
     queryKey: ['ads-status'],
-    queryFn: async () => (await api.get('/ads/status')).data,
+    queryFn: async () => (await api.get('/admin/ads/status')).data,
     refetchInterval: 30000,
   });
 
 
   const { data: analyticsData, isLoading: analyticsLoading, refetch: refetchAnalytics } = useQuery<{ data: AnalyticsData }>({
     queryKey: ['ads-analytics', period],
-    queryFn: async () => (await api.get(`/ads/analytics?period=${period}`)).data,
+    queryFn: async () => (await api.get(`/admin/ads/analytics?period=${period}`)).data,
     refetchInterval: 60000,
   });
 
   const { data: logsData, isLoading: logsLoading } = useQuery({
     queryKey: ['ads-logs', logFilter],
-    queryFn: async () => (await api.get('/ads/logs', { params: { ...logFilter, per_page: 50 } })).data,
+    queryFn: async () => (await api.get('/admin/ads/logs', { params: { ...logFilter, per_page: 50 } })).data,
   });
 
   const connectMutation = useMutation({
-    mutationFn: async (provider: string) => (await api.post(`/ads/${provider}/connect/start`)).data,
+    mutationFn: async (provider: string) => (await api.post(`/admin/ads/${provider}/connect/start`)).data,
   });
 
   const olxCredMutation = useMutation({
     mutationFn: async ({ clientId, clientSecret }: { clientId: string; clientSecret: string }) =>
-      (await api.post('/ads/olx/connect/credentials', { client_id: clientId, client_secret: clientSecret })).data,
+      (await api.post('/admin/ads/olx/connect/credentials', { client_id: clientId, client_secret: clientSecret })).data,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ads-status'] });
       toast.success('OLX conectado com sucesso!');
@@ -347,14 +347,14 @@ export default function AdsAutomation() {
   });
 
   const disconnectMutation = useMutation({
-    mutationFn: async (provider: string) => { await api.delete(`/ads/${provider}/connect`); },
+    mutationFn: async (provider: string) => { await api.delete(`/admin/ads/${provider}/connect`); },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ads-status'] }); toast.success('Conta desconectada.'); },
     onError: () => toast.error('Erro ao desconectar.'),
   });
 
   const settingsMutation = useMutation({
     mutationFn: async ({ provider, budget, region }: { provider: string; budget: number; region: string }) => {
-      await api.post('/ads/settings', { provider, budget_daily_reais: budget, region });
+      await api.post('/admin/ads/settings', { provider, budget_daily_reais: budget, region });
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ads-status'] }); toast.success('Configurações salvas!'); },
     onError: (err: any) => toast.error(err?.response?.data?.error || 'Erro ao salvar.'),
@@ -362,7 +362,7 @@ export default function AdsAutomation() {
 
   const saveAccountMutation = useMutation({
     mutationFn: async ({ provider, accountId, businessId, name }: { provider: string; accountId: string; businessId: string; name: string }) => {
-      await api.post(`/ads/${provider}/accounts`, {
+      await api.post(`/admin/ads/${provider}/accounts`, {
         external_account_id: accountId,
         external_business_id: businessId || undefined,
         name: name || undefined,

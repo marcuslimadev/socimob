@@ -195,6 +195,16 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->post('/leads/conversas/sync', 'Admin\\LeadConversaController@syncFromLeads');
     $router->post('/leads/{id}/start-ai', 'Admin\\LeadConversaController@startAi');
 
+    // ── Ads Automation (Marketing / Anúncios) ────────────────────────────────
+    $router->get('/ads/status',                         'Ads\AdsConnectionController@status');
+    $router->post('/ads/{provider}/connect/start',      'Ads\AdsConnectionController@startConnect');
+    $router->delete('/ads/{provider}/connect',          'Ads\AdsConnectionController@disconnect');
+    $router->post('/ads/settings',                      'Ads\AdsConnectionController@saveSettings');
+    $router->post('/ads/olx/connect/credentials',       'Ads\AdsConnectionController@connectCredentials');
+    $router->post('/ads/{provider}/accounts',           'Ads\AdsConnectionController@saveAccount');
+    $router->get('/ads/analytics',                      'Ads\AdsAnalyticsController@index');
+    $router->get('/ads/logs',                           'Ads\AdsConnectionController@logs');
+
     // Property Ads (Propaganda de Imóveis)
     $router->get('/property-ads', function () use ($router) {
         $user = app('request')->user();

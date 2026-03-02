@@ -442,4 +442,43 @@ HTML;
 
         return response()->json(['success' => true, 'account' => $account]);
     }
+
+    /**
+     * GET /api/admin/ads/logs
+     * Retorna log de auditoria de Ads.
+     */
+    public function logs(Request $request): JsonResponse
+    {
+        $tenantId = $request->get('tenant_id');
+        $provider = $request->query('provider');
+        $status   = $request->query('status');
+        $perPage  = min((int) ($request->query('per_page', 50)), 100);
+
+        $query = AdsAuditLog::withoutTenant()
+            ->where('tenant_id', $tenantId)
+            ->orderByDesc('created_at');
+
+        if ($provider) {
+            $query->where('provider', $provider);
+        }
+        if ($status && $status !== 'all') {
+            $query->where('status', strtoupper($status));
+        }
+
+        $logs = $query->limit($perPage)->get(['id', 'provider', 'action', 'status', 'message_json', 'created_at']);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $logs->map(fn($l) => [
+                'id'         => $l->id,
+                'provider'   => $l->provider,
+                'action'     => $l->action,
+                'status'     => $l->status,
+                'message'    => is_string($l->message_json)
+                    ? (json_decode($l->message_json, true)['message'] ?? null)
+                    : null,
+                'created_at' => $l->created_at?->toISOString(),
+            ]),
+        ]);
+    }
 }

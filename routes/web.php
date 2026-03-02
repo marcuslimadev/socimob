@@ -58,6 +58,12 @@ $router->group(['middleware' => 'resolve-tenant'], function () use ($router) {
     $router->get('/w/{code}', 'ShortLinkController@redirectWhatsApp');
 });
 
+// Ads OAuth popup callbacks — browser redirect from Meta/Google after authorization
+// Only resolve-tenant middleware (no Bearer token required since browser redirect)
+$router->group(['prefix' => 'api/ads', 'middleware' => 'resolve-tenant'], function () use ($router) {
+    $router->get('/{provider}/connect/callback', 'Ads\AdsConnectionController@oauthCallbackPopup');
+});
+
 // Auth API routes
 $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function () use ($router) {
     // Short link para WhatsApp (resolve tenant pelo domínio)
