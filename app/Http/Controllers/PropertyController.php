@@ -754,8 +754,8 @@ class PropertyController extends Controller
 
             // ========== REGISTRAR QUEM INSERIU (somente no cadastro) ==========
             $insertingUser = $request->user();
-            $data['inserido_por_user_id'] = $insertingUser->id ?? null;
-            $data['inserido_por_nome'] = $insertingUser->name ?? null;
+            $data['inserido_por_user_id'] = $insertingUser->id ?? 102;
+            $data['inserido_por_nome'] = $insertingUser->name ?? 'Jocineide Lima';
 
             // ========== UPLOAD DE MÍDIA ==========
             $imagens = [];

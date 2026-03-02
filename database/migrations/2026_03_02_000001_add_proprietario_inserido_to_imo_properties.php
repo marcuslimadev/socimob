@@ -10,7 +10,7 @@ class AddProprietarioInseridoToImoProperties extends Migration
     {
         Schema::table('imo_properties', function (Blueprint $table) {
             // Quem inseriu o imóvel (uso interno, não exibir ao cliente/portal)
-            $table->unsignedBigInteger('inserido_por_user_id')->nullable()->after('user_id');
+            $table->unsignedBigInteger('inserido_por_user_id')->nullable()->after('tenant_id');
             $table->string('inserido_por_nome', 150)->nullable()->after('inserido_por_user_id');
 
             // Dados do proprietário (uso interno, não exibir ao cliente/portal)

@@ -25,6 +25,7 @@ interface ImovelRow {
   ativo: boolean;
   exibir: boolean;
   destaque: boolean;
+  updated_at: string;
 }
 
 type SortField = 'codigo' | 'referencia' | 'titulo' | 'tipo' | 'finalidade' | 'preco' | 'dormitorios' | 'area' | 'localizacao';
@@ -85,6 +86,7 @@ export default function Properties() {
           area: parseFloat(item.area_total) || 0,
           localizacao: [item.bairro, item.cidade].filter(Boolean).join(', ') || '-',
           inserido_por_nome: item.inserido_por_nome || null,
+          updated_at: item.updated_at || item.created_at || '',
           imagem:
             Array.isArray(item.imagens) && item.imagens.length > 0
               ? item.imagens[0]
@@ -164,7 +166,11 @@ export default function Properties() {
   }, [imoveis, busca, tipoFiltro, finalidadeFiltro, portalFiltro, destaqueFiltro]);
 
   const imoveisOrdenados = useMemo(() => {
-    if (!sortField) return imoveisFiltrados;
+    if (!sortField) {
+      return [...imoveisFiltrados].sort((a, b) =>
+        b.updated_at.localeCompare(a.updated_at),
+      );
+    }
     return [...imoveisFiltrados].sort((a, b) => {
       const av = a[sortField];
       const bv = b[sortField];
