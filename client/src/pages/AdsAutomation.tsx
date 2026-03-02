@@ -27,6 +27,9 @@ interface ProviderStatus {
   campaign_status: string | null;
   active_listings: number;
   budget_daily: number;
+  external_account_id: string | null;
+  account_name: string | null;
+  external_business_id: string | null;
 }
 
 interface AdsStatus {
@@ -123,11 +126,12 @@ function KpiCard({ label, value, sub, icon, color, trend }: {
 
 // ── Provider Card ─────────────────────────────────────────────────────────────
 
-function ProviderCard({ provider, status, allowed, onConnect, onDisconnect, onSaveSettings, onConnectCredentials, isConnecting }: {
+function ProviderCard({ provider, status, allowed, onConnect, onDisconnect, onSaveSettings, onConnectCredentials, onSaveAccount, isConnecting }: {
   provider: string; status: ProviderStatus; allowed: boolean;
   onConnect: (p: string) => void; onDisconnect: (p: string) => void;
   onSaveSettings: (p: string, budget: number, region: string) => void;
   onConnectCredentials: (p: string, id: string, secret: string) => void;
+  onSaveAccount: (p: string, accountId: string, businessId: string, name: string) => void;
   isConnecting: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -136,6 +140,9 @@ function ProviderCard({ provider, status, allowed, onConnect, onDisconnect, onSa
   const [showCredForm, setShowCredForm] = useState(false);
   const [credId, setCredId] = useState('');
   const [credSecret, setCredSecret] = useState('');
+  const [accountId, setAccountId] = useState(status.external_account_id ?? '');
+  const [businessId, setBusinessId] = useState(status.external_business_id ?? '');
+  const [accountName, setAccountName] = useState(status.account_name ?? '');
   const label = provider === 'meta' ? 'Meta Ads (Facebook / Instagram)'
     : provider === 'olx' ? 'OLX Pro (Autoupload)'
     : 'Google Ads';
@@ -223,6 +230,36 @@ function ProviderCard({ provider, status, allowed, onConnect, onDisconnect, onSa
       )}
       {open && connected && (
         <div className="space-y-3 pt-3 border-t border-white/10">
+          {/* Conta de anúncios — Meta/Google */}
+          {provider !== 'olx' && (
+            <>
+              <div>
+                <Label className="text-xs text-gray-400 mb-1.5 block">
+                  Ad Account ID <span className="text-gray-600">(ex: act_123456789)</span>
+                </Label>
+                <Input placeholder="act_XXXXXXXXX" value={accountId} onChange={e => setAccountId(e.target.value)}
+                  className="h-8 text-sm bg-white/5 border-white/15 text-white font-mono" />
+              </div>
+              <div>
+                <Label className="text-xs text-gray-400 mb-1.5 block">
+                  Business ID <span className="text-gray-600">(opcional)</span>
+                </Label>
+                <Input placeholder="Gerenciador de Negócios ID" value={businessId} onChange={e => setBusinessId(e.target.value)}
+                  className="h-8 text-sm bg-white/5 border-white/15 text-white font-mono" />
+              </div>
+              <div>
+                <Label className="text-xs text-gray-400 mb-1.5 block">Nome da conta</Label>
+                <Input placeholder="Ex: Imobiliária Exemplo" value={accountName} onChange={e => setAccountName(e.target.value)}
+                  className="h-8 text-sm bg-white/5 border-white/15 text-white" />
+              </div>
+              <Button size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                disabled={!accountId}
+                onClick={() => { onSaveAccount(provider, accountId, businessId, accountName); }}>
+                Salvar conta de anúncios
+              </Button>
+              <div className="border-t border-white/10 pt-3" />
+            </>
+          )}
           <div>
             <Label className="text-xs text-gray-400 mb-1.5 block">Orçamento diário (R$)</Label>
             <Input type="number" placeholder="Ex: 30" value={budget} onChange={e => setBudget(e.target.value)}
@@ -235,10 +272,13 @@ function ProviderCard({ provider, status, allowed, onConnect, onDisconnect, onSa
           </div>
           <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             onClick={() => { onSaveSettings(provider, parseFloat(budget) || 0, region); setOpen(false); }}>
-            Salvar
+            Salvar orçamento
           </Button>
           {status.expires_at && <p className="text-xs text-gray-500">Token expira: {fmt(status.expires_at)}</p>}
           {status.campaign_status && <p className="text-xs text-gray-500">Campanha: {status.campaign_status}</p>}
+          {status.external_account_id && (
+            <p className="text-xs text-gray-500 font-mono">Conta: {status.external_account_id}{status.account_name ? ` · ${status.account_name}` : ''}</p>
+          )}
         </div>
       )}
     </div>
@@ -293,11 +333,6 @@ export default function AdsAutomation() {
 
   const connectMutation = useMutation({
     mutationFn: async (provider: string) => (await api.post(`/ads/${provider}/connect/start`)).data,
-    onSuccess: (data) => {
-      if (data.oauth_url) { window.open(data.oauth_url, '_blank', 'width=600,height=700'); toast.success('Janela OAuth aberta. Autorize e volte.'); }
-    },
-    onError: (err: any) => toast.error(err?.response?.data?.error || 'Erro ao iniciar conexão.'),
-    onSettled: () => setConnectingProvider(null),
   });
 
   const olxCredMutation = useMutation({
@@ -325,13 +360,54 @@ export default function AdsAutomation() {
     onError: (err: any) => toast.error(err?.response?.data?.error || 'Erro ao salvar.'),
   });
 
-  const handleConnect      = (p: string) => { setConnectingProvider(p); connectMutation.mutate(p); };
+  const saveAccountMutation = useMutation({
+    mutationFn: async ({ provider, accountId, businessId, name }: { provider: string; accountId: string; businessId: string; name: string }) => {
+      await api.post(`/ads/${provider}/accounts`, {
+        external_account_id: accountId,
+        external_business_id: businessId || undefined,
+        name: name || undefined,
+        currency: 'BRL',
+      });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ads-status'] }); toast.success('Conta de anúncios salva!'); },
+    onError: (err: any) => toast.error(err?.response?.data?.error || 'Erro ao salvar conta.'),
+  });
+
+  const handleConnect = (p: string) => {
+    setConnectingProvider(p);
+    connectMutation.mutateAsync(p).then(data => {
+      if (data.oauth_url) {
+        window.open(data.oauth_url, '_blank', 'width=620,height=720,scrollbars=yes');
+        // Escutar postMessage do popup (ADS_OAUTH_SUCCESS / ADS_OAUTH_ERROR)
+        const onMessage = (event: MessageEvent) => {
+          if (event.data?.type === 'ADS_OAUTH_SUCCESS' && event.data.provider === p) {
+            window.removeEventListener('message', onMessage);
+            setConnectingProvider(null);
+            queryClient.invalidateQueries({ queryKey: ['ads-status'] });
+            toast.success(`${p === 'meta' ? 'Meta Ads' : 'Google Ads'} conectado! Configure sua conta de anúncios abaixo.`);
+          } else if (event.data?.type === 'ADS_OAUTH_ERROR' && event.data.provider === p) {
+            window.removeEventListener('message', onMessage);
+            setConnectingProvider(null);
+            toast.error(event.data.error || 'Erro ao conectar');
+          }
+        };
+        window.addEventListener('message', onMessage);
+        // Fallback: remover listener após 5 minutos
+        setTimeout(() => { window.removeEventListener('message', onMessage); setConnectingProvider(null); }, 300_000);
+      }
+    }).catch((err: any) => {
+      toast.error(err?.response?.data?.error || 'Erro ao iniciar conexão.');
+      setConnectingProvider(null);
+    });
+  };
   const handleDisconnect   = (p: string) => { if (window.confirm(`Desconectar ${p}?`)) disconnectMutation.mutate(p); };
   const handleSaveSettings = (p: string, b: number, r: string) => settingsMutation.mutate({ provider: p, budget: b, region: r });
   const handleConnectCredentials = (p: string, id: string, secret: string) => {
     setConnectingProvider(p);
     olxCredMutation.mutate({ clientId: id, clientSecret: secret });
   };
+  const handleSaveAccount = (p: string, accountId: string, businessId: string, name: string) =>
+    saveAccountMutation.mutate({ provider: p, accountId, businessId, name });
 
   const entitlement = statusData?.entitlement;
   const providers   = statusData?.providers ?? {};
@@ -605,10 +681,11 @@ export default function AdsAutomation() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {(['meta', 'google', 'olx'] as const).map(provider => (
                   <ProviderCard key={provider} provider={provider}
-                    status={providers[provider] ?? { connected: false, status: 'DRAFT', expires_at: null, last_refresh_at: null, campaign_status: null, active_listings: 0, budget_daily: 0 }}
+                    status={providers[provider] ?? { connected: false, status: 'DRAFT', expires_at: null, last_refresh_at: null, campaign_status: null, active_listings: 0, budget_daily: 0, external_account_id: null, account_name: null, external_business_id: null }}
                     allowed={allowed.includes(provider)}
                     onConnect={handleConnect} onDisconnect={handleDisconnect}
                     onSaveSettings={handleSaveSettings} onConnectCredentials={handleConnectCredentials}
+                    onSaveAccount={handleSaveAccount}
                     isConnecting={connectingProvider === provider && (connectMutation.isPending || olxCredMutation.isPending)} />
                 ))}
               </div>

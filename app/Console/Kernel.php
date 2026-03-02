@@ -23,6 +23,7 @@ class Kernel extends ConsoleKernel
         Commands\Ads\AdsRefreshTokensCommand::class,
         Commands\Ads\AdsBackfillLeadsCommand::class,
         Commands\Ads\AdsCleanupLeadsCommand::class,
+        Commands\Ads\AdsCreateEntitlementCommand::class,
     ];
 
     /**

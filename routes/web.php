@@ -238,6 +238,15 @@ $router->group(['prefix' => 'api/ads/webhooks', 'middleware' => 'resolve-tenant'
 $router->get('/api/oauth/{provider}/callback', ['middleware' => 'resolve-tenant', 'uses' => 'Ads\AdsConnectionController@oauthCallback']);
 
 // ===========================
+// META / GOOGLE OAUTH CALLBACKS (SEM AUTENTICAÇÃO — popup browser)
+// URI registrada no Meta Developers: https://lojadaesquina.store/api/ads/meta/connect/callback
+// URI registrada no Google Cloud:    https://lojadaesquina.store/api/ads/google/connect/callback
+// Retornam HTML que fecha o popup e notifica a janela pai via postMessage.
+// DEVE ficar registrada ANTES do grupo autenticado para ter prioridade.
+// ===========================
+$router->get('/api/ads/{provider}/connect/callback', ['middleware' => 'resolve-tenant', 'uses' => 'Ads\AdsConnectionController@oauthCallbackPopup']);
+
+// ===========================
 // WEBHOOK (SEM AUTENTICAÇÃO)
 // ===========================
 $router->group(['prefix' => 'webhook'], function () use ($router) {
