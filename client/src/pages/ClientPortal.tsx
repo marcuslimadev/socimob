@@ -710,11 +710,11 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
       )}
       <button
         onClick={() => onOpenChange(!isOpen)}
-        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-[60] w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-105 shadow-xl"
+        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-[60] w-[88px] h-[88px] md:w-[104px] md:h-[104px] rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-105 shadow-xl"
         style={{ backgroundColor: '#fff', border: '1px solid #e8e4de' }}
       >
         {isOpen ? <X className="w-8 h-8" style={{ color: primary }} /> : (
-          <MascotAvatar size={56} mascotUrl={effectiveMascotUrl} primary={primary} roundedClass="rounded-full" fitClass="object-contain" imagePadding={0} imageBackground="transparent" />
+          <MascotAvatar size={80} mascotUrl={effectiveMascotUrl} primary={primary} roundedClass="rounded-full" fitClass="object-contain" imagePadding={0} imageBackground="transparent" />
         )}
       </button>
     </>
