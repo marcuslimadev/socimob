@@ -15,6 +15,8 @@ import {
   ClipboardList,
   CheckCircle,
   Menu,
+  Calculator,
+  ExternalLink,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
@@ -750,6 +752,11 @@ export default function ClientPortal() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatPropertyContext, setChatPropertyContext] = useState<{ id: number; titulo: string; preco: string } | undefined>(undefined);
   const [chatServiceContext, setChatServiceContext] = useState<string | undefined>(undefined);
+  const [showFinancingModal, setShowFinancingModal] = useState(false);
+  const [financingForm, setFinancingForm] = useState({ nome: '', telefone: '', email: '', valor_imovel: '', renda_familiar: '', observacoes: '' });
+  const [financingErrors, setFinancingErrors] = useState<Partial<Record<keyof typeof financingForm, string>>>({});
+  const [financingSubmitting, setFinancingSubmitting] = useState(false);
+  const [financingDone, setFinancingDone] = useState(false);
   const { buscarCep, isLoading: isLoadingCep } = useViaCep();
   // theme forced to light via useEffect below
 
@@ -1043,6 +1050,51 @@ export default function ClientPortal() {
     setSelectedType(null);
     setSelectedPropertyType('');
   }, []);
+
+  const handleFinancingSubmit = async () => {
+    const normalized = {
+      nome: financingForm.nome.trim(),
+      telefone: financingForm.telefone.trim(),
+      email: financingForm.email.trim(),
+      valor_imovel: financingForm.valor_imovel.trim(),
+      renda_familiar: financingForm.renda_familiar.trim(),
+      observacoes: financingForm.observacoes.trim(),
+    };
+
+    const nextErrors: Partial<Record<keyof typeof financingForm, string>> = {};
+    if (!normalized.nome) nextErrors.nome = 'Nome é obrigatório';
+    if (!normalized.telefone) nextErrors.telefone = 'Telefone é obrigatório';
+    if (Object.keys(nextErrors).length) {
+      setFinancingErrors(nextErrors);
+      return;
+    }
+
+    setFinancingSubmitting(true);
+    try {
+      const interesse = [
+        'Simulação de financiamento Caixa',
+        normalized.valor_imovel ? `Valor do imóvel: R$ ${normalized.valor_imovel}` : null,
+        normalized.renda_familiar ? `Renda familiar: R$ ${normalized.renda_familiar}` : null,
+        normalized.observacoes || null,
+      ].filter(Boolean).join(' | ');
+
+      await fetch('/api/portal/chat-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Tenant-Domain': window.location.hostname },
+        body: JSON.stringify({
+          nome: normalized.nome,
+          whatsapp: normalized.telefone,
+          email: normalized.email || undefined,
+          interesse,
+        }),
+      });
+      setFinancingDone(true);
+    } catch {
+      toast.error('Erro ao enviar. Tente novamente.');
+    } finally {
+      setFinancingSubmitting(false);
+    }
+  };
 
   const handleEvalSubmit = async () => {
     const normalized = {
@@ -1388,6 +1440,7 @@ export default function ClientPortal() {
             { id: 'inicio', label: 'Início' },
             { id: 'imoveis', label: 'Imóveis' },
             { id: 'servicos', label: 'Serviços' },
+            { id: 'financiamento', label: 'Financiamento' },
             { id: 'avaliacao', label: 'Avaliação' },
             { id: 'sobre', label: 'Sobre Nós' },
           ].map(item => (
@@ -1687,6 +1740,7 @@ export default function ClientPortal() {
               { id: 'inicio', label: 'Início' },
               { id: 'imoveis', label: 'Imóveis' },
               { id: 'servicos', label: 'Serviços' },
+              { id: 'financiamento', label: 'Financiamento' },
               { id: 'avaliacao', label: 'Avaliação' },
               { id: 'sobre', label: 'Sobre Nós' },
             ].map(item => (
@@ -1762,6 +1816,42 @@ export default function ClientPortal() {
           </div>
         </section>
       )}
+
+      {/* ===== FINANCING CTA BANNER ===== */}
+      <section id="financiamento" className="py-8 px-4 lg:px-8" style={{ backgroundColor: '#f0f7ff', borderBottom: '1px solid #dbeafe' }}>
+        <div className="max-w-4xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primary}15` }}>
+              <Calculator className="w-6 h-6" style={{ color: primary }} />
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <h3 className="text-lg font-bold" style={{ color: 'var(--portal-text-main)' }}>Simule seu Financiamento Habitacional</h3>
+              <p className="text-sm" style={{ color: 'var(--portal-text-muted)' }}>
+                Use o Simulador de Habitação da Caixa Econômica Federal para descobrir seu poder de compra. Depois, <strong>deixe seus dados</strong> e nossa equipe te assessora gratuitamente!
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
+              <a
+                href="https://simuladorhabitacao.caixa.gov.br/home"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium border transition-colors hover:bg-blue-50"
+                style={{ borderColor: primary, color: primary }}
+              >
+                <ExternalLink className="w-4 h-4" />
+                Simular na Caixa
+              </a>
+              <Button
+                onClick={() => { setFinancingDone(false); setFinancingForm({ nome: '', telefone: '', email: '', valor_imovel: '', renda_familiar: '', observacoes: '' }); setFinancingErrors({}); setShowFinancingModal(true); }}
+                className="text-white px-5 py-2.5 rounded-xl font-medium"
+                style={{ backgroundColor: primary }}
+              >
+                Quero Assessoria
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ===== EVALUATION CTA BANNER ===== */}
       <section id="avaliacao" className="py-8 px-4 lg:px-8" style={{ backgroundColor: `${primary}08`, borderBottom: '1px solid #e8e4de' }}>
@@ -1901,6 +1991,106 @@ export default function ClientPortal() {
             {tenant.office_hours && <p className="text-xs mt-1" style={{ color: '#888' }}>{tenant.office_hours}</p>}
           </div>
         </section>
+      )}
+
+      {/* ===== FINANCING MODAL ===== */}
+      {showFinancingModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden" style={{ backgroundColor: '#fff' }}>
+            <div className="flex items-center justify-between px-5 py-4 text-white" style={{ backgroundColor: primary }}>
+              <div className="flex items-center gap-2">
+                <Calculator className="w-5 h-5" />
+                <span className="font-semibold">Assessoria de Financiamento</span>
+              </div>
+              <button onClick={() => setShowFinancingModal(false)} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/20"><X className="w-4 h-4" /></button>
+            </div>
+            {financingDone ? (
+              <div className="p-8 text-center">
+                <CheckCircle className="w-14 h-14 mx-auto mb-4" style={{ color: '#22c55e' }} />
+                <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--portal-text-main)' }}>Dados Recebidos!</h3>
+                <p className="text-sm mb-4" style={{ color: 'var(--portal-text-muted)' }}>
+                  Nossa equipe entrará em contato em breve para te assessorar no financiamento.
+                </p>
+                <a
+                  href="https://simuladorhabitacao.caixa.gov.br/home"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium border hover:bg-blue-50 mb-4"
+                  style={{ borderColor: primary, color: primary }}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Simular agora na Caixa
+                </a>
+                {tenant?.contact_phone && (
+                  <div className="mt-2">
+                    <a
+                      href={`https://wa.me/${tenant.contact_phone.replace(/\D/g, '')}?text=${encodeURIComponent('Olá! Acabei de deixar meus dados no portal para assessoria de financiamento.')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm font-medium transition-colors"
+                    >
+                      <MessageCircle className="w-4 h-4" />Falar no WhatsApp
+                    </a>
+                  </div>
+                )}
+                <div className="mt-4">
+                  <button onClick={() => setShowFinancingModal(false)} className="text-sm underline" style={{ color: '#888' }}>Fechar</button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+                <p className="text-sm" style={{ color: 'var(--portal-text-muted)' }}>
+                  Preencha seus dados abaixo. Um de nossos especialistas irá analisar seu perfil e te orientar sobre as melhores condições de financiamento.
+                </p>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Nome *</label>
+                  <input value={financingForm.nome} maxLength={255} onChange={(e) => { setFinancingForm(f => ({ ...f, nome: e.target.value })); setFinancingErrors(prev => ({ ...prev, nome: undefined })); }} placeholder="Seu nome completo" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: financingErrors.nome ? '1px solid #ef4444' : '1px solid #e0dcd5', color: '#333' }} />
+                  {financingErrors.nome && <p className="text-[11px] mt-1 text-red-500">{financingErrors.nome}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Telefone / WhatsApp *</label>
+                    <input value={financingForm.telefone} maxLength={16} onChange={(e) => { setFinancingForm(f => ({ ...f, telefone: formatPhoneInput(e.target.value) })); setFinancingErrors(prev => ({ ...prev, telefone: undefined })); }} placeholder="(31) 99999-8888" type="tel" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: financingErrors.telefone ? '1px solid #ef4444' : '1px solid #e0dcd5', color: '#333' }} />
+                    {financingErrors.telefone && <p className="text-[11px] mt-1 text-red-500">{financingErrors.telefone}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>E-mail</label>
+                    <input value={financingForm.email} maxLength={255} onChange={(e) => { setFinancingForm(f => ({ ...f, email: e.target.value })); setFinancingErrors(prev => ({ ...prev, email: undefined })); }} placeholder="seu@email.com" type="email" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Valor do imóvel (R$)</label>
+                    <input value={financingForm.valor_imovel} maxLength={20} onChange={(e) => setFinancingForm(f => ({ ...f, valor_imovel: e.target.value.replace(/[^0-9.,]/g, '') }))} placeholder="Ex: 350.000" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Renda familiar (R$)</label>
+                    <input value={financingForm.renda_familiar} maxLength={20} onChange={(e) => setFinancingForm(f => ({ ...f, renda_familiar: e.target.value.replace(/[^0-9.,]/g, '') }))} placeholder="Ex: 5.000" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#555' }}>Observações</label>
+                  <textarea value={financingForm.observacoes} maxLength={500} onChange={(e) => setFinancingForm(f => ({ ...f, observacoes: e.target.value }))} placeholder="Ex: já fiz simulação na Caixa, busco apartamento 2 quartos..." rows={3} className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 resize-none" style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button onClick={handleFinancingSubmit} disabled={financingSubmitting} className="w-full text-white py-2.5 rounded-xl font-medium" style={{ backgroundColor: primary }}>
+                    {financingSubmitting ? 'Enviando...' : 'Enviar para Assessoria'}
+                  </Button>
+                  <a
+                    href="https://simuladorhabitacao.caixa.gov.br/home"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-colors hover:bg-blue-50"
+                    style={{ borderColor: primary, color: primary }}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Simular diretamente na Caixa
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ===== EVALUATION MODAL ===== */}
@@ -2050,6 +2240,7 @@ export default function ClientPortal() {
             <div>
               <h4 className="text-sm font-semibold text-white mb-3">Links</h4>
               <button onClick={openEvaluationModal} className="block text-xs text-gray-400 hover:text-white mb-1.5">Avaliação de Imóvel</button>
+              <button onClick={() => { setFinancingDone(false); setFinancingForm({ nome: '', telefone: '', email: '', valor_imovel: '', renda_familiar: '', observacoes: '' }); setFinancingErrors({}); setShowFinancingModal(true); }} className="block text-xs text-gray-400 hover:text-white mb-1.5">Simulação de Financiamento</button>
               {tenant?.contact_phone && (
                 <a href={`https://wa.me/${tenant.contact_phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="block text-xs text-gray-400 hover:text-white mb-1.5">WhatsApp</a>
               )}
