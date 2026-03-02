@@ -620,6 +620,93 @@ class PortalController extends Controller
     }
 
     /**
+     * Registrar lead via simulação de financiamento (público, sem auth)
+     * POST /api/portal/simulacao-lead
+     */
+    public function registrarSimulacaoLead(Request $request)
+    {
+        try {
+            $tenantId = $request->attributes->get('tenant_id');
+
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'nome'       => 'required|string|max:255',
+                'telefone'   => 'required|string|max:20',
+                'email'      => 'nullable|email|max:255',
+                'observacoes'=> 'nullable|string|max:2000',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success'  => false,
+                    'error'    => 'Dados inválidos',
+                    'messages' => $validator->errors(),
+                ], 422);
+            }
+
+            $telefone = preg_replace('/\D/', '', $request->telefone);
+
+            // Verifica lead existente pelo telefone ou e-mail
+            $existingLead = \App\Models\Lead::where('tenant_id', $tenantId)
+                ->where(function ($q) use ($telefone, $request) {
+                    $q->where('telefone', 'like', "%{$telefone}%")
+                      ->orWhere('whatsapp', 'like', "%{$telefone}%");
+                    if ($request->email) {
+                        $q->orWhere('email', $request->email);
+                    }
+                })
+                ->first();
+
+            if ($existingLead) {
+                $obs = $existingLead->observacoes ?? '';
+                $obs .= ($obs ? "\n" : '') . ($request->observacoes ?? '');
+                $existingLead->observacoes = $obs;
+                if ($request->email && !$existingLead->email) {
+                    $existingLead->email = $request->email;
+                }
+                $existingLead->save();
+                $lead = $existingLead;
+            } else {
+                $lead = \App\Models\Lead::create([
+                    'tenant_id'    => $tenantId,
+                    'nome'         => $request->nome,
+                    'telefone'     => $telefone,
+                    'whatsapp'     => $telefone,
+                    'email'        => $request->email,
+                    'status'       => 'novo',
+                    'classificacao'=> 'quente',
+                    'observacoes'  => $request->observacoes,
+                ]);
+            }
+
+            $tenant = \App\Models\Tenant::find($tenantId);
+            $config = $tenant ? $tenant->config : null;
+            $tenantWhatsapp = $config && $config->whatsapp_number
+                ? preg_replace('/\D/', '', $config->whatsapp_number)
+                : ($tenant ? preg_replace('/\D/', '', $tenant->contact_phone ?? '') : '');
+
+            return response()->json([
+                'success'          => true,
+                'lead_id'          => $lead->id,
+                'whatsapp_number'  => $tenantWhatsapp,
+                'message'          => 'Simulação registrada com sucesso!',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('[Portal] Erro ao registrar lead via simulação de financiamento', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error'   => 'Erro ao registrar. Tente novamente.',
+            ], 500);
+        }
+    }
+
+    /**
      * Solicitar avaliacao de imovel (publico, sem auth)
      * POST /api/portal/avaliacao
      */

@@ -50,6 +50,7 @@ const PropertyAds = lazy(() => import("./pages/PropertyAds"));
 const AdsAutomation = lazy(() => import("./pages/AdsAutomation"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const ControleChaves = lazy(() => import("./pages/ControleChaves"));
+const SimulacaoFinanciamento = lazy(() => import("./pages/SimulacaoFinanciamento"));
 const AnalyticsConsentBanner = lazy(() => import("./components/AnalyticsConsentBanner"));
 const AnalyticsTracker = lazy(() => import("./components/AnalyticsTracker"));
 
@@ -87,6 +88,7 @@ function Router() {
       <Route path="/portal/imovel/:id" component={PropertyDetail} />
       <Route path="/portal/login" component={LoginRedirect} />
       <Route path="/portal/register" component={PortalRegister} />
+      <Route path="/portal/simulacao" component={SimulacaoFinanciamento} />
       <Route path="/portal" component={ClientPortalRefined} />
       <Route path="/portal/classic" component={ClientPortal} />
       <Route path="/agenda" component={Agenda} />

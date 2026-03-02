@@ -1065,4 +1065,1285 @@ class ImobiBrasilService
             ];
         }
     }
+
+    // =========================================================================
+    // IMÓVEIS - Métodos adicionais
+    // =========================================================================
+
+    /**
+     * Excluir um imóvel no Imobi Brasil
+     * POST /imovel/excluir/{codigoImovel}
+     */
+    public static function deleteProperty(int $codigoImovel, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/imovel/excluir/' . $codigoImovel, [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao excluir imóvel no Imobi Brasil', ['codigo' => $codigoImovel, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Listar imóveis no Imobi Brasil
+     * GET /imovel/lista
+     */
+    public static function listProperties(Tenant $tenant, array $params = []): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/imovel/lista', [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+                'query'   => $params,
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao listar imóveis no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Dados de um imóvel no Imobi Brasil
+     * GET /imovel/dados/{codigoImovel}
+     */
+    public static function getPropertyData(int $codigoImovel, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/imovel/dados/' . $codigoImovel, [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar dados do imóvel no Imobi Brasil', ['codigo' => $codigoImovel, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Listar tipos de imóveis no Imobi Brasil
+     * GET /imovel/tipo/lista
+     */
+    public static function listPropertyTypes(Tenant $tenant, array $params = []): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/imovel/tipo/lista', [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+                'query'   => $params,
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao listar tipos de imóveis no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================================
+    // PESSOAS
+    // =========================================================================
+
+    /**
+     * Inserir pessoa no Imobi Brasil
+     * POST /pessoa/inserir
+     */
+    public static function insertPessoa(array $payload, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/pessoa/inserir', [
+                'headers' => ['token' => $apiKey, 'Content-Type' => 'application/json', 'Accept' => 'application/json'],
+                'json'    => $payload,
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            Log::info('Resposta inserção pessoa Imobi Brasil', ['status_code' => $response->getStatusCode(), 'response' => $data]);
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? null,
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao inserir pessoa no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Alterar pessoa no Imobi Brasil
+     * POST /pessoa/alterar/{codigoPessoa}
+     */
+    public static function updatePessoa(int $codigoPessoa, array $payload, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/pessoa/alterar/' . $codigoPessoa, [
+                'headers' => [
+                    'token'        => $apiKey,
+                    'codigoPessoa' => $codigoPessoa,
+                    'Content-Type' => 'application/json',
+                    'Accept'       => 'application/json',
+                ],
+                'json' => $payload,
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao alterar pessoa no Imobi Brasil', ['codigo' => $codigoPessoa, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Listar pessoas no Imobi Brasil
+     * GET /pessoa/lista
+     */
+    public static function listPessoas(Tenant $tenant, array $params = []): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/pessoa/lista', [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+                'query'   => array_filter($params, fn($v) => $v !== null),
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao listar pessoas no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Dados de uma pessoa no Imobi Brasil
+     * GET /pessoa/dados/{codigoPessoa}
+     */
+    public static function getPessoa(int $codigoPessoa, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/pessoa/dados/' . $codigoPessoa, [
+                'headers' => ['token' => $apiKey, 'codigoPessoa' => $codigoPessoa, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar pessoa no Imobi Brasil', ['codigo' => $codigoPessoa, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Excluir pessoa no Imobi Brasil
+     * POST /pessoa/excluir/{codigoPessoa}
+     */
+    public static function deletePessoa(int $codigoPessoa, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/pessoa/excluir/' . $codigoPessoa, [
+                'headers' => ['token' => $apiKey, 'codigoPessoa' => $codigoPessoa, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao excluir pessoa no Imobi Brasil', ['codigo' => $codigoPessoa, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================================
+    // MENSAGENS
+    // =========================================================================
+
+    /**
+     * Inserir mensagem no Imobi Brasil (lead/contato)
+     * POST /mensagem/inserir
+     * Tipos: PP, L, I, W, C, VL, EE
+     */
+    public static function insertMensagem(array $payload, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/mensagem/inserir', [
+                'headers' => ['token' => $apiKey, 'Content-Type' => 'application/json', 'Accept' => 'application/json'],
+                'json'    => $payload,
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            $data       = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            Log::info('Mensagem enviada para Imobi Brasil', ['status_code' => $statusCode, 'response' => $data]);
+
+            return [
+                'success'      => !empty($data['status']),
+                'result_set'   => $data['resultSet'] ?? null,
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao inserir mensagem no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Excluir mensagem no Imobi Brasil
+     * POST /mensagem/excluir/{codigoMensagem}
+     */
+    public static function deleteMensagem(int $codigoMensagem, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/mensagem/excluir/' . $codigoMensagem, [
+                'headers' => ['token' => $apiKey, 'codigoMensagem' => $codigoMensagem, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao excluir mensagem no Imobi Brasil', ['codigo' => $codigoMensagem, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Dados de uma mensagem no Imobi Brasil
+     * GET /mensagem/dados/{codigoMensagem}
+     */
+    public static function getMensagem(int $codigoMensagem, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/mensagem/dados/' . $codigoMensagem, [
+                'headers' => ['token' => $apiKey, 'codigoMensagem' => $codigoMensagem, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar mensagem no Imobi Brasil', ['codigo' => $codigoMensagem, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Listar mensagens no Imobi Brasil
+     * GET /mensagem/lista
+     */
+    public static function listMensagens(Tenant $tenant, array $params = []): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $headers = ['token' => $apiKey, 'Accept' => 'application/json'];
+            if (isset($params['lido']))       $headers['lido']       = $params['lido'];
+            if (isset($params['dataInicio'])) $headers['dataInicio'] = $params['dataInicio'];
+            if (isset($params['dataFim']))    $headers['dataFim']    = $params['dataFim'];
+            if (isset($params['tipo']))       $headers['tipo']       = $params['tipo'];
+
+            $query = array_filter([
+                'page'     => $params['page']     ?? null,
+                'per_page' => $params['per_page'] ?? null,
+            ], fn($v) => $v !== null);
+
+            $response = $client->get($baseUrl . '/mensagem/lista', [
+                'headers' => $headers,
+                'query'   => $query,
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao listar mensagens no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Marcar mensagem como lida no Imobi Brasil
+     * POST /mensagem/lido/{codigoMensagem}
+     */
+    public static function markMensagemAsRead(int $codigoMensagem, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/mensagem/lido/' . $codigoMensagem, [
+                'headers' => ['token' => $apiKey, 'codigoMensagem' => $codigoMensagem, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao marcar mensagem como lida no Imobi Brasil', ['codigo' => $codigoMensagem, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================================
+    // NEGÓCIOS
+    // =========================================================================
+
+    /**
+     * Inserir negócio no Imobi Brasil
+     * POST /negocio/inserir
+     */
+    public static function insertNegocio(array $payload, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/negocio/inserir', [
+                'headers' => ['token' => $apiKey, 'Content-Type' => 'application/json', 'Accept' => 'application/json'],
+                'json'    => $payload,
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'result_set'   => $data['resultSet'] ?? null,
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao inserir negócio no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Alterar negócio no Imobi Brasil
+     * POST /negocio/alterar/{codigoNegocio}
+     */
+    public static function updateNegocio(int $codigoNegocio, array $payload, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/negocio/alterar/' . $codigoNegocio, [
+                'headers' => [
+                    'token'         => $apiKey,
+                    'codigoNegocio' => $codigoNegocio,
+                    'Content-Type'  => 'application/json',
+                    'Accept'        => 'application/json',
+                ],
+                'json' => $payload,
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao alterar negócio no Imobi Brasil', ['codigo' => $codigoNegocio, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Excluir negócio no Imobi Brasil
+     * POST /negocio/excluir/{codigoNegocio}
+     */
+    public static function deleteNegocio(int $codigoNegocio, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/negocio/excluir/' . $codigoNegocio, [
+                'headers' => ['token' => $apiKey, 'codigoNegocio' => $codigoNegocio, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao excluir negócio no Imobi Brasil', ['codigo' => $codigoNegocio, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Listar negócios no Imobi Brasil
+     * GET /negocio/lista
+     */
+    public static function listNegocios(Tenant $tenant, array $params = []): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/negocio/lista', [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+                'query'   => array_filter($params, fn($v) => $v !== null),
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao listar negócios no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Dados de um negócio no Imobi Brasil
+     * GET /negocio/dados/{codigoNegocio}
+     */
+    public static function getNegocio(int $codigoNegocio, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/negocio/dados/' . $codigoNegocio, [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar negócio no Imobi Brasil', ['codigo' => $codigoNegocio, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Listar etapas de negócios no Imobi Brasil
+     * GET /negocio/lista/etapas
+     */
+    public static function listEtapasNegocios(Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/negocio/lista/etapas', [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao listar etapas de negócios no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================================
+    // CORRETORES
+    // =========================================================================
+
+    /**
+     * Dados de um corretor no Imobi Brasil
+     * GET /corretor/dados/{codigoCorretor}
+     */
+    public static function getCorretor(int $codigoCorretor, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/corretor/dados/' . $codigoCorretor, [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar corretor no Imobi Brasil', ['codigo' => $codigoCorretor, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Listar corretores no Imobi Brasil
+     * GET /corretor/lista
+     */
+    public static function listCorretores(Tenant $tenant, array $params = []): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/corretor/lista', [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+                'query'   => array_filter($params, fn($v) => $v !== null),
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao listar corretores no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================================
+    // CLIENTES
+    // =========================================================================
+
+    /**
+     * Dados de um cliente no Imobi Brasil
+     * GET /cliente/dados/{codigoCliente}
+     */
+    public static function getCliente(int $codigoCliente, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/cliente/dados/' . $codigoCliente, [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar cliente no Imobi Brasil', ['codigo' => $codigoCliente, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Listar clientes no Imobi Brasil
+     * GET /cliente/lista
+     */
+    public static function listClientes(Tenant $tenant, array $params = []): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/cliente/lista', [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+                'query'   => array_filter($params, fn($v) => $v !== null),
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao listar clientes no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================================
+    // CIDADES
+    // =========================================================================
+
+    /**
+     * Listar cidades no Imobi Brasil
+     * GET /cidade/lista
+     */
+    public static function listCidades(Tenant $tenant, array $params = []): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/cidade/lista', [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+                'query'   => array_filter($params, fn($v) => $v !== null),
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao listar cidades no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================================
+    // CONTA
+    // =========================================================================
+
+    /**
+     * Status da conta no Imobi Brasil
+     * GET /account/status
+     */
+    public static function getAccountStatus(Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 15, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/account/status', [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'result_set'   => $data['resultSet'] ?? [],
+                'status_conta' => $data['resultSet']['statusConta'] ?? false,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao verificar status da conta Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================================
+    // CORRETORES - Imóveis do corretor
+    // =========================================================================
+
+    /**
+     * Lista imóveis de um corretor no Imobi Brasil
+     * GET /corretor/imoveis/{codigoCorretor}
+     */
+    public static function listImoveisCorretor(int $codigoCorretor, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/corretor/imoveis/' . $codigoCorretor, [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao listar imóveis do corretor no Imobi Brasil', ['codigo' => $codigoCorretor, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================================
+    // CARACTERÍSTICAS DE IMÓVEIS
+    // =========================================================================
+
+    /**
+     * Inserir característica no Imobi Brasil
+     * POST /imovel/caracteristica/inserir
+     */
+    public static function insertCaracteristica(string $nomeCaracteristica, string $nomeGrupo, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/imovel/caracteristica/inserir', [
+                'headers' => ['token' => $apiKey, 'Content-Type' => 'application/json', 'Accept' => 'application/json'],
+                'json'    => ['nomeCaracteristica' => $nomeCaracteristica, 'nomeGrupo' => $nomeGrupo],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'result_set'   => $data['resultSet'] ?? null,
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao inserir característica no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Listar características no Imobi Brasil
+     * GET /imovel/caracteristica/lista
+     */
+    public static function listCaracteristicas(Tenant $tenant, array $params = []): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/imovel/caracteristica/lista', [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+                'query'   => array_filter($params, fn($v) => $v !== null),
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao listar características no Imobi Brasil', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Adicionar característica a um imóvel no Imobi Brasil
+     * POST /imovel/{codigoImovel}/caracteristica/inserir/{codigoCaracteristica}
+     */
+    public static function addCaracteristicaToProperty(int $codigoImovel, int $codigoCaracteristica, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/imovel/' . $codigoImovel . '/caracteristica/inserir/' . $codigoCaracteristica, [
+                'headers' => [
+                    'token'               => $apiKey,
+                    'codigoImovel'        => $codigoImovel,
+                    'codigoCaracteristica' => $codigoCaracteristica,
+                    'Content-Type'        => 'application/json',
+                    'Accept'              => 'application/json',
+                ],
+                'json' => ['codigoImovel' => $codigoImovel, 'codigoCaracteristica' => $codigoCaracteristica],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao adicionar característica ao imóvel no Imobi Brasil', [
+                'codigoImovel'        => $codigoImovel,
+                'codigoCaracteristica' => $codigoCaracteristica,
+                'error'               => $e->getMessage(),
+            ]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Remover característica de um imóvel no Imobi Brasil
+     * POST /imovel/{codigoImovel}/caracteristica/excluir/{codigoCaracteristica}
+     */
+    public static function removeCaracteristicaFromProperty(int $codigoImovel, int $codigoCaracteristica, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/imovel/' . $codigoImovel . '/caracteristica/excluir/' . $codigoCaracteristica, [
+                'headers' => [
+                    'token'               => $apiKey,
+                    'codigoImovel'        => $codigoImovel,
+                    'codigoCaracteristica' => $codigoCaracteristica,
+                    'Accept'              => 'application/json',
+                ],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao remover característica do imóvel no Imobi Brasil', [
+                'codigoImovel'        => $codigoImovel,
+                'codigoCaracteristica' => $codigoCaracteristica,
+                'error'               => $e->getMessage(),
+            ]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Excluir uma característica no Imobi Brasil
+     * POST /imovel/caracteristica/excluir/{codigoCaracteristica}
+     */
+    public static function deleteCaracteristica(int $codigoCaracteristica, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/imovel/caracteristica/excluir/' . $codigoCaracteristica, [
+                'headers' => ['token' => $apiKey, 'codigoCaracteristica' => $codigoCaracteristica, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao excluir característica no Imobi Brasil', ['codigo' => $codigoCaracteristica, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================================
+    // IMAGENS DE IMÓVEIS
+    // =========================================================================
+
+    /**
+     * Excluir imagem de um imóvel no Imobi Brasil
+     * POST /imovel/{codigoImovel}/imagem/excluir/{codigoImagem}
+     */
+    public static function deletePropertyImage(int $codigoImovel, int $codigoImagem, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/imovel/' . $codigoImovel . '/imagem/excluir/' . $codigoImagem, [
+                'headers' => [
+                    'token'        => $apiKey,
+                    'codigoImovel' => $codigoImovel,
+                    'codigoImagem' => $codigoImagem,
+                    'Accept'       => 'application/json',
+                ],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao excluir imagem do imóvel no Imobi Brasil', [
+                'codigoImovel' => $codigoImovel,
+                'codigoImagem' => $codigoImagem,
+                'error'        => $e->getMessage(),
+            ]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Listar imagens de um imóvel no Imobi Brasil
+     * GET /imovel/{codigoImovel}/imagem/lista
+     */
+    public static function listPropertyImages(int $codigoImovel, Tenant $tenant, array $params = []): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/imovel/' . $codigoImovel . '/imagem/lista', [
+                'headers' => ['token' => $apiKey, 'Accept' => 'application/json'],
+                'query'   => array_filter($params, fn($v) => $v !== null),
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao listar imagens do imóvel no Imobi Brasil', ['codigoImovel' => $codigoImovel, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================================
+    // PESSOAS - Imagem
+    // =========================================================================
+
+    /**
+     * Excluir imagem de uma pessoa no Imobi Brasil
+     * POST /pessoa/excluir/imagem/{codigoPessoa}
+     */
+    public static function deletePessoaImage(int $codigoPessoa, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->post($baseUrl . '/pessoa/excluir/imagem/' . $codigoPessoa, [
+                'headers' => ['token' => $apiKey, 'codigoPessoa' => $codigoPessoa, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'      => !empty($data['status']),
+                'api_response' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao excluir imagem da pessoa no Imobi Brasil', ['codigo' => $codigoPessoa, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================================
+    // USUÁRIO ADICIONAL
+    // =========================================================================
+
+    /**
+     * Dados de um usuário adicional no Imobi Brasil
+     * GET /usuario-adicional/dados/{codigoUsuario}
+     */
+    public static function getUsuarioAdicional(int $codigoUsuario, Tenant $tenant): array
+    {
+        try {
+            $apiKey  = static::getApiKey($tenant);
+            $baseUrl = rtrim(static::getBaseUrl($tenant), '/');
+
+            if (!$apiKey) {
+                return ['success' => false, 'error' => 'Integração Imobi Brasil não configurada'];
+            }
+
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 30, 'http_errors' => false]);
+
+            $response = $client->get($baseUrl . '/usuario-adicional/dados/' . $codigoUsuario, [
+                'headers' => ['token' => $apiKey, 'codigoUsuario' => $codigoUsuario, 'Accept' => 'application/json'],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true) ?: [];
+
+            return [
+                'success'    => !empty($data['status']),
+                'result_set' => $data['resultSet'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao buscar usuário adicional no Imobi Brasil', ['codigo' => $codigoUsuario, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
 }

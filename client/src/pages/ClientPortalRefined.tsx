@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, Bath, BedDouble, ChevronLeft, ChevronRight, Mail, MapPin, MessageCircle, Phone, Search, Square, UserRound } from 'lucide-react';
+import { ArrowUpRight, Bath, BedDouble, Calculator, ChevronLeft, ChevronRight, Mail, MapPin, MessageCircle, Phone, Search, Square, UserRound } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
@@ -254,6 +254,7 @@ export default function ClientPortalRefined() {
           <div className="hidden lg:flex items-center gap-6">
             <a href="#catalogo" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Catalogo</a>
             <a href="#servicos" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Servicos</a>
+            <a href="/portal/simulacao" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Simulação</a>
             <a href="#contato" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Contato</a>
             <button
               type="button"
@@ -558,6 +559,34 @@ export default function ClientPortalRefined() {
             Nenhum imovel encontrado com os filtros informados.
           </div>
         )}
+      </section>
+
+      {/* Simulação de Financiamento — banner promocional */}
+      <section className="mx-auto max-w-7xl px-4 lg:px-8 pb-8">
+        <div
+          className="rounded-3xl p-6 lg:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5"
+          style={{ background: `linear-gradient(135deg, ${primary}f5 0%, #0a0d16 100%)` }}
+        >
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-white/80 mb-2">
+              <Calculator className="w-3 h-3" />
+              Financiamento Imobiliário
+            </div>
+            <h3 className="text-xl text-white">Simule seu financiamento em segundos</h3>
+            <p className="mt-1 text-sm text-white/70 max-w-lg">
+              Calcule parcelas SAC e PRICE, descubra a renda mínima necessária e nossa equipe entra em contato para assessorá-lo.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/portal/simulacao')}
+            className="flex-shrink-0 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
+            style={{ backgroundColor: secondary, color: '#111827' }}
+          >
+            <Calculator className="w-4 h-4" />
+            Simular agora
+          </button>
+        </div>
       </section>
 
       <section id="servicos" className="mx-auto max-w-7xl px-4 lg:px-8 pb-16">

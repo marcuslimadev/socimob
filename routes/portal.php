@@ -28,6 +28,9 @@ $router->group(['prefix' => 'api/portal', 'middleware' => 'resolve-tenant'], fun
     // Registrar interesse/lead (público)
     $router->post('/interesse', 'Portal\PortalController@registrarInteresse');
 
+    // Capturar lead via simulação de financiamento (público)
+    $router->post('/simulacao-lead', 'Portal\PortalController@registrarSimulacaoLead');
+
     // Agendar visita (público)
     $router->post('/visitas', 'Portal\\VisitasController@agendar');
 
