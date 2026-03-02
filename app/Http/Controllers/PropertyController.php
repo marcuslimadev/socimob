@@ -1806,15 +1806,39 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
             $result = \App\Services\ImobiBrasilService::updateProperty($property, $tenant);
 
             if ($result['success']) {
-                // NÃO re-enviar imagens no update — evita duplicação no Imobi Brasil.
-                // Use o endpoint /enviar-imagens-imobi-brasil para re-sincronizar imagens explicitamente.
                 $property->refresh();
+
+                // Re-sincronizar imagens: excluir as antigas no Imobi Brasil e reenviar todas as atuais
+                $imagesResult = ['success' => true, 'images_sent' => 0, 'images_total' => 0, 'errors' => []];
+                $codigoImovel = $property->imobi_brasil_external_id;
+
+                if ($codigoImovel) {
+                    // 1. Listar imagens existentes no Imobi Brasil e excluir
+                    $listaResult = \App\Services\ImobiBrasilService::listPropertyImages((int) $codigoImovel, $tenant);
+                    if (!empty($listaResult['result_set'])) {
+                        foreach ($listaResult['result_set'] as $imgItem) {
+                            $codigoImagem = $imgItem['codigoImagem'] ?? $imgItem['codigo'] ?? null;
+                            if ($codigoImagem) {
+                                \App\Services\ImobiBrasilService::deletePropertyImage((int) $codigoImovel, (int) $codigoImagem, $tenant);
+                            }
+                        }
+                    }
+
+                    // 2. Enviar todas as imagens atuais
+                    $hasImages = \App\Models\ImovelImagem::where('codigo', $property->codigo)->exists()
+                        || (is_array($property->imagens) && count($property->imagens) > 0);
+
+                    if ($hasImages) {
+                        $imagesResult = \App\Services\ImobiBrasilService::sendPropertyImages($property, $tenant);
+                    }
+                }
 
                 return response()->json([
                     'success' => true,
                     'message' => $result['message'],
-                    'images_sent' => 0,
-                    'images_total' => 0,
+                    'images_sent' => $imagesResult['images_sent'] ?? 0,
+                    'images_total' => $imagesResult['images_total'] ?? 0,
+                    'images_errors' => $imagesResult['errors'] ?? [],
                 ], 200);
             } else {
                 return response()->json([
