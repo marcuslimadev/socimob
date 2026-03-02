@@ -670,7 +670,7 @@ export default function Properties() {
                       <th className="text-center p-3 text-xs text-muted-foreground whitespace-nowrap">
                         <span className="inline-flex items-center gap-1"><Zap size={11} /> Anúncio</span>
                       </th>
-                      <th className="text-left p-3 text-xs text-muted-foreground">Ações</th>
+                      <th className="sticky right-0 z-20 bg-card text-left p-3 text-xs text-muted-foreground shadow-[-4px_0_8px_rgba(0,0,0,0.08)]">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -779,7 +779,7 @@ export default function Properties() {
                         </td>
 
                         {/* Ações */}
-                        <td className="p-3">
+                        <td className="sticky right-0 bg-card p-3 shadow-[-4px_0_8px_rgba(0,0,0,0.06)]">
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
