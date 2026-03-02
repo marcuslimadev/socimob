@@ -206,6 +206,15 @@
     @apply md:ml-24;
   }
 
+  /* Layouts full-height (CRM, Chat) que usam md:ml-80 direto */
+  .md\:ml-80 {
+    transition: margin-left 0.3s ease;
+  }
+
+  body[data-sidebar="collapsed"] .md\:ml-80 {
+    margin-left: 6rem !important; /* 96px = sidebar colapsado 80px + margem 16px */
+  }
+
   .page-header {
     @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between;
   }

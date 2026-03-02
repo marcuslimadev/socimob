@@ -400,7 +400,7 @@ function PhotoCarousel({
 }
 
 // ===== Mascot Avatar (configurable per tenant) =====
-const MascotAvatar = ({ size = 48, mascotUrl, primary, roundedClass = 'rounded-full', fitClass = 'object-cover', imagePadding = 0, imageBackground = 'transparent' }: { size?: number; mascotUrl?: string; primary?: string; roundedClass?: string; fitClass?: 'object-cover' | 'object-contain'; imagePadding?: number; imageBackground?: string }) => {
+const MascotAvatar = ({ size = 96, mascotUrl, primary, roundedClass = 'rounded-full', fitClass = 'object-cover', imagePadding = 0, imageBackground = 'transparent' }: { size?: number; mascotUrl?: string; primary?: string; roundedClass?: string; fitClass?: 'object-cover' | 'object-contain'; imagePadding?: number; imageBackground?: string }) => {
   const [imgError, setImgError] = useState(false);
   
   if (mascotUrl && !imgError) {
