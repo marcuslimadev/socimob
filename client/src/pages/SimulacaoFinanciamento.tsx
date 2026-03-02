@@ -6,6 +6,7 @@ import {
   Calculator,
   CheckCircle2,
   ExternalLink,
+  Loader2,
   MessageCircle,
   TrendingDown,
   TrendingUp,
@@ -184,6 +185,10 @@ export default function SimulacaoFinanciamento() {
     const entradaPct = (entrada / valorImovel) * 100;
     if (entradaPct < 5) { setError('A entrada mínima é de 5% do valor do imóvel.'); return; }
 
+    // Ativar loading imediatamente após validações passarem
+    setSending(true);
+    try {
+
     const principal = valorImovel - entrada;
     const months = prazo * 12;
     const monthlyRate = Math.pow(1 + taxa / 100, 1 / 12) - 1;
@@ -206,7 +211,6 @@ export default function SimulacaoFinanciamento() {
 
     // Captura de lead automática
     if (!leadSent) {
-      setSending(true);
       const rendaInfo = rendaMensal > 0 ? ` | Renda informada: ${fmtBRL(rendaMensal)}` : '';
       const obs =
         `[Simulação Financiamento ${new Date().toLocaleDateString('pt-BR')}] ` +
@@ -225,14 +229,15 @@ export default function SimulacaoFinanciamento() {
         setSuccess(true);
       } catch {
         // Não bloqueia exibição dos resultados se lead falhar
-      } finally {
-        setSending(false);
       }
     }
 
     setTimeout(() => {
       document.getElementById('resultado')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
+    } finally {
+      setSending(false);
+    }
   }
 
   const inputCls =
@@ -447,11 +452,15 @@ export default function SimulacaoFinanciamento() {
             <button
               type="submit"
               disabled={sending}
-              className="w-full h-12 rounded-xl text-sm font-semibold uppercase tracking-[0.12em] transition-opacity disabled:opacity-70 flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-xl text-sm font-semibold uppercase tracking-[0.12em] transition-all disabled:opacity-80 flex items-center justify-center gap-2"
               style={{ backgroundColor: secondary, color: '#111827' }}
             >
-              <Calculator className="w-4 h-4" />
-              {sending ? 'Calculando...' : 'Simular Financiamento'}
+              {sending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Calculator className="w-4 h-4" />
+              )}
+              {sending ? 'Aguarde, enviando...' : 'Simular Financiamento'}
             </button>
 
             {success && (
@@ -478,6 +487,23 @@ export default function SimulacaoFinanciamento() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
+            {/* Banner de loading enquanto envia lead */}
+            <AnimatePresence>
+              {sending && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <Loader2 className="w-4 h-4 shrink-0 animate-spin text-amber-600" />
+                    <span>Registrando sua simulação, aguarde um momento...</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Resumo */}
             <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Resumo da simulação</p>
