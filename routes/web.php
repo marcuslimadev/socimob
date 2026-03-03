@@ -1,7 +1,10 @@
 <?php
 
-/** @var \Laravel\Lumen\Routing\Router $router */
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+
+// Laravel compatibility: define $router for legacy Lumen-style route definitions
+$router = app('router');
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -16,7 +19,7 @@ use Illuminate\Support\Facades\Http;
 $router->get('/api/health', function () use ($router) {
     return response()->json([
         'app' => 'SOCIMOB',
-        'version' => $router->app->version(),
+        'version' => app()->version(),
         'status' => 'online'
     ]);
 });
