@@ -8,6 +8,7 @@ use App\Services\TenantService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class TenantController extends Controller
@@ -116,7 +117,7 @@ class TenantController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $validated = $this->validate($request, [
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'domain' => 'required|string|max:255|unique:tenants,domain',
             'contact_email' => 'nullable|email|max:255',
@@ -161,7 +162,7 @@ class TenantController extends Controller
             return response()->json(['error' => 'Tenant not found'], 404);
         }
 
-        $validated = $this->validate($request, [
+        $validated = $request->validate([
             'name' => 'nullable|string|max:255',
             'domain' => 'nullable|string|max:255|unique:tenants,domain,' . $id,
             'contact_email' => 'nullable|email|max:255',
@@ -453,7 +454,7 @@ class TenantController extends Controller
         ]);
 
         if ($validator->fails()) {
-            \Log::warning('TenantAssociations validation failed', [
+            Log::warning('TenantAssociations validation failed', [
                 'tenant_id' => $id,
                 'errors' => $validator->errors()->toArray(),
                 'input' => $request->all(),
@@ -517,7 +518,7 @@ class TenantController extends Controller
                 DB::table('tenant_associations')->insert($rows);
             });
 
-            \Log::info('TenantAssociations updated successfully', [
+            Log::info('TenantAssociations updated successfully', [
                 'tenant_id' => $tenantId,
                 'associated_tenant_ids' => $targetIds,
             ]);
@@ -529,7 +530,7 @@ class TenantController extends Controller
                 'associated_tenant_ids' => $targetIds,
             ]);
         } catch (\Exception $e) {
-            \Log::error('TenantAssociations update failed', [
+            Log::error('TenantAssociations update failed', [
                 'tenant_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

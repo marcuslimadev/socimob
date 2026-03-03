@@ -8,6 +8,7 @@ $router = app('router');
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /*
 |--------------------------------------------------------------------------
@@ -122,7 +123,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
                 ]
             ]);
         } catch (\Exception $e) {
-            \Log::error('Erro ao carregar config do tenant', [
+            Log::error('Erro ao carregar config do tenant', [
                 'error' => $e->getMessage()
             ]);
             

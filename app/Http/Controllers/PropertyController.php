@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -639,14 +640,14 @@ class PropertyController extends Controller
         $tenantId = $this->resolveTenantId($request);
 
         if (!$tenantId) {
-            \Log::warning('Property store: No tenant context', [
+            Log::warning('Property store: No tenant context', [
                 'ip' => $request->ip(),
                 'user_id' => $this->resolveUserId($request),
             ]);
             return response()->json(['error' => 'No tenant context'], 400);
         }
 
-        \Log::info('Property store: Tenant validated', [
+        Log::info('Property store: Tenant validated', [
             'tenant_id' => $tenantId,
             'user_id' => $this->resolveUserId($request),
         ]);
@@ -713,7 +714,7 @@ class PropertyController extends Controller
             // ========== GERAR CÓDIGO AUTOMATICAMENTE ==========
             $codigoImovel = $this->generatePropertyCode($tenantId);
             
-            \Log::info('Property store: Generated code', [
+            Log::info('Property store: Generated code', [
                 'tenant_id' => $tenantId,
                 'codigo' => $codigoImovel,
             ]);
@@ -778,7 +779,7 @@ class PropertyController extends Controller
                         $imagens = array_merge($imagens, $uploadedUrls);
                     }
                 } catch (\Throwable $uploadError) {
-                    \Log::error('Property store: media upload failed, continuing without media', [
+                    Log::error('Property store: media upload failed, continuing without media', [
                         'tenant_id' => $tenantId,
                         'codigo' => $codigoImovel,
                         'error' => $uploadError->getMessage(),
@@ -805,7 +806,7 @@ class PropertyController extends Controller
             $data = $this->filterToExistingPropertyColumns($data);
             $droppedFields = array_values(array_diff(array_keys($rawData), array_keys($data)));
             if (!empty($droppedFields)) {
-                \Log::warning('Property store: dropped fields not present in schema', [
+                Log::warning('Property store: dropped fields not present in schema', [
                     'tenant_id' => $tenantId,
                     'fields' => $droppedFields,
                 ]);
@@ -815,7 +816,7 @@ class PropertyController extends Controller
             $property = Property::create($data);
             $selectedPortalTenantIds = $this->syncPropertyPortalTenantIds($property->id, (int) $tenantId, is_array($portalTenantIds) ? $portalTenantIds : []);
             
-            \Log::info('Property created', [
+            Log::info('Property created', [
                 'tenant_id' => $tenantId,
                 'property_id' => $property->id,
                 'codigo' => $codigoImovel,
@@ -832,7 +833,7 @@ class PropertyController extends Controller
                 'upload_warning' => $mediaUploadWarning,
             ], 201);
         } catch (\Throwable $e) {
-            \Log::error('Property store failed', [
+            Log::error('Property store failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -889,7 +890,7 @@ class PropertyController extends Controller
         $tenantId = $this->resolveTenantId($request);
 
         if (!$tenantId) {
-            \Log::warning('Property update: No tenant context', [
+            Log::warning('Property update: No tenant context', [
                 'property_id' => $id,
                 'ip' => $request->ip(),
                 'user_id' => $this->resolveUserId($request),
@@ -901,7 +902,7 @@ class PropertyController extends Controller
         $property = Property::where('tenant_id', $tenantId)->find($id);
 
         if (!$property) {
-            \Log::warning('Property update: Property not found or belongs to different tenant', [
+            Log::warning('Property update: Property not found or belongs to different tenant', [
                 'property_id' => $id,
                 'tenant_id' => $tenantId,
                 'user_id' => $this->resolveUserId($request),
@@ -909,7 +910,7 @@ class PropertyController extends Controller
             return response()->json(['error' => 'Property not found'], 404);
         }
 
-        \Log::info('Property update: Tenant validated', [
+        Log::info('Property update: Tenant validated', [
             'property_id' => $id,
             'tenant_id' => $tenantId,
             'codigo' => $property->codigo_imovel,
@@ -1040,7 +1041,7 @@ class PropertyController extends Controller
                         $imagens = array_merge($imagens, $uploadedUrls);
                     }
                 } catch (\Throwable $uploadError) {
-                    \Log::error('Property update: media upload failed, continuing without media', [
+                    Log::error('Property update: media upload failed, continuing without media', [
                         'tenant_id' => $tenantId,
                         'property_id' => $id,
                         'codigo' => $property->codigo_imovel,
@@ -1069,7 +1070,7 @@ class PropertyController extends Controller
             $data = $this->filterToExistingPropertyColumns($data);
             $droppedFields = array_values(array_diff(array_keys($rawData), array_keys($data)));
             if (!empty($droppedFields)) {
-                \Log::warning('Property update: dropped fields not present in schema', [
+                Log::warning('Property update: dropped fields not present in schema', [
                     'tenant_id' => $tenantId,
                     'property_id' => $id,
                     'fields' => $droppedFields,
@@ -1086,7 +1087,7 @@ class PropertyController extends Controller
                     : $this->getPropertyPortalTenantIds($property->id, (int) $tenantId)
             );
             
-            \Log::info('Property updated', [
+            Log::info('Property updated', [
                 'property_id' => $id,
                 'tenant_id' => $tenantId,
                 'codigo' => $property->codigo_imovel,
@@ -1104,7 +1105,7 @@ class PropertyController extends Controller
                 'upload_warning' => $mediaUploadWarning,
             ]);
         } catch (\Throwable $e) {
-            \Log::error('Property update failed', [
+            Log::error('Property update failed', [
                 'tenant_id' => $tenantId,
                 'property_id' => $id,
                 'error' => $e->getMessage(),
@@ -1347,7 +1348,7 @@ Regras:
             curl_close($ch);
 
             if ($httpCode !== 200 || !$response) {
-                \Log::warning('generateDescriptions: OpenAI failed, using fallback', [
+                Log::warning('generateDescriptions: OpenAI failed, using fallback', [
                     'tenant_id' => $tenantId,
                     'http_code' => $httpCode,
                     'response' => $response,
@@ -1374,7 +1375,7 @@ Regras:
                 ],
             ]);
         } catch (\Throwable $e) {
-            \Log::error('generateDescriptions error', [
+            Log::error('generateDescriptions error', [
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -1679,7 +1680,7 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
             curl_close($ch);
 
             if ($httpCode !== 200) {
-                \Log::error('OpenAI API Error: ' . $response);
+                Log::error('OpenAI API Error: ' . $response);
                 
                 // Fallback: criar descrição manual
                 $parts = [];
@@ -1711,7 +1712,7 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Error generating ad description: ' . $e->getMessage());
+            Log::error('Error generating ad description: ' . $e->getMessage());
             
             return response()->json([
                 'success' => false,
@@ -1771,7 +1772,7 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['error' => 'Imóvel não encontrado'], 404);
         } catch (\Exception $e) {
-            \Log::error('Erro ao enviar imóvel para Imobi Brasil', [
+            Log::error('Erro ao enviar imóvel para Imobi Brasil', [
                 'property_id' => $id,
                 'error' => $e->getMessage(),
             ]);
@@ -1848,7 +1849,7 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['error' => 'Imóvel não encontrado'], 404);
         } catch (\Exception $e) {
-            \Log::error('Erro ao atualizar imóvel no Imobi Brasil', [
+            Log::error('Erro ao atualizar imóvel no Imobi Brasil', [
                 'property_id' => $id,
                 'error' => $e->getMessage(),
             ]);
@@ -1952,7 +1953,7 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['error' => 'Imóvel não encontrado'], 404);
         } catch (\Exception $e) {
-            \Log::error('Erro ao enviar imagens para Imobi Brasil', [
+            Log::error('Erro ao enviar imagens para Imobi Brasil', [
                 'property_id' => $id,
                 'error' => $e->getMessage(),
             ]);

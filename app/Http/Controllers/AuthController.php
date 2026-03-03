@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Tenant;
 use App\Services\DomainService;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -74,7 +75,7 @@ class AuthController extends Controller
                 : $this->resolveTenantFromRequest($request);
             
             // CRITICAL DEBUG: Log tenant resolution
-            \Log::info('AuthController login tenant check', [
+            Log::info('AuthController login tenant check', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
                 'user_tenant_id' => $user->tenant_id,
@@ -86,7 +87,7 @@ class AuthController extends Controller
             ]);
 
             if (!$currentTenant || $currentTenant->id !== $user->tenant_id) {
-                \Log::warning('Login tenant mismatch - BLOCKED', [
+                Log::warning('Login tenant mismatch - BLOCKED', [
                     'user_id' => $user->id,
                     'user_tenant_id' => $user->tenant_id,
                     'current_tenant_id' => $currentTenant ? $currentTenant->id : null,

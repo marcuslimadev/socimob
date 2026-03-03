@@ -812,10 +812,10 @@ class PessoasController extends Controller
 
         if ($externalId) {
             // Update existing person
-            $result = ImobiBrasilService::updatePessoa($tenant, $externalId, $payload);
+            $result = ImobiBrasilService::updatePessoa($externalId, $payload, $tenant);
         } else {
             // Insert new person
-            $result = ImobiBrasilService::insertPessoa($tenant, $payload);
+            $result = ImobiBrasilService::insertPessoa($payload, $tenant);
             if ($result['success'] && !empty($result['result_set'])) {
                 $rs = $result['result_set'];
                 $newId = $rs['codigoPessoa'] ?? $rs['codigo'] ?? $rs['id'] ?? null;

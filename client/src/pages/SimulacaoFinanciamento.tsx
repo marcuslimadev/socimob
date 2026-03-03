@@ -516,12 +516,10 @@ export default function SimulacaoFinanciamento() {
                     <p className="text-xs text-slate-500">Amortização constante, juros menores no total</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: '1ª parcela',    value: fmtBRL(resultado.sac.primeira),    hi: true },
                     { label: 'Última parcela', value: fmtBRL(resultado.sac.ultima),     hi: false },
-                    { label: 'Total em juros', value: fmtBRL(resultado.sac.totalJuros), hi: false },
-                    { label: 'Total pago',     value: fmtBRL(resultado.sac.totalPago),  hi: false },
                   ].map(item => (
                     <div key={item.label} className={`rounded-2xl px-3 py-3 text-center ${item.hi ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50 border border-slate-100'}`}>
                       <p className={`text-base font-bold ${item.hi ? 'text-emerald-800' : 'text-slate-700'}`}>{item.value}</p>
@@ -541,11 +539,9 @@ export default function SimulacaoFinanciamento() {
                     <p className="text-xs text-slate-500">Parcela constante, maior previsibilidade</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   {[
                     { label: 'Parcela fixa',   value: fmtBRL(resultado.price.parcela),    hi: true },
-                    { label: 'Total em juros',  value: fmtBRL(resultado.price.totalJuros), hi: false },
-                    { label: 'Total pago',      value: fmtBRL(resultado.price.totalPago),  hi: false },
                   ].map(item => (
                     <div key={item.label} className={`rounded-2xl px-3 py-3 text-center ${item.hi ? 'bg-blue-50 border border-blue-100' : 'bg-slate-50 border border-slate-100'}`}>
                       <p className={`text-base font-bold ${item.hi ? 'text-blue-800' : 'text-slate-700'}`}>{item.value}</p>

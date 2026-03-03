@@ -535,7 +535,7 @@ class ConversasController extends Controller
     public function enviarMensagem(Request $request, $id)
     {
         try {
-            $this->validate($request, [
+            $request->validate([
                 'content' => 'required|string'
             ]);
             
@@ -793,7 +793,7 @@ class ConversasController extends Controller
                 ], 403);
             }
 
-            $this->validate($request, [
+            $request->validate([
                 'corretor_id' => 'nullable|integer'
             ]);
 
