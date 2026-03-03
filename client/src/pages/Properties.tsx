@@ -60,7 +60,7 @@ export default function Properties() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [itensPorPagina, setItensPorPagina] = useState(25);
+  const [itensPorPagina, setItensPorPagina] = useState(5);
   const [adsStatusMap, setAdsStatusMap] = useState<Record<string, AdsStatus>>({});
   const [previewId, setPreviewId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -590,93 +590,58 @@ export default function Properties() {
 
               {/* Tabela — desktop */}
               <div className="glass-panel rounded-2xl overflow-auto hidden md:block">
-                <table className="w-full min-w-[960px]">
+                <table className="w-full min-w-[720px]">
                   <thead className="sticky top-0 z-10 bg-card">
                     <tr className="border-b border-border">
-                      <th className="text-left p-3 text-xs text-muted-foreground w-16">Foto</th>
+                      {/* Coluna 1: Imóvel (foto + código + título) */}
                       <th
-                        className={thSort('codigo', null, 'text-left')}
-                        onClick={() => handleSort('codigo')}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          Código <SortIcon field="codigo" />
-                        </span>
-                      </th>
-                      <th
-                        className={thSort('referencia', null, 'text-left')}
-                        onClick={() => handleSort('referencia')}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          Referência <SortIcon field="referencia" />
-                        </span>
-                      </th>
-                      <th
-                        className={thSort('titulo', null, 'text-left')}
+                        className={thSort('titulo', null, 'text-left w-[34%]')}
                         onClick={() => handleSort('titulo')}
                       >
                         <span className="inline-flex items-center gap-1">
-                          Título <SortIcon field="titulo" />
+                          Imóvel <SortIcon field="titulo" />
                         </span>
                       </th>
+
+                      {/* Coluna 2: Características (tipo + finalidade + dorm + área) */}
                       <th
-                        className={thSort('tipo', null, 'text-left')}
+                        className={thSort('tipo', null, 'text-left w-[18%]')}
                         onClick={() => handleSort('tipo')}
                       >
                         <span className="inline-flex items-center gap-1">
-                          Tipo <SortIcon field="tipo" />
+                          Características <SortIcon field="tipo" />
                         </span>
                       </th>
+
+                      {/* Coluna 3: Preço */}
                       <th
-                        className={thSort('finalidade', null, 'text-left')}
-                        onClick={() => handleSort('finalidade')}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          Finalidade <SortIcon field="finalidade" />
-                        </span>
-                      </th>
-                      <th
-                        className={thSort('preco', null, 'text-left')}
+                        className={thSort('preco', null, 'text-right w-[14%]')}
                         onClick={() => handleSort('preco')}
                       >
-                        <span className="inline-flex items-center gap-1">
+                        <span className="inline-flex items-center justify-end gap-1">
                           Preço <SortIcon field="preco" />
                         </span>
                       </th>
+
+                      {/* Coluna 4: Localização + Inserido por */}
                       <th
-                        className={thSort('dormitorios', null, 'text-center')}
-                        onClick={() => handleSort('dormitorios')}
-                      >
-                        <span className="inline-flex items-center justify-center gap-1">
-                          Dorm. <SortIcon field="dormitorios" />
-                        </span>
-                      </th>
-                      <th
-                        className={thSort('area', null, 'text-left')}
-                        onClick={() => handleSort('area')}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          Área <SortIcon field="area" />
-                        </span>
-                      </th>
-                      <th
-                        className={thSort('localizacao', null, 'text-left')}
+                        className={thSort('localizacao', null, 'text-left w-[20%]')}
                         onClick={() => handleSort('localizacao')}
                       >
                         <span className="inline-flex items-center gap-1">
                           Localização <SortIcon field="localizacao" />
                         </span>
                       </th>
-                      <th className="text-left p-3 text-xs text-muted-foreground whitespace-nowrap">Inserido por</th>
-                      <th className="text-center p-3 text-xs text-muted-foreground whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1"><Globe size={11} /> Portal</span>
+
+                      {/* Coluna 5: Status (portal + destaque + anúncio) */}
+                      <th className="p-3 text-center text-xs text-muted-foreground whitespace-nowrap w-[10%]">
+                        Status
                       </th>
-                      <th className="text-center p-3 text-xs text-muted-foreground whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1"><Star size={11} /> Destaque</span>
+
+                      {/* Coluna 6: Ações — sticky */}
+                      <th className="sticky right-0 z-20 bg-card text-left p-3 text-xs text-muted-foreground shadow-[-4px_0_8px_rgba(0,0,0,0.08)] whitespace-nowrap">
+                        Ações
                       </th>
-                      <th className="text-center p-3 text-xs text-muted-foreground whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1"><Zap size={11} /> Anúncio</span>
-                      </th>
-                      <th className="sticky right-0 z-20 bg-card text-left p-3 text-xs text-muted-foreground shadow-[-4px_0_8px_rgba(0,0,0,0.08)]">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -685,106 +650,143 @@ export default function Properties() {
                         key={im.id}
                         className="border-b border-border/50 hover:bg-accent/30 transition-colors"
                       >
+                        {/* Coluna 1: Foto + Código/Ref + Título */}
                         <td className="p-3">
-                          {im.imagem ? (
-                            <img
-                              src={im.imagem}
-                              alt={im.titulo}
-                              className="w-14 h-10 object-cover rounded-lg"
-                            />
-                          ) : (
-                            <div className="w-14 h-10 rounded-lg bg-muted flex items-center justify-center text-base">
-                              🏢
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-3 text-sm text-muted-foreground font-mono cursor-pointer hover:text-foreground" title="Copiar código" onClick={() => copyText(im.codigo, 'Código')}>{im.codigo}</td>
-                        <td className="p-3 text-sm text-muted-foreground font-mono cursor-pointer hover:text-foreground" title="Copiar referência" onClick={() => copyText(im.referencia, 'Referência')}>{im.referencia}</td>
-                        <td className="p-3 text-sm font-medium max-w-[200px]">
-                          <span className="line-clamp-2">{im.titulo}</span>
-                        </td>
-                        <td className="p-3 text-sm">{tipoLabel(im.tipo)}</td>
-                        <td className="p-3">
-                          <span
-                            className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                              im.finalidade === 'venda'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-emerald-100 text-emerald-800'
-                            }`}
-                          >
-                            {im.finalidade === 'venda' ? 'Venda' : 'Aluguel'}
-                          </span>
-                        </td>
-                        <td className="p-3 text-sm whitespace-nowrap">R$ {formatMoney(im.preco)}</td>
-                        <td className="p-3 text-sm text-center">
-                          {im.dormitorios > 0 ? im.dormitorios : '-'}
-                        </td>
-                        <td className="p-3 text-sm whitespace-nowrap">
-                          {im.area > 0 ? `${im.area}m²` : '-'}
-                        </td>
-                        <td className="p-3 text-sm text-muted-foreground">{im.localizacao}</td>
-                        <td className="p-3 text-sm text-muted-foreground whitespace-nowrap">{im.inserido_por_nome || <span className="text-xs text-muted-foreground/50">—</span>}</td>
-
-                        {/* Toggle Portal */}
-                        <td className="p-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggle(im.id, 'exibir', im.exibir)}
-                            disabled={togglingId === im.id}
-                            title={
-                              im.exibir
-                                ? 'Publicado — clique para ocultar'
-                                : 'Oculto — clique para publicar'
-                            }
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60 ${
-                              im.exibir
-                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                : 'bg-muted text-muted-foreground hover:bg-accent'
-                            }`}
-                          >
-                            <Globe size={11} />
-                            {im.exibir ? 'Sim' : 'Não'}
-                          </button>
-                        </td>
-
-                        {/* Toggle Destaque */}
-                        <td className="p-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggle(im.id, 'destaque', im.destaque)}
-                            disabled={togglingId === im.id}
-                            title={
-                              im.destaque
-                                ? 'Em destaque — clique para remover'
-                                : 'Sem destaque — clique para destacar'
-                            }
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-60 ${
-                              im.destaque
-                                ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                                : 'bg-muted text-muted-foreground hover:bg-accent'
-                            }`}
-                          >
-                            <Star size={11} />
-                            {im.destaque ? 'Sim' : 'Não'}
-                          </button>
-                        </td>
-
-                        {/* Ads Status */}
-                        <td className="p-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => setLocation(`/properties/${im.id}/editar`)}
-                            title="Gerenciar anúncios"
-                            className="inline-flex items-center justify-center gap-1"
-                          >
-                            <AdsStatusBadge id={im.id} />
-                            {!adsStatusMap[im.id] && (
-                              <Zap size={13} className="text-muted-foreground/30" />
+                          <div className="flex items-center gap-3">
+                            {im.imagem ? (
+                              <img
+                                src={im.imagem}
+                                alt={im.titulo}
+                                className="shrink-0 w-16 h-12 object-cover rounded-xl"
+                              />
+                            ) : (
+                              <div className="shrink-0 w-16 h-12 rounded-xl bg-muted flex items-center justify-center text-xl">
+                                🏢
+                              </div>
                             )}
-                          </button>
+                            <div className="min-w-0">
+                              <p
+                                className="text-sm font-medium leading-snug line-clamp-2 mb-0.5"
+                                title={im.titulo}
+                              >
+                                {im.titulo}
+                              </p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span
+                                  className="font-mono text-xs text-muted-foreground cursor-pointer hover:text-foreground"
+                                  title="Copiar código"
+                                  onClick={() => copyText(im.codigo, 'Código')}
+                                >
+                                  {im.codigo}
+                                </span>
+                                {im.referencia !== '-' && (
+                                  <span
+                                    className="font-mono text-xs text-muted-foreground/60 cursor-pointer hover:text-muted-foreground"
+                                    title="Copiar referência"
+                                    onClick={() => copyText(im.referencia, 'Referência')}
+                                  >
+                                    · {im.referencia}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </td>
 
-                        {/* Ações */}
+                        {/* Coluna 2: Tipo + Finalidade + Dorm + Área */}
+                        <td className="p-3">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs text-foreground/80">{tipoLabel(im.tipo)}</span>
+                              <span
+                                className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  im.finalidade === 'venda'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-emerald-100 text-emerald-800'
+                                }`}
+                              >
+                                {im.finalidade === 'venda' ? 'Venda' : 'Aluguel'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              {im.dormitorios > 0 && (
+                                <span>{im.dormitorios} dorm.</span>
+                              )}
+                              {im.dormitorios > 0 && im.area > 0 && <span className="opacity-40">·</span>}
+                              {im.area > 0 && <span>{im.area} m²</span>}
+                              {im.dormitorios === 0 && im.area === 0 && <span className="opacity-40">—</span>}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Coluna 3: Preço */}
+                        <td className="p-3 text-sm font-semibold whitespace-nowrap text-right">
+                          R$ {formatMoney(im.preco)}
+                        </td>
+
+                        {/* Coluna 4: Localização + Inserido por */}
+                        <td className="p-3">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm text-foreground/90 leading-snug">
+                              {im.localizacao}
+                            </span>
+                            {im.inserido_por_nome && (
+                              <span className="text-xs text-muted-foreground">
+                                por {im.inserido_por_nome}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Coluna 5: Status agrupado (portal + destaque + ads) */}
+                        <td className="p-3">
+                          <div className="flex flex-col items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleToggle(im.id, 'exibir', im.exibir)}
+                              disabled={togglingId === im.id}
+                              title={im.exibir ? 'Publicado — clique para ocultar' : 'Oculto — clique para publicar'}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium w-full justify-center transition-colors disabled:opacity-60 ${
+                                im.exibir
+                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                  : 'bg-muted text-muted-foreground hover:bg-accent'
+                              }`}
+                            >
+                              <Globe size={10} />
+                              {im.exibir ? 'Portal' : 'Oculto'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleToggle(im.id, 'destaque', im.destaque)}
+                              disabled={togglingId === im.id}
+                              title={im.destaque ? 'Em destaque — clique para remover' : 'Sem destaque — clique para destacar'}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium w-full justify-center transition-colors disabled:opacity-60 ${
+                                im.destaque
+                                  ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                  : 'bg-muted text-muted-foreground hover:bg-accent'
+                              }`}
+                            >
+                              <Star size={10} />
+                              {im.destaque ? 'Destaque' : 'Normal'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setLocation(`/properties/${im.id}/editar`)}
+                              title="Gerenciar anúncios"
+                              className="w-full flex items-center justify-center"
+                            >
+                              {adsStatusMap[im.id] ? (
+                                <AdsStatusBadge id={im.id} />
+                              ) : (
+                                <Zap size={12} className="text-muted-foreground/30" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Coluna 6: Ações */}
                         <td className="sticky right-0 bg-card p-3 shadow-[-4px_0_8px_rgba(0,0,0,0.06)]">
                           <div className="flex items-center gap-1">
                             <button
@@ -798,7 +800,7 @@ export default function Properties() {
                             <button
                               type="button"
                               onClick={() => setLocation(`/properties/${im.id}/editar`)}
-                              title="Editar (wizard)"
+                              title="Editar"
                               className="p-1.5 rounded-lg hover:bg-accent transition-colors"
                             >
                               <Pencil size={15} />
@@ -835,6 +837,7 @@ export default function Properties() {
                     onChange={(e) => { setItensPorPagina(Number(e.target.value)); setPagina(1); }}
                     className="bg-background border border-border rounded-lg px-2 py-1 text-xs"
                   >
+                    <option value={5}>5</option>
                     <option value={10}>10</option>
                     <option value={25}>25</option>
                     <option value={50}>50</option>

@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
@@ -165,7 +166,7 @@ class PortalController extends Controller
         try {
             PropertyLikesTablesManager::ensurePropertyLikesTableExists();
         } catch (\Throwable $e) {
-            \Log::warning('PortalController: nao foi possivel garantir tabela property_likes', [
+            Log::warning('PortalController: nao foi possivel garantir tabela property_likes', [
                 'error' => $e->getMessage(),
             ]);
         }
@@ -402,7 +403,7 @@ class PortalController extends Controller
         try {
             PropertyLikesTablesManager::ensurePropertyLikesTableExists();
         } catch (\Throwable $e) {
-            \Log::warning('PortalController: nao foi possivel garantir tabela property_likes', [
+            Log::warning('PortalController: nao foi possivel garantir tabela property_likes', [
                 'error' => $e->getMessage(),
             ]);
         }
@@ -607,7 +608,7 @@ class PortalController extends Controller
                 'message' => 'Lead criado com sucesso!',
             ]);
         } catch (\Exception $e) {
-            \Log::error('[Portal] Erro ao criar lead via chat', [
+            Log::error('[Portal] Erro ao criar lead via chat', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -720,7 +721,7 @@ class PortalController extends Controller
                 'message' => 'Solicitacao de avaliacao registrada com sucesso!',
             ]);
         } catch (\Exception $e) {
-            \Log::error('[Portal] Erro ao criar solicitacao de avaliacao', [
+            Log::error('[Portal] Erro ao criar solicitacao de avaliacao', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
