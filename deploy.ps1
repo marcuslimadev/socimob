@@ -101,7 +101,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 cd $DEPLOY_PATH && \
 echo '=== GIT FETCH + RESET ===' && \
 git fetch origin master && \
-git reset --hard origin/master && \
+git reset --hard FETCH_HEAD && \
 echo '' && \
 echo '=== COMPOSER INSTALL ===' && \
 /opt/alt/php83/usr/bin/php `$(which composer) install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -5 && \
