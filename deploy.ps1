@@ -104,7 +104,7 @@ git fetch origin master && \
 git reset --hard origin/master && \
 echo '' && \
 echo '=== COMPOSER INSTALL ===' && \
-composer install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -5 && \
+/opt/alt/php83/usr/bin/php `$(which composer) install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -5 && \
 echo '' && \
 echo '=== BACKUP ARQUIVOS ANTIGOS ===' && \
 rm -f index.html.bak && \
