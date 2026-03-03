@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Ads;
 
 use App\Http\Controllers\Controller;
-use App\Models\Ads\{AdsConnection, AdsAccount, AdsCatalog, AdsCampaign, AdsEntitlement, AdsAuditLog};
-use App\Services\Ads\{AdsEntitlementService, TokenEncryptionService};
+use App\Models\Ads\{AdsConnection, AdsAccount, AdsCampaign, AdsAuditLog};
+use App\Services\Ads\AdsEntitlementService;
 use App\Services\Ads\Providers\ProviderAdapterFactory;
 use Illuminate\Http\{Request, JsonResponse, Response};
 use Illuminate\Support\Facades\{Cache, Log};
@@ -25,7 +25,6 @@ class AdsConnectionController extends Controller
     public function __construct(
         private AdsEntitlementService $entitlement,
         private ProviderAdapterFactory $factory,
-        private TokenEncryptionService $enc,
     ) {}
 
     /**
@@ -59,7 +58,7 @@ class AdsConnectionController extends Controller
             Log::error('[AdsConnectionController] startConnect error', [
                 'tenant_id' => $tenantId, 'provider' => $provider, 'error' => $e->getMessage()
             ]);
-            return response()->json(['success' => false, 'error' => $e->getMessage()], $e->getStatusCode() ?? 500);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500);
         }
     }
 

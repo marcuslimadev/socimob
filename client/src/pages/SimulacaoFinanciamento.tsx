@@ -1,691 +1,618 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft,
-  Calculator,
-  CheckCircle2,
-  ExternalLink,
-  Loader2,
-  MessageCircle,
-  TrendingDown,
-  TrendingUp,
+  ArrowLeft, ArrowRight, Calculator, CheckCircle2,
+  ExternalLink, Loader2, MessageCircle, TrendingDown, TrendingUp,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
-interface TenantConfig extends TenantBranding {
-  contact_phone?: string;
+interface TenantConfig extends TenantBranding { contact_phone?: string; }
+
+const CAIXA_URL = 'https://simuladorhabitacao.caixa.gov.br/simulacao';
+
+const UFS = [
+  'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA',
+  'MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN',
+  'RO','RR','RS','SC','SE','SP','TO',
+];
+
+const OBJETIVOS = [
+  { value: 'novo',       label: 'Aquisição de Imóvel Novo',   desc: 'Comprar um imóvel que nunca foi usado' },
+  { value: 'usado',      label: 'Aquisição de Imóvel Usado',  desc: 'Comprar um imóvel que já teve outro dono' },
+  { value: 'terreno',    label: 'Aquisição de Terreno',       desc: 'Comprar um lote para construir' },
+  { value: 'construcao', label: 'Construção',                 desc: 'Construir um imóvel do zero' },
+  { value: 'reforma',    label: 'Reforma e/ou Ampliação',     desc: 'Reformar ou aumentar seu imóvel atual' },
+  { value: 'emprestimo', label: 'Empréstimo com Garantia',    desc: 'Usar seu imóvel como garantia de empréstimo' },
+];
+
+// ---------- Formatadores ----------
+function fmtCPF(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return d.slice(0, 3) + '.' + d.slice(3);
+  if (d.length <= 9) return d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6);
+  return d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-' + d.slice(9);
 }
-
-// ---------- Cálculos de financiamento ----------
-
-/** SAC — parcelas decrescentes, amortização constante */
-function calcSAC(principal: number, monthlyRate: number, months: number) {
-  const amortizacao = principal / months;
-  let balance = principal;
-  let totalPago = 0;
-  const primeira = amortizacao + balance * monthlyRate;
-  for (let i = 0; i < months; i++) {
-    totalPago += amortizacao + balance * monthlyRate;
-    balance -= amortizacao;
-  }
-  const ultima = amortizacao + amortizacao * monthlyRate;
-  return { primeira, ultima, totalPago, totalJuros: totalPago - principal };
+function fmtDate(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return d.slice(0, 2) + '/' + d.slice(2);
+  return d.slice(0, 2) + '/' + d.slice(2, 4) + '/' + d.slice(4);
 }
-
-/** PRICE — parcelas fixas (sistema francês) */
-function calcPRICE(principal: number, monthlyRate: number, months: number) {
-  const pmt =
-    (principal * (monthlyRate * Math.pow(1 + monthlyRate, months))) /
-    (Math.pow(1 + monthlyRate, months) - 1);
-  const totalPago = pmt * months;
-  return { parcela: pmt, totalPago, totalJuros: totalPago - principal };
+function fmtPhone(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 7) return '(' + d.slice(0, 2) + ') ' + d.slice(2);
+  return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
 }
-
-// ---------- Utilitários ----------
-
-function fmtBRL(value: number) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-/** Formata string de dígitos como moeda BRL digitada (ex: "35000000" → "R$ 350.000,00") */
 function parseBRL(raw: string): string {
   const digits = raw.replace(/\D/g, '');
   if (!digits) return '';
   const num = parseInt(digits, 10) / 100;
-  return num.toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-  });
+  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+}
+function brlToNum(v: string) {
+  return parseFloat(v.replace(/R\$\s?/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+}
+function fmtBRL(n: number) {
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 });
 }
 
-/** Converte string BRL formatada para número */
-function brlToNumber(value: string): number {
-  const cleaned = value.replace(/R\$\s?/g, '').replace(/\./g, '').replace(',', '.');
-  return parseFloat(cleaned) || 0;
+// ---------- Cálculos ----------
+function calcSAC(p: number, r: number, n: number) {
+  const amort = p / n;
+  let bal = p, total = 0;
+  const primeira = amort + bal * r;
+  for (let i = 0; i < n; i++) { total += amort + bal * r; bal -= amort; }
+  const ultima = amort + amort * r;
+  return { primeira, ultima, totalPago: total, totalJuros: total - p };
 }
-
-/** Formata telefone BR */
-function fmtPhone(value: string) {
-  const d = value.replace(/\D/g, '').slice(0, 11);
-  if (d.length <= 2) return d;
-  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
-  if (d.length <= 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7, 11)}`;
+function calcPRICE(p: number, r: number, n: number) {
+  const pmt = p * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  return { parcela: pmt, totalPago: pmt * n, totalJuros: pmt * n - p };
 }
-
-// ---------- Opções de seleção ----------
-
-const TAXAS = [
-  { label: '8,00% a.a. (SFH mínimo)', value: '8.00' },
-  { label: '8,16% a.a. (Caixa SFH padrão)', value: '8.16' },
-  { label: '9,00% a.a.', value: '9.00' },
-  { label: '9,50% a.a.', value: '9.50' },
-  { label: '10,00% a.a.', value: '10.00' },
-  { label: '10,50% a.a.', value: '10.50' },
-  { label: '11,00% a.a.', value: '11.00' },
-  { label: '12,00% a.a.', value: '12.00' },
-];
-
-const PRAZOS = [10, 15, 20, 25, 30, 35].map((v) => ({
-  label: `${v} anos (${v * 12} meses)`,
-  value: String(v),
-}));
 
 // ---------- Tipos ----------
-
-interface FormData {
-  nome: string;
-  telefone: string;
-  email: string;
-  valor_imovel: string;
-  entrada: string;
-  prazo: string;
-  taxa: string;
-  renda_mensal: string;
+interface Pessoal {
+  nome: string; cpf: string; nascimento: string;
+  celular: string; email: string; renda: string;
+  fgts3anos: boolean | null; multiplosCompradores: boolean | null;
+  aceite: boolean;
+}
+interface Imovel {
+  tipo: 'residencial' | 'comercial' | '';
+  objetivo: string; valor: string; entrada: string;
+  prazo: string; uf: string; cidade: string;
+  subsidio: boolean | null; outroImovel: boolean | null;
 }
 
-interface SimResult {
-  principal: number;
-  entradaPct: number;
-  meses: number;
-  taxaAnual: number;
-  sac: { primeira: number; ultima: number; totalPago: number; totalJuros: number };
-  price: { parcela: number; totalPago: number; totalJuros: number };
-  rendaMinSac: number;
-  rendaMinPrice: number;
-}
-
-// ---------- Componente principal ----------
-
+// ---------- Componente ----------
 export default function SimulacaoFinanciamento() {
   const [, navigate] = useLocation();
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
-  const [form, setForm] = useState<FormData>({
-    nome: '',
-    telefone: '',
-    email: '',
-    valor_imovel: '',
-    entrada: '',
-    prazo: '30',
-    taxa: '10.00',
-    renda_mensal: '',
-  });
-  const [result, setResult] = useState<SimResult | null>(null);
-  const [leadSent, setLeadSent] = useState(false);
-  const [sending, setSending] = useState(false);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+
+  const [pessoal, setPessoal] = useState<Pessoal>({
+    nome: '', cpf: '', nascimento: '', celular: '', email: '',
+    renda: '', fgts3anos: null, multiplosCompradores: null, aceite: false,
+  });
+  const [imovel, setImovel] = useState<Imovel>({
+    tipo: '', objetivo: '', valor: '', entrada: '',
+    prazo: '360', uf: '', cidade: '', subsidio: null, outroImovel: null,
+  });
 
   useEffect(() => {
     fetchTenantBranding().then((b) => setTenant((b as TenantConfig) || null));
   }, []);
 
-  const primary = tenant?.primary_color || '#0f172a';
+  const primary   = tenant?.primary_color   || '#0f172a';
   const secondary = tenant?.secondary_color || '#c39a66';
 
-  const whatsappLink = useMemo(() => {
+  const whatsappLink = (() => {
     const phone = tenant?.contact_phone?.replace(/\D/g, '');
     if (!phone) return '';
+    const valorNum = brlToNum(imovel.valor);
     const msg = encodeURIComponent(
-      `Olá! Fiz uma simulação de financiamento no portal da ${tenant?.name || 'imobiliária'} e gostaria de ajuda para encontrar o imóvel ideal.`,
+      'Olá! Acabei de simular um financiamento no portal da ' + (tenant?.name || 'imobiliária') +
+      (valorNum > 0 ? '. Imóvel: ' + fmtBRL(valorNum) : '') +
+      '. Gostaria de assessoria para dar os próximos passos.'
     );
-    return `https://wa.me/${phone}?text=${msg}`;
-  }, [tenant]);
+    return 'https://wa.me/' + phone + '?text=' + msg;
+  })();
 
-  function handleField(field: keyof FormData, value: string) {
-    setForm((f) => ({ ...f, [field]: value }));
-  }
-
-  function handleCurrency(field: 'valor_imovel' | 'entrada' | 'renda_mensal', raw: string) {
-    setForm((f) => ({ ...f, [field]: parseBRL(raw) }));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-
-    const valorImovel = brlToNumber(form.valor_imovel);
-    const entrada = brlToNumber(form.entrada);
-    const rendaMensal = brlToNumber(form.renda_mensal);
-    const prazo = parseInt(form.prazo, 10);
-    const taxa = parseFloat(form.taxa);
-
-    // Validações
-    if (!form.nome.trim()) { setError('Informe seu nome completo.'); return; }
-    if (form.telefone.replace(/\D/g, '').length < 10) { setError('Informe um telefone válido com DDD.'); return; }
-    if (valorImovel < 30_000) { setError('Valor do imóvel deve ser maior que R$ 30.000.'); return; }
-    if (entrada < 0 || entrada >= valorImovel) { setError('Valor de entrada inválido.'); return; }
-    const entradaPct = (entrada / valorImovel) * 100;
-    if (entradaPct < 5) { setError('A entrada mínima é de 5% do valor do imóvel.'); return; }
-
-    // Ativar loading imediatamente após validações passarem
-    setSending(true);
-    try {
-
-    const principal = valorImovel - entrada;
-    const months = prazo * 12;
-    const monthlyRate = Math.pow(1 + taxa / 100, 1 / 12) - 1;
-
-    const sac = calcSAC(principal, monthlyRate, months);
-    const price = calcPRICE(principal, monthlyRate, months);
-
-    const simResult: SimResult = {
-      principal,
-      entradaPct,
-      meses: months,
-      taxaAnual: taxa,
-      sac,
-      price,
-      rendaMinSac: sac.primeira / 0.3,
+  // ------- Resultado calculado -------
+  const resultado = (() => {
+    const valorImovel = brlToNum(imovel.valor);
+    const entrada     = brlToNum(imovel.entrada);
+    if (valorImovel < 30_000 || entrada < 0 || entrada >= valorImovel) return null;
+    const principal  = valorImovel - entrada;
+    const meses      = parseInt(imovel.prazo, 10) || 360;
+    const renda      = brlToNum(pessoal.renda);
+    const mcmv = pessoal.fgts3anos === true && imovel.tipo === 'residencial' &&
+                 ['novo', 'usado'].includes(imovel.objetivo) && renda > 0 && renda <= 8_000;
+    const taxaAnual   = mcmv ? 7.93 : 10.5;
+    const monthlyRate = Math.pow(1 + taxaAnual / 100, 1 / 12) - 1;
+    const sac   = calcSAC(principal, monthlyRate, meses);
+    const price = calcPRICE(principal, monthlyRate, meses);
+    return {
+      valorImovel, entrada, principal,
+      entradaPct: (entrada / valorImovel) * 100,
+      meses, taxaAnual, mcmv, sac, price,
+      rendaMinSac:   sac.primeira  / 0.3,
       rendaMinPrice: price.parcela / 0.3,
     };
+  })();
 
-    setResult(simResult);
-
-    // Captura de lead automática
-    if (!leadSent) {
-      const rendaInfo = rendaMensal > 0 ? ` | Renda informada: ${fmtBRL(rendaMensal)}` : '';
-      const obs =
-        `[Simulação Financiamento ${new Date().toLocaleDateString('pt-BR')}] ` +
-        `Imóvel: ${fmtBRL(valorImovel)} | Entrada: ${fmtBRL(entrada)} (${entradaPct.toFixed(1)}%) | ` +
-        `Financiado: ${fmtBRL(principal)} | Prazo: ${prazo} anos | Taxa: ${taxa}% a.a.${rendaInfo} | ` +
-        `1ª parcela SAC: ${fmtBRL(sac.primeira)} | Parcela PRICE: ${fmtBRL(price.parcela)}`;
-
-      try {
-        await api.post('/portal/simulacao-lead', {
-          nome: form.nome.trim(),
-          telefone: form.telefone.replace(/\D/g, ''),
-          email: form.email.trim() || null,
-          observacoes: obs,
-        });
-        setLeadSent(true);
-        setSuccess(true);
-      } catch {
-        // Não bloqueia exibição dos resultados se lead falhar
-      }
-    }
-
-    setTimeout(() => {
-      document.getElementById('resultado')?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-    } finally {
-      setSending(false);
-    }
+  function setPF<K extends keyof Pessoal>(k: K, v: Pessoal[K]) {
+    setPessoal(f => ({ ...f, [k]: v }));
+  }
+  function setIM<K extends keyof Imovel>(k: K, v: Imovel[K]) {
+    setImovel(f => ({ ...f, [k]: v }));
   }
 
-  const inputCls =
-    'w-full h-11 rounded-xl border border-black/15 bg-slate-50 px-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-slate-400 transition-colors';
+  async function goToStep2(e: React.FormEvent) {
+    e.preventDefault(); setError('');
+    if (!pessoal.nome.trim())                              { setError('Informe seu nome.'); return; }
+    if (pessoal.cpf.replace(/\D/g, '').length < 11)       { setError('CPF inválido.'); return; }
+    if (pessoal.nascimento.replace(/\D/g, '').length < 8) { setError('Data de nascimento inválida.'); return; }
+    if (pessoal.celular.replace(/\D/g, '').length < 10)   { setError('Celular inválido.'); return; }
+    if (!pessoal.renda)                                    { setError('Informe sua renda mensal.'); return; }
+    if (pessoal.fgts3anos === null)                        { setError('Responda sobre o FGTS.'); return; }
+    if (pessoal.multiplosCompradores === null)              { setError('Responda sobre compradores.'); return; }
+    if (!pessoal.aceite)                                   { setError('Aceite a política de privacidade para continuar.'); return; }
+    setStep(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function goToStep3(e: React.FormEvent) {
+    e.preventDefault(); setError('');
+    if (!imovel.tipo)                                      { setError('Selecione o tipo de imóvel.'); return; }
+    if (!imovel.objetivo)                                  { setError('Selecione o objetivo.'); return; }
+    if (brlToNum(imovel.valor) < 30_000)                   { setError('Valor do imóvel deve ser maior que R$ 30.000.'); return; }
+    const ep = brlToNum(imovel.entrada) / brlToNum(imovel.valor) * 100;
+    if (ep < 5)                                            { setError('Entrada mínima de 5% do valor do imóvel.'); return; }
+    if (!imovel.uf)                                        { setError('Selecione o estado (UF).'); return; }
+    if (!imovel.cidade.trim())                             { setError('Informe a cidade.'); return; }
+    if (imovel.subsidio === null)                          { setError('Responda sobre subsídio anterior.'); return; }
+    if (imovel.outroImovel === null)                       { setError('Responda sobre outro imóvel.'); return; }
+
+    setSaving(true);
+    try {
+      await api.post('/portal/simulacao-lead', {
+        nome:     pessoal.nome.trim(),
+        telefone: pessoal.celular.replace(/\D/g, ''),
+        email:    pessoal.email.trim() || null,
+        observacoes:
+          '[Simulação Financiamento ' + new Date().toLocaleDateString('pt-BR') + '] ' +
+          'Imóvel: ' + fmtBRL(brlToNum(imovel.valor)) +
+          ' | Entrada: ' + fmtBRL(brlToNum(imovel.entrada)) +
+          ' | Renda: ' + fmtBRL(brlToNum(pessoal.renda)) +
+          ' | Tipo: ' + imovel.tipo + ' | Objetivo: ' + imovel.objetivo +
+          ' | UF: ' + imovel.uf + ' | Cidade: ' + imovel.cidade,
+      });
+    } catch { /* não bloqueia */ } finally { setSaving(false); }
+
+    setStep(3);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  const inputCls = 'w-full h-11 rounded-xl border border-black/15 bg-slate-50 px-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-slate-400 transition-colors';
   const labelCls = 'block text-xs font-medium uppercase tracking-[0.12em] text-slate-600 mb-1';
+  const radioBtnCls = (active: boolean) =>
+    'flex-1 flex flex-col items-center justify-center gap-1 rounded-xl border-2 px-3 py-3 text-xs font-medium cursor-pointer transition-all text-center ' +
+    (active ? 'border-slate-700 bg-slate-700 text-white' : 'border-black/10 bg-slate-50 text-slate-700 hover:border-slate-400');
+
+  const stepLabels = ['Dados pessoais', 'Dados do imóvel', 'Resultado'];
 
   return (
-    <div className="portal-public min-h-screen" style={{ backgroundColor: '#f4efe8' }}>
+    <div className="portal-public min-h-screen flex flex-col" style={{ backgroundColor: '#f4efe8' }}>
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b111f]/92 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 lg:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => navigate('/portal')}
+              onClick={() => { if (step === 1) navigate('/portal'); else setStep((s) => (s - 1) as 1 | 2 | 3); }}
               className="w-9 h-9 rounded-full border border-white/30 text-white flex items-center justify-center hover:bg-white/10 transition-colors"
-              aria-label="Voltar ao portal"
+              aria-label="Voltar"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
             {tenant?.logo_url || tenant?.logo ? (
-              <img
-                src={tenant.logo_url || tenant.logo}
-                alt={tenant?.name || 'Logo'}
-                className="w-9 h-9 rounded-full bg-white object-contain p-1"
-              />
+              <img src={tenant.logo_url || tenant.logo} alt={tenant?.name || 'Logo'} className="w-9 h-9 rounded-full bg-white object-contain p-1" />
             ) : (
               <div className="w-9 h-9 rounded-full bg-white/10 border border-white/30 flex items-center justify-center text-white text-sm font-semibold">
                 {(tenant?.name || 'IM').slice(0, 2).toUpperCase()}
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm tracking-[0.15em] uppercase text-white truncate">
-                {tenant?.name || 'Imobiliária'}
-              </p>
-              <p className="text-[11px] text-white/65 uppercase tracking-[0.12em]">
-                Simulador de Financiamento
-              </p>
+              <p className="text-sm tracking-[0.15em] uppercase text-white truncate">{tenant?.name || 'Imobiliária'}</p>
+              <p className="text-[11px] text-white/65 uppercase tracking-[0.12em]">Simulador de Financiamento</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => navigate('/login')}
-              className="hidden sm:inline-flex rounded-full border border-white/30 px-4 py-2 text-xs uppercase tracking-[0.12em] text-white hover:bg-white/10 transition-colors"
-            >
-              Entrar
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/portal')}
-              className="rounded-full border border-white/30 px-4 py-2 text-xs uppercase tracking-[0.12em] text-white hover:bg-white/10 transition-colors"
-            >
+            <button type="button" onClick={() => navigate('/portal')} className="rounded-full border border-white/30 px-4 py-2 text-xs uppercase tracking-[0.12em] text-white hover:bg-white/10 transition-colors">
               Ver Imóveis
             </button>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section
-        className="relative overflow-hidden py-12 lg:py-16"
-        style={{ background: `linear-gradient(115deg, ${primary}f0 0%, #0a0d16 100%)` }}
-      >
+      {/* Hero + Steps */}
+      <section className="relative overflow-hidden py-10 lg:py-14" style={{ background: `linear-gradient(115deg, ${primary}f0 0%, #0a0d16 100%)` }}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.12),transparent_40%)]" />
         <div className="relative mx-auto max-w-3xl px-4 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-white/85 mb-4">
             <Calculator className="w-3 h-3" />
-            Simulador de Financiamento
+            Simulador de Financiamento Imobiliário
           </div>
-          <h1 className="text-3xl md:text-5xl leading-tight text-white">
-            Simule seu financiamento imobiliário
-          </h1>
-          <p className="mt-3 text-sm md:text-base text-white/75 max-w-xl mx-auto">
-            Calcule as parcelas pelos sistemas SAC e PRICE, veja a renda mínima necessária e
-            receba assessoria personalizada da nossa equipe.
+          <h1 className="text-2xl md:text-4xl leading-tight text-white">Simule seu financiamento imobiliário</h1>
+          <p className="mt-2 text-sm text-white/70 max-w-lg mx-auto">
+            Preencha os mesmos dados do simulador da Caixa Econômica Federal e veja uma estimativa completa.
           </p>
+          {/* Steps indicator */}
+          <div className="mt-6 flex items-center justify-center">
+            {stepLabels.map((label, i) => {
+              const n = (i + 1) as 1 | 2 | 3;
+              const done = step > n;
+              const active = step === n;
+              return (
+                <div key={n} className="flex items-center">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${done ? 'bg-emerald-400 text-white' : active ? 'bg-white text-slate-900' : 'bg-white/20 text-white/60'}`}>
+                      {done ? <CheckCircle2 className="w-4 h-4" /> : n}
+                    </div>
+                    <p className={`mt-1 text-[10px] uppercase tracking-wider ${active ? 'text-white' : 'text-white/50'}`}>{label}</p>
+                  </div>
+                  {i < stepLabels.length - 1 && (
+                    <div className={`w-12 h-px mb-4 mx-1 ${step > n ? 'bg-emerald-400' : 'bg-white/20'}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
-      {/* Formulário */}
-      <section className="mx-auto max-w-3xl px-4 lg:px-8 py-10">
-        <motion.div
-          className="rounded-3xl border border-black/10 bg-white p-6 lg:p-8 shadow-[0_16px_42px_rgba(15,23,42,0.10)]"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Seus dados</p>
-          <p className="mt-1 text-sm text-slate-500">
-            Preencha para receber os resultados e para nossa equipe entrar em contato e
-            assessorá-lo na compra do seu imóvel.
-          </p>
+      <div className="mx-auto w-full max-w-2xl px-4 lg:px-8 py-8 flex-1">
+        <AnimatePresence mode="wait">
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-            {/* Dados pessoais */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className={labelCls}>Nome completo *</label>
-                <input
-                  type="text"
-                  value={form.nome}
-                  onChange={(e) => handleField('nome', e.target.value)}
-                  placeholder="Seu nome completo"
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>WhatsApp / Telefone *</label>
-                <input
-                  type="tel"
-                  value={form.telefone}
-                  onChange={(e) => handleField('telefone', fmtPhone(e.target.value))}
-                  placeholder="(31) 99999-9999"
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>E-mail (opcional)</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => handleField('email', e.target.value)}
-                  placeholder="seu@email.com"
-                  className={inputCls}
-                />
-              </div>
-            </div>
+          {/* ══ ETAPA 1: Dados Pessoais ══ */}
+          {step === 1 && (
+            <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+              <form onSubmit={goToStep2} className="space-y-5">
+                <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)] space-y-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 font-medium">Dados Pessoais</p>
 
-            <hr className="border-black/8" />
-
-            {/* Dados do financiamento */}
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-4">
-                Dados do financiamento
-              </p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className={labelCls}>Valor do imóvel *</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={form.valor_imovel}
-                    onChange={(e) => handleCurrency('valor_imovel', e.target.value)}
-                    placeholder="R$ 350.000,00"
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Valor da entrada *</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={form.entrada}
-                    onChange={(e) => handleCurrency('entrada', e.target.value)}
-                    placeholder="R$ 70.000,00"
-                    className={inputCls}
-                  />
-                  <p className="mt-1 text-xs text-slate-400">Mínimo de 5% do valor do imóvel.</p>
-                </div>
-                <div>
-                  <label className={labelCls}>Prazo do financiamento *</label>
-                  <select
-                    value={form.prazo}
-                    onChange={(e) => handleField('prazo', e.target.value)}
-                    className={inputCls}
-                  >
-                    {PRAZOS.map((p) => (
-                      <option key={p.value} value={p.value}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelCls}>Taxa de juros ao ano *</label>
-                  <select
-                    value={form.taxa}
-                    onChange={(e) => handleField('taxa', e.target.value)}
-                    className={inputCls}
-                  >
-                    {TAXAS.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="sm:col-span-2">
-                  <label className={labelCls}>Renda mensal bruta (opcional)</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={form.renda_mensal}
-                    onChange={(e) => handleCurrency('renda_mensal', e.target.value)}
-                    placeholder="R$ 8.000,00"
-                    className={inputCls}
-                  />
-                  <p className="mt-1 text-xs text-slate-400">
-                    Usada para verificar se a parcela é compatível com sua renda (regra dos 30%).
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={sending}
-              className="w-full h-12 rounded-xl text-sm font-semibold uppercase tracking-[0.12em] transition-all disabled:opacity-80 flex items-center justify-center gap-2"
-              style={{ backgroundColor: secondary, color: '#111827' }}
-            >
-              {sending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Calculator className="w-4 h-4" />
-              )}
-              {sending ? 'Aguarde, enviando...' : 'Simular Financiamento'}
-            </button>
-
-            {success && (
-              <motion.p
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center text-sm text-emerald-700 flex items-center justify-center gap-1.5"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                Dados recebidos! Nossa equipe entrará em contato em breve.
-              </motion.p>
-            )}
-          </form>
-        </motion.div>
-      </section>
-
-      {/* Resultados */}
-      <AnimatePresence>
-        {result && (
-          <motion.section
-            id="resultado"
-            className="mx-auto max-w-3xl px-4 lg:px-8 pb-16 space-y-5"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            {/* Banner de loading enquanto envia lead */}
-            <AnimatePresence>
-              {sending && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    <Loader2 className="w-4 h-4 shrink-0 animate-spin text-amber-600" />
-                    <span>Registrando sua simulação, aguarde um momento...</span>
+                  <div>
+                    <label className={labelCls}>Nome completo *</label>
+                    <input type="text" value={pessoal.nome} onChange={e => setPF('nome', e.target.value)} placeholder="Seu nome completo" className={inputCls} />
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
-            {/* Resumo */}
-            <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Resumo da simulação</p>
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { label: 'Valor financiado', value: fmtBRL(result.principal) },
-                  { label: '% de entrada', value: `${result.entradaPct.toFixed(1)}%` },
-                  { label: 'Prazo', value: `${result.meses / 12} anos` },
-                  { label: 'Taxa', value: `${result.taxaAnual}% a.a.` },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 text-center"
-                  >
-                    <p className="text-base font-semibold text-slate-900">{item.value}</p>
-                    <p className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-slate-500">
-                      {item.label}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className={labelCls}>Qual seu CPF? *</label>
+                      <input type="text" inputMode="numeric" value={pessoal.cpf} onChange={e => setPF('cpf', fmtCPF(e.target.value))} placeholder="000.000.000-00" className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Quando você nasceu? *</label>
+                      <input type="text" inputMode="numeric" value={pessoal.nascimento} onChange={e => setPF('nascimento', fmtDate(e.target.value))} placeholder="DD/MM/AAAA" className={inputCls} />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className={labelCls}>Número de celular *</label>
+                      <input type="tel" value={pessoal.celular} onChange={e => setPF('celular', fmtPhone(e.target.value))} placeholder="(92) 99999-9999" className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>E-mail (opcional)</label>
+                      <input type="email" value={pessoal.email} onChange={e => setPF('email', e.target.value)} placeholder="seu@email.com" className={inputCls} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={labelCls}>Qual é sua renda bruta familiar mensal? *</label>
+                    <input type="text" inputMode="numeric" value={pessoal.renda} onChange={e => setPF('renda', parseBRL(e.target.value))} placeholder="R$ 0,00" className={inputCls} />
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)] space-y-5">
+                  <div className="flex items-start gap-2">
+                    <span className="text-base mt-0.5">💡</span>
+                    <p className="text-sm font-medium text-slate-700">Algumas perguntas extras — suas respostas ajudam a encontrar as melhores condições</p>
+                  </div>
+
+                  <div>
+                    <p className={labelCls}>Você tem pelo menos 3 anos de trabalho com depósito de FGTS? *</p>
+                    <p className="text-xs text-slate-400 mb-3">Essa informação pode garantir condições especiais para você</p>
+                    <div className="flex gap-3">
+                      <button type="button" onClick={() => setPF('fgts3anos', true)}  className={radioBtnCls(pessoal.fgts3anos === true)}>Sim, tenho 3 anos ou mais</button>
+                      <button type="button" onClick={() => setPF('fgts3anos', false)} className={radioBtnCls(pessoal.fgts3anos === false)}>Não, tenho menos de 3 anos</button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className={labelCls}>Possui mais de um comprador e/ou dependente na proposta? *</p>
+                    <div className="flex gap-3 mt-2">
+                      <button type="button" onClick={() => setPF('multiplosCompradores', true)}  className={radioBtnCls(pessoal.multiplosCompradores === true)}>Sim, tenho!</button>
+                      <button type="button" onClick={() => setPF('multiplosCompradores', false)} className={radioBtnCls(pessoal.multiplosCompradores === false)}>Não, só eu</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+                  <label className="flex items-start gap-3 cursor-pointer" onClick={() => setPF('aceite', !pessoal.aceite)}>
+                    <div className={`mt-0.5 w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${pessoal.aceite ? 'border-slate-700 bg-slate-700' : 'border-slate-300'}`}>
+                      {pessoal.aceite && <CheckCircle2 className="w-3 h-3 text-white" />}
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Autorizo a coleta e armazenamento dos meus dados pessoais para que a imobiliária possa entrar em contato,
+                      enviar notificações e oferecer assessoria sobre financiamento imobiliário. *
                     </p>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  </label>
+                </div>
 
-            {/* SAC */}
-            <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center">
-                  <TrendingDown className="w-5 h-5 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900">
-                    Sistema SAC — Parcelas Decrescentes
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Amortização constante. Primeira parcela maior, mas total de juros menor.
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-2xl bg-emerald-50 border border-emerald-100 px-3 py-3 text-center">
-                  <p className="text-base font-bold text-emerald-800">
-                    {fmtBRL(result.sac.primeira)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] uppercase text-emerald-700">1ª parcela</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-3 text-center">
-                  <p className="text-base font-semibold text-slate-700">
-                    {fmtBRL(result.sac.ultima)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] uppercase text-slate-500">Última parcela</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-3 text-center">
-                  <p className="text-base font-semibold text-slate-700">
-                    {fmtBRL(result.sac.totalJuros)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] uppercase text-slate-500">Total em juros</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-3 text-center">
-                  <p className="text-base font-semibold text-slate-700">
-                    {fmtBRL(result.sac.totalPago)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] uppercase text-slate-500">Total pago</p>
-                </div>
-              </div>
-              <p className="mt-3 text-xs text-slate-500">
-                Renda mínima sugerida (30%):{' '}
-                <span className="font-semibold text-slate-700">{fmtBRL(result.rendaMinSac)}</span>
-                {brlToNumber(form.renda_mensal) > 0 &&
-                  (brlToNumber(form.renda_mensal) >= result.rendaMinSac ? (
-                    <span className="ml-1.5 text-emerald-600 font-medium">
-                      ✓ Sua renda é compatível
-                    </span>
-                  ) : (
-                    <span className="ml-1.5 text-amber-600 font-medium">
-                      ⚠ Renda abaixo do mínimo sugerido
-                    </span>
-                  ))}
-              </p>
-            </div>
+                {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">{error}</p>}
 
-            {/* PRICE */}
-            <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900">Tabela PRICE — Parcelas Fixas</p>
-                  <p className="text-xs text-slate-500">
-                    Parcela constante durante todo o contrato. Previsibilidade no orçamento.
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="rounded-2xl bg-blue-50 border border-blue-100 px-3 py-3 text-center">
-                  <p className="text-base font-bold text-blue-800">
-                    {fmtBRL(result.price.parcela)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] uppercase text-blue-700">Parcela fixa</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-3 text-center">
-                  <p className="text-base font-semibold text-slate-700">
-                    {fmtBRL(result.price.totalJuros)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] uppercase text-slate-500">Total em juros</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-3 text-center">
-                  <p className="text-base font-semibold text-slate-700">
-                    {fmtBRL(result.price.totalPago)}
-                  </p>
-                  <p className="mt-0.5 text-[10px] uppercase text-slate-500">Total pago</p>
-                </div>
-              </div>
-              <p className="mt-3 text-xs text-slate-500">
-                Renda mínima sugerida (30%):{' '}
-                <span className="font-semibold text-slate-700">
-                  {fmtBRL(result.rendaMinPrice)}
-                </span>
-                {brlToNumber(form.renda_mensal) > 0 &&
-                  (brlToNumber(form.renda_mensal) >= result.rendaMinPrice ? (
-                    <span className="ml-1.5 text-emerald-600 font-medium">
-                      ✓ Sua renda é compatível
-                    </span>
-                  ) : (
-                    <span className="ml-1.5 text-amber-600 font-medium">
-                      ⚠ Renda abaixo do mínimo sugerido
-                    </span>
-                  ))}
-              </p>
-            </div>
-
-            {/* CTA */}
-            <div
-              className="rounded-3xl p-6 text-white shadow-[0_14px_40px_rgba(15,23,42,0.22)]"
-              style={{ backgroundColor: primary }}
-            >
-              <p className="text-xs uppercase tracking-[0.2em] text-white/70">Próximos passos</p>
-              <h3 className="mt-2 text-xl">Fale com um especialista</h3>
-              <p className="mt-2 text-sm text-white/80">
-                Nossa equipe pode ajudá-lo a encontrar o imóvel ideal, preparar a documentação e
-                intermediar o processo de financiamento com o banco.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                {whatsappLink && (
-                  <a
-                    href={whatsappLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold"
-                    style={{ backgroundColor: secondary, color: '#111827' }}
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    Falar no WhatsApp
-                  </a>
-                )}
-                <a
-                  href="https://simuladorhabitacao.caixa.gov.br/home"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/30 px-5 py-2.5 text-sm text-white hover:bg-white/10 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Simulação oficial — Caixa
-                </a>
-                <button
-                  type="button"
-                  onClick={() => navigate('/portal')}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/30 px-5 py-2.5 text-sm text-white hover:bg-white/10 transition-colors"
-                >
-                  Ver imóveis disponíveis
+                <button type="submit" className="w-full h-12 rounded-xl text-sm font-semibold uppercase tracking-[0.12em] flex items-center justify-center gap-2 transition-all" style={{ backgroundColor: secondary, color: '#111827' }}>
+                  Próximo: Dados do Imóvel <ArrowRight className="w-4 h-4" />
                 </button>
+              </form>
+            </motion.div>
+          )}
+
+          {/* ══ ETAPA 2: Dados do Imóvel ══ */}
+          {step === 2 && (
+            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+              <form onSubmit={goToStep3} className="space-y-5">
+
+                <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)] space-y-5">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 font-medium">Tipo de Imóvel</p>
+
+                  <div>
+                    <p className={labelCls}>Para qual tipo de imóvel você deseja obter financiamento? *</p>
+                    <div className="flex gap-3 mt-2">
+                      <button type="button" onClick={() => setIM('tipo', 'residencial')} className={radioBtnCls(imovel.tipo === 'residencial')}>
+                        <span className="text-base">🏠</span>
+                        <span>Residencial</span>
+                        <span className="text-[10px] font-normal opacity-70">Casa, apto, terreno</span>
+                      </button>
+                      <button type="button" onClick={() => setIM('tipo', 'comercial')} className={radioBtnCls(imovel.tipo === 'comercial')}>
+                        <span className="text-base">🏢</span>
+                        <span>Comercial</span>
+                        <span className="text-[10px] font-normal opacity-70">Sala, loja, negócio</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className={labelCls}>Qual é o seu objetivo? *</p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 mt-2">
+                      {OBJETIVOS.map(o => (
+                        <button key={o.value} type="button" onClick={() => setIM('objetivo', o.value)}
+                          className={`rounded-xl border-2 px-3 py-2.5 text-left text-xs transition-all ${imovel.objetivo === o.value ? 'border-slate-700 bg-slate-700 text-white' : 'border-black/10 bg-slate-50 text-slate-700 hover:border-slate-400'}`}>
+                          <p className="font-semibold leading-tight">{o.label}</p>
+                          <p className="mt-0.5 opacity-70 leading-tight">{o.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)] space-y-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 font-medium">Valores</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className={labelCls}>Qual o valor do imóvel? *</label>
+                      <input type="text" inputMode="numeric" value={imovel.valor} onChange={e => setIM('valor', parseBRL(e.target.value))} placeholder="R$ 0,00" className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Valor de entrada *</label>
+                      <input type="text" inputMode="numeric" value={imovel.entrada} onChange={e => setIM('entrada', parseBRL(e.target.value))} placeholder="R$ 0,00" className={inputCls} />
+                      <p className="mt-1 text-xs text-slate-400">Mínimo de 5% do valor do imóvel</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Prazo desejado</label>
+                    <select value={imovel.prazo} onChange={e => setIM('prazo', e.target.value)} className={inputCls}>
+                      {[10, 15, 20, 25, 30, 35].map(v => (
+                        <option key={v} value={String(v * 12)}>{v} anos ({v * 12} meses)</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)] space-y-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 font-medium">Localização</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className={labelCls}>UF *</label>
+                      <select value={imovel.uf} onChange={e => setIM('uf', e.target.value)} className={inputCls}>
+                        <option value="">Selecione</option>
+                        {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Cidade *</label>
+                      <input type="text" value={imovel.cidade} onChange={e => setIM('cidade', e.target.value)} placeholder="Nome da cidade" className={inputCls} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)] space-y-5">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 font-medium">Mais algumas informações</p>
+
+                  <div>
+                    <p className={labelCls}>Já recebeu algum subsídio do governo (FGTS/União) a partir de maio de 2005? *</p>
+                    <div className="flex gap-3 mt-2">
+                      <button type="button" onClick={() => setIM('subsidio', true)}  className={radioBtnCls(imovel.subsidio === true)}>Sim</button>
+                      <button type="button" onClick={() => setIM('subsidio', false)} className={radioBtnCls(imovel.subsidio === false)}>Não</button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className={labelCls}>Possui outro imóvel na mesma cidade? *</p>
+                    <div className="flex gap-3 mt-2">
+                      <button type="button" onClick={() => setIM('outroImovel', true)}  className={radioBtnCls(imovel.outroImovel === true)}>Sim, tenho!</button>
+                      <button type="button" onClick={() => setIM('outroImovel', false)} className={radioBtnCls(imovel.outroImovel === false)}>Não tenho</button>
+                    </div>
+                  </div>
+                </div>
+
+                {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">{error}</p>}
+
+                <button type="submit" disabled={saving} className="w-full h-12 rounded-xl text-sm font-semibold uppercase tracking-[0.12em] flex items-center justify-center gap-2 transition-all disabled:opacity-70" style={{ backgroundColor: secondary, color: '#111827' }}>
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calculator className="w-4 h-4" />}
+                  {saving ? 'Calculando...' : 'Ver Resultado'}
+                </button>
+              </form>
+            </motion.div>
+          )}
+
+          {/* ══ ETAPA 3: Resultado ══ */}
+          {step === 3 && resultado && (
+            <motion.div key="step3" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="space-y-5">
+
+              <div className="flex items-center gap-2 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span>Dados registrados! Nossa equipe entrará em contato, <strong>{pessoal.nome.split(' ')[0]}</strong>.</span>
               </div>
-              <p className="mt-5 text-xs text-white/45 leading-relaxed">
-                * Esta simulação é apenas uma estimativa educacional. Os valores reais dependem de
-                análise bancária, seguros obrigatórios (MIP e DFI), taxa de administração e
-                atualização pelo índice TR/IPCA. Consulte a Caixa Econômica Federal ou seu banco
-                para uma simulação oficial.
-              </p>
-            </div>
-          </motion.section>
-        )}
-      </AnimatePresence>
+
+              {/* Resumo */}
+              <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Resumo da simulação</p>
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Valor do imóvel',  value: fmtBRL(resultado.valorImovel) },
+                    { label: 'Valor financiado',  value: fmtBRL(resultado.principal) },
+                    { label: 'Entrada',           value: resultado.entradaPct.toFixed(1) + '%' },
+                    { label: 'Prazo',             value: (resultado.meses / 12) + ' anos' },
+                  ].map(item => (
+                    <div key={item.label} className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 text-center">
+                      <p className="text-base font-semibold text-slate-900">{item.value}</p>
+                      <p className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-slate-500">{item.label}</p>
+                    </div>
+                  ))}
+                </div>
+                {resultado.mcmv && (
+                  <div className="mt-3 flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-100 px-3 py-2">
+                    <span className="text-sm">🏠</span>
+                    <p className="text-xs text-blue-800">Você pode ser elegível ao <strong>Programa Minha Casa Minha Vida</strong> — taxa estimada de {resultado.taxaAnual}% a.a.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* SAC */}
+              <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center"><TrendingDown className="w-5 h-5 text-emerald-600" /></div>
+                  <div>
+                    <p className="font-semibold text-slate-900">SAC — Parcelas Decrescentes</p>
+                    <p className="text-xs text-slate-500">Amortização constante, juros menores no total</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: '1ª parcela',    value: fmtBRL(resultado.sac.primeira),    hi: true },
+                    { label: 'Última parcela', value: fmtBRL(resultado.sac.ultima),     hi: false },
+                    { label: 'Total em juros', value: fmtBRL(resultado.sac.totalJuros), hi: false },
+                    { label: 'Total pago',     value: fmtBRL(resultado.sac.totalPago),  hi: false },
+                  ].map(item => (
+                    <div key={item.label} className={`rounded-2xl px-3 py-3 text-center ${item.hi ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50 border border-slate-100'}`}>
+                      <p className={`text-base font-bold ${item.hi ? 'text-emerald-800' : 'text-slate-700'}`}>{item.value}</p>
+                      <p className={`mt-0.5 text-[10px] uppercase ${item.hi ? 'text-emerald-700' : 'text-slate-500'}`}>{item.label}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-slate-500">Renda mínima sugerida (30%): <span className="font-semibold text-slate-700">{fmtBRL(resultado.rendaMinSac)}</span></p>
+              </div>
+
+              {/* PRICE */}
+              <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center"><TrendingUp className="w-5 h-5 text-blue-600" /></div>
+                  <div>
+                    <p className="font-semibold text-slate-900">PRICE — Parcelas Fixas</p>
+                    <p className="text-xs text-slate-500">Parcela constante, maior previsibilidade</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[
+                    { label: 'Parcela fixa',   value: fmtBRL(resultado.price.parcela),    hi: true },
+                    { label: 'Total em juros',  value: fmtBRL(resultado.price.totalJuros), hi: false },
+                    { label: 'Total pago',      value: fmtBRL(resultado.price.totalPago),  hi: false },
+                  ].map(item => (
+                    <div key={item.label} className={`rounded-2xl px-3 py-3 text-center ${item.hi ? 'bg-blue-50 border border-blue-100' : 'bg-slate-50 border border-slate-100'}`}>
+                      <p className={`text-base font-bold ${item.hi ? 'text-blue-800' : 'text-slate-700'}`}>{item.value}</p>
+                      <p className={`mt-0.5 text-[10px] uppercase ${item.hi ? 'text-blue-700' : 'text-slate-500'}`}>{item.label}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-slate-500">Renda mínima sugerida (30%): <span className="font-semibold text-slate-700">{fmtBRL(resultado.rendaMinPrice)}</span></p>
+              </div>
+
+              {/* CTA Caixa */}
+              <div className="rounded-3xl p-6 text-white" style={{ backgroundColor: primary }}>
+                <p className="text-xs uppercase tracking-[0.2em] text-white/70">Quer a simulação oficial?</p>
+                <h3 className="mt-2 text-xl font-semibold">Confirme no Simulador da Caixa</h3>
+                <p className="mt-2 text-sm text-white/80">
+                  Esta é uma estimativa. Para valores oficiais com seguros, TR e condições reais de crédito, acesse o simulador da Caixa
+                  e use os mesmos dados que você preencheu aqui.
+                </p>
+
+                {/* Dados para o usuário copiar/conferir */}
+                <div className="mt-4 rounded-2xl bg-white/10 border border-white/20 p-4 space-y-1">
+                  <p className="text-xs uppercase tracking-wider text-white/60 mb-2">Seus dados para preencher na Caixa</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                    <span className="text-white/60 text-xs">CPF:</span>              <span className="font-mono text-xs text-white">{pessoal.cpf}</span>
+                    <span className="text-white/60 text-xs">Nascimento:</span>       <span className="font-mono text-xs text-white">{pessoal.nascimento}</span>
+                    <span className="text-white/60 text-xs">Celular:</span>          <span className="font-mono text-xs text-white">{pessoal.celular}</span>
+                    <span className="text-white/60 text-xs">Renda mensal:</span>     <span className="font-mono text-xs text-white">{pessoal.renda}</span>
+                    <span className="text-white/60 text-xs">Valor do imóvel:</span>  <span className="font-mono text-xs text-white">{imovel.valor}</span>
+                    <span className="text-white/60 text-xs">Valor de entrada:</span> <span className="font-mono text-xs text-white">{imovel.entrada}</span>
+                    <span className="text-white/60 text-xs">UF / Cidade:</span>      <span className="font-mono text-xs text-white">{imovel.uf} / {imovel.cidade}</span>
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <a href={CAIXA_URL} target="_blank" rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold"
+                    style={{ backgroundColor: secondary, color: '#111827' }}>
+                    <ExternalLink className="w-4 h-4" />
+                    Simular no Site da Caixa
+                  </a>
+                  {whatsappLink && (
+                    <a href={whatsappLink} target="_blank" rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full border border-white/30 px-5 py-2.5 text-sm text-white hover:bg-white/10 transition-colors">
+                      <MessageCircle className="w-4 h-4" />
+                      Falar com Corretor
+                    </a>
+                  )}
+                  <button type="button" onClick={() => navigate('/portal')}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/30 px-5 py-2.5 text-sm text-white hover:bg-white/10 transition-colors">
+                    Ver Imóveis
+                  </button>
+                </div>
+
+                <p className="mt-4 text-xs text-white/40 leading-relaxed">
+                  * Estimativa baseada nas fórmulas SAC/PRICE. Valores reais incluem seguros (MIP/DFI), taxa de administração e correção pela TR/IPCA. Consulte a Caixa Econômica Federal para simulação oficial.
+                </p>
+              </div>
+
+              <button type="button" onClick={() => { setStep(1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="w-full h-11 rounded-xl border border-black/15 text-sm text-slate-600 hover:bg-white transition-colors">
+                Fazer nova simulação
+              </button>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
