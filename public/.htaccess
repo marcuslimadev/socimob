@@ -1,3 +1,6 @@
+# Use PHP 8.3 for this domain
+AddHandler application/x-httpd-php83 .php
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
@@ -23,9 +26,9 @@
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # Backend routes go to Lumen
-    RewriteCond %{REQUEST_URI} ^/(api|api-public|webhook|github|debug|test|db-test|migrate-now-please|sync) [NC]
-    RewriteRule ^ index.php [L]
+    # Backend routes go to Laravel
+    RewriteCond %{REQUEST_URI} ^/(api|api-public|webhook|webhooks|github|debug|test|db-test|migrate-now-please|sync) [NC]
+    RewriteRule ^(.*)$ public/index.php [L]
 
     # SPA fallback for React routes
     RewriteRule ^ index.html [L]
