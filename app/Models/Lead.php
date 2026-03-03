@@ -6,6 +6,32 @@ use App\Models\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property int|null $tenant_id
+ * @property string|null $nome
+ * @property string|null $email
+ * @property string|null $telefone
+ * @property string|null $whatsapp
+ * @property string|null $whatsapp_name
+ * @property string|null $status
+ * @property string|null $classificacao
+ * @property string|null $observacoes
+ * @property int|null $user_id
+ * @property int|null $pessoa_id
+ * @property int|null $corretor_id
+ * @property float|null $budget_min
+ * @property float|null $budget_max
+ * @property string|null $localizacao
+ * @property int|null $quartos
+ * @property int|null $suites
+ * @property int|null $garagem
+ * @property string|null $cpf
+ * @property string|null $state
+ * @property \Carbon\Carbon|null $criado_at
+ * @property \Carbon\Carbon|null $updated_at
+ * @mixin \Illuminate\Database\Eloquent\Builder
+ */
 class Lead extends Model
 {
     use HasFactory, BelongsToTenant;
