@@ -103,6 +103,9 @@ echo '=== GIT FETCH + RESET ===' && \
 git fetch origin master && \
 git reset --hard origin/master && \
 echo '' && \
+echo '=== COMPOSER INSTALL ===' && \
+composer install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -5 && \
+echo '' && \
 echo '=== BACKUP ARQUIVOS ANTIGOS ===' && \
 rm -f index.html.bak && \
 test -f index.html && cp index.html index.html.bak || echo 'Sem index.html para backup' && \
