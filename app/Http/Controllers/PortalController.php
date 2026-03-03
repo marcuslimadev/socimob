@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Mail\NewClientInterestMail;
@@ -472,7 +471,7 @@ class PortalController extends Controller
                 DB::table('leads')
                     ->where('id', $lead->id)
                     ->update([
-                        'observacoes' => ($lead->observacoes ? $lead->observacoes . "\n\n" : '') . $leadData['observacoes'],
+                        'observacoes' => ($lead->observacoes ? $lead->observacoes . "" : '') . $leadData['observacoes'],
                         'ultima_interacao' => now(),
                     ]);
                 $leadId = $lead->id;
@@ -593,15 +592,15 @@ class PortalController extends Controller
 
                 if ($notifyBrokerWhatsApp && isset($corretor->whatsapp) && $corretor->whatsapp) {
                     try {
-                        $message = "Novo interesse em imóvel!\n\n";
-                        $message .= "Cliente: {$leadData['nome']}\n";
+                        $message = "Novo interesse em imóvel!";
+                        $message .= "Cliente: {$leadData['nome']}";
                         if (!empty($leadData['telefone'])) {
-                            $message .= "Telefone: {$leadData['telefone']}\n";
+                            $message .= "Telefone: {$leadData['telefone']}";
                         }
-                        $message .= "\nImóvel: {$property->titulo}\n";
-                        $message .= "Código: {$property->codigo}\n";
-                        $message .= "Score de conversão: {$matchScore}%\n";
-                        $message .= "\nAcesse o CRM para mais detalhes.";
+                        $message .= "Imóvel: {$property->titulo}";
+                        $message .= "Código: {$property->codigo}";
+                        $message .= "Score de conversão: {$matchScore}%";
+                        $message .= "Acesse o CRM para mais detalhes.";
 
                         $this->twilioService->sendMessage($corretor->whatsapp, $message);
                         Log::info('WhatsApp de interesse enviado ao corretor', ['corretor_id' => $corretor->id]);

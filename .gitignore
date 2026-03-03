@@ -1,158 +1,23 @@
-# Dependencies
-**/node_modules
-.pnpm-store/
-
-# Build outputs (commitamos o build para produção)
-# dist/           # ← COMENTADO: build é commitado para deploy
-# build/          # ← COMENTADO: build é commitado para deploy
-# *.dist
-
-# Environment variables
+/.phpunit.cache
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# nyc test coverage
-.nyc_output
-
-# Dependency directories
-jspm_packages/
-
-# TypeScript cache
-*.tsbuildinfo
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# Next.js build output
-.next
-
-# Nuxt.js build / generate output
-.nuxt
-
-# Gatsby files
-.cache/
-
-# Storybook build outputs
-.out
-.storybook-out
-
-# Temporary folders
-tmp/
-temp/
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# PHP vendor directory
-vendor/
-
-# Storage (logs, cache, uploads)
-storage/framework/cache/*
-storage/framework/sessions/*
-storage/framework/views/*
-storage/logs/*
-!storage/framework/cache/.gitkeep
-!storage/framework/sessions/.gitkeep
-!storage/framework/views/.gitkeep
-!storage/logs/.gitkeep
-
-# Downloaded assets
-ethereal/
-html5up-*.zip
-.env_prod_fixed
-
-# Test/Debug scripts (root level)
-add_corretor_enum.php
-check_*.php
-clear_cache.php
-clear_opcache.php
-criar_lead_*.php
-curl_test.php
-debug_*.php
-delete_marcus_leads.php
-diagnose_404.php
-gerar_token.php
-importar_imoveis_reais.php
-quick_create_user.php
-read_prod_logs.php
-reset_senha.php
-send_test_email.php
-setup_exclusiva_tenant.php
-sync_exclusiva_configs.php
-temp_fix*.php
-test_*.php
-test_*.sh
-testar_api_portal.php
-teste_*.php
-twilio_message_status.php
-update_tenant_*.php
-update_token_and_test.php
-verificar_imoveis.php
-verify_*.ps1
-fix_*.sql
-nul
-
-# Manus debug logs
-.manus-logs/
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/auth.json
+/.fleet
+/.idea
+/.nova
+/.vscode
+/.zed

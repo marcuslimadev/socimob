@@ -1,8 +1,8 @@
 <?php
-
 namespace App\Http\Controllers\Portal;
-
 use App\Http\Controllers\Controller;
+
+
 use App\Models\CobrancaContrato;
 use App\Models\ContratoLocacao;
 use App\Models\DocumentoFiscal;

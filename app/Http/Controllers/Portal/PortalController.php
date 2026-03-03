@@ -1,8 +1,8 @@
 <?php
-
 namespace App\Http\Controllers\Portal;
-
 use App\Http\Controllers\Controller;
+
+
 use App\Models\Tenant;
 use App\Models\Property;
 use App\Models\PropertyEvaluation;
@@ -568,7 +568,7 @@ class PortalController extends Controller
                 // Update existing lead
                 if ($request->interesse) {
                     $obs = $existingLead->observacoes ?? '';
-                    $obs .= ($obs ? "\n" : '') . "[Chat Portal " . now()->format('d/m/Y H:i') . "] " . $request->interesse;
+                    $obs .= ($obs ? "" : '') . "[Chat Portal " . now()->format('d/m/Y H:i') . "] " . $request->interesse;
                     $existingLead->observacoes = $obs;
                 }
                 if ($request->email && !$existingLead->email) {
@@ -666,7 +666,7 @@ class PortalController extends Controller
 
             if ($existingLead) {
                 $obs = $existingLead->observacoes ?? '';
-                $obs .= ($obs ? "\n" : '') . "[Avaliacao Portal " . now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
+                $obs .= ($obs ? "" : '') . "[Avaliacao Portal " . now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
                 if ($request->endereco) $obs .= " - Endereco: {$request->endereco}";
                 if ($request->bairro) $obs .= ", {$request->bairro}";
                 $existingLead->observacoes = $obs;

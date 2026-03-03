@@ -12,47 +12,47 @@
 
 $router->group(['prefix' => 'api/portal', 'middleware' => 'resolve-tenant'], function () use ($router) {
     // Auth do portal cliente
-    $router->post('/auth/register', 'Portal\\ClientAuthController@register');
-    $router->post('/auth/login', 'Portal\\ClientAuthController@login');
-    $router->get('/auth/me', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ClientAuthController@me']);
+    $router->post('/auth/register', 'App\Http\Controllers\Portal\\ClientAuthController@register');
+    $router->post('/auth/login', 'App\Http\Controllers\Portal\\ClientAuthController@login');
+    $router->get('/auth/me', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ClientAuthController@me']);
     
     // Configurações do tenant (público)
-    $router->get('/config', 'Portal\PortalController@getConfig');
+    $router->get('/config', 'App\Http\Controllers\Portal\PortalController@getConfig');
     
     // Listar imóveis disponíveis (público)
-    $router->get('/imoveis', 'Portal\PortalController@getImoveis');
+    $router->get('/imoveis', 'App\Http\Controllers\Portal\PortalController@getImoveis');
     
     // Detalhes de um imóvel (público)
-    $router->get('/imoveis/{id}', 'Portal\PortalController@getImovel');
+    $router->get('/imoveis/{id}', 'App\Http\Controllers\Portal\PortalController@getImovel');
     
     // Registrar interesse/lead (público)
-    $router->post('/interesse', 'Portal\PortalController@registrarInteresse');
+    $router->post('/interesse', 'App\Http\Controllers\Portal\PortalController@registrarInteresse');
 
     // Agendar visita (público)
-    $router->post('/visitas', 'Portal\\VisitasController@agendar');
+    $router->post('/visitas', 'App\Http\Controllers\Portal\\VisitasController@agendar');
 
     // Perfil (autenticado)
-    $router->get('/profile', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ProfileController@show']);
-    $router->put('/profile', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ProfileController@update']);
+    $router->get('/profile', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ProfileController@show']);
+    $router->put('/profile', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ProfileController@update']);
 
     // Likes (autenticado)
-    $router->get('/likes', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\LikesController@list']);
-    $router->post('/likes/{propertyId}', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\LikesController@like']);
+    $router->get('/likes', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\LikesController@list']);
+    $router->post('/likes/{propertyId}', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\LikesController@like']);
 
     // Chat (autenticado)
-    $router->post('/chat/start', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChatController@start']);
-    $router->get('/chat/{id}', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChatController@show']);
-    $router->get('/chat/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChatController@mensagens']);
-    $router->post('/chat/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChatController@send']);
+    $router->post('/chat/start', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChatController@start']);
+    $router->get('/chat/{id}', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChatController@show']);
+    $router->get('/chat/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChatController@mensagens']);
+    $router->post('/chat/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChatController@send']);
 
     // Portal da Pessoa - Contratos / Cobranças / Fiscal
-    $router->get('/meus-imoveis', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\PessoaFinanceiroController@meusImoveis']);
-    $router->get('/financeiro/cobrancas', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\PessoaFinanceiroController@minhasCobrancas']);
-    $router->get('/financeiro/notas-fiscais', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\PessoaFinanceiroController@minhasNotasFiscais']);
+    $router->get('/meus-imoveis', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\PessoaFinanceiroController@meusImoveis']);
+    $router->get('/financeiro/cobrancas', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\PessoaFinanceiroController@minhasCobrancas']);
+    $router->get('/financeiro/notas-fiscais', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\PessoaFinanceiroController@minhasNotasFiscais']);
 
     // Operação - Chamados do cliente
-    $router->get('/chamados', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChamadosController@index']);
-    $router->post('/chamados', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChamadosController@store']);
-    $router->get('/chamados/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChamadosController@mensagens']);
-    $router->post('/chamados/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'Portal\\ChamadosController@adicionarMensagem']);
+    $router->get('/chamados', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChamadosController@index']);
+    $router->post('/chamados', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChamadosController@store']);
+    $router->get('/chamados/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChamadosController@mensagens']);
+    $router->post('/chamados/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChamadosController@adicionarMensagem']);
 });

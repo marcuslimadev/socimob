@@ -1,8 +1,8 @@
 <?php
-
 namespace App\Http\Controllers\SuperAdmin;
-
 use App\Http\Controllers\Controller;
+
+
 use App\Models\Tenant;
 use App\Services\TenantService;
 use Carbon\Carbon;

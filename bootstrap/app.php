@@ -1,119 +1,46 @@
 <?php
 
-require_once __DIR__ . '/../vendor/autoload.php';
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Support\Facades\Route;
 
-(new Laravel\Lumen\Bootstrap\LoadEnvironmentVariables(
-    dirname(__DIR__)
-))->bootstrap();
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',
+        commands: __DIR__.'/../routes/console.php',
+        health: '/up',
+        then: function () {
+            $router = Route::middleware('web')
+                ->namespace('App\Http\Controllers');
 
-date_default_timezone_set(env('APP_TIMEZONE', 'UTC'));
+            $router->group([], function ($router) {
+                require base_path('routes/admin.php');
+                require base_path('routes/super-admin.php');
+                require base_path('routes/client-portal.php');
+                require base_path('routes/subscriptions.php');
+                require base_path('routes/themes.php');
+                require base_path('routes/domains.php');
+                require base_path('routes/portal.php');
+            });
+        },
+    )
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->alias([
+            'auth' => \App\Http\Middleware\Authenticate::class,
+            'simple-auth' => \App\Http\Middleware\SimpleTokenAuth::class,
+            'auth:api' => \App\Http\Middleware\SimpleTokenAuth::class,
+            'validate-tenant-auth' => \App\Http\Middleware\ValidateTenantAuth::class,
+            'resolve-tenant' => \App\Http\Middleware\ResolveTenant::class,
+        ]);
 
-/*
-|--------------------------------------------------------------------------
-| Create The Application
-|--------------------------------------------------------------------------
-*/
-
-$app = new Laravel\Lumen\Application(
-    dirname(__DIR__)
-);
-
-$app->withFacades();
-$app->withEloquent();
-
-/*
-|--------------------------------------------------------------------------
-| Register Service Providers
-|--------------------------------------------------------------------------
-*/
-
-// $app->register(App\Providers\AppServiceProvider::class);
-// $app->register(App\Providers\AuthServiceProvider::class);
-// $app->register(App\Providers\EventServiceProvider::class);
-$app->register(App\Providers\ObserverServiceProvider::class); // ✅ ACTIVE
-$app->register(App\Providers\AdsServiceProvider::class);     // ✅ Ads Automation Module
-
-// 🔥 CRITICAL: Boot providers NOW to register Observers before routes load
-$app->boot();
-
-/*
-|--------------------------------------------------------------------------
-| Register Container Bindings
-|--------------------------------------------------------------------------
-*/
-
-$app->singleton(
-    Illuminate\Contracts\Debug\ExceptionHandler::class,
-    App\Exceptions\Handler::class
-);
-
-$app->singleton(
-    Illuminate\Contracts\Console\Kernel::class,
-    App\Console\Kernel::class
-);
-
-/*
-|--------------------------------------------------------------------------
-| Register Config Files
-|--------------------------------------------------------------------------
-*/
-
-$app->configure('app');
-$app->configure('database');
-$app->configure('cache');
-$app->configure('session');
-$app->configure('queue');
-$app->configure('mail');
-$app->configure('twilio');
-
-/*
-|--------------------------------------------------------------------------
-| Register Middleware
-|--------------------------------------------------------------------------
-*/
-
-$app->middleware([
-    App\Http\Middleware\CorsMiddleware::class,
-]);
-
-$app->routeMiddleware([
-    'auth' => App\Http\Middleware\Authenticate::class,
-    'simple-auth' => App\Http\Middleware\SimpleTokenAuth::class,
-    'auth:api' => App\Http\Middleware\SimpleTokenAuth::class,
-    'validate-tenant-auth' => App\Http\Middleware\ValidateTenantAuth::class,
-    'resolve-tenant' => App\Http\Middleware\ResolveTenant::class,
-    'throttle' => Illuminate\Routing\Middleware\ThrottleRequests::class, // ⚡ Rate limiting
-]);
-
-/*
-|--------------------------------------------------------------------------
-| Register Service Providers
-|--------------------------------------------------------------------------
-*/
-
-$app->register(Illuminate\Mail\MailServiceProvider::class);
-$app->register(Illuminate\Bus\BusServiceProvider::class); // ✅ Queue support
-// $app->register(App\Providers\AppServiceProvider::class);
-// $app->register(App\Providers\AuthServiceProvider::class);
-// $app->register(App\Providers\EventServiceProvider::class);
-
-/*
-|--------------------------------------------------------------------------
-| Load The Application Routes
-|--------------------------------------------------------------------------
-*/
-
-$app->router->group([
-    'namespace' => 'App\Http\Controllers',
-], function ($router) {
-    require __DIR__ . '/../routes/web.php';
-    require __DIR__ . '/../routes/admin.php';
-    require __DIR__ . '/../routes/super-admin.php';
-    require __DIR__ . '/../routes/client-portal.php';
-    require __DIR__ . '/../routes/subscriptions.php';
-    require __DIR__ . '/../routes/themes.php';
-    require __DIR__ . '/../routes/domains.php';
-    require __DIR__ . '/../routes/portal.php';
-});
-
-return $app;
+        $middleware->append(\App\Http\Middleware\CorsMiddleware::class);
+        
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+            'webhooks/*',
+        ]);
+    })
+    ->withExceptions(function (Exceptions $exceptions) {
+        //
+    })->create();

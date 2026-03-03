@@ -1,8 +1,8 @@
 <?php
-
 namespace App\Http\Controllers\SuperAdmin;
-
 use App\Http\Controllers\Controller;
+
+
 use App\Models\Property;
 use App\Models\PropertyPortalTenant;
 use App\Models\Tenant;

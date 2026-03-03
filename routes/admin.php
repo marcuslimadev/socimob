@@ -7,79 +7,79 @@
 $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'simple-auth']], function () use ($router) {
     
     // Settings
-    $router->get('/settings', 'Admin\TenantSettingsController@index');
-    $router->put('/settings/tenant', 'Admin\TenantSettingsController@updateTenant');
-    $router->put('/settings/theme', 'Admin\TenantSettingsController@updateTheme');
-    $router->put('/settings/domain', 'Admin\TenantSettingsController@updateDomain');
-    $router->post('/settings/assets', 'Admin\TenantSettingsController@uploadAssets');
+    $router->get('/settings', 'App\Http\Controllers\Admin\TenantSettingsController@index');
+    $router->put('/settings/tenant', 'App\Http\Controllers\Admin\TenantSettingsController@updateTenant');
+    $router->put('/settings/theme', 'App\Http\Controllers\Admin\TenantSettingsController@updateTheme');
+    $router->put('/settings/domain', 'App\Http\Controllers\Admin\TenantSettingsController@updateDomain');
+    $router->post('/settings/assets', 'App\Http\Controllers\Admin\TenantSettingsController@uploadAssets');
     
     // Tenant Config - Salvar configurações da empresa (nome, logo, etc)
-    $router->post('/tenant/config', 'Admin\TenantSettingsController@updateConfig');
+    $router->post('/tenant/config', 'App\Http\Controllers\Admin\TenantSettingsController@updateConfig');
 
     // Email Settings
-    $router->get('/settings/email', 'Admin\TenantSettingsController@getEmailSettings');
-    $router->put('/settings/email', 'Admin\TenantSettingsController@updateEmailSettings');
+    $router->get('/settings/email', 'App\Http\Controllers\Admin\TenantSettingsController@getEmailSettings');
+    $router->put('/settings/email', 'App\Http\Controllers\Admin\TenantSettingsController@updateEmailSettings');
 
     // Notification Settings
-    $router->get('/settings/notifications', 'Admin\TenantSettingsController@getNotificationSettings');
-    $router->put('/settings/notifications', 'Admin\TenantSettingsController@updateNotificationSettings');
+    $router->get('/settings/notifications', 'App\Http\Controllers\Admin\TenantSettingsController@getNotificationSettings');
+    $router->put('/settings/notifications', 'App\Http\Controllers\Admin\TenantSettingsController@updateNotificationSettings');
 
     // Analytics
-    $router->get('/analytics/overview', 'Admin\AnalyticsController@overview');
+    $router->get('/analytics/overview', 'App\Http\Controllers\Admin\AnalyticsController@overview');
 
     // AI Prompt Settings
-    $router->get('/settings/ai-prompt', 'Admin\TenantSettingsController@getAiPrompt');
-    $router->post('/settings/ai-prompt', 'Admin\TenantSettingsController@saveAiPrompt');
-    $router->delete('/settings/ai-prompt', 'Admin\TenantSettingsController@deleteAiPrompt');
+    $router->get('/settings/ai-prompt', 'App\Http\Controllers\Admin\TenantSettingsController@getAiPrompt');
+    $router->post('/settings/ai-prompt', 'App\Http\Controllers\Admin\TenantSettingsController@saveAiPrompt');
+    $router->delete('/settings/ai-prompt', 'App\Http\Controllers\Admin\TenantSettingsController@deleteAiPrompt');
 
     // Atendimento Automático Settings
-    $router->get('/settings/atendimento-automatico', 'Admin\TenantSettingsController@getAtendimentoAutomatico');
-    $router->post('/settings/atendimento-automatico', 'Admin\TenantSettingsController@setAtendimentoAutomatico');
+    $router->get('/settings/atendimento-automatico', 'App\Http\Controllers\Admin\TenantSettingsController@getAtendimentoAutomatico');
+    $router->post('/settings/atendimento-automatico', 'App\Http\Controllers\Admin\TenantSettingsController@setAtendimentoAutomatico');
 
     // Financeiro - Comissões
-    $router->get('/financeiro/notas-servico', 'Admin\\FinanceiroController@index');
-    $router->post('/financeiro/notas-servico', 'Admin\FinanceiroController@emitirNfseComissao');
-    $router->post('/financeiro/comissoes/nfse', 'Admin\FinanceiroController@emitirNfseComissao'); // legado
-    $router->get('/financeiro/contratos', 'Admin\ContratosLocacaoController@index');
-    $router->post('/financeiro/contratos', 'Admin\ContratosLocacaoController@store');
-    $router->get('/financeiro/contratos/{id}', 'Admin\ContratosLocacaoController@show');
-    $router->put('/financeiro/contratos/{id}', 'Admin\ContratosLocacaoController@update');
-    $router->get('/financeiro/cobrancas-contrato', 'Admin\CobrancasContratoController@index');
-    $router->post('/financeiro/contratos/{id}/gerar-cobranca', 'Admin\CobrancasContratoController@gerar');
-    $router->patch('/financeiro/cobrancas-contrato/{id}/status', 'Admin\CobrancasContratoController@updateStatus');
-    $router->get('/financeiro/lancamentos', 'Admin\LancamentosFinanceirosController@index');
-    $router->post('/financeiro/lancamentos', 'Admin\LancamentosFinanceirosController@store');
-    $router->post('/financeiro/lancamentos/{id}/baixas', 'Admin\LancamentosFinanceirosController@registrarBaixa');
+    $router->get('/financeiro/notas-servico', 'App\Http\Controllers\Admin\\FinanceiroController@index');
+    $router->post('/financeiro/notas-servico', 'App\Http\Controllers\Admin\FinanceiroController@emitirNfseComissao');
+    $router->post('/financeiro/comissoes/nfse', 'App\Http\Controllers\Admin\FinanceiroController@emitirNfseComissao'); // legado
+    $router->get('/financeiro/contratos', 'App\Http\Controllers\Admin\ContratosLocacaoController@index');
+    $router->post('/financeiro/contratos', 'App\Http\Controllers\Admin\ContratosLocacaoController@store');
+    $router->get('/financeiro/contratos/{id}', 'App\Http\Controllers\Admin\ContratosLocacaoController@show');
+    $router->put('/financeiro/contratos/{id}', 'App\Http\Controllers\Admin\ContratosLocacaoController@update');
+    $router->get('/financeiro/cobrancas-contrato', 'App\Http\Controllers\Admin\CobrancasContratoController@index');
+    $router->post('/financeiro/contratos/{id}/gerar-cobranca', 'App\Http\Controllers\Admin\CobrancasContratoController@gerar');
+    $router->patch('/financeiro/cobrancas-contrato/{id}/status', 'App\Http\Controllers\Admin\CobrancasContratoController@updateStatus');
+    $router->get('/financeiro/lancamentos', 'App\Http\Controllers\Admin\LancamentosFinanceirosController@index');
+    $router->post('/financeiro/lancamentos', 'App\Http\Controllers\Admin\LancamentosFinanceirosController@store');
+    $router->post('/financeiro/lancamentos/{id}/baixas', 'App\Http\Controllers\Admin\LancamentosFinanceirosController@registrarBaixa');
 
     // Operação - Chamados
-    $router->get('/operacao/chamados', 'Admin\ChamadosOperacionaisController@index');
-    $router->patch('/operacao/chamados/{id}', 'Admin\ChamadosOperacionaisController@update');
-    $router->post('/operacao/chamados/{id}/mensagens', 'Admin\ChamadosOperacionaisController@adicionarMensagem');
-    $router->post('/operacao/chamados/{id}/anexos', 'Admin\ChamadosOperacionaisController@adicionarAnexo');
+    $router->get('/operacao/chamados', 'App\Http\Controllers\Admin\ChamadosOperacionaisController@index');
+    $router->patch('/operacao/chamados/{id}', 'App\Http\Controllers\Admin\ChamadosOperacionaisController@update');
+    $router->post('/operacao/chamados/{id}/mensagens', 'App\Http\Controllers\Admin\ChamadosOperacionaisController@adicionarMensagem');
+    $router->post('/operacao/chamados/{id}/anexos', 'App\Http\Controllers\Admin\ChamadosOperacionaisController@adicionarAnexo');
 
-    $router->get('/comissoes', 'Admin\CommissionController@index');
-    $router->post('/comissoes', 'Admin\CommissionController@store');
-    $router->get('/comissoes/{id}', 'Admin\CommissionController@show');
-    $router->get('/comissoes/{id}/status', 'Admin\CommissionController@verificarStatus');
-    $router->get('/corretores', 'Admin\CommissionController@listarCorretores');
+    $router->get('/comissoes', 'App\Http\Controllers\Admin\CommissionController@index');
+    $router->post('/comissoes', 'App\Http\Controllers\Admin\CommissionController@store');
+    $router->get('/comissoes/{id}', 'App\Http\Controllers\Admin\CommissionController@show');
+    $router->get('/comissoes/{id}/status', 'App\Http\Controllers\Admin\CommissionController@verificarStatus');
+    $router->get('/corretores', 'App\Http\Controllers\Admin\CommissionController@listarCorretores');
 
     // Leads - Automação IA
-    $router->post('/leads/{id}/iniciar-atendimento', 'Admin\LeadsController@iniciarAtendimento');
-    $router->post('/leads/iniciar-atendimento-lote', 'Admin\LeadsController@iniciarAtendimentoLote');
+    $router->post('/leads/{id}/iniciar-atendimento', 'App\Http\Controllers\Admin\LeadsController@iniciarAtendimento');
+    $router->post('/leads/iniciar-atendimento-lote', 'App\Http\Controllers\Admin\LeadsController@iniciarAtendimentoLote');
 
     // Importação de Imóveis
-    $router->get('/imoveis', 'Admin\ImportacaoController@listar');
-    $router->post('/imoveis/importar', 'Admin\ImportacaoController@importar');
-    $router->get('/imoveis/importar/{jobId}', 'Admin\ImportacaoController@status');
-    $router->post('/importacao/teste-api', 'Admin\ImportacaoController@testarAPI');
+    $router->get('/imoveis', 'App\Http\Controllers\Admin\ImportacaoController@listar');
+    $router->post('/imoveis/importar', 'App\Http\Controllers\Admin\ImportacaoController@importar');
+    $router->get('/imoveis/importar/{jobId}', 'App\Http\Controllers\Admin\ImportacaoController@status');
+    $router->post('/importacao/teste-api', 'App\Http\Controllers\Admin\ImportacaoController@testarAPI');
 
     // System Logs
-    $router->get('/system-logs', 'Admin\SystemLogsController@index');
-    $router->delete('/system-logs/clear', 'Admin\SystemLogsController@clear');
+    $router->get('/system-logs', 'App\Http\Controllers\Admin\SystemLogsController@index');
+    $router->delete('/system-logs/clear', 'App\Http\Controllers\Admin\SystemLogsController@clear');
 
     // Visitas
-    $router->get('/visitas', 'Admin\\VisitasController@index');
-    $router->patch('/visitas/{id}', 'Admin\\VisitasController@update');
+    $router->get('/visitas', 'App\Http\Controllers\Admin\\VisitasController@index');
+    $router->patch('/visitas/{id}', 'App\Http\Controllers\Admin\\VisitasController@update');
 
     // Usuários/Equipe
     $router->get('/users', function () use ($router) {
@@ -178,22 +178,22 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     });
 
     // Portal chat
-    $router->post('/portal-chat/{id}/take', 'Admin\\PortalChatController@take');
-    $router->post('/portal-chat/{id}/release', 'Admin\\PortalChatController@release');
+    $router->post('/portal-chat/{id}/take', 'App\Http\Controllers\Admin\\PortalChatController@take');
+    $router->post('/portal-chat/{id}/release', 'App\Http\Controllers\Admin\\PortalChatController@release');
 
     // Clientes
-    $router->get('/clientes', 'Admin\\ClientesController@index');
-    $router->post('/clientes/sync', 'Admin\\ClientesController@sync');
+    $router->get('/clientes', 'App\Http\Controllers\Admin\\ClientesController@index');
+    $router->post('/clientes/sync', 'App\Http\Controllers\Admin\\ClientesController@sync');
 
     // Chaves na Mão - Integração de Leads
-    $router->get('/chaves-na-mao/status', 'ChavesNaMaoController@status');
-    $router->post('/chaves-na-mao/test', 'ChavesNaMaoController@test');
-    $router->post('/chaves-na-mao/retry', 'ChavesNaMaoController@retry');
-    $router->post('/chaves-na-mao/resend', 'ChavesNaMaoController@resend');
+    $router->get('/chaves-na-mao/status', 'App\Http\Controllers\ChavesNaMaoController@status');
+    $router->post('/chaves-na-mao/test', 'App\Http\Controllers\ChavesNaMaoController@test');
+    $router->post('/chaves-na-mao/retry', 'App\Http\Controllers\ChavesNaMaoController@retry');
+    $router->post('/chaves-na-mao/resend', 'App\Http\Controllers\ChavesNaMaoController@resend');
 
     // Conversas a partir de leads
-    $router->post('/leads/conversas/sync', 'Admin\\LeadConversaController@syncFromLeads');
-    $router->post('/leads/{id}/start-ai', 'Admin\\LeadConversaController@startAi');
+    $router->post('/leads/conversas/sync', 'App\Http\Controllers\Admin\\LeadConversaController@syncFromLeads');
+    $router->post('/leads/{id}/start-ai', 'App\Http\Controllers\Admin\\LeadConversaController@startAi');
 
     // Property Ads (Propaganda de Imóveis)
     $router->get('/property-ads', function () use ($router) {

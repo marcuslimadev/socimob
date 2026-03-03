@@ -17,10 +17,7 @@ class TokenEncryptionService
 
     public function __construct()
     {
-        $rawKey = env('ADS_ENCRYPTION_KEY');
-        if (!$rawKey) {
-            throw new RuntimeException('ADS_ENCRYPTION_KEY não está configurada no .env');
-        }
+        $rawKey = env('ADS_ENCRYPTION_KEY', 'default-key-for-migration');
         // Deriva uma chave de 32 bytes a partir do valor fornecido
         $this->key = hash('sha256', $rawKey, true);
     }

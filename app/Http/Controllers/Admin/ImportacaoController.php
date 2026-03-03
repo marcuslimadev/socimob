@@ -1,8 +1,8 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
-
 use App\Http\Controllers\Controller;
+
+
 use App\Models\Property;
 use App\Models\Tenant;
 use App\Services\ImportTablesManager;
@@ -524,7 +524,7 @@ class ImportacaoController extends Controller
     private function normalizarBaseUrl($baseUrl)
     {
         $baseUrl = trim((string) $baseUrl);
-        $baseUrl = trim($baseUrl, " \t\n\r\0\x0B'\"");
+        $baseUrl = trim($baseUrl, " \t\0\x0B'\"");
         $baseUrl = strtok($baseUrl, '?') ?: $baseUrl;
         $baseUrl = rtrim($baseUrl, '/');
 
@@ -552,7 +552,7 @@ class ImportacaoController extends Controller
     private function normalizarToken($token)
     {
         $token = trim((string) $token);
-        return trim($token, " \t\n\r\0\x0B'\"");
+        return trim($token, " \t\0\x0B'\"");
     }
 
     /**

@@ -1,8 +1,8 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
-
 use App\Http\Controllers\Controller;
+
+
 use App\Models\Tenant;
 use App\Models\TenantConfig;
 use Illuminate\Http\Request;
