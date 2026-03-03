@@ -1,8 +1,8 @@
 <?php
-
 namespace App\Http\Controllers\Portal;
-
 use App\Http\Controllers\Controller;
+
+
 use App\Models\Tenant;
 use App\Models\Property;
 use App\Models\PropertyEvaluation;
@@ -62,13 +62,7 @@ class PortalController extends Controller
             $data['tenant_id'],
             $data['api_data'],
             $data['local_chaves'],
-            $data['status_chaves'],
-            $data['inserido_por_user_id'],
-            $data['inserido_por_nome'],
-            $data['proprietario_nome'],
-            $data['proprietario_telefone'],
-            $data['proprietario_email'],
-            $data['proprietario_observacoes']
+            $data['status_chaves']
         );
 
         return $data;
@@ -574,7 +568,7 @@ class PortalController extends Controller
                 // Update existing lead
                 if ($request->interesse) {
                     $obs = $existingLead->observacoes ?? '';
-                    $obs .= ($obs ? "\n" : '') . "[Chat Portal " . Carbon::now()->format('d/m/Y H:i') . "] " . $request->interesse;
+                    $obs .= ($obs ? "" : '') . "[Chat Portal " . now()->format('d/m/Y H:i') . "] " . $request->interesse;
                     $existingLead->observacoes = $obs;
                 }
                 if ($request->email && !$existingLead->email) {
@@ -594,8 +588,8 @@ class PortalController extends Controller
                     'status' => 'novo',
                     'classificacao' => 'quente',
                     'observacoes' => $request->interesse
-                        ? "[Chat Portal " . Carbon::now()->format('d/m/Y H:i') . "] " . $request->interesse
-                        : "[Chat Portal " . Carbon::now()->format('d/m/Y H:i') . "] Lead capturado via chat automatizado do portal",
+                        ? "[Chat Portal " . now()->format('d/m/Y H:i') . "] " . $request->interesse
+                        : "[Chat Portal " . now()->format('d/m/Y H:i') . "] Lead capturado via chat automatizado do portal",
                 ]);
             }
 
@@ -621,93 +615,6 @@ class PortalController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erro ao registrar seu contato. Tente novamente.',
-            ], 500);
-        }
-    }
-
-    /**
-     * Registrar lead via simulação de financiamento (público, sem auth)
-     * POST /api/portal/simulacao-lead
-     */
-    public function registrarSimulacaoLead(Request $request)
-    {
-        try {
-            $tenantId = $request->attributes->get('tenant_id');
-
-            if (!$tenantId) {
-                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 404);
-            }
-
-            $validator = Validator::make($request->all(), [
-                'nome'       => 'required|string|max:255',
-                'telefone'   => 'required|string|max:20',
-                'email'      => 'nullable|email|max:255',
-                'observacoes'=> 'nullable|string|max:2000',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success'  => false,
-                    'error'    => 'Dados inválidos',
-                    'messages' => $validator->errors(),
-                ], 422);
-            }
-
-            $telefone = preg_replace('/\D/', '', $request->telefone);
-
-            // Verifica lead existente pelo telefone ou e-mail
-            $existingLead = \App\Models\Lead::where('tenant_id', $tenantId)
-                ->where(function ($q) use ($telefone, $request) {
-                    $q->where('telefone', 'like', "%{$telefone}%")
-                      ->orWhere('whatsapp', 'like', "%{$telefone}%");
-                    if ($request->email) {
-                        $q->orWhere('email', $request->email);
-                    }
-                })
-                ->first();
-
-            if ($existingLead) {
-                $obs = $existingLead->observacoes ?? '';
-                $obs .= ($obs ? "\n" : '') . ($request->observacoes ?? '');
-                $existingLead->observacoes = $obs;
-                if ($request->email && !$existingLead->email) {
-                    $existingLead->email = $request->email;
-                }
-                $existingLead->save();
-                $lead = $existingLead;
-            } else {
-                $lead = \App\Models\Lead::create([
-                    'tenant_id'    => $tenantId,
-                    'nome'         => $request->nome,
-                    'telefone'     => $telefone,
-                    'whatsapp'     => $telefone,
-                    'email'        => $request->email,
-                    'status'       => 'novo',
-                    'classificacao'=> 'quente',
-                    'observacoes'  => $request->observacoes,
-                ]);
-            }
-
-            $tenant = \App\Models\Tenant::find($tenantId);
-            $config = $tenant ? $tenant->config : null;
-            $tenantWhatsapp = $config && $config->whatsapp_number
-                ? preg_replace('/\D/', '', $config->whatsapp_number)
-                : ($tenant ? preg_replace('/\D/', '', $tenant->contact_phone ?? '') : '');
-
-            return response()->json([
-                'success'          => true,
-                'lead_id'          => $lead->id,
-                'whatsapp_number'  => $tenantWhatsapp,
-                'message'          => 'Simulação registrada com sucesso!',
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('[Portal] Erro ao registrar lead via simulação de financiamento', [
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'error'   => 'Erro ao registrar. Tente novamente.',
             ], 500);
         }
     }
@@ -759,14 +666,14 @@ class PortalController extends Controller
 
             if ($existingLead) {
                 $obs = $existingLead->observacoes ?? '';
-                $obs .= ($obs ? "\n" : '') . "[Avaliacao Portal " . Carbon::now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
+                $obs .= ($obs ? "" : '') . "[Avaliacao Portal " . now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
                 if ($request->endereco) $obs .= " - Endereco: {$request->endereco}";
                 if ($request->bairro) $obs .= ", {$request->bairro}";
                 $existingLead->observacoes = $obs;
                 $existingLead->save();
                 $lead = $existingLead;
             } else {
-                $obsText = "[Avaliacao Portal " . Carbon::now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
+                $obsText = "[Avaliacao Portal " . now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
                 if ($request->endereco) $obsText .= " - Endereco: {$request->endereco}";
                 if ($request->bairro) $obsText .= ", {$request->bairro}";
 

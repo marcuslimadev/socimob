@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -107,9 +106,9 @@ class AudioConverterController extends Controller
             if (!file_exists($outputFile) || filesize($outputFile) === 0) {
                 Log::error('❌ Falha na conversão para MP3', [
                     'file_exists' => file_exists($outputFile),
-                    'ffmpeg_output' => implode("\n", $output)
+                    'ffmpeg_output' => implode("", $output)
                 ]);
-                return response('Erro na conversão com ffmpeg: ' . implode("\n", $output), 500);
+                return response('Erro na conversão com ffmpeg: ' . implode("", $output), 500);
             }
             
             $fileSize = filesize($outputFile);

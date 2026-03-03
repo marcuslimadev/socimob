@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -586,7 +585,7 @@ class LeadsController extends Controller
                 if (!$texto) {
                     continue;
                 }
-                $history .= $direction . ': ' . trim($texto) . "\n";
+                $history .= $direction . ': ' . trim($texto) . "";
             }
         }
 

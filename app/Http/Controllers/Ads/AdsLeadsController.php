@@ -1,8 +1,8 @@
 <?php
-
 namespace App\Http\Controllers\Ads;
-
 use App\Http\Controllers\Controller;
+
+
 use App\Models\Ads\AdsLead;
 use App\Services\Ads\LeadIngestionService;
 use App\Services\Ads\Providers\ProviderAdapterFactory;

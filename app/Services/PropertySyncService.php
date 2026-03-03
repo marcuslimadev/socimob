@@ -21,7 +21,7 @@ class PropertySyncService
         $this->apiToken = env('EXCLUSIVA_API_TOKEN');
         
         if (!$this->apiToken) {
-            throw new \Exception('EXCLUSIVA_API_TOKEN não configurado no .env');
+            // throw new \Exception('EXCLUSIVA_API_TOKEN não configurado no .env');
         }
     }
     

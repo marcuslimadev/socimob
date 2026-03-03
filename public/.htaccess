@@ -5,28 +5,21 @@
 
     RewriteEngine On
 
-    # Exceção para Portal Svelte (servir arquivos estáticos)
-    RewriteCond %{REQUEST_URI} ^/portal/svelte/
-    RewriteRule ^ - [L]
-
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Handle X-XSRF-Token Header
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Serve existing files/directories directly
-    RewriteCond %{REQUEST_FILENAME} -d [OR]
-    RewriteCond %{REQUEST_FILENAME} -f
-    RewriteRule ^ - [L]
-
-    # Backend routes go to Lumen
-    RewriteCond %{REQUEST_URI} ^/(api|api-public|webhook|github|debug|test|db-test|migrate-now-please|sync) [NC]
+    # Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
-
-    # SPA fallback for React routes
-    RewriteRule ^ index.html [L]
 </IfModule>

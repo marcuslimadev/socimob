@@ -1,6 +1,6 @@
 <?php
-
 namespace App\Http\Controllers\Admin;
+use App\Http\Controllers\Controller;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -9,7 +9,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 
-class ConversasController extends BaseController
+class ConversasController extends Controller
 {
     /**
      * Listar todas as conversas do corretor/admin

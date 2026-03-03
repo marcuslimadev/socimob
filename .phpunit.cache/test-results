@@ -1,1 +1,0 @@
-{"version":2,"defects":[],"times":{"Tests\\Feature\\NfseCommissionServiceTest::test_emitir_nfse_na_nfeio_com_headers_e_payload_esperados":0.01,"Tests\\Feature\\NfseCommissionServiceTest::test_emitir_nfse_falha_sem_credenciais":13.921}}

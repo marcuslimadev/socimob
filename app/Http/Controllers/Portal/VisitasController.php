@@ -1,8 +1,8 @@
 <?php
-
 namespace App\Http\Controllers\Portal;
-
 use App\Http\Controllers\Controller;
+
+
 use App\Services\VisitasTablesManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

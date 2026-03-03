@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -88,7 +87,7 @@ class DeployController extends Controller
                 $errors[] = 'Git pull falhou';
                 Log::error('❌ Git pull falhou', $output['git_pull']);
             } else {
-                Log::info('✅ Git pull concluído', ['output' => implode("\n", $gitOutput)]);
+                Log::info('✅ Git pull concluído', ['output' => implode("", $gitOutput)]);
             }
 
             // ==========================================
@@ -115,7 +114,7 @@ class DeployController extends Controller
                 $errors[] = 'Composer install falhou';
                 Log::error('❌ Composer install falhou', $output['composer_install']);
             } else {
-                Log::info('✅ Composer install concluído', ['output' => implode("\n", $composerOutput)]);
+                Log::info('✅ Composer install concluído', ['output' => implode("", $composerOutput)]);
             }
 
             // ==========================================

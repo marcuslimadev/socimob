@@ -6,29 +6,29 @@
 $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant']], function () use ($router) {
     
     // Rotas públicas (sem autenticação)
-    $router->post('/intentions', 'ClientIntentionController@store');
+    $router->post('/intentions', 'App\Http\Controllers\ClientIntentionController@store');
 
     // Rotas autenticadas
     $router->group(['middleware' => ['simple-auth', 'validate-tenant-auth']], function () use ($router) {
         
         // Intenções
-        $router->get('/intentions', 'ClientIntentionController@index');
-        $router->get('/intentions/{id}', 'ClientIntentionController@show');
-        $router->put('/intentions/{id}', 'ClientIntentionController@update');
-        $router->delete('/intentions/{id}', 'ClientIntentionController@destroy');
-        $router->post('/intentions/{id}/pause', 'ClientIntentionController@pause');
-        $router->post('/intentions/{id}/resume', 'ClientIntentionController@resume');
-        $router->get('/intentions/{id}/matches', 'ClientIntentionController@matches');
-        $router->get('/intentions/{id}/notifications', 'ClientIntentionController@notifications');
+        $router->get('/intentions', 'App\Http\Controllers\ClientIntentionController@index');
+        $router->get('/intentions/{id}', 'App\Http\Controllers\ClientIntentionController@show');
+        $router->put('/intentions/{id}', 'App\Http\Controllers\ClientIntentionController@update');
+        $router->delete('/intentions/{id}', 'App\Http\Controllers\ClientIntentionController@destroy');
+        $router->post('/intentions/{id}/pause', 'App\Http\Controllers\ClientIntentionController@pause');
+        $router->post('/intentions/{id}/resume', 'App\Http\Controllers\ClientIntentionController@resume');
+        $router->get('/intentions/{id}/matches', 'App\Http\Controllers\ClientIntentionController@matches');
+        $router->get('/intentions/{id}/notifications', 'App\Http\Controllers\ClientIntentionController@notifications');
 
         // Notificações
-        $router->get('/notifications', 'NotificationController@index');
-        $router->get('/notifications/unread/count', 'NotificationController@unreadCount');
-        $router->get('/notifications/summary', 'NotificationController@summary');
-        $router->post('/notifications/mark-all-as-read', 'NotificationController@markAllAsRead');
-        $router->get('/notifications/{id}', 'NotificationController@show');
-        $router->post('/notifications/{id}/read', 'NotificationController@markAsRead');
-        $router->post('/notifications/{id}/unread', 'NotificationController@markAsUnread');
-        $router->delete('/notifications/{id}', 'NotificationController@destroy');
+        $router->get('/notifications', 'App\Http\Controllers\NotificationController@index');
+        $router->get('/notifications/unread/count', 'App\Http\Controllers\NotificationController@unreadCount');
+        $router->get('/notifications/summary', 'App\Http\Controllers\NotificationController@summary');
+        $router->post('/notifications/mark-all-as-read', 'App\Http\Controllers\NotificationController@markAllAsRead');
+        $router->get('/notifications/{id}', 'App\Http\Controllers\NotificationController@show');
+        $router->post('/notifications/{id}/read', 'App\Http\Controllers\NotificationController@markAsRead');
+        $router->post('/notifications/{id}/unread', 'App\Http\Controllers\NotificationController@markAsUnread');
+        $router->delete('/notifications/{id}', 'App\Http\Controllers\NotificationController@destroy');
     });
 });

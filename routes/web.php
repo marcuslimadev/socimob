@@ -47,40 +47,34 @@ $router->get('/api/health', function () use ($router) {
 //     return response('Login não encontrado', 404);
 // });
 
-$router->post('/github/webhook', 'GitHubWebhookController@handle');
+$router->post('/github/webhook',  'App\Http\Controllers\GitHubWebhookController@handle');
 
 // Webhook Chaves na Mão - Receber leads
-$router->get('/webhook/chaves-na-mao', 'ChavesNaMaoWebhookController@methodNotAllowed');
-$router->post('/webhook/chaves-na-mao', 'ChavesNaMaoWebhookController@receive');
+$router->get('/webhook/chaves-na-mao', 'App\Http\Controllers\ChavesNaMaoWebhookController@methodNotAllowed');
+$router->post('/webhook/chaves-na-mao', 'App\Http\Controllers\ChavesNaMaoWebhookController@receive');
 
 // Short link para WhatsApp (resolve tenant pelo domínio)
 $router->group(['middleware' => 'resolve-tenant'], function () use ($router) {
-    $router->get('/w/{code}', 'ShortLinkController@redirectWhatsApp');
-});
-
-// Ads OAuth popup callbacks — browser redirect from Meta/Google after authorization
-// Only resolve-tenant middleware (no Bearer token required since browser redirect)
-$router->group(['prefix' => 'api/ads', 'middleware' => 'resolve-tenant'], function () use ($router) {
-    $router->get('/{provider}/connect/callback', 'Ads\AdsConnectionController@oauthCallbackPopup');
+    $router->get('/w/{code}', 'App\Http\Controllers\ShortLinkController@redirectWhatsApp');
 });
 
 // Auth API routes
 $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function () use ($router) {
     // Short link para WhatsApp (resolve tenant pelo domínio)
-    $router->get('/w/{code}', 'ShortLinkController@redirectWhatsApp');
+    $router->get('/w/{code}', 'App\Http\Controllers\ShortLinkController@redirectWhatsApp');
 
     // ⚡ Rate limiting: 5 tentativas por minuto em login
-    $router->post('/auth/login', ['middleware' => 'throttle:5,1', 'uses' => 'AuthController@login']);
-    $router->post('/auth/google', ['middleware' => 'throttle:5,1', 'uses' => 'AuthController@googleLogin']);
-    $router->post('/auth/logout', 'AuthController@logout');
-    $router->get('/auth/me', ['middleware' => 'simple-auth', 'uses' => 'AuthController@me']);
+    $router->post('/auth/login', ['middleware' => 'throttle:5,1', 'uses' => 'App\Http\Controllers\AuthController@login']);
+    $router->post('/auth/google', ['middleware' => 'throttle:5,1', 'uses' => 'App\Http\Controllers\AuthController@googleLogin']);
+    $router->post('/auth/logout', 'App\Http\Controllers\AuthController@logout');
+    $router->get('/auth/me', ['middleware' => 'simple-auth', 'uses' => 'App\Http\Controllers\AuthController@me']);
     
     // 🔒 Sincronização de imóveis - PROTEGIDO POR TENANT
     // Só funciona se acessado pelo domínio correto (ex: exclusivalarimoveis.com)
-    $router->get('/properties/sync', 'PropertyController@sync');
+    $router->get('/properties/sync', 'App\Http\Controllers\PropertyController@sync');
 
     // Proxy de mídia do Twilio (usado pelo chat) - relativo a /api
-    $router->get('/conversas/media/proxy', 'ConversasController@proxyMedia');
+    $router->get('/conversas/media/proxy', 'App\Http\Controllers\ConversasController@proxyMedia');
     
     // Configuração do tenant (público) - para homepage dinâmica
     $router->get('/tenant/config', function () {
@@ -139,39 +133,39 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
     // Portal do Cliente - rotas p£blicas (sem autentica‡Æo)
     $router->group(['prefix' => 'portal'], function () use ($router) {
         // Configura‡Æo do tenant (p£blico)
-        $router->get('/config', 'Portal\PortalController@getConfig');
+        $router->get('/config', 'App\Http\Controllers\Portal\PortalController@getConfig');
 
         // Listagem de im¢veis (p£blico)
-        $router->get('/imoveis', 'Portal\PortalController@getImoveis');
+        $router->get('/imoveis', 'App\Http\Controllers\Portal\PortalController@getImoveis');
 
         // Detalhes de im¢vel (p£blico)
-        $router->get('/imoveis/{id}', 'Portal\PortalController@getImovel');
+        $router->get('/imoveis/{id}', 'App\Http\Controllers\Portal\PortalController@getImovel');
 
         // Chat bot - criar lead (público, sem auth)
-        $router->post('/chat-lead', ['middleware' => 'throttle:10,1', 'uses' => 'Portal\PortalController@createChatLead']);
+        $router->post('/chat-lead', ['middleware' => 'throttle:10,1', 'uses' => 'App\Http\Controllers\Portal\PortalController@createChatLead']);
 
         // Avaliação de imóvel - solicitar (público, sem auth)
-        $router->post('/avaliacao', ['middleware' => 'throttle:10,1', 'uses' => 'Portal\PortalController@createEvaluationRequest']);
+        $router->post('/avaliacao', ['middleware' => 'throttle:10,1', 'uses' => 'App\Http\Controllers\Portal\PortalController@createEvaluationRequest']);
 
         // Login do portal
-        $router->post('/auth/login', 'Portal\ClientAuthController@login');
-        $router->post('/auth/register', 'Portal\ClientAuthController@register');
+        $router->post('/auth/login', 'App\Http\Controllers\Portal\ClientAuthController@login');
+        $router->post('/auth/register', 'App\Http\Controllers\Portal\ClientAuthController@register');
         
         // Rotas autenticadas do portal
         $router->group(['middleware' => 'simple-auth'], function () use ($router) {
-            $router->get('/auth/me', 'Portal\ClientAuthController@me');
-            $router->post('/interesse', 'Portal\PortalController@registrarInteresse');
-            $router->get('/likes', 'Portal\LikesController@list');
-            $router->post('/likes/{propertyId}', 'Portal\LikesController@like');
-            $router->post('/chat/start', 'Portal\ChatController@start');
-            $router->get('/chat/{id}', 'Portal\ChatController@show');
-            $router->get('/chat/{id}/mensagens', 'Portal\ChatController@mensagens');
-            $router->post('/chat/{id}/mensagens', 'Portal\ChatController@send');
+            $router->get('/auth/me', 'App\Http\Controllers\Portal\ClientAuthController@me');
+            $router->post('/interesse', 'App\Http\Controllers\Portal\PortalController@registrarInteresse');
+            $router->get('/likes', 'App\Http\Controllers\Portal\LikesController@list');
+            $router->post('/likes/{propertyId}', 'App\Http\Controllers\Portal\LikesController@like');
+            $router->post('/chat/start', 'App\Http\Controllers\Portal\ChatController@start');
+            $router->get('/chat/{id}', 'App\Http\Controllers\Portal\ChatController@show');
+            $router->get('/chat/{id}/mensagens', 'App\Http\Controllers\Portal\ChatController@mensagens');
+            $router->post('/chat/{id}/mensagens', 'App\Http\Controllers\Portal\ChatController@send');
         });
     });
 
     // Analytics collect (public, consent required on client)
-    $router->post('/analytics/collect', 'AnalyticsController@collect');
+    $router->post('/analytics/collect', 'App\Http\Controllers\AnalyticsController@collect');
 });
 
 // Landing Page Pública - DESATIVADA (agora usa frontend React)
@@ -220,69 +214,60 @@ $router->group(['prefix' => 'api/properties'], function () use ($router) {
     });
     
     // Rotas dinâmicas
-    $router->get('/', 'PublicPropertyController@index');
-    $router->get('/{codigo}', 'PublicPropertyController@show');
+    $router->get('/', 'App\Http\Controllers\PublicPropertyController@index');
+    $router->get('/{codigo}', 'App\Http\Controllers\PublicPropertyController@show');
 });
 
 // Formatação de texto com IA
-$router->post('/api/format-text', 'TextFormatterController@formatText');
+$router->post('/api/format-text', 'App\Http\Controllers\TextFormatterController@formatText');
 
 // ===========================
 // ADS AUTOMATION WEBHOOKS (SEM AUTENTICAÇÃO — verificação por assinatura HMAC)
 // ===========================
 $router->group(['prefix' => 'api/ads/webhooks', 'middleware' => 'resolve-tenant'], function () use ($router) {
     // GET: handshake de verificação (Meta: hub.mode=subscribe)
-    $router->get('/{provider}/receive', 'Ads\AdsWebhookController@verify');
+    $router->get('/{provider}/receive', 'App\Http\Controllers\Ads\AdsWebhookController@verify');
     // POST: receber eventos (Meta: leadgen, Google: futuro)
-    $router->post('/{provider}/receive', 'Ads\AdsWebhookController@receive');
+    $router->post('/{provider}/receive', 'App\Http\Controllers\Ads\AdsWebhookController@receive');
 });
 
 // ===========================
 // OLX OAUTH CALLBACK (SEM AUTENTICAÇÃO — verificado pelo state anti-CSRF)
 // URI registrada no painel OLX Pro: https://app.socimob.com/api/oauth/olx/callback
 // ===========================
-$router->get('/api/oauth/{provider}/callback', ['middleware' => 'resolve-tenant', 'uses' => 'Ads\AdsConnectionController@oauthCallback']);
-
-// ===========================
-// META / GOOGLE OAUTH CALLBACKS (SEM AUTENTICAÇÃO — popup browser)
-// URI registrada no Meta Developers: https://lojadaesquina.store/api/ads/meta/connect/callback
-// URI registrada no Google Cloud:    https://lojadaesquina.store/api/ads/google/connect/callback
-// Retornam HTML que fecha o popup e notifica a janela pai via postMessage.
-// DEVE ficar registrada ANTES do grupo autenticado para ter prioridade.
-// ===========================
-$router->get('/api/ads/{provider}/connect/callback', ['middleware' => 'resolve-tenant', 'uses' => 'Ads\AdsConnectionController@oauthCallbackPopup']);
+$router->get('/api/oauth/{provider}/callback', ['middleware' => 'resolve-tenant', 'uses' => 'App\Http\Controllers\Ads\AdsConnectionController@oauthCallback']);
 
 // ===========================
 // WEBHOOK (SEM AUTENTICAÇÃO)
 // ===========================
 $router->group(['prefix' => 'webhook'], function () use ($router) {
     // GET para validação do webhook (Twilio)
-    $router->get('/whatsapp', 'WebhookController@validateWebhook');
-    $router->get('/whatsapp/status', 'WebhookController@validateStatusWebhook');
+    $router->get('/whatsapp', 'App\Http\Controllers\WebhookController@validateWebhook');
+    $router->get('/whatsapp/status', 'App\Http\Controllers\WebhookController@validateStatusWebhook');
     // POST para receber mensagens
-    $router->post('/whatsapp', 'WebhookController@receive');
-    $router->post('/whatsapp/status', 'WebhookController@status');
+    $router->post('/whatsapp', 'App\Http\Controllers\WebhookController@receive');
+    $router->post('/whatsapp/status', 'App\Http\Controllers\WebhookController@status');
 });
 
 // ===========================
 // DEPLOY WEBHOOK (SEM AUTENTICAÇÃO, MAS COM SECRET TOKEN)
 // ===========================
 $router->group(['prefix' => 'api/deploy'], function () use ($router) {
-    $router->get('/', 'DeployController@deploy');   // GET também funciona
-    $router->post('/', 'DeployController@deploy');
-    $router->get('/info', 'DeployController@info');
+    $router->get('/', 'App\Http\Controllers\DeployController@deploy');   // GET também funciona
+    $router->post('/', 'App\Http\Controllers\DeployController@deploy');
+    $router->get('/info', 'App\Http\Controllers\DeployController@info');
 });
 
 // Proxy público para mídias do Twilio (usado no chat via <img src>)
-$router->get('/conversas/media/proxy', 'ConversasController@proxyMedia');
+$router->get('/conversas/media/proxy', 'App\Http\Controllers\ConversasController@proxyMedia');
 
 // ===========================
 // Autenticação (sem middleware)
 // ===========================
 $router->group(['prefix' => 'api/auth'], function () use ($router) {
-    $router->post('/login', 'AuthController@login');
-    $router->post('/forgot-password', 'PasswordResetController@sendResetLink');
-    $router->post('/reset-password', 'PasswordResetController@reset');
+    $router->post('/login', 'App\Http\Controllers\AuthController@login');
+    $router->post('/forgot-password', 'App\Http\Controllers\PasswordResetController@sendResetLink');
+    $router->post('/reset-password', 'App\Http\Controllers\PasswordResetController@reset');
 });
 
 // ===========================
@@ -292,253 +277,190 @@ $router->group(['prefix' => 'api/auth'], function () use ($router) {
 $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-auth']], function () use ($router) {
 
     // Auth
-    $router->get('/auth/me', 'AuthController@me');
-    $router->post('/auth/logout', 'AuthController@logout');
+    $router->get('/auth/me', 'App\Http\Controllers\AuthController@me');
+    $router->post('/auth/logout', 'App\Http\Controllers\AuthController@logout');
 
     // Importação de imóveis
     $router->group(['prefix' => 'importacoes/imoveis'], function () use ($router) {
-        $router->get('/overview', 'ImportacaoImoveisController@overview');
-        $router->get('/historico', 'ImportacaoImoveisController@historico');
-        $router->get('/fila', 'ImportacaoImoveisController@fila');
-        $router->get('/logs', 'ImportacaoImoveisController@logs');
-        $router->post('/', 'ImportacaoImoveisController@agendarImportacao');
-        $router->post('/detalhes', 'ImportacaoImoveisController@agendarDetalhes');
-        $router->post('/sincronizar', 'ImportacaoImoveisController@sincronizarImovel');
+        $router->get('/overview', 'App\Http\Controllers\ImportacaoImoveisController@overview');
+        $router->get('/historico', 'App\Http\Controllers\ImportacaoImoveisController@historico');
+        $router->get('/fila', 'App\Http\Controllers\ImportacaoImoveisController@fila');
+        $router->get('/logs', 'App\Http\Controllers\ImportacaoImoveisController@logs');
+        $router->post('/', 'App\Http\Controllers\ImportacaoImoveisController@agendarImportacao');
+        $router->post('/detalhes', 'App\Http\Controllers\ImportacaoImoveisController@agendarDetalhes');
+        $router->post('/sincronizar', 'App\Http\Controllers\ImportacaoImoveisController@sincronizarImovel');
     });
 
     // Dashboard
-    $router->get('/dashboard/stats', 'DashboardController@stats');
-    $router->get('/dashboard/chart/atendimentos', 'DashboardController@chartAtendimentos');
-    $router->get('/dashboard/atividades', 'DashboardController@atividades');
-    $router->get('/dashboard/timeline', 'DashboardController@timeline');
+    $router->get('/dashboard/stats', 'App\Http\Controllers\DashboardController@stats');
+    $router->get('/dashboard/chart/atendimentos', 'App\Http\Controllers\DashboardController@chartAtendimentos');
+    $router->get('/dashboard/atividades', 'App\Http\Controllers\DashboardController@atividades');
+    $router->get('/dashboard/timeline', 'App\Http\Controllers\DashboardController@timeline');
 
     // Vistorias
-    $router->get('/vistorias', 'VistoriasController@index');
-    $router->get('/vistorias/export', 'VistoriasController@export');
-    $router->get('/vistorias/solicitacoes', 'VistoriaSolicitacoesController@index');
-    $router->post('/vistorias/solicitacoes', 'VistoriaSolicitacoesController@store');
-    $router->put('/vistorias/solicitacoes/{id}/status', 'VistoriaSolicitacoesController@updateStatus');
-    $router->get('/vistorias/contestacoes', 'VistoriaContestacoesController@index');
-    $router->post('/vistorias/contestacoes', 'VistoriaContestacoesController@store');
-    $router->get('/vistorias/contestacoes/{id}', 'VistoriaContestacoesController@show');
-    $router->put('/vistorias/contestacoes/{id}/status', 'VistoriaContestacoesController@updateStatus');
-    $router->delete('/vistorias/contestacoes/{id}', 'VistoriaContestacoesController@destroy');
-    $router->get('/vistorias/{id}', 'VistoriasController@show');
+    $router->get('/vistorias', 'App\Http\Controllers\VistoriasController@index');
+    $router->get('/vistorias/export', 'App\Http\Controllers\VistoriasController@export');
+    $router->get('/vistorias/solicitacoes', 'App\Http\Controllers\VistoriaSolicitacoesController@index');
+    $router->post('/vistorias/solicitacoes', 'App\Http\Controllers\VistoriaSolicitacoesController@store');
+    $router->put('/vistorias/solicitacoes/{id}/status', 'App\Http\Controllers\VistoriaSolicitacoesController@updateStatus');
+    $router->get('/vistorias/contestacoes', 'App\Http\Controllers\VistoriaContestacoesController@index');
+    $router->post('/vistorias/contestacoes', 'App\Http\Controllers\VistoriaContestacoesController@store');
+    $router->get('/vistorias/contestacoes/{id}', 'App\Http\Controllers\VistoriaContestacoesController@show');
+    $router->put('/vistorias/contestacoes/{id}/status', 'App\Http\Controllers\VistoriaContestacoesController@updateStatus');
+    $router->delete('/vistorias/contestacoes/{id}', 'App\Http\Controllers\VistoriaContestacoesController@destroy');
+    $router->get('/vistorias/{id}', 'App\Http\Controllers\VistoriasController@show');
 
     // Pessoas
-    $router->get('/pessoas', 'PessoasController@index');
-    $router->post('/pessoas', 'PessoasController@store');
-    $router->get('/pessoas/{id}', 'PessoasController@show');
-    $router->put('/pessoas/{id}', 'PessoasController@update');
-    $router->delete('/pessoas/{id}', 'PessoasController@destroy');
+    $router->get('/pessoas', 'App\Http\Controllers\PessoasController@index');
+    $router->post('/pessoas', 'App\Http\Controllers\PessoasController@store');
+    $router->get('/pessoas/{id}', 'App\Http\Controllers\PessoasController@show');
+    $router->put('/pessoas/{id}', 'App\Http\Controllers\PessoasController@update');
+    $router->delete('/pessoas/{id}', 'App\Http\Controllers\PessoasController@destroy');
     
-    // Pessoas - ImobiBrasil sync
-    $router->post('/pessoas/{id}/sync-imobi-brasil', 'PessoasController@syncImobiBrasil');
-    $router->delete('/pessoas/{id}/sync-imobi-brasil', 'PessoasController@unsyncImobiBrasil');
-
     // Pessoas - Interações/Timeline
-    $router->get('/pessoas/{id}/interacoes', 'PessoasController@getInteracoes');
-    $router->post('/pessoas/{id}/interacoes', 'PessoasController@addInteracao');
+    $router->get('/pessoas/{id}/interacoes', 'App\Http\Controllers\PessoasController@getInteracoes');
+    $router->post('/pessoas/{id}/interacoes', 'App\Http\Controllers\PessoasController@addInteracao');
     
     // Pessoas - Documentos
-    $router->get('/pessoas/{id}/documentos', 'PessoasController@getDocumentos');
-    $router->post('/pessoas/{id}/documentos', 'PessoasController@uploadDocumento');
-    $router->get('/pessoas/{id}/documentos/export', 'PessoasController@exportDocumentos');
-    $router->post('/pessoas/{id}/documentos/export', 'PessoasController@exportDocumentosSelecionados');
-    $router->delete('/pessoas/documentos/{documentoId}', 'PessoasController@deleteDocumento');
-    $router->post('/pessoas/documentos/{documentoId}/verificar', 'PessoasController@verificarDocumento');
+    $router->get('/pessoas/{id}/documentos', 'App\Http\Controllers\PessoasController@getDocumentos');
+    $router->post('/pessoas/{id}/documentos', 'App\Http\Controllers\PessoasController@uploadDocumento');
+    $router->get('/pessoas/{id}/documentos/export', 'App\Http\Controllers\PessoasController@exportDocumentos');
+    $router->post('/pessoas/{id}/documentos/export', 'App\Http\Controllers\PessoasController@exportDocumentosSelecionados');
+    $router->delete('/pessoas/documentos/{documentoId}', 'App\Http\Controllers\PessoasController@deleteDocumento');
+    $router->post('/pessoas/documentos/{documentoId}/verificar', 'App\Http\Controllers\PessoasController@verificarDocumento');
     
     // Pessoas - Relacionamentos
-    $router->get('/pessoas/{id}/relacionamentos', 'PessoasController@getRelacionamentos');
-    $router->post('/pessoas/{id}/relacionamentos', 'PessoasController@addRelacionamento');
-    $router->delete('/pessoas/relacionamentos/{relacionamentoId}', 'PessoasController@deleteRelacionamento');
+    $router->get('/pessoas/{id}/relacionamentos', 'App\Http\Controllers\PessoasController@getRelacionamentos');
+    $router->post('/pessoas/{id}/relacionamentos', 'App\Http\Controllers\PessoasController@addRelacionamento');
+    $router->delete('/pessoas/relacionamentos/{relacionamentoId}', 'App\Http\Controllers\PessoasController@deleteRelacionamento');
     
     // Pessoas - Ações
-    $router->post('/pessoas/{id}/papeis', 'PessoasController@gerenciarPapeis');
-    $router->post('/pessoas/{id}/score', 'PessoasController@atualizarScore');
+    $router->post('/pessoas/{id}/papeis', 'App\Http\Controllers\PessoasController@gerenciarPapeis');
+    $router->post('/pessoas/{id}/score', 'App\Http\Controllers\PessoasController@atualizarScore');
 
     // Notificações
-    $router->get('/notifications', 'NotificationController@index');
-    $router->get('/notifications/unread-count', 'NotificationController@unreadCount');
-    $router->get('/notifications/summary', 'NotificationController@summary');
-    $router->post('/notifications/mark-all-as-read', 'NotificationController@markAllAsRead');
-    $router->get('/notifications/{id}', 'NotificationController@show');
-    $router->post('/notifications/{id}/read', 'NotificationController@markAsRead');
-    $router->post('/notifications/{id}/unread', 'NotificationController@markAsUnread');
-    $router->delete('/notifications/{id}', 'NotificationController@destroy');
+    $router->get('/notifications', 'App\Http\Controllers\NotificationController@index');
+    $router->get('/notifications/unread-count', 'App\Http\Controllers\NotificationController@unreadCount');
+    $router->get('/notifications/summary', 'App\Http\Controllers\NotificationController@summary');
+    $router->post('/notifications/mark-all-as-read', 'App\Http\Controllers\NotificationController@markAllAsRead');
+    $router->get('/notifications/{id}', 'App\Http\Controllers\NotificationController@show');
+    $router->post('/notifications/{id}/read', 'App\Http\Controllers\NotificationController@markAsRead');
+    $router->post('/notifications/{id}/unread', 'App\Http\Controllers\NotificationController@markAsUnread');
+    $router->delete('/notifications/{id}', 'App\Http\Controllers\NotificationController@destroy');
 
     // Assinaturas Eletrônicas
-    $router->get('/assinaturas/documentos', 'AssinaturasController@index');
-    $router->post('/assinaturas/documentos', 'AssinaturasController@store');
-    $router->get('/assinaturas/documentos/{id}', 'AssinaturasController@show');
-    $router->put('/assinaturas/documentos/{id}/status', 'AssinaturasController@updateStatus');
-    $router->delete('/assinaturas/documentos/{id}', 'AssinaturasController@destroy');
+    $router->get('/assinaturas/documentos', 'App\Http\Controllers\AssinaturasController@index');
+    $router->post('/assinaturas/documentos', 'App\Http\Controllers\AssinaturasController@store');
+    $router->get('/assinaturas/documentos/{id}', 'App\Http\Controllers\AssinaturasController@show');
+    $router->put('/assinaturas/documentos/{id}/status', 'App\Http\Controllers\AssinaturasController@updateStatus');
+    $router->delete('/assinaturas/documentos/{id}', 'App\Http\Controllers\AssinaturasController@destroy');
 
     // Imóveis - CRUD
-    $router->get('/imoveis/export', 'PropertyController@export');
-    $router->get('/imoveis', 'PropertyController@index');
-    $router->get('/imoveis/portal-opcoes', 'PropertyController@portalOptions');
-    $router->post('/imoveis', 'PropertyController@store');
-    $router->put('/imoveis/{id}', 'PropertyController@update');
-    $router->delete('/imoveis/{id}', 'PropertyController@destroy');
-    $router->post('/imoveis/ai/gerar-descricao', 'PropertyController@generateDescriptions');
+    $router->get('/imoveis/export', 'App\Http\Controllers\PropertyController@export');
+    $router->get('/imoveis', 'App\Http\Controllers\PropertyController@index');
+    $router->get('/imoveis/portal-opcoes', 'App\Http\Controllers\PropertyController@portalOptions');
+    $router->post('/imoveis', 'App\Http\Controllers\PropertyController@store');
+    $router->put('/imoveis/{id}', 'App\Http\Controllers\PropertyController@update');
+    $router->delete('/imoveis/{id}', 'App\Http\Controllers\PropertyController@destroy');
+    $router->post('/imoveis/ai/gerar-descricao', 'App\Http\Controllers\PropertyController@generateDescriptions');
     
-    // Integração Imobi Brasil - PropertyController (por ID local do imóvel)
-    $router->post('/imoveis/{id}/enviar-imobi-brasil', 'PropertyController@enviarImobiBrasil');
-    $router->put('/imoveis/{id}/atualizar-imobi-brasil', 'PropertyController@atualizarImobiBrasil');
-    $router->get('/imoveis/{id}/status-imobi-brasil', 'PropertyController@statusImobiBrasil');
-    $router->post('/imoveis/{id}/enviar-imagens-imobi-brasil', 'PropertyController@enviarImagensImobiBrasil');
-
-    // Integração Imobi Brasil - proxy direto para API (por código ImobiBrasil)
-    // Conta
-    $router->get('/imobi-brasil/account/status', 'ImobiBrasilController@accountStatus');
-
-    // Imóveis
-    $router->get('/imobi-brasil/imoveis', 'ImobiBrasilController@listarImoveis');
-    $router->get('/imobi-brasil/imoveis/tipos', 'ImobiBrasilController@listarTiposImovel');
-    $router->get('/imobi-brasil/imoveis/{codigoImovel}', 'ImobiBrasilController@dadosImovel');
-    $router->delete('/imobi-brasil/imoveis/{codigoImovel}', 'ImobiBrasilController@excluirImovel');
-
-    // Imagens de imóveis
-    $router->get('/imobi-brasil/imoveis/{codigoImovel}/imagens', 'ImobiBrasilController@listarImagensImovel');
-    $router->delete('/imobi-brasil/imoveis/{codigoImovel}/imagens/{codigoImagem}', 'ImobiBrasilController@excluirImagemImovel');
-
-    // Características
-    $router->get('/imobi-brasil/caracteristicas', 'ImobiBrasilController@listarCaracteristicas');
-    $router->post('/imobi-brasil/caracteristicas', 'ImobiBrasilController@inserirCaracteristica');
-    $router->delete('/imobi-brasil/caracteristicas/{codigoCaracteristica}', 'ImobiBrasilController@excluirCaracteristica');
-    $router->post('/imobi-brasil/imoveis/{codigoImovel}/caracteristicas/{codigoCaracteristica}', 'ImobiBrasilController@adicionarCaracteristicaImovel');
-    $router->delete('/imobi-brasil/imoveis/{codigoImovel}/caracteristicas/{codigoCaracteristica}', 'ImobiBrasilController@removerCaracteristicaImovel');
-
-    // Pessoas
-    $router->get('/imobi-brasil/pessoas', 'ImobiBrasilController@listarPessoas');
-    $router->post('/imobi-brasil/pessoas', 'ImobiBrasilController@inserirPessoa');
-    $router->get('/imobi-brasil/pessoas/{codigoPessoa}', 'ImobiBrasilController@dadosPessoa');
-    $router->put('/imobi-brasil/pessoas/{codigoPessoa}', 'ImobiBrasilController@alterarPessoa');
-    $router->delete('/imobi-brasil/pessoas/{codigoPessoa}', 'ImobiBrasilController@excluirPessoa');
-    $router->delete('/imobi-brasil/pessoas/{codigoPessoa}/imagem', 'ImobiBrasilController@excluirImagemPessoa');
-
-    // Mensagens
-    $router->get('/imobi-brasil/mensagens', 'ImobiBrasilController@listarMensagens');
-    $router->post('/imobi-brasil/mensagens', 'ImobiBrasilController@inserirMensagem');
-    $router->get('/imobi-brasil/mensagens/{codigoMensagem}', 'ImobiBrasilController@dadosMensagem');
-    $router->delete('/imobi-brasil/mensagens/{codigoMensagem}', 'ImobiBrasilController@excluirMensagem');
-    $router->post('/imobi-brasil/mensagens/{codigoMensagem}/lido', 'ImobiBrasilController@marcarMensagemLida');
-
-    // Negócios
-    $router->get('/imobi-brasil/negocios/etapas', 'ImobiBrasilController@listarEtapasNegocios');
-    $router->get('/imobi-brasil/negocios', 'ImobiBrasilController@listarNegocios');
-    $router->post('/imobi-brasil/negocios', 'ImobiBrasilController@inserirNegocio');
-    $router->get('/imobi-brasil/negocios/{codigoNegocio}', 'ImobiBrasilController@dadosNegocio');
-    $router->put('/imobi-brasil/negocios/{codigoNegocio}', 'ImobiBrasilController@alterarNegocio');
-    $router->delete('/imobi-brasil/negocios/{codigoNegocio}', 'ImobiBrasilController@excluirNegocio');
-
-    // Corretores
-    $router->get('/imobi-brasil/corretores', 'ImobiBrasilController@listarCorretores');
-    $router->get('/imobi-brasil/corretores/{codigoCorretor}', 'ImobiBrasilController@dadosCorretor');
-    $router->get('/imobi-brasil/corretores/{codigoCorretor}/imoveis', 'ImobiBrasilController@imoveisCorretor');
-
-    // Clientes
-    $router->get('/imobi-brasil/clientes', 'ImobiBrasilController@listarClientes');
-    $router->get('/imobi-brasil/clientes/{codigoCliente}', 'ImobiBrasilController@dadosCliente');
-
-    // Cidades
-    $router->get('/imobi-brasil/cidades', 'ImobiBrasilController@listarCidades');
-
-    // Usuários adicionais
-    $router->get('/imobi-brasil/usuarios-adicionais/{codigoUsuario}', 'ImobiBrasilController@dadosUsuarioAdicional');
+    // Integração Imobi Brasil
+    $router->post('/imoveis/{id}/enviar-imobi-brasil', 'App\Http\Controllers\PropertyController@enviarImobiBrasil');
+    $router->put('/imoveis/{id}/atualizar-imobi-brasil', 'App\Http\Controllers\PropertyController@atualizarImobiBrasil');
+    $router->get('/imoveis/{id}/status-imobi-brasil', 'App\Http\Controllers\PropertyController@statusImobiBrasil');
+    $router->post('/imoveis/{id}/enviar-imagens-imobi-brasil', 'App\Http\Controllers\PropertyController@enviarImagensImobiBrasil');
     
-    $router->get('/chaves', 'PropertyController@keysIndex');
-    $router->get('/chaves/movimentacoes', 'PropertyController@keysMovements');
-    $router->post('/chaves/movimentacoes', 'PropertyController@keysMove');
+    $router->get('/chaves', 'App\Http\Controllers\PropertyController@keysIndex');
+    $router->get('/chaves/movimentacoes', 'App\Http\Controllers\PropertyController@keysMovements');
+    $router->post('/chaves/movimentacoes', 'App\Http\Controllers\PropertyController@keysMove');
 
     // Properties - Generate AI Description for Ads
-    $router->post('/properties/{id}/generate-ad-description', 'PropertyController@generateAdDescription');
+    $router->post('/properties/{id}/generate-ad-description', 'App\Http\Controllers\PropertyController@generateAdDescription');
 
     // Leads
-    $router->get('/leads', 'LeadsController@index');
-    $router->post('/leads', 'LeadsController@store');
-    $router->get('/leads/stats', 'LeadsController@stats');
-    $router->get('/leads/{id}', 'LeadsController@show');
-    $router->put('/leads/{id}', 'LeadsController@update');
-    $router->patch('/leads/{id}/state', 'LeadsController@updateState');
-    $router->patch('/leads/{id}/status', 'LeadsController@updateStatus');
-    $router->post('/leads/{id}/claim', 'LeadsController@claim');
-    $router->post('/leads/{id}/release', 'LeadsController@release');
-    $router->get('/leads/{id}/documents', 'LeadDocumentsController@index');
-    $router->post('/leads/{id}/documents', 'LeadDocumentsController@store');
-    $router->delete('/leads/{id}/documents/{documentId}', 'LeadDocumentsController@destroy');
-    $router->get('/leads/{id}/documents/export', 'LeadDocumentsController@export');
-    $router->post('/leads/{id}/documents/export', 'LeadDocumentsController@exportSelected');
-    $router->delete('/leads/{id}', 'LeadsController@destroy');
-    $router->delete('/leads', 'LeadsController@bulkDestroy');
-    $router->post('/leads/{id}/diagnostico', 'LeadsController@diagnostico');
+    $router->get('/leads', 'App\Http\Controllers\LeadsController@index');
+    $router->post('/leads', 'App\Http\Controllers\LeadsController@store');
+    $router->get('/leads/stats', 'App\Http\Controllers\LeadsController@stats');
+    $router->get('/leads/{id}', 'App\Http\Controllers\LeadsController@show');
+    $router->put('/leads/{id}', 'App\Http\Controllers\LeadsController@update');
+    $router->patch('/leads/{id}/state', 'App\Http\Controllers\LeadsController@updateState');
+    $router->patch('/leads/{id}/status', 'App\Http\Controllers\LeadsController@updateStatus');
+    $router->post('/leads/{id}/claim', 'App\Http\Controllers\LeadsController@claim');
+    $router->post('/leads/{id}/release', 'App\Http\Controllers\LeadsController@release');
+    $router->get('/leads/{id}/documents', 'App\Http\Controllers\LeadDocumentsController@index');
+    $router->post('/leads/{id}/documents', 'App\Http\Controllers\LeadDocumentsController@store');
+    $router->delete('/leads/{id}/documents/{documentId}', 'App\Http\Controllers\LeadDocumentsController@destroy');
+    $router->get('/leads/{id}/documents/export', 'App\Http\Controllers\LeadDocumentsController@export');
+    $router->post('/leads/{id}/documents/export', 'App\Http\Controllers\LeadDocumentsController@exportSelected');
+    $router->delete('/leads/{id}', 'App\Http\Controllers\LeadsController@destroy');
+    $router->delete('/leads', 'App\Http\Controllers\LeadsController@bulkDestroy');
+    $router->post('/leads/{id}/diagnostico', 'App\Http\Controllers\LeadsController@diagnostico');
 
     // Conversas e Chat
     $router->group(['prefix' => 'admin'], function () use ($router) {
-        $router->get('/conversas', 'Admin\ConversasController@index');
-        $router->get('/conversas/fila/estatisticas', 'Admin\ConversasController@estatisticasFila');
-        $router->post('/conversas/fila/pegar-proxima', 'Admin\ConversasController@pegarProxima');
-        $router->post('/conversas/{id}/devolver-fila', 'Admin\ConversasController@devolverParaFila');
-        $router->post('/conversas/{id}/atribuir', 'Admin\ConversasController@atribuirCorretor');
-        $router->get('/conversas/tempo-real', 'ConversasController@tempoReal');
-        $router->get('/conversas/por-telefone/{telefone}', 'ConversasController@porTelefone');
-        $router->get('/conversas/{id}', 'Admin\ConversasController@show');
-        $router->get('/conversas/{id}/mensagens', 'Admin\ConversasController@mensagens');
-        $router->post('/conversas/{id}/mensagens', 'Admin\ConversasController@enviarMensagem');
+        $router->get('/conversas', 'App\Http\Controllers\Admin\ConversasController@index');
+        $router->get('/conversas/fila/estatisticas', 'App\Http\Controllers\Admin\ConversasController@estatisticasFila');
+        $router->post('/conversas/fila/pegar-proxima', 'App\Http\Controllers\Admin\ConversasController@pegarProxima');
+        $router->post('/conversas/{id}/devolver-fila', 'App\Http\Controllers\Admin\ConversasController@devolverParaFila');
+        $router->post('/conversas/{id}/atribuir', 'App\Http\Controllers\Admin\ConversasController@atribuirCorretor');
+        $router->get('/conversas/tempo-real', 'App\Http\Controllers\ConversasController@tempoReal');
+        $router->get('/conversas/por-telefone/{telefone}', 'App\Http\Controllers\ConversasController@porTelefone');
+        $router->get('/conversas/{id}', 'App\Http\Controllers\Admin\ConversasController@show');
+        $router->get('/conversas/{id}/mensagens', 'App\Http\Controllers\Admin\ConversasController@mensagens');
+        $router->post('/conversas/{id}/mensagens', 'App\Http\Controllers\Admin\ConversasController@enviarMensagem');
         // Proxy de mídia (Twilio) – também exposto sem auth em /api/conversas/media/proxy
-        $router->get('/conversas/media/proxy', 'Admin\ConversasController@proxyMedia');
-        $router->get('/mensagens/{id}/media', 'Admin\MensagemMediaController@show');
-        $router->get('/corretores', 'Admin\CommissionController@listarCorretores');
+        $router->get('/conversas/media/proxy', 'App\Http\Controllers\Admin\ConversasController@proxyMedia');
+        $router->get('/mensagens/{id}/media', 'App\Http\Controllers\Admin\MensagemMediaController@show');
+        $router->get('/corretores', 'App\Http\Controllers\Admin\CommissionController@listarCorretores');
 
         // Leads - SMS
-        $router->post('/leads/{id}/sms', 'Admin\LeadsController@sendSms');
+        $router->post('/leads/{id}/sms', 'App\Http\Controllers\Admin\LeadsController@sendSms');
         
         // Tenant Settings
-        $router->get('/settings', 'Admin\TenantSettingsController@index');
-        $router->put('/settings', 'Admin\TenantSettingsController@update');
+        $router->get('/settings', 'App\Http\Controllers\Admin\TenantSettingsController@index');
+        $router->put('/settings', 'App\Http\Controllers\Admin\TenantSettingsController@update');
     });
     
     // Imóveis - Detalhes completos
-    $router->get('/imoveis/detalhes/{codigo}', 'PropertyController@detalhesCompletos');
-    $router->get('/imoveis/{id}', 'PropertyController@show');
+    $router->get('/imoveis/detalhes/{codigo}', 'App\Http\Controllers\PropertyController@detalhesCompletos');
+    $router->get('/imoveis/{id}', 'App\Http\Controllers\PropertyController@show');
 
     // CRM unificado
-    $router->get('/crm/clientes', 'CRMController@index');
-    $router->patch('/crm/clientes/{id}/status', 'CRMController@updateStatus');
+    $router->get('/crm/clientes', 'App\Http\Controllers\CRMController@index');
+    $router->patch('/crm/clientes/{id}/status', 'App\Http\Controllers\CRMController@updateStatus');
 
     // Configurações do CRM / IA
-    $router->get('/settings', 'SettingsController@index');
-    $router->put('/settings', 'SettingsController@update');
+    $router->get('/settings', 'App\Http\Controllers\SettingsController@index');
+    $router->put('/settings', 'App\Http\Controllers\SettingsController@update');
 
     // ===========================
     // ADS AUTOMATION MODULE
     // ===========================
 
     // Status geral e configurações
-    $router->get('/ads/status', 'Ads\AdsConnectionController@status');
-    $router->post('/ads/settings', 'Ads\AdsConnectionController@saveSettings');
-    $router->get('/ads/logs', 'Ads\AdsListingController@logs');
+    $router->get('/ads/status', 'App\Http\Controllers\Ads\AdsConnectionController@status');
+    $router->post('/ads/settings', 'App\Http\Controllers\Ads\AdsConnectionController@saveSettings');
+    $router->get('/ads/logs', 'App\Http\Controllers\Ads\AdsListingController@logs');
 
     // Leads captados pelos providers
-    $router->get('/ads/leads', 'Ads\AdsLeadsController@index');
-    $router->get('/ads/leads/stats', 'Ads\AdsLeadsController@stats');
-    $router->post('/ads/leads/olx/sync', 'Ads\AdsLeadsController@syncOlx'); // pull OLX leads
+    $router->get('/ads/leads', 'App\Http\Controllers\Ads\AdsLeadsController@index');
+    $router->get('/ads/leads/stats', 'App\Http\Controllers\Ads\AdsLeadsController@stats');
+    $router->post('/ads/leads/olx/sync', 'App\Http\Controllers\Ads\AdsLeadsController@syncOlx'); // pull OLX leads
 
     // Analytics dashboard
-    $router->get('/ads/analytics', 'Ads\AdsAnalyticsController@index');
+    $router->get('/ads/analytics', 'App\Http\Controllers\Ads\AdsAnalyticsController@index');
 
     // Conexão OAuth por provider
-    $router->post('/ads/{provider}/connect/start', 'Ads\AdsConnectionController@startConnect');
-    $router->get('/ads/{provider}/connect/callback', 'Ads\AdsConnectionController@oauthCallback');
-    $router->delete('/ads/{provider}/connect', 'Ads\AdsConnectionController@disconnect');
-    $router->post('/ads/{provider}/accounts', 'Ads\AdsConnectionController@saveAccount');
+    $router->post('/ads/{provider}/connect/start', 'App\Http\Controllers\Ads\AdsConnectionController@startConnect');
+    $router->get('/ads/{provider}/connect/callback', 'App\Http\Controllers\Ads\AdsConnectionController@oauthCallback');
+    $router->delete('/ads/{provider}/connect', 'App\Http\Controllers\Ads\AdsConnectionController@disconnect');
+    $router->post('/ads/{provider}/accounts', 'App\Http\Controllers\Ads\AdsConnectionController@saveAccount');
 
     // OLX: conexão por credenciais (sem OAuth popup)
-    $router->post('/ads/olx/connect/credentials', 'Ads\AdsConnectionController@connectCredentials');
+    $router->post('/ads/olx/connect/credentials', 'App\Http\Controllers\Ads\AdsConnectionController@connectCredentials');
 
     // Publicação de imóveis
-    $router->post('/listings/{id}/ads/publish', 'Ads\AdsListingController@publish');
-    $router->post('/listings/{id}/ads/unpublish', 'Ads\AdsListingController@unpublish');
-    $router->get('/listings/{id}/ads/status', 'Ads\AdsListingController@listingAdsStatus');
+    $router->post('/listings/{id}/ads/publish', 'App\Http\Controllers\Ads\AdsListingController@publish');
+    $router->post('/listings/{id}/ads/unpublish', 'App\Http\Controllers\Ads\AdsListingController@unpublish');
+    $router->get('/listings/{id}/ads/status', 'App\Http\Controllers\Ads\AdsListingController@listingAdsStatus');
 });

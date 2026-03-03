@@ -1,8 +1,8 @@
 <?php
-
 namespace App\Http\Controllers\Ads;
-
 use App\Http\Controllers\Controller;
+
+
 use App\Models\Ads\{AdsWebhook, AdsListing, AdsAuditLog};
 use App\Services\Ads\TokenEncryptionService;
 use App\Jobs\Ads\IngestAdsLeadJob;

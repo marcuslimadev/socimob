@@ -1,12 +1,12 @@
 <?php
-
 namespace App\Http\Controllers\Ads;
-
 use App\Http\Controllers\Controller;
-use App\Models\Ads\{AdsConnection, AdsAccount, AdsCampaign, AdsAuditLog};
-use App\Services\Ads\AdsEntitlementService;
+
+
+use App\Models\Ads\{AdsConnection, AdsAccount, AdsCatalog, AdsCampaign, AdsEntitlement, AdsAuditLog};
+use App\Services\Ads\{AdsEntitlementService, TokenEncryptionService};
 use App\Services\Ads\Providers\ProviderAdapterFactory;
-use Illuminate\Http\{Request, JsonResponse, Response};
+use Illuminate\Http\{Request, JsonResponse};
 use Illuminate\Support\Facades\{Cache, Log};
 use Illuminate\Support\Str;
 
@@ -25,6 +25,7 @@ class AdsConnectionController extends Controller
     public function __construct(
         private AdsEntitlementService $entitlement,
         private ProviderAdapterFactory $factory,
+        private TokenEncryptionService $enc,
     ) {}
 
     /**
@@ -58,13 +59,13 @@ class AdsConnectionController extends Controller
             Log::error('[AdsConnectionController] startConnect error', [
                 'tenant_id' => $tenantId, 'provider' => $provider, 'error' => $e->getMessage()
             ]);
-            return response()->json(['success' => false, 'error' => $e->getMessage()], method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], $e->getStatusCode() ?? 500);
         }
     }
 
     /**
-     * GET /api/ads/{provider}/connect/callback  (rota autenticada — uso interno/API)
-     * Troca code por tokens. Retorna JSON.
+     * GET /api/ads/{provider}/connect/callback
+     * Troca code por tokens (pode ser chamado com redirect ou como API).
      */
     public function oauthCallback(Request $request, string $provider): JsonResponse
     {
@@ -108,132 +109,6 @@ class AdsConnectionController extends Controller
             ]);
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
-    }
-
-    /**
-     * GET /api/ads/meta/connect/callback   (pública — browser popup do OAuth)
-     * GET /api/ads/google/connect/callback (pública — browser popup do OAuth)
-     *
-     * Meta/Google redireciona o browser do usuário para cá após autorização.
-     * Processa o code, salva o token e retorna HTML que:
-     *   1. Notifica a janela pai via window.postMessage
-     *   2. Fecha o popup automaticamente
-     */
-    public function oauthCallbackPopup(Request $request, string $provider): Response
-    {
-        $tenantId = $request->get('tenant_id');
-
-        $code  = $request->query('code');
-        $state = $request->query('state');
-        $error = $request->query('error');
-
-        // ── Erro retornado pelo provider ──────────────────────────────────────
-        if ($error) {
-            $errorMsg = $request->query('error_description', $error);
-            AdsAuditLog::log($tenantId, AdsAuditLog::ACTION_OAUTH_CALLBACK, AdsAuditLog::STATUS_ERROR, [
-                'provider' => $provider,
-                'message'  => $errorMsg,
-            ]);
-            return $this->popupHtmlResponse($provider, false, null, $errorMsg);
-        }
-
-        // ── Validar state anti-CSRF ───────────────────────────────────────────
-        $savedState = Cache::get("ads_oauth_state_{$tenantId}_{$provider}");
-        if (!$savedState || !hash_equals($savedState, (string)$state)) {
-            return $this->popupHtmlResponse($provider, false, null, 'Estado de segurança inválido. Inicie o processo novamente.');
-        }
-        Cache::forget("ads_oauth_state_{$tenantId}_{$provider}");
-
-        // ── Processar OAuth ───────────────────────────────────────────────────
-        try {
-            $adapter    = $this->factory->make($provider);
-            $connection = $adapter->handleOAuthCallback($tenantId, $code, $state);
-
-            return $this->popupHtmlResponse($provider, true, $connection->status);
-        } catch (\Throwable $e) {
-            Log::error('[AdsConnectionController] oauthCallbackPopup error', [
-                'tenant_id' => $tenantId, 'provider' => $provider, 'error' => $e->getMessage(),
-            ]);
-            return $this->popupHtmlResponse($provider, false, null, $e->getMessage());
-        }
-    }
-
-    /**
-     * Gera HTML para o popup OAuth que comunica o resultado ao parent via postMessage.
-     */
-    private function popupHtmlResponse(string $provider, bool $success, ?string $status = null, ?string $error = null): Response
-    {
-        $dataJson = json_encode([
-            'type'     => $success ? 'ADS_OAUTH_SUCCESS' : 'ADS_OAUTH_ERROR',
-            'provider' => $provider,
-            'status'   => $status,
-            'error'    => $error,
-        ]);
-
-        $title     = $success ? 'Conexão realizada!' : 'Erro na conexão';
-        $bodyText  = $success
-            ? 'Conta conectada com sucesso! Esta janela fechará automaticamente...'
-            : htmlspecialchars("Erro: {$error}", ENT_QUOTES, 'UTF-8');
-        $bodyColor = $success ? '#22c55e' : '#ef4444';
-        $bgColor   = $success ? '#0a1a0f' : '#1a0a0a';
-        $icon      = $success ? '✅' : '❌';
-
-        $html = <<<HTML
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{$title}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: {$bgColor};
-      color: #e5e7eb;
-      display: flex; align-items: center; justify-content: center;
-      min-height: 100vh; padding: 24px;
-    }
-    .card {
-      background: #1a1d23; border: 1px solid #2d3748;
-      border-radius: 16px; padding: 32px; max-width: 380px;
-      text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5);
-    }
-    .icon { font-size: 48px; margin-bottom: 16px; }
-    h2 { font-size: 20px; font-weight: 600; margin-bottom: 8px; color: {$bodyColor}; }
-    p  { font-size: 14px; color: #9ca3af; line-height: 1.5; }
-    .spinner { width: 20px; height: 20px; border: 2px solid #374151; border-top-color: #6b7280; border-radius: 50%; animation: spin .8s linear infinite; margin: 16px auto 0; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="icon">{$icon}</div>
-    <h2>{$title}</h2>
-    <p>{$bodyText}</p>
-    <div class="spinner" id="spinner"></div>
-  </div>
-  <script>
-    var data = {$dataJson};
-    function sendAndClose() {
-      try {
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage(data, '*');
-        }
-      } catch(e) {}
-      setTimeout(function() { window.close(); }, 500);
-    }
-    sendAndClose();
-    setTimeout(sendAndClose, 800);
-    setTimeout(function() {
-      document.getElementById('spinner').style.display = 'none';
-    }, 2000);
-  </script>
-</body>
-</html>
-HTML;
-
-        return response($html, 200)->header('Content-Type', 'text/html; charset=UTF-8');
     }
 
     /**
@@ -289,12 +164,6 @@ HTML;
                 ->where('provider', $provider)
                 ->first();
 
-            $account = AdsAccount::withoutTenant()
-                ->where('tenant_id', $tenantId)
-                ->where('provider', $provider)
-                ->where('is_active', true)
-                ->first();
-
             $activeListings = \App\Models\Ads\AdsListing::withoutTenant()
                 ->where('tenant_id', $tenantId)
                 ->where('provider', $provider)
@@ -302,16 +171,13 @@ HTML;
                 ->count();
 
             $stats[$provider] = [
-                'connected'            => $conn?->isConnected() ?? false,
-                'status'               => $conn?->status ?? 'DRAFT',
-                'expires_at'           => $conn?->expires_at?->toISOString(),
-                'last_refresh_at'      => $conn?->last_refresh_at?->toISOString(),
-                'campaign_status'      => $campaign?->status ?? null,
-                'active_listings'      => $activeListings,
-                'budget_daily'         => $campaign?->getBudgetInReais() ?? 0,
-                'external_account_id'  => $account?->external_account_id,
-                'account_name'         => $account?->name,
-                'external_business_id' => $conn?->external_business_id,
+                'connected'       => $conn?->isConnected() ?? false,
+                'status'          => $conn?->status ?? 'DRAFT',
+                'expires_at'      => $conn?->expires_at?->toISOString(),
+                'last_refresh_at' => $conn?->last_refresh_at?->toISOString(),
+                'campaign_status' => $campaign?->status ?? null,
+                'active_listings' => $activeListings,
+                'budget_daily'    => $campaign?->getBudgetInReais() ?? 0,
             ];
         }
 
@@ -440,44 +306,5 @@ HTML;
         }
 
         return response()->json(['success' => true, 'account' => $account]);
-    }
-
-    /**
-     * GET /api/admin/ads/logs
-     * Retorna log de auditoria de Ads.
-     */
-    public function logs(Request $request): JsonResponse
-    {
-        $tenantId = $request->get('tenant_id');
-        $provider = $request->query('provider');
-        $status   = $request->query('status');
-        $perPage  = min((int) ($request->query('per_page', 50)), 100);
-
-        $query = AdsAuditLog::withoutTenant()
-            ->where('tenant_id', $tenantId)
-            ->orderByDesc('created_at');
-
-        if ($provider) {
-            $query->where('provider', $provider);
-        }
-        if ($status && $status !== 'all') {
-            $query->where('status', strtoupper($status));
-        }
-
-        $logs = $query->limit($perPage)->get(['id', 'provider', 'action', 'status', 'message_json', 'created_at']);
-
-        return response()->json([
-            'success' => true,
-            'data'    => $logs->map(fn($l) => [
-                'id'         => $l->id,
-                'provider'   => $l->provider,
-                'action'     => $l->action,
-                'status'     => $l->status,
-                'message'    => is_string($l->message_json)
-                    ? (json_decode($l->message_json, true)['message'] ?? null)
-                    : null,
-                'created_at' => $l->created_at?->toISOString(),
-            ]),
-        ]);
     }
 }

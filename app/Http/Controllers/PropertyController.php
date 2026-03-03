@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Property;
@@ -1316,7 +1315,7 @@ Dados do imóvel:
 - Garagem: " . ((int) ($data['garagem'] ?? 0)) . "
 - Área total: " . ($data['area_total'] ?? 0) . "m²
 - Tom desejado: {$tom}
-" . ($descricaoBase !== '' ? "\nDescrição base informada pelo usuário:\n{$descricaoBase}\n" : '') . "
+" . ($descricaoBase !== '' ? "Descrição base informada pelo usuário:{$descricaoBase}" : '') . "
 Regras:
 - Não invente informações que não estão nos dados.
 - Não use emojis.

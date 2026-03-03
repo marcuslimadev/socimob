@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -30,7 +29,7 @@ class TextFormatterController extends Controller
                 ], 500);
             }
 
-            $prompt = "Você é um especialista em marketing imobiliário. Formate este texto de descrição de imóvel de forma profissional, atrativa e organizada. Mantenha todas as informações importantes, mas torne-a mais vendável e bem estruturada. Use emojis apropriados e organize em tópicos quando necessário. Texto original:\n\n" . $texto;
+            $prompt = "Você é um especialista em marketing imobiliário. Formate este texto de descrição de imóvel de forma profissional, atrativa e organizada. Mantenha todas as informações importantes, mas torne-a mais vendável e bem estruturada. Use emojis apropriados e organize em tópicos quando necessário. Texto original:" . $texto;
 
             $data = [
                 'model' => 'gpt-4o-mini',

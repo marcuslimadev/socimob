@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Lead;
@@ -318,7 +317,7 @@ class ChavesNaMaoWebhookController extends Controller
             }
         }
 
-        return implode("\n", $obs);
+        return implode("", $obs);
     }
 
     /**
@@ -463,9 +462,9 @@ class ChavesNaMaoWebhookController extends Controller
                 : "https://wa.me/{$cleanWhatsappNumber}";
 
             // Criar mensagem do SMS
-            $smsBody = "Olá {$lead->nome}! 👋\n\n";
-            $smsBody .= "Recebemos seu interesse no imóvel.\n\n";
-            $smsBody .= "Clique aqui para falar direto conosco no WhatsApp:\n";
+            $smsBody = "Olá {$lead->nome}! 👋";
+            $smsBody .= "Recebemos seu interesse no imóvel.";
+            $smsBody .= "Clique aqui para falar direto conosco no WhatsApp:";
             $smsBody .= $whatsappLink;
 
             // Evitar envio duplicado
