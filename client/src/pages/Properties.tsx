@@ -47,6 +47,8 @@ type AdsStatus = 'ACTIVE' | 'PUBLISHING' | 'PAUSED' | 'ERROR' | null;
 
 export default function Properties() {
   const [, setLocation] = useLocation();
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+  const isTrainee = currentUser?.role === 'trainee';
   const [imoveis, setImoveis] = useState<ImovelRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
@@ -573,6 +575,7 @@ export default function Properties() {
                           >
                             <Pencil size={15} />
                           </button>
+                          {!isTrainee && (
                           <button
                             type="button"
                             onClick={() => handleDelete(im)}
@@ -581,6 +584,7 @@ export default function Properties() {
                           >
                             <Trash2 size={15} />
                           </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -623,14 +627,19 @@ export default function Properties() {
                         </span>
                       </th>
 
-                      {/* Coluna 4: Localização + Inserido por */}
+                      {/* Coluna 4: Localização */}
                       <th
-                        className={thSort('localizacao', null, 'text-left w-[20%]')}
+                        className={thSort('localizacao', null, 'text-left w-[15%]')}
                         onClick={() => handleSort('localizacao')}
                       >
                         <span className="inline-flex items-center gap-1">
                           Localização <SortIcon field="localizacao" />
                         </span>
+                      </th>
+
+                      {/* Coluna 4b: Inserido por */}
+                      <th className="p-3 text-xs text-muted-foreground text-left whitespace-nowrap w-[12%]">
+                        Inserido por
                       </th>
 
                       {/* Coluna 5: Status (portal + destaque + anúncio) */}
@@ -724,18 +733,18 @@ export default function Properties() {
                           R$ {formatMoney(im.preco)}
                         </td>
 
-                        {/* Coluna 4: Localização + Inserido por */}
+                        {/* Coluna 4: Localização */}
                         <td className="p-3">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-sm text-foreground/90 leading-snug">
-                              {im.localizacao}
-                            </span>
-                            {im.inserido_por_nome && (
-                              <span className="text-xs text-muted-foreground">
-                                por {im.inserido_por_nome}
-                              </span>
-                            )}
-                          </div>
+                          <span className="text-sm text-foreground/90 leading-snug">
+                            {im.localizacao}
+                          </span>
+                        </td>
+
+                        {/* Coluna 4b: Inserido por */}
+                        <td className="p-3 text-sm text-muted-foreground">
+                          {im.inserido_por_nome
+                            ? im.inserido_por_nome
+                            : <span className="text-xs text-muted-foreground/40">—</span>}
                         </td>
 
                         {/* Coluna 5: Status agrupado (portal + destaque + ads) */}
@@ -805,6 +814,7 @@ export default function Properties() {
                             >
                               <Pencil size={15} />
                             </button>
+                            {!isTrainee && (
                             <button
                               type="button"
                               onClick={() => handleDelete(im)}
@@ -813,6 +823,7 @@ export default function Properties() {
                             >
                               <Trash2 size={15} />
                             </button>
+                            )}
                           </div>
                         </td>
                       </tr>

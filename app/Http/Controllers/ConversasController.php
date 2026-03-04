@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Conversa;
 use App\Models\LeadDocument;
@@ -31,11 +32,14 @@ class ConversasController extends Controller
         try {
             $tenantId = $this->resolveTenantId($request);
 
-            // ⚡ Usar Eloquent com eager loading ao invés de Query Builder
             $conversas = Conversa::where('tenant_id', $tenantId)
                 ->with(['lead', 'corretor', 'mensagens' => function($query) {
                     $query->orderBy('created_at', 'desc')->limit(1);
-                }]) // ⚡ Eager loading para evitar N+1
+                }])
+                ->withCount([
+                    'mensagens as user_messages_count' => fn($q) => $q->where('direction', 'incoming'),
+                    'mensagens as total_messages',
+                ])
                 ->when($request->status, function($query, $status) {
                     return $query->where('status', $status);
                 })
@@ -46,40 +50,12 @@ class ConversasController extends Controller
                     });
                 })
                 ->orderBy('ultima_atividade', 'desc')
+                ->limit(200)
                 ->get();
 
-            // Adicionar contadores
+            // Formatar campos e enriquecer dados (único map — evita dupla iteração)
             $conversas = $conversas->map(function($conversa) {
-                $conversa->user_messages_count = $conversa->mensagens()->where('direction', 'incoming')->count();
-                $conversa->total_messages = $conversa->mensagens()->count();
-                $conversa->ultima_mensagem_text = $conversa->mensagens->first()->content ?? null;
-                return $conversa;
-            });
-
-            if ($tenantId) {
-                $query->where(function ($q) use ($tenantId) {
-                    $q->where('conversas.tenant_id', $tenantId)
-                        ->orWhere('leads.tenant_id', $tenantId);
-                });
-            }
-            
-            // Filtrar por status
-            if ($request->status) {
-                $query->where('conversas.status', $request->status);
-            }
-            
-            // Apenas conversas ativas por padrão
-            if (!$request->has('all')) {
-                $query->where(function ($q) {
-                    $q->where('conversas.status', '!=', 'encerrada')
-                        ->orWhereNull('conversas.status');
-                });
-            }
-            
-            $conversas = $query->orderBy('conversas.ultima_atividade', 'desc')->get();
-            
-            // Formatar datas para ISO8601 (compatível com JavaScript)
-            $conversas = $conversas->map(function($conversa) {
+                $conversa->ultima_mensagem_text = $conversa->mensagens->first()?->content ?? null;
                 if ($conversa->iniciada_em) {
                     $conversa->iniciada_em = date('c', strtotime($conversa->iniciada_em));
                 }
@@ -107,13 +83,17 @@ class ConversasController extends Controller
      * Detalhes da conversa com mensagens
      * GET /api/conversas/{id}
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         try {
             $db = app('db');
-            $tenantId = $this->resolveTenantId(request());
-            
-            \Log::info("Buscando conversa ID: {$id}");
+            $tenantId = $this->resolveTenantId($request);
+
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
+
+            Log::info("Buscando conversa ID: {$id}");
             
             // Buscar conversa com dados do lead
             $conversa = $db->table('conversas')
@@ -130,19 +110,15 @@ class ConversasController extends Controller
                 ->where('conversas.tenant_id', $tenantId)
                 ->first();
 
-            if (!$conversa && !$tenantId) {
-                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
-            }
-            
             if (!$conversa) {
-                \Log::warning("Conversa {$id} não encontrada");
+                Log::warning("Conversa {$id} não encontrada");
                 return response()->json([
                     'success' => false,
                     'error' => 'Conversa não encontrada'
                 ], 404);
             }
             
-            \Log::info("Conversa encontrada, buscando mensagens...");
+            Log::info("Conversa encontrada, buscando mensagens...");
             
             // Buscar mensagens
             $mensagens = $db->table('mensagens')
@@ -150,7 +126,7 @@ class ConversasController extends Controller
                 ->orderBy('sent_at', 'asc')
                 ->get();
             
-            \Log::info("Encontradas " . count($mensagens) . " mensagens");
+            Log::info("Encontradas " . count($mensagens) . " mensagens");
             
             // Buscar informações dos remetentes (usuários e lead)
             $userIds = $mensagens->pluck('user_id')->filter()->unique();
@@ -337,14 +313,22 @@ class ConversasController extends Controller
                 ];
             });
             
-            // Marcar mensagens como lidas
-            $db->table('mensagens')
+            // Marcar mensagens como lidas (apenas se houver pendentes)
+            $hasPendingRead = $db->table('mensagens')
                 ->where('conversa_id', $id)
                 ->where('direction', 'incoming')
                 ->whereNull('read_at')
-                ->update(['read_at' => date('Y-m-d H:i:s')]);
-            
-            \Log::info("Mensagens marcadas como lidas");
+                ->exists();
+
+            if ($hasPendingRead) {
+                $db->table('mensagens')
+                    ->where('conversa_id', $id)
+                    ->where('direction', 'incoming')
+                    ->whereNull('read_at')
+                    ->update(['read_at' => date('Y-m-d H:i:s')]);
+
+                Log::info("Mensagens marcadas como lidas");
+            }
             
             // Converter conversa para array e adicionar mensagens
             $conversaArray = (array) $conversa;
@@ -355,7 +339,7 @@ class ConversasController extends Controller
                 'data' => $conversaArray
             ]);
         } catch (\Exception $e) {
-            \Log::error("Erro ao buscar conversa {$id}: " . $e->getMessage(), [
+            Log::error("Erro ao buscar conversa {$id}: " . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
             
@@ -374,7 +358,7 @@ class ConversasController extends Controller
     public function sendMessage(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'content' => 'required|string'
+            'content' => 'required|string|max:4096'
         ]);
 
         if ($validator->fails()) {
@@ -469,15 +453,19 @@ class ConversasController extends Controller
      * Conversas ativas em tempo real
      * GET /api/conversas/tempo-real
      */
-    public function tempoReal()
+    public function tempoReal(Request $request)
     {
-        $tenantId = $this->resolveTenantId(request());
+        $tenantId = $this->resolveTenantId($request);
+
+        if (!$tenantId) {
+            return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+        }
 
         $conversas = Conversa::with(['lead', 'mensagens' => function($q) {
                 $q->orderBy('sent_at', 'desc')->limit(1);
             }])
             ->where('status', 'ativa')
-            ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
+            ->where('tenant_id', $tenantId)
             ->orderBy('ultima_atividade', 'desc')
             ->limit(10)
             ->get();
@@ -494,10 +482,19 @@ class ConversasController extends Controller
      */
     public function porTelefone($telefone)
     {
+        // Rota de diagnóstico — bloquear em produção
+        if (config('app.env') === 'production' && !config('app.debug')) {
+            return response()->json(['error' => 'Não disponível em produção'], 403);
+        }
+
         try {
             $db = app('db');
             $tenantId = $this->resolveTenantId(request());
-            
+
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
+
             // Decodificar URL e normalizar telefone
             $telefone = urldecode($telefone);
             $telefoneNormalizado = preg_replace('/[^0-9]/', '', $telefone);
@@ -521,7 +518,7 @@ class ConversasController extends Controller
             
             $formatosPossiveis = array_unique($formatosPossiveis);
             
-            \Log::info("Buscando conversas para telefone", [
+            Log::info("Buscando conversas para telefone", [
                 'telefone_original' => $telefone,
                 'telefone_normalizado' => $telefoneNormalizado,
                 'formatos_busca' => $formatosPossiveis,
@@ -547,38 +544,41 @@ class ConversasController extends Controller
                     'leads.caracteristicas_desejadas as lead_caracteristicas',
                     'leads.status as lead_status',
                     'leads.score as lead_score',
-                    'users.nome as corretor_nome'
+                    'users.name as corretor_nome'
                 )
                 ->where(function($query) use ($formatosPossiveis, $telefoneNormalizado) {
                     foreach ($formatosPossiveis as $formato) {
                         $query->orWhere('conversas.telefone', $formato);
                     }
-                    // Buscar pelos últimos 8 dígitos (sufixo único do número)
+                    // Buscar por telefone_normalizado (índice — evita full table scan)
                     if (strlen($telefoneNormalizado) >= 8) {
-                        $sufixo = substr($telefoneNormalizado, -8);
-                        $query->orWhere('conversas.telefone', 'LIKE', '%' . $sufixo);
+                        $query->orWhere('conversas.telefone_normalizado', $telefoneNormalizado);
+                        // Variações sem DDI (9 ou 10 dígitos finais)
+                        if (strlen($telefoneNormalizado) > 11) {
+                            $query->orWhere('conversas.telefone_normalizado', substr($telefoneNormalizado, -11));
+                            $query->orWhere('conversas.telefone_normalizado', substr($telefoneNormalizado, -10));
+                        }
                     }
                 })
                 ->where('conversas.tenant_id', $tenantId)
                 ->orderBy('conversas.iniciada_em', 'desc')
                 ->get();
 
-            if (!$tenantId) {
-                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
-            }
-            
-            \Log::info("Conversas encontradas", [
+            Log::info("Conversas encontradas", [
                 'total' => count($conversas),
                 'telefones' => $conversas->pluck('telefone')->toArray()
             ]);
             
-            // Para cada conversa, buscar mensagens
-            $resultado = $conversas->map(function($conversa) use ($db, $tenantId) {
-                $mensagens = $db->table('mensagens')
-                    ->where('conversa_id', $conversa->id)
-                    ->orderBy('sent_at', 'desc') // Mais recentes primeiro
-                    ->get()
-                    ->map(function($msg) {
+            // Batch load mensagens para evitar N+1 (uma query para todas as conversas)
+            $conversaIds = $conversas->pluck('id')->all();
+            $todasMensagens = empty($conversaIds) ? collect() : $db->table('mensagens')
+                ->whereIn('conversa_id', $conversaIds)
+                ->orderBy('sent_at', 'desc')
+                ->get()
+                ->groupBy('conversa_id');
+
+            $resultado = $conversas->map(function($conversa) use ($todasMensagens) {
+                $mensagens = ($todasMensagens->get($conversa->id) ?? collect())->map(function($msg) {
                         return [
                             'id' => $msg->id,
                             'direction' => $msg->direction,
@@ -635,7 +635,7 @@ class ConversasController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            \Log::error("Erro ao buscar conversas por telefone: " . $e->getMessage(), [
+            Log::error("Erro ao buscar conversas por telefone: " . $e->getMessage(), [
                 'telefone' => $telefone,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -645,8 +645,8 @@ class ConversasController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'file' => config('app.debug') ? $e->getFile() : null,
+                'line' => config('app.debug') ? $e->getLine() : null,
             ], 500);
         }
     }
@@ -657,6 +657,11 @@ class ConversasController extends Controller
      */
     public function destroy($id)
     {
+        $user = request()->user();
+        if (!in_array($user?->role, ['admin', 'super_admin'])) {
+            return response()->json(['success' => false, 'error' => 'Acesso negado'], 403);
+        }
+
         $conversa = $this->resolveConversaForTenant($id, request());
 
         DB::beginTransaction();
@@ -719,7 +724,7 @@ class ConversasController extends Controller
                 'stage' => 'inicial'
             ]);
 
-            \Log::info('🔓 Conversa liberada para IA', [
+            Log::info('🔓 Conversa liberada para IA', [
                 'conversa_id' => $conversa->id,
                 'admin' => $user->name
             ]);
@@ -739,7 +744,7 @@ class ConversasController extends Controller
             'stage' => 'atendimento_humano'
         ]);
 
-        \Log::info('🔄 Conversa redesignada', [
+        Log::info('🔄 Conversa redesignada', [
             'conversa_id' => $conversa->id,
             'novo_corretor_id' => $corretorId,
             'admin' => $user->name
@@ -758,6 +763,11 @@ class ConversasController extends Controller
      */
     public function bulkDestroy(Request $request)
     {
+        $user = $request->user();
+        if (!in_array($user?->role, ['admin', 'super_admin'])) {
+            return response()->json(['success' => false, 'error' => 'Acesso negado'], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'lead_ids' => 'required|array|min:1',
             'lead_ids.*' => 'integer|distinct'
@@ -838,7 +848,10 @@ class ConversasController extends Controller
         }
 
         if (app()->bound('tenant')) {
-            return (int) app('tenant')->id;
+            $tenant = app('tenant');
+            if ($tenant && !empty($tenant->id)) {
+                return (int) $tenant->id;
+            }
         }
 
         return null;
@@ -882,8 +895,10 @@ class ConversasController extends Controller
             return response()->json(['error' => 'URL da mídia não fornecida'], 400);
         }
 
-        // Validar que é uma URL do Twilio
-        if (!str_contains($mediaUrl, 'twilio.com')) {
+        // Validar que é uma URL do Twilio (proteção contra SSRF)
+        $parsedUrl = parse_url($mediaUrl);
+        $allowedHosts = ['api.twilio.com', 'media.twiliocdn.com'];
+        if (empty($parsedUrl['host']) || !in_array($parsedUrl['host'], $allowedHosts, true)) {
             return response()->json(['error' => 'URL inválida'], 403);
         }
 
@@ -897,16 +912,18 @@ class ConversasController extends Controller
             // URL format: https://api.twilio.com/2010-04-01/Accounts/{AccountSid}/Messages/...
             if (empty($accountSid) && preg_match('#/Accounts/(AC[a-f0-9]+)/#', $mediaUrl, $matches)) {
                 $accountSid = $matches[1];
-                \Log::info("proxyMedia: Account SID extraído da URL: " . substr($accountSid, 0, 10) . '...');
+                Log::info("proxyMedia: Account SID extraído da URL: " . substr($accountSid, 0, 10) . '...');
             }
 
-            \Log::info("proxyMedia: debug credenciais", [
-                'tenant_id' => $tenant ? $tenant->id : 'null',
-                'tenant_domain' => $tenant ? ($tenant->domain ?? 'N/A') : 'null',
-                'accountSid_from_tenant' => $accountSid ? substr($accountSid, 0, 10) . '...' : 'VAZIO',
-                'authToken_from_tenant' => $authToken ? 'SET(' . strlen($authToken) . ' chars)' : 'VAZIO',
-                'url_account' => preg_match('#/Accounts/(AC[a-f0-9]+)/#', $mediaUrl, $m) ? substr($m[1], 0, 10) . '...' : 'N/A',
-            ]);
+            if (config('app.debug')) {
+                Log::info("proxyMedia: debug credenciais", [
+                    'tenant_id' => $tenant ? $tenant->id : 'null',
+                    'tenant_domain' => $tenant ? ($tenant->domain ?? 'N/A') : 'null',
+                    'accountSid_from_tenant' => $accountSid ? substr($accountSid, 0, 10) . '...' : 'VAZIO',
+                    'authToken_from_tenant' => $authToken ? 'SET(' . strlen($authToken) . ' chars)' : 'VAZIO',
+                    'url_account' => preg_match('#/Accounts/(AC[a-f0-9]+)/#', $mediaUrl, $m) ? substr($m[1], 0, 10) . '...' : 'N/A',
+                ]);
+            }
 
             $result = $this->twilio->downloadMedia($mediaUrl, $accountSid, $authToken);
 
@@ -931,7 +948,7 @@ class ConversasController extends Controller
             }
             return response()->json($payload, $statusCode);
         } catch (\Exception $e) {
-            \Log::error("Erro ao fazer proxy de mídia: " . $e->getMessage());
+            Log::error("Erro ao fazer proxy de mídia: " . $e->getMessage());
             return response()->json(['error' => 'Erro ao processar mídia'], 500);
         }
     }

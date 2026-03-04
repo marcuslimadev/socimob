@@ -255,6 +255,7 @@ export default function ClientPortalRefined() {
             <a href="#catalogo" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Catalogo</a>
             <a href="#servicos" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Servicos</a>
             <a href="/portal/simulacao" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Simulação</a>
+            <a href="/portal/vender" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Vender</a>
             <a href="#contato" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Contato</a>
             <button
               type="button"
@@ -340,8 +341,8 @@ export default function ClientPortalRefined() {
 
           <div className="grid grid-cols-2 gap-2.5 md:gap-3">
             {[
-              { label: 'Imoveis ativos', value: properties.length || '--' },
-              { label: 'Destaques', value: destaqueProperties.length || '--' },
+              { label: 'Negócios fechados', value: '100+' },
+              { label: 'Satisfação', value: '5 ★' },
               { label: 'Cidades', value: new Set(properties.map((property) => property.cidade)).size || '--' },
               { label: 'Atendimento', value: tenant?.contact_phone ? '24/7' : '--' },
             ].map((stat) => (

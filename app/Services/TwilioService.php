@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Serviço de integração com Twilio WhatsApp
@@ -51,7 +52,7 @@ class TwilioService
             if (ctype_digit($first) && (int) $first >= 6) {
                 $fixed = '55' . $ddd . '9' . $local;
                 if ($fixed !== $digits) {
-                    \Log::warning('TwilioService: ajustando número BR para 9 dígitos', [
+                    Log::warning('TwilioService: ajustando número BR para 9 dígitos', [
                         'original' => $digits,
                         'fixed' => $fixed,
                     ]);
@@ -101,7 +102,7 @@ class TwilioService
 
             \Dotenv\Dotenv::createImmutable($basePath)->safeLoad();
         } catch (\Throwable $e) {
-            \Log::warning('TwilioService: falha ao recarregar .env', [
+            Log::warning('TwilioService: falha ao recarregar .env', [
                 'error' => $e->getMessage(),
             ]);
         }
@@ -117,7 +118,7 @@ class TwilioService
     public function sendMessage($to, $body)
     {
         if (empty($this->accountSid) || empty($this->authToken)) {
-            \Log::error('Twilio Send Message - Credenciais não configuradas');
+            Log::error('Twilio Send Message - Credenciais não configuradas');
             return [
                 'success' => false,
                 'http_code' => null,
@@ -143,7 +144,7 @@ class TwilioService
         }
         
         if (empty($this->whatsappFrom)) {
-            \Log::error('Twilio Send Message - Remetente não configurado');
+            Log::error('Twilio Send Message - Remetente não configurado');
             
             \App\Models\SystemLog::error(
                 \App\Models\SystemLog::CATEGORY_TWILIO,
@@ -183,7 +184,7 @@ class TwilioService
         
         $responseData = json_decode($response, true);
         
-        \Log::info('Twilio Send Message', [
+        Log::info('Twilio Send Message', [
             'to' => $to,
             'http_code' => $httpCode,
             'response' => $responseData,
@@ -238,7 +239,7 @@ class TwilioService
         }
 
         if (empty($this->whatsappFrom)) {
-            \Log::error('Twilio Send Media - Remetente não configurado');
+            Log::error('Twilio Send Media - Remetente não configurado');
             return [
                 'success' => false,
                 'http_code' => null,
@@ -303,7 +304,7 @@ class TwilioService
         }
         
         if (empty($this->whatsappFrom)) {
-            \Log::error('Twilio Send Template - Remetente não configurado');
+            Log::error('Twilio Send Template - Remetente não configurado');
             return [
                 'success' => false,
                 'http_code' => null,
@@ -400,7 +401,7 @@ class TwilioService
         [$accountSid, $authToken] = $this->resolveCredentials($accountSidOverride, $authTokenOverride);
 
         if (empty($accountSid) || empty($authToken)) {
-            \Log::error("TwilioService::downloadMedia credenciais ausentes", [
+            Log::error("TwilioService::downloadMedia credenciais ausentes", [
                 'url' => $mediaUrl,
                 'hasAccountSid' => !empty($accountSid),
                 'hasAuthToken' => !empty($authToken),
@@ -427,7 +428,7 @@ class TwilioService
             ];
         }
 
-        \Log::error("TwilioService::downloadMedia falhou", [
+        Log::error("TwilioService::downloadMedia falhou", [
             'url' => $mediaUrl,
             'httpCode' => $response->status(),
             'responseSnippet' => substr($response->body() ?? '', 0, 200),
@@ -466,7 +467,7 @@ class TwilioService
         [$accountSid, $authToken] = $this->resolveCredentials($accountSidOverride, $authTokenOverride);
 
         if (empty($accountSid) || empty($authToken)) {
-            \Log::error('Twilio Send SMS - Credenciais não configuradas');
+            Log::error('Twilio Send SMS - Credenciais não configuradas');
             return [
                 'success' => false,
                 'http_code' => null,
@@ -496,7 +497,7 @@ class TwilioService
 
         // Verificar se há número de SMS configurado (usa propriedade definida no construtor)
         if (empty($fromToUse)) {
-            \Log::error('Twilio Send SMS - Remetente não configurado', [
+            Log::error('Twilio Send SMS - Remetente não configurado', [
                 'config_value' => config('twilio.sms_from'),
                 'env_sms_from' => env('EXCLUSIVA_TWILIO_SMS_FROM'),
                 'env_phone_number' => env('EXCLUSIVA_TWILIO_PHONE_NUMBER'),
@@ -543,7 +544,7 @@ class TwilioService
 
         $responseData = json_decode($response, true);
 
-        \Log::info('Twilio Send SMS', [
+        Log::info('Twilio Send SMS', [
             'to' => $to,
             'from' => $fromToUse,
             'http_code' => $httpCode,

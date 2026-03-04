@@ -250,6 +250,9 @@ class PropertyController extends Controller
         }
         
         $perPage = $request->query('per_page', 15);
+        $authUser = $request->user();
+        $isTrainee = $authUser?->role === 'trainee';
+        $proprietarioCols = ['proprietario_nome', 'proprietario_telefone', 'proprietario_email', 'proprietario_observacoes'];
         
         $query = Property::where('tenant_id', $tenantId)->orderBy('created_at', 'desc');
 
@@ -260,6 +263,9 @@ class PropertyController extends Controller
         // Se pedir todos sem paginação
         if ($perPage == 100 || $perPage == 'all') {
             $properties = $query->get();
+            if ($isTrainee) {
+                $properties->each->makeHidden($proprietarioCols);
+            }
             return response()->json([
                 'data' => $properties,
                 'total' => $properties->count()
@@ -267,6 +273,9 @@ class PropertyController extends Controller
         }
         
         $properties = $query->paginate($perPage);
+        if ($isTrainee) {
+            $properties->getCollection()->each->makeHidden($proprietarioCols);
+        }
         
         return response()->json($properties);
     }
@@ -867,9 +876,15 @@ class PropertyController extends Controller
             return response()->json(['error' => 'Property not found'], 404);
         }
 
+        $data = $property->toArray();
+        $authUser = $request->user();
+        if ($authUser?->role === 'trainee') {
+            unset($data['proprietario_nome'], $data['proprietario_telefone'], $data['proprietario_email'], $data['proprietario_observacoes']);
+        }
+
         return response()->json([
             'success' => true,
-            'data' => array_merge($property->toArray(), [
+            'data' => array_merge($data, [
                 'portal_tenant_ids' => $this->getPropertyPortalTenantIds($property->id, (int) $tenantId),
             ]),
         ]);
@@ -1128,6 +1143,11 @@ class PropertyController extends Controller
      */
     public function destroy(Request $request, $id)
     {
+        $authUser = $request->user();
+        if (!in_array($authUser?->role, ['admin', 'super_admin'])) {
+            return response()->json(['success' => false, 'error' => 'Apenas administradores podem excluir imóveis'], 403);
+        }
+
         $tenantId = $this->resolveTenantId($request);
 
         if (!$tenantId) {

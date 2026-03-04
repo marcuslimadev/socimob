@@ -732,4 +732,119 @@ class PortalController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Solicitar colocacao de imovel a venda (portal autenticado)
+     * POST /api/portal/imoveis/solicitar
+     */
+    public function solicitarVenda(Request $request)
+    {
+        try {
+            $tenantId = $request->attributes->get('tenant_id');
+
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'tipo_imovel'       => 'required|string|max:80',
+                'finalidade'        => 'required|in:venda,aluguel,venda_aluguel',
+                'cep'               => 'nullable|string|max:9',
+                'cidade'            => 'required|string|max:100',
+                'bairro'            => 'nullable|string|max:100',
+                'area'              => 'nullable|numeric|min:0',
+                'dormitorios'       => 'nullable|integer|min:0|max:20',
+                'valor_pretendido'  => 'nullable|numeric|min:0',
+                'nome_contato'      => 'required|string|max:160',
+                'telefone_contato'  => 'required|string|max:20',
+                'email_contato'     => 'nullable|email|max:255',
+                'observacoes'       => 'nullable|string|max:2000',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'Dados inválidos',
+                    'messages' => $validator->errors(),
+                ], 422);
+            }
+
+            $telefone = preg_replace('/\D/', '', $request->telefone_contato);
+            $now = now()->format('d/m/Y H:i');
+
+            // Criar imóvel inativo em análise
+            $valorPretendido = $request->valor_pretendido ? (float) $request->valor_pretendido : 0;
+            $obsProperty = "[Solicitação Portal {$now}] Enviado pelo próprio proprietário via portal para análise.";
+            if ($request->observacoes) {
+                $obsProperty .= ' ' . $request->observacoes;
+            }
+
+            $property = Property::create([
+                'tenant_id'                => $tenantId,
+                'titulo'                   => 'Solicitação: ' . ucfirst($request->tipo_imovel) . ' em ' . $request->cidade,
+                'tipo_imovel'              => $request->tipo_imovel,
+                'finalidade_imovel'        => $request->finalidade,
+                'cep'                      => $request->cep,
+                'cidade'                   => $request->cidade,
+                'bairro'                   => $request->bairro,
+                'area_total'               => $request->area ? (float) $request->area : null,
+                'dormitorios'              => $request->dormitorios ? (int) $request->dormitorios : null,
+                'valor_venda'              => $valorPretendido,
+                'active'                   => false,
+                'exibir_imovel'            => false,
+                'proprietario_nome'        => $request->nome_contato,
+                'proprietario_telefone'    => $telefone,
+                'proprietario_email'       => $request->email_contato,
+                'proprietario_observacoes' => $obsProperty,
+            ]);
+
+            // Criar ou atualizar lead no CRM
+            $lead = \App\Models\Lead::where('tenant_id', $tenantId)
+                ->where(function ($q) use ($telefone, $request) {
+                    $q->where('telefone', 'like', "%{$telefone}%")
+                      ->orWhere('whatsapp', 'like', "%{$telefone}%");
+                    if ($request->email_contato) {
+                        $q->orWhere('email', $request->email_contato);
+                    }
+                })
+                ->first();
+
+            $obsLead = "[Venda Portal {$now}] Solicitou cadastro de imóvel para venda/aluguel: {$request->tipo_imovel} em {$request->cidade}";
+            if ($request->valor_pretendido) {
+                $obsLead .= ' - Valor pretendido: R$ ' . number_format((float)$request->valor_pretendido, 0, ',', '.');
+            }
+
+            if ($lead) {
+                $lead->observacoes = ($lead->observacoes ? $lead->observacoes . '' : '') . $obsLead;
+                $lead->save();
+            } else {
+                \App\Models\Lead::create([
+                    'tenant_id'    => $tenantId,
+                    'nome'         => $request->nome_contato,
+                    'telefone'     => $telefone,
+                    'whatsapp'     => $telefone,
+                    'email'        => $request->email_contato,
+                    'status'       => 'novo',
+                    'classificacao' => 'quente',
+                    'observacoes'  => $obsLead,
+                ]);
+            }
+
+            return response()->json([
+                'success'    => true,
+                'property_id' => $property->id,
+                'message'    => 'Seu imóvel foi enviado para análise! Nossa equipe entrará em contato em breve.',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('[Portal] Erro em solicitarVenda', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'error'   => 'Erro ao registrar sua solicitação. Tente novamente.',
+            ], 500);
+        }
+    }
 }

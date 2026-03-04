@@ -28,6 +28,8 @@ const Financeiro = lazy(() => import("./pages/Financeiro"));
 const AdminGestaoLocacao = lazy(() => import("./pages/AdminGestaoLocacao"));
 const PortalPessoaFinanceiro = lazy(() => import("./pages/PortalPessoaFinanceiro"));
 const PortalRegister = lazy(() => import("./pages/PortalRegister"));
+const PortalLogin = lazy(() => import("./pages/PortalLogin"));
+const PortalVender = lazy(() => import("./pages/PortalVender"));
 const Vistorias = lazy(() => import("./pages/Vistorias"));
 const Assinaturas = lazy(() => import("./pages/Assinaturas"));
 const Pessoas = lazy(() => import("./pages/Pessoas"));
@@ -85,8 +87,9 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/portal/imovel/:id" component={PropertyDetail} />
-      <Route path="/portal/login" component={LoginRedirect} />
+      <Route path="/portal/login" component={PortalLogin} />
       <Route path="/portal/register" component={PortalRegister} />
+      <Route path="/portal/vender" component={PortalVender} />
       <Route path="/portal/simulacao" component={SimulacaoFinanciamento} />
       <Route path="/portal" component={ClientPortalRefined} />
       <Route path="/portal/classic" component={ClientPortal} />

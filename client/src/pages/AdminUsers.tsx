@@ -120,6 +120,7 @@ export default function AdminUsers() {
       super_admin: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
       admin: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
       corretor: 'bg-green-500/20 text-green-300 border-green-500/40',
+      trainee: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
       cliente: 'bg-gray-500/20 text-gray-300 border-gray-500/40',
     };
     return badges[role] || badges.cliente;
@@ -130,6 +131,7 @@ export default function AdminUsers() {
       super_admin: 'Super Admin',
       admin: 'Administrador',
       corretor: 'Corretor',
+      trainee: 'Trainee',
       cliente: 'Cliente',
     };
     return labels[role] || role;
@@ -301,6 +303,7 @@ export default function AdminUsers() {
                   className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground"
                 >
                   <option value="corretor">Corretor</option>
+                  <option value="trainee">Trainee</option>
                   <option value="admin">Administrador</option>
                 </select>
               </div>

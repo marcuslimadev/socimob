@@ -766,7 +766,7 @@ class WhatsAppService
     /**
      * Processar mensagem regular com progressão inteligente de stages
      */
-    private function handleRegularMessage($conversa, $message, $isFromAudio = false)
+    public function handleRegularMessage($conversa, $message, $isFromAudio = false)
     {
         Log::info('📨 Processando mensagem regular', [
             'conversa_id' => $conversa->id,

@@ -1040,13 +1040,14 @@ class ImobiBrasilService
                     $body = $response->getBody()->getContents();
                     $responseData = json_decode($body, true) ?: [];
 
-                    if ($statusCode === 200 && ($responseData['status'] ?? false) && ($responseData['resultSet'] ?? false)) {
+                    if (($statusCode === 200 || $statusCode === 201) && ($responseData['status'] ?? false)) {
                         $sucessos++;
 
                         Log::info('Imagem enviada com sucesso para Imobi Brasil', [
                             'property_id' => $property->id,
                             'image_index' => $index,
                             'image_url' => $imagemUrl,
+                            'response' => $responseData,
                         ]);
                     } else {
                         $erro = $responseData['message'] ?? "HTTP $statusCode";
@@ -1056,8 +1057,9 @@ class ImobiBrasilService
                             'property_id' => $property->id,
                             'image_index' => $index,
                             'image_url' => $imagemUrl,
-                            'status' => $statusCode,
+                            'status_code' => $statusCode,
                             'error' => $erro,
+                            'response_body' => substr($body, 0, 500),
                         ]);
                     }
                 } catch (\Exception $e) {

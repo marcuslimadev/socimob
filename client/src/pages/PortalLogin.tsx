@@ -41,7 +41,9 @@ export default function PortalLogin() {
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       toast.success('Login realizado.');
-      navigate('/portal/meu-financeiro');
+      const params = new URLSearchParams(window.location.search);
+      const redirectTo = params.get('redirect') || '/portal/meu-financeiro';
+      navigate(redirectTo);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Nao foi possivel entrar.');
     } finally {

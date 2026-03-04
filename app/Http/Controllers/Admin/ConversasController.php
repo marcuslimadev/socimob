@@ -142,70 +142,99 @@ class ConversasController extends Controller
             } catch (\Exception $e) {
                 Log::warning('Erro ao verificar coluna message_type', ['error' => $e->getMessage()]);
             }
-            
+
+            // ── Batch load: evita N+1 no loop abaixo (3 queries totais) ──────
+            $allIds = collect($conversas)->pluck('id')->filter()->all();
+
+            // 1) Última mensagem por conversa
+            $ultimasMensagensMap = [];
+            if (!empty($allIds)) {
+                $maxIds = DB::table('mensagens')
+                    ->whereIn('conversa_id', $allIds)
+                    ->select('conversa_id', DB::raw('MAX(id) as max_id'))
+                    ->groupBy('conversa_id')
+                    ->pluck('max_id', 'conversa_id')
+                    ->toArray();
+
+                if (!empty($maxIds)) {
+                    $ultimasMensagensMap = DB::table('mensagens')
+                        ->whereIn('id', array_values($maxIds))
+                        ->get()
+                        ->keyBy('conversa_id')
+                        ->toArray();
+                }
+            }
+
+            // 2) Contagem de não lidas por conversa
+            $naoLidasMap = [];
+            if (!empty($allIds)) {
+                $naoLidasMap = DB::table('mensagens')
+                    ->whereIn('conversa_id', $allIds)
+                    ->where('direction', 'incoming')
+                    ->whereNull('read_at')
+                    ->select('conversa_id', DB::raw('COUNT(*) as total'))
+                    ->groupBy('conversa_id')
+                    ->get()
+                    ->pluck('total', 'conversa_id')
+                    ->toArray();
+            }
+
+            // 3) Conversas com intervenção humana necessária (outgoing 2h+ sem reply)
+            $needsInterventionSet = [];
+            if (!empty($allIds)) {
+                try {
+                    $interventionQuery = DB::table('mensagens as m')
+                        ->whereIn('m.conversa_id', $allIds)
+                        ->where('m.direction', 'outgoing')
+                        ->whereNotNull('m.sent_at')
+                        ->where('m.sent_at', '<', Carbon::now()->subHours(2))
+                        ->whereNotExists(function ($sub) {
+                            $sub->select(DB::raw(1))->from('mensagens as newer')
+                                ->whereColumn('newer.conversa_id', 'm.conversa_id')
+                                ->where('newer.direction', 'outgoing')
+                                ->whereColumn('newer.sent_at', '>', 'm.sent_at');
+                        })
+                        ->whereNotExists(function ($sub) {
+                            $sub->select(DB::raw(1))->from('mensagens as reply')
+                                ->whereColumn('reply.conversa_id', 'm.conversa_id')
+                                ->where('reply.direction', 'incoming')
+                                ->whereColumn('reply.created_at', '>', 'm.sent_at');
+                        });
+
+                    if ($hasMsgTypeColumn) {
+                        $interventionQuery->where('m.message_type', 'sms');
+                    }
+
+                    $needsInterventionSet = array_flip(
+                        $interventionQuery->distinct()->pluck('m.conversa_id')->toArray()
+                    );
+                } catch (\Exception $e) {
+                    Log::warning('Erro ao calcular needs_human_intervention batch', ['error' => $e->getMessage()]);
+                }
+            }
+            // ─────────────────────────────────────────────────────────────────
+
             // Adicionar informações extras
             foreach ($conversas as &$conversa) {
                 $conversa->lead_nome = $this->sanitizeUtf8($conversa->lead_nome ?? null);
                 $conversa->lead_email = $this->sanitizeUtf8($conversa->lead_email ?? null);
                 $conversa->corretor_nome = $this->sanitizeUtf8($conversa->corretor_nome ?? null);
 
-                // Última mensagem
-                $ultimaMensagem = DB::table('mensagens')
-                    ->where('conversa_id', $conversa->id)
-                    ->orderBy('created_at', 'desc')
-                    ->first();
-                
-                $conversa->ultima_mensagem = $ultimaMensagem 
-                    ? $this->sanitizeUtf8(substr((string) $ultimaMensagem->content, 0, 100)) 
+                // Última mensagem (batch)
+                $ultimaMensagem = $ultimasMensagensMap[$conversa->id] ?? null;
+                $conversa->ultima_mensagem = $ultimaMensagem
+                    ? $this->sanitizeUtf8(substr((string) $ultimaMensagem->content, 0, 100))
                     : null;
-                
-                // Contar não lidas (incoming que não têm read_at)
-                $conversa->mensagens_nao_lidas = DB::table('mensagens')
-                    ->where('conversa_id', $conversa->id)
-                    ->where('direction', 'incoming')
-                    ->whereNull('read_at')
-                    ->count();
-                
+
+                // Não lidas (batch)
+                $conversa->mensagens_nao_lidas = (int) ($naoLidasMap[$conversa->id] ?? 0);
+
                 // Indicar se está em fila ou atribuída
                 $conversa->em_fila = is_null($conversa->corretor_id);
                 $conversa->atribuida_a_mim = $conversa->corretor_id == $user->id;
-                
-                // Verificar se precisa de intervenção humana (SMS enviado há 2h+ sem resposta)
-                $conversa->needs_human_intervention = false;
-                try {
-                    $query = DB::table('mensagens')
-                        ->where('conversa_id', $conversa->id)
-                        ->where('direction', 'outgoing')
-                        ->whereNotNull('sent_at');
-                    
-                    // Se coluna message_type existe, filtrar por SMS
-                    if ($hasMsgTypeColumn) {
-                        $query->where('message_type', 'sms');
-                    }
-                    
-                    $ultimoSms = $query->orderBy('sent_at', 'desc')->first();
-                    
-                    if ($ultimoSms) {
-                        $respostaCliente = DB::table('mensagens')
-                            ->where('conversa_id', $conversa->id)
-                            ->where('direction', 'incoming')
-                            ->where('created_at', '>', $ultimoSms->sent_at)
-                            ->exists();
-                        
-                        // Se não houve resposta e passaram 2+ horas
-                        if (!$respostaCliente) {
-                            $horas = Carbon::parse($ultimoSms->sent_at)->diffInHours(Carbon::now());
-                            if ($horas >= 2) {
-                                $conversa->needs_human_intervention = true;
-                            }
-                        }
-                    }
-                } catch (\Exception $e) {
-                    Log::warning('Erro ao verificar needs_human_intervention', [
-                        'conversa_id' => $conversa->id,
-                        'error' => $e->getMessage()
-                    ]);
-                }
+
+                // Intervenção humana (batch)
+                $conversa->needs_human_intervention = isset($needsInterventionSet[$conversa->id]);
             }
             
             return response()->json([
@@ -536,7 +565,7 @@ class ConversasController extends Controller
     {
         try {
             $request->validate([
-                'content' => 'required|string'
+                'content' => 'required|string|max:4096'
             ]);
             
             $user = $request->user();

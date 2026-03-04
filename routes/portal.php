@@ -48,6 +48,9 @@ $router->group(['prefix' => 'api/portal', 'middleware' => 'resolve-tenant'], fun
     $router->get('/chat/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChatController@mensagens']);
     $router->post('/chat/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChatController@send']);
 
+    // Solicitar colocação de imóvel à venda (autenticado)
+    $router->post('/imoveis/solicitar', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\PortalController@solicitarVenda']);
+
     // Portal da Pessoa - Contratos / Cobranças / Fiscal
     $router->get('/meus-imoveis', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\PessoaFinanceiroController@meusImoveis']);
     $router->get('/financeiro/cobrancas', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\PessoaFinanceiroController@minhasCobrancas']);

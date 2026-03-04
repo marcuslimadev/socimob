@@ -436,6 +436,14 @@ class PropertySyncService
         return $this->geocodeCache[$cacheKey] = [null, null];
     }
 
+    private function geocode($endereco)
+    {
+        if (empty(trim($endereco))) {
+            return [null, null];
+        }
+        return $this->searchNominatim($endereco . ', Brasil');
+    }
+
     private function geocodeViaCep($cep)
     {
         $cep = preg_replace('/\D/', '', $cep);

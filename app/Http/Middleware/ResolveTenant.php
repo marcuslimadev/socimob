@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ResolveTenant
 {
@@ -34,14 +35,14 @@ class ResolveTenant
         $host = $request->getHost();
         
         // DEBUG LOG
-        \Log::info('ResolveTenant middleware start', [
+        Log::info('ResolveTenant middleware start', [
             'host' => $host,
             'path' => $path,
         ]);
         
         $tenant = $this->resolveTenantFromRequest($request);
         if ($tenant) {
-            \Log::info('ResolveTenant: Tenant resolved from request', [
+            Log::info('ResolveTenant: Tenant resolved from request', [
                 'tenant_id' => $tenant->id,
                 'tenant_domain' => $tenant->domain,
             ]);
@@ -58,11 +59,11 @@ class ResolveTenant
             return $next($request);
         }
         
-        \Log::info('ResolveTenant: No tenant from request headers', ['host' => $host]);
+        Log::info('ResolveTenant: No tenant from request headers', ['host' => $host]);
 
         // Se for localhost, IP ou ngrok, usar tenant de teste quando configurado
         if ($this->isDevelopment($host) || $this->isNgrok($host)) {
-            \Log::info('ResolveTenant: Using development tenant for localhost/ngrok');
+            Log::info('ResolveTenant: Using development tenant for localhost/ngrok');
             // Em desenvolvimento local, simular exclusivalarimoveis.com para manter multi-tenancy correto
             $tenant = Tenant::byDomain('exclusivalarimoveis.com')->first() ?? Tenant::find(1);
             if ($tenant) {
@@ -81,11 +82,11 @@ class ResolveTenant
         // Buscar tenant pelo dominio
         $normalizedHost = $this->normalizeHost($host);
         
-        \Log::info('ResolveTenant: Normalized host', ['normalized' => $normalizedHost]);
+        Log::info('ResolveTenant: Normalized host', ['normalized' => $normalizedHost]);
         
         // Se for um domínio alternativo, usar o domínio principal
         if (isset($domainAliases[$normalizedHost])) {
-            \Log::info('ResolveTenant: Found alias mapping', [
+            Log::info('ResolveTenant: Found alias mapping', [
                 'alias' => $normalizedHost,
                 'target' => $domainAliases[$normalizedHost],
             ]);
@@ -96,7 +97,7 @@ class ResolveTenant
             ->orWhere('domain', 'www.' . $normalizedHost)
             ->first();
         
-        \Log::info('ResolveTenant: Tenant query result', [
+        Log::info('ResolveTenant: Tenant query result', [
             'normalized_host' => $normalizedHost,
             'tenant_found' => $tenant ? true : false,
             'tenant_id' => $tenant ? $tenant->id : null,
@@ -124,7 +125,7 @@ class ResolveTenant
         // Adicionar tenant_id a requisicao
         $request->attributes->set('tenant_id', $tenant->id);
         
-        \Log::info('ResolveTenant: Tenant set successfully', [
+        Log::info('ResolveTenant: Tenant set successfully', [
             'tenant_id' => $tenant->id,
             'tenant_domain' => $tenant->domain,
         ]);
