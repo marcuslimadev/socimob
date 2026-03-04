@@ -946,33 +946,73 @@ class ImobiBrasilService
             $sucessos = 0;
             $erros = [];
 
+            // Pré-calcular a URL base da aplicação para detecção de imagens locais
+            $appUrl = rtrim(config('app.url', env('APP_URL', '')), '/');
+
             // Enviar cada imagem
             foreach ($imagens as $index => $imagemUrl) {
                 try {
                     $endpoint = $baseUrl . '/imovel/' . $codigoImovel . '/imagem/inserir';
 
-                    // Baixar o binário da imagem para enviar como arquivo (URL string não é processada pela API)
-                    $imgResponse = $client->get($imagemUrl, [
-                        'verify'      => false,
-                        'timeout'     => 30,
-                        'http_errors' => false,
-                    ]);
+                    // Tentar ler imagem localmente (evita round-trip HTTP em servidores compartilhados
+                    // onde o DNS do próprio domínio pode não resolver internamente)
+                    $imgContent = null;
+                    if ($appUrl && strpos($imagemUrl, $appUrl) === 0) {
+                        $urlPath   = ltrim(parse_url($imagemUrl, PHP_URL_PATH), '/');
+                        $localPath = public_path($urlPath);
+                        if (file_exists($localPath) && is_readable($localPath)) {
+                            $imgContent = @file_get_contents($localPath);
+                            if ($imgContent === false) {
+                                $imgContent = null;
+                            }
+                        }
+                    }
 
-                    if ($imgResponse->getStatusCode() !== 200) {
-                        $erros[] = "Imagem $index: não foi possível baixar ($imagemUrl)";
-                        Log::warning('Não foi possível baixar imagem para Imobi Brasil', [
+                    // Fallback: baixar via HTTP se não encontrou localmente
+                    if ($imgContent === null) {
+                        $imgResponse = $client->get($imagemUrl, [
+                            'verify'      => false,
+                            'timeout'     => 30,
+                            'http_errors' => false,
+                        ]);
+
+                        if ($imgResponse->getStatusCode() !== 200) {
+                            $erros[] = "Imagem $index: não foi possível baixar ($imagemUrl)";
+                            Log::warning('Não foi possível baixar imagem para Imobi Brasil', [
+                                'property_id' => $property->id,
+                                'image_index' => $index,
+                                'image_url'   => $imagemUrl,
+                                'http'        => $imgResponse->getStatusCode(),
+                            ]);
+                            continue;
+                        }
+
+                        $imgContent = $imgResponse->getBody()->getContents();
+                    }
+
+                    if (empty($imgContent)) {
+                        $erros[] = "Imagem $index: conteúdo vazio ($imagemUrl)";
+                        Log::warning('Conteúdo de imagem vazio para Imobi Brasil', [
                             'property_id' => $property->id,
                             'image_index' => $index,
                             'image_url'   => $imagemUrl,
-                            'http'        => $imgResponse->getStatusCode(),
                         ]);
                         continue;
                     }
 
-                    $imgContent = $imgResponse->getBody()->getContents();
-                    $ext        = strtolower(pathinfo(parse_url($imagemUrl, PHP_URL_PATH), PATHINFO_EXTENSION)) ?: 'jpg';
-                    $mimeMap    = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp'];
-                    $mime       = $mimeMap[$ext] ?? 'image/jpeg';
+                    $ext = strtolower(pathinfo(parse_url($imagemUrl, PHP_URL_PATH), PATHINFO_EXTENSION)) ?: 'jpg';
+                    $mimeMap = [
+                        'jpg'  => 'image/jpeg',
+                        'jpeg' => 'image/jpeg',
+                        'jfif' => 'image/jpeg',
+                        'png'  => 'image/png',
+                        'gif'  => 'image/gif',
+                        'webp' => 'image/webp',
+                        'avif' => 'image/avif',
+                        'heic' => 'image/heic',
+                        'heif' => 'image/heif',
+                    ];
+                    $mime = $mimeMap[$ext] ?? 'image/jpeg';
 
                     // Enviar como binário multipart; primeira imagem = destaque
                     $multipart = [
@@ -1032,10 +1072,13 @@ class ImobiBrasilService
                 }
             }
 
-            // Atualizar timestamp de sincronização de imagens
-            $property->update([
-                'imobi_brasil_images_sent_at' => \Carbon\Carbon::now(),
-            ]);
+            // Atualizar timestamp de sincronização de imagens apenas se ao menos uma foi enviada
+            // (evita bloquear reenvio futuro quando todas falharam)
+            if ($sucessos > 0) {
+                $property->update([
+                    'imobi_brasil_images_sent_at' => \Carbon\Carbon::now(),
+                ]);
+            }
 
             Log::info('Sincronização de imagens concluída', [
                 'property_id' => $property->id,
