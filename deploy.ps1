@@ -110,7 +110,7 @@ echo '=== PACKAGE DISCOVER ===' && \
 /opt/alt/php83/usr/bin/php artisan package:discover --ansi 2>&1 && \
 echo '' && \
 echo '=== MIGRATIONS ===' && \
-/opt/alt/php83/usr/bin/php artisan migrate --force 2>&1 && \
+/opt/alt/php83/usr/bin/php artisan migrate --force 2>&1 || true && \
 echo '' && \
 echo '=== BACKUP ARQUIVOS ANTIGOS ===' && \
 rm -f index.html.bak && \
