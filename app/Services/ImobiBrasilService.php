@@ -884,6 +884,24 @@ class ImobiBrasilService
                 ];
             }
 
+            $codigoImovel = $property->imobi_brasil_external_id;
+
+            // Excluir imagens existentes no Imobi Brasil antes de reenviar (evita duplicatas)
+            $existingImages = static::listPropertyImages((int) $codigoImovel, $tenant);
+            if (!empty($existingImages['result_set'])) {
+                foreach ($existingImages['result_set'] as $img) {
+                    $codigoImagem = $img['codigo'] ?? $img['id'] ?? null;
+                    if ($codigoImagem) {
+                        static::deletePropertyImage((int) $codigoImovel, (int) $codigoImagem, $tenant);
+                    }
+                }
+                Log::info('Imagens anteriores removidas do Imobi Brasil antes do reenvio', [
+                    'property_id'   => $property->id,
+                    'codigo_imovel' => $codigoImovel,
+                    'removed'       => count($existingImages['result_set']),
+                ]);
+            }
+
             // Montar lista de URLs de imagem (apenas imagens, sem vídeos ou documentos)
             $imageUrls = [];
             $videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'webm', 'mkv', 'flv', 'ogv', 'm4v', '3gp', 'ts'];
@@ -941,7 +959,6 @@ class ImobiBrasilService
 
             $baseUrl = static::getBaseUrl($tenant);
             $baseUrl = rtrim($baseUrl, '/');
-            $codigoImovel = $property->imobi_brasil_external_id;
 
             Log::info('Iniciando sincronização de imagens para Imobi Brasil', [
                 'property_id' => $property->id,
