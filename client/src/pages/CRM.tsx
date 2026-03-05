@@ -3,6 +3,9 @@ import {
   Search,
   Send,
   ArrowLeft,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
   Check,
   CheckCheck,
   Clock,
@@ -21,6 +24,7 @@ import {
   Maximize2,
   Minimize2,
   Key,
+  Filter,
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -341,40 +345,65 @@ const DataRow = memo(({ client, isSelected, onSelect }: {
   onSelect: (client: CRMClient) => void;
 }) => {
   const statusConf = STATUS_CONFIG[client.status as StatusKey] || STATUS_CONFIG.novo;
+  const classif = client.classificacao;
   return (
     <tr
       onClick={() => onSelect(client)}
       className={cn(
-        'cursor-pointer border-b border-white/5 hover:bg-white/5 transition-colors',
-        isSelected && 'bg-primary/10'
+        'cursor-pointer border-b border-border/40 transition-colors group',
+        isSelected
+          ? 'bg-primary/10 hover:bg-primary/15'
+          : 'hover:bg-muted/40'
       )}
     >
-      <td className="px-3 py-3">
+      <td className="px-4 py-3">
         <div className="flex items-center gap-3">
-          <Avatar className="w-8 h-8 flex-shrink-0">
-            <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
-              {getInitials(client.nome)}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative flex-shrink-0">
+            <Avatar className="w-9 h-9">
+              <AvatarFallback className={cn(
+                'text-[11px] font-bold',
+                isSelected ? 'bg-primary/25 text-primary' : 'bg-primary/10 text-primary'
+              )}>
+                {getInitials(client.nome)}
+              </AvatarFallback>
+            </Avatar>
+            {client.unread > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-primary rounded-full flex items-center justify-center text-[9px] font-bold text-primary-foreground px-1 ring-2 ring-background">
+                {client.unread > 9 ? '9+' : client.unread}
+              </span>
+            )}
+          </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">{client.nome}</p>
-            <p className="text-xs text-muted-foreground truncate">{client.email || '-'}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-semibold text-foreground truncate">{client.nome}</p>
+              {classif && (
+                <span className={cn(
+                  'flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full',
+                  classif === 'quente' && 'bg-red-500/15 text-red-500',
+                  classif === 'morno' && 'bg-amber-500/15 text-amber-500',
+                  classif === 'frio' && 'bg-blue-500/15 text-blue-500',
+                )}>
+                  {classif === 'quente' ? '🔥' : classif === 'morno' ? '🌡' : '❄️'}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{client.email || <span className="opacity-40">—</span>}</p>
           </div>
         </div>
       </td>
-      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{client.telefone}</td>
-      <td className="px-3 py-3">
-        <span className={cn('text-[10px] font-semibold px-2 py-1 rounded-full border', statusConf.bg, statusConf.color)}>
+      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{client.telefone}</td>
+      <td className="px-4 py-3">
+        <span className={cn('text-[11px] font-semibold px-2.5 py-1 rounded-full border', statusConf.bg, statusConf.color)}>
           {statusConf.label}
         </span>
       </td>
-      <td className="px-3 py-3 text-xs text-muted-foreground truncate max-w-[240px]">
-        {client.ultima_mensagem ? truncateMsg(client.ultima_mensagem, 60) : '-'}
+      <td className="px-4 py-3 text-xs text-muted-foreground truncate max-w-[240px]">
+        {client.ultima_mensagem ? truncateMsg(client.ultima_mensagem, 60) : <span className="text-muted-foreground/30">—</span>}
       </td>
-      <td className="px-3 py-3 text-xs text-muted-foreground">{client.corretor_nome || '-'}</td>
-      <td className="px-3 py-3 text-xs text-muted-foreground">{client.origem || '-'}</td>
-      <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
-        {client.updated_at ? formatRelativeTime(client.updated_at) : '-'}
+      <td className="px-4 py-3 text-xs text-muted-foreground">{client.corretor_nome || <span className="text-muted-foreground/30">—</span>}</td>
+      <td className="px-4 py-3 text-xs text-muted-foreground">{client.origem || <span className="text-muted-foreground/30">—</span>}</td>
+      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+        {client.updated_at ? formatRelativeTime(client.updated_at) : <span className="text-muted-foreground/30">—</span>}
       </td>
     </tr>
   );
@@ -581,6 +610,15 @@ export default function CRM() {
       toast.error('Erro ao atualizar status');
     }
   }, [queryClient]);
+
+  const handleSort = useCallback((key: 'updated_at' | 'nome' | 'status') => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+  }, [sortKey]);
 
   useEffect(() => {
     setTablePage(1);
@@ -1283,7 +1321,7 @@ export default function CRM() {
                 <span className="text-[10px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">{totalUnread}</span>
               )}
             </div>
-            <div className="relative flex-1 max-w-sm">
+            <div className="relative flex-1 max-w-sm lg:hidden">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <input
                 type="text"
@@ -1309,39 +1347,66 @@ export default function CRM() {
             {/* Desktop: Kanban */}
             <div className="hidden lg:flex flex-1 min-h-0 p-4">
               <div className="w-full flex flex-col gap-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <input
-                    type="text"
-                    value={tableSearch}
-                    onChange={(e) => setTableSearch(e.target.value)}
-                    placeholder="Buscar clientes..."
-                    className="w-full max-w-md px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Search */}
+                  <div className="relative flex-1 min-w-[200px] max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={tableSearch}
+                      onChange={(e) => setTableSearch(e.target.value)}
+                      placeholder="Buscar clientes..."
+                      className="w-full pl-9 pr-3 py-2.5 bg-muted/30 border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
+                    />
+                  </div>
+
+                  <div className="w-px h-8 bg-border/60 hidden sm:block" />
+
+                  {/* Status filter */}
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as StatusKey | 'all')}
-                    className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900"
+                    className={cn(
+                      'px-3 py-2.5 border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900',
+                      statusFilter !== 'all'
+                        ? 'bg-primary/10 border-primary/40 text-primary font-medium'
+                        : 'bg-muted/30 border-border'
+                    )}
                   >
                     <option value="all">Todos os status</option>
                     {ALL_STATUSES.map((s) => (
                       <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
                     ))}
                   </select>
+
+                  {/* Classification filter */}
                   <select
                     value={classificacaoFilter}
                     onChange={(e) => setClassificacaoFilter(e.target.value as 'all' | 'quente' | 'morno' | 'frio')}
-                    className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900"
+                    className={cn(
+                      'px-3 py-2.5 border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900',
+                      classificacaoFilter !== 'all'
+                        ? 'bg-orange-500/10 border-orange-500/40 text-orange-500 font-medium'
+                        : 'bg-muted/30 border-border'
+                    )}
                   >
                     <option value="all">Classificação</option>
-                    <option value="quente">Quente</option>
-                    <option value="morno">Morno</option>
-                    <option value="frio">Frio</option>
+                    <option value="quente">🔥 Quente</option>
+                    <option value="morno">🌡️ Morno</option>
+                    <option value="frio">❄️ Frio</option>
                   </select>
+
+                  {/* Broker filter */}
                   {corretores.length > 0 && (
                     <select
                       value={corretorFilter}
                       onChange={(e) => setCorretorFilter(e.target.value)}
-                      className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900"
+                      className={cn(
+                        'px-3 py-2.5 border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900',
+                        corretorFilter
+                          ? 'bg-purple-500/10 border-purple-500/40 text-purple-500 font-medium'
+                          : 'bg-muted/30 border-border'
+                      )}
                     >
                       <option value="">Todos os corretores</option>
                       {corretores.map((corretor) => (
@@ -1351,38 +1416,92 @@ export default function CRM() {
                       ))}
                     </select>
                   )}
-                  <select
-                    value={sortKey}
-                    onChange={(e) => setSortKey(e.target.value as 'updated_at' | 'nome' | 'status')}
-                    className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900"
-                  >
-                    <option value="updated_at">Ordenar: Atualização</option>
-                    <option value="nome">Ordenar: Nome</option>
-                    <option value="status">Ordenar: Status</option>
-                  </select>
-                  <button
-                    onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                    className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground hover:bg-white/10 transition-colors"
-                    title="Alternar ordem"
-                  >
-                    {sortDir === 'asc' ? '↑' : '↓'}
-                  </button>
-                  <span className="text-xs text-muted-foreground">
-                    {tableMeta.total} resultado(s)
-                  </span>
+
+                  <div className="w-px h-8 bg-border/60 hidden sm:block" />
+
+                  {/* Sort controls */}
+                  <div className="flex items-center gap-1">
+                    <select
+                      value={sortKey}
+                      onChange={(e) => setSortKey(e.target.value as 'updated_at' | 'nome' | 'status')}
+                      className="px-3 py-2.5 bg-muted/30 border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900"
+                    >
+                      <option value="updated_at">Ordenar: Atualização</option>
+                      <option value="nome">Ordenar: Nome</option>
+                      <option value="status">Ordenar: Status</option>
+                    </select>
+                    <button
+                      onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                      className="p-2.5 bg-muted/30 border border-border rounded-xl text-foreground hover:bg-muted/60 hover:border-primary/40 transition-colors"
+                      title={sortDir === 'asc' ? 'Crescente — clique para inverter' : 'Decrescente — clique para inverter'}
+                    >
+                      {sortDir === 'asc'
+                        ? <ArrowUp className="w-4 h-4" />
+                        : <ArrowDown className="w-4 h-4" />
+                      }
+                    </button>
+                  </div>
+
+                  {/* Result count + active filter indicators */}
+                  <div className="flex items-center gap-2 ml-auto">
+                    {(statusFilter !== 'all' || classificacaoFilter !== 'all' || corretorFilter || tableSearch) && (
+                      <button
+                        onClick={() => { setStatusFilter('all'); setClassificacaoFilter('all'); setCorretorFilter(''); setTableSearch(''); }}
+                        className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                      >
+                        Limpar filtros
+                      </button>
+                    )}
+                    <span className="text-xs text-muted-foreground px-2.5 py-1.5 bg-muted/40 rounded-lg border border-border whitespace-nowrap font-medium">
+                      {tableMeta.total} resultado{tableMeta.total !== 1 ? 's' : ''}
+                    </span>
+                  </div>
                 </div>
                 <div className="rounded-xl border border-white/10 overflow-hidden">
                   <ScrollArea className="max-h-[calc(100vh-240px)]">
                     <table className="w-full text-left">
-                      <thead className="sticky top-0 bg-background/80 backdrop-blur border-b border-white/10">
-                        <tr className="text-xs uppercase tracking-wider text-muted-foreground">
-                          <th className="px-3 py-3">Cliente</th>
-                          <th className="px-3 py-3">Telefone</th>
-                          <th className="px-3 py-3">Status</th>
-                          <th className="px-3 py-3">Última mensagem</th>
-                          <th className="px-3 py-3">Corretor</th>
-                          <th className="px-3 py-3">Origem</th>
-                          <th className="px-3 py-3">Atualizado</th>
+                      <thead className="sticky top-0 bg-card border-b border-border z-10">
+                        <tr className="text-xs text-muted-foreground">
+                          <th
+                            className="px-4 py-3 text-left font-semibold uppercase tracking-wider cursor-pointer select-none hover:text-foreground transition-colors"
+                            onClick={() => handleSort('nome')}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              Cliente
+                              {sortKey === 'nome'
+                                ? (sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-primary" /> : <ArrowDown className="w-3 h-3 text-primary" />)
+                                : <ArrowUpDown className="w-3 h-3 opacity-25" />
+                              }
+                            </div>
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider">Telefone</th>
+                          <th
+                            className="px-4 py-3 text-left font-semibold uppercase tracking-wider cursor-pointer select-none hover:text-foreground transition-colors"
+                            onClick={() => handleSort('status')}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              Status
+                              {sortKey === 'status'
+                                ? (sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-primary" /> : <ArrowDown className="w-3 h-3 text-primary" />)
+                                : <ArrowUpDown className="w-3 h-3 opacity-25" />
+                              }
+                            </div>
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider">Última mensagem</th>
+                          <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider">Corretor</th>
+                          <th className="px-4 py-3 text-left font-semibold uppercase tracking-wider">Origem</th>
+                          <th
+                            className="px-4 py-3 text-left font-semibold uppercase tracking-wider cursor-pointer select-none hover:text-foreground transition-colors"
+                            onClick={() => handleSort('updated_at')}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              Atualizado
+                              {sortKey === 'updated_at'
+                                ? (sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-primary" /> : <ArrowDown className="w-3 h-3 text-primary" />)
+                                : <ArrowUpDown className="w-3 h-3 opacity-25" />
+                              }
+                            </div>
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1413,34 +1532,57 @@ export default function CRM() {
                     </table>
                   </ScrollArea>
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-                  <div>
-                    Página {tableMeta.current_page} de {tableMeta.last_page} • Total {tableMeta.total}
-                  </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    Página <span className="font-semibold text-foreground">{tableMeta.current_page}</span> de <span className="font-semibold text-foreground">{tableMeta.last_page}</span>
+                    <span className="mx-1.5 text-border">•</span>
+                    Total <span className="font-semibold text-foreground">{tableMeta.total}</span>
+                  </p>
                   <div className="flex items-center gap-2">
                     <select
                       value={tablePerPage}
                       onChange={(e) => setTablePerPage(Number(e.target.value))}
-                      className="px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900"
+                      className="px-2 py-1.5 bg-muted/30 border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900"
                     >
                       {[25, 50, 100, 200].map((n) => (
                         <option key={n} value={n}>{n}/página</option>
                       ))}
                     </select>
-                    <button
-                      onClick={() => setTablePage((p) => Math.max(1, p - 1))}
-                      disabled={tableMeta.current_page <= 1}
-                      className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-foreground disabled:opacity-50"
-                    >
-                      Anterior
-                    </button>
-                    <button
-                      onClick={() => setTablePage((p) => Math.min(tableMeta.last_page, p + 1))}
-                      disabled={tableMeta.current_page >= tableMeta.last_page}
-                      className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-foreground disabled:opacity-50"
-                    >
-                      Próxima
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setTablePage((p) => Math.max(1, p - 1))}
+                        disabled={tableMeta.current_page <= 1}
+                        className="px-3 py-1.5 bg-muted/30 border border-border rounded-lg text-xs text-foreground hover:bg-muted/60 hover:border-primary/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Anterior
+                      </button>
+                      {/* Page numbers (show max 5) */}
+                      {Array.from({ length: Math.min(5, tableMeta.last_page) }, (_, i) => {
+                        const startPage = Math.max(1, Math.min(tableMeta.current_page - 2, tableMeta.last_page - 4));
+                        const page = startPage + i;
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => setTablePage(page)}
+                            className={cn(
+                              'w-8 h-[30px] rounded-lg text-xs font-medium border transition-colors',
+                              page === tableMeta.current_page
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-muted/30 border-border text-foreground hover:bg-muted/60 hover:border-primary/30'
+                            )}
+                          >
+                            {page}
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => setTablePage((p) => Math.min(tableMeta.last_page, p + 1))}
+                        disabled={tableMeta.current_page >= tableMeta.last_page}
+                        className="px-3 py-1.5 bg-muted/30 border border-border rounded-lg text-xs text-foreground hover:bg-muted/60 hover:border-primary/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Próxima
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
