@@ -373,6 +373,7 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->put('/imoveis/{id}/atualizar-imobi-brasil', 'App\Http\Controllers\PropertyController@atualizarImobiBrasil');
     $router->get('/imoveis/{id}/status-imobi-brasil', 'App\Http\Controllers\PropertyController@statusImobiBrasil');
     $router->post('/imoveis/{id}/enviar-imagens-imobi-brasil', 'App\Http\Controllers\PropertyController@enviarImagensImobiBrasil');
+    $router->get('/imoveis/{id}/listar-imagens-imobi-brasil', 'App\Http\Controllers\PropertyController@listarImagensImobiBrasil');
     
     $router->get('/chaves', 'App\Http\Controllers\PropertyController@keysIndex');
     $router->get('/chaves/movimentacoes', 'App\Http\Controllers\PropertyController@keysMovements');

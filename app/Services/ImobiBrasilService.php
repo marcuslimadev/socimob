@@ -2359,9 +2359,23 @@ class ImobiBrasilService
 
             $data = json_decode($response->getBody()->getContents(), true) ?: [];
 
+            // A API pode retornar resultSet como array direto ou como {data: [...], total: N}
+            $rawResultSet = $data['resultSet'] ?? [];
+            $images = is_array($rawResultSet)
+                ? (isset($rawResultSet['data']) ? $rawResultSet['data'] : array_values($rawResultSet))
+                : [];
+
+            Log::debug('Imobi Brasil - listPropertyImages', [
+                'codigoImovel' => $codigoImovel,
+                'status'       => $data['status'] ?? null,
+                'count'        => count($images),
+                'raw_keys'     => is_array($rawResultSet) ? array_keys($rawResultSet) : null,
+            ]);
+
             return [
                 'success'    => !empty($data['status']),
-                'result_set' => $data['resultSet'] ?? [],
+                'result_set' => $images,
+                'total'      => $rawResultSet['total'] ?? count($images),
             ];
         } catch (\Exception $e) {
             Log::error('Erro ao listar imagens do imóvel no Imobi Brasil', ['codigoImovel' => $codigoImovel, 'error' => $e->getMessage()]);

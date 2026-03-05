@@ -1932,6 +1932,29 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
     }
 
     /**
+     * Listar imagens do imóvel no Imobi Brasil (debug)
+     * GET /api/imoveis/{id}/listar-imagens-imobi-brasil
+     */
+    public function listarImagensImobiBrasil(Request $request, $id)
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) return response()->json(['error' => 'No tenant context'], 400);
+
+        $property = Property::where('id', $id)->where('tenant_id', $tenantId)->firstOrFail();
+        $tenant   = Tenant::findOrFail($tenantId);
+
+        if (!$property->imobi_brasil_external_id) {
+            return response()->json(['error' => 'Imóvel não enviado ao Imobi Brasil'], 400);
+        }
+
+        $result = \App\Services\ImobiBrasilService::listPropertyImages(
+            (int) $property->imobi_brasil_external_id, $tenant
+        );
+
+        return response()->json($result);
+    }
+
+    /**
      * Enviar imagens do imóvel para Imobi Brasil
      * POST /api/imoveis/{id}/enviar-imagens-imobi-brasil
      */
