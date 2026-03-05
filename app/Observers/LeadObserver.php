@@ -167,8 +167,8 @@ class LeadObserver
     private function sendToChavesNaMao(Lead $lead): void
     {
         try {
-            // Marcar como pending antes de enviar
-            $lead->update(['chaves_na_mao_status' => 'pending']);
+            // Marcar como pending antes de enviar (updateQuietly para não re-disparar o observer)
+            $lead->updateQuietly(['chaves_na_mao_status' => 'pending']);
 
             // Enviar
             $result = $this->chavesNaMaoService->sendLead($lead);
@@ -192,7 +192,7 @@ class LeadObserver
                 'trace' => $e->getTraceAsString()
             ]);
 
-            $lead->update([
+            $lead->updateQuietly([
                 'chaves_na_mao_status' => 'error',
                 'chaves_na_mao_error' => $e->getMessage()
             ]);
@@ -395,8 +395,8 @@ class LeadObserver
                 // Atualizar pessoa existente
                 $this->atualizarPessoaDoLead($pessoa, $lead);
                 
-                // Associar lead à pessoa
-                $lead->update(['pessoa_id' => $pessoa->id]);
+                // Associar lead à pessoa (updateQuietly para não re-disparar o observer)
+                $lead->updateQuietly(['pessoa_id' => $pessoa->id]);
                 
                 Log::info('[LeadObserver] Lead associado à pessoa existente', [
                     'lead_id' => $lead->id,
@@ -430,8 +430,8 @@ class LeadObserver
                     'primeiro_contato' => $lead->primeira_interacao,
                 ]);
                 
-                // Associar lead à pessoa
-                $lead->update(['pessoa_id' => $pessoa->id]);
+                // Associar lead à pessoa (updateQuietly para não re-disparar o observer)
+                $lead->updateQuietly(['pessoa_id' => $pessoa->id]);
                 
                 Log::info('[LeadObserver] Nova pessoa criada do lead', [
                     'lead_id' => $lead->id,
