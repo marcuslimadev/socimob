@@ -12,7 +12,7 @@ class AnalyticsController extends Controller
     public function overview(Request $request)
     {
         $user = $request->user();
-        if (!$user || !$user->tenant_id) {
+        if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
@@ -20,7 +20,10 @@ class AnalyticsController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $tenantId = $user->tenant_id;
+        $tenantId = $user->tenant_id ?? $request->attributes->get('tenant_id');
+        if (!$tenantId) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
         $days = (int) ($request->input('days') ?? 30);
         $days = max(1, min($days, 365));
         $since = Carbon::now()->subDays($days);
