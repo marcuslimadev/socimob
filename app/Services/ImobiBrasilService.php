@@ -884,9 +884,10 @@ class ImobiBrasilService
                 ];
             }
 
-            // Montar lista de URLs de imagem (apenas imagens, sem vídeos)
+            // Montar lista de URLs de imagem (apenas imagens, sem vídeos ou documentos)
             $imageUrls = [];
-            $videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'webm', 'mkv'];
+            $videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'webm', 'mkv', 'flv', 'ogv', 'm4v', '3gp', 'ts'];
+            $docExtensions   = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip', 'rar'];
 
             // Tentar buscar da tabela imoveis_imagens (pode não existir em todos os ambientes)
             $imagensDb = collect();
@@ -905,7 +906,7 @@ class ImobiBrasilService
                 // Usar tabela imoveis_imagens
                 foreach ($imagensDb as $img) {
                     $ext = strtolower(pathinfo(parse_url($img->url, PHP_URL_PATH), PATHINFO_EXTENSION));
-                    if (!in_array($ext, $videoExtensions)) {
+                    if (!in_array($ext, $videoExtensions) && !in_array($ext, $docExtensions)) {
                         $imageUrls[] = $img->url;
                     }
                 }
@@ -918,7 +919,7 @@ class ImobiBrasilService
                     foreach ($rawImagens as $url) {
                         if (!is_string($url)) continue;
                         $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
-                        if (!in_array($ext, $videoExtensions)) {
+                        if (!in_array($ext, $videoExtensions) && !in_array($ext, $docExtensions)) {
                             $imageUrls[] = $url;
                         }
                     }
@@ -1012,21 +1013,31 @@ class ImobiBrasilService
                     }
 
                     $ext = strtolower(pathinfo(parse_url($imagemUrl, PHP_URL_PATH), PATHINFO_EXTENSION)) ?: 'jpg';
+
+                    // Mapa de MIME types reais para download/leitura correta
                     $mimeMap = [
                         'jpg'  => 'image/jpeg',
                         'jpeg' => 'image/jpeg',
                         'jfif' => 'image/jpeg',
+                        'pjpeg'=> 'image/jpeg',
+                        'pjp'  => 'image/jpeg',
                         'png'  => 'image/png',
                         'gif'  => 'image/gif',
                         'webp' => 'image/webp',
                         'avif' => 'image/avif',
                         'heic' => 'image/heic',
                         'heif' => 'image/heif',
+                        'tiff' => 'image/tiff',
+                        'tif'  => 'image/tiff',
+                        'bmp'  => 'image/bmp',
+                        'svg'  => 'image/svg+xml',
                     ];
                     $mime = $mimeMap[$ext] ?? 'image/jpeg';
 
-                    // Normalizar extensões não aceitas pela API (jfif, heic, heif, avif → jpg)
-                    $extNormalizada = in_array($ext, ['jfif', 'heic', 'heif', 'avif']) ? 'jpg' : $ext;
+                    // Extensões aceitas pela API Imobi Brasil: jpg, jpeg, png, gif
+                    // Todos os outros formatos são normalizados para jpg no nome do arquivo
+                    $extAceitas = ['jpg', 'jpeg', 'png', 'gif'];
+                    $extNormalizada = in_array($ext, $extAceitas) ? $ext : 'jpg';
 
                     // Enviar como binário multipart; primeira imagem = destaque
                     $multipart = [
