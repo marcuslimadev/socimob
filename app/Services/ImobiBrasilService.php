@@ -886,19 +886,26 @@ class ImobiBrasilService
 
             $codigoImovel = $property->imobi_brasil_external_id;
 
-            // Excluir imagens existentes no Imobi Brasil antes de reenviar (evita duplicatas)
-            $existingImages = static::listPropertyImages((int) $codigoImovel, $tenant);
-            if (!empty($existingImages['result_set'])) {
+            // Excluir TODAS imagens existentes no Imobi Brasil antes de reenviar (evita duplicatas)
+            // Itera em loop pois a API pode paginar os resultados
+            $totalRemovidos = 0;
+            $maxIteracoes   = 20; // segurança contra loop infinito
+            for ($i = 0; $i < $maxIteracoes; $i++) {
+                $existingImages = static::listPropertyImages((int) $codigoImovel, $tenant);
+                if (empty($existingImages['result_set'])) break;
                 foreach ($existingImages['result_set'] as $img) {
                     $codigoImagem = $img['codigo'] ?? $img['id'] ?? null;
                     if ($codigoImagem) {
                         static::deletePropertyImage((int) $codigoImovel, (int) $codigoImagem, $tenant);
+                        $totalRemovidos++;
                     }
                 }
+            }
+            if ($totalRemovidos > 0) {
                 Log::info('Imagens anteriores removidas do Imobi Brasil antes do reenvio', [
                     'property_id'   => $property->id,
                     'codigo_imovel' => $codigoImovel,
-                    'removed'       => count($existingImages['result_set']),
+                    'removed'       => $totalRemovidos,
                 ]);
             }
 
