@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan migrate:status)",
+      "Bash(php artisan migrate --path=database/migrations/2026_03_04_100000_create_imoveis_imagens_table.php)"
+    ]
+  }
+}
