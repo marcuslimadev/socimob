@@ -203,7 +203,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->post('/ads/olx/connect/credentials',       'App\Http\Controllers\Ads\AdsConnectionController@connectCredentials');
     $router->post('/ads/{provider}/accounts',           'App\Http\Controllers\Ads\AdsConnectionController@saveAccount');
     $router->get('/ads/analytics',                      'App\Http\Controllers\Ads\AdsAnalyticsController@index');
-    $router->get('/ads/logs',                           'App\Http\Controllers\Ads\AdsConnectionController@logs');
+    $router->get('/ads/logs',                           'App\Http\Controllers\Ads\AdsListingController@logs');
 
     // Property Ads (Propaganda de Imóveis)
     $router->get('/property-ads', function () use ($router) {

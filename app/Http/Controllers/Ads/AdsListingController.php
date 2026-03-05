@@ -99,7 +99,7 @@ class AdsListingController extends Controller
      */
     public function logs(Request $request): JsonResponse
     {
-        $tenantId = $request->get('tenant_id');
+        $tenantId = $request->attributes->get('tenant_id') ?? $request->user()?->tenant_id ?? $request->get('tenant_id');
 
         $query = AdsAuditLog::withoutTenant()
             ->where('tenant_id', $tenantId)
