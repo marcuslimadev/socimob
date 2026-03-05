@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { fetchTenantBranding, hexToRgba, TenantBranding } from '@/lib/tenantBranding';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+
+declare const google: any;
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -34,6 +36,47 @@ export default function Login() {
 
   const primary = tenant?.primary_color || '#091b42';
   const softBg = hexToRgba(primary, 0.12);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId || !googleBtnRef.current) return;
+    if (typeof google === 'undefined') return;
+
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleCredential,
+    });
+    google.accounts.id.renderButton(googleBtnRef.current, {
+      theme: 'outline',
+      size: 'large',
+      width: googleBtnRef.current.offsetWidth || 360,
+      text: 'continue_with',
+      locale: 'pt-BR',
+    });
+  }, [tenant]);
+
+  const handleGoogleCredential = async (response: { credential: string }) => {
+    setIsLoading(true);
+    try {
+      const res = await api.post('/auth/google', { token: response.credential });
+      if (res.data.token) {
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+        toast.success('Login com Google realizado!');
+        const role = (res.data.user?.role || '').toLowerCase();
+        if (role === 'admin' || role === 'super_admin' || role === 'corretor') {
+          setLocation('/dashboard');
+        } else {
+          setLocation('/portal/meu-financeiro');
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Erro ao entrar com Google.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,6 +258,17 @@ export default function Login() {
               {!isLoading && <ArrowRight size={20} />}
             </motion.button>
           </form>
+
+          {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+            <>
+              <div className="relative my-4 flex items-center">
+                <div className="flex-1 border-t border-white/20" />
+                <span className="mx-3 text-xs text-muted-foreground">ou</span>
+                <div className="flex-1 border-t border-white/20" />
+              </div>
+              <div ref={googleBtnRef} className="w-full flex justify-center" />
+            </>
+          )}
 
 
         </motion.div>

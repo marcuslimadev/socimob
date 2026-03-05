@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Tenant;
 use App\Services\DomainService;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
@@ -180,93 +181,131 @@ class AuthController extends Controller
     public function googleLogin(Request $request)
     {
         try {
-            // Validação do token
             $validator = Validator::make($request->all(), [
                 'token' => 'required|string|min:10',
-            ], [
-                'token.required' => 'Token do Google é obrigatório',
-                'token.min' => 'Token inválido',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Dados inválidos',
+                    'message' => 'Token do Google é obrigatório',
                     'errors' => $validator->errors()
                 ], 422);
             }
 
             $googleToken = $request->input('token');
+            $googleClientId = env('GOOGLE_CLIENT_ID');
 
-            // Verificar o token do Google (simulado - implementar verificação real em produção)
-            // Em produção, usar: https://developers.google.com/identity/sign-in/web/backend-auth
-            
-            // Decodificar o JWT do Google (simulado)
-            $googleClientId = env('GOOGLE_CLIENT_ID', 'YOUR_GOOGLE_CLIENT_ID');
-            
-            // Por enquanto, vamos aceitar qualquer token e criar/buscar usuário
-            // IMPORTANTE: Em produção, SEMPRE validar o token com a API do Google!
-            
-            // Simular dados extraídos do token Google
+            if (!$googleClientId) {
+                Log::error('GOOGLE_CLIENT_ID não configurado no .env');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Login com Google não configurado neste servidor.',
+                ], 503);
+            }
+
+            // Verificar o ID token com a API do Google
+            $response = Http::get('https://oauth2.googleapis.com/tokeninfo', [
+                'id_token' => $googleToken,
+            ]);
+
+            if (!$response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token do Google inválido ou expirado.',
+                ], 401);
+            }
+
+            $payload = $response->json();
+
+            // Garantir que o token foi emitido para o nosso app
+            if (($payload['aud'] ?? '') !== $googleClientId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token do Google não pertence a este aplicativo.',
+                ], 401);
+            }
+
             $googleData = [
-                'email' => 'usuario@gmail.com',  // Em produção, extrair do token
-                'name' => 'Usuário Google',       // Em produção, extrair do token
-                'google_id' => 'google_' . time() // Em produção, extrair do token
+                'email'     => $payload['email'] ?? null,
+                'name'      => $payload['name'] ?? ($payload['email'] ?? 'Usuário Google'),
+                'google_id' => $payload['sub'] ?? null,
             ];
+
+            if (!$googleData['email'] || !$googleData['google_id']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Não foi possível obter os dados do Google.',
+                ], 401);
+            }
 
             // Resolver tenant atual - obrigatório para Google Login
             $currentTenant = app()->bound('tenant') ? app('tenant') : null;
             if (!$currentTenant) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Não foi possível identificar a imobiliária. Acesse pelo domínio correto.'
+                    'message' => 'Não foi possível identificar a imobiliária. Acesse pelo domínio correto.',
                 ], 403);
             }
 
-            // Buscar ou criar usuário
-            $user = User::where('email', $googleData['email'])->first();
+            // Buscar usuário por google_id ou email
+            $user = User::where('google_id', $googleData['google_id'])->first()
+                ?? User::where('email', $googleData['email'])->first();
 
             if (!$user) {
                 // Criar novo usuário como cliente, vinculado ao tenant atual
                 $user = User::create([
-                    'name' => $googleData['name'],
-                    'email' => $googleData['email'],
-                    'password' => Hash::make(uniqid()),
-                    'role' => 'client',
-                    'is_active' => 1,
-                    'google_id' => $googleData['google_id'],
-                    'tenant_id' => $currentTenant->id,
+                    'name'       => $googleData['name'],
+                    'email'      => $googleData['email'],
+                    'password'   => Hash::make(bin2hex(random_bytes(16))),
+                    'role'       => 'client',
+                    'is_active'  => 1,
+                    'google_id'  => $googleData['google_id'],
+                    'tenant_id'  => $currentTenant->id,
                 ]);
-            } elseif ($user->tenant_id && $user->tenant_id !== $currentTenant->id) {
-                // Usuário existe mas pertence a outro tenant
+            } else {
+                if ($user->tenant_id && $user->tenant_id !== $currentTenant->id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Este usuário não tem acesso a este domínio.',
+                    ], 403);
+                }
+
+                // Associar google_id se ainda não estiver vinculado
+                if (!$user->google_id) {
+                    $user->update(['google_id' => $googleData['google_id']]);
+                }
+            }
+
+            if (!$user->is_active) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Este usuário não tem acesso a este domínio.'
+                    'message' => 'Usuário inativo. Entre em contato com a imobiliária.',
                 ], 403);
             }
 
             // Gerar token
             $secret = env('JWT_SECRET', env('APP_KEY', 'default-secret-key'));
             $token = base64_encode($user->id . '|' . time() . '|' . $secret);
-            
+
             return response()->json([
                 'success' => true,
-                'token' => $token,
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
+                'token'   => $token,
+                'user'    => [
+                    'id'    => $user->id,
+                    'name'  => $user->name,
                     'email' => $user->email,
-                    'role' => $user->role,
-                    'tipo' => $user->role === 'client' ? 'Cliente' : ucfirst($user->role),
+                    'role'  => $user->role,
+                    'tipo'  => $user->role === 'client' ? 'Cliente' : ucfirst($user->role),
                 ],
-                'message' => 'Login com Google realizado com sucesso!'
+                'message' => 'Login com Google realizado com sucesso!',
             ]);
 
         } catch (\Exception $e) {
+            Log::error('Google login error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Erro ao fazer login com Google',
-                'error' => $e->getMessage()
+                'message' => 'Erro ao fazer login com Google.',
             ], 500);
         }
     }

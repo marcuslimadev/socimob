@@ -1,10 +1,12 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { ArrowRight, Lock, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
+
+declare const google: any;
 
 export default function PortalLogin() {
   const [, navigate] = useLocation();
@@ -16,10 +18,52 @@ export default function PortalLogin() {
   const primary = tenant?.primary_color || '#0f172a';
   const secondary = tenant?.secondary_color || '#b9935a';
   const logoSrc = tenant?.logo_url || tenant?.logo || '';
+  const googleBtnRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchTenantBranding().then((data: TenantBranding | null) => setTenant(data));
   }, []);
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId || !googleBtnRef.current) return;
+    if (typeof google === 'undefined') return;
+
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleCredential,
+    });
+    google.accounts.id.renderButton(googleBtnRef.current, {
+      theme: 'outline',
+      size: 'large',
+      width: googleBtnRef.current.offsetWidth || 360,
+      text: 'continue_with',
+      locale: 'pt-BR',
+    });
+  }, [tenant]);
+
+  const handleGoogleCredential = async (response: { credential: string }) => {
+    try {
+      setLoading(true);
+      const res = await api.post('/auth/google', { token: response.credential });
+      const token = res.data?.token;
+      const user = res.data?.user;
+      if (!token || !user) {
+        toast.error('Resposta inválida ao autenticar com Google.');
+        return;
+      }
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      toast.success('Login com Google realizado!');
+      const params = new URLSearchParams(window.location.search);
+      const redirectTo = params.get('redirect') || '/portal/meu-financeiro';
+      navigate(redirectTo);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Erro ao entrar com Google.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -116,6 +160,17 @@ export default function PortalLogin() {
               {!loading && <ArrowRight className="h-4 w-4" />}
             </button>
           </form>
+
+          {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+            <>
+              <div className="relative my-4 flex items-center">
+                <div className="flex-1 border-t border-slate-200" />
+                <span className="mx-3 text-xs text-slate-400">ou</span>
+                <div className="flex-1 border-t border-slate-200" />
+              </div>
+              <div ref={googleBtnRef} className="w-full flex justify-center" />
+            </>
+          )}
 
           <p className="mt-4 text-sm text-slate-500">
             Primeiro acesso?{' '}
