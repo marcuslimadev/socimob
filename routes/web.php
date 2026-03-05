@@ -469,3 +469,11 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->post('/listings/{id}/ads/unpublish', 'App\Http\Controllers\Ads\AdsListingController@unpublish');
     $router->get('/listings/{id}/ads/status', 'App\Http\Controllers\Ads\AdsListingController@listingAdsStatus');
 });
+
+// Additional route files (previously loaded via bootstrap/app.php then() callback)
+require __DIR__ . '/admin.php';
+require __DIR__ . '/client-portal.php';
+require __DIR__ . '/subscriptions.php';
+require __DIR__ . '/themes.php';
+require __DIR__ . '/domains.php';
+require __DIR__ . '/portal.php';
