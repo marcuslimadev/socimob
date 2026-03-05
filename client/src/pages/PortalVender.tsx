@@ -52,7 +52,20 @@ export default function PortalVender() {
     fetchTenantBranding().then((data) => setTenant(data));
     const token = localStorage.getItem('token');
     setIsAuthenticated(Boolean(token));
-  }, []);
+    // Pre-fill contact info from logged-in portal user
+    if (token) {
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user?.name || user?.email) {
+          setForm((prev) => ({
+            ...prev,
+            nome_contato: user.name || prev.nome_contato,
+            email_contato: user.email || prev.email_contato,
+          }));
+        }
+      } catch {}
+    }
+  }, [])
 
   const set = (field: keyof FormState) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -156,7 +169,7 @@ export default function PortalVender() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate('/portal/register')}
+                  onClick={() => navigate('/portal/register?redirect=/portal/vender')}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Criar conta gratuita

@@ -33,13 +33,16 @@ export default function PortalRegister() {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!form.name || !form.email || !form.password || !form.password_confirmation) {
-      toast.error('Preencha os campos obrigatorios.');
+      toast.error('Preencha os campos obrigatórios.');
       return;
     }
     if (form.password !== form.password_confirmation) {
-      toast.error('A confirmacao de senha nao confere.');
+      toast.error('A confirmação de senha não confere.');
       return;
     }
+
+    const params = new URLSearchParams(window.location.search);
+    const redirectTo = params.get('redirect') || '/portal/meu-financeiro';
 
     try {
       setLoading(true);
@@ -48,20 +51,20 @@ export default function PortalRegister() {
       const user = response.data?.user;
 
       if (!token || !user) {
-        toast.success('Conta criada. Faca login para continuar.');
-        navigate('/login');
+        toast.success('Conta criada. Faça login para continuar.');
+        navigate('/portal/login');
         return;
       }
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       toast.success('Cadastro realizado.');
-      navigate('/portal/meu-financeiro');
+      navigate(redirectTo);
     } catch (error: any) {
       const messages = error?.response?.data?.messages;
       const firstError = messages ? Object.values(messages)?.[0] : null;
       const text = Array.isArray(firstError) ? firstError[0] : null;
-      toast.error(text || error?.response?.data?.message || 'Nao foi possivel registrar.');
+      toast.error(text || error?.response?.data?.message || 'Não foi possível registrar.');
     } finally {
       setLoading(false);
     }
@@ -144,7 +147,7 @@ export default function PortalRegister() {
                   value={form.password}
                   onChange={(event) => handleChange('password', event.target.value)}
                   className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-900 outline-none focus:border-slate-400"
-                  placeholder="Minimo 6 caracteres"
+                  placeholder="Mínimo 6 caracteres"
                   autoComplete="new-password"
                 />
               </div>
