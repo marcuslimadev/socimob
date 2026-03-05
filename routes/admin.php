@@ -196,14 +196,14 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->post('/leads/{id}/start-ai', 'App\Http\Controllers\Admin\\LeadConversaController@startAi');
 
     // ── Ads Automation (Marketing / Anúncios) ────────────────────────────────
-    $router->get('/ads/status',                         'Ads\AdsConnectionController@status');
-    $router->post('/ads/{provider}/connect/start',      'Ads\AdsConnectionController@startConnect');
-    $router->delete('/ads/{provider}/connect',          'Ads\AdsConnectionController@disconnect');
-    $router->post('/ads/settings',                      'Ads\AdsConnectionController@saveSettings');
-    $router->post('/ads/olx/connect/credentials',       'Ads\AdsConnectionController@connectCredentials');
-    $router->post('/ads/{provider}/accounts',           'Ads\AdsConnectionController@saveAccount');
-    $router->get('/ads/analytics',                      'Ads\AdsAnalyticsController@index');
-    $router->get('/ads/logs',                           'Ads\AdsConnectionController@logs');
+    $router->get('/ads/status',                         'App\Http\Controllers\Ads\AdsConnectionController@status');
+    $router->post('/ads/{provider}/connect/start',      'App\Http\Controllers\Ads\AdsConnectionController@startConnect');
+    $router->delete('/ads/{provider}/connect',          'App\Http\Controllers\Ads\AdsConnectionController@disconnect');
+    $router->post('/ads/settings',                      'App\Http\Controllers\Ads\AdsConnectionController@saveSettings');
+    $router->post('/ads/olx/connect/credentials',       'App\Http\Controllers\Ads\AdsConnectionController@connectCredentials');
+    $router->post('/ads/{provider}/accounts',           'App\Http\Controllers\Ads\AdsConnectionController@saveAccount');
+    $router->get('/ads/analytics',                      'App\Http\Controllers\Ads\AdsAnalyticsController@index');
+    $router->get('/ads/logs',                           'App\Http\Controllers\Ads\AdsConnectionController@logs');
 
     // Property Ads (Propaganda de Imóveis)
     $router->get('/property-ads', function () use ($router) {
