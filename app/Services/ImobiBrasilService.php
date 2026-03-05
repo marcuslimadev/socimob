@@ -1025,6 +1025,9 @@ class ImobiBrasilService
                     ];
                     $mime = $mimeMap[$ext] ?? 'image/jpeg';
 
+                    // Normalizar extensões não aceitas pela API (jfif, heic, heif, avif → jpg)
+                    $extNormalizada = in_array($ext, ['jfif', 'heic', 'heif', 'avif']) ? 'jpg' : $ext;
+
                     // Enviar como binário multipart; primeira imagem = destaque
                     $multipart = [
                         [
@@ -1034,7 +1037,7 @@ class ImobiBrasilService
                         [
                             'name'     => 'imagem',
                             'contents' => $imgContent,
-                            'filename' => 'imagem_' . $index . '.' . $ext,
+                            'filename' => 'imagem_' . $index . '.' . $extNormalizada,
                             'headers'  => ['Content-Type' => $mime],
                         ],
                     ];
