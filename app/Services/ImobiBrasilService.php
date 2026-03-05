@@ -884,14 +884,22 @@ class ImobiBrasilService
                 ];
             }
 
-            // Buscar imagens locais - primeiro do imoveis_imagens, depois fallback para JSON
-            $imagensDb = \App\Models\ImovelImagem::where('codigo', $property->codigo)
-                ->orderBy('destaque', 'desc')
-                ->get();
-
             // Montar lista de URLs de imagem (apenas imagens, sem vídeos)
             $imageUrls = [];
             $videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'webm', 'mkv'];
+
+            // Tentar buscar da tabela imoveis_imagens (pode não existir em todos os ambientes)
+            $imagensDb = collect();
+            try {
+                $imagensDb = \App\Models\ImovelImagem::where('codigo', $property->codigo)
+                    ->orderBy('destaque', 'desc')
+                    ->get();
+            } catch (\Exception $dbEx) {
+                Log::warning('Tabela imoveis_imagens indisponível, usando fallback JSON', [
+                    'property_id' => $property->id,
+                    'error' => $dbEx->getMessage(),
+                ]);
+            }
 
             if ($imagensDb->isNotEmpty()) {
                 // Usar tabela imoveis_imagens
@@ -901,11 +909,14 @@ class ImobiBrasilService
                         $imageUrls[] = $img->url;
                     }
                 }
-            } else {
-                // Fallback: usar JSON imagens do model
+            }
+
+            // Fallback (ou complemento): usar JSON imagens do model
+            if (empty($imageUrls)) {
                 $rawImagens = $property->imagens;
                 if (is_array($rawImagens)) {
                     foreach ($rawImagens as $url) {
+                        if (!is_string($url)) continue;
                         $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
                         if (!in_array($ext, $videoExtensions)) {
                             $imageUrls[] = $url;

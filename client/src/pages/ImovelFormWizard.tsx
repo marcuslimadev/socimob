@@ -270,7 +270,11 @@ export default function ImovelFormWizard() {
         // Carregar status de Imobi Brasil
         try {
           const statusResponse = await api.get(`/imoveis/${propertyId}/status-imobi-brasil`);
-          setImobiBrasilStatus(statusResponse.data?.data || { enviado: false });
+          const statusData = statusResponse.data?.data || { enviado: false };
+          setImobiBrasilStatus(statusData);
+          if (statusData.images_sent_at) {
+            setImobiBrasilImagesStatus({ enviadas: true, data_envio: statusData.images_sent_at });
+          }
         } catch {
           // Silenciosamente ignorar se não estiver disponível
           setImobiBrasilStatus({ enviado: false });
@@ -1431,7 +1435,7 @@ export default function ImovelFormWizard() {
                     <h3 className="text-lg font-bold text-foreground mb-2">Integração Imobi Brasil</h3>
                     <p className="text-sm text-muted-foreground mb-4">
                       {imobibrasilStatus.enviado
-                        ? `✓ Imóvel enviado em ${imobibrasilStatus.data_envio ? new Date(imobibrasilStatus.data_envio).toLocaleDateString('pt-BR') : 'desconhecido'} — inclui imagens`
+                        ? `✓ Imóvel enviado em ${imobibrasilStatus.data_envio ? new Date(imobibrasilStatus.data_envio).toLocaleDateString('pt-BR') : 'desconhecido'}`
                         : 'Envie este imóvel para o Imobi Brasil para ampliar sua visibilidade (dados + imagens)'}
                     </p>
                     {imobibrasilStatus.erro && (
@@ -1456,7 +1460,7 @@ export default function ImovelFormWizard() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={handleEnviarImobiBrasil}
-                      disabled={isSendingImobiBrasil}
+                      disabled={isSendingImobiBrasil || isSendingImagesImobiBrasil}
                       className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-lg text-white font-semibold flex items-center gap-2 disabled:opacity-50 whitespace-nowrap transition justify-center"
                     >
                       {isSendingImobiBrasil ? (
@@ -1471,6 +1475,28 @@ export default function ImovelFormWizard() {
                         </>
                       )}
                     </motion.button>
+                    {imobibrasilStatus.enviado && (
+                      <motion.button
+                        type="button"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleEnviarImagensImobiBrasil}
+                        disabled={isSendingImagesImobiBrasil || isSendingImobiBrasil}
+                        className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 rounded-lg text-white font-semibold flex items-center gap-2 disabled:opacity-50 whitespace-nowrap transition justify-center"
+                      >
+                        {isSendingImagesImobiBrasil ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Enviando imagens...
+                          </>
+                        ) : (
+                          <>
+                            <ImageIcon size={16} />
+                            Reenviar Imagens
+                          </>
+                        )}
+                      </motion.button>
+                    )}
                   </div>
                 </div>
               </div>

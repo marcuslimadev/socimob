@@ -1768,8 +1768,11 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
                 $imagesResult = null;
                 $alreadySentImages = !empty($property->imobi_brasil_images_sent_at);
                 if (!$alreadySentImages) {
-                    $hasImages = \App\Models\ImovelImagem::where('codigo', $property->codigo)->exists()
-                        || (is_array($property->imagens) && count($property->imagens) > 0);
+                    $hasImagesDb = false;
+                    try {
+                        $hasImagesDb = \App\Models\ImovelImagem::where('codigo', $property->codigo)->exists();
+                    } catch (\Exception $dbEx) { /* tabela pode não existir */ }
+                    $hasImages = $hasImagesDb || (is_array($property->imagens) && count($property->imagens) > 0);
                     if ($hasImages) {
                         $imagesResult = \App\Services\ImobiBrasilService::sendPropertyImages($property, $tenant);
                     }
@@ -1845,8 +1848,11 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
                     }
 
                     // 2. Enviar todas as imagens atuais
-                    $hasImages = \App\Models\ImovelImagem::where('codigo', $property->codigo)->exists()
-                        || (is_array($property->imagens) && count($property->imagens) > 0);
+                    $hasImagesDb = false;
+                    try {
+                        $hasImagesDb = \App\Models\ImovelImagem::where('codigo', $property->codigo)->exists();
+                    } catch (\Exception $dbEx) { /* tabela pode não existir */ }
+                    $hasImages = $hasImagesDb || (is_array($property->imagens) && count($property->imagens) > 0);
 
                     if ($hasImages) {
                         $imagesResult = \App\Services\ImobiBrasilService::sendPropertyImages($property, $tenant);
@@ -1901,6 +1907,7 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
                     'imobi_brasil_sent_at',
                     'imobi_brasil_external_id',
                     'imobi_brasil_error',
+                    'imobi_brasil_images_sent_at',
                 ])
                 ->firstOrFail();
 
@@ -1911,6 +1918,7 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
                     'data_envio' => $property->imobi_brasil_sent_at,
                     'external_id' => $property->imobi_brasil_external_id,
                     'erro' => $property->imobi_brasil_error,
+                    'images_sent_at' => $property->imobi_brasil_images_sent_at,
                 ],
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -1942,7 +1950,10 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
             $tenant = Tenant::findOrFail($tenantId);
 
             // Validar se existem imagens (tabela imoveis_imagens OU JSON imagens no model)
-            $imagensDb = \App\Models\ImovelImagem::where('codigo', $property->codigo)->count();
+            $imagensDb = 0;
+            try {
+                $imagensDb = \App\Models\ImovelImagem::where('codigo', $property->codigo)->count();
+            } catch (\Exception $dbEx) { /* tabela pode não existir */ }
             $imagensJson = is_array($property->imagens) ? count($property->imagens) : 0;
             if ($imagensDb === 0 && $imagensJson === 0) {
                 return response()->json([
