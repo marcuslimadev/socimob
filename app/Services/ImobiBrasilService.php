@@ -894,7 +894,8 @@ class ImobiBrasilService
                 $existingImages = static::listPropertyImages((int) $codigoImovel, $tenant);
                 if (empty($existingImages['result_set'])) break;
                 foreach ($existingImages['result_set'] as $img) {
-                    $codigoImagem = $img['codigo'] ?? $img['id'] ?? null;
+                    // A API retorna o campo como "codigoImagem" (não "codigo" nem "id")
+                    $codigoImagem = $img['codigoImagem'] ?? $img['codigo'] ?? $img['id'] ?? null;
                     if ($codigoImagem) {
                         static::deletePropertyImage((int) $codigoImovel, (int) $codigoImagem, $tenant);
                         $totalRemovidos++;
