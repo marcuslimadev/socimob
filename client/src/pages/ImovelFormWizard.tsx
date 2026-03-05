@@ -374,7 +374,49 @@ export default function ImovelFormWizard() {
     };
   }, [formData]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const MAX_FILES_PER_UPLOAD = 95; // server max_file_uploads = 100, leave buffer
+  const MAX_FILES_PER_UPLOAD = 180; // server max_file_uploads = 200 (.user.ini), leave buffer
+
+  // Pre-upload new files in batches of ≤20 before the main save (edit mode only).
+  // Returns the final ordered list of all image URLs stored on the server,
+  // or null if an upload batch fails.
+  const preUploadNewFiles = async (
+    pid: string | number,
+    currentMedia: MediaFile[]
+  ): Promise<string[] | null> => {
+    const newFiles = currentMedia.filter(m => m.file);
+    if (newFiles.length === 0) {
+      // Nothing to pre-upload; return current existing URLs
+      return currentMedia.filter(m => !m.file).map(m => m.url);
+    }
+
+    const BATCH = 20;
+    // Start from the URLs already on the server
+    let serverUrls: string[] = currentMedia.filter(m => !m.file).map(m => m.url);
+
+    for (let i = 0; i < newFiles.length; i += BATCH) {
+      const batch = newFiles.slice(i, i + BATCH);
+      const batchForm = new FormData();
+      // Send current server URLs as existing, so each batch accumulates
+      if (serverUrls.length > 0) {
+        batchForm.append('existing_images', JSON.stringify(serverUrls));
+      }
+      batch.forEach(m => batchForm.append('media[]', m.file!));
+
+      try {
+        const res = await api.post(`/imoveis/${pid}?_method=PUT`, batchForm, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        const saved = res.data?.data?.imagens;
+        if (Array.isArray(saved)) {
+          serverUrls = saved;
+        }
+      } catch {
+        return null; // caller will report the error
+      }
+    }
+
+    return serverUrls;
+  };
 
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     let files = Array.from(e.target.files || []);
@@ -512,6 +554,32 @@ export default function ImovelFormWizard() {
     try {
       setIsSubmitting(true);
 
+      // ── PRE-UPLOAD: in edit mode, upload new files in batches of 20 first ──
+      // This avoids PHP's max_file_uploads limit silently dropping files.
+      let effectiveMediaFiles = mediaFiles;
+      if (isEditMode && propertyId && mediaFiles.some(m => m.file)) {
+        toast.info('Enviando fotos...');
+        const allUrls = await preUploadNewFiles(propertyId, mediaFiles);
+        if (allUrls === null) {
+          toast.error('Falha ao enviar uma ou mais fotos. Verifique e tente novamente.');
+          setIsSubmitting(false);
+          return;
+        }
+        // Rebuild effectiveMediaFiles with all items as existing URLs
+        const destaqueUrl = mediaFiles.find(m => m.destaque)?.url ||
+          mediaFiles.find(m => m.destaque)?.preview || '';
+        effectiveMediaFiles = allUrls.map((url, i) => ({
+          id: `existing-${i}`,
+          url,
+          type: isVideoUrl(url) ? 'video' : 'image',
+          preview: url,
+          destaque: destaqueUrl ? url === destaqueUrl : i === 0,
+        }));
+        // Update state so UI reflects the final list
+        setMediaFiles(effectiveMediaFiles);
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       const formDataToSend = new FormData();
 
       // Dados básicos do imóvel
@@ -558,9 +626,9 @@ export default function ImovelFormWizard() {
       formDataToSend.append('exibir_imovel', formData.exibir_imovel ? '1' : '0');
       formDataToSend.append('exclusividade', formData.exclusividade ? '1' : '0');
 
-      // Arquivos de mídia
-      const destaqueFile = mediaFiles.find(m => m.destaque);
-      mediaFiles.forEach((media, index) => {
+      // Arquivos de mídia — use effectiveMediaFiles (already pre-uploaded in edit mode)
+      const destaqueFile = effectiveMediaFiles.find(m => m.destaque);
+      effectiveMediaFiles.forEach((media, index) => {
         if (media.file) {
           formDataToSend.append(`media[]`, media.file);
           if (media.id === destaqueFile?.id) {
@@ -570,7 +638,7 @@ export default function ImovelFormWizard() {
       });
 
       // URLs existentes (para modo edição)
-      const existingUrls = mediaFiles.filter(m => !m.file).map(m => m.url);
+      const existingUrls = effectiveMediaFiles.filter(m => !m.file).map(m => m.url);
       if (existingUrls.length > 0) {
         formDataToSend.append('existing_images', JSON.stringify(existingUrls));
       }
