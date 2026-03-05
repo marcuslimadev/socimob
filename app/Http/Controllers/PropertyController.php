@@ -1971,6 +1971,7 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
                     'message' => $result['message'],
                     'images_sent' => $result['images_sent'],
                     'images_total' => $result['images_total'],
+                    'errors' => $result['errors'] ?? [],
                 ], 200);
             } else {
                 return response()->json([
