@@ -341,7 +341,7 @@ export default function ClientPortalRefined() {
 
           <div className="grid grid-cols-2 gap-2.5 md:gap-3">
             {[
-              { label: 'Negócios fechados', value: '100+' },
+              { label: 'Negócios fechados', value: '+5000' },
               { label: 'Satisfação', value: '5 ★' },
               { label: 'Cidades', value: new Set(properties.map((property) => property.cidade)).size || '--' },
               { label: 'Atendimento', value: tenant?.contact_phone ? '24/7' : '--' },
