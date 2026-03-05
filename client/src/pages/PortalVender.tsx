@@ -49,7 +49,7 @@ export default function PortalVender() {
   const logoSrc = tenant?.logo_url || tenant?.logo || '';
 
   useEffect(() => {
-    fetchTenantBranding().then((data) => setTenant(data));
+    fetchTenantBranding().then((data: TenantBranding | null) => setTenant(data));
     const token = localStorage.getItem('token');
     setIsAuthenticated(Boolean(token));
     // Pre-fill contact info from logged-in portal user

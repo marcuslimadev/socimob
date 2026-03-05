@@ -18,7 +18,7 @@ export default function PortalLogin() {
   const logoSrc = tenant?.logo_url || tenant?.logo || '';
 
   useEffect(() => {
-    fetchTenantBranding().then((data) => setTenant(data));
+    fetchTenantBranding().then((data: TenantBranding | null) => setTenant(data));
   }, []);
 
   const handleSubmit = async (event: FormEvent) => {
