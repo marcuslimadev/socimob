@@ -717,6 +717,62 @@ export default function ImovelFormWizard() {
     }
   };
 
+  const saveImovelSilently = async (): Promise<boolean> => {
+    if (!propertyId) return false;
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('tipo_imovel', formData.tipo_imovel);
+      formDataToSend.append('finalidade_imovel', formData.finalidade_imovel);
+      formDataToSend.append('valor_venda', parseCurrencyInput(formData.valor_venda));
+      if (formData.valor_condominio) formDataToSend.append('valor_condominio', parseCurrencyInput(formData.valor_condominio));
+      if (formData.valor_iptu) formDataToSend.append('valor_iptu', parseCurrencyInput(formData.valor_iptu));
+      formDataToSend.append('cep', formData.cep);
+      formDataToSend.append('estado', formData.estado);
+      formDataToSend.append('cidade', formData.cidade);
+      formDataToSend.append('bairro', formData.bairro);
+      formDataToSend.append('logradouro', formData.logradouro);
+      if (formData.numero) formDataToSend.append('numero', formData.numero);
+      if (formData.complemento) formDataToSend.append('complemento', formData.complemento);
+      if (formData.dormitorios) formDataToSend.append('dormitorios', formData.dormitorios);
+      if (formData.suites) formDataToSend.append('suites', formData.suites);
+      if (formData.banheiros) formDataToSend.append('banheiros', formData.banheiros);
+      if (formData.garagem) formDataToSend.append('garagem', formData.garagem);
+      if (formData.area_total) formDataToSend.append('area_total', parseAreaInput(formData.area_total));
+      if (formData.area_privativa) formDataToSend.append('area_privativa', parseAreaInput(formData.area_privativa));
+      if (formData.area_terreno) formDataToSend.append('area_terreno', parseAreaInput(formData.area_terreno));
+      formDataToSend.append('em_condominio', formData.em_condominio ? '1' : '0');
+      if (formData.em_condominio && formData.nome_condominio) formDataToSend.append('nome_condominio', formData.nome_condominio);
+      if (formData.descricao) formDataToSend.append('descricao', formData.descricao);
+      if (formData.descricao_resumida) formDataToSend.append('descricao_resumida', formData.descricao_resumida);
+      if (formData.local_chaves) formDataToSend.append('local_chaves', formData.local_chaves);
+      if (formData.status_chaves) formDataToSend.append('status_chaves', formData.status_chaves);
+      if (formData.visibilidade_endereco) formDataToSend.append('visibilidade_endereco', formData.visibilidade_endereco);
+      formData.portal_tenant_ids.forEach((tenantId) => formDataToSend.append('portal_tenant_ids[]', String(tenantId)));
+      formDataToSend.append('active', formData.active ? '1' : '0');
+      formDataToSend.append('exibir_imovel', formData.exibir_imovel ? '1' : '0');
+      formDataToSend.append('exclusividade', formData.exclusividade ? '1' : '0');
+
+      const destaqueFile = mediaFiles.find(m => m.destaque);
+      mediaFiles.forEach((media, index) => {
+        if (media.file) {
+          formDataToSend.append('media[]', media.file);
+          if (media.id === destaqueFile?.id) formDataToSend.append('destaque_index', String(index));
+        }
+      });
+      const existingUrls = mediaFiles.filter(m => !m.file).map(m => m.url);
+      if (existingUrls.length > 0) formDataToSend.append('existing_images', JSON.stringify(existingUrls));
+
+      await api.post(`/imoveis/${propertyId}?_method=PUT`, formDataToSend, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return true;
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || 'Erro ao salvar imóvel antes de enviar imagens';
+      toast.error(msg);
+      return false;
+    }
+  };
+
   const handleEnviarImagensImobiBrasil = async () => {
     if (!propertyId) {
       toast.error('Imóvel não encontrado');
@@ -730,7 +786,15 @@ export default function ImovelFormWizard() {
 
     try {
       setIsSendingImagesImobiBrasil(true);
-      
+
+      // Salva o estado atual (imagens adicionadas/removidas) antes de enviar
+      toast.info('Salvando imóvel...');
+      const saved = await saveImovelSilently();
+      if (!saved) {
+        setIsSendingImagesImobiBrasil(false);
+        return;
+      }
+
       const response = await api.post(`/imoveis/${propertyId}/enviar-imagens-imobi-brasil`);
 
       if (response.data?.success) {
