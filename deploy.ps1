@@ -106,6 +106,9 @@ echo '' && \
 echo '=== COMPOSER INSTALL ===' && \
 /opt/alt/php83/usr/bin/php `$(which composer) install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -5 && \
 echo '' && \
+echo '=== PACKAGE DISCOVER ===' && \
+/opt/alt/php83/usr/bin/php artisan package:discover --ansi 2>&1 && \
+echo '' && \
 echo '=== MIGRATIONS ===' && \
 /opt/alt/php83/usr/bin/php artisan migrate --force 2>&1 && \
 echo '' && \
