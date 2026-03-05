@@ -233,6 +233,19 @@ export default function PortalVender() {
                   </label>
                 </div>
 
+                {/* CEP */}
+                <label className="block">
+                  <span className={labelCls}>CEP</span>
+                  <input
+                    type="text"
+                    value={form.cep}
+                    onChange={set('cep')}
+                    className={inputCls}
+                    placeholder="00000-000"
+                    maxLength={9}
+                  />
+                </label>
+
                 {/* Local */}
                 <div className="grid grid-cols-2 gap-4">
                   <label className="block">

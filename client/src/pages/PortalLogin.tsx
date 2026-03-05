@@ -34,7 +34,7 @@ export default function PortalLogin() {
       const token = response.data?.token;
       const user = response.data?.user;
       if (!token || !user) {
-        toast.error('Resposta invalida ao autenticar.');
+        toast.error('Resposta inválida ao autenticar.');
         return;
       }
 
@@ -45,7 +45,7 @@ export default function PortalLogin() {
       const redirectTo = params.get('redirect') || '/portal/meu-financeiro';
       navigate(redirectTo);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Nao foi possivel entrar.');
+      toast.error(error?.response?.data?.message || 'Não foi possível entrar.');
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,7 @@ export default function PortalLogin() {
             </div>
           </div>
           <h1 className="mt-2 text-3xl text-slate-900">Entrar</h1>
-          <p className="mt-1 text-sm text-slate-500">Acesse seu painel de locatario/locador.</p>
+          <p className="mt-1 text-sm text-slate-500">Acesse seu painel de locatário/locador.</p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <label className="block">
