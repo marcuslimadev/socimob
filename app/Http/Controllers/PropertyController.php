@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Property;
 use App\Models\Tenant;
+use App\Jobs\SendImobiBrasilImagesJob;
 use App\Services\PropertySyncService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -611,7 +612,22 @@ class PropertyController extends Controller
             
             // Mover arquivo
             $file->move($uploadPath, $filename);
-            
+
+            // Aplicar marca d'água do tenant (se configurada e imagem suportada)
+            $imageExts = ['jpg', 'jpeg', 'png', 'webp'];
+            if (in_array(strtolower($extension), $imageExts)) {
+                $tenant = \App\Models\Tenant::find($tenantId);
+                if ($tenant && $tenant->watermark_url) {
+                    $localWm = ltrim($tenant->watermark_url, '/');
+                    // try public path first, then resolve via URL helper
+                    $wmPath = public_path($localWm);
+                    if (!file_exists($wmPath)) {
+                        $wmPath = $tenant->watermark_url; // may be absolute or full URL
+                    }
+                    \App\Services\WatermarkService::apply($uploadPath . '/' . $filename, $wmPath);
+                }
+            }
+
             // Adicionar URL pública
             $uploadedUrls[] = "{$baseUrl}/{$filename}";
         }
@@ -1970,9 +1986,7 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
                 ->where('tenant_id', $tenantId)
                 ->firstOrFail();
 
-            $tenant = Tenant::findOrFail($tenantId);
-
-            // Validar se existem imagens (tabela imoveis_imagens OU JSON imagens no model)
+            // Validar se existem imagens
             $imagensDb = 0;
             try {
                 $imagensDb = \App\Models\ImovelImagem::where('codigo', $property->codigo)->count();
@@ -1985,30 +1999,22 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
                 ], 400);
             }
 
-            // Usar o serviço para enviar imagens
-            $result = \App\Services\ImobiBrasilService::sendPropertyImages($property, $tenant);
+            // Despachar job em background para evitar timeout do servidor
+            SendImobiBrasilImagesJob::dispatch((int) $property->id, (int) $tenantId);
 
-            if ($result['success'] && $result['images_sent'] > 0) {
-                return response()->json([
-                    'success' => true,
-                    'message' => $result['message'],
-                    'images_sent' => $result['images_sent'],
-                    'images_total' => $result['images_total'],
-                    'errors' => $result['errors'] ?? [],
-                ], 200);
-            } else {
-                return response()->json([
-                    'success' => $result['success'],
-                    'message' => $result['message'] ?? $result['error'],
-                    'images_sent' => $result['images_sent'] ?? 0,
-                    'images_total' => $result['images_total'] ?? 0,
-                    'errors' => $result['errors'] ?? [],
-                ], $result['images_sent'] > 0 ? 200 : 400);
-            }
+            $total = $imagensDb > 0 ? $imagensDb : $imagensJson;
+
+            return response()->json([
+                'success'     => true,
+                'message'     => "Envio de {$total} imagens iniciado em background. Aguarde alguns minutos.",
+                'images_total' => $total,
+                'async'       => true,
+            ], 202);
+
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['error' => 'Imóvel não encontrado'], 404);
         } catch (\Exception $e) {
-            Log::error('Erro ao enviar imagens para Imobi Brasil', [
+            Log::error('Erro ao disparar job de imagens para Imobi Brasil', [
                 'property_id' => $id,
                 'error' => $e->getMessage(),
             ]);

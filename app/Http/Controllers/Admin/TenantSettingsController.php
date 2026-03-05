@@ -54,6 +54,7 @@ class TenantSettingsController extends Controller
                 'logo_url' => $tenant->logo_url,
                 'favicon_url' => $tenant->favicon_url,
                 'mascot_url' => $tenant->mascot_url,
+                'watermark_url' => $tenant->watermark_url,
                 'slogan' => $tenant->slogan,
                 'primary_color' => $tenant->primary_color,
                 'secondary_color' => $tenant->secondary_color,
@@ -111,6 +112,7 @@ class TenantSettingsController extends Controller
             'logo_url' => 'nullable|string|max:500',
             'favicon_url' => 'nullable|string|max:500',
             'mascot_url' => 'nullable|string|max:500',
+            'watermark_url' => 'nullable|string|max:500',
             'slogan' => 'nullable|string|max:500',
             'primary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
             'secondary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
@@ -172,6 +174,7 @@ class TenantSettingsController extends Controller
             'logo_url',
             'favicon_url',
             'mascot_url',
+            'watermark_url',
             'slogan',
             'primary_color',
             'secondary_color',
@@ -308,6 +311,8 @@ class TenantSettingsController extends Controller
         $validator = Validator::make($request->all(), [
             'logo' => 'nullable|file|mimes:jpg,jpeg,png,webp,svg|max:2048',
             'favicon' => 'nullable|file|mimes:ico,png,svg|max:512',
+            'mascot' => 'nullable|file|mimes:jpg,jpeg,png,webp,svg|max:2048',
+            'watermark' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         if ($validator->fails()) {
@@ -317,7 +322,7 @@ class TenantSettingsController extends Controller
             ], 422);
         }
 
-        if (!$request->hasFile('logo') && !$request->hasFile('favicon')) {
+        if (!$request->hasFile('logo') && !$request->hasFile('favicon') && !$request->hasFile('mascot') && !$request->hasFile('watermark')) {
             return response()->json(['error' => 'Nenhum arquivo enviado'], 400);
         }
 
@@ -350,6 +355,30 @@ class TenantSettingsController extends Controller
             $faviconName = 'favicon_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $faviconExt;
             $favicon->move($uploadsDir, $faviconName);
             $updates['favicon_url'] = '/uploads/tenants/' . $tenant->id . '/' . $faviconName;
+        }
+
+        if ($request->hasFile('mascot')) {
+            $mascot = $request->file('mascot');
+            if (!$mascot->isValid()) {
+                return response()->json(['error' => 'Mascote inválido'], 400);
+            }
+
+            $mascotExt = strtolower($mascot->getClientOriginalExtension()) ?: 'png';
+            $mascotName = 'mascot_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $mascotExt;
+            $mascot->move($uploadsDir, $mascotName);
+            $updates['mascot_url'] = '/uploads/tenants/' . $tenant->id . '/' . $mascotName;
+        }
+
+        if ($request->hasFile('watermark')) {
+            $watermark = $request->file('watermark');
+            if (!$watermark->isValid()) {
+                return response()->json(['error' => 'Marca d\'água inválida'], 400);
+            }
+
+            $watermarkExt = strtolower($watermark->getClientOriginalExtension()) ?: 'png';
+            $watermarkName = 'watermark_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $watermarkExt;
+            $watermark->move($uploadsDir, $watermarkName);
+            $updates['watermark_url'] = '/uploads/tenants/' . $tenant->id . '/' . $watermarkName;
         }
 
         if (!empty($updates)) {

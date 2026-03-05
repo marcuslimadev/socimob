@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface TenantConfig {
   id: number;
@@ -8,6 +8,7 @@ interface TenantConfig {
   logo_url?: string;
   favicon_url?: string;
   mascot_url?: string;
+  watermark_url?: string;
   slogan?: string;
   primary_color?: string;
   secondary_color?: string;
@@ -63,6 +64,92 @@ interface LeadProfile {
   observacoes_cliente?: string | null;
 }
 
+// ── Watermark upload helper component ────────────────────────────────────────
+function WatermarkUploadSection({
+  currentUrl,
+  onUploaded,
+}: {
+  currentUrl: string;
+  onUploaded: (url: string) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('watermark', file);
+
+    setUploading(true);
+    try {
+      const response = await api.post('/admin/settings/assets', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = response.data?.assets?.watermark_url;
+      if (url) {
+        onUploaded(url);
+        toast.success('Marca d\'água enviada com sucesso!');
+      }
+    } catch {
+      toast.error('Erro ao enviar a marca d\'água.');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-semibold text-foreground mb-2">
+        Marca d'Água das Fotos
+      </label>
+
+      {currentUrl && (
+        <div className="mb-3 p-3 bg-white/5 border border-white/10 rounded-lg inline-flex items-center gap-3">
+          <img
+            src={currentUrl}
+            alt="Marca d'água atual"
+            className="h-12 max-w-[150px] object-contain rounded"
+          />
+          <span className="text-xs text-muted-foreground">Marca d'água atual</span>
+        </div>
+      )}
+
+      <div className="flex items-center gap-3">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpg,image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={handleFile}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+        >
+          {uploading ? <Loader2 size={14} className="animate-spin" /> : null}
+          {uploading ? 'Enviando...' : 'Enviar imagem'}
+        </button>
+        <input
+          type="text"
+          value={currentUrl}
+          onChange={(e) => onUploaded(e.target.value)}
+          className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+          placeholder="/uploads/tenants/1/watermark.png ou URL externa"
+        />
+      </div>
+      <p className="text-xs text-muted-foreground mt-2">
+        Esta imagem será sobreposta automaticamente em todas as fotos de imóveis cadastrados.
+        Use PNG com fundo transparente para melhor resultado.
+      </p>
+    </div>
+  );
+}
+
 export default function Settings() {
   const [activeSection, setActiveSection] = useState('profile');
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
@@ -98,6 +185,7 @@ export default function Settings() {
     secondary_color: '',
     logo_url: '',
     mascot_url: '',
+    watermark_url: '',
     // Integration fields from tenants table
     openai_api_key: '',
     openai_model: 'gpt-4o-mini',
@@ -218,6 +306,7 @@ export default function Settings() {
         secondary_color: config.secondary_color || '#3b82f6',
         logo_url: config.logo_url || '',
         mascot_url: config.mascot_url || '',
+        watermark_url: config.watermark_url || '',
         // Integration fields from tenants table
         openai_api_key: config.openai_api_key || '',
         openai_model: config.openai_model || 'gpt-4o-mini',
@@ -843,6 +932,12 @@ export default function Settings() {
                           Essa imagem será usada no mascote do chat no portal público.
                         </p>
                       </div>
+
+                      {/* Watermark */}
+                      <WatermarkUploadSection
+                        currentUrl={tenantForm.watermark_url}
+                        onUploaded={(url) => setTenantForm({ ...tenantForm, watermark_url: url })}
+                      />
 
                       <div className="border-t border-white/10 pt-6 mt-6">
                         <h3 className="text-lg font-bold text-foreground mb-4">Integração com IA (OpenAI)</h3>

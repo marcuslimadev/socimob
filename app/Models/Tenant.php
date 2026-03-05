@@ -65,6 +65,7 @@ class Tenant extends Model
         'cnpj',
         'endereco',
         'mascot_url',
+        'watermark_url',
         'creci',
         'about_text',
         'services',

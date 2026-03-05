@@ -798,11 +798,16 @@ export default function ImovelFormWizard() {
       const response = await api.post(`/imoveis/${propertyId}/enviar-imagens-imobi-brasil`);
 
       if (response.data?.success) {
+        const isAsync = response.data?.async === true;
         const message = response.data?.message || `${response.data?.images_sent || 0} imagens enviadas com sucesso`;
-        toast.success(message);
-        
+        if (isAsync) {
+          toast.success(message, { duration: 8000 });
+        } else {
+          toast.success(message);
+        }
+
         // Atualizar status
-        setImobiBrasilImagesStatus({ 
+        setImobiBrasilImagesStatus({
           enviadas: true,
           data_envio: new Date().toISOString()
         });
