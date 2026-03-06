@@ -101,16 +101,12 @@ export default function ClientPortalRefined() {
   const [thumbStart, setThumbStart] = useState(0);
   const [venderOpen, setVenderOpen] = useState(false);
 
-  const [heroParallax, setHeroParallax] = useState(0);
   const heroRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const onScroll = () => {
-      const el = heroRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      if (rect.bottom < 0 || rect.top > window.innerHeight) return;
-      setHeroParallax(window.scrollY * 0.38);
+      const bg = heroRef.current?.querySelector('.parallax-bg') as HTMLElement | null;
+      if (bg) bg.style.transform = `translateY(${window.scrollY * 0.45}px)`;
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -354,15 +350,15 @@ export default function ClientPortalRefined() {
             <img
               src={normalizeImages(currentSlide)[0]}
               alt="Destaque"
-              className="absolute left-0 w-full object-cover opacity-25 transition-[opacity] duration-700"
-              style={{ height: '130%', top: '-15%', transform: `translateY(${heroParallax}px)`, willChange: 'transform' }}
+              className="parallax-bg absolute left-0 w-full object-cover opacity-25 transition-[opacity] duration-700"
+              style={{ height: '160%', top: '-30%', willChange: 'transform' }}
             />
           ) : (
             <img
               src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1920&q=80"
               alt="Imóveis de alto padrão"
-              className="absolute left-0 w-full object-cover opacity-20"
-              style={{ height: '130%', top: '-15%', transform: `translateY(${heroParallax}px)`, willChange: 'transform' }}
+              className="parallax-bg absolute left-0 w-full object-cover opacity-20"
+              style={{ height: '160%', top: '-30%', willChange: 'transform' }}
             />
           )}
         </div>
