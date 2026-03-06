@@ -389,13 +389,112 @@ export default function ClientPortalRefined() {
               { label: 'Negócios fechados', value: '+5.000' },
               { label: 'Satisfação', value: '5★' },
               { label: 'Cidades', value: new Set(properties.map((property) => property.cidade)).size || '10+' },
-              { label: 'Anos no mercado', value: '15+' },
+              { label: 'Anos no mercado', value: '+15' },
             ].map((stat) => (
               <div key={stat.label} className="rounded-2xl border border-white/20 bg-white/10 p-4 md:p-5 text-white">
                 <p className="text-2xl md:text-3xl font-light">{stat.value}</p>
                 <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/70">{stat.label}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── QUERO VENDER ─── */}
+      <section id="como-vender" className="mx-auto max-w-7xl px-4 lg:px-8 pt-10 pb-4">
+        <div className="rounded-3xl overflow-hidden border border-black/10 shadow-[0_16px_52px_rgba(15,23,42,0.12)] grid lg:grid-cols-2">
+          {/* Photo side */}
+          <div className="relative h-64 lg:h-auto">
+            <img
+              src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=900&q=80"
+              alt="Venda seu imóvel"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
+            <div className="absolute bottom-6 left-6 right-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm px-3 py-1.5 mb-3">
+                <BadgeCheck className="w-4 h-4 text-white" />
+                <span className="text-xs text-white font-semibold uppercase tracking-[0.14em]">Avaliação gratuita</span>
+              </div>
+              <p className="text-white text-xl font-light leading-snug">
+                Sua casa pode valer mais<br />do que você imagina.
+              </p>
+            </div>
+          </div>
+
+          {/* Content side */}
+          <div className="bg-white p-7 lg:p-10 flex flex-col justify-center">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 mb-2">Anuncie com a gente</p>
+            <h2 className="text-3xl lg:text-4xl text-slate-900 leading-tight">
+              Venda seu imóvel<br />
+              <span style={{ color: secondary }}>pelo melhor preço</span>.
+            </h2>
+            <p className="mt-3 text-sm text-slate-600 max-w-md">
+              Nossa equipe cuida de tudo: avaliação de mercado, fotografia profissional, anúncios segmentados e
+              acompanhamento jurídico — tudo sem custo antecipado.
+            </p>
+
+            {/* Benefits */}
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {[
+                { icon: Clock, label: 'Avaliação em 48h', sub: 'Resposta garantida' },
+                { icon: Shield, label: 'Sem taxas iniciais', sub: 'Só pagou se vender' },
+                { icon: TrendingUp, label: 'Mais compradores', sub: 'Rede qualificada' },
+              ].map((benefit) => (
+                <div
+                  key={benefit.label}
+                  className="rounded-2xl border border-slate-100 bg-slate-50 p-3 flex flex-col items-start gap-1"
+                >
+                  <benefit.icon className="w-5 h-5 mb-0.5" style={{ color: secondary }} />
+                  <p className="text-xs font-semibold text-slate-800">{benefit.label}</p>
+                  <p className="text-[11px] text-slate-500">{benefit.sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Process steps */}
+            <div className="mt-7">
+              <p className="text-[11px] uppercase tracking-[0.15em] text-slate-400 mb-3">Como funciona</p>
+              <div className="space-y-2.5">
+                {[
+                  'Cadastre seu imóvel em minutos',
+                  'Receba a avaliação gratuita em até 48h',
+                  'Fotografia e anúncios profissionais',
+                  'Nós cuidamos da negociação e documentos',
+                ].map((step, i) => (
+                  <div key={step} className="flex items-center gap-3">
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white"
+                      style={{ backgroundColor: i < 2 ? primary : '#cbd5e1' }}
+                    >
+                      {i + 1}
+                    </div>
+                    <p className="text-sm text-slate-700">{step}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="mt-7 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/portal/vender')}
+                className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
+                style={{ backgroundColor: primary, color: '#fff' }}
+              >
+                Anunciar meu imóvel
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/portal/vender')}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <BadgeCheck className="w-4 h-4" style={{ color: secondary }} />
+                Avaliação gratuita
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -651,105 +750,6 @@ export default function ClientPortalRefined() {
             <Calculator className="w-4 h-4" />
             Simular agora
           </button>
-        </div>
-      </section>
-
-      {/* ─── QUERO VENDER ─── */}
-      <section id="como-vender" className="mx-auto max-w-7xl px-4 lg:px-8 pb-10">
-        <div className="rounded-3xl overflow-hidden border border-black/10 shadow-[0_16px_52px_rgba(15,23,42,0.12)] grid lg:grid-cols-2">
-          {/* Photo side */}
-          <div className="relative h-64 lg:h-auto">
-            <img
-              src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=900&q=80"
-              alt="Venda seu imóvel"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
-            <div className="absolute bottom-6 left-6 right-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm px-3 py-1.5 mb-3">
-                <BadgeCheck className="w-4 h-4 text-white" />
-                <span className="text-xs text-white font-semibold uppercase tracking-[0.14em]">Avaliação gratuita</span>
-              </div>
-              <p className="text-white text-xl font-light leading-snug">
-                Sua casa pode valer mais<br />do que você imagina.
-              </p>
-            </div>
-          </div>
-
-          {/* Content side */}
-          <div className="bg-white p-7 lg:p-10 flex flex-col justify-center">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 mb-2">Anuncie com a gente</p>
-            <h2 className="text-3xl lg:text-4xl text-slate-900 leading-tight">
-              Venda seu imóvel<br />
-              <span style={{ color: secondary }}>pelo melhor preço</span>.
-            </h2>
-            <p className="mt-3 text-sm text-slate-600 max-w-md">
-              Nossa equipe cuida de tudo: avaliação de mercado, fotografia profissional, anúncios segmentados e
-              acompanhamento jurídico — tudo sem custo antecipado.
-            </p>
-
-            {/* Benefits */}
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              {[
-                { icon: Clock, label: 'Avaliação em 48h', sub: 'Resposta garantida' },
-                { icon: Shield, label: 'Sem taxas iniciais', sub: 'Só pagou se vender' },
-                { icon: TrendingUp, label: 'Mais compradores', sub: 'Rede qualificada' },
-              ].map((benefit) => (
-                <div
-                  key={benefit.label}
-                  className="rounded-2xl border border-slate-100 bg-slate-50 p-3 flex flex-col items-start gap-1"
-                >
-                  <benefit.icon className="w-5 h-5 mb-0.5" style={{ color: secondary }} />
-                  <p className="text-xs font-semibold text-slate-800">{benefit.label}</p>
-                  <p className="text-[11px] text-slate-500">{benefit.sub}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Process steps */}
-            <div className="mt-7">
-              <p className="text-[11px] uppercase tracking-[0.15em] text-slate-400 mb-3">Como funciona</p>
-              <div className="space-y-2.5">
-                {[
-                  'Cadastre seu imóvel em minutos',
-                  'Receba a avaliação gratuita em até 48h',
-                  'Fotografia e anúncios profissionais',
-                  'Nós cuidamos da negociação e documentos',
-                ].map((step, i) => (
-                  <div key={step} className="flex items-center gap-3">
-                    <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white"
-                      style={{ backgroundColor: i < 2 ? primary : '#cbd5e1' }}
-                    >
-                      {i + 1}
-                    </div>
-                    <p className="text-sm text-slate-700">{step}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* CTA */}
-            <div className="mt-7 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => navigate('/portal/vender')}
-                className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
-                style={{ backgroundColor: primary, color: '#fff' }}
-              >
-                Anunciar meu imóvel
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/portal/vender')}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                <BadgeCheck className="w-4 h-4" style={{ color: secondary }} />
-                Avaliação gratuita
-              </button>
-            </div>
-          </div>
         </div>
       </section>
 

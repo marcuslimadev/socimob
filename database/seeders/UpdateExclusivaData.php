@@ -112,7 +112,7 @@ try {
         '(31) 97559-7278',
         'Imobiliaria especializada na regiao metropolitana de Belo Horizonte',
         $aboutText,
-        'Seu imovel dos sonhos esta aqui',
+        'Seu imóvel dos sonhos esta aqui',
         '/assets/turtle.png',
         '006994',
         'Rua Sao Miguel, 1523 - Itapoa, Belo Horizonte/MG',

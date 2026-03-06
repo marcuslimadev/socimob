@@ -106,7 +106,7 @@ class PortalController extends Controller
                 'contact_phone' => $whatsappNumber,
                 'contact_email' => $tenant->contact_email,
                 'domain' => $tenant->domain,
-                'slogan' => $tenant->slogan ?? 'Encontre o Imovel dos Seus Sonhos',
+                'slogan' => $tenant->slogan ?? 'Encontre o Imóvel dos Seus Sonhos',
                 'primary_color' => $tenant->primary_color ?? '#1e293b',
                 'secondary_color' => $tenant->secondary_color ?? '#3b82f6',
                 'logo' => $tenant->logo_url,
