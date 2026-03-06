@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, ChevronDown, ChevronLeft, ChevronRight, Clock, Mail, MapPin, MessageCircle, Phone, Search, Shield, Square, TrendingUp, UserRound } from 'lucide-react';
@@ -100,6 +100,21 @@ export default function ClientPortalRefined() {
   const [slidePhotoIndex, setSlidePhotoIndex] = useState(0);
   const [thumbStart, setThumbStart] = useState(0);
   const [venderOpen, setVenderOpen] = useState(false);
+
+  const [heroParallax, setHeroParallax] = useState(0);
+  const heroRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const el = heroRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > window.innerHeight) return;
+      setHeroParallax(window.scrollY * 0.38);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const primary = tenant?.primary_color || '#0f172a';
   const secondary = tenant?.secondary_color || '#c39a66';
@@ -332,16 +347,25 @@ export default function ClientPortalRefined() {
         </div>
       </header>
 
-      <section className="relative overflow-hidden" style={{ background: `linear-gradient(115deg, ${primary}f0 0%, #0a0d16 100%)` }}>
-        {currentSlide ? (
-          <img src={normalizeImages(currentSlide)[0]} alt="Destaque" className="absolute inset-0 w-full h-full object-cover opacity-25 transition-all duration-700" />
-        ) : (
-          <img
-            src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1920&q=80"
-            alt="Imóveis de alto padrão"
-            className="absolute inset-0 w-full h-full object-cover opacity-20"
-          />
-        )}
+      <section ref={heroRef} className="relative overflow-hidden" style={{ background: `linear-gradient(115deg, ${primary}f0 0%, #0a0d16 100%)` }}>
+        {/* Parallax background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {currentSlide ? (
+            <img
+              src={normalizeImages(currentSlide)[0]}
+              alt="Destaque"
+              className="absolute left-0 w-full object-cover opacity-25 transition-[opacity] duration-700"
+              style={{ height: '130%', top: '-15%', transform: `translateY(${heroParallax}px)`, willChange: 'transform' }}
+            />
+          ) : (
+            <img
+              src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1920&q=80"
+              alt="Imóveis de alto padrão"
+              className="absolute left-0 w-full object-cover opacity-20"
+              style={{ height: '130%', top: '-15%', transform: `translateY(${heroParallax}px)`, willChange: 'transform' }}
+            />
+          )}
+        </div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_35%)]" />
 
         <div className="relative mx-auto max-w-7xl px-4 lg:px-8 py-10 lg:py-20 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-10">
