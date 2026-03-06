@@ -526,8 +526,8 @@ export default function ClientPortalRefined() {
             </select>
 
             <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-slate-900">
-              <option value="preco_asc">Menor preco</option>
-              <option value="preco_desc">Maior preco</option>
+              <option value="preco_asc">Menor preço</option>
+              <option value="preco_desc">Maior preço</option>
               <option value="destaque">Destaques primeiro</option>
             </select>
           </div>
