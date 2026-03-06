@@ -142,7 +142,7 @@ export default function VistoriaSolicitacaoNova() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-foreground mb-2">Imovel ID</label>
+                    <label className="block text-sm font-semibold text-foreground mb-2">Imóvel ID</label>
                     <input
                       type="text"
                       value={form.imovel_id}

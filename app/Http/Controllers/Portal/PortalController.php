@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
@@ -797,6 +798,10 @@ class PortalController extends Controller
                 'telefone_contato'  => 'required|string|max:20',
                 'email_contato'     => 'nullable|email|max:255',
                 'observacoes'       => 'nullable|string|max:2000',
+                'photos'            => 'nullable|array|max:20',
+                'photos.*'          => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:15360',
+                'videos'            => 'nullable|array|max:5',
+                'videos.*'          => 'nullable|file|mimes:mp4,mov,avi,wmv,mkv,webm|max:204800',
             ]);
 
             if ($validator->fails()) {
@@ -835,6 +840,48 @@ class PortalController extends Controller
                 'proprietario_email'       => $request->email_contato,
                 'proprietario_observacoes' => $obsProperty,
             ]);
+
+            // Armazenar fotos enviadas
+            if ($request->hasFile('photos')) {
+                $imageUrls = [];
+                foreach ((array) $request->file('photos') as $photo) {
+                    if (!$photo || !$photo->isValid()) continue;
+                    $ext = strtolower($photo->getClientOriginalExtension());
+                    $filename = 'img_' . uniqid() . '.' . $ext;
+                    $stored = $photo->storeAs(
+                        "properties/{$tenantId}/requests/{$property->id}",
+                        $filename,
+                        'public'
+                    );
+                    if ($stored) {
+                        $imageUrls[] = Storage::disk('public')->url($stored);
+                    }
+                }
+                if (!empty($imageUrls)) {
+                    $property->imagens = $imageUrls;
+                    $property->save();
+                }
+            }
+
+            // Armazenar vídeos enviados
+            if ($request->hasFile('videos')) {
+                $videoNames = [];
+                foreach ((array) $request->file('videos') as $video) {
+                    if (!$video || !$video->isValid()) continue;
+                    $ext = strtolower($video->getClientOriginalExtension());
+                    $filename = 'vid_' . uniqid() . '.' . $ext;
+                    $video->storeAs(
+                        "properties/{$tenantId}/requests/{$property->id}/videos",
+                        $filename,
+                        'public'
+                    );
+                    $videoNames[] = htmlspecialchars($video->getClientOriginalName(), ENT_QUOTES, 'UTF-8');
+                }
+                if (!empty($videoNames)) {
+                    $property->proprietario_observacoes .= ' [Vídeos: ' . implode(', ', $videoNames) . ']';
+                    $property->save();
+                }
+            }
 
             // Criar ou atualizar lead no CRM
             $lead = \App\Models\Lead::where('tenant_id', $tenantId)

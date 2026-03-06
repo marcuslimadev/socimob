@@ -142,7 +142,7 @@ export default function VistoriaSolicitacoes() {
                       <th className="pb-3">Codigo</th>
                       <th className="pb-3">Cliente</th>
                       <th className="pb-3">Tipo</th>
-                      <th className="pb-3">Imovel</th>
+                      <th className="pb-3">Imóvel</th>
                       <th className="pb-3">Status</th>
                       <th className="pb-3">Criado em</th>
                     </tr>

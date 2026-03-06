@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -20,6 +20,10 @@ import {
   Phone,
   Mail,
   Tag,
+  Camera,
+  Film,
+  X,
+  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -76,7 +80,8 @@ const STEPS = [
   { id: 1, label: 'Contato', icon: User },
   { id: 2, label: 'Imóvel', icon: Home },
   { id: 3, label: 'Valores', icon: DollarSign },
-  { id: 4, label: 'Revisão', icon: ClipboardList },
+  { id: 4, label: 'Mídia', icon: Camera },
+  { id: 5, label: 'Revisão', icon: ClipboardList },
 ];
 
 function formatCpf(value: string) {
@@ -116,6 +121,11 @@ export default function PortalVender() {
   const [cpfLookupLoading, setCpfLookupLoading] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [direction, setDirection] = useState<1 | -1>(1);
+  const [photoItems, setPhotoItems] = useState<{ file: File; preview: string }[]>([]);
+  const [videos, setVideos] = useState<File[]>([]);
+  const [isDraggingPhotos, setIsDraggingPhotos] = useState(false);
+  const [isDraggingVideos, setIsDraggingVideos] = useState(false);
+  const photoItemsRef = useRef<{ file: File; preview: string }[]>([]);
 
   const primary = tenant?.primary_color || '#0f172a';
   const secondary = tenant?.secondary_color || '#b9935a';
@@ -137,7 +147,10 @@ export default function PortalVender() {
         }
       } catch {}
     }
+    return () => { photoItemsRef.current.forEach(p => URL.revokeObjectURL(p.preview)); };
   }, []);
+
+  useEffect(() => { photoItemsRef.current = photoItems; }, [photoItems]);
 
   const set =
     (field: keyof FormState) =>
@@ -201,6 +214,7 @@ export default function PortalVender() {
     if (step === 1) return Boolean(form.nome_contato.trim() && form.telefone_contato.trim());
     if (step === 2) return Boolean(form.tipo_imovel && form.cidade.trim());
     if (step === 3) return true;
+    if (step === 4) return true;
     return false;
   };
 
@@ -226,20 +240,22 @@ export default function PortalVender() {
     }
     try {
       setLoading(true);
-      await api.post('/portal/imoveis/solicitar', {
-        tipo_imovel: form.tipo_imovel,
-        finalidade: form.finalidade,
-        cep: form.cep,
-        cidade: form.cidade,
-        bairro: form.bairro,
-        area: form.area ? Number(form.area) : undefined,
-        dormitorios: form.dormitorios ? Number(form.dormitorios) : undefined,
-        valor_pretendido: form.valor_pretendido ? Number(form.valor_pretendido.replace(/\D/g, '')) : undefined,
-        nome_contato: form.nome_contato,
-        telefone_contato: form.telefone_contato,
-        email_contato: form.email_contato,
-        observacoes: form.observacoes,
-      });
+      const fd = new FormData();
+      fd.append('tipo_imovel', form.tipo_imovel);
+      fd.append('finalidade', form.finalidade);
+      if (form.cep) fd.append('cep', form.cep);
+      fd.append('cidade', form.cidade);
+      if (form.bairro) fd.append('bairro', form.bairro);
+      if (form.area) fd.append('area', form.area);
+      if (form.dormitorios) fd.append('dormitorios', form.dormitorios);
+      if (form.valor_pretendido) fd.append('valor_pretendido', String(Number(form.valor_pretendido.replace(/\D/g, ''))));
+      fd.append('nome_contato', form.nome_contato);
+      fd.append('telefone_contato', form.telefone_contato);
+      if (form.email_contato) fd.append('email_contato', form.email_contato);
+      if (form.observacoes) fd.append('observacoes', form.observacoes);
+      photoItems.forEach(item => fd.append('photos[]', item.file));
+      videos.forEach(v => fd.append('videos[]', v));
+      await api.post('/portal/imoveis/solicitar', fd);
       setSubmitted(true);
     } catch (error: any) {
       const msg = error?.response?.data?.error || 'Erro ao enviar. Tente novamente.';
@@ -248,6 +264,36 @@ export default function PortalVender() {
       setLoading(false);
     }
   };
+
+  const addPhotos = (files: FileList | null) => {
+    if (!files) return;
+    const newItems = Array.from(files)
+      .filter(f => f.type.startsWith('image/') && f.size <= 15 * 1024 * 1024)
+      .map(f => ({ file: f, preview: URL.createObjectURL(f) }));
+    if (!newItems.length) return;
+    setPhotoItems(prev => [...prev, ...newItems].slice(0, 20));
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotoItems(prev => {
+      URL.revokeObjectURL(prev[index].preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const addVideos = (files: FileList | null) => {
+    if (!files) return;
+    const valid = Array.from(files).filter(f => f.type.startsWith('video/') && f.size <= 200 * 1024 * 1024);
+    if (!valid.length) return;
+    setVideos(prev => [...prev, ...valid].slice(0, 5));
+  };
+
+  const removeVideo = (index: number) => setVideos(prev => prev.filter((_, i) => i !== index));
+
+  const formatFileSize = (bytes: number) =>
+    bytes < 1024 * 1024
+      ? `${(bytes / 1024).toFixed(0)} KB`
+      : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
   const inputCls =
     'h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-0 transition-colors';
@@ -703,8 +749,95 @@ export default function PortalVender() {
                       </div>
                     )}
 
-                    {/* STEP 4: Revisão */}
+                    {/* STEP 4: Mídia */}
                     {step === 4 && (
+                      <div className="space-y-5">
+                        <div>
+                          <h2 className="text-2xl text-slate-900">Fotos e vídeos</h2>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Opcional — ajuda nossa equipe a preparar a avaliação do imóvel.
+                          </p>
+                        </div>
+
+                        {/* Fotos */}
+                        <div>
+                          <span className={labelCls}>Fotos do imóvel (até 20, máx 15 MB cada)</span>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            className={`mt-1 rounded-xl border-2 border-dashed p-5 text-center transition-colors cursor-pointer ${isDraggingPhotos ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`}
+                            onDragOver={(e) => { e.preventDefault(); setIsDraggingPhotos(true); }}
+                            onDragLeave={() => setIsDraggingPhotos(false)}
+                            onDrop={(e) => { e.preventDefault(); setIsDraggingPhotos(false); addPhotos(e.dataTransfer.files); }}
+                            onClick={() => (document.getElementById('photoInput') as HTMLInputElement | null)?.click()}
+                            onKeyDown={(e) => e.key === 'Enter' && (document.getElementById('photoInput') as HTMLInputElement | null)?.click()}
+                          >
+                            <Camera className="w-6 h-6 mx-auto text-slate-400" />
+                            <p className="mt-2 text-sm text-slate-500">Arraste fotos ou <span className="underline">clique para selecionar</span></p>
+                            <p className="mt-0.5 text-xs text-slate-400">JPG, PNG, WebP, GIF</p>
+                            <input id="photoInput" type="file" multiple accept="image/*" className="hidden" onChange={(e) => addPhotos(e.target.files)} />
+                          </div>
+                          {photoItems.length > 0 && (
+                            <div className="mt-3 grid grid-cols-4 gap-2">
+                              {photoItems.map((item, i) => (
+                                <div key={i} className="relative rounded-lg overflow-hidden bg-slate-100 aspect-square">
+                                  <img src={item.preview} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                                  <button type="button" onClick={() => removePhoto(i)} className="absolute top-1 right-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80 transition-colors">
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {photoItems.length > 0 && (
+                            <p className="mt-1.5 text-xs text-slate-400">{photoItems.length} foto{photoItems.length !== 1 ? 's' : ''} selecionada{photoItems.length !== 1 ? 's' : ''}</p>
+                          )}
+                        </div>
+
+                        {/* Vídeos */}
+                        <div>
+                          <span className={labelCls}>Vídeos do imóvel (até 5, máx 200 MB cada)</span>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            className={`mt-1 rounded-xl border-2 border-dashed p-5 text-center transition-colors cursor-pointer ${isDraggingVideos ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`}
+                            onDragOver={(e) => { e.preventDefault(); setIsDraggingVideos(true); }}
+                            onDragLeave={() => setIsDraggingVideos(false)}
+                            onDrop={(e) => { e.preventDefault(); setIsDraggingVideos(false); addVideos(e.dataTransfer.files); }}
+                            onClick={() => (document.getElementById('videoInput') as HTMLInputElement | null)?.click()}
+                            onKeyDown={(e) => e.key === 'Enter' && (document.getElementById('videoInput') as HTMLInputElement | null)?.click()}
+                          >
+                            <Film className="w-6 h-6 mx-auto text-slate-400" />
+                            <p className="mt-2 text-sm text-slate-500">Arraste vídeos ou <span className="underline">clique para selecionar</span></p>
+                            <p className="mt-0.5 text-xs text-slate-400">MP4, MOV, AVI, MKV, WebM</p>
+                            <input id="videoInput" type="file" multiple accept="video/*" className="hidden" onChange={(e) => addVideos(e.target.files)} />
+                          </div>
+                          {videos.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {videos.map((video, i) => (
+                                <div key={i} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Film className="w-4 h-4 shrink-0 text-slate-400" />
+                                    <span className="text-sm text-slate-700 truncate">{video.name}</span>
+                                    <span className="text-xs text-slate-400 shrink-0">{formatFileSize(video.size)}</span>
+                                  </div>
+                                  <button type="button" onClick={() => removeVideo(i)} className="ml-2 rounded-full p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors">
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <p className="text-[11px] text-slate-400">
+                          As mídias são enviadas somente para nossa equipe e jamais exibidas publicamente sem sua autorização.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* STEP 5: Revisão */}
+                    {step === 5 && (
                       <div className="space-y-4">
                         <div>
                           <h2 className="text-2xl text-slate-900">Revisar e confirmar</h2>
@@ -747,6 +880,14 @@ export default function PortalVender() {
                           </div>
                         )}
 
+                        {(photoItems.length > 0 || videos.length > 0) && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">Mídia</p>
+                            {photoItems.length > 0 && reviewItem(<Camera className="w-4 h-4" />, 'Fotos', `${photoItems.length} foto${photoItems.length !== 1 ? 's' : ''} anexada${photoItems.length !== 1 ? 's' : ''}`)}
+                            {videos.length > 0 && reviewItem(<Film className="w-4 h-4" />, 'Vídeos', `${videos.length} vídeo${videos.length !== 1 ? 's' : ''} anexado${videos.length !== 1 ? 's' : ''}`)}
+                          </div>
+                        )}
+
                         <button
                           type="button"
                           onClick={handleSubmit}
@@ -770,7 +911,7 @@ export default function PortalVender() {
               </div>
 
               {/* Navigation buttons */}
-              {step < 4 && (
+              {step < 5 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
                   {step > 1 ? (
                     <button
@@ -795,7 +936,7 @@ export default function PortalVender() {
                   </button>
                 </div>
               )}
-              {step === 4 && (
+              {step === 5 && (
                 <div className="flex items-center border-t border-slate-100 px-6 py-4">
                   <button
                     type="button"

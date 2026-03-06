@@ -76,11 +76,11 @@ function getPriceValue(property: Property): number {
   return Number(value) || 0;
 }
 
-function getPurpose(property: Property): 'Venda' | 'Aluguel' | 'Imovel' {
+function getPurpose(property: Property): 'Venda' | 'Aluguel' | 'Imóvel' {
   const value = `${property.finalidade_imovel || ''} ${property.tipo_negocio || ''}`.toLowerCase();
   if (value.includes('alug')) return 'Aluguel';
   if (value.includes('vend')) return 'Venda';
-  return 'Imovel';
+  return 'Imóvel';
 }
 
 function getPublicLocation(property: Property): string {
@@ -218,7 +218,7 @@ export default function ClientPortalRefined() {
   const whatsappLink = useMemo(() => {
     const phone = tenant?.contact_phone?.replace(/\D/g, '');
     if (!phone) return '';
-    const message = encodeURIComponent(`Ola! Vim pelo portal da ${tenant?.name || 'imobiliaria'} e quero atendimento.`);
+    const message = encodeURIComponent(`Olá! Vim pelo portal da ${tenant?.name || 'imobiliária'} e quero atendimento.`);
     return `https://wa.me/${phone}?text=${message}`;
   }, [tenant?.contact_phone, tenant?.name]);
 
@@ -248,13 +248,13 @@ export default function ClientPortalRefined() {
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm tracking-[0.15em] uppercase text-white truncate">{tenant?.name || 'Imobiliaria'}</p>
+              <p className="text-sm tracking-[0.15em] uppercase text-white truncate">{tenant?.name || 'Imobiliária'}</p>
               <p className="text-[11px] text-white/65 uppercase tracking-[0.12em] truncate">Private Estates</p>
             </div>
           </div>
           <div className="hidden lg:flex items-center gap-6">
-            <a href="#catalogo" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Catalogo</a>
-            <a href="#servicos" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Servicos</a>
+            <a href="#catalogo" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Catálogo</a>
+            <a href="#servicos" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Serviços</a>
             <a href="/portal/simulacao" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Simulação</a>
             <div className="relative" onMouseEnter={() => setVenderOpen(true)} onMouseLeave={() => setVenderOpen(false)}>
               <button type="button" className="flex items-center gap-1 text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">
@@ -348,7 +348,7 @@ export default function ClientPortalRefined() {
           <div>
             <p className="text-[11px] uppercase tracking-[0.24em] text-white/80 mb-4">Signature Real Estate</p>
             <h1 className="text-3xl md:text-6xl leading-[1.05] text-white">Imóveis extraordinários para estilos de vida únicos</h1>
-            <p className="mt-4 text-sm md:text-base text-white/75 max-w-2xl">{tenant?.slogan || 'Curadoria de residencias e investimentos em localizacoes de alto potencial.'}</p>
+            <p className="mt-4 text-sm md:text-base text-white/75 max-w-2xl">{tenant?.slogan || 'Curadoria de residências e investimentos em localizações de alto potencial.'}</p>
             {currentSlide && (
               <p className="mt-4 inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-white/85">
                 Destaque: {getPublicLocation(currentSlide)}
@@ -618,7 +618,7 @@ export default function ClientPortalRefined() {
                 <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] text-slate-600">
                   <p className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" />{currentSlide.quartos || currentSlide.dormitorios || '--'}</p>
                   <p className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{currentSlide.banheiros || '--'}</p>
-                  <p className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{currentSlide.area_util || currentSlide.area_total || '--'}m2</p>
+                  <p className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{currentSlide.area_util || currentSlide.area_total || '--'}m²</p>
                 </div>
 
                 {/* Dot indicators */}
@@ -644,7 +644,7 @@ export default function ClientPortalRefined() {
                     </button>
                     <button
                       type="button"
-                      aria-label="Proximo"
+                      aria-label="Próximo"
                       onClick={() => setSlideIndex((i) => (i + 1) % slideshowProperties.length)}
                       className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-black/10 bg-white hover:bg-slate-50 text-slate-700"
                     >
@@ -659,7 +659,7 @@ export default function ClientPortalRefined() {
                   className="mt-auto pt-6 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold self-start"
                   style={{ backgroundColor: secondary, color: '#111827' }}
                 >
-                  Ver imovel destaque
+                  Ver imóvel em destaque
                   <ArrowUpRight className="w-4 h-4" />
                 </button>
               </div>
@@ -702,7 +702,7 @@ export default function ClientPortalRefined() {
                   <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-slate-600">
                     <p className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" />{property.quartos || property.dormitorios || '--'}</p>
                     <p className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{property.banheiros || '--'}</p>
-                    <p className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{property.area_util || property.area_total || '--'}m2</p>
+                    <p className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{property.area_util || property.area_total || '--'}m²</p>
                   </div>
                   <button
                     type="button"
@@ -720,7 +720,7 @@ export default function ClientPortalRefined() {
 
         {filteredProperties.length === 0 && (
           <div className="mt-8 rounded-2xl border border-dashed border-black/20 bg-white/70 px-6 py-10 text-center text-sm text-slate-600">
-            Nenhum imovel encontrado com os filtros informados.
+            Nenhum imóvel encontrado com os filtros informados.
           </div>
         )}
       </section>
@@ -756,12 +756,12 @@ export default function ClientPortalRefined() {
       <section id="servicos" className="mx-auto max-w-7xl px-4 lg:px-8 pb-16">
         <div className="grid gap-6 lg:grid-cols-2">
           <article className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_34px_rgba(15,23,42,0.08)]">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Servicos</p>
-            <h3 className="mt-2 text-2xl text-slate-900">Atendimento completo para compra, venda e locacao</h3>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Serviços</p>
+            <h3 className="mt-2 text-2xl text-slate-900">Atendimento completo para compra, venda e locação</h3>
             <div className="mt-6 grid gap-2 sm:grid-cols-2">
               {(tenant?.services?.length
                 ? tenant.services
-                : ['Consultoria imobiliaria', 'Avaliacao de mercado', 'Curadoria de investimentos', 'Acompanhamento documental'])
+                : ['Consultoria imobiliária', 'Avaliação de mercado', 'Curadoria de investimentos', 'Acompanhamento documental'])
                 .map((service) => (
                   <div key={service} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{service}</div>
                 ))}
