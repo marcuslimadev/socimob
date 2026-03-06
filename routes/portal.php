@@ -48,6 +48,9 @@ $router->group(['prefix' => 'api/portal', 'middleware' => 'resolve-tenant'], fun
     $router->get('/chat/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChatController@mensagens']);
     $router->post('/chat/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChatController@send']);
 
+    // Lookup de CPF para pré-preenchimento do formulário (autenticado)
+    $router->get('/lookup-cpf', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\PortalController@lookupCpf']);
+
     // Solicitar colocação de imóvel à venda (autenticado)
     $router->post('/imoveis/solicitar', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\PortalController@solicitarVenda']);
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, Bath, BedDouble, Calculator, ChevronLeft, ChevronRight, Mail, MapPin, MessageCircle, Phone, Search, Square, UserRound } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, ChevronDown, ChevronLeft, ChevronRight, Clock, Mail, MapPin, MessageCircle, Phone, Search, Shield, Square, TrendingUp, UserRound } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
@@ -99,6 +99,7 @@ export default function ClientPortalRefined() {
   const [sortBy, setSortBy] = useState('preco_asc');
   const [slidePhotoIndex, setSlidePhotoIndex] = useState(0);
   const [thumbStart, setThumbStart] = useState(0);
+  const [venderOpen, setVenderOpen] = useState(false);
 
   const primary = tenant?.primary_color || '#0f172a';
   const secondary = tenant?.secondary_color || '#c39a66';
@@ -255,7 +256,37 @@ export default function ClientPortalRefined() {
             <a href="#catalogo" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Catalogo</a>
             <a href="#servicos" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Servicos</a>
             <a href="/portal/simulacao" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Simulação</a>
-            <a href="/portal/vender" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Vender</a>
+            <div className="relative" onMouseEnter={() => setVenderOpen(true)} onMouseLeave={() => setVenderOpen(false)}>
+              <button type="button" className="flex items-center gap-1 text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">
+                Vender <ChevronDown className="w-3 h-3 mt-0.5" />
+              </button>
+              {venderOpen && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-56 rounded-2xl border border-white/10 bg-[#0b111f]/96 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] py-2 z-50">
+                  <a
+                    href="/portal/vender"
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <TrendingUp className="w-3.5 h-3.5" style={{ color: '#c39a66' }} />
+                    Anunciar meu imóvel
+                  </a>
+                  <a
+                    href="/portal/vender"
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <BadgeCheck className="w-3.5 h-3.5" style={{ color: '#c39a66' }} />
+                    Avaliação gratuita
+                  </a>
+                  <a
+                    href="#como-vender"
+                    onClick={() => setVenderOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <Clock className="w-3.5 h-3.5" style={{ color: '#c39a66' }} />
+                    Como funciona?
+                  </a>
+                </div>
+              )}
+            </div>
             <a href="#contato" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Contato</a>
             <button
               type="button"
@@ -302,8 +333,14 @@ export default function ClientPortalRefined() {
       </header>
 
       <section className="relative overflow-hidden" style={{ background: `linear-gradient(115deg, ${primary}f0 0%, #0a0d16 100%)` }}>
-        {currentSlide && (
+        {currentSlide ? (
           <img src={normalizeImages(currentSlide)[0]} alt="Destaque" className="absolute inset-0 w-full h-full object-cover opacity-25 transition-all duration-700" />
+        ) : (
+          <img
+            src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1920&q=80"
+            alt="Imóveis de alto padrão"
+            className="absolute inset-0 w-full h-full object-cover opacity-20"
+          />
         )}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_35%)]" />
 
@@ -324,7 +361,7 @@ export default function ClientPortalRefined() {
                 className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold"
                 style={{ backgroundColor: secondary, color: '#111827' }}
               >
-                Ver colecao
+                Ver coleção
                 <ArrowUpRight className="w-4 h-4" />
               </button>
               {currentSlide && (
@@ -333,21 +370,29 @@ export default function ClientPortalRefined() {
                   onClick={() => navigate(`/portal/imovel/${currentSlide.id}`)}
                   className="inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-2.5 text-sm font-semibold text-white"
                 >
-                  Imovel em destaque
+                  Imóvel em destaque
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => navigate('/portal/vender')}
+                className="inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+              >
+                <TrendingUp className="w-4 h-4" />
+                Quero vender
+              </button>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5 md:gap-3">
             {[
-              { label: 'Negócios fechados', value: '+5000' },
-              { label: 'Satisfação', value: '5 ★' },
-              { label: 'Cidades', value: new Set(properties.map((property) => property.cidade)).size || '--' },
-              { label: 'Atendimento', value: tenant?.contact_phone ? '24/7' : '--' },
+              { label: 'Negócios fechados', value: '+5.000' },
+              { label: 'Satisfação', value: '5★' },
+              { label: 'Cidades', value: new Set(properties.map((property) => property.cidade)).size || '10+' },
+              { label: 'Anos no mercado', value: '15+' },
             ].map((stat) => (
               <div key={stat.label} className="rounded-2xl border border-white/20 bg-white/10 p-4 md:p-5 text-white">
-                <p className="text-2xl md:text-3xl">{stat.value}</p>
+                <p className="text-2xl md:text-3xl font-light">{stat.value}</p>
                 <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/70">{stat.label}</p>
               </div>
             ))}
@@ -523,7 +568,18 @@ export default function ClientPortalRefined() {
           </motion.article>
         )}
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-8 mb-2 flex items-end justify-between">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Catálogo</p>
+            <h2 className="mt-1 text-2xl text-slate-900">
+              {filteredProperties.length > 0
+                ? `${filteredProperties.length} imóvel${filteredProperties.length !== 1 ? 's' : ''} encontrado${filteredProperties.length !== 1 ? 's' : ''}`
+                : 'Imóveis disponíveis'}
+            </h2>
+          </div>
+        </div>
+
+        <div className="mt-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filteredProperties.map((property, index) => {
             const image = normalizeImages(property)[0];
             return (
@@ -595,6 +651,105 @@ export default function ClientPortalRefined() {
             <Calculator className="w-4 h-4" />
             Simular agora
           </button>
+        </div>
+      </section>
+
+      {/* ─── QUERO VENDER ─── */}
+      <section id="como-vender" className="mx-auto max-w-7xl px-4 lg:px-8 pb-10">
+        <div className="rounded-3xl overflow-hidden border border-black/10 shadow-[0_16px_52px_rgba(15,23,42,0.12)] grid lg:grid-cols-2">
+          {/* Photo side */}
+          <div className="relative h-64 lg:h-auto">
+            <img
+              src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=900&q=80"
+              alt="Venda seu imóvel"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
+            <div className="absolute bottom-6 left-6 right-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm px-3 py-1.5 mb-3">
+                <BadgeCheck className="w-4 h-4 text-white" />
+                <span className="text-xs text-white font-semibold uppercase tracking-[0.14em]">Avaliação gratuita</span>
+              </div>
+              <p className="text-white text-xl font-light leading-snug">
+                Sua casa pode valer mais<br />do que você imagina.
+              </p>
+            </div>
+          </div>
+
+          {/* Content side */}
+          <div className="bg-white p-7 lg:p-10 flex flex-col justify-center">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 mb-2">Anuncie com a gente</p>
+            <h2 className="text-3xl lg:text-4xl text-slate-900 leading-tight">
+              Venda seu imóvel<br />
+              <span style={{ color: secondary }}>pelo melhor preço</span>.
+            </h2>
+            <p className="mt-3 text-sm text-slate-600 max-w-md">
+              Nossa equipe cuida de tudo: avaliação de mercado, fotografia profissional, anúncios segmentados e
+              acompanhamento jurídico — tudo sem custo antecipado.
+            </p>
+
+            {/* Benefits */}
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {[
+                { icon: Clock, label: 'Avaliação em 48h', sub: 'Resposta garantida' },
+                { icon: Shield, label: 'Sem taxas iniciais', sub: 'Só pagou se vender' },
+                { icon: TrendingUp, label: 'Mais compradores', sub: 'Rede qualificada' },
+              ].map((benefit) => (
+                <div
+                  key={benefit.label}
+                  className="rounded-2xl border border-slate-100 bg-slate-50 p-3 flex flex-col items-start gap-1"
+                >
+                  <benefit.icon className="w-5 h-5 mb-0.5" style={{ color: secondary }} />
+                  <p className="text-xs font-semibold text-slate-800">{benefit.label}</p>
+                  <p className="text-[11px] text-slate-500">{benefit.sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Process steps */}
+            <div className="mt-7">
+              <p className="text-[11px] uppercase tracking-[0.15em] text-slate-400 mb-3">Como funciona</p>
+              <div className="space-y-2.5">
+                {[
+                  'Cadastre seu imóvel em minutos',
+                  'Receba a avaliação gratuita em até 48h',
+                  'Fotografia e anúncios profissionais',
+                  'Nós cuidamos da negociação e documentos',
+                ].map((step, i) => (
+                  <div key={step} className="flex items-center gap-3">
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white"
+                      style={{ backgroundColor: i < 2 ? primary : '#cbd5e1' }}
+                    >
+                      {i + 1}
+                    </div>
+                    <p className="text-sm text-slate-700">{step}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="mt-7 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/portal/vender')}
+                className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
+                style={{ backgroundColor: primary, color: '#fff' }}
+              >
+                Anunciar meu imóvel
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/portal/vender')}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <BadgeCheck className="w-4 h-4" style={{ color: secondary }} />
+                Avaliação gratuita
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 

@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 
 use App\Models\Tenant;
 use App\Models\Property;
+use App\Models\Pessoa;
 use App\Models\PropertyEvaluation;
 use App\Services\PropertyLikesTablesManager;
 use Illuminate\Support\Str;
@@ -734,9 +735,46 @@ class PortalController extends Controller
     }
 
     /**
-     * Solicitar colocacao de imovel a venda (portal autenticado)
-     * POST /api/portal/imoveis/solicitar
+     * Lookup de pessoa por CPF para preencher automaticamente o formulário.
+     * GET /api/portal/lookup-cpf?cpf=xxx
      */
+    public function lookupCpf(Request $request)
+    {
+        $tenantId = $request->attributes->get('tenant_id');
+
+        if (!$tenantId) {
+            return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 404);
+        }
+
+        $cpf = preg_replace('/\D/', '', $request->query('cpf', ''));
+
+        if (strlen($cpf) < 11) {
+            return response()->json(['success' => false, 'error' => 'CPF inválido'], 422);
+        }
+
+        $pessoa = Pessoa::where('tenant_id', $tenantId)
+            ->where('cpf', $cpf)
+            ->select(['nome', 'email', 'telefone', 'celular', 'cidade', 'bairro', 'cep'])
+            ->first();
+
+        if (!$pessoa) {
+            return response()->json(['success' => true, 'found' => false, 'message' => 'Nenhum cadastro encontrado para este CPF.']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'found'   => true,
+            'data'    => [
+                'nome'     => $pessoa->nome,
+                'email'    => $pessoa->email,
+                'telefone' => $pessoa->celular ?: $pessoa->telefone,
+                'cidade'   => $pessoa->cidade,
+                'bairro'   => $pessoa->bairro,
+                'cep'      => $pessoa->cep,
+            ],
+        ]);
+    }
+
     public function solicitarVenda(Request $request)
     {
         try {
