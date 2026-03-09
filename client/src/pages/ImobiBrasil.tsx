@@ -85,41 +85,12 @@ function fmtDate(v: any) {
   return String(v).slice(0, 10).split('-').reverse().join('/');
 }
 
-function DR({ label, value, icon }: { label: string; value: React.ReactNode; icon?: React.ReactNode }) {
+function DK({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-2 py-2 border-b border-white/5 last:border-0">
-      {icon && <span className="text-muted-foreground mt-0.5 shrink-0">{icon}</span>}
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm text-foreground break-all">{value || '-'}</p>
-      </div>
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">{label}</p>
+      <p className="text-sm text-foreground break-all">{value || '-'}</p>
     </div>
-  );
-}
-
-function DetailPanel({ title, onClose, loading, children }: { title: string; onClose: () => void; loading?: boolean; children: React.ReactNode }) {
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ x: '100%', opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: '100%', opacity: 0 }}
-        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed right-0 top-0 h-full w-full max-w-sm bg-[#0f1117] border-l border-white/10 shadow-2xl z-50 flex flex-col overflow-hidden"
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <h3 className="font-semibold text-foreground">{title}</h3>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {loading ? (
-            <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" size={28} /></div>
-          ) : children}
-        </div>
-      </motion.div>
-    </AnimatePresence>
   );
 }
 
@@ -165,13 +136,35 @@ function StatusCard() {
   );
 }
 
+function ExpandedRow({ colSpan, loading, children }: { colSpan: number; loading: boolean; children: React.ReactNode }) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="px-0 py-0">
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.18 }}
+          className="overflow-hidden"
+        >
+          <div className="px-6 py-5 bg-white/[0.03] border-t border-b border-white/10">
+            {loading ? (
+              <div className="flex justify-center py-4"><Loader2 className="animate-spin text-primary" size={22} /></div>
+            ) : children}
+          </div>
+        </motion.div>
+      </td>
+    </tr>
+  );
+}
+
 function PessoasTab() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [inputVal, setInputVal] = useState('');
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const { data, isLoading, isFetching } = useIbPessoas({ page, nomeResponsavel: search || undefined });
-  const { data: detail, isLoading: loadingDetail } = useIbPessoa(selectedId);
+  const { data: detail, isLoading: loadingDetail } = useIbPessoa(expandedId);
   const rs    = data?.result_set;
   const list: any[] = rs?.data ?? [];
   const total = rs?.total_items ?? list.length;
@@ -187,6 +180,7 @@ function PessoasTab() {
   const tiposCadastro: string[] = d?.tipoCadastro
     ? Object.entries(d.tipoCadastro).filter(([, v]) => v === true).map(([k]) => tipoCadastroLabels[k] ?? k)
     : [];
+  const hasEndereco = enderecos.some((e: any) => e.logradouro || e.cidade);
 
   return (
     <div className="space-y-4">
@@ -216,37 +210,80 @@ function PessoasTab() {
         <p className="text-center py-12 text-muted-foreground">Nenhuma pessoa encontrada.</p>
       ) : (
         <>
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">{total} registros encontrados · clique numa linha para detalhes completos</p>
-          </div>
+          <p className="text-xs text-muted-foreground">{total} registros · clique numa linha para expandir</p>
           <div className="overflow-x-auto rounded-xl border border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-white/[0.06]">
                 <tr className="text-left">
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-6"></th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Nome</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Telefone</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Cadastrado em</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Cadastrado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {list.map((p: any) => {
                   const id = p.codigoPessoa ?? p.codigo;
+                  const open = expandedId === id;
                   return (
-                    <tr
-                      key={id}
-                      onClick={() => setSelectedId(selectedId === id ? null : id)}
-                      className={`cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
-                    >
-                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
-                      <td className="px-4 py-3 text-foreground font-medium">{p.nomeResponsavel ?? '-'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${p.statusPessoa ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                          {p.statusPessoa ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(p.cadastradoEm)}</td>
-                    </tr>
+                    <AnimatePresence key={id} mode="wait">
+                      <tr
+                        onClick={() => setExpandedId(open ? null : id)}
+                        className={`cursor-pointer transition-colors ${open ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
+                      >
+                        <td className="px-4 py-3">
+                          <ChevronRight size={14} className={`text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
+                        <td className="px-4 py-3 text-foreground font-medium">{p.nomeResponsavel ?? '-'}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">-</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${p.statusPessoa ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {p.statusPessoa ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(p.cadastradoEm)}</td>
+                      </tr>
+                      {open && (
+                        <ExpandedRow colSpan={6} loading={loadingDetail}>
+                          {d && (
+                            <div className="space-y-4">
+                              <div className="flex flex-wrap gap-1 mb-1">
+                                {tiposCadastro.map((t) => (
+                                  <span key={t} className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300">{t}</span>
+                                ))}
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
+                                <DK label="Tipo" value={d.tipoPessoa === 'F' ? 'Pessoa Física' : d.tipoPessoa === 'J' ? 'Pessoa Jurídica' : fmt(d.tipoPessoa)} />
+                                <DK label="CPF" value={fmtCpfCnpj(d.cpf)} />
+                                <DK label="CNPJ" value={fmtCpfCnpj(d.cnpj)} />
+                                <DK label="RG" value={fmt(d.rg)} />
+                                {phones.map((ph: any, i: number) => (
+                                  <DK key={i} label={`Telefone ${i + 1}`} value={fmtPhone(ph)} />
+                                ))}
+                                <DK label="Profissão" value={fmt(d.profissao)} />
+                                <DK label="Nascimento" value={fmtDate(d.dataNascimento)} />
+                                <DK label="CRECI" value={fmt(d.creci)} />
+                                <DK label="Referência" value={fmt(d.referenciaPessoa)} />
+                                <DK label="Origem" value={fmt(d.origemCaptacao)} />
+                                <DK label="Cadastrado em" value={fmtDate(d.cadastradoEm)} />
+                                <DK label="Atualizado em" value={fmtDate(d.ultimaAtualizacao)} />
+                              </div>
+                              {hasEndereco && enderecos.map((e: any, i: number) => (
+                                <div key={i} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4 pt-3 border-t border-white/10">
+                                  <DK label="Logradouro" value={[e.logradouro, e.numero, e.complemento].filter(Boolean).join(', ')} />
+                                  <DK label="Bairro" value={fmt(e.bairro)} />
+                                  <DK label="Cidade/UF" value={[e.cidade, e.estado].filter(Boolean).join(' - ')} />
+                                  <DK label="CEP" value={fmt(e.cep)} />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </ExpandedRow>
+                      )}
+                    </AnimatePresence>
                   );
                 })}
               </tbody>
@@ -255,68 +292,15 @@ function PessoasTab() {
           <Pagination page={page} onPrev={() => setPage((p) => Math.max(1, p - 1))} onNext={() => setPage((p) => p + 1)} hasMore={list.length >= 20} />
         </>
       )}
-
-      {selectedId !== null && (
-        <DetailPanel title="Detalhes da Pessoa" onClose={() => setSelectedId(null)} loading={loadingDetail}>
-          {d && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                  <User size={22} className="text-blue-400" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">{fmt(d.nomeResponsavel ?? d.nome)}</p>
-                  {d.razaoSocial && <p className="text-xs text-muted-foreground">{d.razaoSocial}</p>}
-                  {d.nomeFantasia && <p className="text-xs text-muted-foreground">{d.nomeFantasia}</p>}
-                </div>
-              </div>
-              <DR label="Tipo" value={d.tipoPessoa === 'F' ? 'Pessoa Física' : d.tipoPessoa === 'J' ? 'Pessoa Jurídica' : fmt(d.tipoPessoa)} icon={<User size={13} />} />
-              {tiposCadastro.length > 0 && (
-                <div className="flex flex-wrap gap-1 py-1">
-                  {tiposCadastro.map((t) => (
-                    <span key={t} className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300">{t}</span>
-                  ))}
-                </div>
-              )}
-              <DR label="CPF" value={fmtCpfCnpj(d.cpf)} icon={<Hash size={13} />} />
-              <DR label="CNPJ" value={fmtCpfCnpj(d.cnpj)} icon={<Hash size={13} />} />
-              <DR label="RG" value={fmt(d.rg)} icon={<Hash size={13} />} />
-              {phones.map((ph: any, i: number) => (
-                <DR key={i} label={`Telefone ${i + 1}`} value={fmtPhone(ph)} icon={<Phone size={13} />} />
-              ))}
-              <DR label="Profissão" value={fmt(d.profissao)} icon={<FileText size={13} />} />
-              <DR label="Nascimento" value={fmtDate(d.dataNascimento)} icon={<Calendar size={13} />} />
-              <DR label="CRECI" value={fmt(d.creci)} icon={<Hash size={13} />} />
-              <DR label="Referência" value={fmt(d.referenciaPessoa)} icon={<FileText size={13} />} />
-              <DR label="Origem" value={fmt(d.origemCaptacao ?? d.origem)} icon={<FileText size={13} />} />
-              {enderecos.length > 0 && (
-                <>
-                  <p className="text-xs font-semibold text-muted-foreground mt-3 mb-1 uppercase tracking-wide">Endereços</p>
-                  {enderecos.map((e: any, i: number) => (
-                    <div key={i} className="pl-2 border-l-2 border-blue-500/30 mb-2">
-                      <DR label="Logradouro" value={[e.logradouro, e.numero, e.complemento].filter(Boolean).join(', ')} icon={<MapPinIcon size={13} />} />
-                      <DR label="Bairro" value={fmt(e.bairro)} icon={<MapPinIcon size={13} />} />
-                      <DR label="Cidade/UF" value={[e.cidade ?? e.nomeCidade, e.estado ?? e.siglaEstado].filter(Boolean).join(' - ')} icon={<MapPinIcon size={13} />} />
-                      <DR label="CEP" value={fmt(e.cep)} icon={<MapPinIcon size={13} />} />
-                    </div>
-                  ))}
-                </>
-              )}
-              <DR label="Cadastrado em" value={fmtDate(d.dataCadastro ?? d.cadastradoEm)} icon={<Calendar size={13} />} />
-              <DR label="Atualizado em" value={fmtDate(d.dataAlteracao ?? d.ultimaAtualizacao)} icon={<Calendar size={13} />} />
-            </div>
-          )}
-        </DetailPanel>
-      )}
     </div>
   );
 }
 
 function NegociosTab() {
   const [page, setPage] = useState(1);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const { data, isLoading, isFetching } = useIbNegocios({ page });
-  const { data: detail, isLoading: loadingDetail } = useIbNegocio(selectedId);
+  const { data: detail, isLoading: loadingDetail } = useIbNegocio(expandedId);
   const rs   = data?.result_set;
   const list: any[] = rs?.data ?? [];
   const deleteMutation = useIbDeleteNegocio();
@@ -330,11 +314,12 @@ function NegociosTab() {
         <p className="text-center py-12 text-muted-foreground">Nenhum negócio encontrado.</p>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">Clique numa linha para detalhes completos do negócio</p>
+          <p className="text-xs text-muted-foreground">{list.length} registros · clique numa linha para expandir</p>
           <div className="overflow-x-auto rounded-xl border border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-white/[0.06]">
                 <tr className="text-left">
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-6"></th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Título</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
@@ -347,31 +332,58 @@ function NegociosTab() {
                 {list.map((n: any) => {
                   const id = n.codigoNegocio ?? n.codigo;
                   const st = (n.statusNegocio ?? '').toLowerCase();
+                  const open = expandedId === id;
                   return (
-                    <tr
-                      key={id}
-                      onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; setSelectedId(selectedId === id ? null : id); }}
-                      className={`cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
-                    >
-                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
-                      <td className="px-4 py-3 text-foreground font-medium max-w-[240px] truncate">{n.tituloNegocio ?? '-'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium capitalize ${st === 'ganho' ? 'bg-emerald-500/20 text-emerald-400' : st === 'perdido' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                          {n.statusNegocio ?? '-'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(n.dataCriacao)}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(n.dataFechamento)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                          onClick={(e) => { e.stopPropagation(); const id2 = n.codigoNegocio ?? n.codigo; if (id2 && confirm('Excluir negócio ' + id2 + '?')) { deleteMutation.mutate(Number(id2), { onSuccess: () => toast.success('Negócio excluído'), onError: () => toast.error('Erro ao excluir negócio') }); } }}
-                          className="p-1.5 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30"
-                        >
-                          <Trash2 size={13} />
-                        </motion.button>
-                      </td>
-                    </tr>
+                    <AnimatePresence key={id} mode="wait">
+                      <tr
+                        onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; setExpandedId(open ? null : id); }}
+                        className={`cursor-pointer transition-colors ${open ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
+                      >
+                        <td className="px-4 py-3">
+                          <ChevronRight size={14} className={`text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
+                        <td className="px-4 py-3 text-foreground font-medium max-w-[240px] truncate">{n.tituloNegocio ?? '-'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium capitalize ${st === 'ganho' ? 'bg-emerald-500/20 text-emerald-400' : st === 'perdido' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                            {n.statusNegocio ?? '-'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(n.dataCriacao)}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(n.dataFechamento)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <motion.button
+                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                            onClick={(e) => { e.stopPropagation(); if (id && confirm('Excluir negócio ' + id + '?')) { deleteMutation.mutate(Number(id), { onSuccess: () => toast.success('Negócio excluído'), onError: () => toast.error('Erro ao excluir negócio') }); } }}
+                            className="p-1.5 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                          >
+                            <Trash2 size={13} />
+                          </motion.button>
+                        </td>
+                      </tr>
+                      {open && (
+                        <ExpandedRow colSpan={7} loading={loadingDetail}>
+                          {d && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
+                              <DK label="Etapa" value={fmt(d.tituloEtapaNegocio)} />
+                              <DK label="Operação" value={fmt(d.operacaoNegocio)} />
+                              <DK label="Probabilidade" value={fmt(d.probabilidadeNegocio)} />
+                              <DK label="Valor ganho" value={d.valorGanhoNegocio ? `R$ ${Number(d.valorGanhoNegocio).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'} />
+                              <DK label="Motivo perdido" value={fmt(d.motivoPerdidoNegocio)} />
+                              <DK label="Data prevista" value={fmtDate(d.dataPrevistaNegocio)} />
+                              <DK label="Criado em" value={fmtDate(d.dataCriacao)} />
+                              <DK label="Atualizado em" value={fmtDate(d.dataAlteracao)} />
+                              {(d.descricaoNegocio || d.anotacaoNegocio) && (
+                                <div className="col-span-full pt-3 border-t border-white/10 space-y-2">
+                                  {d.descricaoNegocio && <DK label="Descrição" value={d.descricaoNegocio} />}
+                                  {d.anotacaoNegocio && <DK label="Anotação" value={d.anotacaoNegocio} />}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </ExpandedRow>
+                      )}
+                    </AnimatePresence>
                   );
                 })}
               </tbody>
@@ -380,44 +392,15 @@ function NegociosTab() {
           <Pagination page={page} onPrev={() => setPage((p) => Math.max(1, p - 1))} onNext={() => setPage((p) => p + 1)} hasMore={list.length >= 20} />
         </>
       )}
-
-      {selectedId !== null && (
-        <DetailPanel title="Detalhes do Negócio" onClose={() => setSelectedId(null)} loading={loadingDetail}>
-          {d && (
-            <div className="space-y-1">
-              <div className="mb-4">
-                <p className="font-semibold text-foreground text-lg">{fmt(d.tituloNegocio)}</p>
-                <span className={`mt-1 inline-flex px-2 py-0.5 rounded-full text-xs font-medium capitalize ${(d.statusNegocio ?? '').toLowerCase() === 'ganho' ? 'bg-emerald-500/20 text-emerald-400' : (d.statusNegocio ?? '').toLowerCase() === 'perdido' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                  {fmt(d.statusNegocio)}
-                </span>
-              </div>
-              <DR label="Etapa" value={fmt(d.tituloEtapaNegocio)} icon={<Briefcase size={13} />} />
-              <DR label="Operação" value={fmt(d.operacaoNegocio ?? d.operacao)} icon={<Briefcase size={13} />} />
-              <DR label="Probabilidade" value={fmt(d.probabilidadeNegocio)} icon={<Hash size={13} />} />
-              <DR label="Valor ganho" value={d.valorGanhoNegocio ? `R$ ${Number(d.valorGanhoNegocio).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'} icon={<Hash size={13} />} />
-              <DR label="Descrição" value={fmt(d.descricaoNegocio ?? d.descricao)} icon={<FileText size={13} />} />
-              <DR label="Anotação" value={fmt(d.anotacaoNegocio ?? d.anotacao)} icon={<FileText size={13} />} />
-              <DR label="Motivo perdido" value={fmt(d.motivoPerdidoNegocio ?? d.motivoPerdido)} icon={<FileText size={13} />} />
-              <DR label="Data prevista" value={fmtDate(d.dataPrevistaNegocio)} icon={<Calendar size={13} />} />
-              <DR label="Data fechamento" value={fmtDate(d.dataFechamento)} icon={<Calendar size={13} />} />
-              <DR label="Criado em" value={fmtDate(d.dataCriacao ?? d.cadastradoEm)} icon={<Calendar size={13} />} />
-              <DR label="Atualizado em" value={fmtDate(d.dataAlteracao ?? d.ultimaAtualizacao)} icon={<Calendar size={13} />} />
-              {d.sinalizaoNegocio != null && (
-                <DR label="Sinalização" value={d.sinalizaoNegocio ? 'Sim' : 'Não'} icon={<Hash size={13} />} />
-              )}
-            </div>
-          )}
-        </DetailPanel>
-      )}
     </div>
   );
 }
 
 function MensagensTab() {
   const [page, setPage] = useState(1);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const { data, isLoading, isFetching } = useIbMensagens({ page });
-  const { data: detail, isLoading: loadingDetail } = useIbMensagem(selectedId);
+  const { data: detail, isLoading: loadingDetail } = useIbMensagem(expandedId);
   const rs   = data?.result_set;
   const list: any[] = rs?.data ?? [];
   const deleteMutation = useIbDeleteMensagem();
@@ -431,11 +414,12 @@ function MensagensTab() {
         <p className="text-center py-12 text-muted-foreground">Nenhuma mensagem encontrada.</p>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">Clique numa linha para ler a mensagem completa com dados do contato</p>
+          <p className="text-xs text-muted-foreground">{list.length} registros · clique numa linha para expandir</p>
           <div className="overflow-x-auto rounded-xl border border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-white/[0.06]">
                 <tr className="text-left">
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-6"></th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Imóvel</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Data</th>
@@ -446,26 +430,56 @@ function MensagensTab() {
               <tbody className="divide-y divide-white/5">
                 {list.map((m: any) => {
                   const id = m.codigoMensagem ?? m.codigo;
+                  const open = expandedId === id;
                   return (
-                    <tr
-                      key={id}
-                      onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; setSelectedId(selectedId === id ? null : id); }}
-                      className={`cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
-                    >
-                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{m.codigoImovel ? `#${m.codigoImovel}` : '-'}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(m.dataRecebimentoMensagem)}</td>
-                      <td className="px-4 py-3 text-foreground">{m.assunto ?? <span className="text-muted-foreground italic text-xs">(sem assunto)</span>}</td>
-                      <td className="px-4 py-3 text-right">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                          onClick={(e) => { e.stopPropagation(); if (id && confirm('Excluir mensagem ' + id + '?')) { deleteMutation.mutate(Number(id), { onSuccess: () => toast.success('Mensagem excluída'), onError: () => toast.error('Erro ao excluir mensagem') }); } }}
-                          className="p-1.5 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30"
-                        >
-                          <Trash2 size={13} />
-                        </motion.button>
-                      </td>
-                    </tr>
+                    <AnimatePresence key={id} mode="wait">
+                      <tr
+                        onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; setExpandedId(open ? null : id); }}
+                        className={`cursor-pointer transition-colors ${open ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
+                      >
+                        <td className="px-4 py-3">
+                          <ChevronRight size={14} className={`text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{m.codigoImovel ? `#${m.codigoImovel}` : '-'}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(m.dataRecebimentoMensagem)}</td>
+                        <td className="px-4 py-3 text-foreground">{m.assunto ?? <span className="text-muted-foreground italic text-xs">(sem assunto)</span>}</td>
+                        <td className="px-4 py-3 text-right">
+                          <motion.button
+                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                            onClick={(e) => { e.stopPropagation(); if (id && confirm('Excluir mensagem ' + id + '?')) { deleteMutation.mutate(Number(id), { onSuccess: () => toast.success('Mensagem excluída'), onError: () => toast.error('Erro ao excluir mensagem') }); } }}
+                            className="p-1.5 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                          >
+                            <Trash2 size={13} />
+                          </motion.button>
+                        </td>
+                      </tr>
+                      {open && (
+                        <ExpandedRow colSpan={6} loading={loadingDetail}>
+                          {d && (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
+                                <DK label="Contato" value={fmt(d.nomeContato)} />
+                                <DK label="E-mail" value={fmt(d.emailContato)} />
+                                <DK label="Telefone" value={fmtPhone(d.telefoneContato)} />
+                                <DK label="Tipo" value={fmt(d.tipoMensagem)} />
+                                <DK label="Lida" value={d.lido ? 'Sim' : 'Não'} />
+                                <DK label="Imóvel" value={d.codigoImovel ? `#${d.codigoImovel}` : '-'} />
+                                <DK label="Data recebimento" value={fmtDate(d.dataRecebimentoMensagem)} />
+                              </div>
+                              {(d.mensagem || d.texto || d.corpo) && (
+                                <div className="pt-3 border-t border-white/10">
+                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Conteúdo</p>
+                                  <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-sm text-foreground whitespace-pre-wrap break-words">
+                                    {d.mensagem ?? d.texto ?? d.corpo}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </ExpandedRow>
+                      )}
+                    </AnimatePresence>
                   );
                 })}
               </tbody>
@@ -474,39 +488,14 @@ function MensagensTab() {
           <Pagination page={page} onPrev={() => setPage((p) => Math.max(1, p - 1))} onNext={() => setPage((p) => p + 1)} hasMore={list.length >= 20} />
         </>
       )}
-
-      {selectedId !== null && (
-        <DetailPanel title="Detalhes da Mensagem" onClose={() => setSelectedId(null)} loading={loadingDetail}>
-          {d && (
-            <div className="space-y-1">
-              <DR label="Assunto" value={fmt(d.assunto)} icon={<MessageSquare size={13} />} />
-              <DR label="Tipo" value={fmt(d.tipoMensagem)} icon={<FileText size={13} />} />
-              <DR label="Lida" value={d.lido ? 'Sim' : 'Não'} icon={<CheckCircle2 size={13} />} />
-              <DR label="Contato" value={fmt(d.nomeContato)} icon={<User size={13} />} />
-              <DR label="E-mail contato" value={fmt(d.emailContato)} icon={<Mail size={13} />} />
-              <DR label="Telefone contato" value={fmtPhone(d.telefoneContato)} icon={<Phone size={13} />} />
-              <DR label="Imóvel" value={d.codigoImovel ? `#${d.codigoImovel}` : '-'} icon={<Hash size={13} />} />
-              <DR label="Data recebimento" value={fmtDate(d.dataRecebimentoMensagem)} icon={<Calendar size={13} />} />
-              {(d.mensagem ?? d.texto ?? d.corpo) && (
-                <div className="mt-3">
-                  <p className="text-xs text-muted-foreground mb-1">Conteúdo</p>
-                  <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-sm text-foreground whitespace-pre-wrap break-words">
-                    {d.mensagem ?? d.texto ?? d.corpo}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </DetailPanel>
-      )}
     </div>
   );
 }
 
 function CorretoresTab() {
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const { data, isLoading } = useIbCorretores();
-  const { data: detail, isLoading: loadingDetail } = useIbCorretor(selectedId);
+  const { data: detail, isLoading: loadingDetail } = useIbCorretor(expandedId);
   const rs   = data?.result_set;
   const list: any[] = rs?.data ?? (Array.isArray(rs) ? rs : []);
   const d    = detail?.result_set as any;
@@ -520,14 +509,16 @@ function CorretoresTab() {
         <p className="text-center py-12 text-muted-foreground">Nenhum corretor encontrado.</p>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">Clique numa linha para detalhes completos do corretor</p>
+          <p className="text-xs text-muted-foreground">{list.length} registros · clique numa linha para expandir</p>
           <div className="overflow-x-auto rounded-xl border border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-white/[0.06]">
                 <tr className="text-left">
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-6"></th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Nome</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Razão Social</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">CRECI</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Tipo</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
                 </tr>
@@ -535,22 +526,51 @@ function CorretoresTab() {
               <tbody className="divide-y divide-white/5">
                 {list.map((c: any) => {
                   const id = c.codigoCorretor ?? c.codigo;
+                  const open = expandedId === id;
                   return (
-                    <tr
-                      key={id}
-                      onClick={() => setSelectedId(selectedId === id ? null : id)}
-                      className={`cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
-                    >
-                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
-                      <td className="px-4 py-3 text-foreground font-medium">{c.nome ?? '-'}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{c.razaoSocial ?? c.nomeFantasia ?? '-'}</td>
-                      <td className="px-4 py-3 text-foreground text-xs">{c.tipoPessoa === 'F' ? 'PF' : c.tipoPessoa === 'J' ? 'PJ' : (c.tipoPessoa ?? '-')}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c.statusCorretor ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                          {c.statusCorretor ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </td>
-                    </tr>
+                    <AnimatePresence key={id} mode="wait">
+                      <tr
+                        onClick={() => setExpandedId(open ? null : id)}
+                        className={`cursor-pointer transition-colors ${open ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
+                      >
+                        <td className="px-4 py-3">
+                          <ChevronRight size={14} className={`text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
+                        <td className="px-4 py-3 text-foreground font-medium">{c.nome ?? '-'}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{c.razaoSocial ?? c.nomeFantasia ?? '-'}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">-</td>
+                        <td className="px-4 py-3 text-foreground text-xs">{c.tipoPessoa === 'F' ? 'PF' : c.tipoPessoa === 'J' ? 'PJ' : (c.tipoPessoa ?? '-')}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c.statusCorretor ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {c.statusCorretor ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </td>
+                      </tr>
+                      {open && (
+                        <ExpandedRow colSpan={7} loading={loadingDetail}>
+                          {d && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
+                              <DK label="CRECI" value={fmt(d.creciCorretor ?? d.creci)} />
+                              <DK label="Tipo" value={d.tipoPessoa === 'F' ? 'Pessoa Física' : d.tipoPessoa === 'J' ? 'Pessoa Jurídica' : fmt(d.tipoPessoa)} />
+                              <DK label="CPF" value={fmtCpfCnpj(d.cpf)} />
+                              <DK label="CNPJ" value={fmtCpfCnpj(d.cnpj)} />
+                              <DK label="E-mail" value={fmt(d.email)} />
+                              {phones.map((ph: any, i: number) => (
+                                <DK key={i} label={`Telefone ${i + 1}`} value={fmtPhone(ph)} />
+                              ))}
+                              <DK label="Referência" value={fmt(d.referenciaCorretor)} />
+                              <DK label="Logradouro" value={[d.logradouro, d.numeroResidencia ? `nº ${d.numeroResidencia}` : null].filter(Boolean).join(', ')} />
+                              <DK label="Bairro" value={fmt(d.bairro)} />
+                              <DK label="Cidade/UF" value={[d.cidade, d.estado].filter(Boolean).join(' - ')} />
+                              <DK label="CEP" value={fmt(d.cep)} />
+                              <DK label="Cadastrado em" value={fmtDate(d.cadastradoEm)} />
+                              <DK label="Atualizado em" value={fmtDate(d.ultimaAtualizacao)} />
+                            </div>
+                          )}
+                        </ExpandedRow>
+                      )}
+                    </AnimatePresence>
                   );
                 })}
               </tbody>
@@ -558,50 +578,15 @@ function CorretoresTab() {
           </div>
         </>
       )}
-
-      {selectedId !== null && (
-        <DetailPanel title="Detalhes do Corretor" onClose={() => setSelectedId(null)} loading={loadingDetail}>
-          {d && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
-                  <UserCog size={22} className="text-emerald-400" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">{fmt(d.nome ?? d.nomeCorretor)}</p>
-                  {d.razaoSocial && <p className="text-xs text-muted-foreground">{d.razaoSocial}</p>}
-                  {d.nomeFantasia && <p className="text-xs text-muted-foreground">{d.nomeFantasia}</p>}
-                </div>
-              </div>
-              <DR label="CRECI" value={fmt(d.creciCorretor ?? d.creci)} icon={<Hash size={13} />} />
-              <DR label="Tipo pessoa" value={d.tipoPessoa === 'F' ? 'Física' : d.tipoPessoa === 'J' ? 'Jurídica' : fmt(d.tipoPessoa)} icon={<User size={13} />} />
-              <DR label="CPF" value={fmtCpfCnpj(d.cpf)} icon={<Hash size={13} />} />
-              <DR label="CNPJ" value={fmtCpfCnpj(d.cnpj)} icon={<Hash size={13} />} />
-              <DR label="E-mail" value={fmt(d.email)} icon={<Mail size={13} />} />
-              {phones.map((ph: any, i: number) => (
-                <DR key={i} label={`Telefone ${i + 1}`} value={fmtPhone(ph)} icon={<Phone size={13} />} />
-              ))}
-              <DR label="Status" value={d.statusCorretor ? 'Ativo' : 'Inativo'} icon={<CheckCircle2 size={13} />} />
-              <DR label="Referência" value={fmt(d.referenciaCorretor)} icon={<FileText size={13} />} />
-              <DR label="Logradouro" value={[d.logradouro, d.numeroResidencia ? `nº ${d.numeroResidencia}` : null].filter(Boolean).join(', ')} icon={<MapPinIcon size={13} />} />
-              <DR label="Bairro" value={fmt(d.bairro)} icon={<MapPinIcon size={13} />} />
-              <DR label="Cidade/UF" value={[d.cidade, d.estado].filter(Boolean).join(' - ')} icon={<MapPinIcon size={13} />} />
-              <DR label="CEP" value={fmt(d.cep)} icon={<MapPinIcon size={13} />} />
-              <DR label="Cadastrado em" value={fmtDate(d.cadastradoEm)} icon={<Calendar size={13} />} />
-              <DR label="Atualizado em" value={fmtDate(d.ultimaAtualizacao)} icon={<Calendar size={13} />} />
-            </div>
-          )}
-        </DetailPanel>
-      )}
     </div>
   );
 }
 
 function ClientesTab() {
   const [page, setPage] = useState(1);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const { data, isLoading, isFetching } = useIbClientes({ page });
-  const { data: detail, isLoading: loadingDetail } = useIbCliente(selectedId);
+  const { data: detail, isLoading: loadingDetail } = useIbCliente(expandedId);
   const rs   = data?.result_set;
   const list: any[] = rs?.data ?? [];
   const d    = detail?.result_set as any;
@@ -615,11 +600,12 @@ function ClientesTab() {
         <p className="text-center py-12 text-muted-foreground">Nenhum cliente encontrado.</p>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">Clique numa linha para detalhes completos do cliente</p>
+          <p className="text-xs text-muted-foreground">{list.length} registros · clique numa linha para expandir</p>
           <div className="overflow-x-auto rounded-xl border border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-white/[0.06]">
                 <tr className="text-left">
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-6"></th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Nome</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Razão Social</th>
@@ -630,22 +616,50 @@ function ClientesTab() {
               <tbody className="divide-y divide-white/5">
                 {list.map((c: any) => {
                   const id = c.codigoCliente ?? c.codigo;
+                  const open = expandedId === id;
                   return (
-                    <tr
-                      key={id}
-                      onClick={() => setSelectedId(selectedId === id ? null : id)}
-                      className={`cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
-                    >
-                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
-                      <td className="px-4 py-3 text-foreground font-medium">{c.nome ?? '-'}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{c.razaoSocial ?? c.nomeFantasia ?? '-'}</td>
-                      <td className="px-4 py-3 text-foreground text-xs">{c.tipoPessoa === 'F' ? 'PF' : c.tipoPessoa === 'J' ? 'PJ' : (c.tipoPessoa ?? '-')}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c.statusCliente ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                          {c.statusCliente ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </td>
-                    </tr>
+                    <AnimatePresence key={id} mode="wait">
+                      <tr
+                        onClick={() => setExpandedId(open ? null : id)}
+                        className={`cursor-pointer transition-colors ${open ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
+                      >
+                        <td className="px-4 py-3">
+                          <ChevronRight size={14} className={`text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
+                        <td className="px-4 py-3 text-foreground font-medium">{c.nome ?? '-'}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{c.razaoSocial ?? c.nomeFantasia ?? '-'}</td>
+                        <td className="px-4 py-3 text-foreground text-xs">{c.tipoPessoa === 'F' ? 'PF' : c.tipoPessoa === 'J' ? 'PJ' : (c.tipoPessoa ?? '-')}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c.statusCliente ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {c.statusCliente ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </td>
+                      </tr>
+                      {open && (
+                        <ExpandedRow colSpan={6} loading={loadingDetail}>
+                          {d && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
+                              <DK label="Tipo" value={d.tipoPessoa === 'F' ? 'Pessoa Física' : d.tipoPessoa === 'J' ? 'Pessoa Jurídica' : fmt(d.tipoPessoa)} />
+                              <DK label="CPF" value={fmtCpfCnpj(d.cpf)} />
+                              <DK label="CNPJ" value={fmtCpfCnpj(d.cnpj)} />
+                              <DK label="E-mail" value={fmt(d.email)} />
+                              {phones.map((ph: any, i: number) => (
+                                <DK key={i} label={`Telefone ${i + 1}`} value={fmtPhone(ph)} />
+                              ))}
+                              <DK label="Referência" value={fmt(d.referenciaCliente)} />
+                              <DK label="Corretor" value={fmt(d.codigoCorretor)} />
+                              <DK label="Logradouro" value={[d.logradouro, d.numeroResidencia ? `nº ${d.numeroResidencia}` : null].filter(Boolean).join(', ')} />
+                              <DK label="Bairro" value={fmt(d.bairro)} />
+                              <DK label="Cidade/UF" value={[d.cidade, d.estado].filter(Boolean).join(' - ')} />
+                              <DK label="CEP" value={fmt(d.cep)} />
+                              <DK label="Cadastrado em" value={fmtDate(d.cadastradoEm)} />
+                              <DK label="Atualizado em" value={fmtDate(d.ultimaAtualizacao)} />
+                            </div>
+                          )}
+                        </ExpandedRow>
+                      )}
+                    </AnimatePresence>
                   );
                 })}
               </tbody>
@@ -653,41 +667,6 @@ function ClientesTab() {
           </div>
           <Pagination page={page} onPrev={() => setPage((p) => Math.max(1, p - 1))} onNext={() => setPage((p) => p + 1)} hasMore={list.length >= 20} />
         </>
-      )}
-
-      {selectedId !== null && (
-        <DetailPanel title="Detalhes do Cliente" onClose={() => setSelectedId(null)} loading={loadingDetail}>
-          {d && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
-                  <User size={22} className="text-purple-400" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">{fmt(d.nome ?? d.nomeCliente ?? d.nomeResponsavel)}</p>
-                  {d.razaoSocial && <p className="text-xs text-muted-foreground">{d.razaoSocial}</p>}
-                  {d.nomeFantasia && <p className="text-xs text-muted-foreground">{d.nomeFantasia}</p>}
-                </div>
-              </div>
-              <DR label="Tipo pessoa" value={d.tipoPessoa === 'F' ? 'Física' : d.tipoPessoa === 'J' ? 'Jurídica' : fmt(d.tipoPessoa)} icon={<User size={13} />} />
-              <DR label="CPF" value={fmtCpfCnpj(d.cpf)} icon={<Hash size={13} />} />
-              <DR label="CNPJ" value={fmtCpfCnpj(d.cnpj)} icon={<Hash size={13} />} />
-              <DR label="E-mail" value={fmt(d.email)} icon={<Mail size={13} />} />
-              {phones.map((ph: any, i: number) => (
-                <DR key={i} label={`Telefone ${i + 1}`} value={fmtPhone(ph)} icon={<Phone size={13} />} />
-              ))}
-              <DR label="Status" value={d.statusCliente ? 'Ativo' : 'Inativo'} icon={<CheckCircle2 size={13} />} />
-              <DR label="Referência" value={fmt(d.referenciaCliente)} icon={<FileText size={13} />} />
-              <DR label="Corretor" value={fmt(d.codigoCorretor)} icon={<UserCog size={13} />} />
-              <DR label="Logradouro" value={[d.logradouro, d.numeroResidencia ? `nº ${d.numeroResidencia}` : null].filter(Boolean).join(', ')} icon={<MapPinIcon size={13} />} />
-              <DR label="Bairro" value={fmt(d.bairro)} icon={<MapPinIcon size={13} />} />
-              <DR label="Cidade/UF" value={[d.cidade, d.estado].filter(Boolean).join(' - ')} icon={<MapPinIcon size={13} />} />
-              <DR label="CEP" value={fmt(d.cep)} icon={<MapPinIcon size={13} />} />
-              <DR label="Cadastrado em" value={fmtDate(d.cadastradoEm)} icon={<Calendar size={13} />} />
-              <DR label="Atualizado em" value={fmtDate(d.ultimaAtualizacao)} icon={<Calendar size={13} />} />
-            </div>
-          )}
-        </DetailPanel>
       )}
     </div>
   );
