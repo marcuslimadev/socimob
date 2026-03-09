@@ -177,7 +177,16 @@ function PessoasTab() {
   const total = rs?.total_items ?? list.length;
   const d     = detail?.result_set as any;
   const phones = d ? [d.telefone1, d.telefone2, d.telefone3].filter(Boolean) : [];
-  const enderecos: any[] = d && Array.isArray(d.endereco) ? d.endereco : [];
+  const enderecos: any[] = d?.endereco && typeof d.endereco === 'object'
+    ? (Array.isArray(d.endereco) ? d.endereco : [d.endereco])
+    : [];
+  const tipoCadastroLabels: Record<string, string> = {
+    cliente: 'Cliente', corretor: 'Corretor', proprietario: 'Proprietário',
+    locatario: 'Locatário', interessado: 'Interessado', outros: 'Outros',
+  };
+  const tiposCadastro: string[] = d?.tipoCadastro
+    ? Object.entries(d.tipoCadastro).filter(([, v]) => v === true).map(([k]) => tipoCadastroLabels[k] ?? k)
+    : [];
 
   return (
     <div className="space-y-4">
@@ -262,10 +271,16 @@ function PessoasTab() {
                 </div>
               </div>
               <DR label="Tipo" value={d.tipoPessoa === 'F' ? 'Pessoa Física' : d.tipoPessoa === 'J' ? 'Pessoa Jurídica' : fmt(d.tipoPessoa)} icon={<User size={13} />} />
+              {tiposCadastro.length > 0 && (
+                <div className="flex flex-wrap gap-1 py-1">
+                  {tiposCadastro.map((t) => (
+                    <span key={t} className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300">{t}</span>
+                  ))}
+                </div>
+              )}
               <DR label="CPF" value={fmtCpfCnpj(d.cpf)} icon={<Hash size={13} />} />
               <DR label="CNPJ" value={fmtCpfCnpj(d.cnpj)} icon={<Hash size={13} />} />
               <DR label="RG" value={fmt(d.rg)} icon={<Hash size={13} />} />
-              <DR label="E-mail" value={fmt(d.email)} icon={<Mail size={13} />} />
               {phones.map((ph: any, i: number) => (
                 <DR key={i} label={`Telefone ${i + 1}`} value={fmtPhone(ph)} icon={<Phone size={13} />} />
               ))}
