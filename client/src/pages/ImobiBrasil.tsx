@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2,
@@ -85,6 +85,22 @@ function fmtDate(v: any) {
   return String(v).slice(0, 10).split('-').reverse().join('/');
 }
 
+function WaIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current" aria-hidden="true">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+    </svg>
+  );
+}
+
+function openWa(phone: any, name?: string) {
+  const digits = String(phone ?? '').replace(/\D/g, '');
+  if (!digits) return;
+  const wa = digits.startsWith('55') ? digits : `55${digits}`;
+  const text = name ? encodeURIComponent(`Olá ${name}!`) : '';
+  window.open(`https://wa.me/${wa}${text ? `?text=${text}` : ''}`, '_blank');
+}
+
 function DK({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
@@ -163,6 +179,7 @@ function PessoasTab() {
   const [search, setSearch] = useState('');
   const [inputVal, setInputVal] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [waTargetId, setWaTargetId] = useState<number | null>(null);
   const { data, isLoading, isFetching } = useIbPessoas({ page, nomeResponsavel: search || undefined });
   const { data: detail, isLoading: loadingDetail } = useIbPessoa(expandedId);
   const rs    = data?.result_set;
@@ -170,6 +187,13 @@ function PessoasTab() {
   const total = rs?.total_items ?? list.length;
   const d     = detail?.result_set as any;
   const phones = d ? [d.telefone1, d.telefone2, d.telefone3].filter(Boolean) : [];
+
+  useEffect(() => {
+    if (!waTargetId || !d) return;
+    const phone = d.telefone1 || d.telefone2 || d.telefone3;
+    if (phone) { openWa(phone, d.nomeResponsavel); }
+    setWaTargetId(null);
+  }, [d, waTargetId]);
   const enderecos: any[] = d?.endereco && typeof d.endereco === 'object'
     ? (Array.isArray(d.endereco) ? d.endereco : [d.endereco])
     : [];
@@ -218,9 +242,9 @@ function PessoasTab() {
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-6"></th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Nome</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Telefone</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Cadastrado</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -238,13 +262,24 @@ function PessoasTab() {
                         </td>
                         <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
                         <td className="px-4 py-3 text-foreground font-medium">{p.nomeResponsavel ?? '-'}</td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">-</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${p.statusPessoa ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
                             {p.statusPessoa ? 'Ativo' : 'Inativo'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(p.cadastradoEm)}</td>
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <motion.button
+                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                            title="WhatsApp"
+                            onClick={() => { setExpandedId(id); setWaTargetId(id); }}
+                            className="p-1.5 rounded-lg bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/30 flex items-center justify-center"
+                          >
+                            {loadingDetail && expandedId === id && waTargetId === id
+                              ? <Loader2 size={13} className="animate-spin" />
+                              : <WaIcon />}
+                          </motion.button>
+                        </td>
                       </tr>
                       {open && (
                         <ExpandedRow colSpan={6} loading={loadingDetail}>
@@ -494,12 +529,20 @@ function MensagensTab() {
 
 function CorretoresTab() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [waTargetId, setWaTargetId] = useState<number | null>(null);
   const { data, isLoading } = useIbCorretores();
   const { data: detail, isLoading: loadingDetail } = useIbCorretor(expandedId);
   const rs   = data?.result_set;
   const list: any[] = rs?.data ?? (Array.isArray(rs) ? rs : []);
   const d    = detail?.result_set as any;
   const phones = d ? [d.telefone1, d.telefone2, d.telefone3].filter(Boolean) : [];
+
+  useEffect(() => {
+    if (!waTargetId || !d) return;
+    const phone = d.telefone1 || d.telefone2 || d.telefone3;
+    if (phone) { openWa(phone, d.nome); }
+    setWaTargetId(null);
+  }, [d, waTargetId]);
 
   return (
     <div className="space-y-4">
@@ -521,6 +564,7 @@ function CorretoresTab() {
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">CRECI</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Tipo</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -546,9 +590,21 @@ function CorretoresTab() {
                             {c.statusCorretor ? 'Ativo' : 'Inativo'}
                           </span>
                         </td>
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <motion.button
+                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                            title="WhatsApp"
+                            onClick={() => { setExpandedId(id); setWaTargetId(id); }}
+                            className="p-1.5 rounded-lg bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/30 flex items-center justify-center"
+                          >
+                            {loadingDetail && expandedId === id && waTargetId === id
+                              ? <Loader2 size={13} className="animate-spin" />
+                              : <WaIcon />}
+                          </motion.button>
+                        </td>
                       </tr>
                       {open && (
-                        <ExpandedRow colSpan={7} loading={loadingDetail}>
+                        <ExpandedRow colSpan={8} loading={loadingDetail}>
                           {d && (
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
                               <DK label="CRECI" value={fmt(d.creciCorretor ?? d.creci)} />
@@ -585,12 +641,20 @@ function CorretoresTab() {
 function ClientesTab() {
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [waTargetId, setWaTargetId] = useState<number | null>(null);
   const { data, isLoading, isFetching } = useIbClientes({ page });
   const { data: detail, isLoading: loadingDetail } = useIbCliente(expandedId);
   const rs   = data?.result_set;
   const list: any[] = rs?.data ?? [];
   const d    = detail?.result_set as any;
   const phones = d ? [d.telefone1, d.telefone2, d.telefone3].filter(Boolean) : [];
+
+  useEffect(() => {
+    if (!waTargetId || !d) return;
+    const phone = d.telefone1 || d.telefone2 || d.telefone3;
+    if (phone) { openWa(phone, d.nome ?? d.nomeResponsavel); }
+    setWaTargetId(null);
+  }, [d, waTargetId]);
 
   return (
     <div className="space-y-4">
@@ -611,6 +675,7 @@ function ClientesTab() {
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Razão Social</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Tipo</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -635,9 +700,21 @@ function ClientesTab() {
                             {c.statusCliente ? 'Ativo' : 'Inativo'}
                           </span>
                         </td>
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <motion.button
+                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                            title="WhatsApp"
+                            onClick={() => { setExpandedId(id); setWaTargetId(id); }}
+                            className="p-1.5 rounded-lg bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/30 flex items-center justify-center"
+                          >
+                            {loadingDetail && expandedId === id && waTargetId === id
+                              ? <Loader2 size={13} className="animate-spin" />
+                              : <WaIcon />}
+                          </motion.button>
+                        </td>
                       </tr>
                       {open && (
-                        <ExpandedRow colSpan={6} loading={loadingDetail}>
+                        <ExpandedRow colSpan={7} loading={loadingDetail}>
                           {d && (
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
                               <DK label="Tipo" value={d.tipoPessoa === 'F' ? 'Pessoa Física' : d.tipoPessoa === 'J' ? 'Pessoa Jurídica' : fmt(d.tipoPessoa)} />
