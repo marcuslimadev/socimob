@@ -64,4 +64,16 @@ $router->group(['prefix' => 'api/portal', 'middleware' => 'resolve-tenant'], fun
     $router->post('/chamados', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChamadosController@store']);
     $router->get('/chamados/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChamadosController@mensagens']);
     $router->post('/chamados/{id}/mensagens', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\ChamadosController@adicionarMensagem']);
+
+    // ── Portal do Proprietário ───────────────────────────────────────────────
+    // Uses shared simple-auth + validate-tenant-auth; owner is identified by
+    // their linked Pessoa record (locador_pessoa_id on ContratoLocacao).
+    $router->post('/proprietario/auth/login', 'App\Http\Controllers\Portal\ProprietarioAuthController@login');
+
+    $router->get('/proprietario/dashboard',      ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\PortalProprietarioController@dashboard']);
+    $router->get('/proprietario/contratos',      ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\PortalProprietarioController@contratos']);
+    $router->get('/proprietario/contratos/{id}', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\PortalProprietarioController@contrato']);
+    $router->get('/proprietario/repasses',       ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\PortalProprietarioController@repasses']);
+    $router->get('/proprietario/cobrancas',      ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\PortalProprietarioController@cobrancas']);
 });
+

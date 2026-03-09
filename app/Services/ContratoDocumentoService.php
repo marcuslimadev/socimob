@@ -1,0 +1,80 @@
+<?php
+namespace App\Services;
+
+use App\Models\ContratoDocumento;
+use App\Models\ContratoLocacao;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+/**
+ * Generates and manages PDF documents for rental contracts.
+ */
+class ContratoDocumentoService
+{
+    /**
+     * Map of document types to Blade template paths.
+     */
+    private const TEMPLATES = [
+        'contrato' => 'pdfs.contratos.contrato',
+        'aditivo' => 'pdfs.contratos.aditivo',
+        'rescisao' => 'pdfs.contratos.rescisao',
+        'renovacao' => 'pdfs.contratos.renovacao',
+        'recibo' => 'pdfs.contratos.recibo',
+    ];
+
+    public function gerarPdf(ContratoLocacao $contrato, string $tipo, ?string $template = null): ContratoDocumento
+    {
+        $viewName = $template ?? (self::TEMPLATES[$tipo] ?? self::TEMPLATES['contrato']);
+
+        $pdf = Pdf::loadView($viewName, [
+            'contrato' => $contrato,
+            'locador' => $contrato->locador,
+            'locatario' => $contrato->locatario,
+            'imovel' => $contrato->imovel,
+            'fiadores' => $contrato->fiadores,
+            'geradoEm' => now(),
+        ]);
+
+        $filename = sprintf(
+            'contratos/%d/%s-%s-%s.pdf',
+            $contrato->tenant_id,
+            $contrato->id,
+            $tipo,
+            now()->format('YmdHis'),
+        );
+
+        Storage::disk('public')->put($filename, $pdf->output());
+
+        return ContratoDocumento::create([
+            'tenant_id' => $contrato->tenant_id,
+            'contrato_id' => $contrato->id,
+            'tipo' => $tipo,
+            'nome' => $this->nomeAmigavel($tipo, $contrato),
+            'arquivo_path' => $filename,
+            'assinatura_status' => 'nao_enviado',
+        ]);
+    }
+
+    public function excluir(ContratoDocumento $documento): void
+    {
+        Storage::disk('public')->delete($documento->arquivo_path);
+        $documento->delete();
+    }
+
+    private function nomeAmigavel(string $tipo, ContratoLocacao $contrato): string
+    {
+        $nomes = [
+            'contrato' => 'Contrato de Locação',
+            'aditivo' => 'Aditivo Contratual',
+            'rescisao' => 'Termo de Rescisão',
+            'renovacao' => 'Termo de Renovação',
+            'recibo' => 'Recibo de Locação',
+        ];
+
+        $nome = $nomes[$tipo] ?? Str::title($tipo);
+        $numero = $contrato->numero_contrato ?? $contrato->id;
+
+        return "{$nome} - Contrato #{$numero}";
+    }
+}

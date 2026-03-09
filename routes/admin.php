@@ -231,4 +231,52 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
             'message' => 'Anúncio excluído com sucesso'
         ]);
     });
+
+    // ── Gestão de Locação ────────────────────────────────────────────────────
+
+    // Contratos - extended actions
+    $router->delete('/financeiro/contratos/{id}',            'App\Http\Controllers\Admin\ContratosLocacaoController@destroy');
+    $router->post('/financeiro/contratos/{id}/encerrar',     'App\Http\Controllers\Admin\ContratosLocacaoController@encerrar');
+    $router->post('/financeiro/contratos/{id}/renovar',      'App\Http\Controllers\Admin\ContratosLocacaoController@renovar');
+
+    // Cobrancas - extended actions
+    $router->get('/financeiro/cobrancas-contrato/{id}',          'App\Http\Controllers\Admin\CobrancasContratoController@show');
+    $router->put('/financeiro/cobrancas-contrato/{id}',          'App\Http\Controllers\Admin\CobrancasContratoController@update');
+    $router->get('/financeiro/cobrancas-contrato/inadimplencia', 'App\Http\Controllers\Admin\CobrancasContratoController@inadimplencia');
+
+    // Fiadores do contrato
+    $router->get('/financeiro/contratos/{contratoId}/fiadores',          'App\Http\Controllers\Admin\ContratoFiadoresController@index');
+    $router->post('/financeiro/contratos/{contratoId}/fiadores',         'App\Http\Controllers\Admin\ContratoFiadoresController@store');
+    $router->delete('/financeiro/contratos/{contratoId}/fiadores/{id}',  'App\Http\Controllers\Admin\ContratoFiadoresController@destroy');
+
+    // Reajustes do contrato
+    $router->get('/financeiro/contratos/{contratoId}/reajustes',         'App\Http\Controllers\Admin\ReajusteContratoController@index');
+    $router->get('/financeiro/contratos/{contratoId}/reajustes/preview', 'App\Http\Controllers\Admin\ReajusteContratoController@preview');
+    $router->post('/financeiro/contratos/{contratoId}/reajustes',        'App\Http\Controllers\Admin\ReajusteContratoController@aplicar');
+
+    // Repasses ao proprietário
+    $router->get('/financeiro/repasses',                             'App\Http\Controllers\Admin\RepasseProprietarioController@index');
+    $router->get('/financeiro/repasses/{id}',                        'App\Http\Controllers\Admin\RepasseProprietarioController@show');
+    $router->post('/financeiro/repasses/{id}/pagar',                 'App\Http\Controllers\Admin\RepasseProprietarioController@pagar');
+    $router->get('/financeiro/contratos/{contratoId}/repasses/extrato', 'App\Http\Controllers\Admin\RepasseProprietarioController@extrato');
+
+    // Documentos do contrato (PDF + Assinatura Digital)
+    $router->get('/financeiro/contratos/{contratoId}/documentos',                             'App\Http\Controllers\Admin\ContratoDocumentosController@index');
+    $router->post('/financeiro/contratos/{contratoId}/documentos/gerar-pdf',                  'App\Http\Controllers\Admin\ContratoDocumentosController@gerarPdf');
+    $router->post('/financeiro/contratos/{contratoId}/documentos/{id}/enviar-assinatura',     'App\Http\Controllers\Admin\ContratoDocumentosController@enviarParaAssinatura');
+    $router->delete('/financeiro/contratos/{contratoId}/documentos/{id}',                     'App\Http\Controllers\Admin\ContratoDocumentosController@destroy');
+
+    // Fotos de vistoria
+    $router->get('/vistorias/{vistoriaId}/fotos',          'App\Http\Controllers\Admin\VistoriaFotoController@index');
+    $router->post('/vistorias/{vistoriaId}/fotos',         'App\Http\Controllers\Admin\VistoriaFotoController@store');
+    $router->patch('/vistorias/{vistoriaId}/fotos/{id}',   'App\Http\Controllers\Admin\VistoriaFotoController@update');
+    $router->delete('/vistorias/{vistoriaId}/fotos/{id}',  'App\Http\Controllers\Admin\VistoriaFotoController@destroy');
+
+    // Pessoas (inquilinos e proprietários)
+    $router->get('/pessoas',         'App\Http\Controllers\Admin\PessoasController@index');
+    $router->post('/pessoas',        'App\Http\Controllers\Admin\PessoasController@store');
+    $router->get('/pessoas/{id}',    'App\Http\Controllers\Admin\PessoasController@show');
+    $router->put('/pessoas/{id}',    'App\Http\Controllers\Admin\PessoasController@update');
+    $router->delete('/pessoas/{id}', 'App\Http\Controllers\Admin\PessoasController@destroy');
 });
+

@@ -54,6 +54,8 @@ const Analytics = lazy(() => import("./pages/Analytics"));
 const ControleChaves = lazy(() => import("./pages/ControleChaves"));
 const SimulacaoFinanciamento = lazy(() => import("./pages/SimulacaoFinanciamento"));const ImobiBrasilPage = lazy(() => import('./pages/ImobiBrasil'));const AnalyticsConsentBanner = lazy(() => import("./components/AnalyticsConsentBanner"));
 const AnalyticsTracker = lazy(() => import("./components/AnalyticsTracker"));
+const PortalProprietarioLogin = lazy(() => import('./pages/PortalProprietarioLogin'));
+const PortalProprietarioDashboard = lazy(() => import('./pages/PortalProprietarioDashboard'));
 
 // Loading fallback component
 function PageLoader() {
@@ -87,6 +89,9 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/portal/imovel/:id" component={PropertyDetail} />
+      <Route path="/portal/proprietario/login" component={PortalProprietarioLogin} />
+      <Route path="/portal/proprietario/dashboard" component={PortalProprietarioDashboard} />
+      <Route path="/portal/proprietario" component={PortalProprietarioDashboard} />
       <Route path="/portal/login" component={PortalLogin} />
       <Route path="/portal/register" component={PortalRegister} />
       <Route path="/portal/vender" component={PortalVender} />

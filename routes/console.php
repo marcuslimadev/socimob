@@ -37,3 +37,12 @@ Schedule::command('ads:backfill-leads --provider=google --hours=6')
 Schedule::command('ads:cleanup-leads')
     ->daily()
     ->withoutOverlapping();
+
+// Gestão de Locação schedules
+Schedule::command('locacao:gerar-cobrancas-mensais')
+    ->monthlyOn(1, '06:00')
+    ->withoutOverlapping();
+
+Schedule::command('locacao:enviar-notificacoes')
+    ->dailyAt('08:00')
+    ->withoutOverlapping();

@@ -341,6 +341,8 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     // Pessoas - Ações
     $router->post('/pessoas/{id}/papeis', 'App\Http\Controllers\PessoasController@gerenciarPapeis');
     $router->post('/pessoas/{id}/score', 'App\Http\Controllers\PessoasController@atualizarScore');
+    $router->post('/pessoas/{id}/sync-imobi-brasil', 'App\Http\Controllers\PessoasController@syncImobiBrasil');
+    $router->delete('/pessoas/{id}/sync-imobi-brasil', 'App\Http\Controllers\PessoasController@unsyncImobiBrasil');
 
     // Notificações
     $router->get('/notifications', 'App\Http\Controllers\NotificationController@index');
@@ -368,12 +370,71 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->delete('/imoveis/{id}', 'App\Http\Controllers\PropertyController@destroy');
     $router->post('/imoveis/ai/gerar-descricao', 'App\Http\Controllers\PropertyController@generateDescriptions');
     
-    // Integração Imobi Brasil
+    // Integração Imobi Brasil - Imóveis locais
     $router->post('/imoveis/{id}/enviar-imobi-brasil', 'App\Http\Controllers\PropertyController@enviarImobiBrasil');
     $router->put('/imoveis/{id}/atualizar-imobi-brasil', 'App\Http\Controllers\PropertyController@atualizarImobiBrasil');
     $router->get('/imoveis/{id}/status-imobi-brasil', 'App\Http\Controllers\PropertyController@statusImobiBrasil');
     $router->post('/imoveis/{id}/enviar-imagens-imobi-brasil', 'App\Http\Controllers\PropertyController@enviarImagensImobiBrasil');
     $router->get('/imoveis/{id}/listar-imagens-imobi-brasil', 'App\Http\Controllers\PropertyController@listarImagensImobiBrasil');
+
+    // ImobiBrasil - Proxy API (panel de gestão)
+    $router->group(['prefix' => 'imobi-brasil'], function () use ($router) {
+        // Conta
+        $router->get('/account/status', 'App\Http\Controllers\ImobiBrasilController@accountStatus');
+
+        // Imóveis
+        $router->get('/imoveis', 'App\Http\Controllers\ImobiBrasilController@listarImoveis');
+        $router->get('/imoveis/tipos', 'App\Http\Controllers\ImobiBrasilController@listarTiposImovel');
+        $router->get('/imoveis/{codigoImovel}', 'App\Http\Controllers\ImobiBrasilController@dadosImovel');
+        $router->delete('/imoveis/{codigoImovel}', 'App\Http\Controllers\ImobiBrasilController@excluirImovel');
+        $router->get('/imoveis/{codigoImovel}/imagens', 'App\Http\Controllers\ImobiBrasilController@listarImagensImovel');
+        $router->delete('/imoveis/{codigoImovel}/imagens/{codigoImagem}', 'App\Http\Controllers\ImobiBrasilController@excluirImagemImovel');
+
+        // Características
+        $router->get('/caracteristicas', 'App\Http\Controllers\ImobiBrasilController@listarCaracteristicas');
+        $router->post('/caracteristicas', 'App\Http\Controllers\ImobiBrasilController@inserirCaracteristica');
+        $router->delete('/caracteristicas/{codigoCaracteristica}', 'App\Http\Controllers\ImobiBrasilController@excluirCaracteristica');
+        $router->post('/imoveis/{codigoImovel}/caracteristicas/{codigoCaracteristica}', 'App\Http\Controllers\ImobiBrasilController@adicionarCaracteristicaImovel');
+        $router->delete('/imoveis/{codigoImovel}/caracteristicas/{codigoCaracteristica}', 'App\Http\Controllers\ImobiBrasilController@removerCaracteristicaImovel');
+
+        // Pessoas
+        $router->get('/pessoas', 'App\Http\Controllers\ImobiBrasilController@listarPessoas');
+        $router->post('/pessoas', 'App\Http\Controllers\ImobiBrasilController@inserirPessoa');
+        $router->get('/pessoas/{codigoPessoa}', 'App\Http\Controllers\ImobiBrasilController@dadosPessoa');
+        $router->post('/pessoas/{codigoPessoa}', 'App\Http\Controllers\ImobiBrasilController@alterarPessoa');
+        $router->delete('/pessoas/{codigoPessoa}', 'App\Http\Controllers\ImobiBrasilController@excluirPessoa');
+        $router->delete('/pessoas/{codigoPessoa}/imagem', 'App\Http\Controllers\ImobiBrasilController@excluirImagemPessoa');
+
+        // Mensagens
+        $router->get('/mensagens', 'App\Http\Controllers\ImobiBrasilController@listarMensagens');
+        $router->post('/mensagens', 'App\Http\Controllers\ImobiBrasilController@inserirMensagem');
+        $router->get('/mensagens/{codigoMensagem}', 'App\Http\Controllers\ImobiBrasilController@dadosMensagem');
+        $router->delete('/mensagens/{codigoMensagem}', 'App\Http\Controllers\ImobiBrasilController@excluirMensagem');
+        $router->post('/mensagens/{codigoMensagem}/lido', 'App\Http\Controllers\ImobiBrasilController@marcarMensagemLida');
+
+        // Negócios
+        $router->get('/negocios', 'App\Http\Controllers\ImobiBrasilController@listarNegocios');
+        $router->post('/negocios', 'App\Http\Controllers\ImobiBrasilController@inserirNegocio');
+        $router->get('/negocios/etapas', 'App\Http\Controllers\ImobiBrasilController@listarEtapasNegocios');
+        $router->get('/negocios/{codigoNegocio}', 'App\Http\Controllers\ImobiBrasilController@dadosNegocio');
+        $router->post('/negocios/{codigoNegocio}', 'App\Http\Controllers\ImobiBrasilController@alterarNegocio');
+        $router->delete('/negocios/{codigoNegocio}', 'App\Http\Controllers\ImobiBrasilController@excluirNegocio');
+
+        // Corretores
+        $router->get('/corretores', 'App\Http\Controllers\ImobiBrasilController@listarCorretores');
+        $router->get('/corretores/{codigoCorretor}', 'App\Http\Controllers\ImobiBrasilController@dadosCorretor');
+        $router->get('/corretores/{codigoCorretor}/imoveis', 'App\Http\Controllers\ImobiBrasilController@imoveisCorretor');
+
+        // Clientes
+        $router->get('/clientes', 'App\Http\Controllers\ImobiBrasilController@listarClientes');
+        $router->get('/clientes/{codigoCliente}', 'App\Http\Controllers\ImobiBrasilController@dadosCliente');
+
+        // Cidades
+        $router->get('/cidades', 'App\Http\Controllers\ImobiBrasilController@listarCidades');
+
+        // Usuários adicionais
+        $router->get('/usuarios-adicionais/{codigoUsuario}', 'App\Http\Controllers\ImobiBrasilController@dadosUsuarioAdicional');
+    });
     
     $router->get('/chaves', 'App\Http\Controllers\PropertyController@keysIndex');
     $router->get('/chaves/movimentacoes', 'App\Http\Controllers\PropertyController@keysMovements');

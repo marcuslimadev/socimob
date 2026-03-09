@@ -6,14 +6,26 @@ import { api } from '@/lib/api';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { fetchTenantBranding, type TenantBranding } from '@/lib/tenantBranding';
+import ContratoDetalheModal from '@/components/ContratoDetalheModal';
+import RescisaoModal from '@/components/RescisaoModal';
+import ReajusteModal from '@/components/ReajusteModal';
+import RenovacaoModal from '@/components/RenovacaoModal';
+import CobrancaDetalheModal from '@/components/CobrancaDetalheModal';
+import VistoriaGaleria from '@/components/VistoriaGaleria';
+import PessoaFormModal from '@/components/PessoaFormModal';
 
 interface ContratoItem {
   id: number;
   status: string;
+  numero_contrato?: string;
   inicio?: string;
   fim?: string;
   dia_vencimento?: number;
   valor_aluguel?: number;
+  tipo_garantia?: string;
+  valor_garantia?: number;
+  comissao_administracao_percentual?: number;
+  rescindido_em?: string;
   locador?: { id: number; nome: string };
   locatario?: { id: number; nome: string };
   imovel?: { id: number; titulo?: string; codigo?: string };
@@ -26,6 +38,24 @@ interface CobrancaItem {
   vencimento: string;
   status: string;
   valor_total: number;
+  valor_pago?: number;
+  multa?: number;
+  juros?: number;
+  desconto?: number;
+  data_pagamento?: string;
+  forma_pagamento?: string;
+}
+
+interface RepasseItem {
+  id: number;
+  contrato_id: number;
+  competencia: string;
+  status: string;
+  valor_aluguel_recebido: number;
+  valor_taxa_administracao: number;
+  valor_repasse: number;
+  data_pagamento?: string;
+  contrato?: { locador?: { nome: string }; imovel?: { titulo?: string; codigo?: string } };
 }
 
 interface ChamadoItem {
@@ -72,7 +102,7 @@ interface ImovelItem {
   codigo?: string;
 }
 
-type Tab = 'contratos' | 'cobrancas' | 'lancamentos' | 'chamados';
+type Tab = 'contratos' | 'cobrancas' | 'repasses' | 'lancamentos' | 'chamados';
 
 // --- Helpers de label ---
 const tipoLabel = (tipo: string) => {
@@ -267,7 +297,25 @@ export default function AdminGestaoLocacao() {
     fim: '',
     dia_vencimento: '',
     valor_aluguel: '',
+    tipo_garantia: '',
+    valor_garantia: '',
+    comissao_administracao_percentual: '',
+    indice_reajuste: '',
+    periodicidade_reajuste: '12',
+    observacoes: '',
   });
+
+  // Modal state
+  const [selectedContratoId, setSelectedContratoId] = useState<number | null>(null);
+  const [showContratoDetalhe, setShowContratoDetalhe] = useState(false);
+  const [showRescisaoModal, setShowRescisaoModal] = useState(false);
+  const [showReajusteModal, setShowReajusteModal] = useState(false);
+  const [showRenovacaoModal, setShowRenovacaoModal] = useState(false);
+  const [showVistoriaGaleria, setShowVistoriaGaleria] = useState(false);
+  const [showPessoaForm, setShowPessoaForm] = useState(false);
+  const [selectedCobranca, setSelectedCobranca] = useState<CobrancaItem | null>(null);
+  const [repasses, setRepasses] = useState<RepasseItem[]>([]);
+  const [isLoadingRepasses, setIsLoadingRepasses] = useState(false);
 
   const contratosAtivos = useMemo(() => contratos.filter((c) => c.status === 'ativo').length, [contratos]);
 
@@ -367,6 +415,22 @@ export default function AdminGestaoLocacao() {
 
   useEffect(() => { loadAll(); }, []);
 
+  const loadRepasses = async () => {
+    setIsLoadingRepasses(true);
+    try {
+      const { data } = await api.get('/admin/financeiro/repasses');
+      setRepasses(Array.isArray(data) ? data : data.items ?? data.data ?? []);
+    } catch {
+      toast.error('Erro ao carregar repasses.');
+    } finally {
+      setIsLoadingRepasses(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'repasses') loadRepasses();
+  }, [activeTab]);
+
   const handleCreateContrato = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!novoContrato.locador_pessoa_id || !novoContrato.locatario_pessoa_id) {
@@ -383,9 +447,15 @@ export default function AdminGestaoLocacao() {
         fim: novoContrato.fim || undefined,
         dia_vencimento: novoContrato.dia_vencimento ? Number(novoContrato.dia_vencimento) : undefined,
         valor_aluguel: novoContrato.valor_aluguel ? parsePtBrCurrency(novoContrato.valor_aluguel) : undefined,
+        tipo_garantia: novoContrato.tipo_garantia || undefined,
+        valor_garantia: novoContrato.valor_garantia ? parsePtBrCurrency(novoContrato.valor_garantia) : undefined,
+        comissao_administracao_percentual: novoContrato.comissao_administracao_percentual ? parseFloat(novoContrato.comissao_administracao_percentual.replace(',', '.')) : undefined,
+        indice_reajuste: novoContrato.indice_reajuste || undefined,
+        periodicidade_reajuste: novoContrato.periodicidade_reajuste ? Number(novoContrato.periodicidade_reajuste) : 12,
+        observacoes: novoContrato.observacoes || undefined,
       });
       toast.success('Contrato criado com sucesso');
-      setNovoContrato({ locador_pessoa_id: '', locatario_pessoa_id: '', imovel_id: '', status: 'ativo', inicio: '', fim: '', dia_vencimento: '', valor_aluguel: '' });
+      setNovoContrato({ locador_pessoa_id: '', locatario_pessoa_id: '', imovel_id: '', status: 'ativo', inicio: '', fim: '', dia_vencimento: '', valor_aluguel: '', tipo_garantia: '', valor_garantia: '', comissao_administracao_percentual: '', indice_reajuste: '', periodicidade_reajuste: '12', observacoes: '' });
       setShowFormContrato(false);
       await loadAll();
     } catch (error: any) {
@@ -536,8 +606,9 @@ export default function AdminGestaoLocacao() {
 
   // ---------- Render ----------
   return (
-    <div className="flex">
-      <Sidebar />
+    <>
+      <div className="flex">
+        <Sidebar />
       <div className="page-shell">
         <div className="max-w-7xl mx-auto space-y-6">
 
@@ -602,11 +673,12 @@ export default function AdminGestaoLocacao() {
           </div>
 
           {/* Abas */}
-          <div className="glass-panel rounded-2xl p-3 inline-flex gap-2">
-            {(['contratos', 'cobrancas', 'lancamentos', 'chamados'] as Tab[]).map((tab) => {
+          <div className="glass-panel rounded-2xl p-3 inline-flex gap-2 flex-wrap">
+            {(['contratos', 'cobrancas', 'repasses', 'lancamentos', 'chamados'] as Tab[]).map((tab) => {
               const labels: Record<Tab, string> = {
                 contratos: 'Contratos',
                 cobrancas: 'Cobranças',
+                repasses: 'Repasses',
                 lancamentos: 'Lançamentos',
                 chamados: 'Chamados',
               };
@@ -735,6 +807,75 @@ export default function AdminGestaoLocacao() {
                             placeholder="Ex: 10"
                           />
                         </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Garantia</label>
+                          <select
+                            value={novoContrato.tipo_garantia}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, tipo_garantia: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                          >
+                            <option value="">Sem garantia</option>
+                            <option value="caucao">Caução</option>
+                            <option value="fiador">Fiador</option>
+                            <option value="seguro_fianca">Seguro Fiança</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Valor da garantia (R$)</label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={novoContrato.valor_garantia}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, valor_garantia: normalizeCurrencyInput(e.target.value) }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                            placeholder="0,00"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Comissão adm. (%)</label>
+                          <input
+                            type="text"
+                            value={novoContrato.comissao_administracao_percentual}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, comissao_administracao_percentual: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                            placeholder="Ex: 10"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Índice de reajuste</label>
+                          <select
+                            value={novoContrato.indice_reajuste}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, indice_reajuste: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                          >
+                            <option value="">Não definido</option>
+                            <option value="IGPM">IGP-M</option>
+                            <option value="IPCA">IPCA</option>
+                            <option value="INPC">INPC</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Periodicidade reajuste (meses)</label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={novoContrato.periodicidade_reajuste}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, periodicidade_reajuste: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                            placeholder="12"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1">Observações</label>
+                        <textarea
+                          value={novoContrato.observacoes}
+                          onChange={(e) => setNovoContrato((p) => ({ ...p, observacoes: e.target.value }))}
+                          rows={2}
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 resize-none text-sm"
+                          placeholder="Observações adicionais..."
+                        />
                       </div>
 
                       <div className="flex gap-3">
@@ -761,21 +902,22 @@ export default function AdminGestaoLocacao() {
                     {contratos.length === 0 ? (
                       <p className="p-8 text-center text-sm text-muted-foreground">Nenhum contrato cadastrado.</p>
                     ) : (
-                      <table className="w-full min-w-[720px]">
+                      <table className="w-full min-w-[900px]">
                         <thead>
                           <tr className="border-b border-border">
-                            <th className="text-left p-3 text-sm text-muted-foreground">ID</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Nº / ID</th>
                             <th className="text-left p-3 text-sm text-muted-foreground">Imóvel</th>
                             <th className="text-left p-3 text-sm text-muted-foreground">Locador</th>
                             <th className="text-left p-3 text-sm text-muted-foreground">Locatário</th>
                             <th className="text-left p-3 text-sm text-muted-foreground">Aluguel</th>
                             <th className="text-left p-3 text-sm text-muted-foreground">Status</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Ações</th>
                           </tr>
                         </thead>
                         <tbody>
                           {contratos.map((item) => (
                             <tr key={item.id} className="border-b border-border/50">
-                              <td className="p-3 text-muted-foreground text-sm">#{item.id}</td>
+                              <td className="p-3 text-muted-foreground text-sm">{item.numero_contrato || `#${item.id}`}</td>
                               <td className="p-3">{item.imovel?.titulo || item.imovel?.codigo || '-'}</td>
                               <td className="p-3">{item.locador?.nome || '-'}</td>
                               <td className="p-3">{item.locatario?.nome || '-'}</td>
@@ -784,6 +926,50 @@ export default function AdminGestaoLocacao() {
                                 <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${statusBadgeClass(item.status)}`}>
                                   {statusLabel(item.status)}
                                 </span>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  <button
+                                    type="button"
+                                    onClick={() => { setSelectedContratoId(item.id); setShowContratoDetalhe(true); }}
+                                    className="px-2 py-1 rounded-lg border border-border hover:bg-accent text-xs"
+                                  >
+                                    Detalhe
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => { setSelectedContratoId(item.id); setShowVistoriaGaleria(true); }}
+                                    className="px-2 py-1 rounded-lg border border-border hover:bg-accent text-xs"
+                                    title="Fotos de vistoria"
+                                  >
+                                    Vistoria
+                                  </button>
+                                  {item.status === 'ativo' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => { setSelectedContratoId(item.id); setShowReajusteModal(true); }}
+                                        className="px-2 py-1 rounded-lg border border-border hover:bg-accent text-xs"
+                                      >
+                                        Reajuste
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => { setSelectedContratoId(item.id); setShowRenovacaoModal(true); }}
+                                        className="px-2 py-1 rounded-lg border border-primary text-primary hover:bg-primary/5 text-xs"
+                                      >
+                                        Renovar
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => { setSelectedContratoId(item.id); setShowRescisaoModal(true); }}
+                                        className="px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 text-xs"
+                                      >
+                                        Rescindir
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -832,7 +1018,7 @@ export default function AdminGestaoLocacao() {
                     {cobrancas.length === 0 ? (
                       <p className="p-8 text-center text-sm text-muted-foreground">Nenhuma cobrança gerada.</p>
                     ) : (
-                      <table className="w-full min-w-[680px]">
+                      <table className="w-full min-w-[720px]">
                         <thead>
                           <tr className="border-b border-border">
                             <th className="text-left p-3 text-sm text-muted-foreground">ID</th>
@@ -841,6 +1027,7 @@ export default function AdminGestaoLocacao() {
                             <th className="text-left p-3 text-sm text-muted-foreground">Vencimento</th>
                             <th className="text-left p-3 text-sm text-muted-foreground">Valor</th>
                             <th className="text-left p-3 text-sm text-muted-foreground">Status</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Ação</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -849,6 +1036,7 @@ export default function AdminGestaoLocacao() {
                             const contratoLabel = contrato
                               ? `${contrato.locador?.nome || 'Locador'} › ${contrato.locatario?.nome || 'Locatário'}`
                               : `#${item.contrato_id}`;
+                            const isPago = item.status === 'pago' || item.status === 'liquidado';
                             return (
                               <tr key={item.id} className="border-b border-border/50">
                                 <td className="p-3 text-muted-foreground text-sm">#{item.id}</td>
@@ -860,6 +1048,15 @@ export default function AdminGestaoLocacao() {
                                   <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${statusBadgeClass(item.status)}`}>
                                     {statusLabel(item.status)}
                                   </span>
+                                </td>
+                                <td className="p-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedCobranca(item)}
+                                    className={`px-3 py-1 rounded-lg text-xs border ${isPago ? 'border-border hover:bg-accent' : 'bg-emerald-600 text-white hover:bg-emerald-700 border-transparent'}`}
+                                  >
+                                    {isPago ? 'Detalhe' : 'Registrar Pagamento'}
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -1023,6 +1220,66 @@ export default function AdminGestaoLocacao() {
                           </div>
                         </div>
                       </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ===== REPASSES ===== */}
+              {activeTab === 'repasses' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-semibold">Repasses aos proprietários</h2>
+                    <button
+                      type="button"
+                      onClick={loadRepasses}
+                      disabled={isLoadingRepasses}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:bg-accent text-sm disabled:opacity-60"
+                    >
+                      <RefreshCcw size={14} className={isLoadingRepasses ? 'animate-spin' : ''} /> Atualizar
+                    </button>
+                  </div>
+
+                  <div className="glass-panel rounded-2xl overflow-auto">
+                    {isLoadingRepasses ? (
+                      <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>
+                    ) : repasses.length === 0 ? (
+                      <p className="p-8 text-center text-sm text-muted-foreground">Nenhum repasse encontrado. Os repasses são gerados automaticamente quando um pagamento é registrado.</p>
+                    ) : (
+                      <table className="w-full min-w-[720px]">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left p-3 text-sm text-muted-foreground">ID</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Proprietário</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Imóvel</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Competência</th>
+                            <th className="text-right p-3 text-sm text-muted-foreground">Valor bruto</th>
+                            <th className="text-right p-3 text-sm text-muted-foreground">Taxa adm.</th>
+                            <th className="text-right p-3 text-sm text-muted-foreground">Valor líquido</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Status</th>
+                            <th className="text-left p-3 text-sm text-muted-foreground">Pgto.</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {repasses.map((item) => (
+                            <tr key={item.id} className="border-b border-border/50">
+                              <td className="p-3 text-muted-foreground text-sm">#{item.id}</td>
+                              <td className="p-3">{item.contrato?.locador?.nome || '-'}</td>
+                              <td className="p-3">{item.contrato?.imovel?.titulo || item.contrato?.imovel?.codigo || '-'}</td>
+                              <td className="p-3">{item.competencia}</td>
+                              <td className="p-3 text-right">R$ {formatMoney(item.valor_aluguel_recebido)}</td>
+                              <td className="p-3 text-right">R$ {formatMoney(item.valor_taxa_administracao)}</td>
+                              <td className="p-3 text-right font-semibold">R$ {formatMoney(item.valor_repasse)}</td>
+                              <td className="p-3">
+                                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${item.status === 'pago' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                  {item.status === 'pago' ? 'Pago' : 'Aguardando'}
+                                </span>
+                              </td>
+                              <td className="p-3 text-sm text-muted-foreground">{item.data_pagamento ? formatDate(item.data_pagamento) : '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     )}
                   </div>
                 </div>
@@ -1328,6 +1585,77 @@ export default function AdminGestaoLocacao() {
           )}
         </div>
       </div>
-    </div>
-  );
+
+    {/* ===== MODALS ===== */}
+    {showContratoDetalhe && selectedContratoId && (
+      <ContratoDetalheModal
+        contratoId={selectedContratoId}
+        onClose={() => setShowContratoDetalhe(false)}
+        onEncerrar={() => { setShowContratoDetalhe(false); setShowRescisaoModal(true); }}
+        onRenovar={() => { setShowContratoDetalhe(false); setShowRenovacaoModal(true); }}
+        onReajuste={() => { setShowContratoDetalhe(false); setShowReajusteModal(true); }}
+      />
+    )}
+
+    {showRescisaoModal && selectedContratoId && (() => {
+      const c = contratos.find((x) => x.id === selectedContratoId);
+      return (
+        <RescisaoModal
+          contratoId={selectedContratoId}
+          contratoCodigo={c?.numero_contrato || `#${selectedContratoId}`}
+          onClose={() => setShowRescisaoModal(false)}
+          onSuccess={() => loadAll()}
+        />
+      );
+    })()}
+
+    {showReajusteModal && selectedContratoId && (() => {
+      const c = contratos.find((x) => x.id === selectedContratoId);
+      return (
+        <ReajusteModal
+          contratoId={selectedContratoId}
+          contratoCodigo={c?.numero_contrato || `#${selectedContratoId}`}
+          valorAtual={c?.valor_aluguel ?? 0}
+          onClose={() => setShowReajusteModal(false)}
+          onSuccess={() => loadAll()}
+        />
+      );
+    })()}
+
+    {showRenovacaoModal && selectedContratoId && (() => {
+      const c = contratos.find((x) => x.id === selectedContratoId);
+      return (
+        <RenovacaoModal
+          contratoId={selectedContratoId}
+          contratoCodigo={c?.numero_contrato || `#${selectedContratoId}`}
+          fimAtual={c?.fim}
+          valorAtual={c?.valor_aluguel}
+          onClose={() => setShowRenovacaoModal(false)}
+          onSuccess={() => loadAll()}
+        />
+      );
+    })()}
+
+    {selectedCobranca && (
+      <CobrancaDetalheModal
+        cobranca={selectedCobranca}
+        onClose={() => setSelectedCobranca(null)}
+        onSuccess={() => { setSelectedCobranca(null); loadAll(); }}
+      />
+    )}
+
+    {showVistoriaGaleria && selectedContratoId && (
+      <VistoriaGaleria
+        contratoId={selectedContratoId}
+        onClose={() => setShowVistoriaGaleria(false)}
+      />
+    )}
+
+    {showPessoaForm && (
+      <PessoaFormModal
+        onClose={() => setShowPessoaForm(false)}
+        onSuccess={() => { setShowPessoaForm(false); loadAll(); }}
+      />
+    )}
+  </>);
 }
