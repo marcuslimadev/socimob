@@ -182,6 +182,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     { icon: <CalendarClock size={20} />, label: 'Agenda', href: '/agenda' },
     { icon: <Wallet size={20} />, label: 'Financeiro', href: '/financeiro' },
     { icon: <FileSpreadsheet size={20} />, label: 'Locação/Operação', href: '/financeiro/locacao' },
+    { icon: <UserRound size={20} />, label: 'Pessoas', href: '/pessoas' },
     { icon: <Zap size={20} />, label: 'Marketing / Anúncios', href: '/ads' },
     { icon: <Building2 size={20} />, label: 'ImobiBrasil', href: '/imobi-brasil' },
   ];
