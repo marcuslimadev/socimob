@@ -504,7 +504,7 @@ export default function AdminGestaoLocacao() {
         valor_garantia: novoContrato.valor_garantia ? parsePtBrCurrency(novoContrato.valor_garantia) : undefined,
         comissao_administracao_percentual: novoContrato.comissao_administracao_percentual ? parseFloat(novoContrato.comissao_administracao_percentual.replace(',', '.')) : undefined,
         indice_reajuste: novoContrato.indice_reajuste || undefined,
-        periodicidade_reajuste: novoContrato.periodicidade_reajuste ? Number(novoContrato.periodicidade_reajuste) : 12,
+        periodicidade_reajuste: novoContrato.periodicidade_reajuste || '12',
         observacoes: novoContrato.observacoes || undefined,
       });
       toast.success('Contrato criado com sucesso');
