@@ -207,32 +207,36 @@ function PessoasTab() {
         <p className="text-center py-12 text-muted-foreground">Nenhuma pessoa encontrada.</p>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">{total} registros — clique numa linha para ver detalhes</p>
-          <div className="overflow-x-auto">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">{total} registros encontrados · clique numa linha para detalhes completos</p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-white/10">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-muted-foreground">
-                  <th className="pb-2">Código</th>
-                  <th className="pb-2">Nome</th>
-                  <th className="pb-2">Tipo</th>
-                  <th className="pb-2">Referência</th>
-                  <th className="pb-2">Telefone</th>
+              <thead className="bg-white/[0.06]">
+                <tr className="text-left">
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Nome</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Cadastrado em</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {list.map((p: any) => {
                   const id = p.codigoPessoa ?? p.codigo;
                   return (
                     <tr
                       key={id}
                       onClick={() => setSelectedId(selectedId === id ? null : id)}
-                      className={`border-t border-white/10 cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/5'}`}
+                      className={`cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
                     >
-                      <td className="py-2 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
-                      <td className="py-2 text-foreground">{p.nomeResponsavel ?? p.nome ?? '-'}</td>
-                      <td className="py-2 text-foreground">{p.tipoPessoa === 'F' ? 'Física' : p.tipoPessoa === 'J' ? 'Jurídica' : (p.tipoPessoa ?? '-')}</td>
-                      <td className="py-2 text-foreground text-xs">{p.referenciaPessoa ?? '-'}</td>
-                      <td className="py-2 text-foreground">{fmtPhone(p.telefone1 ?? p.telefone2 ?? p.telefone3)}</td>
+                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
+                      <td className="px-4 py-3 text-foreground font-medium">{p.nomeResponsavel ?? '-'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${p.statusPessoa ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {p.statusPessoa ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(p.cadastradoEm)}</td>
                     </tr>
                   );
                 })}
@@ -311,38 +315,45 @@ function NegociosTab() {
         <p className="text-center py-12 text-muted-foreground">Nenhum negócio encontrado.</p>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">Clique numa linha para ver detalhes</p>
-          <div className="overflow-x-auto">
+          <p className="text-xs text-muted-foreground">Clique numa linha para detalhes completos do negócio</p>
+          <div className="overflow-x-auto rounded-xl border border-white/10">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-muted-foreground">
-                  <th className="pb-2">Código</th>
-                  <th className="pb-2">Título / Tipo</th>
-                  <th className="pb-2">Etapa</th>
-                  <th className="pb-2">Valor</th>
-                  <th className="pb-2 text-right">Ações</th>
+              <thead className="bg-white/[0.06]">
+                <tr className="text-left">
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Título</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Criado em</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Fechado em</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {list.map((n: any) => {
                   const id = n.codigoNegocio ?? n.codigo;
+                  const st = (n.statusNegocio ?? '').toLowerCase();
                   return (
                     <tr
                       key={id}
                       onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; setSelectedId(selectedId === id ? null : id); }}
-                      className={`border-t border-white/10 cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/5'}`}
+                      className={`cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
                     >
-                      <td className="py-2 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
-                      <td className="py-2 text-foreground">{n.tituloNegocio ?? n.tipoNegocio ?? n.tipo ?? '-'}</td>
-                      <td className="py-2 text-foreground">{n.tituloEtapaNegocio ?? n.etapa ?? n.etapaNegocio ?? '-'}</td>
-                      <td className="py-2 text-foreground">{(n.valorGanhoNegocio ?? n.valor) ? `R$ ${Number(n.valorGanhoNegocio ?? n.valor).toLocaleString('pt-BR')}` : '-'}</td>
-                      <td className="py-2 text-right">
+                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
+                      <td className="px-4 py-3 text-foreground font-medium max-w-[240px] truncate">{n.tituloNegocio ?? '-'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium capitalize ${st === 'ganho' ? 'bg-emerald-500/20 text-emerald-400' : st === 'perdido' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                          {n.statusNegocio ?? '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(n.dataCriacao)}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(n.dataFechamento)}</td>
+                      <td className="px-4 py-3 text-right">
                         <motion.button
                           whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                           onClick={(e) => { e.stopPropagation(); const id2 = n.codigoNegocio ?? n.codigo; if (id2 && confirm('Excluir negócio ' + id2 + '?')) { deleteMutation.mutate(Number(id2), { onSuccess: () => toast.success('Negócio excluído'), onError: () => toast.error('Erro ao excluir negócio') }); } }}
-                          className="p-2 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                          className="p-1.5 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={13} />
                         </motion.button>
                       </td>
                     </tr>
@@ -361,13 +372,13 @@ function NegociosTab() {
             <div className="space-y-1">
               <div className="mb-4">
                 <p className="font-semibold text-foreground text-lg">{fmt(d.tituloNegocio)}</p>
-                <span className={`mt-1 inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${d.statusNegocio === 'Ganho' ? 'bg-emerald-500/20 text-emerald-400' : d.statusNegocio === 'Perdido' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                <span className={`mt-1 inline-flex px-2 py-0.5 rounded-full text-xs font-medium capitalize ${(d.statusNegocio ?? '').toLowerCase() === 'ganho' ? 'bg-emerald-500/20 text-emerald-400' : (d.statusNegocio ?? '').toLowerCase() === 'perdido' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
                   {fmt(d.statusNegocio)}
                 </span>
               </div>
               <DR label="Etapa" value={fmt(d.tituloEtapaNegocio)} icon={<Briefcase size={13} />} />
               <DR label="Operação" value={fmt(d.operacaoNegocio ?? d.operacao)} icon={<Briefcase size={13} />} />
-              <DR label="Probabilidade" value={d.probabilidadeNegocio != null ? `${d.probabilidadeNegocio}%` : '-'} icon={<Hash size={13} />} />
+              <DR label="Probabilidade" value={fmt(d.probabilidadeNegocio)} icon={<Hash size={13} />} />
               <DR label="Valor ganho" value={d.valorGanhoNegocio ? `R$ ${Number(d.valorGanhoNegocio).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'} icon={<Hash size={13} />} />
               <DR label="Descrição" value={fmt(d.descricaoNegocio ?? d.descricao)} icon={<FileText size={13} />} />
               <DR label="Anotação" value={fmt(d.anotacaoNegocio ?? d.anotacao)} icon={<FileText size={13} />} />
@@ -405,44 +416,38 @@ function MensagensTab() {
         <p className="text-center py-12 text-muted-foreground">Nenhuma mensagem encontrada.</p>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">Clique numa linha para ver o conteúdo</p>
-          <div className="overflow-x-auto">
+          <p className="text-xs text-muted-foreground">Clique numa linha para ler a mensagem completa com dados do contato</p>
+          <div className="overflow-x-auto rounded-xl border border-white/10">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-muted-foreground">
-                  <th className="pb-2">Código</th>
-                  <th className="pb-2">Tipo</th>
-                  <th className="pb-2">Assunto</th>
-                  <th className="pb-2">Lida</th>
-                  <th className="pb-2 text-right">Ações</th>
+              <thead className="bg-white/[0.06]">
+                <tr className="text-left">
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Imóvel</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Data</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Assunto</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {list.map((m: any) => {
                   const id = m.codigoMensagem ?? m.codigo;
                   return (
                     <tr
                       key={id}
                       onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; setSelectedId(selectedId === id ? null : id); }}
-                      className={`border-t border-white/10 cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/5'}`}
+                      className={`cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
                     >
-                      <td className="py-2 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
-                      <td className="py-2 text-foreground">{m.tipoMensagem ?? m.tipo ?? '-'}</td>
-                      <td className="py-2 text-foreground">{m.assunto ?? m.titulo ?? '-'}</td>
-                      <td className="py-2">
-                        {m.lida || m.lido ? (
-                          <CheckCircle2 size={14} className="text-green-400" />
-                        ) : (
-                          <XCircle size={14} className="text-muted-foreground" />
-                        )}
-                      </td>
-                      <td className="py-2 text-right">
+                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{m.codigoImovel ? `#${m.codigoImovel}` : '-'}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{fmtDate(m.dataRecebimentoMensagem)}</td>
+                      <td className="px-4 py-3 text-foreground">{m.assunto ?? <span className="text-muted-foreground italic text-xs">(sem assunto)</span>}</td>
+                      <td className="px-4 py-3 text-right">
                         <motion.button
                           whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                           onClick={(e) => { e.stopPropagation(); if (id && confirm('Excluir mensagem ' + id + '?')) { deleteMutation.mutate(Number(id), { onSuccess: () => toast.success('Mensagem excluída'), onError: () => toast.error('Erro ao excluir mensagem') }); } }}
-                          className="p-2 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                          className="p-1.5 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={13} />
                         </motion.button>
                       </td>
                     </tr>
@@ -459,11 +464,14 @@ function MensagensTab() {
         <DetailPanel title="Detalhes da Mensagem" onClose={() => setSelectedId(null)} loading={loadingDetail}>
           {d && (
             <div className="space-y-1">
-              <DR label="Assunto" value={fmt(d.assunto ?? d.titulo)} icon={<MessageSquare size={13} />} />
-              <DR label="Tipo" value={fmt(d.tipoMensagem ?? d.tipo)} icon={<FileText size={13} />} />
-              <DR label="Lida" value={(d.lida || d.lido) ? 'Sim' : 'Não'} icon={<CheckCircle2 size={13} />} />
-              <DR label="Remetente" value={fmt(d.remetente ?? d.nomeRemetente)} icon={<User size={13} />} />
-              <DR label="Data" value={fmtDate(d.dataCriacao ?? d.data ?? d.dataMensagem)} icon={<Calendar size={13} />} />
+              <DR label="Assunto" value={fmt(d.assunto)} icon={<MessageSquare size={13} />} />
+              <DR label="Tipo" value={fmt(d.tipoMensagem)} icon={<FileText size={13} />} />
+              <DR label="Lida" value={d.lido ? 'Sim' : 'Não'} icon={<CheckCircle2 size={13} />} />
+              <DR label="Contato" value={fmt(d.nomeContato)} icon={<User size={13} />} />
+              <DR label="E-mail contato" value={fmt(d.emailContato)} icon={<Mail size={13} />} />
+              <DR label="Telefone contato" value={fmtPhone(d.telefoneContato)} icon={<Phone size={13} />} />
+              <DR label="Imóvel" value={d.codigoImovel ? `#${d.codigoImovel}` : '-'} icon={<Hash size={13} />} />
+              <DR label="Data recebimento" value={fmtDate(d.dataRecebimentoMensagem)} icon={<Calendar size={13} />} />
               {(d.mensagem ?? d.texto ?? d.corpo) && (
                 <div className="mt-3">
                   <p className="text-xs text-muted-foreground mb-1">Conteúdo</p>
@@ -497,32 +505,32 @@ function CorretoresTab() {
         <p className="text-center py-12 text-muted-foreground">Nenhum corretor encontrado.</p>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">Clique numa linha para ver detalhes</p>
-          <div className="overflow-x-auto">
+          <p className="text-xs text-muted-foreground">Clique numa linha para detalhes completos do corretor</p>
+          <div className="overflow-x-auto rounded-xl border border-white/10">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-muted-foreground">
-                  <th className="pb-2">Código</th>
-                  <th className="pb-2">Nome</th>
-                  <th className="pb-2">Tipo</th>
-                  <th className="pb-2">Referência</th>
-                  <th className="pb-2">Status</th>
+              <thead className="bg-white/[0.06]">
+                <tr className="text-left">
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Nome</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Razão Social</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Tipo</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {list.map((c: any) => {
                   const id = c.codigoCorretor ?? c.codigo;
                   return (
                     <tr
                       key={id}
                       onClick={() => setSelectedId(selectedId === id ? null : id)}
-                      className={`border-t border-white/10 cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/5'}`}
+                      className={`cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
                     >
-                      <td className="py-2 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
-                      <td className="py-2 text-foreground">{c.nome ?? c.nomeCorretor ?? '-'}</td>
-                      <td className="py-2 text-foreground">{c.tipoPessoa === 'F' ? 'Física' : c.tipoPessoa === 'J' ? 'Jurídica' : (c.tipoPessoa ?? '-')}</td>
-                      <td className="py-2 text-foreground text-xs">{c.referenciaCorretor ?? '-'}</td>
-                      <td className="py-2">
+                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
+                      <td className="px-4 py-3 text-foreground font-medium">{c.nome ?? '-'}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{c.razaoSocial ?? c.nomeFantasia ?? '-'}</td>
+                      <td className="px-4 py-3 text-foreground text-xs">{c.tipoPessoa === 'F' ? 'PF' : c.tipoPessoa === 'J' ? 'PJ' : (c.tipoPessoa ?? '-')}</td>
+                      <td className="px-4 py-3">
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c.statusCorretor ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
                           {c.statusCorretor ? 'Ativo' : 'Inativo'}
                         </span>
@@ -560,12 +568,12 @@ function CorretoresTab() {
               ))}
               <DR label="Status" value={d.statusCorretor ? 'Ativo' : 'Inativo'} icon={<CheckCircle2 size={13} />} />
               <DR label="Referência" value={fmt(d.referenciaCorretor)} icon={<FileText size={13} />} />
-              <DR label="Logradouro" value={[d.logradouro, d.numero, d.complemento].filter(Boolean).join(', ')} icon={<MapPinIcon size={13} />} />
+              <DR label="Logradouro" value={[d.logradouro, d.numeroResidencia ? `nº ${d.numeroResidencia}` : null].filter(Boolean).join(', ')} icon={<MapPinIcon size={13} />} />
               <DR label="Bairro" value={fmt(d.bairro)} icon={<MapPinIcon size={13} />} />
-              <DR label="Cidade/UF" value={[d.nomeCidade ?? d.cidade, d.siglaEstado ?? d.estado].filter(Boolean).join(' - ')} icon={<MapPinIcon size={13} />} />
+              <DR label="Cidade/UF" value={[d.cidade, d.estado].filter(Boolean).join(' - ')} icon={<MapPinIcon size={13} />} />
               <DR label="CEP" value={fmt(d.cep)} icon={<MapPinIcon size={13} />} />
-              <DR label="Cadastrado em" value={fmtDate(d.cadastradoEm ?? d.dataCadastro)} icon={<Calendar size={13} />} />
-              <DR label="Atualizado em" value={fmtDate(d.ultimaAtualizacao ?? d.dataAlteracao)} icon={<Calendar size={13} />} />
+              <DR label="Cadastrado em" value={fmtDate(d.cadastradoEm)} icon={<Calendar size={13} />} />
+              <DR label="Atualizado em" value={fmtDate(d.ultimaAtualizacao)} icon={<Calendar size={13} />} />
             </div>
           )}
         </DetailPanel>
@@ -592,30 +600,32 @@ function ClientesTab() {
         <p className="text-center py-12 text-muted-foreground">Nenhum cliente encontrado.</p>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">Clique numa linha para ver detalhes</p>
-          <div className="overflow-x-auto">
+          <p className="text-xs text-muted-foreground">Clique numa linha para detalhes completos do cliente</p>
+          <div className="overflow-x-auto rounded-xl border border-white/10">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-muted-foreground">
-                  <th className="pb-2">Código</th>
-                  <th className="pb-2">Nome</th>
-                  <th className="pb-2">Tipo</th>
-                  <th className="pb-2">Status</th>
+              <thead className="bg-white/[0.06]">
+                <tr className="text-left">
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Nome</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Razão Social</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Tipo</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {list.map((c: any) => {
                   const id = c.codigoCliente ?? c.codigo;
                   return (
                     <tr
                       key={id}
                       onClick={() => setSelectedId(selectedId === id ? null : id)}
-                      className={`border-t border-white/10 cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/5'}`}
+                      className={`cursor-pointer transition-colors ${selectedId === id ? 'bg-blue-500/10' : 'hover:bg-white/[0.04]'}`}
                     >
-                      <td className="py-2 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
-                      <td className="py-2 text-foreground">{c.nome ?? c.nomeCliente ?? c.nomeResponsavel ?? '-'}</td>
-                      <td className="py-2 text-foreground">{c.tipoPessoa === 'F' ? 'Física' : c.tipoPessoa === 'J' ? 'Jurídica' : (c.tipoPessoa ?? '-')}</td>
-                      <td className="py-2">
+                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{id ?? '-'}</td>
+                      <td className="px-4 py-3 text-foreground font-medium">{c.nome ?? '-'}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{c.razaoSocial ?? c.nomeFantasia ?? '-'}</td>
+                      <td className="px-4 py-3 text-foreground text-xs">{c.tipoPessoa === 'F' ? 'PF' : c.tipoPessoa === 'J' ? 'PJ' : (c.tipoPessoa ?? '-')}</td>
+                      <td className="px-4 py-3">
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c.statusCliente ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
                           {c.statusCliente ? 'Ativo' : 'Inativo'}
                         </span>
@@ -654,12 +664,12 @@ function ClientesTab() {
               <DR label="Status" value={d.statusCliente ? 'Ativo' : 'Inativo'} icon={<CheckCircle2 size={13} />} />
               <DR label="Referência" value={fmt(d.referenciaCliente)} icon={<FileText size={13} />} />
               <DR label="Corretor" value={fmt(d.codigoCorretor)} icon={<UserCog size={13} />} />
-              <DR label="Logradouro" value={[d.logradouro, d.numero, d.complemento].filter(Boolean).join(', ')} icon={<MapPinIcon size={13} />} />
+              <DR label="Logradouro" value={[d.logradouro, d.numeroResidencia ? `nº ${d.numeroResidencia}` : null].filter(Boolean).join(', ')} icon={<MapPinIcon size={13} />} />
               <DR label="Bairro" value={fmt(d.bairro)} icon={<MapPinIcon size={13} />} />
-              <DR label="Cidade/UF" value={[d.nomeCidade ?? d.cidade, d.siglaEstado ?? d.estado].filter(Boolean).join(' - ')} icon={<MapPinIcon size={13} />} />
+              <DR label="Cidade/UF" value={[d.cidade, d.estado].filter(Boolean).join(' - ')} icon={<MapPinIcon size={13} />} />
               <DR label="CEP" value={fmt(d.cep)} icon={<MapPinIcon size={13} />} />
-              <DR label="Cadastrado em" value={fmtDate(d.cadastradoEm ?? d.dataCadastro)} icon={<Calendar size={13} />} />
-              <DR label="Atualizado em" value={fmtDate(d.ultimaAtualizacao ?? d.dataAlteracao)} icon={<Calendar size={13} />} />
+              <DR label="Cadastrado em" value={fmtDate(d.cadastradoEm)} icon={<Calendar size={13} />} />
+              <DR label="Atualizado em" value={fmtDate(d.ultimaAtualizacao)} icon={<Calendar size={13} />} />
             </div>
           )}
         </DetailPanel>
