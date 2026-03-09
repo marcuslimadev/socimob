@@ -41,6 +41,7 @@ interface Pessoa {
   imobi_brasil_sent?: boolean;
   imobi_brasil_sent_at?: string | null;
   imobi_brasil_error?: string | null;
+  papeis?: string[] | null;
 }
 
 export default function Pessoas() {
@@ -136,6 +137,7 @@ export default function Pessoas() {
     numero: '',
     complemento: '',
     observacoes: '',
+    papeis: [] as string[],
   });
 
   const [contatos, setContatos] = useState<Array<{ tipo: string; contato: string; descricao: string }>>([]);
@@ -248,6 +250,7 @@ export default function Pessoas() {
       numero: '',
       complemento: '',
       observacoes: '',
+      papeis: [] as string[],
     });
     setContatos([]);
     setCurrentTab('principal');
@@ -286,6 +289,7 @@ export default function Pessoas() {
         numero: pessoaCompleta.numero || '',
         complemento: pessoaCompleta.complemento || '',
         observacoes: pessoaCompleta.observacoes || '',
+        papeis: pessoaCompleta.papeis || [],
       });
       setContatos(pessoaCompleta.contatos || []);
       setCurrentTab('principal');
@@ -430,6 +434,35 @@ export default function Pessoas() {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Papéis</label>
+              <div className="flex flex-wrap gap-2">
+                {(['proprietario', 'inquilino', 'fiador', 'cliente'] as const).map((papel) => {
+                  const labels: Record<string, string> = { proprietario: 'Proprietário', inquilino: 'Inquilino', fiador: 'Fiador', cliente: 'Cliente' };
+                  const active = (formData.papeis as string[]).includes(papel);
+                  return (
+                    <button
+                      key={papel}
+                      type="button"
+                      onClick={() => setFormData((f) => ({
+                        ...f,
+                        papeis: active
+                          ? (f.papeis as string[]).filter((p) => p !== papel)
+                          : [...(f.papeis as string[]), papel],
+                      }))}
+                      className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${
+                        active
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'border-white/20 text-muted-foreground hover:text-foreground hover:border-white/40'
+                      }`}
+                    >
+                      {labels[papel]}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         );
