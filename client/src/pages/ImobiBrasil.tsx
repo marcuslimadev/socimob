@@ -101,6 +101,24 @@ function openWa(phone: any, name?: string) {
   window.open(`https://wa.me/${wa}${text ? `?text=${text}` : ''}`, '_blank');
 }
 
+function SortTh({ label, col, current, dir, onSort, className }: {
+  label: string; col: string; current: string; dir: 'asc' | 'desc';
+  onSort: (k: string) => void; className?: string;
+}) {
+  const active = current === col;
+  return (
+    <th
+      onClick={() => onSort(col)}
+      className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b border-white/10 cursor-pointer select-none transition-colors ${active ? 'text-blue-400' : 'text-muted-foreground hover:text-foreground'} ${className ?? ''}`}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <span className="opacity-70 text-[9px]">{active ? (dir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+      </span>
+    </th>
+  );
+}
+
 function DK({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
@@ -180,11 +198,13 @@ function PessoasTab() {
   const [inputVal, setInputVal] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [waTargetId, setWaTargetId] = useState<number | null>(null);
+  const [sortKey, setSortKey] = useState('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { data, isLoading, isFetching } = useIbPessoas({ page, nomeResponsavel: search || undefined });
   const { data: detail, isLoading: loadingDetail } = useIbPessoa(expandedId);
   const rs    = data?.result_set;
-  const list: any[] = rs?.data ?? [];
-  const total = rs?.total_items ?? list.length;
+  const rawList: any[] = rs?.data ?? [];
+  const total = rs?.total_items ?? rawList.length;
   const d     = detail?.result_set as any;
   const phones = d ? [d.telefone1, d.telefone2, d.telefone3].filter(Boolean) : [];
 
@@ -194,6 +214,19 @@ function PessoasTab() {
     if (phone) { openWa(phone, d.nomeResponsavel); }
     setWaTargetId(null);
   }, [d, waTargetId]);
+
+  function handleSortP(k: string) {
+    if (sortKey === k) setSortDir((v) => (v === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(k); setSortDir('asc'); }
+  }
+  const list = sortKey ? [...rawList].sort((a, b) => {
+    const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
+    const cmp = typeof av === 'number' ? av - bv
+      : typeof av === 'boolean' ? (av === bv ? 0 : av ? -1 : 1)
+      : String(av).localeCompare(String(bv), 'pt-BR', { numeric: true, sensitivity: 'base' });
+    return sortDir === 'asc' ? cmp : -cmp;
+  }) : rawList;
+
   const enderecos: any[] = d?.endereco && typeof d.endereco === 'object'
     ? (Array.isArray(d.endereco) ? d.endereco : [d.endereco])
     : [];
@@ -239,12 +272,12 @@ function PessoasTab() {
             <table className="w-full text-sm">
               <thead className="bg-white/[0.06]">
                 <tr className="text-left">
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-6"></th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Nome</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Cadastrado</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-10"></th>
+                  <th className="px-4 py-3 border-b border-white/10 w-6"></th>
+                  <SortTh label="Código" col="codigoPessoa" current={sortKey} dir={sortDir} onSort={handleSortP} />
+                  <SortTh label="Nome" col="nomeResponsavel" current={sortKey} dir={sortDir} onSort={handleSortP} />
+                  <SortTh label="Status" col="statusPessoa" current={sortKey} dir={sortDir} onSort={handleSortP} />
+                  <SortTh label="Cadastrado" col="cadastradoEm" current={sortKey} dir={sortDir} onSort={handleSortP} />
+                  <th className="px-4 py-3 border-b border-white/10 w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -530,10 +563,12 @@ function MensagensTab() {
 function CorretoresTab() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [waTargetId, setWaTargetId] = useState<number | null>(null);
+  const [sortKey, setSortKey] = useState('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { data, isLoading } = useIbCorretores();
   const { data: detail, isLoading: loadingDetail } = useIbCorretor(expandedId);
   const rs   = data?.result_set;
-  const list: any[] = rs?.data ?? (Array.isArray(rs) ? rs : []);
+  const rawList: any[] = rs?.data ?? (Array.isArray(rs) ? rs : []);
   const d    = detail?.result_set as any;
   const phones = d ? [d.telefone1, d.telefone2, d.telefone3].filter(Boolean) : [];
 
@@ -543,6 +578,18 @@ function CorretoresTab() {
     if (phone) { openWa(phone, d.nome); }
     setWaTargetId(null);
   }, [d, waTargetId]);
+
+  function handleSortC(k: string) {
+    if (sortKey === k) setSortDir((v) => (v === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(k); setSortDir('asc'); }
+  }
+  const list = sortKey ? [...rawList].sort((a, b) => {
+    const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
+    const cmp = typeof av === 'number' ? av - bv
+      : typeof av === 'boolean' ? (av === bv ? 0 : av ? -1 : 1)
+      : String(av).localeCompare(String(bv), 'pt-BR', { numeric: true, sensitivity: 'base' });
+    return sortDir === 'asc' ? cmp : -cmp;
+  }) : rawList;
 
   return (
     <div className="space-y-4">
@@ -557,14 +604,14 @@ function CorretoresTab() {
             <table className="w-full text-sm">
               <thead className="bg-white/[0.06]">
                 <tr className="text-left">
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-6"></th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Nome</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Razão Social</th>
+                  <th className="px-4 py-3 border-b border-white/10 w-6"></th>
+                  <SortTh label="Código" col="codigoCorretor" current={sortKey} dir={sortDir} onSort={handleSortC} />
+                  <SortTh label="Nome" col="nome" current={sortKey} dir={sortDir} onSort={handleSortC} />
+                  <SortTh label="Razão Social" col="razaoSocial" current={sortKey} dir={sortDir} onSort={handleSortC} />
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">CRECI</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Tipo</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-10"></th>
+                  <SortTh label="Tipo" col="tipoPessoa" current={sortKey} dir={sortDir} onSort={handleSortC} />
+                  <SortTh label="Status" col="statusCorretor" current={sortKey} dir={sortDir} onSort={handleSortC} />
+                  <th className="px-4 py-3 border-b border-white/10 w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -642,10 +689,12 @@ function ClientesTab() {
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [waTargetId, setWaTargetId] = useState<number | null>(null);
+  const [sortKey, setSortKey] = useState('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { data, isLoading, isFetching } = useIbClientes({ page });
   const { data: detail, isLoading: loadingDetail } = useIbCliente(expandedId);
   const rs   = data?.result_set;
-  const list: any[] = rs?.data ?? [];
+  const rawList: any[] = rs?.data ?? [];
   const d    = detail?.result_set as any;
   const phones = d ? [d.telefone1, d.telefone2, d.telefone3].filter(Boolean) : [];
 
@@ -655,6 +704,18 @@ function ClientesTab() {
     if (phone) { openWa(phone, d.nome ?? d.nomeResponsavel); }
     setWaTargetId(null);
   }, [d, waTargetId]);
+
+  function handleSortCl(k: string) {
+    if (sortKey === k) setSortDir((v) => (v === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(k); setSortDir('asc'); }
+  }
+  const list = sortKey ? [...rawList].sort((a, b) => {
+    const av = a[sortKey] ?? ''; const bv = b[sortKey] ?? '';
+    const cmp = typeof av === 'number' ? av - bv
+      : typeof av === 'boolean' ? (av === bv ? 0 : av ? -1 : 1)
+      : String(av).localeCompare(String(bv), 'pt-BR', { numeric: true, sensitivity: 'base' });
+    return sortDir === 'asc' ? cmp : -cmp;
+  }) : rawList;
 
   return (
     <div className="space-y-4">
@@ -669,13 +730,13 @@ function ClientesTab() {
             <table className="w-full text-sm">
               <thead className="bg-white/[0.06]">
                 <tr className="text-left">
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-6"></th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Código</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Nome</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Razão Social</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Tipo</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10">Status</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-white/10 w-10"></th>
+                  <th className="px-4 py-3 border-b border-white/10 w-6"></th>
+                  <SortTh label="Código" col="codigoCliente" current={sortKey} dir={sortDir} onSort={handleSortCl} />
+                  <SortTh label="Nome" col="nome" current={sortKey} dir={sortDir} onSort={handleSortCl} />
+                  <SortTh label="Razão Social" col="razaoSocial" current={sortKey} dir={sortDir} onSort={handleSortCl} />
+                  <SortTh label="Tipo" col="tipoPessoa" current={sortKey} dir={sortDir} onSort={handleSortCl} />
+                  <SortTh label="Status" col="statusCliente" current={sortKey} dir={sortDir} onSort={handleSortCl} />
+                  <th className="px-4 py-3 border-b border-white/10 w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
