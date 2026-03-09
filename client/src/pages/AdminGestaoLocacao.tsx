@@ -726,7 +726,7 @@ export default function AdminGestaoLocacao() {
                           <PessoaCombobox
                             value={novoContrato.locador_pessoa_id}
                             onChange={(v) => setNovoContrato((p) => ({ ...p, locador_pessoa_id: v }))}
-                            options={pessoas.filter((p) => p.papeis?.includes('proprietario'))}
+                            options={pessoas.filter((p) => !p.papeis?.length || p.papeis.includes('proprietario'))}
                             placeholder="Selecione o senhorio"
                             required
                           />
@@ -736,7 +736,7 @@ export default function AdminGestaoLocacao() {
                           <PessoaCombobox
                             value={novoContrato.locatario_pessoa_id}
                             onChange={(v) => setNovoContrato((p) => ({ ...p, locatario_pessoa_id: v }))}
-                            options={pessoas.filter((p) => p.papeis?.includes('inquilino'))}
+                            options={pessoas.filter((p) => !p.papeis?.length || p.papeis.includes('inquilino'))}
                             placeholder="Selecione o inquilino"
                             required
                           />
