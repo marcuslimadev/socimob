@@ -1585,6 +1585,7 @@ export default function AdminGestaoLocacao() {
           )}
         </div>
       </div>
+    </div>
 
     {/* ===== MODALS ===== */}
     {showContratoDetalhe && selectedContratoId && (
