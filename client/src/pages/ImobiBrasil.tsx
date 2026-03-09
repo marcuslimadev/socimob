@@ -134,7 +134,7 @@ function PessoasTab() {
                   <th className="pb-2">Código</th>
                   <th className="pb-2">Nome</th>
                   <th className="pb-2">Tipo</th>
-                  <th className="pb-2">E-mail</th>
+                  <th className="pb-2">Referência</th>
                   <th className="pb-2">Telefone</th>
                 </tr>
               </thead>
@@ -144,8 +144,8 @@ function PessoasTab() {
                     <td className="py-2 text-muted-foreground font-mono text-xs">{p.codigoPessoa ?? p.codigo ?? '-'}</td>
                     <td className="py-2 text-foreground">{p.nomeResponsavel ?? p.nome ?? '-'}</td>
                     <td className="py-2 text-foreground">{p.tipoPessoa === 'F' ? 'Física' : p.tipoPessoa === 'J' ? 'Jurídica' : (p.tipoPessoa ?? '-')}</td>
-                    <td className="py-2 text-foreground">{p.email ?? '-'}</td>
-                    <td className="py-2 text-foreground">{p.celular ?? p.fone ?? '-'}</td>
+                    <td className="py-2 text-foreground text-xs">{p.referenciaPessoa ?? '-'}</td>
+                    <td className="py-2 text-foreground">{p.telefone1 ?? p.telefone2 ?? p.telefone3 ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -307,8 +307,8 @@ function CorretoresTab() {
                 <th className="pb-2">Código</th>
                 <th className="pb-2">Nome</th>
                 <th className="pb-2">CRECI</th>
-                <th className="pb-2">E-mail</th>
-                <th className="pb-2">Telefone</th>
+                <th className="pb-2">Referência</th>
+                <th className="pb-2">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -316,9 +316,13 @@ function CorretoresTab() {
                 <tr key={c.codigoCorretor ?? c.codigo} className="border-t border-white/10">
                   <td className="py-2 text-muted-foreground font-mono text-xs">{c.codigoCorretor ?? c.codigo ?? '-'}</td>
                   <td className="py-2 text-foreground">{c.nome ?? c.nomeCorretor ?? '-'}</td>
-                  <td className="py-2 text-foreground">{c.creci ?? '-'}</td>
-                  <td className="py-2 text-foreground">{c.email ?? '-'}</td>
-                  <td className="py-2 text-foreground">{c.celular ?? c.fone ?? '-'}</td>
+                  <td className="py-2 text-foreground">{c.creciCorretor ?? c.creci ?? '-'}</td>
+                  <td className="py-2 text-foreground">{c.referenciaCorretor ?? '-'}</td>
+                  <td className="py-2">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                      c.statusCorretor ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                    }`}>{c.statusCorretor ? 'Ativo' : 'Inativo'}</span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -349,8 +353,8 @@ function ClientesTab() {
                 <tr className="text-left text-muted-foreground">
                   <th className="pb-2">Código</th>
                   <th className="pb-2">Nome</th>
-                  <th className="pb-2">E-mail</th>
-                  <th className="pb-2">Telefone</th>
+                <th className="pb-2">Tipo</th>
+                <th className="pb-2">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -358,8 +362,12 @@ function ClientesTab() {
                   <tr key={c.codigoCliente ?? c.codigo} className="border-t border-white/10">
                     <td className="py-2 text-muted-foreground font-mono text-xs">{c.codigoCliente ?? c.codigo ?? '-'}</td>
                     <td className="py-2 text-foreground">{c.nome ?? c.nomeCliente ?? c.nomeResponsavel ?? '-'}</td>
-                    <td className="py-2 text-foreground">{c.email ?? '-'}</td>
-                    <td className="py-2 text-foreground">{c.celular ?? c.fone ?? '-'}</td>
+                    <td className="py-2 text-foreground">{c.tipoPessoa === 'F' ? 'Física' : c.tipoPessoa === 'J' ? 'Jurídica' : (c.tipoPessoa ?? '-')}</td>
+                    <td className="py-2">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                        c.statusCliente ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                      }`}>{c.statusCliente ? 'Ativo' : 'Inativo'}</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -427,8 +435,8 @@ function CidadesTab() {
               {list.map((c: any, i: number) => (
                 <tr key={c.codigoCidade ?? c.codigo ?? i} className="border-t border-white/10">
                   <td className="py-2 text-muted-foreground font-mono text-xs">{c.codigoCidade ?? c.codigo ?? '-'}</td>
-                  <td className="py-2 text-foreground">{c.cidade ?? c.nome ?? '-'}</td>
-                  <td className="py-2 text-foreground">{c.uf ?? c.estado ?? '-'}</td>
+                  <td className="py-2 text-foreground">{c.nomeCidade ?? c.cidade ?? c.nome ?? '-'}</td>
+                  <td className="py-2 text-foreground">{c.siglaEstado ?? c.uf ?? c.estado ?? '-'}</td>
                 </tr>
               ))}
             </tbody>
