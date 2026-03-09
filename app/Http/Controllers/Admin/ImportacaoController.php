@@ -33,7 +33,14 @@ class ImportacaoController extends Controller
         }
 
         $imoveis = Property::where('tenant_id', $tenant->id)
-            ->orderByDesc('created_at')
+            ->whereIn('finalidade_imovel', ['aluguel', 'temporada'])
+            ->whereNotIn('id', function ($q) {
+                $q->select('imovel_id')
+                  ->from('contratos_locacao')
+                  ->where('status', 'ativo')
+                  ->whereNotNull('imovel_id');
+            })
+            ->orderBy('titulo')
             ->get();
 
         return response()->json([

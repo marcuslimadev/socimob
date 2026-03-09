@@ -100,6 +100,7 @@ interface ImovelItem {
   id: number;
   titulo?: string;
   codigo?: string;
+  finalidade_imovel?: string;
 }
 
 type Tab = 'contratos' | 'cobrancas' | 'repasses' | 'lancamentos' | 'chamados';
@@ -234,6 +235,58 @@ function PessoaCombobox({
                 >
                   <Check size={14} className={`mr-2 ${String(p.id) === value ? 'opacity-100' : 'opacity-0'}`} />
                   {p.nome}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ImovelCombobox({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: ImovelItem[];
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((im) => String(im.id) === value);
+  const getLabel = (im: ImovelItem) => im.titulo || im.codigo || `#${im.id}`;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full flex items-center justify-between gap-2 bg-background border border-border rounded-lg px-3 py-2 text-sm text-left"
+        >
+          <span className={selected ? '' : 'text-muted-foreground'}>
+            {selected ? getLabel(selected) : 'Selecione o imóvel...'}
+          </span>
+          <ChevronsUpDown size={14} className="shrink-0 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[380px]" align="start">
+        <Command>
+          <CommandInput placeholder="Buscar pelo título..." />
+          <CommandList>
+            <CommandEmpty>Nenhum imóvel disponível.</CommandEmpty>
+            <CommandGroup>
+              {options.map((im) => (
+                <CommandItem
+                  key={im.id}
+                  value={getLabel(im)}
+                  onSelect={() => { onChange(String(im.id)); setOpen(false); }}
+                >
+                  <Check size={14} className={`mr-2 ${String(im.id) === value ? 'opacity-100' : 'opacity-0'}`} />
+                  {getLabel(im)}
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -743,16 +796,11 @@ export default function AdminGestaoLocacao() {
                         </div>
                         <div>
                           <label className="block text-xs text-muted-foreground mb-1">Imóvel</label>
-                          <select
+                          <ImovelCombobox
                             value={novoContrato.imovel_id}
-                            onChange={(e) => setNovoContrato((p) => ({ ...p, imovel_id: e.target.value }))}
-                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
-                          >
-                            <option value="">Nenhum</option>
-                            {imoveis.map((im) => (
-                              <option key={im.id} value={im.id}>{im.titulo || im.codigo || `#${im.id}`}</option>
-                            ))}
-                          </select>
+                            onChange={(v) => setNovoContrato((p) => ({ ...p, imovel_id: v }))}
+                            options={imoveis}
+                          />
                         </div>
                         <div>
                           <label className="block text-xs text-muted-foreground mb-1">Status</label>
