@@ -232,6 +232,7 @@ export default function Settings() {
     twilio_account_sid: '',
     twilio_auth_token: '',
     twilio_whatsapp_from: '',
+    whatsapp_number: '',
   });
 
   const storedUser = localStorage.getItem('user');
@@ -371,6 +372,7 @@ export default function Settings() {
             twilio_account_sid: config.twilio_account_sid || '',
             twilio_auth_token: '',
             twilio_whatsapp_from: config.twilio_whatsapp_from || '',
+            whatsapp_number: config.whatsapp_number || '',
           });
         }
       } else {
@@ -917,20 +919,37 @@ export default function Settings() {
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-semibold text-foreground mb-2">
-                          URL da Imagem do Mascote
-                        </label>
-                        <input
-                          type="text"
-                          value={tenantForm.mascot_url}
-                          onChange={(e) => setTenantForm({ ...tenantForm, mascot_url: e.target.value })}
-                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                          placeholder="/assets/mascote.png ou https://exemplo.com/mascote.png"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Essa imagem será usada no mascote do chat no portal público.
-                        </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-foreground mb-2">
+                            URL da Imagem do Mascote
+                          </label>
+                          <input
+                            type="text"
+                            value={tenantForm.mascot_url}
+                            onChange={(e) => setTenantForm({ ...tenantForm, mascot_url: e.target.value })}
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            placeholder="/assets/mascote.png ou https://exemplo.com/mascote.png"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Essa imagem será usada no mascote do chat no portal público.
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-foreground mb-2">
+                            WhatsApp do Mascote (com código do país)
+                          </label>
+                          <input
+                            type="tel"
+                            value={tenantConfigForm.whatsapp_number}
+                            onChange={(e) => setTenantConfigForm({ ...tenantConfigForm, whatsapp_number: e.target.value })}
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            placeholder="+553173341150"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Número que o mascote usa para abrir conversa no WhatsApp. Se vazio, usa o WhatsApp principal.
+                          </p>
+                        </div>
                       </div>
 
                       {/* Watermark */}

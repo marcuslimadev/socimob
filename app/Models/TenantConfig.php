@@ -44,6 +44,7 @@ class TenantConfig extends Model
         'max_leads',
         'auto_assign_leads',
         'metadata',
+        'whatsapp_number',
     ];
 
     protected $casts = [

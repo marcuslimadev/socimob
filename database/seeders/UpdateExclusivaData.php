@@ -133,7 +133,7 @@ try {
 
     if ($config) {
         $stmt = $pdo->prepare("UPDATE tenant_configs SET whatsapp_number = ?, updated_at = NOW() WHERE tenant_id = ?");
-        $stmt->execute(['5531975597278', $tenantId]);
+        $stmt->execute(['553173341150', $tenantId]);
         echo "WhatsApp number atualizado na config!\n";
     }
 

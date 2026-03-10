@@ -148,6 +148,7 @@ class TenantSettingsController extends Controller
             'config.twilio_account_sid' => 'nullable|string',
             'config.twilio_auth_token' => 'nullable|string',
             'config.twilio_whatsapp_from' => 'nullable|string|max:50',
+            'config.whatsapp_number' => 'nullable|string|max:30',
         ]);
 
         if ($validator->fails()) {
@@ -243,6 +244,7 @@ class TenantSettingsController extends Controller
                 'twilio_auth_token',
                 'twilio_whatsapp_from',
                 'portal_finalidades',
+                'whatsapp_number',
             ];
             
             foreach ($allowedConfigFields as $field) {
