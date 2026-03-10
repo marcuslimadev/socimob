@@ -27,6 +27,7 @@ import {
   Link2,
   Zap,
   ChevronDown,
+  ChevronRight,
   Layers,
   Briefcase,
   DollarSign,
