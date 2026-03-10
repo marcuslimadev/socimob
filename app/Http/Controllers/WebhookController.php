@@ -99,6 +99,22 @@ class WebhookController extends Controller
                 ]
             );
 
+            // Evolution: ignorar eventos que não são mensagens recebidas
+            if ($source === 'evolution') {
+                $event = $webhookData['event'] ?? '';
+                if ($event !== 'messages.upsert') {
+                    if ($event === 'messages.update') {
+                        $this->processEvolutionStatusUpdate($webhookData);
+                    }
+                    return response('', 200);
+                }
+                // Ignorar mensagens enviadas por nós (fromMe)
+                $fromMe = $webhookData['data']['key']['fromMe'] ?? false;
+                if ($fromMe) {
+                    return response('', 200);
+                }
+            }
+
             // Meta: ignorar notificações que não são mensagens (ex: status de entrega)
             if ($source === 'meta') {
                 $firstChange = $webhookData['entry'][0]['changes'][0]['value'] ?? [];
@@ -138,6 +154,23 @@ class WebhookController extends Controller
             if ($source === 'meta' && !empty($normalizedData['message_id'])) {
                 try {
                     app(\App\Services\MetaWhatsAppService::class)->markAsRead($normalizedData['message_id']);
+                } catch (\Throwable $e) {
+                    // Não crítico
+                }
+            }
+
+            // Marcar como lida (Evolution)
+            if ($source === 'evolution' && !empty($normalizedData['message_id'])) {
+                try {
+                    $rawData   = $webhookData['data'] ?? [];
+                    $key       = $rawData['key'] ?? [];
+                    $remoteJid = $key['remoteJid'] ?? null;
+                    $fromMe    = $key['fromMe'] ?? false;
+                    if ($remoteJid) {
+                        app(\App\Services\EvolutionApiService::class)->markAsReadFull(
+                            $remoteJid, $fromMe, $normalizedData['message_id']
+                        );
+                    }
                 } catch (\Throwable $e) {
                     // Não crítico
                 }
@@ -198,6 +231,11 @@ class WebhookController extends Controller
 
     private function detectWebhookSource(array $data): string
     {
+        // Evolution API: tem campo "event" com formato "messages.upsert" ou similar
+        if (isset($data['event']) && str_contains((string) $data['event'], 'messages')) {
+            return 'evolution';
+        }
+
         // Meta: tem o campo "object" = "whatsapp_business_account"
         if (isset($data['object']) && str_contains((string) $data['object'], 'whatsapp')) {
             return 'meta';
@@ -217,6 +255,10 @@ class WebhookController extends Controller
 
     private function normalizeWebhookData(array $data, string $source): array
     {
+        if ($source === 'evolution') {
+            return $this->normalizeEvolutionWebhook($data);
+        }
+
         if ($source === 'meta') {
             return $this->normalizeMetaWebhook($data);
         }
@@ -312,6 +354,129 @@ class WebhookController extends Controller
             'channel'          => 'whatsapp',
             'raw'              => $data,
         ];
+    }
+
+    private function normalizeEvolutionWebhook(array $data): array
+    {
+        $instance    = $data['instance'] ?? '';
+        $msgData     = $data['data'] ?? [];
+        $key         = $msgData['key'] ?? [];
+        $remoteJid   = $key['remoteJid'] ?? null;
+        $messageId   = $key['id'] ?? null;
+        $pushName    = $msgData['pushName'] ?? null;
+        $msgObj      = $msgData['message'] ?? [];
+        $messageType = $msgData['messageType'] ?? 'conversation';
+
+        // Extrair número do remoteJid (remove @s.whatsapp.net ou @g.us)
+        $from = $remoteJid ? preg_replace('/@.*$/', '', $remoteJid) : null;
+
+        $body      = null;
+        $mediaUrl  = null;
+        $mediaType = null;
+
+        switch ($messageType) {
+            case 'conversation':
+                $body = $this->toNullableString($msgObj['conversation'] ?? null);
+                break;
+
+            case 'extendedTextMessage':
+                $body = $this->toNullableString($msgObj['extendedTextMessage']['text'] ?? null);
+                break;
+
+            case 'imageMessage':
+                $body      = $this->toNullableString($msgObj['imageMessage']['caption'] ?? null);
+                $mediaType = $msgObj['imageMessage']['mimetype'] ?? 'image/jpeg';
+                $mediaUrl  = $this->buildEvolutionMediaRef($instance, $key, $msgObj, $messageType);
+                break;
+
+            case 'audioMessage':
+                $mediaType = $msgObj['audioMessage']['mimetype'] ?? 'audio/ogg';
+                $mediaUrl  = $this->buildEvolutionMediaRef($instance, $key, $msgObj, $messageType);
+                break;
+
+            case 'videoMessage':
+                $body      = $this->toNullableString($msgObj['videoMessage']['caption'] ?? null);
+                $mediaType = $msgObj['videoMessage']['mimetype'] ?? 'video/mp4';
+                $mediaUrl  = $this->buildEvolutionMediaRef($instance, $key, $msgObj, $messageType);
+                break;
+
+            case 'documentMessage':
+                $body      = $this->toNullableString(
+                    $msgObj['documentMessage']['caption'] ?? $msgObj['documentMessage']['fileName'] ?? null
+                );
+                $mediaType = $msgObj['documentMessage']['mimetype'] ?? 'application/octet-stream';
+                $mediaUrl  = $this->buildEvolutionMediaRef($instance, $key, $msgObj, $messageType);
+                break;
+
+            case 'stickerMessage':
+                $mediaType = 'image/webp';
+                $mediaUrl  = $this->buildEvolutionMediaRef($instance, $key, $msgObj, $messageType);
+                break;
+
+            case 'locationMessage':
+                $lat  = $msgObj['locationMessage']['degreesLatitude'] ?? null;
+                $long = $msgObj['locationMessage']['degreesLongitude'] ?? null;
+                $body = "📍 Localização: {$lat}, {$long}";
+                break;
+
+            default:
+                // Tipos desconhecidos: tentar extrair texto
+                $body = $this->toNullableString(
+                    $msgObj['conversation'] ?? $msgObj['extendedTextMessage']['text'] ?? null
+                );
+        }
+
+        return [
+            'from'               => $from,
+            'to'                 => null,
+            'message'            => $body,
+            'message_id'         => $this->toNullableString($messageId),
+            'profile_name'       => $this->toNullableString($pushName),
+            'media_url'          => $mediaUrl,
+            'media_type'         => $mediaType,
+            'media_is_evolution' => $mediaUrl !== null,
+            'location'           => null,
+            'source'             => 'evolution',
+            'channel'            => 'whatsapp',
+            'raw'                => $data,
+        ];
+    }
+
+    /**
+     * Monta referência Evolution para download de mídia.
+     * Formato: evo://{base64json}
+     */
+    private function buildEvolutionMediaRef(string $instance, array $key, array $message, string $messageType): string
+    {
+        $ref = base64_encode(json_encode([
+            'instance'    => $instance,
+            'key'         => $key,
+            'message'     => $message,
+            'messageType' => $messageType,
+        ]));
+        return 'evo://' . $ref;
+    }
+
+    /**
+     * Processar atualizações de status do Evolution API.
+     */
+    private function processEvolutionStatusUpdate(array $data): void
+    {
+        $updates = $data['data'] ?? [];
+        if (!is_array($updates)) return;
+
+        // Evolution envia array de updates
+        $items = isset($updates['key']) ? [$updates] : $updates;
+
+        foreach ($items as $item) {
+            $messageId = $item['key']['id'] ?? null;
+            $status    = strtolower($item['update']['status'] ?? '');
+            if ($messageId && $status) {
+                \App\Models\Mensagem::where('message_sid', $messageId)
+                    ->update(['status' => $status]);
+                Log::info('Evolution status update', ['id' => $messageId, 'status' => $status]);
+            }
+        }
     }
 
     private function normalizeTwilioWebhook(array $data): array

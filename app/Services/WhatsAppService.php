@@ -11,7 +11,7 @@ use App\Models\LeadDocument;
 use App\Models\AppSetting;
 use App\Models\SmsShortLink;
 use App\Services\LeadCustomerService;
-use App\Services\MetaWhatsAppService;
+use App\Services\EvolutionApiService;
 use App\Services\SmsShortLinkService;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -32,13 +32,13 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class WhatsAppService
 {
-    private MetaWhatsAppService $twilio;
+    private EvolutionApiService $twilio;
     private $openai;
     private $stageDetection;
     private LeadCustomerService $leadCustomerService;
     private SmsShortLinkService $smsShortLinkService;
     
-    public function __construct(MetaWhatsAppService $twilio, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService, SmsShortLinkService $smsShortLinkService)
+    public function __construct(EvolutionApiService $twilio, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService, SmsShortLinkService $smsShortLinkService)
     {
         $this->twilio = $twilio;
         $this->openai = $openai;

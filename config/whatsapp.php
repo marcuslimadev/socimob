@@ -1,58 +1,45 @@
 <?php
 
 /**
- * Configurações da API WhatsApp Business (Meta Cloud API)
+ * Configurações da API WhatsApp Business
  *
- * IMPORTANTE: Usar config('whatsapp.xxx') em vez de env() diretamente.
+ * Suporta dois drivers:
+ *  - 'meta'      : Meta WhatsApp Business Cloud API (oficial)
+ *  - 'evolution' : Evolution API (self-hosted, baseado em WhatsApp Web)
  *
- * Pré-requisitos:
- *  1. Conta no Meta Business Manager (business.facebook.com)
- *  2. App no Meta for Developers com produto "WhatsApp"
- *  3. Número de telefone verificado e aprovado
- *  4. Access Token permanente (System User) ou temporário
- *
- * Documentação: https://developers.facebook.com/docs/whatsapp/cloud-api
+ * Definir WHATSAPP_DRIVER no .env para escolher o driver.
  */
 
 return [
     /*
     |--------------------------------------------------------------------------
-    | Access Token (Bearer)
+    | Driver ativo
     |--------------------------------------------------------------------------
-    | Token do System User (permanente) ou Token temporário de 24h.
-    | Gerar em: Meta for Developers → App → WhatsApp → API Setup
     */
-    'access_token' => env('META_WHATSAPP_ACCESS_TOKEN'),
+    'driver' => env('WHATSAPP_DRIVER', 'evolution'),
 
     /*
     |--------------------------------------------------------------------------
-    | Phone Number ID
+    | Evolution API (self-hosted)
     |--------------------------------------------------------------------------
-    | ID do número de telefone registrado no WhatsApp Business.
-    | Encontrar em: Meta for Developers → App → WhatsApp → API Setup
+    | URL do servidor Evolution, API Key global e nome da instância.
+    | Webhook URL: https://exclusivalarimoveis.com/webhook/whatsapp
+    | Verify token não se aplica — Evolution usa apikey no header.
     */
+    'evolution' => [
+        'url'      => env('EVOLUTION_API_URL', ''),
+        'api_key'  => env('EVOLUTION_API_KEY', ''),
+        'instance' => env('EVOLUTION_INSTANCE', ''),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Meta WhatsApp Business Cloud API
+    |--------------------------------------------------------------------------
+    */
+    'access_token'    => env('META_WHATSAPP_ACCESS_TOKEN'),
     'phone_number_id' => env('META_WHATSAPP_PHONE_NUMBER_ID'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | WhatsApp Business Account ID (WABA ID)
-    |--------------------------------------------------------------------------
-    */
-    'waba_id' => env('META_WHATSAPP_WABA_ID'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Verify Token para validação do webhook
-    |--------------------------------------------------------------------------
-    | Token aleatório definido por você durante a configuração do webhook.
-    | Configurar em: Meta for Developers → App → WhatsApp → Configuration → Webhook
-    */
-    'verify_token' => env('META_WHATSAPP_VERIFY_TOKEN', 'socimob_webhook_verify'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Versão da API Graph
-    |--------------------------------------------------------------------------
-    */
-    'api_version' => env('META_WHATSAPP_API_VERSION', 'v18.0'),
+    'waba_id'         => env('META_WHATSAPP_WABA_ID'),
+    'verify_token'    => env('META_WHATSAPP_VERIFY_TOKEN', 'socimob_webhook_verify'),
+    'api_version'     => env('META_WHATSAPP_API_VERSION', 'v18.0'),
 ];
