@@ -367,68 +367,77 @@ export default function ContratoDetalheModal({ contratoId, onClose, onEncerrar, 
   return (
     <>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-        <div className="glass-panel rounded-2xl p-6 w-full max-w-3xl mx-4 max-h-[92vh] overflow-y-auto">
+        <div className="glass-panel rounded-2xl w-full max-w-3xl mx-4 max-h-[92vh] flex flex-col">
 
-          {/* Header */}
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-semibold">
-                Contrato {contrato.numero_contrato || `#${contrato.id}`}
-              </h2>
-              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium mt-0.5 ${
-                isRescindido ? 'bg-red-100 text-red-700' :
-                contrato.status === 'ativo' ? 'bg-emerald-100 text-emerald-700' :
-                'bg-muted text-foreground'
-              }`}>
-                {isRescindido ? 'Rescindido' : contrato.status}
-              </span>
+          {/* Header + Ações — fixos, fora do scroll */}
+          <div className="px-6 pt-6 shrink-0">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold">
+                  Contrato {contrato.numero_contrato || `#${contrato.id}`}
+                </h2>
+                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium mt-0.5 ${
+                  isRescindido ? 'bg-red-100 text-red-700' :
+                  contrato.status === 'ativo' ? 'bg-emerald-100 text-emerald-700' :
+                  'bg-muted text-foreground'
+                }`}>
+                  {isRescindido ? 'Rescindido' : contrato.status}
+                </span>
+              </div>
+              <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground ml-4"><X size={20} /></button>
             </div>
-            <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground ml-4"><X size={20} /></button>
+
+            {/* Ações rápidas */}
+            {!isRescindido && (
+              <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-border">
+                <button type="button" onClick={onReajuste} className="px-3 py-1.5 rounded-lg border border-border hover:bg-accent text-sm">
+                  Reajustar aluguel
+                </button>
+                <button type="button" onClick={onRenovar} className="px-3 py-1.5 rounded-lg border border-primary text-primary hover:bg-primary/5 text-sm">
+                  Renovar contrato
+                </button>
+
+                {/* Dropdown Gerar PDF — z-[60] garante que flutua acima de tudo */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setPdfDropdown(!pdfDropdown)}
+                    disabled={gerandoPdf}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border hover:bg-accent text-sm disabled:opacity-60"
+                  >
+                    <FileText size={14} />
+                    {gerandoPdf ? 'Gerando...' : 'Gerar PDF'}
+                    <ChevronDown size={13} className={`transition-transform ${pdfDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                  {pdfDropdown && (
+                    <>
+                      {/* overlay invisível para fechar ao clicar fora */}
+                      <div className="fixed inset-0 z-[59]" onClick={() => setPdfDropdown(false)} />
+                      <div className="absolute top-full left-0 mt-1 bg-popover border border-border rounded-xl shadow-xl z-[60] py-1 min-w-[210px]">
+                        {tiposDocumento.map((t) => (
+                          <button
+                            key={t.value}
+                            type="button"
+                            onClick={() => handleGerarPdf(t.value)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <button type="button" onClick={onEncerrar} className="px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 text-sm">
+                  Rescindir
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Ações rápidas */}
-          {!isRescindido && (
-            <div className="flex flex-wrap gap-2 mb-5 pb-4 border-b border-border">
-              <button type="button" onClick={onReajuste} className="px-3 py-1.5 rounded-lg border border-border hover:bg-accent text-sm">
-                Reajustar aluguel
-              </button>
-              <button type="button" onClick={onRenovar} className="px-3 py-1.5 rounded-lg border border-primary text-primary hover:bg-primary/5 text-sm">
-                Renovar contrato
-              </button>
-
-              {/* Dropdown Gerar PDF */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setPdfDropdown(!pdfDropdown)}
-                  disabled={gerandoPdf}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border hover:bg-accent text-sm disabled:opacity-60"
-                >
-                  <FileText size={14} />
-                  {gerandoPdf ? 'Gerando...' : 'Gerar PDF'}
-                  <ChevronDown size={13} className={pdfDropdown ? 'rotate-180' : ''} />
-                </button>
-                {pdfDropdown && (
-                  <div className="absolute top-full left-0 mt-1 bg-popover border border-border rounded-xl shadow-xl z-10 py-1 min-w-[200px]">
-                    {tiposDocumento.map((t) => (
-                      <button
-                        key={t.value}
-                        type="button"
-                        onClick={() => handleGerarPdf(t.value)}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <button type="button" onClick={onEncerrar} className="px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 text-sm">
-                Rescindir
-              </button>
-            </div>
-          )}
+          {/* Conteúdo scrollável */}
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
 
           {/* Partes */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 text-sm">
@@ -610,6 +619,7 @@ export default function ContratoDetalheModal({ contratoId, onClose, onEncerrar, 
               Fechar
             </button>
           </div>
+          </div>{/* fim conteúdo scrollável */}
         </div>
       </div>
 
