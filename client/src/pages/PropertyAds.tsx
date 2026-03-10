@@ -484,7 +484,7 @@ export default function PropertyAds() {
               <p className="text-muted-foreground">Cadastre imóveis para começar a criar propagandas</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {filteredProperties.map((property) => {
                 const photos = normalizePhotos(property);
                 const transactionType = getTransactionType(property);
@@ -494,52 +494,72 @@ export default function PropertyAds() {
                     key={property.id}
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="glass-panel overflow-hidden rounded-2xl transition-all hover:bg-white/10"
+                    className="glass-panel overflow-hidden rounded-[28px] transition-all hover:bg-white/10"
                   >
-                    <div className="relative h-52 bg-gradient-to-br from-sky-500/20 to-slate-900/40">
-                      {photos.length > 0 ? (
-                        <img
-                          src={photos[0]}
-                          alt={getPropertyTitle(property)}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <Image size={48} className="text-muted-foreground opacity-30" />
-                        </div>
-                      )}
+                    <div className="p-4">
+                      <div className="relative mx-auto aspect-[9/16] w-full max-w-[330px] overflow-hidden rounded-[30px] border border-white/15 bg-[#0a1320]">
+                        {photos.length > 0 ? (
+                          <img
+                            src={photos[0]}
+                            alt={getPropertyTitle(property)}
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-950" />
+                        )}
 
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-4">
-                        <div className="mb-2 flex items-center justify-between">
-                          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${getTransactionBadge(transactionType)}`}>
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-[#07111d]" />
+
+                        <div className="absolute inset-x-4 top-4 flex items-center justify-between">
+                          <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${getTransactionBadge(transactionType)}`}>
                             {transactionType === 'aluguel' ? 'Aluguel' : 'Venda'}
                           </span>
-                          <span className="rounded-full bg-black/45 px-2.5 py-1 text-xs text-white/85">
-                            {photos.length} foto{photos.length === 1 ? '' : 's'}
+                          <span className="rounded-full bg-black/45 px-2.5 py-1 text-[11px] text-white/85">
+                            Story 9:16
                           </span>
                         </div>
-                        <p className="text-lg font-semibold text-white">{formatCurrency(getPrice(property))}</p>
+
+                        <div className="absolute inset-x-4 bottom-4 rounded-[26px] bg-[#07111d]/88 p-4 backdrop-blur-sm">
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <p className="text-[10px] uppercase tracking-[0.28em] text-amber-300">
+                              {tenant?.name || 'Tenant'}
+                            </p>
+                            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] text-white/75">
+                              {photos.length} foto{photos.length === 1 ? '' : 's'}
+                            </span>
+                          </div>
+                          <h3 className="line-clamp-2 text-xl font-bold leading-tight text-white">
+                            {getPropertyTitle(property)}
+                          </h3>
+                          <p className="mt-2 line-clamp-2 text-xs text-white/72">
+                            {getLocationText(property) || 'Localização sob consulta'}
+                          </p>
+                          <p className="mt-3 text-2xl font-bold text-white">
+                            {formatCurrency(getPrice(property))}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-white/78">
+                            {getBedrooms(property) > 0 && <span>{getBedrooms(property)} quartos</span>}
+                            {getBathrooms(property) > 0 && <span>{getBathrooms(property)} banheiros</span>}
+                            {getArea(property) > 0 && <span>{getArea(property)}m²</span>}
+                          </div>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="p-4">
-                      <h3 className="mb-2 line-clamp-1 font-semibold text-foreground">{getPropertyTitle(property)}</h3>
-                      <p className="mb-3 text-sm text-muted-foreground">{getLocationText(property) || 'Localização sob consulta'}</p>
-
-                      <div className="mb-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                        {getBedrooms(property) > 0 && <span>{getBedrooms(property)} quartos</span>}
-                        {getBathrooms(property) > 0 && <span>{getBathrooms(property)} banheiros</span>}
-                        {getArea(property) > 0 && <span>{getArea(property)}m²</span>}
+                      <div className="mt-4">
+                        <p className="text-sm font-semibold text-foreground">Prévia da arte</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Abra para gerar o texto e baixar a imagem final com logo e fotos do imóvel.
+                        </p>
                       </div>
 
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => handleGenerateAd(property)}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-sky-500 to-amber-500 px-4 py-2.5 font-semibold text-slate-950"
+                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-amber-500 px-4 py-3 font-semibold text-slate-950"
                       >
                         <Sparkles size={16} />
-                        Gerar Status
+                        Gerar e baixar status
                       </motion.button>
                     </div>
                   </motion.div>

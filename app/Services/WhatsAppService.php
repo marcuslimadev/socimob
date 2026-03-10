@@ -265,18 +265,24 @@ class WhatsAppService
                 return $this->handleFirstMessage($conversa, $telefone, $conversaData, $body);
             }
             
-            // 7. Processar com IA (com logging de performance)
-            $startTime = microtime(true);
-            $result = $this->handleRegularMessage($conversa, $body, $messageType === 'audio');
-            $duration = round((microtime(true) - $startTime) * 1000, 2);
-            
-            Log::info('⏱️ Tempo de processamento IA', [
+            // 7. Processar com IA de forma assíncrona para não bloquear o webhook do Twilio
+            // O Twilio tem timeout de 15s — despachar job evita timeouts e retentativas
+            dispatch(new \App\Jobs\ProcessWhatsAppAIResponse(
+                $conversa->id,
+                $body,
+                $messageType === 'audio'
+            ));
+
+            Log::info('📬 Job de IA despachado para a fila', [
                 'conversa_id' => $conversa->id,
-                'tempo_ms' => $duration,
-                'sucesso' => $result['success'] ?? false
+                'queue_connection' => config('queue.default', 'sync'),
             ]);
-            
-            return $result;
+
+            return [
+                'success' => true,
+                'message' => 'Mensagem recebida, processando resposta da IA',
+                'conversa_id' => $conversa->id,
+            ];
             
         } catch (\Throwable $e) {
             Log::error('Erro ao processar webhook', [
@@ -2454,7 +2460,7 @@ class WhatsAppService
     {
         try {
             // Verificar se queue está configurada (não é sync)
-            $queueConnection = env('QUEUE_CONNECTION', 'sync');
+            $queueConnection = config('queue.default', 'sync');
 
             if ($queueConnection === 'sync') {
                 // Se sync, apenas loggar e executar imediatamente seria redundante

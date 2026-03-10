@@ -4,10 +4,19 @@ namespace App\Jobs;
 
 use App\Models\Conversa;
 use App\Services\WhatsAppService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class ProcessWhatsAppAIResponse
+class ProcessWhatsAppAIResponse implements ShouldQueue
 {
+    use InteractsWithQueue, Queueable, SerializesModels;
+
+    public $tries = 2;
+    public $timeout = 120;
+
     protected $conversaId;
     protected $mensagem;
     protected $fromAudio;

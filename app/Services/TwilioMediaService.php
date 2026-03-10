@@ -14,9 +14,8 @@ class TwilioMediaService
 
     public function __construct()
     {
-        // Tenta EXCLUSIVA_ primeiro (ambiente de produção), depois fallback para TWILIO_
-        $this->accountSid = env('EXCLUSIVA_TWILIO_ACCOUNT_SID') ?: env('TWILIO_ACCOUNT_SID');
-        $this->authToken = env('EXCLUSIVA_TWILIO_AUTH_TOKEN') ?: env('TWILIO_AUTH_TOKEN');
+        $this->accountSid = config('twilio.account_sid');
+        $this->authToken  = config('twilio.auth_token');
         
         if (!$this->accountSid || !$this->authToken) {
             Log::error('❌ Credenciais do Twilio não configuradas! Verifique EXCLUSIVA_TWILIO_ACCOUNT_SID e EXCLUSIVA_TWILIO_AUTH_TOKEN no .env');

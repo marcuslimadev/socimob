@@ -260,7 +260,7 @@ class WebhookController extends Controller
             }
         }
 
-        $tenantId = env('WEBHOOK_TENANT_ID');
+        $tenantId = config('twilio.webhook_tenant_id', env('WEBHOOK_TENANT_ID'));
         if (!empty($tenantId)) {
             return Tenant::find($tenantId);
         }
@@ -310,9 +310,9 @@ class WebhookController extends Controller
 
     private function buildWhatsappStatus(?Tenant $tenant): array
     {
-        $accountSid = env('EXCLUSIVA_TWILIO_ACCOUNT_SID');
-        $authToken = env('EXCLUSIVA_TWILIO_AUTH_TOKEN');
-        $whatsappFrom = env('EXCLUSIVA_TWILIO_WHATSAPP_FROM');
+        $accountSid = config('twilio.account_sid');
+        $authToken = config('twilio.auth_token');
+        $whatsappFrom = config('twilio.whatsapp_from');
 
         $variaveisFaltantes = [];
         foreach ([

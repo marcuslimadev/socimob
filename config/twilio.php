@@ -38,4 +38,11 @@ return [
     |--------------------------------------------------------------------------
     */
     'template_welcome_sid' => env('EXCLUSIVA_TENANT_TWILIO_TEMPLATE_WELCOME_SID'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | ID do tenant padrão para resolução de webhook
+    |--------------------------------------------------------------------------
+    */
+    'webhook_tenant_id' => env('WEBHOOK_TENANT_ID'),
 ];
