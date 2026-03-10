@@ -70,10 +70,10 @@ class ContratosLocacaoController extends Controller
     {
         $item = ContratoLocacao::with([
             'imovel:id,titulo,codigo,cidade,bairro',
-            'locador:id,nome,email,telefone,whatsapp,cpf_cnpj',
-            'locatario:id,nome,email,telefone,whatsapp,cpf_cnpj',
+            'locador:id,nome,email,telefone,whatsapp,cpf,cnpj',
+            'locatario:id,nome,email,telefone,whatsapp,cpf,cnpj',
             'cobrancas.documentoFiscal',
-            'fiadores.pessoa:id,nome,email,telefone,cpf_cnpj',
+            'fiadores.pessoa:id,nome,email,telefone,cpf,cnpj',
             'reajustes',
             'repasses',
             'documentos',

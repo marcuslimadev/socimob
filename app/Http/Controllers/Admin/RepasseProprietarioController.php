@@ -46,7 +46,7 @@ class RepasseProprietarioController extends Controller
     public function show(int $id)
     {
         $item = RepasseProprietario::with([
-            'contrato.locador:id,nome,email,cpf_cnpj,banco,agencia,conta,tipo_conta,pix_chave',
+            'contrato.locador:id,nome,email,cpf,cnpj',
             'contrato.imovel:id,titulo,codigo',
             'cobranca',
         ])->find($id);

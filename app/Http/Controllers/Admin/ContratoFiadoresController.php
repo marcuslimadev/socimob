@@ -16,7 +16,7 @@ class ContratoFiadoresController extends Controller
             return response()->json(['success' => false, 'message' => 'Contrato não encontrado'], 404);
         }
 
-        $fiadores = ContratoFiador::with('pessoa:id,nome,email,telefone,whatsapp,cpf_cnpj')
+        $fiadores = ContratoFiador::with('pessoa:id,nome,email,telefone,whatsapp,cpf,cnpj')
             ->where('contrato_id', $contratoId)
             ->get();
 

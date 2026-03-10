@@ -51,8 +51,8 @@ class CobrancasContratoController extends Controller
     {
         $item = CobrancaContrato::with([
             'contrato:id,imovel_id,locador_pessoa_id,locatario_pessoa_id,status,numero_contrato,comissao_administracao_percentual',
-            'contrato.locador:id,nome,email,cpf_cnpj',
-            'contrato.locatario:id,nome,email,cpf_cnpj',
+            'contrato.locador:id,nome,email,cpf,cnpj',
+            'contrato.locatario:id,nome,email,cpf,cnpj',
             'documentoFiscal',
         ])->find($id);
 
