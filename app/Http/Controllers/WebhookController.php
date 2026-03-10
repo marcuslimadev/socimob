@@ -236,10 +236,17 @@ class WebhookController extends Controller
             return app('tenant');
         }
 
-        $host = $request->getHost();
-        $tenant = Tenant::byDomain($host)->first();
-        if ($tenant) {
-            return $tenant;
+        // Tentar múltiplos hosts: getHost(), X-Forwarded-Host, APP_URL
+        $hostsToTry = array_unique(array_filter([
+            $request->getHost(),
+            $request->header('X-Forwarded-Host'),
+            parse_url(config('app.url'), PHP_URL_HOST),
+        ]));
+        foreach ($hostsToTry as $host) {
+            $tenant = Tenant::byDomain($host)->first();
+            if ($tenant) {
+                return $tenant;
+            }
         }
 
         $toDigits = $this->normalizeWhatsappNumber($normalizedData['to'] ?? null);
