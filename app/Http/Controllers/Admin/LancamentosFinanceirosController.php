@@ -93,4 +93,41 @@ class LancamentosFinanceirosController extends Controller
             'baixa' => $baixa,
         ], 201);
     }
+
+    public function update(Request $request, int $id)
+    {
+        $item = LancamentoFinanceiro::find($id);
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Lançamento não encontrado'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'tipo' => 'nullable|in:conta_receber,conta_pagar,transferencia',
+            'categoria' => 'nullable|string|max:80',
+            'descricao' => 'nullable|string|max:255',
+            'competencia' => 'nullable|date',
+            'vencimento' => 'nullable|date',
+            'valor' => 'nullable|numeric|min:0.01',
+            'status' => 'nullable|string|max:30',
+            'pessoa_id' => 'nullable|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $item->update($validator->validated());
+
+        return response()->json(['success' => true, 'item' => $item->fresh('baixas')]);
+    }
+
+    public function destroy(int $id)
+    {
+        $item = LancamentoFinanceiro::find($id);
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Lançamento não encontrado'], 404);
+        }
+        $item->delete();
+        return response()->json(['success' => true]);
+    }
 }

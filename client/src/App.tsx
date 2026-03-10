@@ -26,6 +26,7 @@ const ClientPortalRefined = lazy(() => import("./pages/ClientPortalRefined"));
 const Agenda = lazy(() => import("./pages/Agenda"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
 const AdminGestaoLocacao = lazy(() => import("./pages/AdminGestaoLocacao"));
+const ContasFinanceiras = lazy(() => import("./pages/ContasFinanceiras"));
 const PortalPessoaFinanceiro = lazy(() => import("./pages/PortalPessoaFinanceiro"));
 const PortalRegister = lazy(() => import("./pages/PortalRegister"));
 const PortalLogin = lazy(() => import("./pages/PortalLogin"));
@@ -101,6 +102,7 @@ function Router() {
       <Route path="/agenda" component={Agenda} />
       <Route path="/financeiro" component={Financeiro} />
       <Route path="/financeiro/locacao" component={AdminGestaoLocacao} />
+      <Route path="/financeiro/contas" component={ContasFinanceiras} />
       <Route path="/portal/meu-financeiro" component={PortalFinanceiroGate} />
       <Route path="/vistorias" component={Vistorias} />
       <Route path="/vistorias/solicitacoes" component={VistoriaSolicitacoes} />

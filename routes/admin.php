@@ -53,6 +53,8 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->patch('/financeiro/cobrancas-contrato/{id}/status', 'App\Http\Controllers\Admin\CobrancasContratoController@updateStatus');
     $router->get('/financeiro/lancamentos', 'App\Http\Controllers\Admin\LancamentosFinanceirosController@index');
     $router->post('/financeiro/lancamentos', 'App\Http\Controllers\Admin\LancamentosFinanceirosController@store');
+    $router->put('/financeiro/lancamentos/{id}', 'App\Http\Controllers\Admin\LancamentosFinanceirosController@update');
+    $router->delete('/financeiro/lancamentos/{id}', 'App\Http\Controllers\Admin\LancamentosFinanceirosController@destroy');
     $router->post('/financeiro/lancamentos/{id}/baixas', 'App\Http\Controllers\Admin\LancamentosFinanceirosController@registrarBaixa');
 
     // Operação - Chamados

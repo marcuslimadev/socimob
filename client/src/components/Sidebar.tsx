@@ -32,6 +32,7 @@ import {
   Briefcase,
   DollarSign,
   Star,
+  BookOpen,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -369,6 +370,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       label: 'Financeiro',
       items: [
         { icon: <Wallet size={17} />, label: 'Financeiro', href: '/financeiro' },
+        { icon: <BookOpen size={17} />, label: 'Contas a Pagar/Receber', href: '/financeiro/contas' },
       ],
     },
   ];
