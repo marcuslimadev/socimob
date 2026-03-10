@@ -57,6 +57,7 @@ const SimulacaoFinanciamento = lazy(() => import("./pages/SimulacaoFinanciamento
 const AnalyticsTracker = lazy(() => import("./components/AnalyticsTracker"));
 const PortalProprietarioLogin = lazy(() => import('./pages/PortalProprietarioLogin'));
 const PortalProprietarioDashboard = lazy(() => import('./pages/PortalProprietarioDashboard'));
+const ContratoTemplates = lazy(() => import('./pages/ContratoTemplates'));
 
 // Loading fallback component
 function PageLoader() {
@@ -115,6 +116,7 @@ function Router() {
       <Route path="/pessoas/:id" component={PessoaPerfil} />
       <Route path="/pessoas" component={Pessoas} />
       <Route path="/settings" component={Settings} />
+      <Route path="/contrato-templates" component={ContratoTemplates} />
       <Route path="/tenants" component={Tenants} />
       <Route path="/tenants/associacoes" component={TenantAssociations} />
       <Route path="/system-logs" component={SystemLogs} />

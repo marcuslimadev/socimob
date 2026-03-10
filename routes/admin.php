@@ -272,6 +272,12 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->post('/financeiro/contratos/{contratoId}/documentos/{id}/enviar-assinatura',     'App\Http\Controllers\Admin\ContratoDocumentosController@enviarParaAssinatura');
     $router->delete('/financeiro/contratos/{contratoId}/documentos/{id}',                     'App\Http\Controllers\Admin\ContratoDocumentosController@destroy');
 
+    // Templates de contrato (personalização por tenant)
+    $router->get('/financeiro/contrato-templates',              'App\Http\Controllers\Admin\ContratoTemplatesController@index');
+    $router->get('/financeiro/contrato-templates/{tipo}',       'App\Http\Controllers\Admin\ContratoTemplatesController@show');
+    $router->put('/financeiro/contrato-templates/{tipo}',       'App\Http\Controllers\Admin\ContratoTemplatesController@upsert');
+    $router->delete('/financeiro/contrato-templates/{tipo}',    'App\Http\Controllers\Admin\ContratoTemplatesController@destroy');
+
     // Fotos de vistoria
     $router->get('/vistorias/{vistoriaId}/fotos',          'App\Http\Controllers\Admin\VistoriaFotoController@index');
     $router->post('/vistorias/{vistoriaId}/fotos',         'App\Http\Controllers\Admin\VistoriaFotoController@store');

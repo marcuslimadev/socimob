@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Models\ContratoDocumento;
 use App\Models\ContratoLocacao;
+use App\Models\ContratoTemplate;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -27,13 +28,19 @@ class ContratoDocumentoService
     {
         $viewName = $template ?? (self::TEMPLATES[$tipo] ?? self::TEMPLATES['contrato']);
 
+        // Carrega personalização do tenant para este tipo de documento
+        $tenantTemplate = ContratoTemplate::where('tipo', $tipo)
+            ->where('tenant_id', $contrato->tenant_id)
+            ->first();
+
         $pdf = Pdf::loadView($viewName, [
-            'contrato' => $contrato,
-            'locador' => $contrato->locador,
-            'locatario' => $contrato->locatario,
-            'imovel' => $contrato->imovel,
-            'fiadores' => $contrato->fiadores,
-            'geradoEm' => now(),
+            'contrato'       => $contrato,
+            'locador'        => $contrato->locador,
+            'locatario'      => $contrato->locatario,
+            'imovel'         => $contrato->imovel,
+            'fiadores'       => $contrato->fiadores,
+            'geradoEm'       => now(),
+            'tenantTemplate' => $tenantTemplate, // personalização do tenant
         ]);
 
         $filename = sprintf(

@@ -362,6 +362,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         { icon: <ClipboardCheck size={17} />, label: 'Vistorias', href: '/financeiro/locacao' },
         { icon: <FileSignature size={17} />, label: 'Assinaturas', href: '/assinaturas' },
         { icon: <FileSpreadsheet size={17} />, label: 'Locação/Operação', href: '/financeiro/locacao' },
+        { icon: <FileText size={17} />, label: 'Templates de Contrato', href: '/contrato-templates' },
       ],
     },
     {
