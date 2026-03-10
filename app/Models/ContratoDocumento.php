@@ -26,10 +26,24 @@ class ContratoDocumento extends Model
         'gerado_em',
     ];
 
+    protected $appends = ['url_documento', 'status'];
+
     protected $casts = [
         'assinado_em' => 'datetime',
         'gerado_em' => 'datetime',
     ];
+
+    public function getUrlDocumentoAttribute(): ?string
+    {
+        if (!$this->arquivo_path) return null;
+        return url('storage/' . $this->arquivo_path);
+    }
+
+    /** Expõe assinatura_status como "status" para o frontend */
+    public function getStatusAttribute(): string
+    {
+        return $this->assinatura_status ?? 'nao_enviado';
+    }
 
     public function contrato()
     {

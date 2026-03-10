@@ -59,7 +59,14 @@ class ContratoDocumentosController extends Controller
             $validator->validated()['template'] ?? null,
         );
 
-        return response()->json(['success' => true, 'item' => $documento], 201);
+        // Reload to include appended url_documento and status
+        $documento->refresh();
+
+        return response()->json([
+            'success' => true,
+            'item' => $documento,
+            'url_documento' => $documento->url_documento,
+        ], 201);
     }
 
     public function enviarParaAssinatura(Request $request, int $contratoId, int $documentoId)
@@ -74,6 +81,7 @@ class ContratoDocumentosController extends Controller
             'signatarios.*.email' => 'required|email',
             'signatarios.*.nome' => 'required|string|max:200',
             'signatarios.*.papel' => 'nullable|string|max:50',
+            'signatarios.*.icp_brasil' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {

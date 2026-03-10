@@ -36,7 +36,7 @@ class D4SignService
      * Upload a document PDF to D4Sign and add signatories.
      *
      * @param ContratoDocumento $documento
-     * @param array $signatarios  [['email'=>'...','nome'=>'...','papel'=>'?'],...]
+     * @param array $signatarios  [['email'=>'...','nome'=>'...','papel'=>'?','icp_brasil'=>bool],...]
      * @return array ['success'=>bool, 'uuid'=>string, 'key'=>string, 'message'=>string]
      */
     public function enviarDocumento(ContratoDocumento $documento, array $signatarios): array
@@ -73,6 +73,8 @@ class D4SignService
 
             // 2. Add each signatory
             foreach ($signatarios as $sig) {
+                // icp_brasil=true → requer certificado ICP-Brasil (equivalente gov.br)
+                $icpBrasil = !empty($sig['icp_brasil']) ? '1' : '0';
                 $addResponse = Http::withHeaders([
                     'tokenAPI' => $this->apiKey,
                     'cryptKey' => $this->cryptoKey,
@@ -80,7 +82,7 @@ class D4SignService
                     'email' => $sig['email'],
                     'act' => '1', // 1=assinar, 2=aprovar, 3=reconhecer
                     'foreign' => '0',
-                    'certificadoicpbr' => '0',
+                    'certificadoicpbr' => $icpBrasil,
                     'assinatura_presencial' => '0',
                     'docauth' => '0',
                 ]);
