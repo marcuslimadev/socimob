@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Image, Search, Loader2, Share2, Sparkles, Download, Copy } from 'lucide-react';
+import { Image, Search, Loader2, Sparkles, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { fetchTenantBranding, type TenantBranding } from '@/lib/tenantBranding';
 
 interface Property {
@@ -34,12 +33,6 @@ interface Property {
   imagem_destaque?: string;
   description?: string;
   descricao?: string;
-}
-
-interface AdGeneration {
-  property: Property;
-  generatedText: string;
-  isGenerating: boolean;
 }
 
 const STORY_WIDTH = 1080;
@@ -116,10 +109,8 @@ export default function PropertyAds() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenant, setTenant] = useState<TenantBranding | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDownloading, setIsDownloading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [adDialog, setAdDialog] = useState(false);
-  const [adGeneration, setAdGeneration] = useState<AdGeneration | null>(null);
+  const [downloadingPropertyId, setDownloadingPropertyId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchProperties();
@@ -161,45 +152,22 @@ export default function PropertyAds() {
     return parts.join(' | ').substring(0, 400);
   };
 
-  const handleGenerateAd = async (property: Property) => {
-    setAdDialog(true);
-    setAdGeneration({
-      property,
-      generatedText: '',
-      isGenerating: true,
-    });
-
+  const fetchAdText = async (property: Property) => {
     try {
       const response = await api.post(`/properties/${property.id}/generate-ad-description`);
 
       if (response.data.success) {
-        setAdGeneration((prev) => prev ? {
-          ...prev,
-          generatedText: response.data.description,
-          isGenerating: false,
-        } : null);
-        toast.success('Texto gerado com sucesso');
-      } else {
-        throw new Error(response.data.error || 'Erro ao gerar texto');
+        return response.data.description as string;
       }
+
+      throw new Error(response.data.error || 'Erro ao gerar texto');
     } catch (error: any) {
       console.error('Erro ao gerar propaganda:', error);
       const errorMsg = error.response?.data?.error || 'Erro ao gerar texto com IA';
       toast.error(errorMsg);
 
-      setAdGeneration((prev) => prev ? {
-        ...prev,
-        generatedText: generateFallbackText(property),
-        isGenerating: false,
-      } : null);
+      return generateFallbackText(property);
     }
-  };
-
-  const handleCopyText = async () => {
-    if (!adGeneration?.generatedText) return;
-
-    await navigator.clipboard.writeText(adGeneration.generatedText);
-    toast.success('Texto copiado');
   };
 
   const createStoryImage = async (property: Property, generatedText: string) => {
@@ -363,14 +331,13 @@ export default function PropertyAds() {
     return canvas.toDataURL('image/png');
   };
 
-  const handleDownloadStory = async () => {
-    if (!adGeneration?.property || !adGeneration?.generatedText) return;
-
+  const handleDownloadStory = async (property: Property) => {
     try {
-      setIsDownloading(true);
-      const dataUrl = await createStoryImage(adGeneration.property, adGeneration.generatedText);
+      setDownloadingPropertyId(property.id);
+      const generatedText = await fetchAdText(property);
+      const dataUrl = await createStoryImage(property, generatedText);
       const link = document.createElement('a');
-      const safeTitle = getPropertyTitle(adGeneration.property)
+      const safeTitle = getPropertyTitle(property)
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
@@ -378,39 +345,15 @@ export default function PropertyAds() {
         .replace(/^-+|-+$/g, '');
 
       link.href = dataUrl;
-      link.download = `status-imovel-${safeTitle || adGeneration.property.id}.png`;
+      link.download = `status-imovel-${safeTitle || property.id}.png`;
       link.click();
       toast.success('Imagem pronta para download');
     } catch (error) {
       console.error('Erro ao gerar imagem da propaganda:', error);
       toast.error('Não foi possível gerar a imagem');
     } finally {
-      setIsDownloading(false);
+      setDownloadingPropertyId(null);
     }
-  };
-
-  const handleShare = async () => {
-    if (!adGeneration?.property || !adGeneration?.generatedText) return;
-
-    const shareData = {
-      title: getPropertyTitle(adGeneration.property),
-      text: adGeneration.generatedText,
-      url: `${window.location.origin}/imoveis/${adGeneration.property.id}`,
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-        toast.success('Compartilhado com sucesso');
-      } catch (error) {
-        if ((error as Error).name !== 'AbortError') {
-          await handleCopyText();
-        }
-      }
-      return;
-    }
-
-    await handleCopyText();
   };
 
   const filteredProperties = properties.filter((prop) =>
@@ -555,11 +498,12 @@ export default function PropertyAds() {
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => handleGenerateAd(property)}
+                        onClick={() => handleDownloadStory(property)}
+                        disabled={downloadingPropertyId === property.id}
                         className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-amber-500 px-4 py-3 font-semibold text-slate-950"
                       >
-                        <Sparkles size={16} />
-                        Gerar e baixar status
+                        {downloadingPropertyId === property.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                        {downloadingPropertyId === property.id ? 'Gerando imagem...' : 'Baixar imagem'}
                       </motion.button>
                     </div>
                   </motion.div>
@@ -569,131 +513,6 @@ export default function PropertyAds() {
           )}
         </motion.div>
       </div>
-
-      <Dialog open={adDialog} onOpenChange={setAdDialog}>
-        <DialogContent className="max-w-[960px] border-white/10 bg-[#050b14] p-0 text-white overflow-hidden">
-          {adGeneration?.isGenerating ? (
-            <div className="flex min-h-[320px] flex-col items-center justify-center">
-              <Loader2 className="mb-4 h-12 w-12 animate-spin text-amber-400" />
-              <p className="text-white/70">Gerando texto e montando a propaganda...</p>
-            </div>
-          ) : adGeneration ? (
-            <div className="grid grid-cols-1 lg:grid-cols-[390px_minmax(0,1fr)]">
-              <div className="border-r border-white/10 bg-[#07111d] p-4">
-                <div className="mx-auto aspect-[9/16] w-full max-w-[360px] overflow-hidden rounded-[32px] border border-white/15 bg-[#0d1826] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
-                  <div className="relative h-full">
-                    {normalizePhotos(adGeneration.property)[0] ? (
-                      <img
-                        src={normalizePhotos(adGeneration.property)[0]}
-                        alt={getPropertyTitle(adGeneration.property)}
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-950" />
-                    )}
-
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-[#07111d]" />
-
-                    <div className="absolute inset-x-5 top-5 flex items-center gap-3">
-                      {(tenant?.logo_url || tenant?.logo) ? (
-                        <div className="rounded-2xl bg-white/95 p-2">
-                          <img src={tenant.logo_url || tenant.logo} alt={tenant?.name || 'Logo'} className="h-9 w-auto max-w-[120px] object-contain" />
-                        </div>
-                      ) : null}
-                      <div>
-                        <p className="text-[10px] uppercase tracking-[0.32em] text-white/60">Status para Instagram</p>
-                        <p className="text-sm font-semibold text-white">{tenant?.name || 'Seu tenant'}</p>
-                      </div>
-                    </div>
-
-                    <div className="absolute inset-x-5 bottom-5 rounded-[28px] bg-[#07111d]/88 p-5 backdrop-blur-sm">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-amber-300">
-                        {getTransactionType(adGeneration.property) === 'aluguel' ? 'Para alugar' : 'Imóvel em destaque'}
-                      </p>
-                      <h3 className="mt-2 text-[28px] font-bold leading-[1.05] text-white">
-                        {getPropertyTitle(adGeneration.property)}
-                      </h3>
-                      <p className="mt-3 text-sm text-white/75">
-                        {getLocationText(adGeneration.property) || 'Localização sob consulta'}
-                      </p>
-                      <p className="mt-3 text-[26px] font-bold text-white">
-                        {formatCurrency(getPrice(adGeneration.property))}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-white/80">
-                        {getBedrooms(adGeneration.property) > 0 && <span>{getBedrooms(adGeneration.property)} quartos</span>}
-                        {getBathrooms(adGeneration.property) > 0 && <span>{getBathrooms(adGeneration.property)} banheiros</span>}
-                        {getArea(adGeneration.property) > 0 && <span>{getArea(adGeneration.property)}m²</span>}
-                      </div>
-                      <p className="mt-4 line-clamp-4 text-[12px] leading-5 text-white/88">
-                        {adGeneration.generatedText}
-                      </p>
-
-                      {normalizePhotos(adGeneration.property).length > 1 && (
-                        <div className="mt-4 flex gap-2">
-                          {normalizePhotos(adGeneration.property).slice(1, 4).map((photo, index) => (
-                            <img
-                              key={`${photo}-${index}`}
-                              src={photo}
-                              alt={`Foto ${index + 2}`}
-                              className="h-14 w-14 rounded-2xl object-cover ring-1 ring-white/15"
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6">
-                <div className="mb-6">
-                  <p className="text-xs uppercase tracking-[0.3em] text-white/45">Prévia</p>
-                  <h2 className="mt-2 text-2xl font-semibold">Arte vertical pronta para baixar</h2>
-                  <p className="mt-2 max-w-2xl text-sm text-white/65">
-                    A imagem final é exportada em PNG 1080x1920 com foto principal, miniaturas extras, texto da propaganda e logo do tenant.
-                  </p>
-                </div>
-
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/45">Texto gerado</p>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-white/90">{adGeneration.generatedText}</p>
-                </div>
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={handleDownloadStory}
-                    disabled={isDownloading}
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-3 font-semibold text-slate-950 disabled:opacity-60"
-                  >
-                    {isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                    Baixar PNG
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={handleCopyText}
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-white/8 px-4 py-3 font-medium text-white"
-                  >
-                    <Copy size={16} />
-                    Copiar texto
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={handleShare}
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-white/8 px-4 py-3 font-medium text-white"
-                  >
-                    <Share2 size={16} />
-                    Compartilhar
-                  </motion.button>
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

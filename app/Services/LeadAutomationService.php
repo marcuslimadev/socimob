@@ -114,9 +114,8 @@ class LeadAutomationService
             $messageSid = null;
 
             // 4. Verificar se deve enviar SMS ou WhatsApp
-            // Se a conversa JÁ EXISTE e tem mensagens, significa que o cliente iniciou contato via WhatsApp
-            // Nesse caso, NÃO enviar SMS, apenas continuar no WhatsApp
-            $deveEnviarSMS = !$conversaExistente || $conversaExistente->mensagens()->count() === 0;
+            // SMS automático desabilitado - usar apenas WhatsApp
+            $deveEnviarSMS = false;
             
             if ($deveEnviarSMS) {
                 // Primeiro contato por SMS com link wa.me do tenant
@@ -239,6 +238,13 @@ class LeadAutomationService
      */
     public function enviarPrimeiroContatoSms(Lead $lead, bool $forceCreateConversa = false): array
     {
+        // SMS automático desabilitado
+        return [
+            'success' => false,
+            'error' => 'Envio de SMS desabilitado',
+            'lead_id' => $lead->id
+        ];
+
         try {
             $telefone = $this->getLeadTelefone($lead);
 

@@ -1598,7 +1598,7 @@ Regras:
     public function generateAdDescription(Request $request, $id)
     {
         try {
-            $tenantId = $request->attributes->get('tenant_id');
+            $tenantId = $this->resolveTenantId($request);
             
             if (!$tenantId) {
                 return response()->json(['error' => 'No tenant context'], 400);
@@ -1607,40 +1607,44 @@ Regras:
             $property = Property::where('tenant_id', $tenantId)
                 ->findOrFail($id);
 
-            // Buscar configuração do tenant para pegar a chave OpenAI
-            $tenantConfig = DB::table('tenant_configs')
-                ->where('tenant_id', $tenantId)
-                ->first();
-
+            $tenant = Tenant::find($tenantId);
             $openaiKey = null;
-            
-            // Procurar chave OpenAI nas configurações
-            if ($tenantConfig) {
-                // Tentar nas configurações gerais
-                $rawSettings = $tenantConfig->settings ?? null;
-                if (!empty($rawSettings)) {
-                    $settings = json_decode($rawSettings, true);
-                    $openaiKey = $settings['openai_api_key'] ?? null;
-                }
-                
-                // Se não encontrar, procurar na própria coluna openai_api_key do tenant
-                if (!$openaiKey && !empty($tenantConfig->openai_api_key ?? null)) {
-                    $openaiKey = $tenantConfig->openai_api_key;
-                }
 
-                // Se não encontrar, procurar no env específico do tenant
+            if ($tenant) {
+                // Usa a hierarquia padrão do projeto:
+                // banco do tenant -> metadata -> ENV específico do tenant -> ENV global.
+                $openaiKey = $tenant->getIntegrationValue('openai_api_key');
+
+                // Compatibilidade com instalações antigas que usavam api_key_openai.
                 if (!$openaiKey) {
-                    $envKey = strtoupper($tenantConfig->slug ?? '') . '_OPENAI_API_KEY';
-                    $openaiKey = env($envKey);
+                    $openaiKey = $tenant->getIntegrationValue('api_key_openai');
                 }
             }
 
-            // Fallback para chave global
             if (!$openaiKey) {
-                $openaiKey = env('OPENAI_API_KEY');
+                $tenantConfig = DB::table('tenant_configs')
+                    ->where('tenant_id', $tenantId)
+                    ->first();
+
+                if ($tenantConfig) {
+                    $rawSettings = $tenantConfig->settings ?? null;
+                    if (!empty($rawSettings)) {
+                        $settings = json_decode($rawSettings, true);
+                        $openaiKey = $settings['openai_api_key'] ?? null;
+                    }
+
+                    if (!$openaiKey && !empty($tenantConfig->openai_api_key ?? null)) {
+                        $openaiKey = $tenantConfig->openai_api_key;
+                    }
+                }
             }
 
             if (!$openaiKey) {
+                Log::warning('OpenAI key not configured for ad generation', [
+                    'tenant_id' => $tenantId,
+                    'tenant_slug' => $tenant?->slug,
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'error' => 'Chave da OpenAI não configurada para este tenant'

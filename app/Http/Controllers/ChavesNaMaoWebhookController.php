@@ -411,9 +411,12 @@ class ChavesNaMaoWebhookController extends Controller
 
     /**
      * Envia SMS com link do WhatsApp do tenant para o lead
+     * SMS automático desabilitado
      */
     private function sendWhatsAppSMS(Lead $lead, array $leadData): void
     {
+        return;
+
         try {
             // Validar se o lead tem telefone
             if (empty($lead->telefone) || $lead->telefone === '00000000000') {

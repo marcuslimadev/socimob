@@ -216,10 +216,10 @@ class IntentionService
             $this->sendWhatsAppNotification($notification);
         }
 
-        // Se cliente deseja notificação por SMS
-        if ($intention->notify_by_sms && $intention->phone) {
-            $this->sendSMSNotification($notification);
-        }
+        // SMS desabilitado
+        // if ($intention->notify_by_sms && $intention->phone) {
+        //     $this->sendSMSNotification($notification);
+        // }
 
         Log::info('Property match notification created', [
             'intention_id' => $intention->id,
@@ -365,7 +365,7 @@ class IntentionService
                 match($notification->channel) {
                     'email' => $this->sendEmailNotification($notification),
                     'whatsapp' => $this->sendWhatsAppNotification($notification),
-                    'sms' => $this->sendSMSNotification($notification),
+                    'sms' => null, // SMS desabilitado
                     'in_app' => $notification->markAsSent(),
                     default => null,
                 };

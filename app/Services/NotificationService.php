@@ -57,7 +57,8 @@ class NotificationService
                             break;
 
                         case 'sms':
-                            $result = $this->sendSMS($notification, $user);
+                            // SMS desabilitado
+                            $result = ['success' => false, 'message' => 'SMS desabilitado'];
                             break;
 
                         case 'whatsapp':
