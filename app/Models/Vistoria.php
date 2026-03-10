@@ -14,6 +14,7 @@ class Vistoria extends Model
 
     protected $fillable = [
         'tenant_id',
+        'contrato_id',
         'codigo',
         'status',
         'cliente_nome',
@@ -25,7 +26,15 @@ class Vistoria extends Model
         'mobiliado',
         'data_vistoria',
         'observacoes',
+        'comodos',
+        'assinatura_inquilino_status',
+        'assinatura_proprietario_status',
     ];
+
+    public function fotos()
+    {
+        return $this->hasMany(VistoriaFoto::class, 'vistoria_id')->orderBy('comodo')->orderBy('ordem');
+    }
 
     protected $casts = [
         'vistoriadores' => 'array',

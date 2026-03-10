@@ -44,6 +44,10 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->post('/financeiro/contratos', 'App\Http\Controllers\Admin\ContratosLocacaoController@store');
     $router->get('/financeiro/contratos/{id}', 'App\Http\Controllers\Admin\ContratosLocacaoController@show');
     $router->put('/financeiro/contratos/{id}', 'App\Http\Controllers\Admin\ContratosLocacaoController@update');
+    $router->get('/financeiro/contratos/{contratoId}/vistorias',        'App\Http\Controllers\Admin\VistoriasContratoController@index');
+    $router->post('/financeiro/contratos/{contratoId}/vistorias',       'App\Http\Controllers\Admin\VistoriasContratoController@store');
+    $router->patch('/financeiro/contratos/{contratoId}/vistorias/{id}', 'App\Http\Controllers\Admin\VistoriasContratoController@update');
+    $router->delete('/financeiro/contratos/{contratoId}/vistorias/{id}','App\Http\Controllers\Admin\VistoriasContratoController@destroy');
     $router->get('/financeiro/cobrancas-contrato', 'App\Http\Controllers\Admin\CobrancasContratoController@index');
     $router->post('/financeiro/contratos/{id}/gerar-cobranca', 'App\Http\Controllers\Admin\CobrancasContratoController@gerar');
     $router->patch('/financeiro/cobrancas-contrato/{id}/status', 'App\Http\Controllers\Admin\CobrancasContratoController@updateStatus');

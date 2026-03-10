@@ -17,6 +17,7 @@ class VistoriaFoto extends Model
         'tenant_id',
         'vistoria_id',
         'comodo',
+        'descricao',
         'arquivo_path',
         'url',
         'mime_type',
@@ -26,6 +27,7 @@ class VistoriaFoto extends Model
         'ordem',
         'enviado_por_user_id',
         'enviado_por_pessoa_id',
+        'enviado_por_tipo',
     ];
 
     protected $casts = [
