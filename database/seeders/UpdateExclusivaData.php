@@ -132,9 +132,11 @@ try {
     $config = $stmt->fetch();
 
     if ($config) {
-        $stmt = $pdo->prepare("UPDATE tenant_configs SET whatsapp_number = ?, updated_at = NOW() WHERE tenant_id = ?");
-        $stmt->execute(['553173341150', $tenantId]);
-        echo "WhatsApp number atualizado na config!\n";
+        $stmt = $pdo->prepare("UPDATE tenant_configs SET whatsapp_number = ?, twilio_whatsapp_from = ?, twilio_account_sid = ?, twilio_auth_token = ?, updated_at = NOW() WHERE tenant_id = ?");
+        $exclusivaTwilioSid   = getenv('EXCLUSIVA_TWILIO_ACCOUNT_SID') ?: '';
+        $exclusivaTwilioToken = getenv('EXCLUSIVA_TWILIO_AUTH_TOKEN')  ?: '';
+        $stmt->execute(['5531973341150', 'whatsapp:+553173341150', $exclusivaTwilioSid, $exclusivaTwilioToken, $tenantId]);
+        echo "WhatsApp number e credenciais Twilio atualizados na config!\n";
     }
 
     echo "\nDados atualizados com sucesso!\n";
