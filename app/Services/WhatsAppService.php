@@ -11,6 +11,7 @@ use App\Models\LeadDocument;
 use App\Models\AppSetting;
 use App\Models\SmsShortLink;
 use App\Services\LeadCustomerService;
+use App\Services\MetaWhatsAppService;
 use App\Services\SmsShortLinkService;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -31,13 +32,13 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class WhatsAppService
 {
-    private $twilio;
+    private MetaWhatsAppService $twilio;
     private $openai;
     private $stageDetection;
     private LeadCustomerService $leadCustomerService;
     private SmsShortLinkService $smsShortLinkService;
     
-    public function __construct(TwilioService $twilio, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService, SmsShortLinkService $smsShortLinkService)
+    public function __construct(MetaWhatsAppService $twilio, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService, SmsShortLinkService $smsShortLinkService)
     {
         $this->twilio = $twilio;
         $this->openai = $openai;
@@ -1106,6 +1107,7 @@ class WhatsAppService
                 'mensagem_id' => $mensagemId
             ]);
 
+            // Meta: media_url pode ser um Media ID (não URL) — MetaWhatsAppService resolve
             $audioData = $this->twilio->downloadMedia($mediaUrl);
 
             if (!$audioData['success']) {
@@ -1593,33 +1595,33 @@ class WhatsAppService
             return;
         }
 
-        // 1. Baixar e salvar localmente QUALQUER mídia do Twilio (imagem, PDF, áudio, vídeo, etc.)
+        // 1. Baixar e salvar localmente QUALQUER mídia recebida (Meta media_id ou URL Twilio)
         $localMediaUrl = $mediaUrl;
-        if (str_contains($mediaUrl, 'api.twilio.com')) {
+        $isMetaMediaId = !str_starts_with($mediaUrl, 'http');
+        $isTwilioUrl   = str_contains($mediaUrl, 'api.twilio.com');
+
+        if ($isMetaMediaId || $isTwilioUrl) {
             try {
-                // Resolver credenciais do tenant
-                $tenant = \App\Models\Tenant::find($conversa->tenant_id);
-                $sid = $tenant ? $tenant->getTwilioAccountSid() : null;
-                $token = $tenant ? $tenant->getTwilioAuthToken() : null;
+                // MetaWhatsAppService resolve tanto meta_id quanto URL autenticada
+                $mediaData = $this->twilio->downloadMedia($mediaUrl);
 
-                $twilioMediaService = app(\App\Services\TwilioMediaService::class);
-                $localPath = $twilioMediaService->downloadAndSaveMedia(
-                    $mediaUrl,
-                    $lead->id,
-                    $mensagem->id,
-                    $sid,
-                    $token
-                );
+                if ($mediaData['success'] ?? false) {
+                    $contentType = $mediaData['contentType'] ?? 'application/octet-stream';
+                    $extension   = $this->extensionFromContentType($contentType);
+                    $filename    = "lead_{$lead->id}_msg_{$mensagem->id}_" . time() . ".{$extension}";
+                    $path        = "leads/{$lead->id}/media/{$filename}";
 
-                if ($localPath) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($path, $mediaData['data']);
+                    $localPath = "/storage/{$path}";
+
                     Log::info('Mídia salva localmente', ['local_path' => $localPath]);
                     $mensagem->update(['media_url' => $localPath]);
                     $localMediaUrl = $localPath;
                 } else {
-                    Log::error('downloadAndSaveMedia retornou null', ['url' => $mediaUrl]);
+                    Log::error('Falha ao baixar mídia', ['url' => $mediaUrl, 'error' => $mediaData['error'] ?? '']);
                 }
             } catch (\Exception $e) {
-                Log::error('Erro ao baixar mídia do Twilio: ' . $e->getMessage());
+                Log::error('Erro ao baixar mídia: ' . $e->getMessage());
             }
         }
 
@@ -1858,11 +1860,8 @@ class WhatsAppService
             return ['success' => true, 'message_sid' => null];
         }
 
-        if ($channel === 'sms') {
-            $result = $this->twilio->sendSMS($telefone, $body);
-        } else {
-            $result = $this->twilio->sendMessage($telefone, $body);
-        }
+        // SMS desabilitado — enviar sempre via WhatsApp
+        $result = $this->twilio->sendMessage($telefone, $body);
 
         // Registrar mensagem enviada
         $this->saveMensagem($conversaId, [
@@ -1900,7 +1899,14 @@ class WhatsAppService
             return $this->sendMessage($conversaId, $telefone, $conteudoRegistro, $channel);
         }
 
-        $result = $this->twilio->sendTemplate($telefone, $contentSid, $contentVariables);
+        // Meta Cloud API: enviar template por nome (ex: "hello_world") em vez de ContentSid
+        // Se contentSid parece um nome de template Meta (sem HX prefix), usar sendTemplate
+        if (!str_starts_with($contentSid, 'HX')) {
+            $result = $this->twilio->sendTemplate($telefone, $contentSid, 'pt_BR', array_values($contentVariables));
+        } else {
+            // ContentSid do Twilio — enviar como mensagem de texto simples como fallback
+            $result = $this->twilio->sendMessage($telefone, $conteudoRegistro);
+        }
 
         $this->saveMensagem($conversaId, [
             'message_sid' => $result['message_sid'] ?? null,
@@ -2205,6 +2211,27 @@ class WhatsAppService
     /**
      * Detectar tipo de mensagem
      */
+    private function extensionFromContentType(string $contentType): string
+    {
+        $map = [
+            'image/jpeg'       => 'jpg',
+            'image/jpg'        => 'jpg',
+            'image/png'        => 'png',
+            'image/gif'        => 'gif',
+            'image/webp'       => 'webp',
+            'audio/ogg'        => 'ogg',
+            'audio/mpeg'       => 'mp3',
+            'audio/aac'        => 'aac',
+            'audio/amr'        => 'amr',
+            'video/mp4'        => 'mp4',
+            'application/pdf'  => 'pdf',
+        ];
+
+        // Normalizar (remove parâmetros: "audio/ogg; codecs=opus" → "audio/ogg")
+        $base = strtolower(explode(';', $contentType)[0]);
+        return $map[trim($base)] ?? 'bin';
+    }
+
     private function detectMessageType($mediaUrl, $mediaType)
     {
         if (!$mediaUrl) {
