@@ -96,28 +96,36 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
     Write-Step "DEPLOY NO SERVIDOR SSH"
     Write-Host "Servidor: $SSH_USER@$SSH_HOST`:$SSH_PORT" -ForegroundColor Yellow
 
-    # Aguarda o pull automatico do servidor processar o push
-    Write-Host "Aguardando pull automatico do servidor (10s)..." -ForegroundColor Gray
-    Start-Sleep -Seconds 10
+    $DEPLOY_FULL_PATH = "/home/$SSH_USER/domains/lojadaesquina.store/public_html"
 
+    # Descobre quais assets ja existem no servidor (evita copiar tudo)
+    Write-Host "Verificando assets no servidor..." -ForegroundColor Gray
+    $serverAssets = (echo "exit" | plink -P $SSH_PORT -pw $SSH_PASS -batch $SSH_USER@$SSH_HOST `
+        "ls ${DEPLOY_FULL_PATH}/assets/ 2>/dev/null") | Where-Object { $_ -match '\.' }
+
+    $localAssets = Get-ChildItem "public\assets" -File
+    $newAssets = $localAssets | Where-Object { $serverAssets -notcontains $_.Name }
+
+    Write-Host "Assets novos: $($newAssets.Count) de $($localAssets.Count) total" -ForegroundColor Gray
+
+    # Copia index.html + apenas assets novos em uma unica chamada pscp
+    $filesToCopy = @("public\index.html") + ($newAssets | ForEach-Object { $_.FullName })
+    Write-Host "Copiando $($filesToCopy.Count) arquivo(s)..." -ForegroundColor Gray
+    & pscp -P $SSH_PORT -pw $SSH_PASS -batch @filesToCopy "${SSH_USER}@${SSH_HOST}:${DEPLOY_FULL_PATH}/"
+    if ($LASTEXITCODE -ne 0) { throw "Falha ao copiar arquivos para o servidor" }
+    Write-Success "Frontend atualizado no servidor"
+
+    # Comandos Laravel via plink
     $deployCommands = @"
-cd $DEPLOY_PATH && \
-echo '=== COMMIT NO SERVIDOR ===' && \
-git log --oneline -1 && \
-echo '' && \
-echo '=== COPIANDO BUILD ===' && \
-cp -rf dist/public/* ./ && \
+cd $DEPLOY_FULL_PATH && \
+echo '=== INDEX ATIVO ===' && \
+grep 'index-' index.html && \
 echo '' && \
 echo '=== COMPOSER INSTALL ===' && \
-/opt/alt/php83/usr/bin/php `$(which composer) install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -5 && \
+/opt/alt/php83/usr/bin/php `$(which composer) install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -3 && \
 echo '' && \
 echo '=== MIGRATIONS ===' && \
 /opt/alt/php83/usr/bin/php artisan migrate --force 2>&1 || true && \
-echo '' && \
-echo '=== VERIFICAR BUILD ===' && \
-ls -lh index.html && \
-ls -lh assets/index-*.js assets/index-*.css 2>&1 | head -3 && \
-echo '' && \
 echo '=== DEPLOY CONCLUIDO ===' && \
 date
 "@
