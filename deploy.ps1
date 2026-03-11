@@ -95,50 +95,25 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
     # 4. DEPLOY NO SERVIDOR SSH
     Write-Step "DEPLOY NO SERVIDOR SSH"
     Write-Host "Servidor: $SSH_USER@$SSH_HOST`:$SSH_PORT" -ForegroundColor Yellow
+    Write-Host "Caminho: $DEPLOY_PATH" -ForegroundColor Yellow
+    Write-Host ""
 
-    $DEPLOY_FULL_PATH = "/home/$SSH_USER/domains/lojadaesquina.store/public_html"
-
-    # Descobre quais assets ja existem no servidor (evita copiar tudo)
-    Write-Host "Verificando assets no servidor..." -ForegroundColor Gray
-    $serverAssets = (echo "exit" | plink -P $SSH_PORT -pw $SSH_PASS -batch $SSH_USER@$SSH_HOST `
-        "ls ${DEPLOY_FULL_PATH}/assets/ 2>/dev/null") | Where-Object { $_ -match '\.' }
-
-    $localAssets = Get-ChildItem "public\assets" -File
-    $newAssets = $localAssets | Where-Object { $serverAssets -notcontains $_.Name }
-
-    Write-Host "Assets novos: $($newAssets.Count) de $($localAssets.Count) total" -ForegroundColor Gray
-
-    # Copia index.html sempre (obrigatorio)
-    pscp -P $SSH_PORT -pw $SSH_PASS -batch "public\index.html" "${SSH_USER}@${SSH_HOST}:${DEPLOY_FULL_PATH}/index.html"
-    if ($LASTEXITCODE -ne 0) { throw "Falha ao copiar index.html" }
-    Write-Success "index.html copiado"
-
-    # Copia apenas assets que nao existem no servidor
-    if ($newAssets.Count -eq 0) {
-        Write-Host "Nenhum asset novo para copiar" -ForegroundColor Gray
-    } elseif ($newAssets.Count -gt 100) {
-        Write-Host "Muitos assets novos ($($newAssets.Count)), copiando pasta completa..." -ForegroundColor Gray
-        pscp -P $SSH_PORT -pw $SSH_PASS -batch -r "public\assets" "${SSH_USER}@${SSH_HOST}:${DEPLOY_FULL_PATH}/"
-        if ($LASTEXITCODE -ne 0) { throw "Falha ao copiar assets" }
-    } else {
-        Write-Host "Copiando $($newAssets.Count) asset(s) novo(s)..." -ForegroundColor Gray
-        foreach ($asset in $newAssets) {
-            pscp -P $SSH_PORT -pw $SSH_PASS -batch $asset.FullName "${SSH_USER}@${SSH_HOST}:${DEPLOY_FULL_PATH}/assets/$($asset.Name)"
-        }
-    }
-    Write-Success "Assets copiados"
-
-    # Comandos Laravel via plink
     $deployCommands = @"
-cd $DEPLOY_FULL_PATH && \
-echo '=== INDEX ATIVO ===' && \
-grep 'index-' index.html && \
+cd $DEPLOY_PATH && \
+echo '=== GIT PULL ===' && \
+git pull origin master && \
+echo '' && \
+echo '=== COPIAR BUILD ===' && \
+cp -rf dist/public/* ./ && \
 echo '' && \
 echo '=== COMPOSER INSTALL ===' && \
-/opt/alt/php83/usr/bin/php `$(which composer) install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -3 && \
+/opt/alt/php83/usr/bin/php `$(which composer) install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -5 && \
 echo '' && \
 echo '=== MIGRATIONS ===' && \
 /opt/alt/php83/usr/bin/php artisan migrate --force 2>&1 || true && \
+echo '' && \
+echo '=== VERIFICAR BUILD ===' && \
+grep 'index-' index.html && \
 echo '=== DEPLOY CONCLUIDO ===' && \
 date
 "@
