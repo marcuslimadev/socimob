@@ -22,6 +22,7 @@ interface ImovelRow {
   localizacao: string;
   inserido_por_nome: string | null;
   proprietario_nome: string | null;
+  imobi_brasil_sent: boolean;
   imagem: string;
   ativo: boolean;
   exibir: boolean;
@@ -90,6 +91,7 @@ export default function Properties() {
           localizacao: [item.bairro, item.cidade].filter(Boolean).join(', ') || '-',
           inserido_por_nome: item.inserido_por_nome || null,
           proprietario_nome: item.proprietario_nome || null,
+          imobi_brasil_sent: Boolean(item.imobi_brasil_sent),
           updated_at: item.updated_at || item.created_at || '',
           imagem:
             Array.isArray(item.imagens) && item.imagens.length > 0
@@ -348,7 +350,8 @@ export default function Properties() {
                 {!isLoading && (
                   <>
                     — {imoveis.filter((i) => i.exibir).length} publicados,{' '}
-                    {imoveis.filter((i) => i.destaque).length} em destaque
+                    {imoveis.filter((i) => i.destaque).length} em destaque,{' '}
+                    {imoveis.filter((i) => i.imobi_brasil_sent).length} no Imobi Brasil
                   </>
                 )}
               </p>
