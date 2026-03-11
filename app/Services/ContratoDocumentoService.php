@@ -28,6 +28,19 @@ class ContratoDocumentoService
     {
         $viewName = $template ?? (self::TEMPLATES[$tipo] ?? self::TEMPLATES['contrato']);
 
+        // Garante que todas as relações estão carregadas (incluindo aninhadas)
+        $contrato->loadMissing([
+            'locador',
+            'locatario',
+            'imovel',
+            'fiadores.pessoa',
+        ]);
+
+        // Carrega co-locadores caso existam
+        if (!empty($contrato->co_locadores_ids)) {
+            $contrato->load('locador'); // garante principal
+        }
+
         // Carrega personalização do tenant para este tipo de documento
         $tenantTemplate = ContratoTemplate::where('tipo', $tipo)
             ->where('tenant_id', $contrato->tenant_id)
@@ -40,8 +53,10 @@ class ContratoDocumentoService
             'imovel'         => $contrato->imovel,
             'fiadores'       => $contrato->fiadores,
             'geradoEm'       => now(),
-            'tenantTemplate' => $tenantTemplate, // personalização do tenant
+            'tenantTemplate' => $tenantTemplate,
         ]);
+
+        $pdf->setPaper('A4', 'portrait');
 
         $filename = sprintf(
             'contratos/%d/%s-%s-%s.pdf',
