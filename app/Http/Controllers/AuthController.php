@@ -103,11 +103,7 @@ class AuthController extends Controller
         }
         
         // Gerar token simples
-        $secret = env('JWT_SECRET', env('APP_KEY', 'default-secret-key'));
-        $token = base64_encode($user->id . '|' . time() . '|' . $secret);
-        
-        return response()->json([
-            'success' => true,
+        $secret = config('app.key', env('JWT_SECRET', 'default-secret-key'));,
             'token' => $token,
             'user' => [
                 'id' => $user->id,
@@ -285,7 +281,7 @@ class AuthController extends Controller
             }
 
             // Gerar token
-            $secret = env('JWT_SECRET', env('APP_KEY', 'default-secret-key'));
+            $secret = config('app.key', env('JWT_SECRET', 'default-secret-key'));
             $token = base64_encode($user->id . '|' . time() . '|' . $secret);
 
             return response()->json([

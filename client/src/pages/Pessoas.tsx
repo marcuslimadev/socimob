@@ -115,6 +115,16 @@ export default function Pessoas() {
   const [formData, setFormData] = useState({
     nome: '',
     pais: 'Brasil',
+    nacionalidade: '',
+    estado_civil: '',
+    regime_bens: '',
+    conjuge_nome: '',
+    conjuge_cpf: '',
+    conjuge_rg: '',
+    conjuge_orgao_expedidor: '',
+    conjuge_data_expedicao: '',
+    conjuge_profissao: '',
+    conjuge_nacionalidade: '',
     telefone: '',
     celular: '',
     email: '',
@@ -228,6 +238,16 @@ export default function Pessoas() {
     setFormData({
       nome: '',
       pais: 'Brasil',
+      nacionalidade: '',
+      estado_civil: '',
+      regime_bens: '',
+      conjuge_nome: '',
+      conjuge_cpf: '',
+      conjuge_rg: '',
+      conjuge_orgao_expedidor: '',
+      conjuge_data_expedicao: '',
+      conjuge_profissao: '',
+      conjuge_nacionalidade: '',
       telefone: '',
       celular: '',
       email: '',
@@ -267,6 +287,16 @@ export default function Pessoas() {
       setFormData({
         nome: pessoaCompleta.nome || '',
         pais: pessoaCompleta.pais || 'Brasil',
+        nacionalidade: pessoaCompleta.nacionalidade || '',
+        estado_civil: pessoaCompleta.estado_civil || '',
+        regime_bens: pessoaCompleta.regime_bens || '',
+        conjuge_nome: pessoaCompleta.conjuge_nome || '',
+        conjuge_cpf: pessoaCompleta.conjuge_cpf || '',
+        conjuge_rg: pessoaCompleta.conjuge_rg || '',
+        conjuge_orgao_expedidor: pessoaCompleta.conjuge_orgao_expedidor || '',
+        conjuge_data_expedicao: pessoaCompleta.conjuge_data_expedicao?.split('T')[0] || '',
+        conjuge_profissao: pessoaCompleta.conjuge_profissao || '',
+        conjuge_nacionalidade: pessoaCompleta.conjuge_nacionalidade || '',
         telefone: pessoaCompleta.telefone || '',
         celular: pessoaCompleta.celular || '',
         email: pessoaCompleta.email || '',
@@ -579,6 +609,134 @@ export default function Pessoas() {
                       onChange={(e) => setFormData({ ...formData, inscricao_municipal: e.target.value })}
                       className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        );
+
+      case 'dados_civis':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Nacionalidade</label>
+                <input
+                  type="text"
+                  placeholder="Ex: brasileiro(a)"
+                  value={formData.nacionalidade}
+                  onChange={(e) => setFormData({ ...formData, nacionalidade: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Estado Civil</label>
+                <select
+                  value={formData.estado_civil}
+                  onChange={(e) => setFormData({ ...formData, estado_civil: e.target.value, conjuge_nome: '', conjuge_cpf: '', conjuge_rg: '' })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Selecione...</option>
+                  <option value="solteiro">Solteiro(a)</option>
+                  <option value="casado">Casado(a)</option>
+                  <option value="uniao_estavel">União Estável</option>
+                  <option value="divorciado">Divorciado(a)</option>
+                  <option value="viuvo">Viúvo(a)</option>
+                  <option value="separado">Separado(a)</option>
+                </select>
+              </div>
+            </div>
+
+            {(formData.estado_civil === 'casado' || formData.estado_civil === 'uniao_estavel') && (
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Regime de Bens</label>
+                <select
+                  value={formData.regime_bens}
+                  onChange={(e) => setFormData({ ...formData, regime_bens: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Selecione...</option>
+                  <option value="comunhao_parcial">Comunhão Parcial de Bens</option>
+                  <option value="comunhao_universal">Comunhão Universal de Bens</option>
+                  <option value="separacao_total">Separação Total de Bens</option>
+                  <option value="participacao_final">Participação Final nos Aquestos</option>
+                </select>
+              </div>
+            )}
+
+            {(formData.estado_civil === 'casado' || formData.estado_civil === 'uniao_estavel') && (
+              <>
+                <div className="border-t border-white/10 pt-4">
+                  <p className="text-sm font-semibold text-foreground mb-3">Dados do Cônjuge / Companheiro(a)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">Nome</label>
+                      <input
+                        type="text"
+                        value={formData.conjuge_nome}
+                        onChange={(e) => setFormData({ ...formData, conjuge_nome: e.target.value })}
+                        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">Nacionalidade</label>
+                      <input
+                        type="text"
+                        value={formData.conjuge_nacionalidade}
+                        onChange={(e) => setFormData({ ...formData, conjuge_nacionalidade: e.target.value })}
+                        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">CPF</label>
+                      <input
+                        type="text"
+                        value={formData.conjuge_cpf}
+                        onChange={(e) => setFormData({ ...formData, conjuge_cpf: e.target.value })}
+                        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">Profissão</label>
+                      <input
+                        type="text"
+                        value={formData.conjuge_profissao}
+                        onChange={(e) => setFormData({ ...formData, conjuge_profissao: e.target.value })}
+                        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 mt-3">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">RG</label>
+                      <input
+                        type="text"
+                        value={formData.conjuge_rg}
+                        onChange={(e) => setFormData({ ...formData, conjuge_rg: e.target.value })}
+                        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">Órgão Expedidor</label>
+                      <input
+                        type="text"
+                        value={formData.conjuge_orgao_expedidor}
+                        onChange={(e) => setFormData({ ...formData, conjuge_orgao_expedidor: e.target.value })}
+                        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1">Data Expedição</label>
+                      <input
+                        type="date"
+                        value={formData.conjuge_data_expedicao}
+                        onChange={(e) => setFormData({ ...formData, conjuge_data_expedicao: e.target.value })}
+                        className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
                 </div>
               </>
@@ -1074,6 +1232,16 @@ export default function Pessoas() {
                 }`}
               >
                 Endereço
+              </button>
+              <button
+                onClick={() => setCurrentTab('dados_civis')}
+                className={`px-4 py-2 font-medium transition-all ${
+                  currentTab === 'dados_civis'
+                    ? 'text-blue-400 border-b-2 border-blue-400'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Dados Civis
               </button>
               <button
                 onClick={() => setCurrentTab('contatos')}

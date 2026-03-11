@@ -348,10 +348,15 @@ export default function AdminGestaoLocacao() {
     status: 'ativo',
     inicio: '',
     fim: '',
+    data_assinatura: '',
+    destinacao_imovel: 'residencial',
     dia_vencimento: '',
     valor_aluguel: '',
     tipo_garantia: '',
     valor_garantia: '',
+    garantidora_nome: '',
+    garantidora_cnpj: '',
+    garantidora_endereco: '',
     comissao_administracao_percentual: '',
     indice_reajuste: '',
     periodicidade_reajuste: '12',
@@ -498,17 +503,22 @@ export default function AdminGestaoLocacao() {
         status: novoContrato.status || 'ativo',
         inicio: novoContrato.inicio || undefined,
         fim: novoContrato.fim || undefined,
+        data_assinatura: novoContrato.data_assinatura || undefined,
+        destinacao_imovel: novoContrato.destinacao_imovel || 'residencial',
         dia_vencimento: novoContrato.dia_vencimento ? Number(novoContrato.dia_vencimento) : undefined,
         valor_aluguel: novoContrato.valor_aluguel ? parsePtBrCurrency(novoContrato.valor_aluguel) : undefined,
         tipo_garantia: novoContrato.tipo_garantia || undefined,
         valor_garantia: novoContrato.valor_garantia ? parsePtBrCurrency(novoContrato.valor_garantia) : undefined,
+        garantidora_nome: novoContrato.garantidora_nome || undefined,
+        garantidora_cnpj: novoContrato.garantidora_cnpj || undefined,
+        garantidora_endereco: novoContrato.garantidora_endereco || undefined,
         comissao_administracao_percentual: novoContrato.comissao_administracao_percentual ? parseFloat(novoContrato.comissao_administracao_percentual.replace(',', '.')) : undefined,
         indice_reajuste: novoContrato.indice_reajuste || undefined,
         periodicidade_reajuste: novoContrato.periodicidade_reajuste || '12',
         observacoes: novoContrato.observacoes || undefined,
       });
       toast.success('Contrato criado com sucesso');
-      setNovoContrato({ locador_pessoa_id: '', locatario_pessoa_id: '', imovel_id: '', status: 'ativo', inicio: '', fim: '', dia_vencimento: '', valor_aluguel: '', tipo_garantia: '', valor_garantia: '', comissao_administracao_percentual: '', indice_reajuste: '', periodicidade_reajuste: '12', observacoes: '' });
+      setNovoContrato({ locador_pessoa_id: '', locatario_pessoa_id: '', imovel_id: '', status: 'ativo', inicio: '', fim: '', data_assinatura: '', destinacao_imovel: 'residencial', dia_vencimento: '', valor_aluguel: '', tipo_garantia: '', valor_garantia: '', garantidora_nome: '', garantidora_cnpj: '', garantidora_endereco: '', comissao_administracao_percentual: '', indice_reajuste: '', periodicidade_reajuste: '12', observacoes: '' });
       setShowFormContrato(false);
       await loadAll();
     } catch (error: any) {
@@ -856,16 +866,39 @@ export default function AdminGestaoLocacao() {
                           />
                         </div>
                         <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Destinação do imóvel</label>
+                          <select
+                            value={novoContrato.destinacao_imovel}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, destinacao_imovel: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                          >
+                            <option value="residencial">Residencial</option>
+                            <option value="comercial">Comercial</option>
+                            <option value="misto">Misto</option>
+                            <option value="temporada">Temporada</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1">Data de assinatura</label>
+                          <input
+                            type="date"
+                            value={novoContrato.data_assinatura}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, data_assinatura: e.target.value }))}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2"
+                          />
+                        </div>
+                        <div>
                           <label className="block text-xs text-muted-foreground mb-1">Garantia</label>
                           <select
                             value={novoContrato.tipo_garantia}
-                            onChange={(e) => setNovoContrato((p) => ({ ...p, tipo_garantia: e.target.value }))}
+                            onChange={(e) => setNovoContrato((p) => ({ ...p, tipo_garantia: e.target.value, garantidora_nome: '', garantidora_cnpj: '', garantidora_endereco: '' }))}
                             className="w-full bg-background border border-border rounded-lg px-3 py-2"
                           >
                             <option value="">Sem garantia</option>
                             <option value="caucao">Caução</option>
                             <option value="fiador">Fiador</option>
                             <option value="seguro_fianca">Seguro Fiança</option>
+                            <option value="titulo_capitalizacao">Título de Capitalização</option>
                           </select>
                         </div>
                         <div>
@@ -914,6 +947,44 @@ export default function AdminGestaoLocacao() {
                           />
                         </div>
                       </div>
+
+                      {novoContrato.tipo_garantia === 'seguro_fianca' && (
+                        <div className="col-span-full space-y-3 border border-border rounded-lg p-3 bg-muted/30">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dados da Garantidora</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-muted-foreground mb-1">Nome da Garantidora</label>
+                              <input
+                                type="text"
+                                value={novoContrato.garantidora_nome}
+                                onChange={(e) => setNovoContrato((p) => ({ ...p, garantidora_nome: e.target.value }))}
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
+                                placeholder="Ex: GARANTTI"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-muted-foreground mb-1">CNPJ da Garantidora</label>
+                              <input
+                                type="text"
+                                value={novoContrato.garantidora_cnpj}
+                                onChange={(e) => setNovoContrato((p) => ({ ...p, garantidora_cnpj: e.target.value }))}
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
+                                placeholder="00.000.000/0001-00"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-muted-foreground mb-1">Endereço da Garantidora</label>
+                            <input
+                              type="text"
+                              value={novoContrato.garantidora_endereco}
+                              onChange={(e) => setNovoContrato((p) => ({ ...p, garantidora_endereco: e.target.value }))}
+                              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
+                              placeholder="Rua, número, bairro, cidade - UF"
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       <div>
                         <label className="block text-xs text-muted-foreground mb-1">Observações</label>

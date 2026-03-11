@@ -18,10 +18,13 @@ class ContratoLocacao extends Model
         'numero_contrato',
         'imovel_id',
         'locador_pessoa_id',
+        'co_locadores_ids',
         'locatario_pessoa_id',
         'status',
         'inicio',
         'fim',
+        'data_assinatura',
+        'destinacao_imovel',
         'rescindido_em',
         'motivo_rescisao',
         'multa_rescisao_calculada',
@@ -34,7 +37,11 @@ class ContratoLocacao extends Model
         'valor_seguro',
         'tipo_garantia',
         'valor_garantia',
+        'garantidora_nome',
+        'garantidora_cnpj',
+        'garantidora_endereco',
         'comissao_administracao_percentual',
+        'valor_administracao',
         'observacoes',
         'clausulas',
         'indice_reajuste',
@@ -46,6 +53,7 @@ class ContratoLocacao extends Model
     protected $casts = [
         'inicio' => 'date',
         'fim' => 'date',
+        'data_assinatura' => 'date',
         'rescindido_em' => 'date',
         'renovado_ate' => 'date',
         'proximo_reajuste' => 'date',
@@ -55,9 +63,11 @@ class ContratoLocacao extends Model
         'valor_taxa' => 'float',
         'valor_seguro' => 'float',
         'valor_garantia' => 'float',
+        'valor_administracao' => 'float',
         'multa_rescisao_calculada' => 'float',
         'comissao_administracao_percentual' => 'float',
         'clausulas' => 'array',
+        'co_locadores_ids' => 'array',
         'metadata' => 'array',
     ];
 
@@ -69,6 +79,22 @@ class ContratoLocacao extends Model
     public function locador()
     {
         return $this->belongsTo(Pessoa::class, 'locador_pessoa_id');
+    }
+
+    /**
+     * Retorna todos os locadores (principal + co-locadores)
+     */
+    public function todosLocadores(): \Illuminate\Support\Collection
+    {
+        $locadores = collect();
+        if ($this->locador) {
+            $locadores->push($this->locador);
+        }
+        if (!empty($this->co_locadores_ids)) {
+            $coLocadores = Pessoa::whereIn('id', $this->co_locadores_ids)->get();
+            $locadores = $locadores->merge($coLocadores);
+        }
+        return $locadores;
     }
 
     public function locatario()

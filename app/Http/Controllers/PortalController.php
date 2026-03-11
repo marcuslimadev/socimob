@@ -358,7 +358,7 @@ class PortalController extends Controller
             }
 
             // Gerar token (mesmo formato do AuthController)
-            $secret = env('APP_KEY', 'base64:MjlDaTFXTEZ6WDZrVXBJQk01bE9WMDNQU3JIY2dETjQ=');
+            $secret = config('app.key');
             $token = base64_encode($user->id . '|' . time() . '|' . $secret);
 
             return response()->json([

@@ -170,7 +170,7 @@ class ClientAuthController extends Controller
 
     private function buildAuthResponse(User $user, ?Lead $lead, string $message)
     {
-        $secret = env('JWT_SECRET', env('APP_KEY', 'default-secret-key'));
+        $secret = config('app.key', env('JWT_SECRET', 'default-secret-key'));
         $token = base64_encode($user->id . '|' . time() . '|' . $secret);
 
         return response()->json([
