@@ -91,18 +91,30 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
         throw "Push falhou"
     }
 
-    # 4. DEPLOY NO SERVIDOR SSH (apenas pull e copy)
-    Write-Step "DEPLOY NO SERVIDOR SSH"
+    # 4. DEPLOY NO SERVIDOR (pscp para arquivos frontend + plink para Laravel)
+    Write-Step "DEPLOY NO SERVIDOR"
     Write-Host "Servidor: $SSH_USER@$SSH_HOST`:$SSH_PORT" -ForegroundColor Yellow
     Write-Host "Caminho: $DEPLOY_PATH" -ForegroundColor Yellow
     Write-Host ""
 
+    $DEPLOY_FULL_PATH = "/home/$SSH_USER/domains/lojadaesquina.store/public_html"
+
+    # 4a. Copiar index.html via pscp
+    Write-Host "Copiando index.html..." -ForegroundColor Gray
+    pscp -P $SSH_PORT -pw $SSH_PASS -batch "public\index.html" "${SSH_USER}@${SSH_HOST}:${DEPLOY_FULL_PATH}/index.html"
+    if ($LASTEXITCODE -ne 0) { throw "Falha ao copiar index.html via pscp" }
+    Write-Success "index.html copiado"
+
+    # 4b. Copiar assets via pscp (todos os JS/CSS do build)
+    Write-Host "Copiando assets (JS/CSS)..." -ForegroundColor Gray
+    Get-ChildItem "public\assets" -File | ForEach-Object {
+        pscp -P $SSH_PORT -pw $SSH_PASS -batch $_.FullName "${SSH_USER}@${SSH_HOST}:${DEPLOY_FULL_PATH}/assets/$($_.Name)" 2>&1 | Out-Null
+    }
+    Write-Success "Assets copiados"
+
+    # 4c. Comandos Laravel via plink
     $deployCommands = @"
-cd $DEPLOY_PATH && \
-echo '=== GIT FETCH + RESET ===' && \
-git fetch origin master && \
-git reset --hard FETCH_HEAD && \
-echo '' && \
+cd $DEPLOY_FULL_PATH && \
 echo '=== COMPOSER INSTALL ===' && \
 /opt/alt/php83/usr/bin/php `$(which composer) install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -5 && \
 echo '' && \
@@ -112,24 +124,8 @@ echo '' && \
 echo '=== MIGRATIONS ===' && \
 /opt/alt/php83/usr/bin/php artisan migrate --force 2>&1 || true && \
 echo '' && \
-echo '=== BACKUP ARQUIVOS ANTIGOS ===' && \
-rm -f index.html.bak && \
-test -f index.html && cp index.html index.html.bak || echo 'Sem index.html para backup' && \
-echo '' && \
-echo '=== PREPARAR DEPLOY (PRESERVAR ASSETS HASHED) ===' && \
-rm -f index.html && \
-echo 'Mantendo assets hashed antigos para compatibilidade de cache' && \
-echo '' && \
-echo '=== COPIAR BUILD PARA RAIZ ===' && \
-cp -rf dist/public/* ./ && \
-echo '' && \
-echo '=== LIMPAR CACHE (touch .htaccess) ===' && \
-touch .htaccess 2>/dev/null || echo 'Sem .htaccess' && \
-echo '' && \
 echo '=== VERIFICAR BUILD ===' && \
 ls -lh index.html && \
-echo '' && \
-echo '=== ASSETS COPIADOS ===' && \
 ls -lh assets/index-*.js assets/index-*.css 2>&1 | head -5 && \
 echo '' && \
 echo '=== DEPLOY CONCLUIDO ===' && \
@@ -141,9 +137,7 @@ date
 
     # Verificar se plink esta disponivel
     if (Get-Command plink -ErrorAction SilentlyContinue) {
-        Write-Host "Conectando via plink..." -ForegroundColor Gray
-        # -batch: non-interactive mode (no prompts)
-        # Pipe commands to plink stdin
+        Write-Host "Executando comandos Laravel no servidor..." -ForegroundColor Gray
         echo "exit" | plink -P $SSH_PORT -pw $SSH_PASS -batch $SSH_USER@$SSH_HOST $deployCommands
 
         if ($LASTEXITCODE -eq 0) {
