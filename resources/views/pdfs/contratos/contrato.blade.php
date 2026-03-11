@@ -105,7 +105,8 @@
                 @foreach($todosLocadores as $loc)
                     <strong>{{ $loc->nome }}</strong>
                     @if($loc->cpf), CPF: {{ $loc->cpf }}@endif
-                    @if($loc->rg), RG: {{ $loc->rg }}@if($loc->orgao_expedidor)/{{ $loc->orgao_expedidor }}@endif@endif
+                    @if($loc->rg), RG: {{ $loc->rg }}@if($loc->orgao_expedidor)/{{ $loc->orgao_expedidor }}@endif
+                    @endif
                     @if($loc->nacionalidade), {{ $loc->nacionalidade }}@endif
                     @if($loc->profissao), {{ $loc->profissao }}@endif
                     @if(!empty($loc->estado_civil))
@@ -113,7 +114,8 @@
                         @if(in_array($loc->estado_civil, ['casado','uniao_estavel']) && $loc->conjuge_nome)
                             &nbsp;com <strong>{{ $loc->conjuge_nome }}</strong>
                             @if($loc->conjuge_cpf), CPF: {{ $loc->conjuge_cpf }}@endif
-                            @if($loc->conjuge_rg), RG: {{ $loc->conjuge_rg }}@if($loc->conjuge_orgao_expedidor)/{{ $loc->conjuge_orgao_expedidor }}@endif@endif
+                            @if($loc->conjuge_rg), RG: {{ $loc->conjuge_rg }}@if($loc->conjuge_orgao_expedidor)/{{ $loc->conjuge_orgao_expedidor }}@endif
+                            @endif
                             @if($loc->conjuge_profissao), {{ $loc->conjuge_profissao }}@endif
                             @if($loc->conjuge_nacionalidade), {{ $loc->conjuge_nacionalidade }}@endif
                         @endif
@@ -141,7 +143,8 @@
                 @if(!empty($locatario->estado_civil)), {{ $ecMap[$locatario->estado_civil] ?? $locatario->estado_civil }}@endif
                 @if(!empty($locatario->profissao)), {{ $locatario->profissao }}@endif
                 @if(!empty($locatario->cpf)), CPF: {{ $locatario->cpf }}@endif
-                @if(!empty($locatario->rg)), RG: {{ $locatario->rg }}@if(!empty($locatario->orgao_expedidor))/{{ $locatario->orgao_expedidor }}@endif@endif
+                @if(!empty($locatario->rg)), RG: {{ $locatario->rg }}@if(!empty($locatario->orgao_expedidor))/{{ $locatario->orgao_expedidor }}@endif
+                @endif
                 @if(!empty($locatario->endereco))
                     , residente: {{ $locatario->endereco }}
                     @if(!empty($locatario->numero)) nº {{ $locatario->numero }}@endif
