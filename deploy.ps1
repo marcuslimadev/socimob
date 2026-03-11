@@ -108,12 +108,25 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 
     Write-Host "Assets novos: $($newAssets.Count) de $($localAssets.Count) total" -ForegroundColor Gray
 
-    # Copia index.html + apenas assets novos em uma unica chamada pscp
-    $filesToCopy = @("public\index.html") + ($newAssets | ForEach-Object { $_.FullName })
-    Write-Host "Copiando $($filesToCopy.Count) arquivo(s)..." -ForegroundColor Gray
-    & pscp -P $SSH_PORT -pw $SSH_PASS -batch @filesToCopy "${SSH_USER}@${SSH_HOST}:${DEPLOY_FULL_PATH}/"
-    if ($LASTEXITCODE -ne 0) { throw "Falha ao copiar arquivos para o servidor" }
-    Write-Success "Frontend atualizado no servidor"
+    # Copia index.html sempre (obrigatorio)
+    pscp -P $SSH_PORT -pw $SSH_PASS -batch "public\index.html" "${SSH_USER}@${SSH_HOST}:${DEPLOY_FULL_PATH}/index.html"
+    if ($LASTEXITCODE -ne 0) { throw "Falha ao copiar index.html" }
+    Write-Success "index.html copiado"
+
+    # Copia apenas assets que nao existem no servidor
+    if ($newAssets.Count -eq 0) {
+        Write-Host "Nenhum asset novo para copiar" -ForegroundColor Gray
+    } elseif ($newAssets.Count -gt 100) {
+        Write-Host "Muitos assets novos ($($newAssets.Count)), copiando pasta completa..." -ForegroundColor Gray
+        pscp -P $SSH_PORT -pw $SSH_PASS -batch -r "public\assets" "${SSH_USER}@${SSH_HOST}:${DEPLOY_FULL_PATH}/"
+        if ($LASTEXITCODE -ne 0) { throw "Falha ao copiar assets" }
+    } else {
+        Write-Host "Copiando $($newAssets.Count) asset(s) novo(s)..." -ForegroundColor Gray
+        foreach ($asset in $newAssets) {
+            pscp -P $SSH_PORT -pw $SSH_PASS -batch $asset.FullName "${SSH_USER}@${SSH_HOST}:${DEPLOY_FULL_PATH}/assets/$($asset.Name)"
+        }
+    }
+    Write-Success "Assets copiados"
 
     # Comandos Laravel via plink
     $deployCommands = @"
