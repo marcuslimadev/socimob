@@ -32,12 +32,13 @@ try {
     # 1. BUILD DO FRONTEND (já gera em dist/public/)
     Write-Step "BUILD DO FRONTEND REACT"
     pnpm run build
-    # Verificar pelo artefato em vez do exit code: no Windows o Node.js pode
-    # gerar exit code != 0 mesmo após build bem-sucedido (bug UV_HANDLE_CLOSING)
+    if ($LASTEXITCODE -ne 0) { throw "Build falhou" }
+    Write-Success "Build do frontend concluido em dist/public/"
+    
+    # Verificar se build foi gerado
     if (-not (Test-Path "dist/public/index.html")) {
         throw "Build nao gerou dist/public/index.html - verifique vite.config.ts"
     }
-    Write-Success "Build do frontend concluido em dist/public/"
 
     # 2. COPIAR BUILD PARA public/
     Write-Step "COPIAR BUILD PARA public/"
@@ -91,85 +92,41 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
         throw "Push falhou"
     }
 
-    # 4. DEPLOY NO SERVIDOR (pscp para arquivos frontend + plink para Laravel)
-    Write-Step "DEPLOY NO SERVIDOR"
+    # 4. DEPLOY NO SERVIDOR SSH
+    Write-Step "DEPLOY NO SERVIDOR SSH"
     Write-Host "Servidor: $SSH_USER@$SSH_HOST`:$SSH_PORT" -ForegroundColor Yellow
-    Write-Host "Caminho: $DEPLOY_PATH" -ForegroundColor Yellow
-    Write-Host ""
 
-    $DEPLOY_FULL_PATH = "/home/$SSH_USER/domains/lojadaesquina.store/public_html"
+    # Aguarda o pull automatico do servidor processar o push
+    Write-Host "Aguardando pull automatico do servidor (10s)..." -ForegroundColor Gray
+    Start-Sleep -Seconds 10
 
-    # 4a. Copiar index.html via pscp
-    Write-Host "Copiando index.html..." -ForegroundColor Gray
-    pscp -P $SSH_PORT -pw $SSH_PASS -batch "public\index.html" "${SSH_USER}@${SSH_HOST}:${DEPLOY_FULL_PATH}/index.html"
-    if ($LASTEXITCODE -ne 0) { throw "Falha ao copiar index.html via pscp" }
-    Write-Success "index.html copiado"
-
-    # 4b. Copiar assets via pscp (todos os JS/CSS do build)
-    Write-Host "Copiando assets (JS/CSS)..." -ForegroundColor Gray
-    Get-ChildItem "public\assets" -File | ForEach-Object {
-        pscp -P $SSH_PORT -pw $SSH_PASS -batch $_.FullName "${SSH_USER}@${SSH_HOST}:${DEPLOY_FULL_PATH}/assets/$($_.Name)" 2>&1 | Out-Null
-    }
-    Write-Success "Assets copiados"
-
-    # 4c. Comandos Laravel via plink
     $deployCommands = @"
-cd $DEPLOY_FULL_PATH && \
+cd $DEPLOY_PATH && \
+echo '=== COMMIT NO SERVIDOR ===' && \
+git log --oneline -1 && \
+echo '' && \
+echo '=== COPIANDO BUILD ===' && \
+cp -rf dist/public/* ./ && \
+echo '' && \
 echo '=== COMPOSER INSTALL ===' && \
 /opt/alt/php83/usr/bin/php `$(which composer) install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -5 && \
-echo '' && \
-echo '=== PACKAGE DISCOVER ===' && \
-/opt/alt/php83/usr/bin/php artisan package:discover --ansi 2>&1 && \
 echo '' && \
 echo '=== MIGRATIONS ===' && \
 /opt/alt/php83/usr/bin/php artisan migrate --force 2>&1 || true && \
 echo '' && \
 echo '=== VERIFICAR BUILD ===' && \
 ls -lh index.html && \
-ls -lh assets/index-*.js assets/index-*.css 2>&1 | head -5 && \
+ls -lh assets/index-*.js assets/index-*.css 2>&1 | head -3 && \
 echo '' && \
 echo '=== DEPLOY CONCLUIDO ===' && \
 date
 "@
 
-    # Normaliza quebra de linha para LF antes de enviar ao shell Linux
-    $deployCommands = ($deployCommands -replace "`r`n", "`n" -replace "`r", "`n").Trim()
-
-    # Verificar se plink esta disponivel
-    if (Get-Command plink -ErrorAction SilentlyContinue) {
-        Write-Host "Executando comandos Laravel no servidor..." -ForegroundColor Gray
-        echo "exit" | plink -P $SSH_PORT -pw $SSH_PASS -batch $SSH_USER@$SSH_HOST $deployCommands
-
-        if ($LASTEXITCODE -eq 0) {
-            Write-Success "Deploy SSH concluido com sucesso"
-        } else {
-            Write-Warning "Deploy SSH completou com avisos (codigo: $LASTEXITCODE)"
-        }
-    } elseif (Get-Command ssh -ErrorAction SilentlyContinue) {
-        Write-Host "Conectando via ssh..." -ForegroundColor Gray
-        # Use sshpass if available, otherwise manual password entry
-        if (Get-Command sshpass -ErrorAction SilentlyContinue) {
-            $deployCommands | sshpass -p $SSH_PASS ssh -p $SSH_PORT -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "bash -s"
-        } else {
-            Write-Warning "Voce precisara digitar a senha manualmente: $SSH_PASS"
-            $deployCommands | ssh -p $SSH_PORT -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "bash -s"
-        }
-
-        if ($LASTEXITCODE -eq 0) {
-            Write-Success "Deploy SSH concluido com sucesso"
-        } else {
-            Write-Warning "Deploy SSH completou com avisos"
-        }
+    echo "exit" | plink -P $SSH_PORT -pw $SSH_PASS -batch $SSH_USER@$SSH_HOST $deployCommands
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "Deploy SSH concluido com sucesso"
     } else {
-        Write-Error "Nem plink nem ssh encontrados!"
-        Write-Warning "Execute manualmente no servidor:"
-        Write-Host ""
-        Write-Host "ssh -p $SSH_PORT $SSH_USER@$SSH_HOST" -ForegroundColor Yellow
-        Write-Host "cd $DEPLOY_PATH" -ForegroundColor Yellow
-        Write-Host "git pull origin master" -ForegroundColor Yellow
-        Write-Host "cp -rf dist/public/* public/" -ForegroundColor Yellow
-        Write-Host ""
-        exit 1
+        Write-Warning "Deploy SSH completou com avisos (codigo: $LASTEXITCODE)"
     }
 
     # 5. VERIFICAR SITE
