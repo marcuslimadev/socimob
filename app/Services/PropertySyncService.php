@@ -94,6 +94,12 @@ class PropertySyncService
                         $stats['errors']++;
                         continue;
                     }
+
+                    // Ignorar imóveis inativos (statusImovel != 1)
+                    if (isset($item['statusImovel']) && $item['statusImovel'] != 1) {
+                        Log::debug("⏭️ Imóvel {$codigo} ignorado (statusImovel={$item['statusImovel']})");
+                        continue;
+                    }
                     
                     try {
                         // Buscar dados completos do imóvel (GET ainda funciona)
@@ -104,7 +110,13 @@ class PropertySyncService
                         }
                         
                         $imovel = $response['resultSet'];
-                        
+
+                        // Pular imóveis marcados como não exibir no site
+                        if (isset($imovel['exibirImovel']) && !$imovel['exibirImovel']) {
+                            Log::debug("⏭️ Imóvel {$codigo} ignorado (exibirImovel=false)");
+                            continue;
+                        }
+
                         // Verificar se já existe
                         $existing = Property::where('codigo', $codigo)->first();
                         
@@ -264,8 +276,8 @@ class PropertySyncService
             'imagens' => $imagensData, // Array será convertido automaticamente pelo cast
             'latitude' => $latitude,
             'longitude' => $longitude,
-            'exibir_imovel' => true,
-            'active' => true,
+            'exibir_imovel' => !empty($imovel['exibirImovel']),
+            'active' => !empty($imovel['exibirImovel']),
             'last_sync' => date('Y-m-d H:i:s')
         ];
         

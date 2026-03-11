@@ -21,6 +21,7 @@ interface ImovelRow {
   area: number;
   localizacao: string;
   inserido_por_nome: string | null;
+  proprietario_nome: string | null;
   imagem: string;
   ativo: boolean;
   exibir: boolean;
@@ -88,6 +89,7 @@ export default function Properties() {
           area: parseFloat(item.area_total) || 0,
           localizacao: [item.bairro, item.cidade].filter(Boolean).join(', ') || '-',
           inserido_por_nome: item.inserido_por_nome || null,
+          proprietario_nome: item.proprietario_nome || null,
           updated_at: item.updated_at || item.created_at || '',
           imagem:
             Array.isArray(item.imagens) && item.imagens.length > 0
@@ -517,6 +519,15 @@ export default function Properties() {
 
                       <p className="text-xs text-muted-foreground font-mono">{im.codigo}</p>
 
+                      {im.inserido_por_nome && (
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-medium">Captador:</span> {im.inserido_por_nome}
+                          {!isTrainee && im.proprietario_nome && (
+                            <span> · <span className="font-medium">Prop.:</span> {im.proprietario_nome}</span>
+                          )}
+                        </p>
+                      )}
+
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                         <span>{tipoLabel(im.tipo)}</span>
                         {im.dormitorios > 0 && <span>{im.dormitorios} dorm.</span>}
@@ -637,9 +648,9 @@ export default function Properties() {
                         </span>
                       </th>
 
-                      {/* Coluna 4b: Inserido por */}
+                      {/* Coluna 4b: Captador */}
                       <th className="p-3 text-xs text-muted-foreground text-left whitespace-nowrap w-[12%]">
-                        Inserido por
+                        Captador
                       </th>
 
                       {/* Coluna 5: Status (portal + destaque + anúncio) */}
@@ -740,11 +751,18 @@ export default function Properties() {
                           </span>
                         </td>
 
-                        {/* Coluna 4b: Inserido por */}
-                        <td className="p-3 text-sm text-muted-foreground">
-                          {im.inserido_por_nome
-                            ? im.inserido_por_nome
-                            : <span className="text-xs text-muted-foreground/40">—</span>}
+                        {/* Coluna 4b: Captador / Proprietário */}
+                        <td className="p-3">
+                          <div className="flex flex-col gap-0.5">
+                            {im.inserido_por_nome
+                              ? <span className="text-sm text-foreground/80">{im.inserido_por_nome}</span>
+                              : <span className="text-xs text-muted-foreground/40">—</span>}
+                            {!isTrainee && im.proprietario_nome && (
+                              <span className="text-xs text-muted-foreground" title="Proprietário">
+                                🏠 {im.proprietario_nome}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Coluna 5: Status agrupado (portal + destaque + ads) */}
