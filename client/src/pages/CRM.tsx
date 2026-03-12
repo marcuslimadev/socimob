@@ -25,6 +25,7 @@ import {
   Minimize2,
   Key,
   Filter,
+  Trash2,
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -339,10 +340,12 @@ const ClientCard = memo(({ client, isSelected, onSelect }: {
   );
 });
 
-const DataRow = memo(({ client, isSelected, onSelect }: {
+const DataRow = memo(({ client, isSelected, onSelect, onDelete, isDeleting }: {
   client: CRMClient;
   isSelected: boolean;
   onSelect: (client: CRMClient) => void;
+  onDelete: (client: CRMClient) => void;
+  isDeleting: boolean;
 }) => {
   const statusConf = STATUS_CONFIG[client.status as StatusKey] || STATUS_CONFIG.novo;
   const classif = client.classificacao;
@@ -405,6 +408,21 @@ const DataRow = memo(({ client, isSelected, onSelect }: {
       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
         {client.updated_at ? formatRelativeTime(client.updated_at) : <span className="text-muted-foreground/30">—</span>}
       </td>
+      <td className="px-4 py-3 text-right">
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={isDeleting}
+          className="h-8 w-8 text-muted-foreground hover:text-red-500"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(client);
+          }}
+          title="Excluir lead"
+        >
+          {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+        </Button>
+      </td>
     </tr>
   );
 });
@@ -435,6 +453,7 @@ export default function CRM() {
   const [tablePerPage, setTablePerPage] = useState(50);
   const [isMobile, setIsMobile] = useState(false);
   const [flatTableError, setFlatTableError] = useState(false);
+  const [deletingLeadId, setDeletingLeadId] = useState<number | null>(null);
 
   // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -610,6 +629,26 @@ export default function CRM() {
       toast.error('Erro ao atualizar status');
     }
   }, [queryClient]);
+
+  const handleDeleteLead = useCallback(async (client: CRMClient) => {
+    const confirmed = window.confirm(`Excluir o lead de ${client.nome}? Esta ação não pode ser desfeita.`);
+    if (!confirmed) return;
+
+    try {
+      setDeletingLeadId(client.id);
+      await api.delete(`/leads/${client.id}`);
+      toast.success('Lead excluído com sucesso');
+      queryClient.invalidateQueries({ queryKey: ['crm-clientes'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-clientes-table'] });
+      if (selectedClient?.id === client.id) {
+        setSelectedClient(null);
+      }
+    } catch {
+      toast.error('Erro ao excluir lead');
+    } finally {
+      setDeletingLeadId(null);
+    }
+  }, [queryClient, selectedClient?.id]);
 
   const handleSort = useCallback((key: 'updated_at' | 'nome' | 'status') => {
     if (sortKey === key) {
@@ -1502,19 +1541,20 @@ export default function CRM() {
                               }
                             </div>
                           </th>
+                          <th className="px-4 py-3 text-right font-semibold uppercase tracking-wider">Ações</th>
                         </tr>
                       </thead>
                       <tbody>
                         {isLoadingTable ? (
                           <tr>
-                            <td colSpan={7} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                            <td colSpan={8} className="px-3 py-8 text-center text-sm text-muted-foreground">
                               <Loader2 className="w-4 h-4 animate-spin inline-block mr-2" />
                               Carregando...
                             </td>
                           </tr>
                         ) : tableClients.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                            <td colSpan={8} className="px-3 py-8 text-center text-sm text-muted-foreground">
                               Nenhum cliente encontrado
                             </td>
                           </tr>
@@ -1525,6 +1565,8 @@ export default function CRM() {
                               client={client}
                               isSelected={selectedClientId === client.id}
                               onSelect={handleSelectClient}
+                              onDelete={handleDeleteLead}
+                              isDeleting={deletingLeadId === client.id}
                             />
                           ))
                         )}
@@ -1701,6 +1743,16 @@ export default function CRM() {
                     ))}
                   </div>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={deletingLeadId === selectedClient.id}
+                  className="w-8 h-8 text-muted-foreground hover:text-red-500"
+                  onClick={() => handleDeleteLead(selectedClient)}
+                  title="Excluir lead"
+                >
+                  {deletingLeadId === selectedClient.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                </Button>
               </div>
             </div>
 
