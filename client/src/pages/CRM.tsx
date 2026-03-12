@@ -96,6 +96,7 @@ interface CRMTableResponse {
 }
 
 type StatusKey = 'novo' | 'em_atendimento' | 'qualificado' | 'proposta' | 'fechado' | 'perdido';
+type ClassificationFilter = 'all' | 'quente' | 'morno' | 'frio';
 
 const STATUS_CONFIG: Record<StatusKey, { label: string; color: string; bg: string }> = {
   novo: { label: 'Novo', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10 border-blue-500/30' },
@@ -107,6 +108,12 @@ const STATUS_CONFIG: Record<StatusKey, { label: string; color: string; bg: strin
 };
 
 const ALL_STATUSES: StatusKey[] = ['novo', 'em_atendimento', 'qualificado', 'proposta', 'fechado', 'perdido'];
+const ORIGIN_SORT_ORDER: Record<string, number> = {
+  Site: 0,
+  'Chaves na Mão': 1,
+  WhatsApp: 2,
+  SMS: 3,
+};
 
 const createEmptyCRMData = (): Record<StatusKey, CRMClient[]> => ({
   novo: [],
@@ -150,11 +157,76 @@ function normalizeCRMClient(raw: Partial<CRMClient> & { pessoa?: any; whatsapp_n
     ultima_mensagem: raw.ultima_mensagem ?? null,
     ultima_mensagem_at: raw.ultima_mensagem_at ?? null,
     unread: Number(raw.unread || 0),
-    origem: raw.origem ?? pessoa?.origem ?? null,
+    origem: normalizeOriginValue(raw.origem ?? pessoa?.origem ?? null),
     sms_enviado: Boolean(raw.sms_enviado),
     updated_at: raw.updated_at ?? null,
     created_at: raw.created_at ?? null,
   };
+}
+
+function normalizeOriginValue(value: unknown) {
+  const rawValue = String(value ?? '').trim();
+  if (!rawValue) return 'Site';
+
+  const normalized = rawValue
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (normalized === 'chaves na mao') return 'Chaves na Mão';
+  if (['site', 'form', 'formulario', 'portal', 'manual'].includes(normalized)) return 'Site';
+  if (normalized === 'whatsapp') return 'WhatsApp';
+  if (normalized === 'sms') return 'SMS';
+  if (/^[A-Z0-9\s]+$/.test(rawValue)) return rawValue;
+
+  return rawValue.replace(/[_-]+/g, ' ').trim();
+}
+
+function filterClients(
+  clients: CRMClient[],
+  filters: {
+    term: string;
+    statusFilter: StatusKey | 'all';
+    classificacaoFilter: ClassificationFilter;
+    corretorFilter: string;
+    originFilter: string;
+  },
+) {
+  const term = filters.term.trim().toLowerCase();
+
+  let filtered = term
+    ? clients.filter((client) => {
+        const origin = normalizeOriginValue(client.origem).toLowerCase();
+        return (
+          client.nome?.toLowerCase().includes(term) ||
+          client.telefone?.toLowerCase().includes(term) ||
+          (client.email || '').toLowerCase().includes(term) ||
+          (client.corretor_nome || '').toLowerCase().includes(term) ||
+          origin.includes(term)
+        );
+      })
+    : clients;
+
+  if (filters.statusFilter !== 'all') {
+    filtered = filtered.filter((client) => (client.status || 'novo') === filters.statusFilter);
+  }
+
+  if (filters.classificacaoFilter !== 'all') {
+    filtered = filtered.filter((client) => client.classificacao === filters.classificacaoFilter);
+  }
+
+  if (filters.corretorFilter) {
+    filtered = filtered.filter((client) => String(client.corretor_id || '') === String(filters.corretorFilter));
+  }
+
+  if (filters.originFilter !== 'all') {
+    filtered = filtered.filter((client) => normalizeOriginValue(client.origem) === filters.originFilter);
+  }
+
+  return filtered;
 }
 
 function normalizeCRMData(raw: unknown): Record<StatusKey, CRMClient[]> {
@@ -506,8 +578,9 @@ export default function CRM() {
   const [tableSearch, setTableSearch] = useState('');
   const debouncedTableSearch = useDebounce(tableSearch, 400);
   const [statusFilter, setStatusFilter] = useState<StatusKey | 'all'>('all');
-  const [classificacaoFilter, setClassificacaoFilter] = useState<'all' | 'quente' | 'morno' | 'frio'>('all');
+  const [classificacaoFilter, setClassificacaoFilter] = useState<ClassificationFilter>('all');
   const [corretorFilter, setCorretorFilter] = useState<string>('');
+  const [originFilter, setOriginFilter] = useState<string>('all');
   const [sortKey, setSortKey] = useState<'updated_at' | 'nome' | 'status'>('updated_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [corretores, setCorretores] = useState<Array<{ id: number; name: string; email?: string }>>([]);
@@ -554,7 +627,7 @@ export default function CRM() {
   });
 
   const { data: tableData, isLoading: isLoadingTable, isError: isTableError } = useQuery<CRMTableResponse>({
-    queryKey: ['crm-clientes-table', debouncedTableSearch, corretorFilter, classificacaoFilter, statusFilter, sortKey, sortDir, tablePage, tablePerPage],
+    queryKey: ['crm-clientes-table', debouncedTableSearch, corretorFilter, classificacaoFilter, statusFilter, sortKey, sortDir, tablePage, tablePerPage, originFilter],
     queryFn: async () => {
       const params: any = {
         flat: 1,
@@ -578,6 +651,7 @@ export default function CRM() {
         data: flat,
       };
     },
+    enabled: originFilter === 'all',
     placeholderData: (previousData) => previousData,
   });
 
@@ -590,32 +664,46 @@ export default function CRM() {
     return ALL_STATUSES.flatMap((s) => Array.isArray(crmData[s]) ? crmData[s] : []);
   }, [crmData]);
 
+  const useLocalTableData = flatTableError || originFilter !== 'all';
+
+  const filteredClients = useMemo(() => filterClients(allClients, {
+    term: tableSearch,
+    statusFilter,
+    classificacaoFilter,
+    corretorFilter,
+    originFilter,
+  }), [allClients, tableSearch, statusFilter, classificacaoFilter, corretorFilter, originFilter]);
+
+  const originStats = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    filterClients(allClients, {
+      term: tableSearch,
+      statusFilter,
+      classificacaoFilter,
+      corretorFilter,
+      originFilter: 'all',
+    }).forEach((client) => {
+      const origin = normalizeOriginValue(client.origem);
+      counts.set(origin, (counts.get(origin) || 0) + 1);
+    });
+
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => {
+        const orderA = ORIGIN_SORT_ORDER[a.label] ?? 999;
+        const orderB = ORIGIN_SORT_ORDER[b.label] ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.label.localeCompare(b.label, 'pt-BR');
+      });
+  }, [allClients, tableSearch, statusFilter, classificacaoFilter, corretorFilter]);
+
   const tableClients = useMemo(() => {
-    if (!flatTableError && Array.isArray(tableData?.data)) {
+    if (!useLocalTableData && Array.isArray(tableData?.data)) {
       return tableData.data as CRMClient[];
     }
 
-    const term = tableSearch.trim().toLowerCase();
-    let filtered = term
-      ? allClients.filter((client) => (
-          client.nome?.toLowerCase().includes(term) ||
-          client.telefone?.toLowerCase().includes(term) ||
-          (client.email || '').toLowerCase().includes(term) ||
-          (client.corretor_nome || '').toLowerCase().includes(term) ||
-          (client.origem || '').toLowerCase().includes(term)
-        ))
-      : allClients;
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((client) => (client.status || 'novo') === statusFilter);
-    }
-    if (classificacaoFilter !== 'all') {
-      filtered = filtered.filter((client) => client.classificacao === classificacaoFilter);
-    }
-    if (corretorFilter) {
-      filtered = filtered.filter((client) => String(client.corretor_id || '') === String(corretorFilter));
-    }
-
-    const sorted = [...filtered].sort((a, b) => {
+    const sorted = [...filteredClients].sort((a, b) => {
       if (sortKey === 'nome') {
         const aName = (a.nome || '').toLowerCase();
         const bName = (b.nome || '').toLowerCase();
@@ -633,10 +721,10 @@ export default function CRM() {
 
     const start = (tablePage - 1) * tablePerPage;
     return sorted.slice(start, start + tablePerPage);
-  }, [flatTableError, tableData, allClients, tableSearch, statusFilter, classificacaoFilter, corretorFilter, sortKey, sortDir, tablePage, tablePerPage]);
+  }, [useLocalTableData, tableData, filteredClients, sortKey, sortDir, tablePage, tablePerPage]);
 
   const tableMeta = useMemo(() => {
-    if (!flatTableError && tableData) {
+    if (!useLocalTableData && tableData) {
       return {
         total: tableData.total || 0,
         current_page: tableData.current_page || 1,
@@ -644,26 +732,7 @@ export default function CRM() {
         per_page: tableData.per_page || tablePerPage,
       };
     }
-    const term = tableSearch.trim().toLowerCase();
-    let filtered = term
-      ? allClients.filter((client) => (
-          client.nome?.toLowerCase().includes(term) ||
-          client.telefone?.toLowerCase().includes(term) ||
-          (client.email || '').toLowerCase().includes(term) ||
-          (client.corretor_nome || '').toLowerCase().includes(term) ||
-          (client.origem || '').toLowerCase().includes(term)
-        ))
-      : allClients;
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((client) => (client.status || 'novo') === statusFilter);
-    }
-    if (classificacaoFilter !== 'all') {
-      filtered = filtered.filter((client) => client.classificacao === classificacaoFilter);
-    }
-    if (corretorFilter) {
-      filtered = filtered.filter((client) => String(client.corretor_id || '') === String(corretorFilter));
-    }
-    const total = filtered.length;
+    const total = filteredClients.length;
     const last_page = Math.max(1, Math.ceil(total / tablePerPage));
     return {
       total,
@@ -671,7 +740,7 @@ export default function CRM() {
       last_page,
       per_page: tablePerPage,
     };
-  }, [flatTableError, tableData, allClients, tableSearch, statusFilter, classificacaoFilter, corretorFilter, tablePage, tablePerPage]);
+  }, [useLocalTableData, tableData, filteredClients, tablePage, tablePerPage]);
 
   // ─── Callbacks (stable references) ─────────────────────────────────
 
@@ -723,7 +792,7 @@ export default function CRM() {
 
   useEffect(() => {
     setTablePage(1);
-  }, [debouncedTableSearch, statusFilter, classificacaoFilter, corretorFilter, sortKey, sortDir, tablePerPage]);
+  }, [debouncedTableSearch, statusFilter, classificacaoFilter, corretorFilter, originFilter, sortKey, sortDir, tablePerPage]);
 
   useEffect(() => {
     const update = () => {
@@ -1518,6 +1587,22 @@ export default function CRM() {
                     </select>
                   )}
 
+                  <select
+                    value={originFilter}
+                    onChange={(e) => setOriginFilter(e.target.value)}
+                    className={cn(
+                      'px-3 py-2.5 border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer [&>option]:text-gray-900 [&>option]:bg-white dark:[&>option]:text-gray-100 dark:[&>option]:bg-gray-900',
+                      originFilter !== 'all'
+                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-500 font-medium'
+                        : 'bg-muted/30 border-border'
+                    )}
+                  >
+                    <option value="all">Todas as origens</option>
+                    {originStats.map((origin) => (
+                      <option key={origin.label} value={origin.label}>{origin.label} ({origin.count})</option>
+                    ))}
+                  </select>
+
                   <div className="w-px h-8 bg-border/60 hidden sm:block" />
 
                   {/* Sort controls */}
@@ -1545,9 +1630,9 @@ export default function CRM() {
 
                   {/* Result count + active filter indicators */}
                   <div className="flex items-center gap-2 ml-auto">
-                    {(statusFilter !== 'all' || classificacaoFilter !== 'all' || corretorFilter || tableSearch) && (
+                    {(statusFilter !== 'all' || classificacaoFilter !== 'all' || corretorFilter || originFilter !== 'all' || tableSearch) && (
                       <button
-                        onClick={() => { setStatusFilter('all'); setClassificacaoFilter('all'); setCorretorFilter(''); setTableSearch(''); }}
+                        onClick={() => { setStatusFilter('all'); setClassificacaoFilter('all'); setCorretorFilter(''); setOriginFilter('all'); setTableSearch(''); }}
                         className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
                       >
                         Limpar filtros
@@ -1557,6 +1642,22 @@ export default function CRM() {
                       {tableMeta.total} resultado{tableMeta.total !== 1 ? 's' : ''}
                     </span>
                   </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {originStats.map((origin) => (
+                    <button
+                      key={origin.label}
+                      onClick={() => setOriginFilter((current) => current === origin.label ? 'all' : origin.label)}
+                      className={cn(
+                        'px-2.5 py-1 rounded-full border text-xs font-medium transition-colors',
+                        originFilter === origin.label
+                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                          : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground hover:border-border/80'
+                      )}
+                    >
+                      {origin.label}: {origin.count}
+                    </button>
+                  ))}
                 </div>
                 <div className="rounded-xl border border-white/10 overflow-hidden">
                   <ScrollArea className="max-h-[calc(100vh-240px)]">

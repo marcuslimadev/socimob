@@ -39,13 +39,26 @@ class CRMController extends Controller
         return null;
     }
 
-    private function inferOrigin(Lead $lead): ?string
+    private function normalizeOrigin(?string $origin, Lead $lead): string
     {
-        if ($this->firstFilled([$lead->whatsapp ?? null, $lead->whatsapp_name ?? null])) {
-            return 'whatsapp';
+        $rawOrigin = trim((string) $origin);
+        $normalizedOrigin = mb_strtolower($rawOrigin);
+
+        if ($normalizedOrigin !== '') {
+            return match ($normalizedOrigin) {
+                'chaves_na_mao', 'chaves na mao', 'chaves na mão', 'chaves-na-mao', 'chaves-na-mão' => 'Chaves na Mão',
+                'site', 'form', 'formulario', 'formulário', 'portal', 'manual' => 'Site',
+                'whatsapp' => 'WhatsApp',
+                'sms' => 'SMS',
+                default => $rawOrigin,
+            };
         }
 
-        return null;
+        if ($lead->isFromIntegration() || !empty($lead->chaves_na_mao_status) || !empty($lead->chaves_na_mao_sent_at)) {
+            return 'Chaves na Mão';
+        }
+
+        return 'Site';
     }
 
     private function mapLead(Lead $lead, ?object $lastMsg, int $unread, ?int $conversaId): array
@@ -80,11 +93,11 @@ class CRMController extends Controller
             'ultima_mensagem' => $lastMsg?->content,
             'ultima_mensagem_at' => $lastMsg?->created_at,
             'unread' => (int) $unread,
-            'origem' => $this->firstFilled([
+            'origem' => $this->normalizeOrigin($this->firstFilled([
                 $lead->origem ?? null,
+                $lead->fonte ?? null,
                 $lead->pessoa?->origem ?? null,
-                $this->inferOrigin($lead),
-            ]),
+            ]), $lead),
             'sms_enviado' => (bool) $lead->sms_enviado,
             'updated_at' => $lead->updated_at?->toIso8601String(),
             'created_at' => $lead->created_at?->toIso8601String(),
