@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, ChevronDown, ChevronLeft, ChevronRight, Clock, Mail, MapPin, MessageCircle, Phone, Search, Shield, Square, TrendingUp, UserRound } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, ChevronDown, ChevronLeft, ChevronRight, Clock, GripVertical, Mail, MapPin, MessageCircle, Phone, Search, Shield, Square, TrendingUp, UserRound } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
@@ -87,6 +87,38 @@ function getPublicLocation(property: Property): string {
   return property.endereco_publico || [property.bairro, property.cidade].filter(Boolean).join(', ') || 'Localização sob consulta';
 }
 
+function getFloatingActionMetrics(viewportWidth: number, hasMascot: boolean) {
+  if (hasMascot) {
+    const size = viewportWidth >= 640 ? 224 : 164;
+    return { width: size, height: size };
+  }
+
+  return { width: 56, height: 56 };
+}
+
+function clampFloatingActionPosition(
+  x: number,
+  y: number,
+  viewportWidth: number,
+  viewportHeight: number,
+  hasMascot: boolean,
+) {
+  const sideInset = 12;
+  const topInset = viewportWidth >= 1024 ? 12 : 92;
+  const bottomInset = 12;
+  const { width, height } = getFloatingActionMetrics(viewportWidth, hasMascot);
+
+  return {
+    x: Math.max(sideInset, Math.min(viewportWidth - width - sideInset, x)),
+    y: Math.max(topInset, Math.min(viewportHeight - height - bottomInset, y)),
+  };
+}
+
+function getFloatingActionDefaultPosition(viewportWidth: number, viewportHeight: number, hasMascot: boolean) {
+  const { width, height } = getFloatingActionMetrics(viewportWidth, hasMascot);
+  return clampFloatingActionPosition(viewportWidth - width - 16, viewportHeight - height - 16, viewportWidth, viewportHeight, hasMascot);
+}
+
 export default function ClientPortalRefined() {
   const [, navigate] = useLocation();
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
@@ -103,16 +135,11 @@ export default function ClientPortalRefined() {
   const [floatingActionDragging, setFloatingActionDragging] = useState(false);
   const [floatingActionPos, setFloatingActionPos] = useState<{ x: number; y: number }>(() => {
     if (typeof window === 'undefined') return { x: 16, y: 16 };
-    const size = window.innerWidth >= 640 ? 320 : 256;
-    return {
-      x: Math.max(8, window.innerWidth - size - 16),
-      y: Math.max(8, window.innerHeight - size - 16),
-    };
+    return getFloatingActionDefaultPosition(window.innerWidth, window.innerHeight, false);
   });
 
   const heroRef = useRef<HTMLElement>(null);
   const floatingActionPosRef = useRef(floatingActionPos);
-  const suppressFloatingActionClickRef = useRef(false);
 
   floatingActionPosRef.current = floatingActionPos;
 
@@ -246,43 +273,43 @@ export default function ClientPortalRefined() {
     return `https://wa.me/${phone}?text=${message}`;
   }, [tenant?.contact_phone, tenant?.name]);
 
+  const hasMascot = Boolean(tenant?.mascot_url);
+  const floatingActionMetrics = useMemo(() => {
+    if (typeof window === 'undefined') return getFloatingActionMetrics(1280, hasMascot);
+    return getFloatingActionMetrics(window.innerWidth, hasMascot);
+  }, [hasMascot]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const size = window.innerWidth >= 640 ? 320 : 256;
-    const defaultPos = {
-      x: Math.max(8, window.innerWidth - size - 16),
-      y: Math.max(8, window.innerHeight - size - 16),
-    };
+    const defaultPos = getFloatingActionDefaultPosition(window.innerWidth, window.innerHeight, hasMascot);
 
     try {
       const saved = localStorage.getItem('portal_mascot_pos');
-      if (!saved) return;
+      if (!saved) {
+        setFloatingActionPos(defaultPos);
+        return;
+      }
       const parsed = JSON.parse(saved) as { x: number; y: number };
-      if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number') return;
-      setFloatingActionPos({
-        x: Math.max(8, Math.min(window.innerWidth - size, parsed.x)),
-        y: Math.max(8, Math.min(window.innerHeight - size, parsed.y)),
-      });
+      if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number') {
+        setFloatingActionPos(defaultPos);
+        return;
+      }
+      setFloatingActionPos(clampFloatingActionPosition(parsed.x, parsed.y, window.innerWidth, window.innerHeight, hasMascot));
     } catch {
       setFloatingActionPos(defaultPos);
     }
-  }, []);
+  }, [hasMascot]);
 
   useEffect(() => {
     const onResize = () => {
-      const size = window.innerWidth >= 640 ? 320 : 256;
-      setFloatingActionPos((current) => ({
-        x: Math.max(8, Math.min(window.innerWidth - size, current.x)),
-        y: Math.max(8, Math.min(window.innerHeight - size, current.y)),
-      }));
+      setFloatingActionPos((current) => clampFloatingActionPosition(current.x, current.y, window.innerWidth, window.innerHeight, hasMascot));
     };
 
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, []);
+  }, [hasMascot]);
 
-  const handleFloatingActionPointerDown = (e: React.PointerEvent<HTMLAnchorElement>) => {
-    const size = window.innerWidth >= 640 ? 320 : 256;
+  const handleFloatingActionPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     const startX = e.clientX;
     const startY = e.clientY;
     const offsetX = e.clientX - floatingActionPosRef.current.x;
@@ -290,18 +317,22 @@ export default function ClientPortalRefined() {
     let dragged = false;
 
     const onMove = (event: PointerEvent) => {
-      const nextX = Math.max(8, Math.min(window.innerWidth - size, event.clientX - offsetX));
-      const nextY = Math.max(8, Math.min(window.innerHeight - size, event.clientY - offsetY));
+      const nextPos = clampFloatingActionPosition(
+        event.clientX - offsetX,
+        event.clientY - offsetY,
+        window.innerWidth,
+        window.innerHeight,
+        hasMascot,
+      );
 
       if (!dragged && Math.hypot(event.clientX - startX, event.clientY - startY) > 8) {
         dragged = true;
-        suppressFloatingActionClickRef.current = true;
         setFloatingActionDragging(true);
       }
 
       if (dragged) {
         event.preventDefault();
-        setFloatingActionPos({ x: nextX, y: nextY });
+        setFloatingActionPos(nextPos);
       }
     };
 
@@ -312,8 +343,14 @@ export default function ClientPortalRefined() {
       setFloatingActionDragging(false);
 
       if (dragged) {
+        const sideInset = 12;
+        const snappedX = floatingActionPosRef.current.x + (floatingActionMetrics.width / 2) >= (window.innerWidth / 2)
+          ? window.innerWidth - floatingActionMetrics.width - sideInset
+          : sideInset;
+        const finalPos = clampFloatingActionPosition(snappedX, floatingActionPosRef.current.y, window.innerWidth, window.innerHeight, hasMascot);
+        setFloatingActionPos(finalPos);
         try {
-          localStorage.setItem('portal_mascot_pos', JSON.stringify(floatingActionPosRef.current));
+          localStorage.setItem('portal_mascot_pos', JSON.stringify(finalPos));
         } catch {}
       }
     };
@@ -321,13 +358,7 @@ export default function ClientPortalRefined() {
     window.addEventListener('pointermove', onMove, { passive: false });
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
-  };
-
-  const handleFloatingActionClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (!whatsappLink || suppressFloatingActionClickRef.current) {
-      e.preventDefault();
-      suppressFloatingActionClickRef.current = false;
-    }
+    e.preventDefault();
   };
 
   if (loading) {
@@ -926,50 +957,73 @@ export default function ClientPortalRefined() {
       </button>
 
       {tenant?.mascot_url ? (
-        <a
-          href={whatsappLink || undefined}
-          target={whatsappLink ? '_blank' : undefined}
-          rel={whatsappLink ? 'noreferrer' : undefined}
-          onPointerDown={handleFloatingActionPointerDown}
-          onClick={handleFloatingActionClick}
+        <div
           className="fixed z-50 select-none"
-          aria-label="Abrir WhatsApp"
           style={{
-            cursor: floatingActionDragging ? 'grabbing' : (whatsappLink ? 'grab' : 'default'),
             left: floatingActionPos.x,
             top: floatingActionPos.y,
-            touchAction: 'none',
+            width: floatingActionMetrics.width,
+            height: floatingActionMetrics.height,
             transform: floatingActionDragging ? 'scale(1.03)' : 'scale(1)',
             transition: floatingActionDragging ? 'none' : 'transform 0.2s ease',
           }}
         >
-          <img
-            src={tenant.mascot_url}
-            alt="Mascote"
-            draggable={false}
-            className="w-64 h-64 sm:w-80 sm:h-80 object-contain drop-shadow-xl pointer-events-none"
-          />
-        </a>
+          <a
+            href={whatsappLink || undefined}
+            target={whatsappLink ? '_blank' : undefined}
+            rel={whatsappLink ? 'noreferrer' : undefined}
+            className="block h-full w-full"
+            aria-label="Abrir WhatsApp"
+            style={{ cursor: whatsappLink ? 'pointer' : 'default' }}
+          >
+            <img
+              src={tenant.mascot_url}
+              alt="Mascote"
+              draggable={false}
+              className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
+            />
+          </a>
+          <button
+            type="button"
+            onPointerDown={handleFloatingActionPointerDown}
+            aria-label="Arrastar mascote"
+            className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white/92 text-slate-700 shadow-lg"
+            style={{ cursor: floatingActionDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
+          >
+            <GripVertical className="h-4 w-4 pointer-events-none" />
+          </button>
+        </div>
       ) : whatsappLink ? (
-        <a
-          href={whatsappLink}
-          target="_blank"
-          rel="noreferrer"
-          onPointerDown={handleFloatingActionPointerDown}
-          onClick={handleFloatingActionClick}
-          className="fixed z-50 w-14 h-14 rounded-2xl border border-white/30 bg-[#0f172a] text-white shadow-[0_8px_24px_rgba(15,23,42,0.35)] flex items-center justify-center select-none"
-          aria-label="Abrir WhatsApp"
+        <div
+          className="fixed z-50 select-none"
           style={{
-            cursor: floatingActionDragging ? 'grabbing' : 'grab',
             left: floatingActionPos.x,
             top: floatingActionPos.y,
-            touchAction: 'none',
+            width: floatingActionMetrics.width,
+            height: floatingActionMetrics.height,
             transform: floatingActionDragging ? 'scale(1.03)' : 'scale(1)',
             transition: floatingActionDragging ? 'none' : 'transform 0.2s ease',
           }}
         >
-          <MessageCircle className="w-6 h-6 pointer-events-none" />
-        </a>
+          <a
+            href={whatsappLink}
+            target="_blank"
+            rel="noreferrer"
+            className="flex h-full w-full items-center justify-center rounded-2xl border border-white/30 bg-[#0f172a] text-white shadow-[0_8px_24px_rgba(15,23,42,0.35)]"
+            aria-label="Abrir WhatsApp"
+          >
+            <MessageCircle className="w-6 h-6 pointer-events-none" />
+          </a>
+          <button
+            type="button"
+            onPointerDown={handleFloatingActionPointerDown}
+            aria-label="Arrastar atalho do WhatsApp"
+            className="absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white/92 text-slate-700 shadow-lg"
+            style={{ cursor: floatingActionDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
+          >
+            <GripVertical className="h-4 w-4 pointer-events-none" />
+          </button>
+        </div>
       ) : null}
     </div>
   );
