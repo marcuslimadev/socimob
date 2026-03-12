@@ -384,8 +384,6 @@ export default function ClientPortalRefined() {
       localStorage.setItem('portal_lead_phone', formattedPhone);
     } catch {}
 
-    const leadWindow = window.open('', '_blank', 'noopener,noreferrer');
-
     try {
       setLeadSubmitting(true);
       setLeadModalError('');
@@ -436,15 +434,9 @@ export default function ClientPortalRefined() {
         throw new Error('O WhatsApp da imobiliária não está configurado.');
       }
 
-      if (leadWindow) {
-        leadWindow.location.href = whatsappUrl;
-      } else {
-        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-      }
-
       closePropertyWhatsAppModal();
+      window.location.href = whatsappUrl;
     } catch (error) {
-      if (leadWindow) leadWindow.close();
       setLeadModalError(error instanceof Error ? error.message : 'Não foi possível registrar seu contato.');
     } finally {
       setLeadSubmitting(false);
