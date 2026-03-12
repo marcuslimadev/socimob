@@ -1245,41 +1245,31 @@ class PropertySyncService
 
         $properties = $query->get();
         $duplicates = [];
-        $processedGroups = [];
 
-        foreach (['codigo' => 'same_codigo', 'imobi_brasil_external_id' => 'same_imobi_brasil_external_id'] as $field => $reason) {
-            $groups = $properties
-                ->filter(fn (Property $property) => !empty($property->{$field}))
-                ->groupBy(fn (Property $property) => (string) $property->{$field})
-                ->filter(fn ($group) => $group->count() > 1);
+        $groups = $properties
+            ->filter(fn (Property $property) => !empty($this->resolveAuthorityCode($property)))
+            ->groupBy(fn (Property $property) => $this->resolveAuthorityCode($property))
+            ->filter(fn ($group) => $group->count() > 1);
 
-            foreach ($groups as $groupKey => $group) {
-                $signature = $field . ':' . $groupKey;
-                if (isset($processedGroups[$signature])) {
-                    continue;
-                }
+        foreach ($groups as $groupKey => $group) {
+            $master = $this->selectMasterProperty($group->values());
+            $duplicateIds = $group
+                ->where('id', '!=', $master->id)
+                ->pluck('id')
+                ->values()
+                ->all();
 
-                $master = $this->selectMasterProperty($group->values());
-                $duplicateIds = $group
-                    ->where('id', '!=', $master->id)
-                    ->pluck('id')
-                    ->values()
-                    ->all();
-
-                if (empty($duplicateIds)) {
-                    continue;
-                }
-
-                $duplicates[] = [
-                    'master_id' => $master->id,
-                    'master_codigo' => $master->codigo,
-                    'duplicate_ids' => $duplicateIds,
-                    'reason' => $reason,
-                    'group_key' => (string) $groupKey,
-                ];
-
-                $processedGroups[$signature] = true;
+            if (empty($duplicateIds)) {
+                continue;
             }
+
+            $duplicates[] = [
+                'master_id' => $master->id,
+                'master_codigo' => $master->codigo,
+                'duplicate_ids' => $duplicateIds,
+                'reason' => 'same_authority_code',
+                'group_key' => (string) $groupKey,
+            ];
         }
 
         // Mover duplicatas para a lixeira mantendo um registro mestre por código.
