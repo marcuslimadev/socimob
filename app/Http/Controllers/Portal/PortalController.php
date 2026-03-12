@@ -213,8 +213,6 @@ class PortalController extends Controller
 
         $columns = Schema::getColumnListing($table);
         $hasTenantId = in_array('tenant_id', $columns, true);
-        $hasActive = in_array('active', $columns, true);
-        $hasExibir = in_array('exibir_imovel', $columns, true);
         $hasFinalidade = in_array('finalidade_imovel', $columns, true);
 
         $cacheKey = "portal_imoveis_tenant_{$tenantId}";
@@ -280,13 +278,6 @@ class PortalController extends Controller
                     break;
             }
         }
-        if ($hasActive) {
-            $imoveisQuery->where('active', true);
-        }
-        if ($hasExibir) {
-            $imoveisQuery->where('exibir_imovel', true);
-        }
-
         if ($hasFinalidade && $normalizedFinalidades && count($normalizedFinalidades) > 0) {
             $this->applyPurposeFilterToQuery($imoveisQuery, $normalizedFinalidades);
         }
@@ -350,13 +341,6 @@ class PortalController extends Controller
                         break;
                 }
             }
-            if ($hasActive) {
-                $sharedQuery->where('active', true);
-            }
-            if ($hasExibir) {
-                $sharedQuery->where('exibir_imovel', true);
-            }
-
             if ($hasFinalidade && $normalizedFinalidades && count($normalizedFinalidades) > 0) {
                 $this->applyPurposeFilterToQuery($sharedQuery, $normalizedFinalidades);
             }
@@ -449,8 +433,6 @@ class PortalController extends Controller
 
         $columns = Schema::getColumnListing($table);
         $hasTenantId = in_array('tenant_id', $columns, true);
-        $hasActive = in_array('active', $columns, true);
-        $hasExibir = in_array('exibir_imovel', $columns, true);
         $hasFinalidade = in_array('finalidade_imovel', $columns, true);
 
         try {
@@ -487,12 +469,6 @@ class PortalController extends Controller
                     $query->orWhereIn('id', $sharedPropertyIds);
                 }
             });
-        }
-        if ($hasActive) {
-            $imovelQuery->where('active', true);
-        }
-        if ($hasExibir) {
-            $imovelQuery->where('exibir_imovel', true);
         }
         $imovel = $imovelQuery->first();
 

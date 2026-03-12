@@ -40,9 +40,7 @@ class PublicPropertyController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Property::where('active', 1)
-            ->where('exibir_imovel', 1)
-            ->orderBy('created_at', 'desc');
+        $query = Property::orderBy('created_at', 'desc');
                 if ($request->has('finalidade') && !empty($request->finalidade)) {
                     $this->applyPurposeFilter($query, $request->finalidade);
                 }
@@ -99,10 +97,7 @@ class PublicPropertyController extends Controller
      */
     public function show($codigo)
     {
-        $property = Property::where('codigo', $codigo)
-            ->where('active', 1)
-            ->where('exibir_imovel', 1)
-            ->first();
+        $property = Property::where('codigo', $codigo)->first();
         
         if (!$property) {
             return response()->json([
