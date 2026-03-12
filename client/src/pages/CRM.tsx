@@ -655,6 +655,26 @@ export default function CRM() {
     placeholderData: (previousData) => previousData,
   });
 
+  const { data: originSummaryClients = [] } = useQuery<CRMClient[]>({
+    queryKey: ['crm-clientes-origin-summary', debouncedTableSearch, corretorFilter, classificacaoFilter, statusFilter],
+    queryFn: async () => {
+      const params: any = {
+        flat: 1,
+        page: 1,
+        per_page: 200,
+      };
+      if (debouncedTableSearch) params.search = debouncedTableSearch;
+      if (corretorFilter) params.corretor_id = corretorFilter;
+      if (classificacaoFilter !== 'all') params.classificacao = classificacaoFilter;
+      if (statusFilter !== 'all') params.status = statusFilter;
+
+      const res = await api.get('/crm/clientes', { params });
+      const raw = res?.data ?? {};
+      return normalizeFlatClients(raw?.data ?? raw);
+    },
+    placeholderData: (previousData) => previousData ?? [],
+  });
+
   useEffect(() => {
     setFlatTableError(isTableError);
   }, [isTableError]);
@@ -663,6 +683,13 @@ export default function CRM() {
     if (!crmData) return [];
     return ALL_STATUSES.flatMap((s) => Array.isArray(crmData[s]) ? crmData[s] : []);
   }, [crmData]);
+
+  const summaryClients = useMemo(() => {
+    if (originSummaryClients.length > 0) return originSummaryClients;
+    if (allClients.length > 0) return allClients;
+    if (Array.isArray(tableData?.data)) return tableData.data;
+    return [];
+  }, [originSummaryClients, allClients, tableData]);
 
   const useLocalTableData = flatTableError || originFilter !== 'all';
 
@@ -677,8 +704,8 @@ export default function CRM() {
   const originStats = useMemo(() => {
     const counts = new Map<string, number>();
 
-    filterClients(allClients, {
-      term: tableSearch,
+    filterClients(summaryClients, {
+      term: '',
       statusFilter,
       classificacaoFilter,
       corretorFilter,
@@ -696,7 +723,7 @@ export default function CRM() {
         if (orderA !== orderB) return orderA - orderB;
         return a.label.localeCompare(b.label, 'pt-BR');
       });
-  }, [allClients, tableSearch, statusFilter, classificacaoFilter, corretorFilter]);
+  }, [summaryClients, statusFilter, classificacaoFilter, corretorFilter]);
 
   const tableClients = useMemo(() => {
     if (!useLocalTableData && Array.isArray(tableData?.data)) {
@@ -1471,8 +1498,8 @@ export default function CRM() {
 
   // ─── Render ────────────────────────────────────────────────────────
 
-  const totalClients = allClients.length;
-  const totalUnread = allClients.reduce((sum, c) => sum + c.unread, 0);
+  const totalClients = summaryClients.length;
+  const totalUnread = summaryClients.reduce((sum, c) => sum + c.unread, 0);
   const selectedClientId = selectedClient?.id ?? null;
 
   return (
