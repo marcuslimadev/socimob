@@ -14,6 +14,11 @@ export interface TenantBranding {
   contact_email?: string;
   domain?: string;
   portal_finalidades?: string[];
+  creci?: string;
+  about_text?: string;
+  services?: string[];
+  endereco?: string;
+  office_hours?: string;
 }
 
 export const fetchTenantBranding = async (): Promise<TenantBranding | null> => {

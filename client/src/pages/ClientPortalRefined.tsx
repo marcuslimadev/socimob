@@ -6,6 +6,9 @@ import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
 const PORTAL_RETURN_STATE_KEY = 'portal:return-state';
+const PROPERTIES_PER_PAGE = 20;
+
+const EXCLUSIVA_DEFAULT_ABOUT_TEXT = 'A imobiliária Exclusiva Lar Imóveis iniciou suas atividades visando construir sua história no mercado imobiliário de Belo Horizonte de forma sólida, confiável e duradoura. Trata-se de uma imobiliária atuante no mercado, com histórico íntegro e ótimas negociações. Ética profissional, transparência, dinamismo e atendimento personalizado são pilares que garantem segurança em todos os negócios realizados e fazem da Exclusiva Lar Imóveis uma das empresas mais eficientes do mercado imobiliário regional. Venha conosco e faça parte desta família você também!';
 
 function getInitialPortalFilters() {
   if (typeof window === 'undefined') {
@@ -14,15 +17,19 @@ function getInitialPortalFilters() {
       businessType: '',
       propertyType: '',
       sortBy: 'preco_desc',
+      currentPage: 1,
     };
   }
 
   const params = new URLSearchParams(window.location.search);
+  const parsedPage = Number(params.get('page') || '1');
+
   return {
     searchTerm: params.get('q') || '',
     businessType: params.get('business') || '',
     propertyType: params.get('type') || '',
     sortBy: params.get('sort') || 'preco_desc',
+    currentPage: Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1,
   };
 }
 
@@ -57,6 +64,7 @@ interface TenantConfig extends TenantBranding {
   about_text?: string;
   services?: string[];
   endereco?: string;
+  office_hours?: string;
 }
 
 const PROPERTY_TYPES = [
@@ -228,6 +236,7 @@ export default function ClientPortalRefined() {
   const [businessType, setBusinessType] = useState(initialFilters.businessType);
   const [propertyType, setPropertyType] = useState(initialFilters.propertyType);
   const [sortBy, setSortBy] = useState(initialFilters.sortBy);
+  const [currentPage, setCurrentPage] = useState(initialFilters.currentPage);
   const [venderOpen, setVenderOpen] = useState(false);
   const [catalogPhotoIndexes, setCatalogPhotoIndexes] = useState<Record<number, number>>({});
   const [leadModalProperty, setLeadModalProperty] = useState<Property | null>(null);
@@ -276,7 +285,7 @@ export default function ClientPortalRefined() {
         const response = await api.get('/portal/imoveis');
         const data = response.data?.data || response.data || [];
         const items = Array.isArray(data)
-          ? data.filter((property) => property.active !== false && normalizeImages(property).length > 0)
+          ? data.filter((property) => normalizeImages(property).length > 0)
           : [];
         setProperties(items);
       } finally {
@@ -295,12 +304,17 @@ export default function ClientPortalRefined() {
     if (businessType) params.set('business', businessType);
     if (propertyType) params.set('type', propertyType);
     if (sortBy && sortBy !== 'preco_desc') params.set('sort', sortBy);
+    if (currentPage > 1) params.set('page', String(currentPage));
 
     const nextUrl = params.toString()
       ? `${window.location.pathname}?${params.toString()}`
       : window.location.pathname;
 
     window.history.replaceState(window.history.state, '', nextUrl);
+  }, [searchTerm, businessType, propertyType, sortBy, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
   }, [searchTerm, businessType, propertyType, sortBy]);
 
   useEffect(() => {
@@ -370,6 +384,30 @@ export default function ClientPortalRefined() {
         return aPrice - bPrice;
       });
   }, [properties, searchTerm, businessType, propertyType, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProperties.length / PROPERTIES_PER_PAGE));
+  const paginatedProperties = useMemo(() => {
+    const start = (currentPage - 1) * PROPERTIES_PER_PAGE;
+    return filteredProperties.slice(start, start + PROPERTIES_PER_PAGE);
+  }, [currentPage, filteredProperties]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const tenantAboutText = useMemo(() => {
+    if (tenant?.about_text?.trim()) {
+      return tenant.about_text.trim();
+    }
+
+    if (tenant?.name?.toLowerCase().includes('exclusiva')) {
+      return EXCLUSIVA_DEFAULT_ABOUT_TEXT;
+    }
+
+    return '';
+  }, [tenant?.about_text, tenant?.name]);
 
   const whatsappLink = useMemo(() => {
     const phone = tenant?.contact_phone?.replace(/\D/g, '');
@@ -903,11 +941,16 @@ export default function ClientPortalRefined() {
                 ? `${filteredProperties.length} imóvel${filteredProperties.length !== 1 ? 's' : ''} encontrado${filteredProperties.length !== 1 ? 's' : ''}`
                 : 'Imóveis disponíveis'}
             </h2>
+            {filteredProperties.length > 0 && (
+              <p className="mt-1 text-sm text-slate-500">
+                Página {currentPage} de {totalPages}
+              </p>
+            )}
           </div>
         </div>
 
         <div className="mt-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredProperties.map((property, index) => {
+          {paginatedProperties.map((property, index) => {
             const images = normalizeImages(property);
             const activePhotoIndex = Math.min(catalogPhotoIndexes[property.id] ?? 0, Math.max(0, images.length - 1));
             const activeImage = images[activePhotoIndex] || images[0];
@@ -998,6 +1041,56 @@ export default function ClientPortalRefined() {
             Nenhum imóvel encontrado com os filtros informados.
           </div>
         )}
+
+        {filteredProperties.length > PROPERTIES_PER_PAGE && (
+          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+            <p className="text-sm text-slate-500">
+              Exibindo {(currentPage - 1) * PROPERTIES_PER_PAGE + 1} a {Math.min(currentPage * PROPERTIES_PER_PAGE, filteredProperties.length)} de {filteredProperties.length} imóveis
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Anterior
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, index) => index + 1)
+                  .filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                  .map((page, index, pages) => {
+                    const previousPage = pages[index - 1];
+                    const shouldShowGap = previousPage && page - previousPage > 1;
+
+                    return (
+                      <div key={page} className="flex items-center gap-1">
+                        {shouldShowGap && <span className="px-1 text-slate-400">...</span>}
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(page)}
+                          className={`h-10 w-10 rounded-full text-sm font-semibold transition ${page === currentPage ? 'text-white' : 'border border-slate-200 bg-white text-slate-700'}`}
+                          style={page === currentPage ? { backgroundColor: primary } : undefined}
+                        >
+                          {page}
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Próxima
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Simulação de Financiamento — banner promocional */}
@@ -1054,6 +1147,30 @@ export default function ClientPortalRefined() {
           </article>
         </div>
       </section>
+
+      {tenantAboutText && (
+        <section id="empresa" className="mx-auto max-w-7xl px-4 lg:px-8 pb-16">
+          <div className="rounded-3xl border border-black/10 bg-white px-6 py-8 text-center shadow-[0_12px_36px_rgba(15,23,42,0.08)] lg:px-12 lg:py-12">
+            {(tenant?.logo_url || tenant?.logo) && (
+              <div className="mb-5 flex justify-center">
+                <img src={tenant.logo_url || tenant.logo} alt={tenant?.name || 'Logo'} className="h-12 w-auto object-contain" />
+              </div>
+            )}
+            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">A Empresa</p>
+            <h3 className="mt-2 text-3xl text-slate-900">{tenant?.name || 'Nossa imobiliária'}</h3>
+            {tenant?.creci && <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: secondary }}>CRECI {tenant.creci}</p>}
+            <p className="mx-auto mt-5 max-w-4xl whitespace-pre-line text-sm leading-7 text-slate-600">
+              {tenantAboutText}
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-600">
+              {tenant?.endereco && <span className="inline-flex items-center gap-2"><MapPin className="h-4 w-4" />{tenant.endereco}</span>}
+              {tenant?.contact_phone && <a className="inline-flex items-center gap-2 hover:text-slate-900" href={`tel:${tenant.contact_phone}`}><Phone className="h-4 w-4" />{tenant.contact_phone}</a>}
+              {tenant?.contact_email && <a className="inline-flex items-center gap-2 hover:text-slate-900" href={`mailto:${tenant.contact_email}`}><Mail className="h-4 w-4" />{tenant.contact_email}</a>}
+            </div>
+            {tenant?.office_hours && <p className="mt-3 text-xs uppercase tracking-[0.14em] text-slate-400">{tenant.office_hours}</p>}
+          </div>
+        </section>
+      )}
 
       {/* Botão flutuante de Simulação — desktop: lateral direita | mobile: barra no topo */}
       {/* Mobile: barra fixa logo abaixo do header */}
