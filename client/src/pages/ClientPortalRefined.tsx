@@ -53,6 +53,19 @@ const BUSINESS_TYPES = [
   { value: 'aluguel', label: 'Alugar' },
 ];
 
+type PurposeKind = 'venda' | 'aluguel' | 'venda_aluguel' | 'imovel';
+
+function getPurposeKind(property: Property): PurposeKind {
+  const value = `${property.finalidade_imovel || ''} ${property.tipo_negocio || ''}`.toLowerCase();
+  const hasSale = value.includes('vend');
+  const hasRent = value.includes('alug') || value.includes('loca');
+
+  if (hasSale && hasRent) return 'venda_aluguel';
+  if (hasRent) return 'aluguel';
+  if (hasSale) return 'venda';
+  return 'imovel';
+}
+
 function normalizeImages(property: Property): string[] {
   const list: string[] = [];
   if (property.imagem_destaque) list.push(property.imagem_destaque);
@@ -62,24 +75,48 @@ function normalizeImages(property: Property): string[] {
 }
 
 function formatPrice(property: Property): string {
-  const value = property.valor_venda || property.valor_aluguel || 0;
-  if (!value) return 'Sob consulta';
-  return new Intl.NumberFormat('pt-BR', {
+  const currency = (value: number) => new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
     maximumFractionDigits: 0,
   }).format(value);
+
+  const salePrice = Number(property.valor_venda) || 0;
+  const rentPrice = Number(property.valor_aluguel) || 0;
+  const purpose = getPurposeKind(property);
+
+  if (purpose === 'venda_aluguel' && salePrice && rentPrice) {
+    return `Venda ${currency(salePrice)} | Aluguel ${currency(rentPrice)}/mês`;
+  }
+
+  if (purpose === 'aluguel') {
+    const value = rentPrice || salePrice;
+    return value ? `${currency(value)}/mês` : 'Sob consulta';
+  }
+
+  if (purpose === 'venda_aluguel') {
+    const value = salePrice || rentPrice;
+    return value ? `Venda ou aluguel: ${currency(value)}` : 'Sob consulta';
+  }
+
+  const value = salePrice || rentPrice;
+  return value ? currency(value) : 'Sob consulta';
 }
 
 function getPriceValue(property: Property): number {
-  const value = property.valor_venda || property.valor_aluguel || 0;
-  return Number(value) || 0;
+  const purpose = getPurposeKind(property);
+  if (purpose === 'aluguel') {
+    return Number(property.valor_aluguel || property.valor_venda || 0) || 0;
+  }
+
+  return Number(property.valor_venda || property.valor_aluguel || 0) || 0;
 }
 
-function getPurpose(property: Property): 'Venda' | 'Aluguel' | 'Imóvel' {
-  const value = `${property.finalidade_imovel || ''} ${property.tipo_negocio || ''}`.toLowerCase();
-  if (value.includes('alug')) return 'Aluguel';
-  if (value.includes('vend')) return 'Venda';
+function getPurpose(property: Property): 'Venda' | 'Aluguel' | 'Venda ou Aluguel' | 'Imóvel' {
+  const purpose = getPurposeKind(property);
+  if (purpose === 'venda_aluguel') return 'Venda ou Aluguel';
+  if (purpose === 'aluguel') return 'Aluguel';
+  if (purpose === 'venda') return 'Venda';
   return 'Imóvel';
 }
 
@@ -248,8 +285,10 @@ export default function ClientPortalRefined() {
         || property.cidade?.toLowerCase().includes(term)
         || property.tipo_imovel?.toLowerCase().includes(term);
 
-      const business = `${property.finalidade_imovel || ''} ${property.tipo_negocio || ''}`.toLowerCase();
-      const matchesBusiness = !businessType || business.includes(businessType.toLowerCase());
+      const purpose = getPurposeKind(property);
+      const matchesBusiness = !businessType
+        || (businessType === 'venda' && (purpose === 'venda' || purpose === 'venda_aluguel'))
+        || (businessType === 'aluguel' && (purpose === 'aluguel' || purpose === 'venda_aluguel'));
       const matchesType = !propertyType || property.tipo_imovel?.toLowerCase().includes(propertyType.toLowerCase());
 
       return matchesSearch && matchesBusiness && matchesType;

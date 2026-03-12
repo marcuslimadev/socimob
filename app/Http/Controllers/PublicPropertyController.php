@@ -6,6 +6,33 @@ use Illuminate\Http\Request;
 
 class PublicPropertyController extends Controller
 {
+    private function applyPurposeFilter($query, ?string $purpose): void
+    {
+        $normalized = strtolower(trim((string) $purpose));
+        if ($normalized === '') {
+            return;
+        }
+
+        $query->where(function ($inner) use ($normalized) {
+            if ($normalized === 'venda') {
+                $inner->orWhereRaw('LOWER(COALESCE(finalidade_imovel, \'\')) LIKE ?', ['%vend%']);
+            }
+
+            if ($normalized === 'aluguel' || $normalized === 'locacao') {
+                $inner->orWhereRaw('LOWER(COALESCE(finalidade_imovel, \'\')) LIKE ?', ['%alug%']);
+                $inner->orWhereRaw('LOWER(COALESCE(finalidade_imovel, \'\')) LIKE ?', ['%loca%']);
+            }
+
+            if ($normalized === 'temporada') {
+                $inner->orWhereRaw('LOWER(COALESCE(finalidade_imovel, \'\')) LIKE ?', ['%temporad%']);
+            }
+
+            if (!in_array($normalized, ['venda', 'aluguel', 'locacao', 'temporada'], true)) {
+                $inner->orWhereRaw('LOWER(COALESCE(finalidade_imovel, \'\')) LIKE ?', ['%' . $normalized . '%']);
+            }
+        });
+    }
+
     /**
      * Listar imóveis disponíveis (público)
      * 
@@ -15,13 +42,11 @@ class PublicPropertyController extends Controller
     {
         $query = Property::where('active', 1)
             ->where('exibir_imovel', 1)
-            ->where('valor_venda', '>=', 30000)
-            ->where(function ($q) {
-                $q->whereIn('finalidade_imovel', ['Venda', 'Venda/Aluguel'])
-                    ->orWhereNull('finalidade_imovel')
-                    ->orWhere('finalidade_imovel', '');
-            })
             ->orderBy('created_at', 'desc');
+                if ($request->has('finalidade') && !empty($request->finalidade)) {
+                    $this->applyPurposeFilter($query, $request->finalidade);
+                }
+
         
         // Filtros opcionais
         
@@ -77,12 +102,6 @@ class PublicPropertyController extends Controller
         $property = Property::where('codigo', $codigo)
             ->where('active', 1)
             ->where('exibir_imovel', 1)
-            ->where('valor_venda', '>=', 30000)
-            ->where(function ($q) {
-                $q->whereIn('finalidade_imovel', ['Venda', 'Venda/Aluguel'])
-                    ->orWhereNull('finalidade_imovel')
-                    ->orWhere('finalidade_imovel', '');
-            })
             ->first();
         
         if (!$property) {

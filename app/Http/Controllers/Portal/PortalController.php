@@ -20,6 +20,67 @@ use Carbon\Carbon;
 
 class PortalController extends Controller
 {
+    private function normalizePurposeTerms(array $values): array
+    {
+        return array_values(array_unique(array_filter(array_map(function ($value) {
+            $normalized = Str::lower(trim((string) $value));
+            if ($normalized === 'locacao') {
+                return 'aluguel';
+            }
+            return $normalized;
+        }, $values))));
+    }
+
+    private function applyPurposeFilterToQuery($query, array $purposes): void
+    {
+        $normalized = $this->normalizePurposeTerms($purposes);
+        if (empty($normalized)) {
+            return;
+        }
+
+        $query->where(function ($purposeQuery) use ($normalized) {
+            foreach ($normalized as $purpose) {
+                if ($purpose === 'venda') {
+                    $purposeQuery->orWhereRaw('LOWER(COALESCE(finalidade_imovel, \'\')) LIKE ?', ['%vend%']);
+                }
+
+                if ($purpose === 'aluguel') {
+                    $purposeQuery->orWhereRaw('LOWER(COALESCE(finalidade_imovel, \'\')) LIKE ?', ['%alug%']);
+                    $purposeQuery->orWhereRaw('LOWER(COALESCE(finalidade_imovel, \'\')) LIKE ?', ['%loca%']);
+                }
+
+                if ($purpose === 'temporada') {
+                    $purposeQuery->orWhereRaw('LOWER(COALESCE(finalidade_imovel, \'\')) LIKE ?', ['%temporad%']);
+                }
+            }
+        });
+    }
+
+    private function propertyMatchesPurposeFilters(?string $finalidade, array $purposes): bool
+    {
+        $normalizedPurposes = $this->normalizePurposeTerms($purposes);
+        if (empty($normalizedPurposes)) {
+            return true;
+        }
+
+        $value = Str::lower((string) $finalidade);
+        foreach ($normalizedPurposes as $purpose) {
+            if ($purpose === 'venda' && str_contains($value, 'vend')) {
+                return true;
+            }
+
+            if ($purpose === 'aluguel' && (str_contains($value, 'alug') || str_contains($value, 'loca'))) {
+                return true;
+            }
+
+            if ($purpose === 'temporada' && str_contains($value, 'temporad')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function sanitizePropertyForPortal($imovel): array
     {
         $data = is_array($imovel) ? $imovel : $imovel->toArray();
@@ -227,11 +288,8 @@ class PortalController extends Controller
         }
 
         if ($hasFinalidade && $normalizedFinalidades && count($normalizedFinalidades) > 0) {
-            $imoveisQuery->whereIn(DB::raw('LOWER(finalidade_imovel)'), $normalizedFinalidades);
+            $this->applyPurposeFilterToQuery($imoveisQuery, $normalizedFinalidades);
         }
-
-        // Filtrar imóveis com valor mínimo (excluir preços inválidos/muito baixos)
-        $imoveisQuery->where('valor_venda', '>=', 30000);
 
         // Aplicar filtros do frontend
         if ($request->has('localizacao') && $request->localizacao) {
@@ -251,11 +309,7 @@ class PortalController extends Controller
 
         if ($request->has('finalidade') && $request->finalidade) {
             $finalidade = $request->finalidade;
-            if ($finalidade === 'venda') {
-                $imoveisQuery->where('finalidade_imovel', 'LIKE', '%venda%');
-            } elseif ($finalidade === 'aluguel') {
-                $imoveisQuery->where('finalidade_imovel', 'LIKE', '%aluguel%');
-            }
+            $this->applyPurposeFilterToQuery($imoveisQuery, [$finalidade]);
         }
 
         if ($request->has('preco') && $request->preco) {
@@ -304,11 +358,8 @@ class PortalController extends Controller
             }
 
             if ($hasFinalidade && $normalizedFinalidades && count($normalizedFinalidades) > 0) {
-                $sharedQuery->whereIn(DB::raw('LOWER(finalidade_imovel)'), $normalizedFinalidades);
+                $this->applyPurposeFilterToQuery($sharedQuery, $normalizedFinalidades);
             }
-
-            // Filtrar imóveis com valor mínimo
-            $sharedQuery->where('valor_venda', '>=', 30000);
 
             // Aplicar os mesmos filtros do frontend para propriedades compartilhadas
             if ($request->has('localizacao') && $request->localizacao) {
@@ -328,11 +379,7 @@ class PortalController extends Controller
 
             if ($request->has('finalidade') && $request->finalidade) {
                 $finalidade = $request->finalidade;
-                if ($finalidade === 'venda') {
-                    $sharedQuery->where('finalidade_imovel', 'LIKE', '%venda%');
-                } elseif ($finalidade === 'aluguel') {
-                    $sharedQuery->where('finalidade_imovel', 'LIKE', '%aluguel%');
-                }
+                $this->applyPurposeFilterToQuery($sharedQuery, [$finalidade]);
             }
 
             if ($request->has('preco') && $request->preco) {
@@ -453,7 +500,7 @@ class PortalController extends Controller
             return response()->json(['error' => 'Property not found'], 404);
         }
         if ($hasFinalidade && $normalizedFinalidades && count($normalizedFinalidades) > 0) {
-            if (!in_array(Str::lower($imovel->finalidade_imovel), $normalizedFinalidades, true)) {
+            if (!$this->propertyMatchesPurposeFilters($imovel->finalidade_imovel, $normalizedFinalidades)) {
                 return response()->json(['error' => 'Property not found'], 404);
             }
         }
