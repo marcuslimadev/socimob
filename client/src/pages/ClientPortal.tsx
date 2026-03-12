@@ -675,44 +675,45 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
     return defaultPos;
   });
   const [isDragging, setIsDragging] = useState(false);
-  const isDraggingRef = useRef(false);
   const hasDraggedRef = useRef(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const posRef = useRef(pos);
   posRef.current = pos;
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const onMove = (e: PointerEvent) => {
+      const bSz = window.innerWidth >= 768 ? 104 : 88;
+      const newX = Math.max(0, Math.min(window.innerWidth - bSz, e.clientX - dragOffsetRef.current.x));
+      const newY = Math.max(0, Math.min(window.innerHeight - bSz, e.clientY - dragOffsetRef.current.y));
+      if (Math.hypot(newX - posRef.current.x, newY - posRef.current.y) > 10) hasDraggedRef.current = true;
+      setPos({ x: newX, y: newY });
+    };
+    const onUp = () => {
+      setIsDragging(false);
+      if (!hasDraggedRef.current) {
+        onOpenChange(!isOpenRef.current);
+      } else {
+        try { localStorage.setItem('mascot_pos', JSON.stringify(posRef.current)); } catch {}
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+  }, [isDragging, onOpenChange]);
 
   const handleMascotPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     dragOffsetRef.current = { x: e.clientX - posRef.current.x, y: e.clientY - posRef.current.y };
     hasDraggedRef.current = false;
-    isDraggingRef.current = true;
     setIsDragging(true);
-    e.currentTarget.setPointerCapture(e.pointerId);
     e.preventDefault();
-  };
-
-  const handleMascotPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (!isDraggingRef.current) return;
-    const bSz = window.innerWidth >= 768 ? 104 : 88;
-    const newX = Math.max(0, Math.min(window.innerWidth - bSz, e.clientX - dragOffsetRef.current.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - bSz, e.clientY - dragOffsetRef.current.y));
-    if (Math.hypot(newX - posRef.current.x, newY - posRef.current.y) > 10) hasDraggedRef.current = true;
-    setPos({ x: newX, y: newY });
-  };
-
-  const handleMascotPointerUp = () => {
-    isDraggingRef.current = false;
-    setIsDragging(false);
-    if (!hasDraggedRef.current) {
-      onOpenChange(!isOpen);
-    } else {
-      try { localStorage.setItem('mascot_pos', JSON.stringify(posRef.current)); } catch {}
-    }
-  };
-
-  const handleMascotPointerCancel = () => {
-    isDraggingRef.current = false;
-    hasDraggedRef.current = false;
-    setIsDragging(false);
   };
 
   const _bSize = typeof window !== 'undefined' ? (window.innerWidth >= 768 ? 104 : 88) : 88;
@@ -781,9 +782,6 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
       )}
       <button
         onPointerDown={handleMascotPointerDown}
-        onPointerMove={handleMascotPointerMove}
-        onPointerUp={handleMascotPointerUp}
-        onPointerCancel={handleMascotPointerCancel}
         className="fixed z-[60] w-[88px] h-[88px] md:w-[104px] md:h-[104px] rounded-full flex items-center justify-center shadow-xl select-none touch-none"
         style={{
           backgroundColor: '#fff',
