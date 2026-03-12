@@ -100,8 +100,21 @@ export default function ClientPortalRefined() {
   const [slidePhotoIndex, setSlidePhotoIndex] = useState(0);
   const [thumbStart, setThumbStart] = useState(0);
   const [venderOpen, setVenderOpen] = useState(false);
+  const [floatingActionDragging, setFloatingActionDragging] = useState(false);
+  const [floatingActionPos, setFloatingActionPos] = useState<{ x: number; y: number }>(() => {
+    if (typeof window === 'undefined') return { x: 16, y: 16 };
+    const size = window.innerWidth >= 640 ? 320 : 256;
+    return {
+      x: Math.max(8, window.innerWidth - size - 16),
+      y: Math.max(8, window.innerHeight - size - 16),
+    };
+  });
 
   const heroRef = useRef<HTMLElement>(null);
+  const floatingActionPosRef = useRef(floatingActionPos);
+  const suppressFloatingActionClickRef = useRef(false);
+
+  floatingActionPosRef.current = floatingActionPos;
 
   useEffect(() => {
     const onScroll = () => {
@@ -232,6 +245,90 @@ export default function ClientPortalRefined() {
     const message = encodeURIComponent(`Olá! Vim pelo portal da ${tenant?.name || 'imobiliária'} e quero atendimento.`);
     return `https://wa.me/${phone}?text=${message}`;
   }, [tenant?.contact_phone, tenant?.name]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const size = window.innerWidth >= 640 ? 320 : 256;
+    const defaultPos = {
+      x: Math.max(8, window.innerWidth - size - 16),
+      y: Math.max(8, window.innerHeight - size - 16),
+    };
+
+    try {
+      const saved = localStorage.getItem('portal_mascot_pos');
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as { x: number; y: number };
+      if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number') return;
+      setFloatingActionPos({
+        x: Math.max(8, Math.min(window.innerWidth - size, parsed.x)),
+        y: Math.max(8, Math.min(window.innerHeight - size, parsed.y)),
+      });
+    } catch {
+      setFloatingActionPos(defaultPos);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => {
+      const size = window.innerWidth >= 640 ? 320 : 256;
+      setFloatingActionPos((current) => ({
+        x: Math.max(8, Math.min(window.innerWidth - size, current.x)),
+        y: Math.max(8, Math.min(window.innerHeight - size, current.y)),
+      }));
+    };
+
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const handleFloatingActionPointerDown = (e: React.PointerEvent<HTMLAnchorElement>) => {
+    const size = window.innerWidth >= 640 ? 320 : 256;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const offsetX = e.clientX - floatingActionPosRef.current.x;
+    const offsetY = e.clientY - floatingActionPosRef.current.y;
+    let dragged = false;
+
+    const onMove = (event: PointerEvent) => {
+      const nextX = Math.max(8, Math.min(window.innerWidth - size, event.clientX - offsetX));
+      const nextY = Math.max(8, Math.min(window.innerHeight - size, event.clientY - offsetY));
+
+      if (!dragged && Math.hypot(event.clientX - startX, event.clientY - startY) > 8) {
+        dragged = true;
+        suppressFloatingActionClickRef.current = true;
+        setFloatingActionDragging(true);
+      }
+
+      if (dragged) {
+        event.preventDefault();
+        setFloatingActionPos({ x: nextX, y: nextY });
+      }
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      setFloatingActionDragging(false);
+
+      if (dragged) {
+        try {
+          localStorage.setItem('portal_mascot_pos', JSON.stringify(floatingActionPosRef.current));
+        } catch {}
+      }
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  };
+
+  const handleFloatingActionClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!whatsappLink || suppressFloatingActionClickRef.current) {
+      e.preventDefault();
+      suppressFloatingActionClickRef.current = false;
+    }
+  };
 
   if (loading) {
     return (
@@ -833,14 +930,24 @@ export default function ClientPortalRefined() {
           href={whatsappLink || undefined}
           target={whatsappLink ? '_blank' : undefined}
           rel={whatsappLink ? 'noreferrer' : undefined}
-          className="fixed bottom-4 right-4 z-50"
+          onPointerDown={handleFloatingActionPointerDown}
+          onClick={handleFloatingActionClick}
+          className="fixed z-50 select-none"
           aria-label="Abrir WhatsApp"
-          style={{ cursor: whatsappLink ? 'pointer' : 'default' }}
+          style={{
+            cursor: floatingActionDragging ? 'grabbing' : (whatsappLink ? 'grab' : 'default'),
+            left: floatingActionPos.x,
+            top: floatingActionPos.y,
+            touchAction: 'none',
+            transform: floatingActionDragging ? 'scale(1.03)' : 'scale(1)',
+            transition: floatingActionDragging ? 'none' : 'transform 0.2s ease',
+          }}
         >
           <img
             src={tenant.mascot_url}
             alt="Mascote"
-            className="w-64 h-64 sm:w-80 sm:h-80 object-contain drop-shadow-xl"
+            draggable={false}
+            className="w-64 h-64 sm:w-80 sm:h-80 object-contain drop-shadow-xl pointer-events-none"
           />
         </a>
       ) : whatsappLink ? (
@@ -848,10 +955,20 @@ export default function ClientPortalRefined() {
           href={whatsappLink}
           target="_blank"
           rel="noreferrer"
-          className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-2xl border border-white/30 bg-[#0f172a] text-white shadow-[0_8px_24px_rgba(15,23,42,0.35)] flex items-center justify-center"
+          onPointerDown={handleFloatingActionPointerDown}
+          onClick={handleFloatingActionClick}
+          className="fixed z-50 w-14 h-14 rounded-2xl border border-white/30 bg-[#0f172a] text-white shadow-[0_8px_24px_rgba(15,23,42,0.35)] flex items-center justify-center select-none"
           aria-label="Abrir WhatsApp"
+          style={{
+            cursor: floatingActionDragging ? 'grabbing' : 'grab',
+            left: floatingActionPos.x,
+            top: floatingActionPos.y,
+            touchAction: 'none',
+            transform: floatingActionDragging ? 'scale(1.03)' : 'scale(1)',
+            transition: floatingActionDragging ? 'none' : 'transform 0.2s ease',
+          }}
         >
-          <MessageCircle className="w-6 h-6" />
+          <MessageCircle className="w-6 h-6 pointer-events-none" />
         </a>
       ) : null}
     </div>
