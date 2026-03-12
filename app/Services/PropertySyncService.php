@@ -169,7 +169,14 @@ class PropertySyncService
                 array_merge($sourceCodes, $imobiBackfill['available_codes'] ?? [])
             ))));
 
-            $stats['trashed'] = $this->trashMissingImportedProperties($knownCodes);
+            $authoritativeCodes = $knownCodes;
+            $cleanupReason = 'missing_from_source';
+            if (($imobiBackfill['success'] ?? false) && !empty($imobiBackfill['available_codes'])) {
+                $authoritativeCodes = $imobiBackfill['available_codes'];
+                $cleanupReason = 'missing_from_imobi_brasil';
+            }
+
+            $stats['trashed'] = $this->trashMissingImportedProperties($authoritativeCodes, $cleanupReason);
             
             $elapsed = round((microtime(true) - $startTime) * 1000, 2);
             
@@ -218,33 +225,42 @@ class PropertySyncService
         }
     }
 
-    private function trashMissingImportedProperties(array $sourceCodes): int
+    private function trashMissingImportedProperties(array $sourceCodes, string $reason = 'missing_from_source'): int
     {
         $normalizedCodes = array_values(array_unique(array_filter(array_map('strval', $sourceCodes))));
         if (empty($normalizedCodes)) {
             return 0;
         }
 
-        $query = Property::query()
-            ->whereNotNull('external_id')
-            ->whereColumn('external_id', 'codigo');
+        $query = Property::query()->where(function ($builder) {
+            $builder->where(function ($subQuery) {
+                $subQuery->whereNotNull('external_id')
+                    ->whereColumn('external_id', 'codigo');
+            })->orWhereNotNull('imobi_brasil_external_id');
+        });
 
         if (app()->bound('tenant')) {
             $query->where('tenant_id', app('tenant')->id);
         }
 
-        $properties = $query
-            ->whereNotIn('codigo', $normalizedCodes)
-            ->get();
+        $properties = $query->get();
 
         $trashed = 0;
         foreach ($properties as $property) {
+            $comparisonCode = $this->resolveAuthorityCode($property);
+            if ($comparisonCode && in_array($comparisonCode, $normalizedCodes, true)) {
+                continue;
+            }
+
             $this->trashService->moveToTrash(
                 $property,
                 'sync',
-                'missing_from_source',
+                $reason,
                 null,
-                ['codigo' => $property->codigo]
+                [
+                    'codigo' => $property->codigo,
+                    'authority_code' => $comparisonCode,
+                ]
             );
             $trashed++;
         }
@@ -255,7 +271,7 @@ class PropertySyncService
     /**
      * Mapear dados do imóvel da API para o formato do banco
      */
-    private function mapPropertyData($imovel)
+    private function mapPropertyData($imovel, bool $fromImobiBrasil = false)
     {
         // Converter áreas - nova estrutura da API
         $areaPrivativa = isset($imovel['area']['privativa']['valor']) ? 
@@ -350,6 +366,13 @@ class PropertySyncService
         // Garantir que o tenant_id seja incluído explicitamente (segurança adicional)
         if (app()->bound('tenant')) {
             $data['tenant_id'] = app('tenant')->id;
+        }
+
+        if ($fromImobiBrasil) {
+            $data['imobi_brasil_external_id'] = strval($imovel['codigoImovel']);
+            $data['imobi_brasil_sent'] = true;
+            $data['imobi_brasil_sent_at'] = now();
+            $data['imobi_brasil_error'] = null;
         }
         
         return $data;
@@ -457,9 +480,10 @@ class PropertySyncService
         return 'venda';
     }
 
-    private function persistPropertyData(string $codigo, array $data): array
+    private function persistPropertyData(string $codigo, array $data, ?string $authorityCode = null): array
     {
-        $existing = Property::withTrashed()->where('codigo', $codigo)->first();
+        $authorityCode = $authorityCode ?: ($data['imobi_brasil_external_id'] ?? null);
+        $existing = $this->findExistingProperty($codigo, $authorityCode);
         $restored = false;
 
         if ($existing) {
@@ -485,6 +509,36 @@ class PropertySyncService
             'restored' => false,
             'property_id' => $property->id,
         ];
+    }
+
+    private function findExistingProperty(string $codigo, ?string $authorityCode = null): ?Property
+    {
+        $query = Property::withTrashed()->where('codigo', $codigo);
+
+        if ($authorityCode) {
+            $query->orWhere('imobi_brasil_external_id', $authorityCode)
+                ->orWhere('external_id', $authorityCode);
+        }
+
+        if (app()->bound('tenant')) {
+            $tenantId = app('tenant')->id;
+            $query->where('tenant_id', $tenantId);
+        }
+
+        return $query->orderByDesc('updated_at')->first();
+    }
+
+    private function resolveAuthorityCode(Property $property): ?string
+    {
+        if (!empty($property->imobi_brasil_external_id)) {
+            return (string) $property->imobi_brasil_external_id;
+        }
+
+        if (!empty($property->external_id)) {
+            return (string) $property->external_id;
+        }
+
+        return $property->codigo ? (string) $property->codigo : null;
     }
 
     private function resolveSyncTenant(): ?Tenant
@@ -584,13 +638,23 @@ class PropertySyncService
             $availableCodes = $this->fetchImobiBrasilCodes($tenant);
 
             $existing = Property::withTrashed()
-                ->whereIn('codigo', $availableCodes)
-                ->get()
-                ->keyBy(fn (Property $property) => (string) $property->codigo);
+                ->where(function ($query) use ($availableCodes) {
+                    $query->whereIn('codigo', $availableCodes)
+                        ->orWhereIn('external_id', $availableCodes)
+                        ->orWhereIn('imobi_brasil_external_id', $availableCodes);
+                })
+                ->when($tenant, function ($query) use ($tenant) {
+                    $query->where('tenant_id', $tenant->id);
+                })
+                ->get();
 
             $targetCodes = [];
             foreach ($availableCodes as $codigo) {
-                $property = $existing->get((string) $codigo);
+                $property = $existing->first(function (Property $property) use ($codigo) {
+                    return (string) $property->codigo === (string) $codigo
+                        || (string) $property->external_id === (string) $codigo
+                        || (string) $property->imobi_brasil_external_id === (string) $codigo;
+                });
                 if (!$property || $property->trashed()) {
                     $targetCodes[] = (string) $codigo;
                 }
@@ -612,7 +676,11 @@ class PropertySyncService
                     continue;
                 }
 
-                $persisted = $this->persistPropertyData($codigo, $this->mapPropertyData($response['result_set']));
+                $persisted = $this->persistPropertyData(
+                    $codigo,
+                    $this->mapPropertyData($response['result_set'], true),
+                    $codigo
+                );
 
                 if ($persisted['restored']) {
                     $restored++;
@@ -1177,36 +1245,40 @@ class PropertySyncService
 
         $properties = $query->get();
         $duplicates = [];
-        $processed = [];
+        $processedGroups = [];
 
-        foreach ($properties as $property) {
-            if (in_array($property->id, $processed)) {
-                continue;
-            }
+        foreach (['codigo' => 'same_codigo', 'imobi_brasil_external_id' => 'same_imobi_brasil_external_id'] as $field => $reason) {
+            $groups = $properties
+                ->filter(fn (Property $property) => !empty($property->{$field}))
+                ->groupBy(fn (Property $property) => (string) $property->{$field})
+                ->filter(fn ($group) => $group->count() > 1);
 
-            // Buscar duplicatas por código
-            $sameCodigo = $properties->where('codigo', $property->codigo)
-                ->where('id', '!=', $property->id)
-                ->pluck('id')
-                ->toArray();
+            foreach ($groups as $groupKey => $group) {
+                $signature = $field . ':' . $groupKey;
+                if (isset($processedGroups[$signature])) {
+                    continue;
+                }
 
-            if (!empty($sameCodigo)) {
-                $group = $properties->where('codigo', $property->codigo)->values();
-                $master = $this->selectMasterProperty($group);
+                $master = $this->selectMasterProperty($group->values());
                 $duplicateIds = $group
                     ->where('id', '!=', $master->id)
                     ->pluck('id')
                     ->values()
                     ->all();
 
+                if (empty($duplicateIds)) {
+                    continue;
+                }
+
                 $duplicates[] = [
                     'master_id' => $master->id,
                     'master_codigo' => $master->codigo,
                     'duplicate_ids' => $duplicateIds,
-                    'reason' => 'same_codigo'
+                    'reason' => $reason,
+                    'group_key' => (string) $groupKey,
                 ];
 
-                $processed = array_merge($processed, $group->pluck('id')->all());
+                $processedGroups[$signature] = true;
             }
         }
 
@@ -1239,7 +1311,8 @@ class PropertySyncService
                         Log::info('Duplicata removida', [
                             'duplicate_id' => $dupId,
                             'master_id' => $duplicate['master_id'],
-                            'codigo' => $duplicate['master_codigo']
+                            'codigo' => $duplicate['master_codigo'],
+                            'reason' => $duplicate['reason'],
                         ]);
                     }
                 } catch (\Exception $e) {
@@ -1300,6 +1373,8 @@ class PropertySyncService
         $score = 0;
         $score += $property->active ? 100 : 0;
         $score += $property->exibir_imovel ? 100 : 0;
+        $score += $this->isNumericPropertyCode($property->codigo) ? 80 : 0;
+        $score += ((string) $property->external_id !== '' && (string) $property->external_id === (string) $property->codigo) ? 60 : 0;
         $score += !empty($property->imobi_brasil_external_id) ? 40 : 0;
         $score += !empty($property->external_id) ? 20 : 0;
         $score += !empty($property->imagem_destaque) ? 10 : 0;
@@ -1309,6 +1384,13 @@ class PropertySyncService
         }
 
         return $score;
+    }
+
+    private function isNumericPropertyCode($codigo): bool
+    {
+        return is_string($codigo) || is_numeric($codigo)
+            ? preg_match('/^\d+$/', (string) $codigo) === 1
+            : false;
     }
 
     private function getDuplicatePriorityTimestamp(Property $property): int
