@@ -698,9 +698,9 @@ class ImobiBrasilService
             'finalidade' => $finalidade,
             'codigoTipoImovel' => $codigoTipoImovel,
             'referencia' => $property->codigo ?? ('PROP-' . $property->id),
-            'cep' => $property->cep ?? '',
+            'cep' => '',
             'bairro' => $property->bairro ?? '',
-            'logradouro' => $property->logradouro ?? '',
+            'logradouro' => '',
             'codigoCidade' => ($apiKey && $baseUrl)
                 ? self::findCodigoCidade(
                     $property->cidade ?? '',
@@ -709,34 +709,34 @@ class ImobiBrasilService
                     $baseUrl
                   )
                 : 0,
-            'numero' => $property->numero ?? '',
+            'numero' => '',
             'pontoReferencia' => '',
-            'complemento' => $property->complemento ?? '',
+            'complemento' => '',
             'mapa' => $property->latitude && $property->longitude ? 'sim' : 'nao',
             'zona' => $property->zona ?? '',
             'regiao' => $property->regiao ?? '',
-            'exibirEnderecoSite' => 'sim',
+            'exibirEnderecoSite' => 'nao',
             'exibirEnderecoSitePersonalizado' => [
                 [
-                    'cep' => true,
-                    'logradouro' => true,
-                    'numero' => true,
-                    'complemento' => true,
+                    'cep' => false,
+                    'logradouro' => false,
+                    'numero' => false,
+                    'complemento' => false,
                     'zona' => true,
                     'regiao' => true,
-                    'pontoReferencia' => true,
+                    'pontoReferencia' => false,
                     'nomeCondominio' => true,
                 ]
             ],
             'exibirEnderecoPortalPersonalizado' => [
                 [
-                    'cep' => true,
-                    'logradouro' => true,
-                    'numero' => true,
-                    'complemento' => true,
+                    'cep' => false,
+                    'logradouro' => false,
+                    'numero' => false,
+                    'complemento' => false,
                     'zona' => true,
                     'regiao' => true,
-                    'pontoReferencia' => true,
+                    'pontoReferencia' => false,
                     'nomeCondominio' => true,
                 ]
             ],

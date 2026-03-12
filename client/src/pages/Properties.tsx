@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Search, Plus, Eye, Pencil, Trash2, RefreshCw, Download,
-  Star, Globe, Loader2, X, ChevronUp, ChevronDown, ChevronsUpDown, Zap,
+  Star, Globe, Loader2, X, ChevronUp, ChevronDown, ChevronsUpDown, Zap, MessageCircle,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import Sidebar from '@/components/Sidebar';
@@ -22,11 +22,13 @@ interface ImovelRow {
   localizacao: string;
   inserido_por_nome: string | null;
   proprietario_nome: string | null;
+  proprietario_telefone: string | null;
   imobi_brasil_sent: boolean;
   imagem: string;
   ativo: boolean;
   exibir: boolean;
   destaque: boolean;
+  created_at: string;
   updated_at: string;
   deleted_at?: string | null;
   trash_source?: string | null;
@@ -38,6 +40,37 @@ type ViewMode = 'active' | 'trash';
 
 const formatMoney = (value: number) =>
   Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const normalizeWhatsAppPhone = (phone?: string | null) => {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length === 10 || digits.length === 11) {
+    return `55${digits}`;
+  }
+  return digits;
+};
+
+const buildAvailabilityCheckMessage = (property: ImovelRow) => {
+  const finalidade = property.finalidade === 'aluguel' ? 'aluguel' : 'venda';
+  return [
+    'Olá, tudo bem?',
+    `Estou conferindo a disponibilidade do imóvel ${property.codigo}${property.titulo ? ` - ${property.titulo}` : ''}.`,
+    `Ele ainda está disponível para ${finalidade}?`,
+  ].join(' ');
+};
 
 const tipoLabel = (tipo: string) => {
   const map: Record<string, string> = {
@@ -65,6 +98,7 @@ export default function Properties() {
   const [finalidadeFiltro, setFinalidadeFiltro] = useState('todos');
   const [portalFiltro, setPortalFiltro] = useState('todos');
   const [destaqueFiltro, setDestaqueFiltro] = useState('todos');
+  const [atualizacaoFiltro, setAtualizacaoFiltro] = useState('todos');
   const [pagina, setPagina] = useState(1);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -101,7 +135,9 @@ export default function Properties() {
           localizacao: [item.bairro, item.cidade].filter(Boolean).join(', ') || '-',
           inserido_por_nome: item.inserido_por_nome || null,
           proprietario_nome: item.proprietario_nome || null,
+          proprietario_telefone: item.proprietario_telefone || null,
           imobi_brasil_sent: Boolean(item.imobi_brasil_sent),
+          created_at: item.created_at || '',
           updated_at: item.updated_at || item.created_at || '',
           imagem:
             Array.isArray(item.imagens) && item.imagens.length > 0
@@ -128,7 +164,7 @@ export default function Properties() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busca, tipoFiltro, finalidadeFiltro, portalFiltro, destaqueFiltro, sortField, sortDir, itensPorPagina]);
+  }, [busca, tipoFiltro, finalidadeFiltro, portalFiltro, destaqueFiltro, atualizacaoFiltro, sortField, sortDir, itensPorPagina]);
 
   const fetchAdsStatuses = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return;
@@ -166,6 +202,9 @@ export default function Properties() {
 
   const imoveisFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
+    const staleCutoff = new Date();
+    staleCutoff.setDate(staleCutoff.getDate() - 30);
+
     return imoveis.filter((im) => {
       if (
         termo &&
@@ -180,9 +219,14 @@ export default function Properties() {
       if (portalFiltro === 'oculto' && im.exibir) return false;
       if (destaqueFiltro === 'sim' && !im.destaque) return false;
       if (destaqueFiltro === 'nao' && im.destaque) return false;
+      if (atualizacaoFiltro === 'sem_30_dias') {
+        if (!im.updated_at) return true;
+        const updatedAt = new Date(im.updated_at);
+        if (!Number.isNaN(updatedAt.getTime()) && updatedAt > staleCutoff) return false;
+      }
       return true;
     });
-  }, [imoveis, busca, tipoFiltro, finalidadeFiltro, portalFiltro, destaqueFiltro]);
+  }, [imoveis, busca, tipoFiltro, finalidadeFiltro, portalFiltro, destaqueFiltro, atualizacaoFiltro]);
 
   const imoveisOrdenados = useMemo(() => {
     if (!sortField) {
@@ -335,6 +379,7 @@ export default function Properties() {
     setFinalidadeFiltro('todos');
     setPortalFiltro('todos');
     setDestaqueFiltro('todos');
+    setAtualizacaoFiltro('todos');
   };
 
   const filtrosAtivos = [
@@ -343,11 +388,23 @@ export default function Properties() {
     finalidadeFiltro !== 'todos',
     portalFiltro !== 'todos',
     destaqueFiltro !== 'todos',
+    atualizacaoFiltro !== 'todos',
   ].filter(Boolean).length;
 
   const copyText = useCallback((text: string, label: string) => {
     if (text === '-' || !text) return;
     navigator.clipboard.writeText(text).then(() => toast.success(label + ' copiado'));
+  }, []);
+
+  const openOwnerWhatsApp = useCallback((property: ImovelRow) => {
+    const phone = normalizeWhatsAppPhone(property.proprietario_telefone);
+    if (!phone) {
+      toast.error('Este imóvel não tem WhatsApp do proprietário cadastrado');
+      return;
+    }
+
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(buildAvailabilityCheckMessage(property))}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   }, []);
 
   // Keyboard shortcut: '/' focuses search
@@ -504,6 +561,17 @@ export default function Properties() {
                 <option value="nao">Sem destaque</option>
               </select>
             </div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Atualização</label>
+              <select
+                value={atualizacaoFiltro}
+                onChange={(e) => setAtualizacaoFiltro(e.target.value)}
+                className="bg-background border border-border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="todos">Todas</option>
+                <option value="sem_30_dias">Sem atualização há 30 dias</option>
+              </select>
+            </div>
             <button
               type="button"
               onClick={limparFiltros}
@@ -586,6 +654,26 @@ export default function Properties() {
                         </p>
                       )}
 
+                      {!isTrainee && (im.proprietario_telefone || im.created_at || im.updated_at) && (
+                        <div className="space-y-1 text-xs text-muted-foreground">
+                          {im.proprietario_telefone && (
+                            <button
+                              type="button"
+                              onClick={() => copyText(im.proprietario_telefone || '', 'Telefone do proprietário')}
+                              className="text-left hover:text-foreground transition-colors"
+                            >
+                              <span className="font-medium">WhatsApp prop.:</span> {im.proprietario_telefone}
+                            </button>
+                          )}
+                          <p>
+                            <span className="font-medium">Inserido:</span> {formatDateTime(im.created_at)}
+                          </p>
+                          <p>
+                            <span className="font-medium">Atualizado:</span> {formatDateTime(im.updated_at)}
+                          </p>
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                         <span>{tipoLabel(im.tipo)}</span>
                         {im.dormitorios > 0 && <span>{im.dormitorios} dorm.</span>}
@@ -642,7 +730,18 @@ export default function Properties() {
                           )}
                         </div>
 
-                        <div className="flex items-center gap-0.5">
+                        <div className="flex items-center gap-0.5 flex-wrap justify-end">
+                          {!isTrainee && viewMode === 'active' && im.proprietario_telefone && (
+                            <button
+                              type="button"
+                              onClick={() => openOwnerWhatsApp(im)}
+                              title="Falar com o proprietário"
+                              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors text-xs font-medium"
+                            >
+                              <MessageCircle size={13} />
+                              Conferir
+                            </button>
+                          )}
                           {viewMode === 'trash' ? (
                             <>
                               <button
@@ -748,6 +847,17 @@ export default function Properties() {
                       <th className="p-3 text-xs text-muted-foreground text-left whitespace-nowrap w-[12%]">
                         Captador
                       </th>
+
+                      {viewMode === 'active' && !isTrainee && (
+                        <>
+                          <th className="p-3 text-xs text-muted-foreground text-left whitespace-nowrap w-[16%]">
+                            Proprietário
+                          </th>
+                          <th className="p-3 text-xs text-muted-foreground text-left whitespace-nowrap w-[14%]">
+                            Inserção / atualização
+                          </th>
+                        </>
+                      )}
 
                       {/* Coluna 5: Status (portal + destaque + anúncio) */}
                       <th className="p-3 text-center text-xs text-muted-foreground whitespace-nowrap w-[10%]">
@@ -861,6 +971,42 @@ export default function Properties() {
                           </div>
                         </td>
 
+                        {viewMode === 'active' && !isTrainee && (
+                          <>
+                            <td className="p-3">
+                              <div className="flex flex-col gap-1">
+                                {im.proprietario_nome ? (
+                                  <span className="text-sm text-foreground/90">{im.proprietario_nome}</span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground/40">Sem proprietário</span>
+                                )}
+                                {im.proprietario_telefone ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => copyText(im.proprietario_telefone || '', 'Telefone do proprietário')}
+                                    className="text-xs text-left text-emerald-700 hover:text-emerald-800 transition-colors"
+                                    title="Copiar telefone do proprietário"
+                                  >
+                                    {im.proprietario_telefone}
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground/40">Sem WhatsApp</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex flex-col gap-1 text-xs">
+                                <span className="text-foreground/80">
+                                  <span className="text-muted-foreground">Inserido:</span> {formatDateTime(im.created_at)}
+                                </span>
+                                <span className="text-foreground/80">
+                                  <span className="text-muted-foreground">Atualizado:</span> {formatDateTime(im.updated_at)}
+                                </span>
+                              </div>
+                            </td>
+                          </>
+                        )}
+
                         {/* Coluna 5: Status agrupado (portal + destaque + ads) */}
                         <td className="p-3">
                           <div className="flex flex-col items-center gap-1.5">
@@ -948,6 +1094,17 @@ export default function Properties() {
                               </>
                             ) : (
                               <>
+                            {!isTrainee && im.proprietario_telefone && (
+                              <button
+                                type="button"
+                                onClick={() => openOwnerWhatsApp(im)}
+                                title="Falar com o proprietário"
+                                className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors text-xs font-medium mr-1"
+                              >
+                                <MessageCircle size={13} />
+                                Conferir
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => setPreviewId(im.id)}
