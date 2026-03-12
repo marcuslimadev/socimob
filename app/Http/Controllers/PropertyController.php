@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\PropertyDocument;
 use App\Models\Property;
 use App\Models\Tenant;
 use App\Jobs\SendImobiBrasilImagesJob;
@@ -13,7 +14,9 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class PropertyController extends Controller
@@ -181,13 +184,16 @@ class PropertyController extends Controller
     private function fallbackDescriptions(array $payload): array
     {
         $tipo = $payload['tipo_imovel'] ?? 'imovel';
+        $finalidade = (string) ($payload['finalidade_imovel'] ?? 'venda');
         $quartos = (int) ($payload['dormitorios'] ?? 0);
         $banheiros = (int) ($payload['banheiros'] ?? 0);
         $area = $payload['area_total'] ?? null;
         $bairro = $payload['bairro'] ?? '';
         $cidade = $payload['cidade'] ?? '';
         $estado = $payload['estado'] ?? '';
-        $valor = (float) ($payload['valor_venda'] ?? 0);
+        $valor = str_contains($finalidade, 'aluguel') || str_contains($finalidade, 'temporada')
+            ? (float) ($payload['valor_aluguel'] ?? ($payload['valor_venda'] ?? 0))
+            : (float) ($payload['valor_venda'] ?? ($payload['valor_aluguel'] ?? 0));
 
         $headline = ucfirst(str_replace('_', ' ', $tipo));
         $descricao = "{$headline} em {$bairro}, {$cidade}/{$estado}.";
@@ -201,7 +207,7 @@ class PropertyController extends Controller
             $descricao .= " {$area}m² de área.";
         }
         if ($valor > 0) {
-            $descricao .= " Valor: R$ " . number_format($valor, 2, ',', '.') . ".";
+            $descricao .= " " . (str_contains($finalidade, 'aluguel') || str_contains($finalidade, 'temporada') ? 'Valor de locação' : 'Valor') . ": R$ " . number_format($valor, 2, ',', '.') . ".";
         }
         $descricao .= " Entre em contato para mais detalhes e agendamento de visita.";
 
@@ -238,6 +244,81 @@ class PropertyController extends Controller
             static fn($value, $key) => isset($allowed[$key]),
             ARRAY_FILTER_USE_BOTH
         );
+    }
+
+    private function normalizeStringListInput(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_array($value)) {
+            $items = $value;
+        } else {
+            $raw = trim((string) $value);
+            if ($raw === '') {
+                return json_encode([], JSON_UNESCAPED_UNICODE);
+            }
+
+            $decoded = json_decode($raw, true);
+            $items = is_array($decoded) ? $decoded : explode(',', $raw);
+        }
+
+        $normalized = array_values(array_unique(array_filter(array_map(static function ($item) {
+            if (!is_scalar($item)) {
+                return '';
+            }
+
+            return trim((string) $item);
+        }, $items), static fn ($item) => $item !== '')));
+
+        return json_encode($normalized, JSON_UNESCAPED_UNICODE);
+    }
+
+    private function normalizeStructuredPropertyData(array $data): array
+    {
+        foreach (['caracteristicas', 'classificacoes'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $data[$field] = $this->normalizeStringListInput($data[$field]);
+            }
+        }
+
+        return $data;
+    }
+
+    private function appendPropertyBusinessRulesValidation(\Illuminate\Validation\Validator $validator, Request $request, bool $isUpdate = false): void
+    {
+        $validator->after(function ($validator) use ($request, $isUpdate) {
+            $purpose = strtolower((string) $request->input('finalidade_imovel', ''));
+
+            if ($purpose === '' && $isUpdate) {
+                return;
+            }
+
+            $requiresSalePrice = in_array($purpose, ['venda', 'venda_aluguel'], true);
+            $requiresRentPrice = in_array($purpose, ['aluguel', 'temporada', 'venda_aluguel', 'aluguel_temporada'], true);
+
+            if ($requiresSalePrice && !is_numeric($request->input('valor_venda'))) {
+                $validator->errors()->add('valor_venda', 'Informe o valor de venda para a finalidade selecionada.');
+            }
+
+            if ($requiresRentPrice && !is_numeric($request->input('valor_aluguel'))) {
+                $validator->errors()->add('valor_aluguel', 'Informe o valor de aluguel para a finalidade selecionada.');
+            }
+
+            foreach (['caracteristicas', 'classificacoes'] as $field) {
+                $rawValue = $request->input($field);
+                if ($rawValue === null || $rawValue === '') {
+                    continue;
+                }
+
+                $normalized = $this->normalizeStringListInput($rawValue);
+                $decoded = json_decode((string) $normalized, true);
+                if (!is_array($decoded)) {
+                    $validator->errors()->add($field, 'O campo deve ser uma lista válida.');
+                }
+            }
+        });
     }
     
     /**
@@ -736,6 +817,131 @@ class PropertyController extends Controller
         return [];
     }
 
+    private function findTenantProperty(Request $request, $id): ?Property
+    {
+        $tenantId = $this->resolveTenantId($request);
+
+        if (!$tenantId) {
+            return null;
+        }
+
+        return Property::where('tenant_id', $tenantId)->find($id);
+    }
+
+    /**
+     * GET /api/imoveis/{id}/documentos
+     */
+    public function listDocuments(Request $request, $id)
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        $property = $this->findTenantProperty($request, $id);
+        if (!$property) {
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        $documents = PropertyDocument::query()
+            ->where('tenant_id', $tenantId)
+            ->where('property_id', $property->id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $documents,
+        ]);
+    }
+
+    /**
+     * POST /api/imoveis/{id}/documentos
+     */
+    public function uploadDocument(Request $request, $id)
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        $property = $this->findTenantProperty($request, $id);
+        if (!$property) {
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'arquivo' => 'required|file|mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx,txt|max:20480',
+            'nome' => 'nullable|string|max:255',
+            'tipo' => 'nullable|string|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'messages' => $validator->errors(),
+            ], 422);
+        }
+
+        $file = $request->file('arquivo');
+        $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'bin');
+        $propertyCode = $property->codigo_imovel ?: ('property_' . $property->id);
+        $path = Storage::disk('public')->putFileAs(
+            'properties/' . $tenantId . '/' . $propertyCode . '/documents',
+            $file,
+            Str::uuid() . '.' . $extension
+        );
+
+        $document = PropertyDocument::create([
+            'tenant_id' => $tenantId,
+            'property_id' => $property->id,
+            'tipo' => trim((string) $request->input('tipo', '')) ?: null,
+            'nome' => trim((string) $request->input('nome', '')) ?: $file->getClientOriginalName(),
+            'arquivo_path' => $path,
+            'mime_type' => $file->getMimeType(),
+            'tamanho_bytes' => $file->getSize(),
+            'uploaded_by_user_id' => $this->resolveUserId($request),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $document,
+        ], 201);
+    }
+
+    /**
+     * DELETE /api/imoveis/{id}/documentos/{documentoId}
+     */
+    public function deleteDocument(Request $request, $id, $documentoId)
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        $property = $this->findTenantProperty($request, $id);
+        if (!$property) {
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        $document = PropertyDocument::query()
+            ->where('tenant_id', $tenantId)
+            ->where('property_id', $property->id)
+            ->find($documentoId);
+
+        if (!$document) {
+            return response()->json(['error' => 'Document not found'], 404);
+        }
+
+        Storage::disk('public')->delete($document->arquivo_path);
+        $document->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Documento removido com sucesso',
+        ]);
+    }
+
     /**
      * Criar novo imóvel
      * POST /api/imoveis
@@ -769,8 +975,9 @@ class PropertyController extends Controller
             // CÓDIGO REMOVIDO - será gerado automaticamente
             'referencia_imovel' => 'nullable|string|max:50',
             'tipo_imovel' => 'required|string|max:100',
-            'finalidade_imovel' => 'required|string|in:venda,aluguel,temporada',
-            'valor_venda' => 'required|numeric|min:0',
+            'finalidade_imovel' => 'required|string|in:venda,aluguel,temporada,venda_aluguel,aluguel_temporada',
+            'valor_venda' => 'nullable|numeric|min:0',
+            'valor_aluguel' => 'nullable|numeric|min:0',
             'valor_condominio' => 'nullable|numeric|min:0',
             'valor_iptu' => 'nullable|numeric|min:0',
             'dormitorios' => 'nullable|integer|min:0',
@@ -791,6 +998,8 @@ class PropertyController extends Controller
             'nome_condominio' => 'nullable|string|max:255',
             'descricao' => 'nullable|string',
             'descricao_resumida' => 'nullable|string|max:1000',
+            'caracteristicas' => 'nullable|string',
+            'classificacoes' => 'nullable|string',
             'local_chaves' => 'nullable|string|max:255',
             'status_chaves' => 'nullable|string|in:disponivel,retirada,reserva',
             'visibilidade_endereco' => 'nullable|string|in:completo,bairro_cidade,cidade_estado,oculto',
@@ -810,6 +1019,8 @@ class PropertyController extends Controller
             'proprietario_email' => 'nullable|email|max:150',
             'proprietario_observacoes' => 'nullable|string',
         ]);
+
+        $this->appendPropertyBusinessRulesValidation($validator, $request);
 
         if ($validator->fails()) {
             $errors = $validator->errors();
@@ -832,7 +1043,7 @@ class PropertyController extends Controller
             ]);
 
             // ========== PREPARAR DADOS ==========
-            $data = $validator->validated();
+            $data = $this->normalizeStructuredPropertyData($validator->validated());
             
             // ========== VALIDAÇÃO DE PORTAL_TENANT_IDS (APENAS TENANTS ASSOCIADOS) ==========
             // Portal tenant IDs devem incluir apenas tenants associados ao tenant atual
@@ -1040,8 +1251,9 @@ class PropertyController extends Controller
             // CÓDIGO NÃO PODE SER ALTERADO
             'referencia_imovel' => 'nullable|string|max:50',
             'tipo_imovel' => 'nullable|string|max:100',
-            'finalidade_imovel' => 'nullable|string|in:venda,aluguel,temporada',
+            'finalidade_imovel' => 'nullable|string|in:venda,aluguel,temporada,venda_aluguel,aluguel_temporada',
             'valor_venda' => 'nullable|numeric|min:0',
+            'valor_aluguel' => 'nullable|numeric|min:0',
             'valor_condominio' => 'nullable|numeric|min:0',
             'valor_iptu' => 'nullable|numeric|min:0',
             'dormitorios' => 'nullable|integer|min:0',
@@ -1062,6 +1274,8 @@ class PropertyController extends Controller
             'nome_condominio' => 'nullable|string|max:255',
             'descricao' => 'nullable|string',
             'descricao_resumida' => 'nullable|string|max:1000',
+            'caracteristicas' => 'nullable|string',
+            'classificacoes' => 'nullable|string',
             'local_chaves' => 'nullable|string|max:255',
             'status_chaves' => 'nullable|string|in:disponivel,retirada,reserva',
             'visibilidade_endereco' => 'nullable|string|in:completo,bairro_cidade,cidade_estado,oculto',
@@ -1082,6 +1296,8 @@ class PropertyController extends Controller
             'proprietario_observacoes' => 'nullable|string',
         ]);
 
+        $this->appendPropertyBusinessRulesValidation($validator, $request, true);
+
         if ($validator->fails()) {
             $errors = $validator->errors();
             return response()->json([
@@ -1095,7 +1311,7 @@ class PropertyController extends Controller
 
         try {
             // ========== PREPARAR DADOS ==========
-            $data = $validator->validated();
+            $data = $this->normalizeStructuredPropertyData($validator->validated());
             
             // NUNCA alterar quem inseriu o imóvel
             unset($data['inserido_por_user_id'], $data['inserido_por_nome']);
@@ -1301,6 +1517,7 @@ class PropertyController extends Controller
                     'tipo_imovel',
                     'finalidade_imovel',
                     'valor_venda',
+                    'valor_aluguel',
                     'cidade',
                     'bairro',
                     'dormitorios',
@@ -1321,7 +1538,8 @@ class PropertyController extends Controller
                 'Referência',
                 'Tipo',
                 'Finalidade',
-                'Valor',
+                'Valor Venda',
+                'Valor Aluguel',
                 'Cidade',
                 'Bairro',
                 'Dormitórios',
@@ -1340,6 +1558,7 @@ class PropertyController extends Controller
                     $property->tipo_imovel ?? '',
                     $property->finalidade_imovel ?? '',
                     $property->valor_venda ?? '',
+                    $property->valor_aluguel ?? '',
                     $property->cidade ?? '',
                     $property->bairro ?? '',
                     $property->dormitorios ?? '',
@@ -1392,6 +1611,7 @@ class PropertyController extends Controller
                 'tipo_imovel' => 'required|string|max:100',
                 'finalidade_imovel' => 'nullable|string|max:50',
                 'valor_venda' => 'nullable|numeric|min:0',
+                'valor_aluguel' => 'nullable|numeric|min:0',
                 'cidade' => 'required|string|max:100',
                 'estado' => 'required|string|max:10',
                 'bairro' => 'nullable|string|max:100',
@@ -1426,6 +1646,9 @@ class PropertyController extends Controller
             $descricaoBase = trim((string) ($data['descricao_base'] ?? ''));
             $location = trim(($data['bairro'] ?? '') . ', ' . ($data['cidade'] ?? '') . '/' . ($data['estado'] ?? ''), ', ');
             $finalidade = $data['finalidade_imovel'] ?? 'venda';
+            $valorPrincipal = str_contains($finalidade, 'aluguel') || str_contains($finalidade, 'temporada')
+                ? (float) ($data['valor_aluguel'] ?? ($data['valor_venda'] ?? 0))
+                : (float) ($data['valor_venda'] ?? ($data['valor_aluguel'] ?? 0));
 
             $prompt = "Crie duas versões de texto para anúncio de imóvel em português-BR.
 
@@ -1439,7 +1662,7 @@ Dados do imóvel:
 - Tipo: {$data['tipo_imovel']}
 - Finalidade: {$finalidade}
 - Localização: {$location}
-- Valor: R$ " . number_format((float) ($data['valor_venda'] ?? 0), 2, ',', '.') . "
+- Valor: R$ " . number_format($valorPrincipal, 2, ',', '.') . "
 - Dormitórios: " . ((int) ($data['dormitorios'] ?? 0)) . "
 - Banheiros: " . ((int) ($data['banheiros'] ?? 0)) . "
 - Garagem: " . ((int) ($data['garagem'] ?? 0)) . "
@@ -1748,13 +1971,16 @@ Regras:
             $propertyInfo = [
                 'title' => $property->titulo ?? $property->type ?? 'Imóvel',
                 'type' => $property->type ?? $property->tipo_imovel ?? '',
+                'purpose' => $property->finalidade_imovel ?? 'venda',
                 'city' => $property->city ?? $property->cidade ?? '',
                 'state' => $property->state ?? $property->estado ?? '',
                 'neighborhood' => $property->neighborhood ?? $property->bairro ?? '',
                 'bedrooms' => $property->bedrooms ?? $property->dormitorios ?? 0,
                 'bathrooms' => $property->bathrooms ?? $property->banheiros ?? 0,
                 'area' => $property->area ?? $property->area_total ?? 0,
-                'price' => $property->price ?? $property->valor_venda ?? 0,
+                'price' => (str_contains((string) ($property->finalidade_imovel ?? ''), 'aluguel') || str_contains((string) ($property->finalidade_imovel ?? ''), 'temporada'))
+                    ? ($property->valor_aluguel ?? $property->price ?? $property->valor_venda ?? 0)
+                    : ($property->price ?? $property->valor_venda ?? $property->valor_aluguel ?? 0),
                 'description' => $property->descricao ?? '',
             ];
 
@@ -1767,6 +1993,7 @@ IMPORTANTE: Máximo de 400 caracteres. Use EXATAMENTE a localização informada 
 
 📍 Localização: {$location}
 🏠 Tipo: {$propertyInfo['type']}
+🎯 Finalidade: {$propertyInfo['purpose']}
 🛏️ Quartos: {$propertyInfo['bedrooms']}
 🚿 Banheiros: {$propertyInfo['bathrooms']}
 📐 Área: {$propertyInfo['area']}m²

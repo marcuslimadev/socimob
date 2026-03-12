@@ -10,6 +10,87 @@ use Illuminate\Support\Facades\Validator;
 
 class CRMController extends Controller
 {
+    private function normalizeStatus(?string $status): string
+    {
+        return match (mb_strtolower(trim((string) $status))) {
+            '', 'novo', 'contato', 'interesse' => 'novo',
+            'em_atendimento' => 'em_atendimento',
+            'qualificado' => 'qualificado',
+            'proposta', 'negociacao' => 'proposta',
+            'fechado', 'convertido' => 'fechado',
+            'perdido', 'descartado' => 'perdido',
+            default => 'novo',
+        };
+    }
+
+    private function firstFilled(array $values): ?string
+    {
+        foreach ($values as $value) {
+            if (!is_string($value)) {
+                continue;
+            }
+
+            $trimmed = trim($value);
+            if ($trimmed !== '') {
+                return $trimmed;
+            }
+        }
+
+        return null;
+    }
+
+    private function inferOrigin(Lead $lead): ?string
+    {
+        if ($this->firstFilled([$lead->whatsapp ?? null, $lead->whatsapp_name ?? null])) {
+            return 'whatsapp';
+        }
+
+        return null;
+    }
+
+    private function mapLead(Lead $lead, ?object $lastMsg, int $unread, ?int $conversaId): array
+    {
+        return [
+            'id' => $lead->id,
+            'pessoa_id' => $lead->pessoa_id,
+            'nome' => $this->firstFilled([
+                $lead->nome,
+                $lead->whatsapp_name ?? null,
+                $lead->pessoa?->nome ?? null,
+            ]) ?? 'Lead sem nome',
+            'telefone' => $this->firstFilled([
+                $lead->telefone,
+                $lead->whatsapp ?? null,
+                $lead->pessoa?->celular ?? null,
+                $lead->pessoa?->telefone ?? null,
+            ]) ?? '',
+            'email' => $this->firstFilled([
+                $lead->email,
+                $lead->pessoa?->email ?? null,
+            ]),
+            'status' => $this->normalizeStatus($lead->status),
+            'classificacao' => $lead->classificacao,
+            'observacoes' => $lead->observacoes ?: ($lead->pessoa?->observacoes ?? null),
+            'observacoes_cliente' => $lead->observacoes_cliente,
+            'valor' => $lead->budget_max ?? $lead->budget_min,
+            'corretor_id' => $lead->corretor_id,
+            'corretor_nome' => $lead->corretor?->name,
+            'pessoa' => $lead->pessoa,
+            'conversa_id' => $conversaId,
+            'ultima_mensagem' => $lastMsg?->content,
+            'ultima_mensagem_at' => $lastMsg?->created_at,
+            'unread' => (int) $unread,
+            'origem' => $this->firstFilled([
+                $lead->origem ?? null,
+                $lead->pessoa?->origem ?? null,
+                $this->inferOrigin($lead),
+            ]),
+            'sms_enviado' => (bool) $lead->sms_enviado,
+            'updated_at' => $lead->updated_at?->toIso8601String(),
+            'created_at' => $lead->created_at?->toIso8601String(),
+        ];
+    }
+
     /**
      * Listar clientes do CRM agrupados por status
      * GET /api/crm/clientes
@@ -105,29 +186,7 @@ class CRMController extends Controller
                     $conversaId = $conversa?->id;
                     $lastMsg = $conversaId ? $lastMessages->get($conversaId) : null;
                     $unread = $conversaId ? ($unreadCounts[$conversaId] ?? 0) : 0;
-                    return [
-                        'id' => $lead->id,
-                        'pessoa_id' => $lead->pessoa_id,
-                        'nome' => $lead->nome,
-                        'telefone' => $lead->telefone,
-                        'email' => $lead->email,
-                        'status' => $lead->status ?? 'novo',
-                        'classificacao' => $lead->classificacao,
-                        'observacoes' => $lead->observacoes ?: ($lead->pessoa?->observacoes ?? null),
-                        'observacoes_cliente' => $lead->observacoes_cliente,
-                        'valor' => $lead->budget_max ?? $lead->budget_min,
-                        'corretor_id' => $lead->corretor_id,
-                        'corretor_nome' => $lead->corretor?->name,
-                        'pessoa' => $lead->pessoa,
-                        'conversa_id' => $conversaId,
-                        'ultima_mensagem' => $lastMsg?->content,
-                        'ultima_mensagem_at' => $lastMsg?->created_at,
-                        'unread' => (int) $unread,
-                        'origem' => $lead->origem ?: ($lead->pessoa?->origem ?? null),
-                        'sms_enviado' => (bool) $lead->sms_enviado,
-                        'updated_at' => $lead->updated_at?->toIso8601String(),
-                        'created_at' => $lead->created_at?->toIso8601String(),
-                    ];
+                    return $this->mapLead($lead, $lastMsg, (int) $unread, $conversaId);
                 });
 
                 return response()->json([
@@ -189,29 +248,7 @@ class CRMController extends Controller
                 $lastMsg = $conversaId ? $lastMessages->get($conversaId) : null;
                 $unread = $conversaId ? ($unreadCounts[$conversaId] ?? 0) : 0;
 
-                return [
-                    'id' => $lead->id,
-                    'pessoa_id' => $lead->pessoa_id,
-                    'nome' => $lead->nome,
-                    'telefone' => $lead->telefone,
-                    'email' => $lead->email,
-                    'status' => $lead->status ?? 'novo',
-                    'classificacao' => $lead->classificacao,
-                    'observacoes' => $lead->observacoes ?: ($lead->pessoa?->observacoes ?? null),
-                    'observacoes_cliente' => $lead->observacoes_cliente,
-                    'valor' => $lead->budget_max ?? $lead->budget_min,
-                    'corretor_id' => $lead->corretor_id,
-                    'corretor_nome' => $lead->corretor?->name,
-                    'pessoa' => $lead->pessoa,
-                    'conversa_id' => $conversaId,
-                    'ultima_mensagem' => $lastMsg?->content,
-                    'ultima_mensagem_at' => $lastMsg?->created_at,
-                    'unread' => (int) $unread,
-                    'origem' => $lead->origem ?: ($lead->pessoa?->origem ?? null),
-                    'sms_enviado' => (bool) $lead->sms_enviado,
-                    'updated_at' => $lead->updated_at?->toIso8601String(),
-                    'created_at' => $lead->created_at?->toIso8601String(),
-                ];
+                return $this->mapLead($lead, $lastMsg, (int) $unread, $conversaId);
             });
 
             // Agrupar por status

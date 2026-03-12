@@ -985,7 +985,7 @@ export default function ClientPortalRefined() {
                       >
                         <ChevronRight className="h-4 w-4" />
                       </button>
-                      <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5 overflow-x-auto rounded-2xl bg-black/28 px-2 py-2 backdrop-blur-sm">
+                      <div className="property-gallery-scrollbar absolute bottom-3 left-3 right-3 flex items-center gap-1.5 overflow-x-auto overflow-y-hidden rounded-2xl bg-black/32 px-2 py-2 backdrop-blur-md">
                         {images.map((thumbImage, imageIndex) => (
                           <button
                             key={`${property.id}-dot-${imageIndex}`}

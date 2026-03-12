@@ -13,6 +13,7 @@ use App\Models\LeadDocument;
 use App\Models\LeadPropertyMatch;
 use App\Models\Mensagem;
 use App\Models\SystemLog;
+use App\Services\LeadService;
 use App\Services\OpenAIService;
 
 /**
@@ -20,6 +21,34 @@ use App\Services\OpenAIService;
  */
 class LeadsController extends Controller
 {
+    private function normalizeLeadPayload(array $data, LeadService $leadService): array
+    {
+        if (array_key_exists('nome', $data) && is_string($data['nome'])) {
+            $data['nome'] = trim($data['nome']);
+        }
+
+        if (array_key_exists('email', $data)) {
+            $email = is_string($data['email']) ? mb_strtolower(trim($data['email'])) : null;
+            $data['email'] = $email !== '' ? $email : null;
+        }
+
+        if (array_key_exists('telefone', $data)) {
+            $normalizedPhone = $leadService->normalizePhone($data['telefone']);
+            $data['telefone'] = $normalizedPhone ?: trim((string) $data['telefone']);
+        }
+
+        if (array_key_exists('whatsapp', $data)) {
+            $normalizedWhatsapp = $leadService->normalizePhone($data['whatsapp']);
+            $data['whatsapp'] = $normalizedWhatsapp ?: (trim((string) $data['whatsapp']) !== '' ? trim((string) $data['whatsapp']) : null);
+        }
+
+        if (!array_key_exists('whatsapp', $data) && !empty($data['telefone'])) {
+            $data['whatsapp'] = $data['telefone'];
+        }
+
+        return $data;
+    }
+
     /**
      * Listar leads
      * GET /api/leads
@@ -139,7 +168,7 @@ class LeadsController extends Controller
             return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
         }
 
-        $data = $validator->validated();
+        $data = $this->normalizeLeadPayload($validator->validated(), app(LeadService::class));
 
         if ($tenantId) {
             $data['tenant_id'] = $tenantId;
@@ -259,7 +288,7 @@ class LeadsController extends Controller
             return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
         }
 
-        $data = $validator->validated();
+        $data = $this->normalizeLeadPayload($validator->validated(), app(LeadService::class));
 
         $lead->update($data);
 

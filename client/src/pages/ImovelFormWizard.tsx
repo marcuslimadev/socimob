@@ -12,7 +12,9 @@ import {
   Upload,
   Image as ImageIcon,
   Video,
-  Trash2
+  Trash2,
+  FileText,
+  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLocation, useRoute } from 'wouter';
@@ -64,10 +66,103 @@ function formatAreaOnBlur(value: string): string {
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+const PROPERTY_TYPE_OPTIONS = [
+  { value: 'apartamento', label: 'Apartamento' },
+  { value: 'casa', label: 'Casa' },
+  { value: 'cobertura', label: 'Cobertura' },
+  { value: 'flat', label: 'Flat' },
+  { value: 'barracao', label: 'Barracão' },
+  { value: 'terreno', label: 'Terreno' },
+  { value: 'sala_comercial', label: 'Sala Comercial' },
+  { value: 'loja', label: 'Loja' },
+  { value: 'galpao', label: 'Galpão' },
+  { value: 'chacara', label: 'Chácara' },
+  { value: 'sitio', label: 'Sítio' },
+  { value: 'fazenda', label: 'Fazenda' },
+  { value: 'outro', label: 'Outro' },
+];
+
+const PURPOSE_OPTIONS = [
+  { value: 'venda', label: 'Venda' },
+  { value: 'aluguel', label: 'Aluguel' },
+  { value: 'venda_aluguel', label: 'Venda + Aluguel' },
+  { value: 'temporada', label: 'Temporada' },
+];
+
+const ADDRESS_VISIBILITY_OPTIONS = [
+  { value: 'bairro_cidade', label: 'Somente bairro/cidade' },
+  { value: 'cidade_estado', label: 'Somente cidade/estado' },
+  { value: 'completo', label: 'Endereço completo' },
+  { value: 'oculto', label: 'Ocultar localização' },
+];
+
+const PROPERTY_CHARACTERISTIC_OPTIONS = [
+  { value: 'condominio', label: 'Condomínio' },
+  { value: 'condominio_alto_padrao', label: 'Condomínio alto padrão' },
+  { value: 'casa_geminada', label: 'Casa geminada' },
+  { value: 'casa_entrada_coletiva', label: 'Casa entrada coletiva' },
+  { value: 'lancamento', label: 'Lançamento' },
+  { value: 'em_construcao', label: 'Em construção' },
+];
+
+const PROPERTY_CLASSIFICATION_OPTIONS = [
+  { value: 'oportunidade', label: 'Oportunidade' },
+  { value: 'baixo_preco', label: 'Baixo preço' },
+  { value: 'aceita_permuta', label: 'Aceita permuta' },
+  { value: 'aceita_pets', label: 'Aceita pets' },
+];
+
+function parseStoredSelections(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === 'string' && item.trim() !== '')
+      .map((item) => item.trim());
+  }
+
+  if (typeof value !== 'string') return [];
+
+  const raw = value.trim();
+  if (!raw) return [];
+
+  try {
+    const decoded = JSON.parse(raw);
+    if (Array.isArray(decoded)) {
+      return decoded
+        .filter((item): item is string => typeof item === 'string' && item.trim() !== '')
+        .map((item) => item.trim());
+    }
+  } catch {
+    // fallback below
+  }
+
+  return raw.split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+function stringifySelections(values: string[]): string {
+  return JSON.stringify(Array.from(new Set(values)));
+}
+
+function requiresSalePrice(finalidade: string): boolean {
+  return ['venda', 'venda_aluguel'].includes(finalidade);
+}
+
+function requiresRentPrice(finalidade: string): boolean {
+  return ['aluguel', 'temporada', 'venda_aluguel', 'aluguel_temporada'].includes(finalidade);
+}
+
+function formatPurposeLabel(finalidade: string): string {
+  return PURPOSE_OPTIONS.find((option) => option.value === finalidade)?.label || finalidade.replace(/_/g, ' ');
+}
+
+function formatSelectionLabel(value: string): string {
+  return value.replace(/_/g, ' ');
+}
+
 const defaultFormData = {
   tipo_imovel: 'apartamento',
   finalidade_imovel: 'venda',
   valor_venda: '',
+  valor_aluguel: '',
   valor_condominio: '',
   valor_iptu: '',
   dormitorios: '',
@@ -90,6 +185,8 @@ const defaultFormData = {
   descricao_resumida: '',
   local_chaves: '',
   status_chaves: 'disponivel',
+  caracteristicas: [] as string[],
+  classificacoes: [] as string[],
   visibilidade_endereco: 'bairro_cidade',
   portal_tenant_ids: [] as number[],
   active: true,
@@ -124,7 +221,32 @@ interface PortalTenantOption {
   is_owner?: boolean;
 }
 
+interface PropertyDocument {
+  id: number;
+  nome: string;
+  tipo?: string | null;
+  mime_type?: string | null;
+  tamanho_bytes?: number | null;
+  url_documento?: string | null;
+  created_at: string;
+}
+
 const isVideoUrl = (url: string) => /\.(mp4|mov|m4v|avi|webm|mkv)(\?.*)?$/i.test(url);
+
+function formatFileSize(bytes?: number | null): string {
+  if (!bytes || bytes <= 0) return '-';
+
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = bytes;
+  let index = 0;
+
+  while (value >= 1024 && index < units.length - 1) {
+    value /= 1024;
+    index += 1;
+  }
+
+  return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
 
 export default function ImovelFormWizard() {
   const [, setLocation] = useLocation();
@@ -145,6 +267,9 @@ export default function ImovelFormWizard() {
   const [imobibrasilStatus, setImobiBrasilStatus] = useState<{ enviado: boolean; data_envio?: string; erro?: string }>({ enviado: false });
   const [isSendingImagesImobiBrasil, setIsSendingImagesImobiBrasil] = useState(false);
   const [imobibrasilImagesStatus, setImobiBrasilImagesStatus] = useState<{ enviadas: boolean; data_envio?: string; error?: string }>({ enviadas: false });
+  const [propertyDocuments, setPropertyDocuments] = useState<PropertyDocument[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+  const [isUploadingDocuments, setIsUploadingDocuments] = useState(false);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Prevents auto-save from firing before initial data is loaded
   const autoSaveEnabled = useRef(!Boolean(match && params?.id));
@@ -217,6 +342,7 @@ export default function ImovelFormWizard() {
           tipo_imovel: item.tipo_imovel || 'apartamento',
           finalidade_imovel: item.finalidade_imovel || 'venda',
           valor_venda: numberToCurrencyInput(item.valor_venda),
+          valor_aluguel: numberToCurrencyInput(item.valor_aluguel),
           valor_condominio: numberToCurrencyInput(item.valor_condominio),
           valor_iptu: numberToCurrencyInput(item.valor_iptu),
           dormitorios: item.dormitorios != null ? String(item.dormitorios) : '',
@@ -239,6 +365,11 @@ export default function ImovelFormWizard() {
           descricao_resumida: item.descricao_resumida || '',
           local_chaves: item.local_chaves || '',
           status_chaves: item.status_chaves || 'disponivel',
+          caracteristicas: Array.from(new Set([
+            ...parseStoredSelections(item.caracteristicas),
+            ...(item.em_condominio ? ['condominio'] : []),
+          ])),
+          classificacoes: parseStoredSelections(item.classificacoes),
           visibilidade_endereco: item.visibilidade_endereco || 'bairro_cidade',
           portal_tenant_ids: Array.isArray(item.portal_tenant_ids)
             ? item.portal_tenant_ids.map((id: unknown) => Number(id)).filter((id: number) => Number.isFinite(id))
@@ -293,6 +424,28 @@ export default function ImovelFormWizard() {
     fetchProperty();
   }, [isEditMode, propertyId, setLocation]);
 
+  const loadDocuments = async () => {
+    if (!isEditMode || !propertyId) {
+      setPropertyDocuments([]);
+      return;
+    }
+
+    try {
+      setIsLoadingDocuments(true);
+      const response = await api.get(`/imoveis/${propertyId}/documentos`);
+      setPropertyDocuments(response.data?.data || []);
+    } catch (error) {
+      console.error('Erro ao carregar documentos do imóvel:', error);
+      toast.error('Erro ao carregar anexos do imóvel');
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDocuments();
+  }, [isEditMode, propertyId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Restore draft for new-mode forms
   useEffect(() => {
     if (isEditMode) return;
@@ -327,6 +480,7 @@ export default function ImovelFormWizard() {
             tipo_imovel: formData.tipo_imovel,
             finalidade_imovel: formData.finalidade_imovel,
             valor_venda: parseCurrencyInput(formData.valor_venda) || '0',
+            valor_aluguel: parseCurrencyInput(formData.valor_aluguel) || '0',
             valor_condominio: parseCurrencyInput(formData.valor_condominio) || null,
             valor_iptu: parseCurrencyInput(formData.valor_iptu) || null,
             cep: formData.cep,
@@ -347,6 +501,9 @@ export default function ImovelFormWizard() {
             nome_condominio: formData.nome_condominio,
             descricao: formData.descricao,
             descricao_resumida: formData.descricao_resumida,
+            caracteristicas: stringifySelections(formData.caracteristicas),
+            classificacoes: stringifySelections(formData.classificacoes),
+            visibilidade_endereco: formData.visibilidade_endereco,
             portal_tenant_ids: Array.isArray(formData.portal_tenant_ids) ? formData.portal_tenant_ids.filter((id) => Number.isFinite(id)) : [],
             active: formData.active ? 1 : 0,
             exibir_imovel: formData.exibir_imovel ? 1 : 0,
@@ -453,6 +610,49 @@ export default function ImovelFormWizard() {
     })));
   };
 
+  const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (!propertyId || files.length === 0) return;
+
+    try {
+      setIsUploadingDocuments(true);
+
+      for (const file of files) {
+        const uploadData = new FormData();
+        uploadData.append('arquivo', file);
+        uploadData.append('nome', file.name);
+
+        await api.post(`/imoveis/${propertyId}/documentos`, uploadData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
+
+      toast.success(`${files.length} anexo(s) enviado(s)`);
+      await loadDocuments();
+    } catch (error: any) {
+      console.error('Erro ao enviar anexos do imóvel:', error);
+      toast.error(error?.response?.data?.message || 'Erro ao enviar anexos');
+    } finally {
+      event.target.value = '';
+      setIsUploadingDocuments(false);
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: number) => {
+    if (!propertyId || !window.confirm('Deseja realmente remover este anexo?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/imoveis/${propertyId}/documentos/${documentId}`);
+      toast.success('Anexo removido com sucesso');
+      await loadDocuments();
+    } catch (error) {
+      console.error('Erro ao remover anexo do imóvel:', error);
+      toast.error('Erro ao remover anexo');
+    }
+  };
+
   const handleMoveMedia = (id: string, dir: 'left' | 'right') => {
     const idx = mediaFiles.findIndex(m => m.id === id);
     if (idx === -1) return;
@@ -488,8 +688,12 @@ export default function ImovelFormWizard() {
           toast.error('Selecione a finalidade');
           return false;
         }
-        if (!formData.valor_venda) {
-          toast.error('Informe o valor do imóvel');
+        if (requiresSalePrice(formData.finalidade_imovel) && !formData.valor_venda) {
+          toast.error('Informe o valor de venda');
+          return false;
+        }
+        if (requiresRentPrice(formData.finalidade_imovel) && !formData.valor_aluguel) {
+          toast.error('Informe o valor de aluguel ou temporada');
           return false;
         }
         return true;
@@ -548,6 +752,39 @@ export default function ImovelFormWizard() {
     setCurrentStep(targetStep);
   };
 
+  const handleToggleSelection = (field: 'caracteristicas' | 'classificacoes', value: string) => {
+    setFormData((prev) => {
+      const currentValues = prev[field];
+      const exists = currentValues.includes(value);
+      const nextValues = exists
+        ? currentValues.filter((item) => item !== value)
+        : [...currentValues, value];
+
+      if (field === 'caracteristicas' && value === 'condominio') {
+        return {
+          ...prev,
+          em_condominio: !exists,
+          [field]: nextValues,
+        };
+      }
+
+      return {
+        ...prev,
+        [field]: nextValues,
+      };
+    });
+  };
+
+  const handleToggleCondominium = (checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      em_condominio: checked,
+      caracteristicas: checked
+        ? Array.from(new Set([...prev.caracteristicas, 'condominio']))
+        : prev.caracteristicas.filter((item) => item !== 'condominio'),
+    }));
+  };
+
   const handleSubmit = async () => {
     if (!validateStep(4)) return;
 
@@ -586,6 +823,7 @@ export default function ImovelFormWizard() {
       formDataToSend.append('tipo_imovel', formData.tipo_imovel);
       formDataToSend.append('finalidade_imovel', formData.finalidade_imovel);
       formDataToSend.append('valor_venda', parseCurrencyInput(formData.valor_venda));
+      formDataToSend.append('valor_aluguel', parseCurrencyInput(formData.valor_aluguel) || '0');
 
       if (formData.valor_condominio) formDataToSend.append('valor_condominio', parseCurrencyInput(formData.valor_condominio));
       if (formData.valor_iptu) formDataToSend.append('valor_iptu', parseCurrencyInput(formData.valor_iptu));
@@ -609,6 +847,8 @@ export default function ImovelFormWizard() {
       if (formData.area_terreno) formDataToSend.append('area_terreno', parseAreaInput(formData.area_terreno));
       
       formDataToSend.append('em_condominio', formData.em_condominio ? '1' : '0');
+      formDataToSend.append('caracteristicas', stringifySelections(formData.caracteristicas));
+      formDataToSend.append('classificacoes', stringifySelections(formData.classificacoes));
       if (formData.em_condominio && formData.nome_condominio) {
         formDataToSend.append('nome_condominio', formData.nome_condominio);
       }
@@ -706,6 +946,7 @@ export default function ImovelFormWizard() {
         tipo_imovel: formData.tipo_imovel,
         finalidade_imovel: formData.finalidade_imovel,
         valor_venda: formData.valor_venda ? Number(parseCurrencyInput(formData.valor_venda)) : 0,
+        valor_aluguel: formData.valor_aluguel ? Number(parseCurrencyInput(formData.valor_aluguel)) : 0,
         cidade: formData.cidade,
         estado: formData.estado,
         bairro: formData.bairro,
@@ -792,6 +1033,7 @@ export default function ImovelFormWizard() {
       formDataToSend.append('tipo_imovel', formData.tipo_imovel);
       formDataToSend.append('finalidade_imovel', formData.finalidade_imovel);
       formDataToSend.append('valor_venda', parseCurrencyInput(formData.valor_venda));
+      formDataToSend.append('valor_aluguel', parseCurrencyInput(formData.valor_aluguel) || '0');
       if (formData.valor_condominio) formDataToSend.append('valor_condominio', parseCurrencyInput(formData.valor_condominio));
       if (formData.valor_iptu) formDataToSend.append('valor_iptu', parseCurrencyInput(formData.valor_iptu));
       formDataToSend.append('cep', formData.cep);
@@ -809,6 +1051,8 @@ export default function ImovelFormWizard() {
       if (formData.area_privativa) formDataToSend.append('area_privativa', parseAreaInput(formData.area_privativa));
       if (formData.area_terreno) formDataToSend.append('area_terreno', parseAreaInput(formData.area_terreno));
       formDataToSend.append('em_condominio', formData.em_condominio ? '1' : '0');
+      formDataToSend.append('caracteristicas', stringifySelections(formData.caracteristicas));
+      formDataToSend.append('classificacoes', stringifySelections(formData.classificacoes));
       if (formData.em_condominio && formData.nome_condominio) formDataToSend.append('nome_condominio', formData.nome_condominio);
       if (formData.descricao) formDataToSend.append('descricao', formData.descricao);
       if (formData.descricao_resumida) formDataToSend.append('descricao_resumida', formData.descricao_resumida);
@@ -911,56 +1155,88 @@ export default function ImovelFormWizard() {
           >
             <div>
               <label className="block text-sm font-semibold text-foreground mb-2">Tipo de Imóvel *</label>
-              <select
-                value={formData.tipo_imovel}
-                onChange={(e) => setFormData({ ...formData, tipo_imovel: e.target.value })}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                required
-              >
-                <option value="apartamento">Apartamento</option>
-                <option value="casa">Casa</option>
-                <option value="terreno">Terreno</option>
-                <option value="sala_comercial">Sala Comercial</option>
-                <option value="loja">Loja</option>
-                <option value="galpao">Galpão</option>
-                <option value="chacara">Chácara</option>
-                <option value="sitio">Sítio</option>
-                <option value="fazenda">Fazenda</option>
-                <option value="outro">Outro</option>
-              </select>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {PROPERTY_TYPE_OPTIONS.map((option) => {
+                  const isSelected = formData.tipo_imovel === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, tipo_imovel: option.value })}
+                      className={`rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                        isSelected
+                          ? 'border-blue-400 bg-blue-500/15 text-blue-100'
+                          : 'border-white/10 bg-white/5 text-muted-foreground hover:border-white/20 hover:text-foreground'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">Finalidade *</label>
-                <select
-                  value={formData.finalidade_imovel}
-                  onChange={(e) => setFormData({ ...formData, finalidade_imovel: e.target.value })}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                >
-                  <option value="venda">Venda</option>
-                  <option value="aluguel">Aluguel</option>
-                  <option value="temporada">Temporada</option>
-                </select>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">Finalidade *</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {PURPOSE_OPTIONS.map((option) => {
+                  const isSelected = formData.finalidade_imovel === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, finalidade_imovel: option.value })}
+                      className={`rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                        isSelected
+                          ? 'border-blue-400 bg-blue-500/15 text-blue-100'
+                          : 'border-white/10 bg-white/5 text-muted-foreground hover:border-white/20 hover:text-foreground'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
-                  Valor {formData.finalidade_imovel === 'venda' ? 'de Venda' : 'do Aluguel'} *
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={formData.valor_venda}
-                    onChange={(e) => setFormData({ ...formData, valor_venda: formatCurrencyInput(e.target.value) })}
-                    className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    placeholder="0,00"
-                    required
-                  />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {requiresSalePrice(formData.finalidade_imovel) && (
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Valor de Venda *</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={formData.valor_venda}
+                      onChange={(e) => setFormData({ ...formData, valor_venda: formatCurrencyInput(e.target.value) })}
+                      className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                      placeholder="0,00"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {requiresRentPrice(formData.finalidade_imovel) && (
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    {formData.finalidade_imovel === 'temporada' ? 'Valor da Temporada *' : 'Valor de Aluguel *'}
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={formData.valor_aluguel}
+                      onChange={(e) => setFormData({ ...formData, valor_aluguel: formatCurrencyInput(e.target.value) })}
+                      className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                      placeholder="0,00"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -1159,16 +1435,25 @@ export default function ImovelFormWizard() {
 
             <div>
               <label className="block text-sm font-semibold text-foreground mb-2">Privacidade do endereço no portal</label>
-              <select
-                value={formData.visibilidade_endereco}
-                onChange={(e) => setFormData({ ...formData, visibilidade_endereco: e.target.value })}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              >
-                <option value="bairro_cidade">Mostrar bairro e cidade (recomendado)</option>
-                <option value="cidade_estado">Mostrar apenas cidade/estado</option>
-                <option value="completo">Mostrar endereço completo</option>
-                <option value="oculto">Ocultar localização pública</option>
-              </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {ADDRESS_VISIBILITY_OPTIONS.map((option) => {
+                  const isSelected = formData.visibilidade_endereco === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, visibilidade_endereco: option.value })}
+                      className={`rounded-xl border px-4 py-3 text-left text-sm transition ${
+                        isSelected
+                          ? 'border-blue-400 bg-blue-500/15 text-blue-100'
+                          : 'border-white/10 bg-white/5 text-muted-foreground hover:border-white/20 hover:text-foreground'
+                      }`}
+                    >
+                      <span className="block font-semibold">{option.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="rounded-lg border border-white/10 bg-white/5 p-4">
@@ -1223,7 +1508,7 @@ export default function ImovelFormWizard() {
                 <input
                   type="checkbox"
                   checked={formData.em_condominio}
-                  onChange={(e) => setFormData({ ...formData, em_condominio: e.target.checked })}
+                  onChange={(e) => handleToggleCondominium(e.target.checked)}
                   className="w-5 h-5 rounded border-white/20 bg-white/10"
                 />
                 <span className="text-sm font-medium text-foreground group-hover:text-blue-400 transition">Em Condomínio</span>
@@ -1345,6 +1630,48 @@ export default function ImovelFormWizard() {
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   placeholder="0,00"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <p className="text-sm font-semibold text-foreground mb-3">Características do imóvel</p>
+                <div className="space-y-2">
+                  {PROPERTY_CHARACTERISTIC_OPTIONS.map((option) => {
+                    const checked = formData.caracteristicas.includes(option.value);
+                    return (
+                      <label key={option.value} className="flex items-center gap-3 rounded-lg border border-white/10 px-3 py-2 cursor-pointer hover:bg-white/5">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => handleToggleSelection('caracteristicas', option.value)}
+                          className="w-4 h-4 rounded border-white/20 bg-white/10"
+                        />
+                        <span className="text-sm text-foreground">{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <p className="text-sm font-semibold text-foreground mb-3">Classificações comerciais</p>
+                <div className="space-y-2">
+                  {PROPERTY_CLASSIFICATION_OPTIONS.map((option) => {
+                    const checked = formData.classificacoes.includes(option.value);
+                    return (
+                      <label key={option.value} className="flex items-center gap-3 rounded-lg border border-white/10 px-3 py-2 cursor-pointer hover:bg-white/5">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => handleToggleSelection('classificacoes', option.value)}
+                          className="w-4 h-4 rounded border-white/20 bg-white/10"
+                        />
+                        <span className="text-sm text-foreground">{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -1554,6 +1881,86 @@ export default function ImovelFormWizard() {
                 </div>
               </div>
             )}
+
+            <div className="rounded-lg border border-white/10 bg-white/5 p-5">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Anexos do imóvel</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Matrícula, autorização, IPTU, contratos e outros arquivos internos.
+                  </p>
+                </div>
+
+                {isEditMode && propertyId ? (
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm font-medium text-foreground hover:bg-white/15 transition">
+                    <Upload size={16} />
+                    {isUploadingDocuments ? 'Enviando...' : 'Adicionar anexos'}
+                    <input
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={handleDocumentUpload}
+                      disabled={isUploadingDocuments}
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.txt"
+                    />
+                  </label>
+                ) : null}
+              </div>
+
+              {!isEditMode ? (
+                <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  Salve o imóvel primeiro para liberar o envio de anexos.
+                </div>
+              ) : isLoadingDocuments ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 size={16} className="animate-spin" /> Carregando anexos...
+                </div>
+              ) : propertyDocuments.length === 0 ? (
+                <div className="rounded-lg border border-white/10 bg-black/10 px-4 py-6 text-center text-sm text-muted-foreground">
+                  Nenhum anexo enviado ainda.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {propertyDocuments.map((document) => (
+                    <div key={document.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/10 px-4 py-3">
+                      <div className="min-w-0 flex items-center gap-3">
+                        <div className="rounded-lg bg-blue-500/15 p-2 text-blue-200">
+                          <FileText size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{document.nome}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {[document.tipo, formatFileSize(document.tamanho_bytes), document.created_at ? new Date(document.created_at).toLocaleDateString('pt-BR') : null]
+                              .filter(Boolean)
+                              .join(' • ')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {document.url_documento ? (
+                          <a
+                            href={document.url_documento}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-foreground hover:bg-white/10 transition"
+                          >
+                            <Download size={14} /> Abrir
+                          </a>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDocument(document.id)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-red-400/25 px-3 py-2 text-xs font-medium text-red-200 hover:bg-red-500/10 transition"
+                        >
+                          <Trash2 size={14} /> Remover
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </motion.div>
         );
 
@@ -1641,21 +2048,31 @@ export default function ImovelFormWizard() {
 
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
               <h3 className="text-lg font-bold text-foreground mb-4">Informações Básicas</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Tipo:</span>
-                  <span className="ml-2 text-foreground font-medium capitalize">{formData.tipo_imovel.replace('_', ' ')}</span>
+                  <span className="ml-2 text-foreground font-medium">
+                    {PROPERTY_TYPE_OPTIONS.find((option) => option.value === formData.tipo_imovel)?.label || formatSelectionLabel(formData.tipo_imovel)}
+                  </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Finalidade:</span>
-                  <span className="ml-2 text-foreground font-medium capitalize">{formData.finalidade_imovel}</span>
+                  <span className="ml-2 text-foreground font-medium">{formatPurposeLabel(formData.finalidade_imovel)}</span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Valor:</span>
-                  <span className="ml-2 text-foreground font-medium">
-                    R$ {formData.valor_venda || '0,00'}
-                  </span>
-                </div>
+                {requiresSalePrice(formData.finalidade_imovel) && (
+                  <div>
+                    <span className="text-muted-foreground">Venda:</span>
+                    <span className="ml-2 text-foreground font-medium">R$ {formData.valor_venda || '0,00'}</span>
+                  </div>
+                )}
+                {requiresRentPrice(formData.finalidade_imovel) && (
+                  <div>
+                    <span className="text-muted-foreground">
+                      {formData.finalidade_imovel === 'temporada' ? 'Temporada:' : 'Aluguel:'}
+                    </span>
+                    <span className="ml-2 text-foreground font-medium">R$ {formData.valor_aluguel || '0,00'}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1671,12 +2088,7 @@ export default function ImovelFormWizard() {
                   {formData.cidade}/{formData.estado} - CEP: {formData.cep}
                 </p>
                 <p className="text-muted-foreground">
-                  Visibilidade no portal: {
-                    formData.visibilidade_endereco === 'completo' ? 'Endereço completo' :
-                    formData.visibilidade_endereco === 'cidade_estado' ? 'Cidade/Estado' :
-                    formData.visibilidade_endereco === 'oculto' ? 'Oculto' :
-                    'Bairro/Cidade'
-                  }
+                  Visibilidade no portal: {ADDRESS_VISIBILITY_OPTIONS.find((option) => option.value === formData.visibilidade_endereco)?.label || formData.visibilidade_endereco}
                 </p>
                 <p className="text-muted-foreground">
                   Portais: {formData.portal_tenant_ids.length > 0
@@ -1693,7 +2105,7 @@ export default function ImovelFormWizard() {
 
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
               <h3 className="text-lg font-bold text-foreground mb-4">Características</h3>
-              <div className="grid grid-cols-4 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                 {formData.dormitorios && (
                   <div>
                     <span className="text-muted-foreground">Dormitórios:</span>
@@ -1724,7 +2136,71 @@ export default function ImovelFormWizard() {
                     <span className="ml-2 text-foreground font-medium">{formData.area_total} m²</span>
                   </div>
                 )}
+                {formData.area_privativa && (
+                  <div>
+                    <span className="text-muted-foreground">Área privativa:</span>
+                    <span className="ml-2 text-foreground font-medium">{formData.area_privativa} m²</span>
+                  </div>
+                )}
+                {formData.area_terreno && (
+                  <div>
+                    <span className="text-muted-foreground">Área terreno:</span>
+                    <span className="ml-2 text-foreground font-medium">{formData.area_terreno} m²</span>
+                  </div>
+                )}
               </div>
+
+              {formData.caracteristicas.length > 0 && (
+                <div className="mt-4">
+                  <span className="text-muted-foreground text-sm">Características:</span>
+                  <p className="mt-1 text-sm text-foreground">
+                    {formData.caracteristicas.map(formatSelectionLabel).join(', ')}
+                  </p>
+                </div>
+              )}
+
+              {formData.classificacoes.length > 0 && (
+                <div className="mt-4">
+                  <span className="text-muted-foreground text-sm">Classificações:</span>
+                  <p className="mt-1 text-sm text-foreground">
+                    {formData.classificacoes.map(formatSelectionLabel).join(', ')}
+                  </p>
+                </div>
+              )}
+
+              {(formData.valor_condominio || formData.valor_iptu) && (
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  {formData.valor_condominio && (
+                    <div>
+                      <span className="text-muted-foreground">Condomínio:</span>
+                      <span className="ml-2 text-foreground font-medium">R$ {formData.valor_condominio}</span>
+                    </div>
+                  )}
+                  {formData.valor_iptu && (
+                    <div>
+                      <span className="text-muted-foreground">IPTU:</span>
+                      <span className="ml-2 text-foreground font-medium">R$ {formData.valor_iptu}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(formData.local_chaves || formData.status_chaves) && (
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  {formData.local_chaves && (
+                    <div>
+                      <span className="text-muted-foreground">Local das chaves:</span>
+                      <span className="ml-2 text-foreground font-medium">{formData.local_chaves}</span>
+                    </div>
+                  )}
+                  {formData.status_chaves && (
+                    <div>
+                      <span className="text-muted-foreground">Status das chaves:</span>
+                      <span className="ml-2 text-foreground font-medium capitalize">{formData.status_chaves}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
@@ -1732,6 +2208,11 @@ export default function ImovelFormWizard() {
               <p className="text-sm text-foreground">
                 {mediaFiles.length} arquivo(s) adicionado(s)
               </p>
+              {isEditMode && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {propertyDocuments.length} anexo(s) interno(s) vinculado(s) ao imóvel.
+                </p>
+              )}
             </div>
 
             {/* Anúncios — toggle real em edição; confirmação do checkbox em novo cadastro */}

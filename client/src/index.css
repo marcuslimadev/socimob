@@ -354,6 +354,33 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
+.property-gallery-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--primary) 62%, white 38%) rgba(255, 255, 255, 0.16);
+  scrollbar-gutter: stable both-edges;
+}
+
+.property-gallery-scrollbar::-webkit-scrollbar {
+  height: 10px;
+}
+
+.property-gallery-scrollbar::-webkit-scrollbar-track {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(15, 23, 42, 0.22));
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.property-gallery-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 72%, white 28%), rgba(255, 255, 255, 0.82));
+  border-radius: 999px;
+  border: 2px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 8px rgba(15, 23, 42, 0.18);
+}
+
+.property-gallery-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 82%, white 18%), rgba(255, 255, 255, 0.94));
+}
+
 /* Touch-friendly spacing */
 .touch-target {
   min-height: 44px;

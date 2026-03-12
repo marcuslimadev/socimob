@@ -31,6 +31,7 @@ class Property extends Model
         'finalidade_imovel',
         'tipo_imovel',
         'valor_venda',        // Mudado de 'preco'
+        'valor_aluguel',
         'logradouro',         // Mudado de 'endereco'
         'cidade',
         'estado',
@@ -47,6 +48,8 @@ class Property extends Model
         'garagem',            // Mudado de 'vagas'
         'imagens',            // Mudado de 'fotos'
         'imagem_destaque',
+        'caracteristicas',
+        'classificacoes',
         'valor_condominio',
         'valor_iptu',
         'em_condominio',
@@ -80,6 +83,7 @@ class Property extends Model
         'exibir_imovel' => 'boolean',
         'destaque' => 'boolean',
         'valor_venda' => 'float',
+        'valor_aluguel' => 'float',
         'valor_condominio' => 'float',
         'valor_iptu' => 'float',
         'area_total' => 'float',
@@ -194,6 +198,11 @@ class Property extends Model
     public function portalTenants()
     {
         return $this->hasMany(PropertyPortalTenant::class, 'property_id');
+    }
+
+    public function documentos()
+    {
+        return $this->hasMany(PropertyDocument::class, 'property_id');
     }
 
     public function scopePortalInventory($query)

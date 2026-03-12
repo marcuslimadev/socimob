@@ -5,6 +5,27 @@ import "./index.css";
 const TENANT_HOST = typeof window !== "undefined" ? window.location.hostname : "default";
 const TENANT_BRANDING_CACHE_KEY = `tenant_branding_cache:${TENANT_HOST}`;
 const LEGACY_BRANDING_CACHE_KEY = "tenant_branding_cache";
+const EXCLUSIVA_HOSTS = new Set(["exclusivalarimoveis.com", "www.exclusivalarimoveis.com"]);
+const EXCLUSIVA_GOOGLE_SITE_VERIFICATION = "daGiw9u34wtS7Jiizz0xPq5_Z03he3yi9ic2zEzmIhQ";
+
+const applyTenantMetaTags = () => {
+  if (typeof document === "undefined") return;
+
+  const existingTag = document.querySelector("meta[name='google-site-verification']") as HTMLMetaElement | null;
+
+  if (!EXCLUSIVA_HOSTS.has(TENANT_HOST)) {
+    existingTag?.remove();
+    return;
+  }
+
+  const verificationTag = existingTag || document.createElement("meta");
+  verificationTag.setAttribute("name", "google-site-verification");
+  verificationTag.setAttribute("content", EXCLUSIVA_GOOGLE_SITE_VERIFICATION);
+
+  if (!existingTag) {
+    document.head.appendChild(verificationTag);
+  }
+};
 
 const applyBrandingToDocument = (data: any) => {
   if (!data || typeof document === "undefined") return;
@@ -90,6 +111,7 @@ const applyTenantBranding = async () => {
 
 if (typeof document !== "undefined") {
   document.documentElement.classList.add("dark");
+  applyTenantMetaTags();
 }
 
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {

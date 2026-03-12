@@ -117,6 +117,46 @@ const createEmptyCRMData = (): Record<StatusKey, CRMClient[]> => ({
   perdido: [],
 });
 
+function normalizeStatusKey(status: unknown): StatusKey {
+  const normalized = String(status ?? '').trim().toLowerCase();
+
+  if (normalized === 'em_atendimento') return 'em_atendimento';
+  if (normalized === 'qualificado') return 'qualificado';
+  if (normalized === 'proposta' || normalized === 'negociacao') return 'proposta';
+  if (normalized === 'fechado' || normalized === 'convertido') return 'fechado';
+  if (normalized === 'perdido' || normalized === 'descartado') return 'perdido';
+
+  return 'novo';
+}
+
+function normalizeCRMClient(raw: Partial<CRMClient> & { pessoa?: any; whatsapp_name?: string | null; whatsapp?: string | null }): CRMClient {
+  const pessoa = raw.pessoa ?? null;
+
+  return {
+    id: Number(raw.id || 0),
+    pessoa_id: raw.pessoa_id ?? null,
+    nome: String(raw.nome || raw.whatsapp_name || pessoa?.nome || 'Lead sem nome').trim(),
+    telefone: String(raw.telefone || raw.whatsapp || pessoa?.celular || pessoa?.telefone || '').trim(),
+    email: raw.email || pessoa?.email || null,
+    status: normalizeStatusKey(raw.status),
+    classificacao: raw.classificacao ?? null,
+    observacoes: raw.observacoes ?? null,
+    observacoes_cliente: raw.observacoes_cliente ?? null,
+    valor: raw.valor ?? null,
+    corretor_id: raw.corretor_id ?? null,
+    corretor_nome: raw.corretor_nome ?? null,
+    pessoa,
+    conversa_id: raw.conversa_id ?? null,
+    ultima_mensagem: raw.ultima_mensagem ?? null,
+    ultima_mensagem_at: raw.ultima_mensagem_at ?? null,
+    unread: Number(raw.unread || 0),
+    origem: raw.origem ?? pessoa?.origem ?? null,
+    sms_enviado: Boolean(raw.sms_enviado),
+    updated_at: raw.updated_at ?? null,
+    created_at: raw.created_at ?? null,
+  };
+}
+
 function normalizeCRMData(raw: unknown): Record<StatusKey, CRMClient[]> {
   const normalized = createEmptyCRMData();
 
@@ -125,8 +165,8 @@ function normalizeCRMData(raw: unknown): Record<StatusKey, CRMClient[]> {
   if (Array.isArray(raw)) {
     raw.forEach((item) => {
       if (!item) return;
-      const status = ((item as CRMClient).status || 'novo') as StatusKey;
-      normalized[status] = [...normalized[status], item as CRMClient];
+      const client = normalizeCRMClient(item as CRMClient);
+      normalized[client.status as StatusKey] = [...normalized[client.status as StatusKey], client];
     });
     return normalized;
   }
@@ -135,9 +175,9 @@ function normalizeCRMData(raw: unknown): Record<StatusKey, CRMClient[]> {
     ALL_STATUSES.forEach((status) => {
       const bucket = (raw as Record<string, unknown>)[status];
       if (Array.isArray(bucket)) {
-        normalized[status] = bucket as CRMClient[];
+        normalized[status] = (bucket as CRMClient[]).map((item) => normalizeCRMClient(item));
       } else if (bucket && Array.isArray((bucket as { data?: unknown }).data)) {
-        normalized[status] = (bucket as { data: CRMClient[] }).data;
+        normalized[status] = (bucket as { data: CRMClient[] }).data.map((item) => normalizeCRMClient(item));
       }
     });
   }
@@ -146,15 +186,15 @@ function normalizeCRMData(raw: unknown): Record<StatusKey, CRMClient[]> {
 }
 
 function normalizeFlatClients(raw: unknown): CRMClient[] {
-  if (Array.isArray(raw)) return raw as CRMClient[];
+  if (Array.isArray(raw)) return raw.map((item) => normalizeCRMClient(item as CRMClient));
   if (raw && typeof raw === 'object') {
     const values = Object.values(raw as Record<string, unknown>);
     const flattened: CRMClient[] = [];
     values.forEach((v) => {
       if (Array.isArray(v)) {
-        flattened.push(...(v as CRMClient[]));
+        flattened.push(...(v as CRMClient[]).map((item) => normalizeCRMClient(item)));
       } else if (v && Array.isArray((v as { data?: unknown }).data)) {
-        flattened.push(...((v as { data: CRMClient[] }).data));
+        flattened.push(...((v as { data: CRMClient[] }).data).map((item) => normalizeCRMClient(item)));
       }
     });
     return flattened;
@@ -216,6 +256,28 @@ function truncateMsg(text: string | null, max = 50) {
   if (!text) return '';
   const clean = text.replace(/<[^>]+>/g, '').replace(/\n/g, ' ').trim();
   return clean.length > max ? clean.slice(0, max) + '...' : clean;
+}
+
+function formatPhoneDisplay(phone: string | null | undefined) {
+  if (!phone) return '-';
+
+  const digits = phone.replace(/\D/g, '');
+  if (!digits) return phone;
+
+  let brDigits = digits;
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
+    brDigits = digits.slice(2);
+  }
+
+  if (brDigits.length === 11) {
+    return `(${brDigits.slice(0, 2)}) ${brDigits.slice(2, 7)}-${brDigits.slice(7)}`;
+  }
+
+  if (brDigits.length === 10) {
+    return `(${brDigits.slice(0, 2)}) ${brDigits.slice(2, 6)}-${brDigits.slice(6)}`;
+  }
+
+  return phone;
 }
 
 function formatHtmlMessage(html: string) {
@@ -310,7 +372,7 @@ const ClientCard = memo(({ client, isSelected, onSelect }: {
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{client.telefone}</p>
+          <p className="text-xs text-muted-foreground truncate mt-0.5">{formatPhoneDisplay(client.telefone)}</p>
           {client.ultima_mensagem && (
             <p className="text-xs text-muted-foreground/70 truncate mt-1">
               {truncateMsg(client.ultima_mensagem, 40)}
@@ -394,7 +456,7 @@ const DataRow = memo(({ client, isSelected, onSelect, onDelete, isDeleting }: {
           </div>
         </div>
       </td>
-      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{client.telefone}</td>
+      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{formatPhoneDisplay(client.telefone)}</td>
       <td className="px-4 py-3">
         <span className={cn('text-[11px] font-semibold px-2.5 py-1 rounded-full border', statusConf.bg, statusConf.color)}>
           {statusConf.label}
@@ -1185,7 +1247,7 @@ export default function CRM() {
             <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Dados do Lead</h4>
             <div className="grid grid-cols-2 gap-3">
               <InfoField label="Nome" value={selectedClient.nome} />
-              <InfoField label="Telefone" value={selectedClient.telefone} />
+              <InfoField label="Telefone" value={formatPhoneDisplay(selectedClient.telefone)} />
               <InfoField label="E-mail" value={selectedClient.email} />
               <InfoField label="Classificacao" value={selectedClient.classificacao} />
               <InfoField label="Corretor" value={selectedClient.corretor_nome} />
@@ -1202,8 +1264,8 @@ export default function CRM() {
                 <InfoField label="Tipo" value={p.tipo} />
                 <InfoField label="CPF" value={p.cpf} />
                 <InfoField label="E-mail" value={p.email} />
-                <InfoField label="Telefone" value={p.telefone} />
-                <InfoField label="Celular" value={p.celular} />
+                <InfoField label="Telefone" value={formatPhoneDisplay(p.telefone)} />
+                <InfoField label="Celular" value={formatPhoneDisplay(p.celular)} />
               </div>
             </div>
           )}
@@ -1706,7 +1768,7 @@ export default function CRM() {
 
               <div className="flex-1 min-w-0">
                 <h2 className="font-semibold text-foreground truncate">{selectedClient.nome}</h2>
-                <p className="text-xs text-muted-foreground truncate">{selectedClient.telefone}</p>
+                <p className="text-xs text-muted-foreground truncate">{formatPhoneDisplay(selectedClient.telefone)}</p>
               </div>
 
               <div className="flex items-center gap-1">

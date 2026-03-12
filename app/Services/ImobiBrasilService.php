@@ -664,6 +664,12 @@ class ImobiBrasilService
 
     public static function preparePropertyPayload(Property $property, string $apiKey = '', string $baseUrl = ''): array
     {
+        $purposeValue = strtolower((string) ($property->finalidade_imovel ?? 'venda'));
+        $preferRentValue = str_contains($purposeValue, 'alug') || str_contains($purposeValue, 'loca') || str_contains($purposeValue, 'temporad');
+        $listingValue = $preferRentValue
+            ? ((float) ($property->valor_aluguel ?? 0) > 0 ? $property->valor_aluguel : $property->valor_venda)
+            : ((float) ($property->valor_venda ?? 0) > 0 ? $property->valor_venda : $property->valor_aluguel);
+
         // Mapear tipo de imóvel para código
         $tipoImovelMapping = [
             'apartamento' => 1,
@@ -676,6 +682,9 @@ class ImobiBrasilService
             'sitio' => 8,
             'galpao' => 9,
             'conjunto' => 10,
+            'cobertura' => 1,
+            'flat' => 6,
+            'barracao' => 9,
         ];
         
         $codigoTipoImovel = $tipoImovelMapping[strtolower($property->tipo_imovel ?? 'apartamento')] ?? 1;
@@ -765,7 +774,7 @@ class ImobiBrasilService
             'outrasInformacoesImovel' => self::formatDescriptionAsHtml($property->outras_informacoes ?? ''),
             'destaqueInicial' => ($property->destaque ?? false) ? 'sim' : 'nao',
             'destaquesSuperDestaqueInicial' => ($property->super_destaque ?? false) ? 'sim' : 'nao',
-            'valorImovel' => (int) ($property->valor_venda ?? 0),
+            'valorImovel' => (int) ($listingValue ?? 0),
             'valorIPTU' => (int) ($property->valor_iptu ?? 0),
             'valorCondominio' => (int) ($property->valor_condominio ?? 0),
             'valorObservacao' => $property->valor_observacao ?? '',
