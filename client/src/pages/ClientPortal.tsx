@@ -659,12 +659,20 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
   // === Drag state for mascot button ===
   const [pos, setPos] = useState<{ x: number; y: number }>(() => {
     if (typeof window === 'undefined') return { x: 24, y: 24 };
+    const bSz = window.innerWidth >= 768 ? 104 : 88;
+    const defaultPos = { x: window.innerWidth - bSz - 24, y: window.innerHeight - bSz - 24 };
     try {
       const saved = localStorage.getItem('mascot_pos');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const p = JSON.parse(saved) as { x: number; y: number };
+        if (
+          typeof p.x === 'number' && typeof p.y === 'number' &&
+          p.x >= 0 && p.x <= window.innerWidth - bSz &&
+          p.y >= 0 && p.y <= window.innerHeight - bSz
+        ) return p;
+      }
     } catch {}
-    const bSz = window.innerWidth >= 768 ? 104 : 88;
-    return { x: window.innerWidth - bSz - 24, y: window.innerHeight - bSz - 24 };
+    return defaultPos;
   });
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false);
@@ -687,7 +695,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
     const bSz = window.innerWidth >= 768 ? 104 : 88;
     const newX = Math.max(0, Math.min(window.innerWidth - bSz, e.clientX - dragOffsetRef.current.x));
     const newY = Math.max(0, Math.min(window.innerHeight - bSz, e.clientY - dragOffsetRef.current.y));
-    if (Math.hypot(newX - posRef.current.x, newY - posRef.current.y) > 5) hasDraggedRef.current = true;
+    if (Math.hypot(newX - posRef.current.x, newY - posRef.current.y) > 10) hasDraggedRef.current = true;
     setPos({ x: newX, y: newY });
   };
 
@@ -699,6 +707,12 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
     } else {
       try { localStorage.setItem('mascot_pos', JSON.stringify(posRef.current)); } catch {}
     }
+  };
+
+  const handleMascotPointerCancel = () => {
+    isDraggingRef.current = false;
+    hasDraggedRef.current = false;
+    setIsDragging(false);
   };
 
   const _bSize = typeof window !== 'undefined' ? (window.innerWidth >= 768 ? 104 : 88) : 88;
@@ -769,6 +783,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
         onPointerDown={handleMascotPointerDown}
         onPointerMove={handleMascotPointerMove}
         onPointerUp={handleMascotPointerUp}
+        onPointerCancel={handleMascotPointerCancel}
         className="fixed z-[60] w-[88px] h-[88px] md:w-[104px] md:h-[104px] rounded-full flex items-center justify-center shadow-xl select-none touch-none"
         style={{
           backgroundColor: '#fff',
