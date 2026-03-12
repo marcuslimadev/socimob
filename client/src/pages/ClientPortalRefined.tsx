@@ -115,6 +115,19 @@ function buildPropertyWhatsAppLink(property: Property, tenant: TenantConfig | nu
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
+function buildGenericWhatsAppLink(tenant: TenantConfig | null, leadName: string, leadPhone: string): string {
+  const phone = tenant?.contact_phone?.replace(/\D/g, '');
+  if (!phone) return '';
+
+  const message = [
+    `Olá! Sou ${leadName}.`,
+    `Meu telefone é ${leadPhone}.`,
+    `Acabei de me cadastrar pelo portal e gostaria de atendimento.`,
+  ].join(' ');
+
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
 function getFloatingActionMetrics(viewportWidth: number, hasMascot: boolean) {
   if (hasMascot) {
     const size = viewportWidth >= 640 ? 320 : 256;
@@ -162,9 +175,11 @@ export default function ClientPortalRefined() {
   const [venderOpen, setVenderOpen] = useState(false);
   const [catalogPhotoIndexes, setCatalogPhotoIndexes] = useState<Record<number, number>>({});
   const [leadModalProperty, setLeadModalProperty] = useState<Property | null>(null);
+  const [leadModalSource, setLeadModalSource] = useState<'card' | 'mascot'>('card');
   const [leadName, setLeadName] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
   const [leadModalError, setLeadModalError] = useState('');
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [floatingActionDragging, setFloatingActionDragging] = useState(false);
   const [floatingActionPos, setFloatingActionPos] = useState<{ x: number; y: number }>(() => {
     if (typeof window === 'undefined') return { x: 16, y: 16 };
@@ -318,11 +333,19 @@ export default function ClientPortalRefined() {
 
   const openPropertyWhatsAppModal = (property: Property) => {
     setLeadModalError('');
+    setLeadModalSource('card');
     setLeadModalProperty(property);
+  };
+
+  const openMascotWhatsAppModal = () => {
+    setLeadModalError('');
+    setLeadModalSource('mascot');
+    setLeadModalProperty(null);
   };
 
   const closePropertyWhatsAppModal = () => {
     setLeadModalError('');
+    setLeadSubmitting(false);
     setLeadModalProperty(null);
   };
 
@@ -337,9 +360,7 @@ export default function ClientPortalRefined() {
     });
   };
 
-  const handleLeadModalSubmit = () => {
-    if (!leadModalProperty) return;
-
+  const handleLeadModalSubmit = async () => {
     const normalizedName = leadName.trim();
     const phoneDigits = leadPhone.replace(/\D/g, '');
 
@@ -354,19 +375,80 @@ export default function ClientPortalRefined() {
     }
 
     const formattedPhone = formatPhoneInput(leadPhone);
-    const whatsappUrl = buildPropertyWhatsAppLink(leadModalProperty, tenant, normalizedName, formattedPhone);
-    if (!whatsappUrl) {
-      setLeadModalError('O WhatsApp da imobiliária não está configurado.');
-      return;
-    }
+    const fallbackWhatsappUrl = leadModalProperty
+      ? buildPropertyWhatsAppLink(leadModalProperty, tenant, normalizedName, formattedPhone)
+      : buildGenericWhatsAppLink(tenant, normalizedName, formattedPhone);
 
     try {
       localStorage.setItem('portal_lead_name', normalizedName);
       localStorage.setItem('portal_lead_phone', formattedPhone);
     } catch {}
 
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-    closePropertyWhatsAppModal();
+    const leadWindow = window.open('', '_blank', 'noopener,noreferrer');
+
+    try {
+      setLeadSubmitting(true);
+      setLeadModalError('');
+
+      const interesse = leadModalProperty
+        ? `Interesse no imóvel \"${leadModalProperty.titulo}\". Localização: ${getPublicLocation(leadModalProperty)}. Valor: ${formatPrice(leadModalProperty)}. Origem: ${leadModalSource === 'mascot' ? 'mascote do portal' : 'card do catálogo'}.`
+        : 'Atendimento solicitado pelo mascote do portal.';
+
+      const response = await fetch('/api/portal/chat-lead', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Tenant-Domain': window.location.hostname,
+        },
+        body: JSON.stringify({
+          nome: normalizedName,
+          whatsapp: formattedPhone,
+          interesse,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || 'Não foi possível registrar seu contato.');
+      }
+
+      const tenantWhatsapp = data.whatsapp_number ? String(data.whatsapp_number).replace(/\D/g, '') : '';
+      const whatsappUrl = tenantWhatsapp
+        ? `https://wa.me/${tenantWhatsapp}?text=${encodeURIComponent(
+            leadModalProperty
+              ? [
+                  `Olá! Sou ${normalizedName}.`,
+                  `Meu telefone é ${formattedPhone}.`,
+                  `Tenho interesse no imóvel \"${leadModalProperty.titulo}\".`,
+                  `Localização: ${getPublicLocation(leadModalProperty)}.`,
+                  `Valor anunciado: ${formatPrice(leadModalProperty)}.`,
+                  `Link do imóvel: ${window.location.origin}/portal/imovel/${leadModalProperty.id}`,
+                ].join(' ')
+              : [
+                  `Olá! Sou ${normalizedName}.`,
+                  `Meu telefone é ${formattedPhone}.`,
+                  'Acabei de me cadastrar pelo portal e gostaria de atendimento.',
+                ].join(' ')
+          )}`
+        : fallbackWhatsappUrl;
+
+      if (!whatsappUrl) {
+        throw new Error('O WhatsApp da imobiliária não está configurado.');
+      }
+
+      if (leadWindow) {
+        leadWindow.location.href = whatsappUrl;
+      } else {
+        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      }
+
+      closePropertyWhatsAppModal();
+    } catch (error) {
+      if (leadWindow) leadWindow.close();
+      setLeadModalError(error instanceof Error ? error.message : 'Não foi possível registrar seu contato.');
+    } finally {
+      setLeadSubmitting(false);
+    }
   };
 
   const hasMascot = Boolean(tenant?.mascot_url);
@@ -958,16 +1040,17 @@ export default function ClientPortalRefined() {
                       >
                         <ChevronRight className="h-4 w-4" />
                       </button>
-                      <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/30 px-2 py-1 backdrop-blur-sm">
-                        {images.slice(0, 6).map((_, imageIndex) => (
+                      <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5 overflow-x-auto rounded-2xl bg-black/28 px-2 py-2 backdrop-blur-sm">
+                        {images.slice(0, 5).map((thumbImage, imageIndex) => (
                           <button
                             key={`${property.id}-dot-${imageIndex}`}
                             type="button"
                             aria-label={`Foto ${imageIndex + 1}`}
                             onClick={() => setCatalogPhotoIndexes((current) => ({ ...current, [property.id]: imageIndex }))}
-                            className="h-1.5 w-1.5 rounded-full transition-all"
-                            style={{ backgroundColor: imageIndex === activePhotoIndex ? '#ffffff' : 'rgba(255,255,255,0.45)' }}
-                          />
+                            className={`h-10 w-12 shrink-0 overflow-hidden rounded-lg border transition ${imageIndex === activePhotoIndex ? 'border-white ring-2 ring-white/70' : 'border-white/35 opacity-80 hover:opacity-100'}`}
+                          >
+                            <img src={thumbImage} alt={`Miniatura ${imageIndex + 1}`} className="h-full w-full object-cover" loading="lazy" />
+                          </button>
                         ))}
                       </div>
                     </>
@@ -1110,13 +1193,12 @@ export default function ClientPortalRefined() {
             transition: floatingActionDragging ? 'none' : 'transform 0.2s ease',
           }}
         >
-          <a
-            href={whatsappLink || undefined}
-            target={whatsappLink ? '_blank' : undefined}
-            rel={whatsappLink ? 'noreferrer' : undefined}
+          <button
+            type="button"
+            onClick={openMascotWhatsAppModal}
             className="block h-full w-full"
-            aria-label="Abrir WhatsApp"
-            style={{ cursor: whatsappLink ? 'pointer' : 'default' }}
+            aria-label="Abrir atendimento no WhatsApp"
+            style={{ cursor: 'pointer' }}
           >
             <img
               src={tenant.mascot_url}
@@ -1124,7 +1206,7 @@ export default function ClientPortalRefined() {
               draggable={false}
               className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
             />
-          </a>
+          </button>
           <button
             type="button"
             onPointerDown={handleFloatingActionPointerDown}
@@ -1147,15 +1229,14 @@ export default function ClientPortalRefined() {
             transition: floatingActionDragging ? 'none' : 'transform 0.2s ease',
           }}
         >
-          <a
-            href={whatsappLink}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
+            onClick={openMascotWhatsAppModal}
             className="flex h-full w-full items-center justify-center rounded-2xl border border-white/30 bg-[#0f172a] text-white shadow-[0_8px_24px_rgba(15,23,42,0.35)]"
             aria-label="Abrir WhatsApp"
           >
             <MessageCircle className="w-6 h-6 pointer-events-none" />
-          </a>
+          </button>
           <button
             type="button"
             onPointerDown={handleFloatingActionPointerDown}
@@ -1174,7 +1255,7 @@ export default function ClientPortalRefined() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Atendimento via WhatsApp</p>
-                <h3 className="mt-2 text-xl text-slate-900">Receber atendimento sobre este imóvel</h3>
+                <h3 className="mt-2 text-xl text-slate-900">{leadModalProperty ? 'Receber atendimento sobre este imóvel' : 'Falar com nossa equipe'}</h3>
               </div>
               <button
                 type="button"
@@ -1185,11 +1266,17 @@ export default function ClientPortalRefined() {
               </button>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-sm font-semibold text-slate-900 line-clamp-1">{leadModalProperty.titulo}</p>
-              <p className="mt-1 text-xs text-slate-500">{getPublicLocation(leadModalProperty)}</p>
-              <p className="mt-2 text-sm font-semibold" style={{ color: secondary }}>{formatPrice(leadModalProperty)}</p>
-            </div>
+            {leadModalProperty ? (
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-sm font-semibold text-slate-900 line-clamp-1">{leadModalProperty.titulo}</p>
+                <p className="mt-1 text-xs text-slate-500">{getPublicLocation(leadModalProperty)}</p>
+                <p className="mt-2 text-sm font-semibold" style={{ color: secondary }}>{formatPrice(leadModalProperty)}</p>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                Informe seu nome e telefone para abrir o WhatsApp já com seu atendimento iniciado.
+              </div>
+            )}
 
             <div className="mt-5 space-y-4">
               <label className="block">
@@ -1230,11 +1317,12 @@ export default function ClientPortalRefined() {
               <button
                 type="button"
                 onClick={handleLeadModalSubmit}
+                disabled={leadSubmitting}
                 className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white"
                 style={{ backgroundColor: primary }}
               >
                 <MessageCircle className="h-4 w-4" />
-                Abrir WhatsApp
+                {leadSubmitting ? 'Registrando...' : 'Abrir WhatsApp'}
               </button>
             </div>
           </div>
