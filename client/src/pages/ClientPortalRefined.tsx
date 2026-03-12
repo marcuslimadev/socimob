@@ -87,6 +87,34 @@ function getPublicLocation(property: Property): string {
   return property.endereco_publico || [property.bairro, property.cidade].filter(Boolean).join(', ') || 'Localização sob consulta';
 }
 
+function formatPhoneInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+function buildPropertyWhatsAppLink(property: Property, tenant: TenantConfig | null, leadName: string, leadPhone: string): string {
+  const phone = tenant?.contact_phone?.replace(/\D/g, '');
+  if (!phone) return '';
+
+  const propertyUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/portal/imovel/${property.id}`
+    : `/portal/imovel/${property.id}`;
+
+  const message = [
+    `Olá! Sou ${leadName}.`,
+    `Meu telefone é ${leadPhone}.`,
+    `Tenho interesse no imóvel "${property.titulo}".`,
+    `Localização: ${getPublicLocation(property)}.`,
+    `Valor anunciado: ${formatPrice(property)}.`,
+    `Link do imóvel: ${propertyUrl}`,
+  ].join(' ');
+
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
 function getFloatingActionMetrics(viewportWidth: number, hasMascot: boolean) {
   if (hasMascot) {
     const size = viewportWidth >= 640 ? 320 : 256;
@@ -132,6 +160,11 @@ export default function ClientPortalRefined() {
   const [slidePhotoIndex, setSlidePhotoIndex] = useState(0);
   const [thumbStart, setThumbStart] = useState(0);
   const [venderOpen, setVenderOpen] = useState(false);
+  const [catalogPhotoIndexes, setCatalogPhotoIndexes] = useState<Record<number, number>>({});
+  const [leadModalProperty, setLeadModalProperty] = useState<Property | null>(null);
+  const [leadName, setLeadName] = useState('');
+  const [leadPhone, setLeadPhone] = useState('');
+  const [leadModalError, setLeadModalError] = useState('');
   const [floatingActionDragging, setFloatingActionDragging] = useState(false);
   const [floatingActionPos, setFloatingActionPos] = useState<{ x: number; y: number }>(() => {
     if (typeof window === 'undefined') return { x: 16, y: 16 };
@@ -180,6 +213,16 @@ export default function ClientPortalRefined() {
     };
 
     loadProperties();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const savedName = localStorage.getItem('portal_lead_name');
+      const savedPhone = localStorage.getItem('portal_lead_phone');
+      if (savedName) setLeadName(savedName);
+      if (savedPhone) setLeadPhone(savedPhone);
+    } catch {}
   }, []);
 
   // Up to 6 destaque properties for the slideshow
@@ -272,6 +315,59 @@ export default function ClientPortalRefined() {
     const message = encodeURIComponent(`Olá! Vim pelo portal da ${tenant?.name || 'imobiliária'} e quero atendimento.`);
     return `https://wa.me/${phone}?text=${message}`;
   }, [tenant?.contact_phone, tenant?.name]);
+
+  const openPropertyWhatsAppModal = (property: Property) => {
+    setLeadModalError('');
+    setLeadModalProperty(property);
+  };
+
+  const closePropertyWhatsAppModal = () => {
+    setLeadModalError('');
+    setLeadModalProperty(null);
+  };
+
+  const handleCatalogPhotoChange = (propertyId: number, direction: 'next' | 'prev', total: number) => {
+    if (total <= 1) return;
+    setCatalogPhotoIndexes((current) => {
+      const base = current[propertyId] ?? 0;
+      const next = direction === 'next'
+        ? (base + 1) % total
+        : (base - 1 + total) % total;
+      return { ...current, [propertyId]: next };
+    });
+  };
+
+  const handleLeadModalSubmit = () => {
+    if (!leadModalProperty) return;
+
+    const normalizedName = leadName.trim();
+    const phoneDigits = leadPhone.replace(/\D/g, '');
+
+    if (normalizedName.length < 2) {
+      setLeadModalError('Informe seu nome para continuar.');
+      return;
+    }
+
+    if (phoneDigits.length < 10) {
+      setLeadModalError('Informe um telefone válido com DDD.');
+      return;
+    }
+
+    const formattedPhone = formatPhoneInput(leadPhone);
+    const whatsappUrl = buildPropertyWhatsAppLink(leadModalProperty, tenant, normalizedName, formattedPhone);
+    if (!whatsappUrl) {
+      setLeadModalError('O WhatsApp da imobiliária não está configurado.');
+      return;
+    }
+
+    try {
+      localStorage.setItem('portal_lead_name', normalizedName);
+      localStorage.setItem('portal_lead_phone', formattedPhone);
+    } catch {}
+
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    closePropertyWhatsAppModal();
+  };
 
   const hasMascot = Boolean(tenant?.mascot_url);
   const floatingActionMetrics = useMemo(() => {
@@ -828,7 +924,9 @@ export default function ClientPortalRefined() {
 
         <div className="mt-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filteredProperties.map((property, index) => {
-            const image = normalizeImages(property)[0];
+            const images = normalizeImages(property);
+            const activePhotoIndex = Math.min(catalogPhotoIndexes[property.id] ?? 0, Math.max(0, images.length - 1));
+            const activeImage = images[activePhotoIndex] || images[0];
             return (
               <motion.article
                 key={property.id}
@@ -838,10 +936,42 @@ export default function ClientPortalRefined() {
                 transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.2) }}
               >
                 <div className="h-56 sm:h-52 relative">
-                  <img src={image} alt={property.titulo} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" loading="lazy" />
+                  <img src={activeImage} alt={property.titulo} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" loading="lazy" />
                   <span className="absolute left-3 top-3 rounded-full border border-white/30 bg-black/35 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-white">
                     {getPurpose(property)}
                   </span>
+                  {images.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        aria-label="Foto anterior"
+                        onClick={() => handleCatalogPhotoChange(property.id, 'prev', images.length)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/88 text-slate-700 shadow-sm backdrop-blur-sm"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Próxima foto"
+                        onClick={() => handleCatalogPhotoChange(property.id, 'next', images.length)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/88 text-slate-700 shadow-sm backdrop-blur-sm"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                      <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/30 px-2 py-1 backdrop-blur-sm">
+                        {images.slice(0, 6).map((_, imageIndex) => (
+                          <button
+                            key={`${property.id}-dot-${imageIndex}`}
+                            type="button"
+                            aria-label={`Foto ${imageIndex + 1}`}
+                            onClick={() => setCatalogPhotoIndexes((current) => ({ ...current, [property.id]: imageIndex }))}
+                            className="h-1.5 w-1.5 rounded-full transition-all"
+                            style={{ backgroundColor: imageIndex === activePhotoIndex ? '#ffffff' : 'rgba(255,255,255,0.45)' }}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="p-4">
                   <h3 className="text-base sm:text-lg text-slate-900 line-clamp-1">{property.titulo}</h3>
@@ -852,14 +982,26 @@ export default function ClientPortalRefined() {
                     <p className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{property.banheiros || '--'}</p>
                     <p className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{property.area_util || property.area_total || '--'}m²</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/portal/imovel/${property.id}`)}
-                    className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-900/15 px-4 py-2 text-sm font-semibold text-slate-800"
-                  >
-                    Ver detalhes
-                    <ArrowUpRight className="w-4 h-4" />
-                  </button>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/portal/imovel/${property.id}`)}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-900/15 px-4 py-2 text-sm font-semibold text-slate-800"
+                    >
+                      Ver detalhes
+                      <ArrowUpRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openPropertyWhatsAppModal(property)}
+                      disabled={!tenant?.contact_phone}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                      style={{ backgroundColor: primary }}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      WhatsApp
+                    </button>
+                  </div>
                 </div>
               </motion.article>
             );
@@ -1025,6 +1167,79 @@ export default function ClientPortalRefined() {
           </button>
         </div>
       ) : null}
+
+      {leadModalProperty && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.28)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Atendimento via WhatsApp</p>
+                <h3 className="mt-2 text-xl text-slate-900">Receber atendimento sobre este imóvel</h3>
+              </div>
+              <button
+                type="button"
+                onClick={closePropertyWhatsAppModal}
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-900 line-clamp-1">{leadModalProperty.titulo}</p>
+              <p className="mt-1 text-xs text-slate-500">{getPublicLocation(leadModalProperty)}</p>
+              <p className="mt-2 text-sm font-semibold" style={{ color: secondary }}>{formatPrice(leadModalProperty)}</p>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-slate-700">Seu nome</span>
+                <input
+                  type="text"
+                  value={leadName}
+                  onChange={(event) => setLeadName(event.target.value)}
+                  placeholder="Como você se chama?"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-slate-700">Seu telefone</span>
+                <input
+                  type="tel"
+                  value={leadPhone}
+                  onChange={(event) => setLeadPhone(formatPhoneInput(event.target.value))}
+                  placeholder="(31) 99999-9999"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none"
+                />
+              </label>
+
+              {leadModalError && (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{leadModalError}</p>
+              )}
+            </div>
+
+            <div className="mt-6 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={closePropertyWhatsAppModal}
+                className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleLeadModalSubmit}
+                className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white"
+                style={{ backgroundColor: primary }}
+              >
+                <MessageCircle className="h-4 w-4" />
+                Abrir WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
