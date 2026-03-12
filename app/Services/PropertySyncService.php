@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Property;
+use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -42,7 +43,8 @@ class PropertySyncService
                 'found' => 0,
                 'new' => 0,
                 'updated' => 0,
-                'errors' => 0
+                'errors' => 0,
+                'restored' => 0,
             ];
 
             $errorDetails = [];
@@ -101,13 +103,6 @@ class PropertySyncService
 
                     $sourceCodes[] = (string) $codigo;
 
-                    // Ignorar imóveis inativos (statusImovel != 1)
-                    if (isset($item['statusImovel']) && $item['statusImovel'] != 1) {
-                        $this->trashImportedPropertyByCode((string) $codigo, 'sync_source_inactive');
-                        Log::debug("⏭️ Imóvel {$codigo} ignorado (statusImovel={$item['statusImovel']})");
-                        continue;
-                    }
-                    
                     try {
                         // Buscar dados completos do imóvel (GET ainda funciona)
                         $response = $this->callApi("/dados/{$codigo}");
@@ -118,16 +113,6 @@ class PropertySyncService
                         
                         $imovel = $response['resultSet'];
 
-                        // Pular imóveis marcados como não exibir no site
-                        if (isset($imovel['exibirImovel']) && !$imovel['exibirImovel']) {
-                            $this->trashImportedPropertyByCode((string) $codigo, 'sync_hidden_on_source');
-                            Log::debug("⏭️ Imóvel {$codigo} ignorado (exibirImovel=false)");
-                            continue;
-                        }
-
-                        // Verificar se já existe
-                        $existing = Property::withTrashed()->where('codigo', $codigo)->first();
-                        
                         $data = $this->mapPropertyData($imovel);
                         
                         // Contar imagens para logging
@@ -136,19 +121,21 @@ class PropertySyncService
                             $numImagens = count($data['imagens']);
                         }
                         
-                        if ($existing) {
-                            if ($existing->trashed()) {
-                                $this->trashService->restoreFromTrash($existing);
-                                $existing = $existing->fresh();
-                            }
+                        $persisted = $this->persistPropertyData((string) $codigo, $data);
 
-                            $existing->update($data);
-                            $stats['updated']++;
-                            Log::debug("✏️ Imóvel {$codigo} atualizado ({$numImagens} imagens)");
-                        } else {
-                            Property::create($data);
+                        if ($persisted['restored']) {
+                            $stats['restored']++;
+                        }
+
+                        if ($persisted['action'] === 'created') {
                             $stats['new']++;
                             Log::debug("➕ Imóvel {$codigo} criado ({$numImagens} imagens)");
+                        } else {
+                            $stats['updated']++;
+                            Log::debug("✏️ Imóvel {$codigo} atualizado ({$numImagens} imagens)", [
+                                'active' => $data['active'] ?? null,
+                                'exibir_imovel' => $data['exibir_imovel'] ?? null,
+                            ]);
                         }
                         
                     } catch (\Exception $e) {
@@ -170,7 +157,19 @@ class PropertySyncService
                 
             } while ($page <= $totalPages);
 
-            $stats['trashed'] = $this->trashMissingImportedProperties($sourceCodes);
+            $imobiBackfill = $this->importMissingImobiProperties();
+
+            $stats['imobi_available'] = $imobiBackfill['available'] ?? 0;
+            $stats['imobi_imported'] = $imobiBackfill['imported'] ?? 0;
+            $stats['imobi_restored'] = $imobiBackfill['restored'] ?? 0;
+            $stats['imobi_errors'] = $imobiBackfill['errors'] ?? 0;
+
+            $knownCodes = array_values(array_unique(array_filter(array_map(
+                'strval',
+                array_merge($sourceCodes, $imobiBackfill['available_codes'] ?? [])
+            ))));
+
+            $stats['trashed'] = $this->trashMissingImportedProperties($knownCodes);
             
             $elapsed = round((microtime(true) - $startTime) * 1000, 2);
             
@@ -333,12 +332,18 @@ class PropertySyncService
             'cidade' => $imovel['endereco']['cidade'] ?? null,
             'estado' => $imovel['endereco']['estado'] ?? null,
             'bairro' => $imovel['endereco']['bairro'] ?? null,
+            'numero' => $imovel['endereco']['numero'] ?? null,
+            'complemento' => $imovel['endereco']['complemento'] ?? null,
+            'cep' => $imovel['endereco']['cep'] ?? null,
             'area_total' => $areaTotal,
+            'area_privativa' => $areaPrivativa,
+            'area_terreno' => $areaTerreno,
             'imagens' => $imagensData, // Array será convertido automaticamente pelo cast
+            'imagem_destaque' => $imagemDestaque,
             'latitude' => $latitude,
             'longitude' => $longitude,
             'exibir_imovel' => !empty($imovel['exibirImovel']),
-            'active' => !empty($imovel['exibirImovel']),
+            'active' => !empty($imovel['exibirImovel']) && (int) ($imovel['statusImovel'] ?? 1) === 1,
             'last_sync' => date('Y-m-d H:i:s')
         ];
         
@@ -423,12 +428,225 @@ class PropertySyncService
      */
     private function mapearFinalidade($finalidade)
     {
-        $finalidade = strtolower($finalidade);
-        
-        if (strpos($finalidade, 'vend') !== false) return 'venda';
-        if (strpos($finalidade, 'alug') !== false) return 'aluguel';
+        $finalidade = strtolower((string) $finalidade);
+
+        $hasVenda = strpos($finalidade, 'vend') !== false;
+        $hasAluguel = strpos($finalidade, 'alug') !== false || strpos($finalidade, 'loca') !== false;
+        $hasTemporada = strpos($finalidade, 'temporad') !== false;
+
+        if ($hasVenda && $hasAluguel) {
+            return 'venda_aluguel';
+        }
+
+        if ($hasTemporada && $hasAluguel) {
+            return 'aluguel_temporada';
+        }
+
+        if ($hasTemporada) {
+            return 'temporada';
+        }
+
+        if ($hasVenda) {
+            return 'venda';
+        }
+
+        if ($hasAluguel) {
+            return 'aluguel';
+        }
         
         return 'venda';
+    }
+
+    private function persistPropertyData(string $codigo, array $data): array
+    {
+        $existing = Property::withTrashed()->where('codigo', $codigo)->first();
+        $restored = false;
+
+        if ($existing) {
+            if ($existing->trashed()) {
+                $this->trashService->restoreFromTrash($existing);
+                $existing = $existing->fresh();
+                $restored = true;
+            }
+
+            $existing->update($data);
+
+            return [
+                'action' => 'updated',
+                'restored' => $restored,
+                'property_id' => $existing->id,
+            ];
+        }
+
+        $property = Property::create($data);
+
+        return [
+            'action' => 'created',
+            'restored' => false,
+            'property_id' => $property->id,
+        ];
+    }
+
+    private function resolveSyncTenant(): ?Tenant
+    {
+        if (app()->bound('tenant')) {
+            $tenant = app('tenant');
+            if ($tenant instanceof Tenant) {
+                return $tenant;
+            }
+        }
+
+        return null;
+    }
+
+    private function fetchImobiBrasilCodes(Tenant $tenant): array
+    {
+        $codes = [];
+        $page = 1;
+        $totalPages = 1;
+        $limit = 100;
+
+        do {
+            $response = $this->listImobiBrasilPage($tenant, $page, $limit);
+            if (!($response['success'] ?? false)) {
+                throw new \RuntimeException($response['error'] ?? 'Falha ao listar imóveis na Imobi Brasil.');
+            }
+
+            $resultSet = $response['result_set'] ?? [];
+            $items = $resultSet['data'] ?? [];
+            $totalPages = max(1, (int) ($resultSet['total_pages'] ?? 1));
+
+            foreach ($items as $item) {
+                $codigo = $item['codigoImovel'] ?? null;
+                if ($codigo !== null && $codigo !== '') {
+                    $codes[] = (string) $codigo;
+                }
+            }
+
+            $page++;
+        } while ($page <= $totalPages);
+
+        return array_values(array_unique($codes));
+    }
+
+    private function listImobiBrasilPage(Tenant $tenant, int $page, int $limit): array
+    {
+        $attempts = [
+            ['page' => $page, 'limit' => $limit],
+            ['pagina' => $page, 'limite' => $limit],
+        ];
+
+        $lastError = 'Falha ao listar imóveis na Imobi Brasil.';
+
+        foreach ($attempts as $params) {
+            $response = ImobiBrasilService::listProperties($tenant, $params);
+            if (($response['success'] ?? false) && isset($response['result_set'])) {
+                return $response;
+            }
+
+            if (!empty($response['error'])) {
+                $lastError = $response['error'];
+            }
+        }
+
+        return ['success' => false, 'error' => $lastError];
+    }
+
+    public function importMissingImobiProperties(?Tenant $tenant = null): array
+    {
+        $tenant = $tenant ?: $this->resolveSyncTenant();
+
+        if (!$tenant) {
+            return [
+                'success' => false,
+                'available' => 0,
+                'available_codes' => [],
+                'imported' => 0,
+                'restored' => 0,
+                'errors' => 0,
+                'error' => 'Tenant não resolvido para complemento Imobi Brasil.',
+            ];
+        }
+
+        if (!ImobiBrasilService::isEnabled($tenant)) {
+            return [
+                'success' => false,
+                'available' => 0,
+                'available_codes' => [],
+                'imported' => 0,
+                'restored' => 0,
+                'errors' => 0,
+                'error' => 'Integração Imobi Brasil não configurada para este tenant.',
+            ];
+        }
+
+        try {
+            $availableCodes = $this->fetchImobiBrasilCodes($tenant);
+
+            $existing = Property::withTrashed()
+                ->whereIn('codigo', $availableCodes)
+                ->get()
+                ->keyBy(fn (Property $property) => (string) $property->codigo);
+
+            $targetCodes = [];
+            foreach ($availableCodes as $codigo) {
+                $property = $existing->get((string) $codigo);
+                if (!$property || $property->trashed()) {
+                    $targetCodes[] = (string) $codigo;
+                }
+            }
+
+            $imported = 0;
+            $restored = 0;
+            $errors = 0;
+
+            foreach ($targetCodes as $codigo) {
+                $response = ImobiBrasilService::getPropertyData((int) $codigo, $tenant);
+                if (!($response['success'] ?? false) || empty($response['result_set'])) {
+                    $errors++;
+                    Log::warning('Falha ao complementar imóvel faltante da Imobi Brasil', [
+                        'tenant_id' => $tenant->id,
+                        'codigo' => $codigo,
+                        'error' => $response['error'] ?? 'Resposta vazia',
+                    ]);
+                    continue;
+                }
+
+                $persisted = $this->persistPropertyData($codigo, $this->mapPropertyData($response['result_set']));
+
+                if ($persisted['restored']) {
+                    $restored++;
+                }
+
+                if ($persisted['action'] === 'created') {
+                    $imported++;
+                }
+            }
+
+            return [
+                'success' => true,
+                'available' => count($availableCodes),
+                'available_codes' => $availableCodes,
+                'imported' => $imported,
+                'restored' => $restored,
+                'errors' => $errors,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Erro ao complementar imóveis faltantes da Imobi Brasil', [
+                'tenant_id' => $tenant->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'available' => 0,
+                'available_codes' => [],
+                'imported' => 0,
+                'restored' => 0,
+                'errors' => 1,
+                'error' => $e->getMessage(),
+            ];
+        }
     }
     
     /**
@@ -973,19 +1191,26 @@ class PropertySyncService
                 ->toArray();
 
             if (!empty($sameCodigo)) {
+                $group = $properties->where('codigo', $property->codigo)->values();
+                $master = $this->selectMasterProperty($group);
+                $duplicateIds = $group
+                    ->where('id', '!=', $master->id)
+                    ->pluck('id')
+                    ->values()
+                    ->all();
+
                 $duplicates[] = [
-                    'master_id' => $property->id,
-                    'master_codigo' => $property->codigo,
-                    'duplicate_ids' => $sameCodigo,
+                    'master_id' => $master->id,
+                    'master_codigo' => $master->codigo,
+                    'duplicate_ids' => $duplicateIds,
                     'reason' => 'same_codigo'
                 ];
 
-                $processed[] = $property->id;
-                $processed = array_merge($processed, $sameCodigo);
+                $processed = array_merge($processed, $group->pluck('id')->all());
             }
         }
 
-        // Remover duplicatas (manter o mais recente)
+        // Mover duplicatas para a lixeira mantendo um registro mestre por código.
         $removed = 0;
         foreach ($duplicates as $duplicate) {
             foreach ($duplicate['duplicate_ids'] as $dupId) {
@@ -996,7 +1221,19 @@ class PropertySyncService
                         \App\Models\LeadPropertyMatch::where('property_id', $dupId)
                             ->update(['property_id' => $duplicate['master_id']]);
 
-                        $dup->delete();
+                        \App\Models\PropertyPortalTenant::where('property_id', $dupId)
+                            ->update(['property_id' => $duplicate['master_id']]);
+
+                        $this->trashService->moveToTrash(
+                            $dup,
+                            'deduplication',
+                            'duplicate_codigo',
+                            null,
+                            [
+                                'master_id' => $duplicate['master_id'],
+                                'codigo' => $duplicate['master_codigo'],
+                            ]
+                        );
                         $removed++;
 
                         Log::info('Duplicata removida', [
@@ -1025,6 +1262,64 @@ class PropertySyncService
             'removed' => $removed,
             'details' => $duplicates
         ];
+    }
+
+    private function selectMasterProperty($properties): Property
+    {
+        return $properties->sort(function (Property $left, Property $right) {
+            $scoreComparison = $this->compareDuplicatePriority($right, $left);
+            if ($scoreComparison !== 0) {
+                return $scoreComparison;
+            }
+
+            return $left->id <=> $right->id;
+        })->first();
+    }
+
+    private function compareDuplicatePriority(Property $left, Property $right): int
+    {
+        $leftScore = $this->getDuplicatePriorityScore($left);
+        $rightScore = $this->getDuplicatePriorityScore($right);
+
+        if ($leftScore !== $rightScore) {
+            return $leftScore <=> $rightScore;
+        }
+
+        $leftTimestamp = $this->getDuplicatePriorityTimestamp($left);
+        $rightTimestamp = $this->getDuplicatePriorityTimestamp($right);
+
+        if ($leftTimestamp !== $rightTimestamp) {
+            return $leftTimestamp <=> $rightTimestamp;
+        }
+
+        return $left->id <=> $right->id;
+    }
+
+    private function getDuplicatePriorityScore(Property $property): int
+    {
+        $score = 0;
+        $score += $property->active ? 100 : 0;
+        $score += $property->exibir_imovel ? 100 : 0;
+        $score += !empty($property->imobi_brasil_external_id) ? 40 : 0;
+        $score += !empty($property->external_id) ? 20 : 0;
+        $score += !empty($property->imagem_destaque) ? 10 : 0;
+
+        if (is_array($property->imagens)) {
+            $score += min(count($property->imagens), 20);
+        }
+
+        return $score;
+    }
+
+    private function getDuplicatePriorityTimestamp(Property $property): int
+    {
+        foreach ([$property->last_sync, $property->updated_at, $property->created_at] as $date) {
+            if ($date instanceof \DateTimeInterface) {
+                return $date->getTimestamp();
+            }
+        }
+
+        return 0;
     }
 
     /**
