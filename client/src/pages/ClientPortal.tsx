@@ -656,12 +656,69 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
     ? `https://wa.me/${leadWhatsapp}?text=${encodeURIComponent(`Olá! Sou ${nome}, acabei de me cadastrar pelo portal. Estou interessado em: ${interesse}`)}`
     : tenantPhone ? `https://wa.me/${tenantPhone.replace(/\D/g, '')}?text=${encodeURIComponent('Olá! Tenho interesse em imóveis.')}` : '';
 
+  // === Drag state for mascot button ===
+  const [pos, setPos] = useState<{ x: number; y: number }>(() => {
+    if (typeof window === 'undefined') return { x: 24, y: 24 };
+    try {
+      const saved = localStorage.getItem('mascot_pos');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    const bSz = window.innerWidth >= 768 ? 104 : 88;
+    return { x: window.innerWidth - bSz - 24, y: window.innerHeight - bSz - 24 };
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const isDraggingRef = useRef(false);
+  const hasDraggedRef = useRef(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const posRef = useRef(pos);
+  posRef.current = pos;
+
+  const handleMascotPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    dragOffsetRef.current = { x: e.clientX - posRef.current.x, y: e.clientY - posRef.current.y };
+    hasDraggedRef.current = false;
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+
+  const handleMascotPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!isDraggingRef.current) return;
+    const bSz = window.innerWidth >= 768 ? 104 : 88;
+    const newX = Math.max(0, Math.min(window.innerWidth - bSz, e.clientX - dragOffsetRef.current.x));
+    const newY = Math.max(0, Math.min(window.innerHeight - bSz, e.clientY - dragOffsetRef.current.y));
+    if (Math.hypot(newX - posRef.current.x, newY - posRef.current.y) > 5) hasDraggedRef.current = true;
+    setPos({ x: newX, y: newY });
+  };
+
+  const handleMascotPointerUp = () => {
+    isDraggingRef.current = false;
+    setIsDragging(false);
+    if (!hasDraggedRef.current) {
+      onOpenChange(!isOpen);
+    } else {
+      try { localStorage.setItem('mascot_pos', JSON.stringify(posRef.current)); } catch {}
+    }
+  };
+
+  const _bSize = typeof window !== 'undefined' ? (window.innerWidth >= 768 ? 104 : 88) : 88;
+  const _panelWidth = typeof window !== 'undefined' ? Math.min(400, window.innerWidth - 16) : 384;
+  const _panelMaxH = typeof window !== 'undefined' ? Math.min(560, window.innerHeight - 96) : 560;
+  const _showAbove = typeof window !== 'undefined' ? pos.y + _bSize / 2 > window.innerHeight / 2 : true;
+  const _showRight = typeof window !== 'undefined' ? pos.x + _bSize / 2 > window.innerWidth / 2 : true;
+  const _panelTop = _showAbove
+    ? Math.max(8, pos.y - _panelMaxH - 12)
+    : Math.min(typeof window !== 'undefined' ? window.innerHeight - _panelMaxH - 8 : 9999, pos.y + _bSize + 12);
+  const _panelLeft = _showRight
+    ? Math.max(8, pos.x + _bSize - _panelWidth)
+    : Math.min(typeof window !== 'undefined' ? window.innerWidth - _panelWidth - 8 : 9999, pos.x);
+
   return (
     <>
-      {isOpen && (
+      {isOpen && !isDragging && (
         <div
-          className="fixed z-[60] flex flex-col overflow-hidden rounded-2xl shadow-2xl w-[calc(100vw-16px)] max-w-[400px] right-2 bottom-20 md:right-4 md:bottom-24 lg:right-6"
-          style={{ maxHeight: 'min(560px, calc(100vh - 96px))', backgroundColor: '#fff' }}
+          className="fixed z-[60] flex flex-col overflow-hidden rounded-2xl shadow-2xl"
+          style={{ maxHeight: _panelMaxH, backgroundColor: '#fff', width: _panelWidth, top: _panelTop, left: _panelLeft }}
         >
           <div className="flex items-center gap-3 px-4 py-3 md:px-5 md:py-4 text-white flex-shrink-0" style={{ backgroundColor: primary }}>
             <MascotAvatar size={56} mascotUrl={effectiveMascotUrl} primary={primary} />
@@ -709,9 +766,19 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
         </div>
       )}
       <button
-        onClick={() => onOpenChange(!isOpen)}
-        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-[60] w-[88px] h-[88px] md:w-[104px] md:h-[104px] rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-105 shadow-xl"
-        style={{ backgroundColor: '#fff', border: '1px solid #e8e4de' }}
+        onPointerDown={handleMascotPointerDown}
+        onPointerMove={handleMascotPointerMove}
+        onPointerUp={handleMascotPointerUp}
+        className="fixed z-[60] w-[88px] h-[88px] md:w-[104px] md:h-[104px] rounded-full flex items-center justify-center shadow-xl select-none touch-none"
+        style={{
+          backgroundColor: '#fff',
+          border: '1px solid #e8e4de',
+          left: pos.x,
+          top: pos.y,
+          cursor: isDragging ? 'grabbing' : 'grab',
+          transform: isDragging ? 'scale(1.08)' : undefined,
+          transition: isDragging ? 'none' : 'transform 0.2s',
+        }}
       >
         {isOpen ? <X className="w-8 h-8" style={{ color: primary }} /> : (
           <MascotAvatar size={80} mascotUrl={effectiveMascotUrl} primary={primary} roundedClass="rounded-full" fitClass="object-contain" imagePadding={0} imageBackground="transparent" />
