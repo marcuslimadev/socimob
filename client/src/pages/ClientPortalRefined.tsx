@@ -5,6 +5,27 @@ import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, ChevronDown, Che
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
+const PORTAL_RETURN_STATE_KEY = 'portal:return-state';
+
+function getInitialPortalFilters() {
+  if (typeof window === 'undefined') {
+    return {
+      searchTerm: '',
+      businessType: '',
+      propertyType: '',
+      sortBy: 'preco_desc',
+    };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return {
+    searchTerm: params.get('q') || '',
+    businessType: params.get('business') || '',
+    propertyType: params.get('type') || '',
+    sortBy: params.get('sort') || 'preco_desc',
+  };
+}
+
 interface Property {
   id: number;
   titulo: string;
@@ -199,13 +220,14 @@ function getFloatingActionDefaultPosition(viewportWidth: number, viewportHeight:
 
 export default function ClientPortalRefined() {
   const [, navigate] = useLocation();
+  const initialFilters = getInitialPortalFilters();
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [businessType, setBusinessType] = useState('');
-  const [propertyType, setPropertyType] = useState('');
-  const [sortBy, setSortBy] = useState('preco_desc');
+  const [searchTerm, setSearchTerm] = useState(initialFilters.searchTerm);
+  const [businessType, setBusinessType] = useState(initialFilters.businessType);
+  const [propertyType, setPropertyType] = useState(initialFilters.propertyType);
+  const [sortBy, setSortBy] = useState(initialFilters.sortBy);
   const [venderOpen, setVenderOpen] = useState(false);
   const [catalogPhotoIndexes, setCatalogPhotoIndexes] = useState<Record<number, number>>({});
   const [leadModalProperty, setLeadModalProperty] = useState<Property | null>(null);
@@ -222,6 +244,7 @@ export default function ClientPortalRefined() {
 
   const heroRef = useRef<HTMLElement>(null);
   const floatingActionPosRef = useRef(floatingActionPos);
+  const restoredReturnStateRef = useRef(false);
 
   floatingActionPosRef.current = floatingActionPos;
 
@@ -263,6 +286,44 @@ export default function ClientPortalRefined() {
 
     loadProperties();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams();
+    if (searchTerm) params.set('q', searchTerm);
+    if (businessType) params.set('business', businessType);
+    if (propertyType) params.set('type', propertyType);
+    if (sortBy && sortBy !== 'preco_desc') params.set('sort', sortBy);
+
+    const nextUrl = params.toString()
+      ? `${window.location.pathname}?${params.toString()}`
+      : window.location.pathname;
+
+    window.history.replaceState(window.history.state, '', nextUrl);
+  }, [searchTerm, businessType, propertyType, sortBy]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || loading || restoredReturnStateRef.current) return;
+
+    try {
+      const rawState = sessionStorage.getItem(PORTAL_RETURN_STATE_KEY);
+      if (!rawState) return;
+
+      const state = JSON.parse(rawState) as { path?: string; scrollY?: number };
+      const currentPath = `${window.location.pathname}${window.location.search}`;
+
+      if (state.path === currentPath && typeof state.scrollY === 'number') {
+        restoredReturnStateRef.current = true;
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: state.scrollY, behavior: 'auto' });
+          sessionStorage.removeItem(PORTAL_RETURN_STATE_KEY);
+        });
+      }
+    } catch {
+      sessionStorage.removeItem(PORTAL_RETURN_STATE_KEY);
+    }
+  }, [loading]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -344,6 +405,19 @@ export default function ClientPortalRefined() {
         : (base - 1 + total) % total;
       return { ...current, [propertyId]: next };
     });
+  };
+
+  const handleOpenPropertyDetail = (propertyId: number) => {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(PORTAL_RETURN_STATE_KEY, JSON.stringify({
+          path: `${window.location.pathname}${window.location.search}`,
+          scrollY: window.scrollY,
+        }));
+      } catch {}
+    }
+
+    navigate(`/portal/imovel/${propertyId}`);
   };
 
   const handleLeadModalSubmit = async () => {
@@ -888,7 +962,7 @@ export default function ClientPortalRefined() {
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     <button
                       type="button"
-                      onClick={() => navigate(`/portal/imovel/${property.id}`)}
+                      onClick={() => handleOpenPropertyDetail(property.id)}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-900/15 px-4 py-2 text-sm font-semibold text-slate-800"
                     >
                       Ver detalhes

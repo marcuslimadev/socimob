@@ -19,6 +19,8 @@ import { toast } from 'sonner';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
+const PORTAL_RETURN_STATE_KEY = 'portal:return-state';
+
 interface Property {
   id: number;
   titulo: string;
@@ -199,6 +201,23 @@ export default function PropertyDetail() {
   const brandDark = '#0f172a';
   const brandAccent = '#b9935a';
 
+  const handleBackToPortal = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        const rawState = sessionStorage.getItem(PORTAL_RETURN_STATE_KEY);
+        if (rawState) {
+          const state = JSON.parse(rawState) as { path?: string };
+          if (state.path) {
+            navigate(state.path);
+            return;
+          }
+        }
+      } catch {}
+    }
+
+    navigate('/portal');
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       if (!params?.id) return;
@@ -333,14 +352,14 @@ export default function PropertyDetail() {
         <div className="mx-auto max-w-7xl px-4 lg:px-8 py-3 flex items-center justify-between gap-3">
           <button
             type="button"
-            onClick={() => navigate('/portal')}
+            onClick={handleBackToPortal}
             className="inline-flex items-center gap-2 text-sm text-white/85 hover:text-white transition-colors"
           >
             <ArrowLeft size={18} />
             Voltar aos imóveis
           </button>
           <div className="hidden sm:block text-[11px] uppercase tracking-[0.16em] text-white/70">
-            {tenant?.name || 'Imobiliaria'}
+            onClick={handleBackToPortal}
           </div>
         </div>
       </header>
@@ -576,7 +595,7 @@ export default function PropertyDetail() {
               </p>
               <button
                 type="button"
-                onClick={() => navigate('/portal')}
+                onClick={handleBackToPortal}
                 className="mt-4 inline-flex items-center gap-2 text-sm text-slate-800 hover:text-black"
               >
                 Voltar ao catálogo
