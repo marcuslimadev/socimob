@@ -89,7 +89,7 @@ function getPublicLocation(property: Property): string {
 
 function getFloatingActionMetrics(viewportWidth: number, hasMascot: boolean) {
   if (hasMascot) {
-    const size = viewportWidth >= 640 ? 224 : 164;
+    const size = viewportWidth >= 640 ? 320 : 256;
     return { width: size, height: size };
   }
 
