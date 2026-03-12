@@ -169,7 +169,7 @@ export default function ClientPortalRefined() {
   const [businessType, setBusinessType] = useState('');
   const [propertyType, setPropertyType] = useState('');
   const [slideIndex, setSlideIndex] = useState(0);
-  const [sortBy, setSortBy] = useState('preco_asc');
+  const [sortBy, setSortBy] = useState('preco_desc');
   const [slidePhotoIndex, setSlidePhotoIndex] = useState(0);
   const [thumbStart, setThumbStart] = useState(0);
   const [venderOpen, setVenderOpen] = useState(false);
