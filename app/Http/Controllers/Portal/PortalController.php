@@ -628,12 +628,12 @@ class PortalController extends Controller
                 if ($request->email && !$existingLead->email) {
                     $existingLead->email = $request->email;
                 }
-                $existingLead->save();
+                $existingLead->saveQuietly();
 
                 $lead = $existingLead;
             } else {
                 // Create new lead
-                $lead = \App\Models\Lead::create([
+                $lead = new \App\Models\Lead([
                     'tenant_id' => $tenantId,
                     'nome' => $request->nome,
                     'telefone' => $whatsapp,
@@ -645,6 +645,7 @@ class PortalController extends Controller
                         ? "[Chat Portal " . now()->format('d/m/Y H:i') . "] " . $request->interesse
                         : "[Chat Portal " . now()->format('d/m/Y H:i') . "] Lead capturado via chat automatizado do portal",
                 ]);
+                $lead->saveQuietly();
             }
 
             // Get tenant WhatsApp number

@@ -448,6 +448,9 @@ export default function ClientPortalRefined() {
       setLeadSubmitting(true);
       setLeadModalError('');
 
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+
       const interesse = leadModalProperty
         ? `Interesse no imóvel \"${leadModalProperty.titulo}\". Localização: ${getPublicLocation(leadModalProperty)}. Valor: ${formatPrice(leadModalProperty)}. Origem: ${leadModalSource === 'mascot' ? 'mascote do portal' : 'card do catálogo'}.`
         : 'Atendimento solicitado pelo mascote do portal.';
@@ -463,7 +466,8 @@ export default function ClientPortalRefined() {
           whatsapp: formattedPhone,
           interesse,
         }),
-      });
+        signal: controller.signal,
+      }).finally(() => window.clearTimeout(timeoutId));
 
       const data = await response.json();
       if (!response.ok || !data?.success) {
@@ -497,7 +501,11 @@ export default function ClientPortalRefined() {
       closePropertyWhatsAppModal();
       window.location.href = whatsappUrl;
     } catch (error) {
-      setLeadModalError(error instanceof Error ? error.message : 'Não foi possível registrar seu contato.');
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setLeadModalError('A confirmação demorou mais do que o esperado. Tente novamente em alguns segundos.');
+      } else {
+        setLeadModalError(error instanceof Error ? error.message : 'Não foi possível registrar seu contato.');
+      }
     } finally {
       setLeadSubmitting(false);
     }
