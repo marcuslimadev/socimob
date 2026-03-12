@@ -28,9 +28,13 @@ interface ImovelRow {
   exibir: boolean;
   destaque: boolean;
   updated_at: string;
+  deleted_at?: string | null;
+  trash_source?: string | null;
+  trash_reason?: string | null;
 }
 
 type SortField = 'codigo' | 'referencia' | 'titulo' | 'tipo' | 'finalidade' | 'preco' | 'dormitorios' | 'area' | 'localizacao';
+type ViewMode = 'active' | 'trash';
 
 const formatMoney = (value: number) =>
   Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -55,6 +59,7 @@ export default function Properties() {
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('active');
   const [busca, setBusca] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState('todos');
   const [finalidadeFiltro, setFinalidadeFiltro] = useState('todos');
@@ -69,10 +74,15 @@ export default function Properties() {
   const [previewId, setPreviewId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const fetchImoveis = async () => {
+  const fetchImoveis = async (scope: ViewMode = viewMode) => {
     setIsLoading(true);
     try {
-      const response = await api.get('/imoveis', { params: { per_page: 'all' } });
+      const response = await api.get('/imoveis', {
+        params: {
+          per_page: 'all',
+          scope: scope === 'trash' ? 'trash' : 'active',
+        },
+      });
       const rows = Array.isArray(response.data?.data) ? response.data.data : [];
       setImoveis(
         rows.map((item: any) => ({
@@ -100,6 +110,9 @@ export default function Properties() {
           ativo: Boolean(item.active),
           exibir: Boolean(item.exibir_imovel),
           destaque: Boolean(item.destaque),
+          deleted_at: item.deleted_at || null,
+          trash_source: item.trash_source || null,
+          trash_reason: item.trash_reason || null,
         })),
       );
     } catch {
@@ -110,8 +123,8 @@ export default function Properties() {
   };
 
   useEffect(() => {
-    fetchImoveis();
-  }, []);
+    fetchImoveis(viewMode);
+  }, [viewMode]);
 
   useEffect(() => {
     setPagina(1);
@@ -247,13 +260,35 @@ export default function Properties() {
   };
 
   const handleDelete = async (im: ImovelRow) => {
-    if (!window.confirm(`Excluir o imóvel ${im.codigo}? Esta ação não pode ser desfeita.`)) return;
+    if (!window.confirm(`Mover o imóvel ${im.codigo} para a lixeira?`)) return;
     try {
       await api.delete(`/imoveis/${im.id}`);
-      toast.success('Imóvel excluído');
-      await fetchImoveis();
+      toast.success('Imóvel movido para a lixeira');
+      await fetchImoveis(viewMode);
     } catch (error: any) {
       toast.error(error?.response?.data?.error || 'Erro ao excluir imóvel');
+    }
+  };
+
+  const handleRestore = async (im: ImovelRow) => {
+    if (!window.confirm(`Restaurar o imóvel ${im.codigo} da lixeira?`)) return;
+    try {
+      await api.post(`/imoveis/${im.id}/restore`);
+      toast.success('Imóvel restaurado');
+      await fetchImoveis(viewMode);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Erro ao restaurar imóvel');
+    }
+  };
+
+  const handleForceDelete = async (im: ImovelRow) => {
+    if (!window.confirm(`Excluir definitivamente o imóvel ${im.codigo}? Fotos e vídeos locais serão apagados.`)) return;
+    try {
+      await api.delete(`/imoveis/${im.id}/force`);
+      toast.success('Imóvel removido definitivamente');
+      await fetchImoveis(viewMode);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Erro ao excluir definitivamente');
     }
   };
 
@@ -263,7 +298,7 @@ export default function Properties() {
       const response = await api.get('/properties/sync');
       if (response.data?.success) {
         toast.success('Imóveis sincronizados');
-        await fetchImoveis();
+        await fetchImoveis(viewMode);
       } else {
         toast.error(response.data?.error || 'Erro ao sincronizar');
       }
@@ -344,19 +379,35 @@ export default function Properties() {
           {/* Header */}
           <div className="page-header">
             <div>
-              <h1 className="page-title">Imóveis</h1>
+              <h1 className="page-title">{viewMode === 'trash' ? 'Lixeira de Imóveis' : 'Imóveis'}</h1>
               <p className="page-subtitle">
                 {imoveis.length} imóvel(is){' '}
-                {!isLoading && (
+                {!isLoading && viewMode === 'active' && (
                   <>
                     — {imoveis.filter((i) => i.exibir).length} publicados,{' '}
                     {imoveis.filter((i) => i.destaque).length} em destaque,{' '}
                     {imoveis.filter((i) => i.imobi_brasil_sent).length} no Imobi Brasil
                   </>
                 )}
+                {!isLoading && viewMode === 'trash' && (
+                  <>
+                    — {imoveis.filter((i) => i.trash_source === 'admin').length} enviados manualmente,{' '}
+                    {imoveis.filter((i) => i.trash_source === 'sync').length} removidos pela sincronização
+                  </>
+                )}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setViewMode((prev) => (prev === 'active' ? 'trash' : 'active'))}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card hover:bg-accent transition-colors text-sm"
+              >
+                <Trash2 size={15} />
+                {viewMode === 'trash' ? 'Ver imóveis ativos' : 'Ver lixeira'}
+              </button>
+              {viewMode === 'active' && (
+                <>
               <button
                 type="button"
                 onClick={handleSync}
@@ -383,6 +434,8 @@ export default function Properties() {
                 <Plus size={15} />
                 Novo Imóvel
               </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -479,7 +532,9 @@ export default function Properties() {
             </div>
           ) : imoveisPaginados.length === 0 ? (
             <div className="glass-panel rounded-2xl p-12 text-center text-sm text-muted-foreground">
-              Nenhum imóvel encontrado para os filtros atuais.
+              {viewMode === 'trash'
+                ? 'Nenhum imóvel na lixeira para os filtros atuais.'
+                : 'Nenhum imóvel encontrado para os filtros atuais.'}
             </div>
           ) : (
             <>
@@ -543,6 +598,19 @@ export default function Properties() {
                       {/* Badges + Ações */}
                       <div className="flex items-center justify-between pt-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
+                          {viewMode === 'trash' ? (
+                            <>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                {im.trash_source === 'sync' ? 'Sincronização' : 'Admin'}
+                              </span>
+                              {im.deleted_at && (
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(im.deleted_at).toLocaleDateString('pt-BR')}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <>
                           <button
                             type="button"
                             onClick={() => handleToggle(im.id, 'exibir', im.exibir)}
@@ -570,9 +638,32 @@ export default function Properties() {
                             {im.destaque ? 'Destaque' : 'Normal'}
                           </button>
                           <AdsStatusBadge id={im.id} />
+                            </>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-0.5">
+                          {viewMode === 'trash' ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleRestore(im)}
+                                title="Restaurar"
+                                className="px-2 py-1.5 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors text-xs font-medium"
+                              >
+                                Restaurar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleForceDelete(im)}
+                                title="Excluir definitivamente"
+                                className="px-2 py-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors text-xs font-medium"
+                              >
+                                Excluir
+                              </button>
+                            </>
+                          ) : (
+                            <>
                           <button
                             type="button"
                             onClick={() => setPreviewId(im.id)}
@@ -598,6 +689,8 @@ export default function Properties() {
                           >
                             <Trash2 size={15} />
                           </button>
+                          )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -771,6 +864,19 @@ export default function Properties() {
                         {/* Coluna 5: Status agrupado (portal + destaque + ads) */}
                         <td className="p-3">
                           <div className="flex flex-col items-center gap-1.5">
+                            {viewMode === 'trash' ? (
+                              <>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground w-full justify-center">
+                                  {im.trash_source === 'sync' ? 'Sincronização' : 'Admin'}
+                                </span>
+                                <span className="text-xs text-muted-foreground text-center">
+                                  {im.deleted_at
+                                    ? new Date(im.deleted_at).toLocaleString('pt-BR')
+                                    : 'Na lixeira'}
+                                </span>
+                              </>
+                            ) : (
+                              <>
                             <button
                               type="button"
                               onClick={() => handleToggle(im.id, 'exibir', im.exibir)}
@@ -813,12 +919,35 @@ export default function Properties() {
                                 <Zap size={12} className="text-muted-foreground/30" />
                               )}
                             </button>
+                              </>
+                            )}
                           </div>
                         </td>
 
                         {/* Coluna 6: Ações */}
                         <td className="sticky right-0 bg-card p-3 shadow-[-4px_0_8px_rgba(0,0,0,0.06)]">
                           <div className="flex items-center gap-1">
+                            {viewMode === 'trash' ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRestore(im)}
+                                  title="Restaurar"
+                                  className="px-2 py-1.5 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors text-xs font-medium"
+                                >
+                                  Restaurar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleForceDelete(im)}
+                                  title="Excluir definitivamente"
+                                  className="px-2 py-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors text-xs font-medium"
+                                >
+                                  Excluir
+                                </button>
+                              </>
+                            ) : (
+                              <>
                             <button
                               type="button"
                               onClick={() => setPreviewId(im.id)}
@@ -845,6 +974,8 @@ export default function Properties() {
                               <Trash2 size={15} />
                             </button>
                             )}
+                                </>
+                              )}
                           </div>
                         </td>
                       </tr>

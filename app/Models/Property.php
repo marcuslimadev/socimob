@@ -5,10 +5,11 @@ namespace App\Models;
 use App\Models\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Property extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use HasFactory, BelongsToTenant, SoftDeletes;
 
     protected $table = 'imo_properties';
 
@@ -68,6 +69,10 @@ class Property extends Model
         'proprietario_telefone',
         'proprietario_email',
         'proprietario_observacoes',
+        'trash_source',
+        'trash_reason',
+        'trashed_by_user_id',
+        'trash_metadata',
     ];
 
     protected $casts = [
@@ -90,6 +95,8 @@ class Property extends Model
         'latitude' => 'float',
         'longitude' => 'float',
         'last_sync' => 'datetime',
+        'deleted_at' => 'datetime',
+        'trash_metadata' => 'array',
     ];
 
     // Acessores para compatibilidade com o frontend
@@ -187,5 +194,13 @@ class Property extends Model
     public function portalTenants()
     {
         return $this->hasMany(PropertyPortalTenant::class, 'property_id');
+    }
+
+    public function scopePortalInventory($query)
+    {
+        return $query->where(function ($builder) {
+            $builder->whereNotNull('external_id')
+                ->orWhereNotNull('imobi_brasil_external_id');
+        });
     }
 }

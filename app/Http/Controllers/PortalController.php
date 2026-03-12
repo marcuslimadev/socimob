@@ -98,6 +98,11 @@ class PortalController extends Controller
             // Buscar imóveis do banco de dados
             $query = DB::table('imo_properties')
                 ->where('tenant_id', $tenant->id)
+                ->whereNull('deleted_at')
+                ->where(function ($builder) {
+                    $builder->whereNotNull('external_id')
+                        ->orWhereNotNull('imobi_brasil_external_id');
+                })
                 ->where('active', true)
                 ->where('exibir_imovel', true)
                 ->orderBy('created_at', 'desc');
@@ -231,6 +236,11 @@ class PortalController extends Controller
             $imovel = DB::table('imo_properties')
                 ->where('id', $id)
                 ->where('tenant_id', $tenant->id)
+                ->whereNull('deleted_at')
+                ->where(function ($builder) {
+                    $builder->whereNotNull('external_id')
+                        ->orWhereNotNull('imobi_brasil_external_id');
+                })
                 ->where('active', true)
                 ->where('exibir_imovel', true)
                 ->first();
@@ -440,6 +450,7 @@ class PortalController extends Controller
             $property = DB::table('imo_properties')
                 ->where('id', $propertyId)
                 ->where('tenant_id', $tenant->id)
+                ->whereNull('deleted_at')
                 ->first();
 
             if (!$property) {

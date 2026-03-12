@@ -364,6 +364,8 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     // Imóveis - CRUD
     $router->get('/imoveis/export', 'App\Http\Controllers\PropertyController@export');
     $router->get('/imoveis', 'App\Http\Controllers\PropertyController@index');
+    $router->post('/imoveis/{id}/restore', 'App\Http\Controllers\PropertyController@restore');
+    $router->delete('/imoveis/{id}/force', 'App\Http\Controllers\PropertyController@forceDestroy');
     $router->get('/imoveis/portal-opcoes', 'App\Http\Controllers\PropertyController@portalOptions');
     $router->post('/imoveis', 'App\Http\Controllers\PropertyController@store');
     $router->put('/imoveis/{id}', 'App\Http\Controllers\PropertyController@update');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Property;
 use App\Models\Tenant;
 use App\Jobs\SendImobiBrasilImagesJob;
+use App\Services\PropertyTrashService;
 use App\Services\PropertySyncService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -18,10 +19,12 @@ use Illuminate\Validation\Rule;
 class PropertyController extends Controller
 {
     private $syncService;
+    private PropertyTrashService $trashService;
     
-    public function __construct(PropertySyncService $syncService)
+    public function __construct(PropertySyncService $syncService, PropertyTrashService $trashService)
     {
         $this->syncService = $syncService;
+        $this->trashService = $trashService;
     }
 
     private function resolveTenantId(Request $request): ?int
@@ -251,13 +254,23 @@ class PropertyController extends Controller
         }
         
         $perPage = $request->query('per_page', 15);
+        $scope = $request->query('scope', 'active');
         $authUser = $request->user();
         $isTrainee = $authUser?->role === 'trainee';
         $proprietarioCols = ['proprietario_nome', 'proprietario_telefone', 'proprietario_email', 'proprietario_observacoes'];
         
-        $query = Property::where('tenant_id', $tenantId)->orderBy('created_at', 'desc');
+        $query = Property::withTrashed()
+            ->where('tenant_id', $tenantId)
+            ->orderByDesc('deleted_at')
+            ->orderBy('created_at', 'desc');
 
-        if ($request->boolean('published_only')) {
+        if ($scope === 'trash') {
+            $query->onlyTrashed();
+        } elseif ($scope !== 'all') {
+            $query->whereNull('deleted_at');
+        }
+
+        if ($scope !== 'trash' && $request->boolean('published_only')) {
             $query->where('active', true)->where('exibir_imovel', true);
         }
         
@@ -269,7 +282,8 @@ class PropertyController extends Controller
             }
             return response()->json([
                 'data' => $properties,
-                'total' => $properties->count()
+                'total' => $properties->count(),
+                'scope' => $scope,
             ]);
         }
         
@@ -279,6 +293,79 @@ class PropertyController extends Controller
         }
         
         return response()->json($properties);
+    }
+
+    public function restore(Request $request, $id)
+    {
+        $authUser = $request->user();
+        if (!in_array($authUser?->role, ['admin', 'super_admin'])) {
+            return response()->json(['success' => false, 'error' => 'Apenas administradores podem restaurar imóveis'], 403);
+        }
+
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        $property = Property::withTrashed()->where('tenant_id', $tenantId)->onlyTrashed()->find($id);
+        if (!$property) {
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        $restored = $this->trashService->restoreFromTrash($property);
+        $portalTenantIds = $this->getPropertyPortalTenantIds($restored->id, (int) $tenantId);
+        $this->flushPortalCaches($portalTenantIds);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Imóvel restaurado com sucesso',
+            'data' => $restored,
+        ]);
+    }
+
+    public function forceDestroy(Request $request, $id)
+    {
+        $authUser = $request->user();
+        if (!in_array($authUser?->role, ['admin', 'super_admin'])) {
+            return response()->json(['success' => false, 'error' => 'Apenas administradores podem excluir definitivamente imóveis'], 403);
+        }
+
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        $property = Property::withTrashed()->where('tenant_id', $tenantId)->onlyTrashed()->find($id);
+        if (!$property) {
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        $portalTenantIds = $this->getPropertyPortalTenantIds($property->id, (int) $tenantId);
+
+        try {
+            $this->trashService->forceDelete($property);
+            $this->flushPortalCaches($portalTenantIds);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Imóvel removido definitivamente com sucesso',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Property force delete failed', [
+                'tenant_id' => $tenantId,
+                'property_id' => $id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => app()->environment('production')
+                    ? 'Erro interno ao excluir definitivamente o imóvel.'
+                    : $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -1177,12 +1264,18 @@ class PropertyController extends Controller
         }
 
         $portalTenantIds = $this->getPropertyPortalTenantIds($property->id, (int) $tenantId);
-        $property->delete();
+        $this->trashService->moveToTrash(
+            $property,
+            'admin',
+            'manual_delete',
+            $authUser?->id,
+            ['ip' => $request->ip()]
+        );
         $this->flushPortalCaches($portalTenantIds);
 
         return response()->json([
             'success' => true,
-            'message' => 'Imóvel excluído com sucesso',
+            'message' => 'Imóvel movido para a lixeira com sucesso',
         ]);
     }
 

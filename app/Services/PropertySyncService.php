@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Property;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -15,10 +16,12 @@ class PropertySyncService
     private $baseUrl = 'https://www.exclusivalarimoveis.com.br/api/v1/app/imovel';
     private $geocodeCache = [];
     private $lastGeocodeCall = 0;
+    private PropertyTrashService $trashService;
     
     public function __construct()
     {
         $this->apiToken = env('EXCLUSIVA_API_TOKEN');
+        $this->trashService = app(PropertyTrashService::class);
         
         if (!$this->apiToken) {
             // throw new \Exception('EXCLUSIVA_API_TOKEN não configurado no .env');
@@ -43,6 +46,7 @@ class PropertySyncService
             ];
 
             $errorDetails = [];
+            $sourceCodes = [];
             
             $page = 1;
             $totalPages = 1;
@@ -95,8 +99,11 @@ class PropertySyncService
                         continue;
                     }
 
+                    $sourceCodes[] = (string) $codigo;
+
                     // Ignorar imóveis inativos (statusImovel != 1)
                     if (isset($item['statusImovel']) && $item['statusImovel'] != 1) {
+                        $this->trashImportedPropertyByCode((string) $codigo, 'sync_source_inactive');
                         Log::debug("⏭️ Imóvel {$codigo} ignorado (statusImovel={$item['statusImovel']})");
                         continue;
                     }
@@ -113,12 +120,13 @@ class PropertySyncService
 
                         // Pular imóveis marcados como não exibir no site
                         if (isset($imovel['exibirImovel']) && !$imovel['exibirImovel']) {
+                            $this->trashImportedPropertyByCode((string) $codigo, 'sync_hidden_on_source');
                             Log::debug("⏭️ Imóvel {$codigo} ignorado (exibirImovel=false)");
                             continue;
                         }
 
                         // Verificar se já existe
-                        $existing = Property::where('codigo', $codigo)->first();
+                        $existing = Property::withTrashed()->where('codigo', $codigo)->first();
                         
                         $data = $this->mapPropertyData($imovel);
                         
@@ -129,6 +137,11 @@ class PropertySyncService
                         }
                         
                         if ($existing) {
+                            if ($existing->trashed()) {
+                                $this->trashService->restoreFromTrash($existing);
+                                $existing = $existing->fresh();
+                            }
+
                             $existing->update($data);
                             $stats['updated']++;
                             Log::debug("✏️ Imóvel {$codigo} atualizado ({$numImagens} imagens)");
@@ -156,6 +169,8 @@ class PropertySyncService
                 $page++;
                 
             } while ($page <= $totalPages);
+
+            $stats['trashed'] = $this->trashMissingImportedProperties($sourceCodes);
             
             $elapsed = round((microtime(true) - $startTime) * 1000, 2);
             
@@ -190,6 +205,52 @@ class PropertySyncService
                 'error' => $e->getMessage()
             ];
         }
+    }
+
+    private function trashImportedPropertyByCode(string $codigo, string $reason): void
+    {
+        $property = Property::withTrashed()
+            ->where('codigo', $codigo)
+            ->whereColumn('external_id', 'codigo')
+            ->first();
+
+        if ($property && !$property->trashed()) {
+            $this->trashService->moveToTrash($property, 'sync', $reason, null, ['codigo' => $codigo]);
+        }
+    }
+
+    private function trashMissingImportedProperties(array $sourceCodes): int
+    {
+        $normalizedCodes = array_values(array_unique(array_filter(array_map('strval', $sourceCodes))));
+        if (empty($normalizedCodes)) {
+            return 0;
+        }
+
+        $query = Property::query()
+            ->whereNotNull('external_id')
+            ->whereColumn('external_id', 'codigo');
+
+        if (app()->bound('tenant')) {
+            $query->where('tenant_id', app('tenant')->id);
+        }
+
+        $properties = $query
+            ->whereNotIn('codigo', $normalizedCodes)
+            ->get();
+
+        $trashed = 0;
+        foreach ($properties as $property) {
+            $this->trashService->moveToTrash(
+                $property,
+                'sync',
+                'missing_from_source',
+                null,
+                ['codigo' => $property->codigo]
+            );
+            $trashed++;
+        }
+
+        return $trashed;
     }
     
     /**
