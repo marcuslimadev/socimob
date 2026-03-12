@@ -168,10 +168,7 @@ export default function ClientPortalRefined() {
   const [searchTerm, setSearchTerm] = useState('');
   const [businessType, setBusinessType] = useState('');
   const [propertyType, setPropertyType] = useState('');
-  const [slideIndex, setSlideIndex] = useState(0);
   const [sortBy, setSortBy] = useState('preco_desc');
-  const [slidePhotoIndex, setSlidePhotoIndex] = useState(0);
-  const [thumbStart, setThumbStart] = useState(0);
   const [venderOpen, setVenderOpen] = useState(false);
   const [catalogPhotoIndexes, setCatalogPhotoIndexes] = useState<Record<number, number>>({});
   const [leadModalProperty, setLeadModalProperty] = useState<Property | null>(null);
@@ -240,51 +237,6 @@ export default function ClientPortalRefined() {
     } catch {}
   }, []);
 
-  // Up to 6 destaque properties for the slideshow
-  const destaqueProperties = useMemo(
-    () => properties.filter((p) => p.destaque).slice(0, 6),
-    [properties]
-  );
-
-  // Fallback to first property if no destaque ones
-  const slideshowProperties = useMemo(
-    () => (destaqueProperties.length > 0 ? destaqueProperties : properties.slice(0, 1)),
-    [destaqueProperties, properties]
-  );
-
-  const currentSlide = slideshowProperties[slideIndex] ?? null;
-  const currentSlidePhotos = useMemo(
-    () => (currentSlide ? normalizeImages(currentSlide) : []),
-    [currentSlide]
-  );
-  const selectedSlidePhoto = currentSlidePhotos[slidePhotoIndex] || currentSlidePhotos[0] || '';
-  const thumbCount = 4;
-  const visibleThumbs = useMemo(() => {
-    if (currentSlidePhotos.length === 0) return [] as Array<{ photo: string; index: number }>;
-    const maxStart = Math.max(0, currentSlidePhotos.length - thumbCount);
-    const safeStart = Math.min(thumbStart, maxStart);
-    const result: Array<{ photo: string; index: number }> = [];
-    for (let i = 0; i < thumbCount; i += 1) {
-      const idx = currentSlidePhotos.length <= thumbCount
-        ? i % currentSlidePhotos.length
-        : safeStart + i;
-      result.push({ photo: currentSlidePhotos[idx], index: idx });
-    }
-    return result;
-  }, [currentSlidePhotos, thumbStart]);
-
-  // Sem avanço automático: navegação manual por setas/indicadores.
-
-  // Reset slide index when properties change
-  useEffect(() => {
-    setSlideIndex(0);
-  }, [slideshowProperties.length]);
-
-  useEffect(() => {
-    setSlidePhotoIndex(0);
-    setThumbStart(0);
-  }, [currentSlide?.id]);
-
   const filteredProperties = useMemo(() => {
     return properties
       .filter((property) => {
@@ -303,11 +255,6 @@ export default function ClientPortalRefined() {
       return matchesSearch && matchesBusiness && matchesType;
     })
       .sort((a, b) => {
-        if (sortBy === 'destaque') {
-          if (a.destaque && !b.destaque) return -1;
-          if (!a.destaque && b.destaque) return 1;
-          return 0;
-        }
         const aPrice = getPriceValue(a);
         const bPrice = getPriceValue(b);
         if (sortBy === 'preco_desc') {
@@ -644,21 +591,12 @@ export default function ClientPortalRefined() {
       <section ref={heroRef} className="relative overflow-hidden" style={{ background: `linear-gradient(115deg, ${primary}f0 0%, #0a0d16 100%)` }}>
         {/* Parallax background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {currentSlide ? (
-            <img
-              src={normalizeImages(currentSlide)[0]}
-              alt="Destaque"
-              className="parallax-bg absolute left-0 w-full object-cover opacity-25 transition-[opacity] duration-700"
-              style={{ height: '160%', top: '-30%', willChange: 'transform' }}
-            />
-          ) : (
-            <img
-              src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1920&q=80"
-              alt="Imóveis de alto padrão"
-              className="parallax-bg absolute left-0 w-full object-cover opacity-20"
-              style={{ height: '160%', top: '-30%', willChange: 'transform' }}
-            />
-          )}
+          <img
+            src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1920&q=80"
+            alt="Imóveis de alto padrão"
+            className="parallax-bg absolute left-0 w-full object-cover opacity-20"
+            style={{ height: '160%', top: '-30%', willChange: 'transform' }}
+          />
         </div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_35%)]" />
 
@@ -667,11 +605,6 @@ export default function ClientPortalRefined() {
             <p className="text-[11px] uppercase tracking-[0.24em] text-white/80 mb-4">Signature Real Estate</p>
             <h1 className="text-3xl md:text-6xl leading-[1.05] text-white">Imóveis extraordinários para estilos de vida únicos</h1>
             <p className="mt-4 text-sm md:text-base text-white/75 max-w-2xl">{tenant?.slogan || 'Curadoria de residências e investimentos em localizações de alto potencial.'}</p>
-            {currentSlide && (
-              <p className="mt-4 inline-flex rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-white/85">
-                Destaque: {getPublicLocation(currentSlide)}
-              </p>
-            )}
             <div className="mt-6 flex flex-wrap gap-2.5">
               <button
                 type="button"
@@ -682,15 +615,6 @@ export default function ClientPortalRefined() {
                 Ver coleção
                 <ArrowUpRight className="w-4 h-4" />
               </button>
-              {currentSlide && (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/portal/imovel/${currentSlide.id}`)}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-2.5 text-sm font-semibold text-white"
-                >
-                  Imóvel em destaque
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => navigate('/portal/vender')}
@@ -846,144 +770,9 @@ export default function ClientPortalRefined() {
             <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-slate-900">
               <option value="preco_asc">Menor preço</option>
               <option value="preco_desc">Maior preço</option>
-              <option value="destaque">Destaques primeiro</option>
             </select>
           </div>
         </div>
-
-        {/* Slideshow — up to 6 destaque properties */}
-        {slideshowProperties.length > 0 && currentSlide && (
-          <motion.article
-            className="mt-8 mx-auto max-w-[1240px] overflow-hidden rounded-[24px] border border-black/10 bg-white text-slate-900 shadow-[0_16px_44px_rgba(15,23,42,0.12)] lg:h-[460px]"
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="grid h-full lg:grid-cols-[1.28fr_0.72fr]">
-              {/* Image with prev/next controls */}
-              <div className="relative h-[250px] sm:h-[300px] lg:h-full">
-                <div className="h-full flex flex-col">
-                  <div className="flex-1 min-h-0 p-1.5 pb-0">
-                    <img
-                      key={`${currentSlide.id}-${selectedSlidePhoto}`}
-                      src={selectedSlidePhoto}
-                      alt={currentSlide.titulo}
-                      className="w-full h-full rounded-md object-cover transition-opacity duration-500"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="h-[90px] p-1.5 pt-1 relative">
-                    {currentSlidePhotos.length > 4 && (
-                      <button
-                        type="button"
-                        aria-label="Miniaturas anteriores"
-                        onClick={() => setThumbStart((start) => Math.max(0, start - 1))}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full border border-black/10 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 transition-colors"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                    )}
-                    <div className={`h-full grid grid-cols-4 gap-1.5 ${currentSlidePhotos.length > 4 ? 'px-7' : 'px-0'}`}>
-                      {visibleThumbs.map(({ photo, index: realIndex }) => {
-                        const isActive = realIndex === slidePhotoIndex;
-                        return (
-                          <button
-                            key={`${currentSlide.id}-thumb-${realIndex}`}
-                            type="button"
-                            onClick={() => setSlidePhotoIndex(realIndex)}
-                            className={`overflow-hidden rounded-md border transition ${
-                              isActive ? 'border-slate-900 ring-2 ring-slate-300' : 'border-black/15 hover:border-black/40'
-                            }`}
-                          >
-                            <img
-                              src={photo}
-                              alt={`Miniatura ${realIndex + 1}`}
-                              className={`w-full h-full object-cover ${isActive ? '' : 'opacity-85'}`}
-                              loading="lazy"
-                            />
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {currentSlidePhotos.length > 4 && (
-                      <button
-                        type="button"
-                        aria-label="Próximas miniaturas"
-                        onClick={() => setThumbStart((start) => Math.min(Math.max(0, currentSlidePhotos.length - 4), start + 1))}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full border border-black/10 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 transition-colors"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {/* Slide counter */}
-                {slideshowProperties.length > 1 && (
-                  <span className="absolute top-3 right-3 rounded-full bg-black/60 px-3 py-1 text-[11px] text-white tracking-wide">
-                    {slideIndex + 1} / {slideshowProperties.length}
-                  </span>
-                )}
-              </div>
-
-              {/* Property info */}
-              <div className="p-5 lg:p-6 flex flex-col overflow-hidden">
-                <p className="inline-flex self-start rounded-full border border-black/10 bg-slate-50 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-slate-600">
-                  {getPurpose(currentSlide)}
-                </p>
-                <h2 className="mt-4 text-2xl lg:text-3xl leading-tight line-clamp-2">{currentSlide.titulo}</h2>
-                <p className="mt-2 text-sm text-slate-500 flex items-center gap-1.5 line-clamp-1"><MapPin className="w-4 h-4 shrink-0" />{getPublicLocation(currentSlide)}</p>
-                <p className="mt-4 text-3xl" style={{ color: secondary }}>{formatPrice(currentSlide)}</p>
-                <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] text-slate-600">
-                  <p className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" />{currentSlide.quartos || currentSlide.dormitorios || '--'}</p>
-                  <p className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{currentSlide.banheiros || '--'}</p>
-                  <p className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{currentSlide.area_util || currentSlide.area_total || '--'}m²</p>
-                </div>
-
-                {/* Dot indicators */}
-                {slideshowProperties.length > 1 && (
-                  <div className="mt-5 flex items-center gap-3">
-                    {slideshowProperties.map((_, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        aria-label={`Slide ${i + 1}`}
-                        onClick={() => setSlideIndex(i)}
-                        className="w-2 h-2 rounded-full transition-all duration-300"
-                        style={{ backgroundColor: i === slideIndex ? secondary : '#cbd5e1' }}
-                      />
-                    ))}
-                    <button
-                      type="button"
-                      aria-label="Anterior"
-                      onClick={() => setSlideIndex((i) => (i - 1 + slideshowProperties.length) % slideshowProperties.length)}
-                      className="ml-1 inline-flex items-center justify-center w-7 h-7 rounded-full border border-black/10 bg-white hover:bg-slate-50 text-slate-700"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Próximo"
-                      onClick={() => setSlideIndex((i) => (i + 1) % slideshowProperties.length)}
-                      className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-black/10 bg-white hover:bg-slate-50 text-slate-700"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => navigate(`/portal/imovel/${currentSlide.id}`)}
-                  className="mt-auto pt-6 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold self-start"
-                  style={{ backgroundColor: secondary, color: '#111827' }}
-                >
-                  Ver imóvel em destaque
-                  <ArrowUpRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </motion.article>
-        )}
 
         <div className="mt-8 mb-2 flex items-end justify-between">
           <div>
