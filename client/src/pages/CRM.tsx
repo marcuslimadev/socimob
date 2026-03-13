@@ -535,12 +535,44 @@ const MessageStatusIcon = memo(({ status }: { status?: string }) => {
   return null;
 });
 
+const WhatsAppShortcutButton = memo(({ phone, name, interestLabel, onClick }: {
+  phone: string | null | undefined;
+  name: string;
+  interestLabel?: string;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+}) => {
+  const whatsappUrl = buildWhatsAppUrl(
+    phone,
+    interestLabel ? `Olá, ${name}! Vi seu interesse em ${interestLabel}.` : `Olá, ${name}!`,
+  );
+
+  if (!whatsappUrl) return null;
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="h-7 w-7 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+      onClick={(event) => {
+        event.stopPropagation();
+        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+        onClick?.(event);
+      }}
+      title="Abrir WhatsApp"
+    >
+      <MessageCircle className="w-3.5 h-3.5" />
+    </Button>
+  );
+});
+
 const ClientCard = memo(({ client, isSelected, onSelect }: {
   client: CRMClient;
   isSelected: boolean;
   onSelect: (client: CRMClient) => void;
 }) => {
   const classif = client.classificacao;
+  const leadInterest = extractLeadInterest(client);
   return (
     <button
       onClick={() => onSelect(client)}
@@ -565,7 +597,14 @@ const ClientCard = memo(({ client, isSelected, onSelect }: {
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{formatPhoneDisplay(client.telefone)}</p>
+          <div className="flex items-center gap-1 mt-0.5">
+            <p className="text-xs text-muted-foreground truncate">{formatPhoneDisplay(client.telefone)}</p>
+            <WhatsAppShortcutButton
+              phone={client.telefone}
+              name={client.nome}
+              interestLabel={leadInterest.displayLabel || leadInterest.summary}
+            />
+          </div>
           {client.ultima_mensagem && (
             <p className="text-xs text-muted-foreground/70 truncate mt-1">
               {truncateMsg(client.ultima_mensagem, 40)}
@@ -604,6 +643,7 @@ const DataRow = memo(({ client, isSelected, onSelect, onDelete, isDeleting }: {
 }) => {
   const statusConf = STATUS_CONFIG[client.status as StatusKey] || STATUS_CONFIG.novo;
   const classif = client.classificacao;
+  const leadInterest = extractLeadInterest(client);
   return (
     <tr
       onClick={() => onSelect(client)}
@@ -649,7 +689,16 @@ const DataRow = memo(({ client, isSelected, onSelect, onDelete, isDeleting }: {
           </div>
         </div>
       </td>
-      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{formatPhoneDisplay(client.telefone)}</td>
+      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+        <div className="flex items-center gap-1.5">
+          <span>{formatPhoneDisplay(client.telefone)}</span>
+          <WhatsAppShortcutButton
+            phone={client.telefone}
+            name={client.nome}
+            interestLabel={leadInterest.displayLabel || leadInterest.summary}
+          />
+        </div>
+      </td>
       <td className="px-4 py-3">
         <span className={cn('text-[11px] font-semibold px-2.5 py-1 rounded-full border', statusConf.bg, statusConf.color)}>
           {statusConf.label}
