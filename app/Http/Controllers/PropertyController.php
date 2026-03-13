@@ -172,6 +172,47 @@ class PropertyController extends Controller
         return [(int) $captador->id, (string) $captador->name];
     }
 
+    private function hydratePropertyUserNames(iterable $properties, int $tenantId): void
+    {
+        $ids = [];
+
+        foreach ($properties as $property) {
+            $captadorId = (int) ($property->captador_user_id ?? 0);
+            $inseridoPorId = (int) ($property->inserido_por_user_id ?? 0);
+
+            if ($captadorId > 0) {
+                $ids[] = $captadorId;
+            }
+
+            if ($inseridoPorId > 0) {
+                $ids[] = $inseridoPorId;
+            }
+        }
+
+        $ids = array_values(array_unique(array_filter($ids, static fn (int $id) => $id > 0)));
+        if (empty($ids)) {
+            return;
+        }
+
+        $usersById = User::query()
+            ->where('tenant_id', $tenantId)
+            ->whereIn('id', $ids)
+            ->pluck('name', 'id');
+
+        foreach ($properties as $property) {
+            $captadorId = (int) ($property->captador_user_id ?? 0);
+            $inseridoPorId = (int) ($property->inserido_por_user_id ?? 0);
+
+            if ($captadorId > 0 && isset($usersById[$captadorId])) {
+                $property->captador_nome = $usersById[$captadorId];
+            }
+
+            if ($inseridoPorId > 0 && isset($usersById[$inseridoPorId])) {
+                $property->inserido_por_nome = $usersById[$inseridoPorId];
+            }
+        }
+    }
+
     private function resolveTenantOpenAiKey(int $tenantId): ?string
     {
         $tenantConfig = DB::table('tenant_configs')
@@ -380,6 +421,7 @@ class PropertyController extends Controller
         // Se pedir todos sem paginação
         if ($perPage == 100 || $perPage == 'all') {
             $properties = $query->get();
+            $this->hydratePropertyUserNames($properties, (int) $tenantId);
             if ($isTrainee) {
                 $properties->each->makeHidden($proprietarioCols);
             }
@@ -391,6 +433,7 @@ class PropertyController extends Controller
         }
         
         $properties = $query->paginate($perPage);
+        $this->hydratePropertyUserNames($properties->getCollection(), (int) $tenantId);
         if ($isTrainee) {
             $properties->getCollection()->each->makeHidden($proprietarioCols);
         }
@@ -1240,6 +1283,9 @@ class PropertyController extends Controller
         }
 
         $data = $property->toArray();
+        $this->hydratePropertyUserNames([$property], (int) $tenantId);
+        $data['captador_nome'] = $property->captador_nome;
+        $data['inserido_por_nome'] = $property->inserido_por_nome;
         $authUser = $request->user();
         if ($authUser?->role === 'trainee') {
             unset($data['proprietario_nome'], $data['proprietario_telefone'], $data['proprietario_email'], $data['proprietario_observacoes']);
