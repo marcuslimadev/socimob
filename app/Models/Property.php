@@ -67,6 +67,9 @@ class Property extends Model
         // Quem inseriu (interno, não exibir ao portal)
         'inserido_por_user_id',
         'inserido_por_nome',
+        // Captador do imóvel (interno)
+        'captador_user_id',
+        'captador_nome',
         // Dados do proprietário (interno, não exibir ao portal)
         'proprietario_nome',
         'proprietario_telefone',

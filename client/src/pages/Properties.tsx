@@ -20,6 +20,7 @@ interface ImovelRow {
   banheiros: number;
   area: number;
   localizacao: string;
+  captador_nome: string | null;
   inserido_por_nome: string | null;
   proprietario_nome: string | null;
   proprietario_telefone: string | null;
@@ -133,6 +134,7 @@ export default function Properties() {
           banheiros: parseInt(item.banheiros) || 0,
           area: parseFloat(item.area_total) || 0,
           localizacao: [item.bairro, item.cidade].filter(Boolean).join(', ') || '-',
+          captador_nome: item.captador_nome || null,
           inserido_por_nome: item.inserido_por_nome || null,
           proprietario_nome: item.proprietario_nome || null,
           proprietario_telefone: item.proprietario_telefone || null,
@@ -645,9 +647,9 @@ export default function Properties() {
 
                       <p className="text-xs text-muted-foreground font-mono">{im.codigo}</p>
 
-                      {im.inserido_por_nome && (
+                      {(im.captador_nome || im.proprietario_nome) && (
                         <p className="text-xs text-muted-foreground">
-                          <span className="font-medium">Captador:</span> {im.inserido_por_nome}
+                          {im.captador_nome && <><span className="font-medium">Captador:</span> {im.captador_nome}</>}
                           {!isTrainee && im.proprietario_nome && (
                             <span> · <span className="font-medium">Prop.:</span> {im.proprietario_nome}</span>
                           )}
@@ -960,8 +962,8 @@ export default function Properties() {
                         {/* Coluna 4b: Captador / Proprietário */}
                         <td className="p-3">
                           <div className="flex flex-col gap-0.5">
-                            {im.inserido_por_nome
-                              ? <span className="text-sm text-foreground/80">{im.inserido_por_nome}</span>
+                            {im.captador_nome
+                              ? <span className="text-sm text-foreground/80">{im.captador_nome}</span>
                               : <span className="text-xs text-muted-foreground/40">—</span>}
                             {!isTrainee && im.proprietario_nome && (
                               <span className="text-xs text-muted-foreground" title="Proprietário">
@@ -999,6 +1001,11 @@ export default function Properties() {
                                 <span className="text-foreground/80">
                                   <span className="text-muted-foreground">Inserido:</span> {formatDateTime(im.created_at)}
                                 </span>
+                                {im.inserido_por_nome && (
+                                  <span className="text-foreground/80">
+                                    <span className="text-muted-foreground">Cadastrado por:</span> {im.inserido_por_nome}
+                                  </span>
+                                )}
                                 <span className="text-foreground/80">
                                   <span className="text-muted-foreground">Atualizado:</span> {formatDateTime(im.updated_at)}
                                 </span>

@@ -367,6 +367,7 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->post('/imoveis/{id}/restore', 'App\Http\Controllers\PropertyController@restore');
     $router->delete('/imoveis/{id}/force', 'App\Http\Controllers\PropertyController@forceDestroy');
     $router->get('/imoveis/portal-opcoes', 'App\Http\Controllers\PropertyController@portalOptions');
+    $router->get('/imoveis/captadores', 'App\Http\Controllers\PropertyController@captadores');
     $router->post('/imoveis', 'App\Http\Controllers\PropertyController@store');
     $router->get('/imoveis/{id}/documentos', 'App\Http\Controllers\PropertyController@listDocuments');
     $router->post('/imoveis/{id}/documentos', 'App\Http\Controllers\PropertyController@uploadDocument');

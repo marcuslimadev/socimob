@@ -185,6 +185,7 @@ const defaultFormData = {
   descricao_resumida: '',
   local_chaves: '',
   status_chaves: 'disponivel',
+  captador_user_id: '',
   proprietario_nome: '',
   proprietario_telefone: '',
   proprietario_email: '',
@@ -223,6 +224,12 @@ interface PortalTenantOption {
   name: string;
   domain?: string;
   is_owner?: boolean;
+}
+
+interface CaptadorOption {
+  id: number;
+  name: string;
+  email?: string;
 }
 
 interface PropertyDocument {
@@ -266,6 +273,8 @@ export default function ImovelFormWizard() {
   const [formData, setFormData] = useState(defaultFormData);
   const [portalOptions, setPortalOptions] = useState<PortalTenantOption[]>([]);
   const [isLoadingPortalOptions, setIsLoadingPortalOptions] = useState(false);
+  const [captadores, setCaptadores] = useState<CaptadorOption[]>([]);
+  const [isLoadingCaptadores, setIsLoadingCaptadores] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isSendingImobiBrasil, setIsSendingImobiBrasil] = useState(false);
   const [imobibrasilStatus, setImobiBrasilStatus] = useState<{ enviado: boolean; data_envio?: string; erro?: string }>({ enviado: false });
@@ -306,6 +315,23 @@ export default function ImovelFormWizard() {
     };
 
     loadPortalOptions();
+  }, []);
+
+  useEffect(() => {
+    const loadCaptadores = async () => {
+      try {
+        setIsLoadingCaptadores(true);
+        const response = await api.get('/imoveis/captadores');
+        setCaptadores(Array.isArray(response.data?.captadores) ? response.data.captadores : []);
+      } catch (error) {
+        console.error('Erro ao carregar captadores:', error);
+        setCaptadores([]);
+      } finally {
+        setIsLoadingCaptadores(false);
+      }
+    };
+
+    loadCaptadores();
   }, []);
 
   const handleBuscarCep = async () => {
@@ -369,6 +395,7 @@ export default function ImovelFormWizard() {
           descricao_resumida: item.descricao_resumida || '',
           local_chaves: item.local_chaves || '',
           status_chaves: item.status_chaves || 'disponivel',
+          captador_user_id: item.captador_user_id != null ? String(item.captador_user_id) : '',
           proprietario_nome: item.proprietario_nome || '',
           proprietario_telefone: item.proprietario_telefone || '',
           proprietario_email: item.proprietario_email || '',
@@ -509,6 +536,7 @@ export default function ImovelFormWizard() {
             nome_condominio: formData.nome_condominio,
             descricao: formData.descricao,
             descricao_resumida: formData.descricao_resumida,
+            captador_user_id: formData.captador_user_id ? Number(formData.captador_user_id) : null,
             proprietario_nome: formData.proprietario_nome,
             proprietario_telefone: formData.proprietario_telefone,
             proprietario_email: formData.proprietario_email,
@@ -869,6 +897,7 @@ export default function ImovelFormWizard() {
       if (formData.descricao_resumida) formDataToSend.append('descricao_resumida', formData.descricao_resumida);
       if (formData.local_chaves) formDataToSend.append('local_chaves', formData.local_chaves);
       if (formData.status_chaves) formDataToSend.append('status_chaves', formData.status_chaves);
+      if (formData.captador_user_id) formDataToSend.append('captador_user_id', formData.captador_user_id);
       if (formData.proprietario_nome) formDataToSend.append('proprietario_nome', formData.proprietario_nome);
       if (formData.proprietario_telefone) formDataToSend.append('proprietario_telefone', formData.proprietario_telefone);
       if (formData.proprietario_email) formDataToSend.append('proprietario_email', formData.proprietario_email);
@@ -1074,6 +1103,7 @@ export default function ImovelFormWizard() {
       if (formData.descricao_resumida) formDataToSend.append('descricao_resumida', formData.descricao_resumida);
       if (formData.local_chaves) formDataToSend.append('local_chaves', formData.local_chaves);
       if (formData.status_chaves) formDataToSend.append('status_chaves', formData.status_chaves);
+      if (formData.captador_user_id) formDataToSend.append('captador_user_id', formData.captador_user_id);
       if (formData.proprietario_nome) formDataToSend.append('proprietario_nome', formData.proprietario_nome);
       if (formData.proprietario_telefone) formDataToSend.append('proprietario_telefone', formData.proprietario_telefone);
       if (formData.proprietario_email) formDataToSend.append('proprietario_email', formData.proprietario_email);
@@ -1763,6 +1793,22 @@ export default function ImovelFormWizard() {
             <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 p-4">
               <p className="text-sm font-semibold text-foreground mb-1">Dados do proprietário</p>
               <p className="text-xs text-amber-100/80 mb-4">Uso interno. Esses dados não aparecem no portal.</p>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-foreground mb-2">Captador</label>
+                <select
+                  value={formData.captador_user_id}
+                  onChange={(e) => setFormData({ ...formData, captador_user_id: e.target.value })}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  <option value="">Selecione um corretor</option>
+                  {captadores.map((captador) => (
+                    <option key={captador.id} value={captador.id}>{captador.name}</option>
+                  ))}
+                </select>
+                {isLoadingCaptadores && (
+                  <p className="mt-2 text-xs text-muted-foreground">Carregando corretores...</p>
+                )}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">Nome do proprietário</label>
@@ -2300,6 +2346,18 @@ export default function ImovelFormWizard() {
                       <span className="ml-2 text-foreground font-medium">{formData.proprietario_observacoes}</span>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {formData.captador_user_id && (
+              <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+                <h3 className="text-lg font-bold text-foreground mb-4">Captação</h3>
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Captador:</span>
+                  <span className="ml-2 text-foreground font-medium">
+                    {captadores.find((captador) => String(captador.id) === String(formData.captador_user_id))?.name || 'Corretor selecionado'}
+                  </span>
                 </div>
               </div>
             )}

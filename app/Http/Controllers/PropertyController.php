@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\PropertyDocument;
 use App\Models\Property;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Jobs\SendImobiBrasilImagesJob;
 use App\Services\PropertyTrashService;
 use App\Services\PropertySyncService;
@@ -148,6 +149,27 @@ class PropertyController extends Controller
     {
         $user = $request->user();
         return $user->id ?? null;
+    }
+
+    private function resolveCaptadorData(int $tenantId, mixed $captadorUserId): array
+    {
+        $captadorId = (int) $captadorUserId;
+        if ($captadorId <= 0) {
+            return [null, null];
+        }
+
+        $captador = User::query()
+            ->where('tenant_id', $tenantId)
+            ->where('role', 'corretor')
+            ->where('id', $captadorId)
+            ->select('id', 'name')
+            ->first();
+
+        if (!$captador) {
+            return [null, null];
+        }
+
+        return [(int) $captador->id, (string) $captador->name];
     }
 
     private function resolveTenantOpenAiKey(int $tenantId): ?string
@@ -374,6 +396,29 @@ class PropertyController extends Controller
         }
         
         return response()->json($properties);
+    }
+
+    public function captadores(Request $request)
+    {
+        $tenantId = $this->resolveTenantId($request);
+
+        if (!$tenantId) {
+            return response()->json(['error' => 'No tenant context'], 400);
+        }
+
+        $captadores = User::query()
+            ->where('tenant_id', $tenantId)
+            ->where('role', 'corretor')
+            ->where(function ($query) {
+                $query->whereNull('is_active')->orWhere('is_active', true);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return response()->json([
+            'success' => true,
+            'captadores' => $captadores,
+        ]);
     }
 
     public function restore(Request $request, $id)
@@ -1013,6 +1058,7 @@ class PropertyController extends Controller
             'media.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,avif,jfif,heic,heif,mp4,mov,m4v,avi,webm,mkv|max:102400', // Max 100MB
             'existing_images' => 'nullable|string', // JSON array de URLs existentes
             'destaque_index' => 'nullable|integer',
+            'captador_user_id' => 'nullable|integer',
             // Dados do proprietário (interno)
             'proprietario_nome' => 'nullable|string|max:150',
             'proprietario_telefone' => 'nullable|string|max:30',
@@ -1044,6 +1090,9 @@ class PropertyController extends Controller
 
             // ========== PREPARAR DADOS ==========
             $data = $this->normalizeStructuredPropertyData($validator->validated());
+            [$captadorUserId, $captadorNome] = $this->resolveCaptadorData($tenantId, $data['captador_user_id'] ?? null);
+            $data['captador_user_id'] = $captadorUserId;
+            $data['captador_nome'] = $captadorNome;
             
             // ========== VALIDAÇÃO DE PORTAL_TENANT_IDS (APENAS TENANTS ASSOCIADOS) ==========
             // Portal tenant IDs devem incluir apenas tenants associados ao tenant atual
@@ -1289,6 +1338,7 @@ class PropertyController extends Controller
             'media.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp,avif,jfif,heic,heif,mp4,mov,m4v,avi,webm,mkv|max:102400', // Max 100MB
             'existing_images' => 'nullable|string', // JSON array de URLs existentes
             'destaque_index' => 'nullable|integer',
+            'captador_user_id' => 'nullable|integer',
             // Dados do proprietário (interno)
             'proprietario_nome' => 'nullable|string|max:150',
             'proprietario_telefone' => 'nullable|string|max:30',
@@ -1312,6 +1362,9 @@ class PropertyController extends Controller
         try {
             // ========== PREPARAR DADOS ==========
             $data = $this->normalizeStructuredPropertyData($validator->validated());
+            [$captadorUserId, $captadorNome] = $this->resolveCaptadorData($tenantId, $data['captador_user_id'] ?? null);
+            $data['captador_user_id'] = $captadorUserId;
+            $data['captador_nome'] = $captadorNome;
             
             // NUNCA alterar quem inseriu o imóvel
             unset($data['inserido_por_user_id'], $data['inserido_por_nome']);
