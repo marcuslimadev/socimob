@@ -647,12 +647,9 @@ export default function Properties() {
 
                       <p className="text-xs text-muted-foreground font-mono">{im.codigo}</p>
 
-                      {(im.captador_nome || im.proprietario_nome) && (
+                      {im.captador_nome && (
                         <p className="text-xs text-muted-foreground">
-                          {im.captador_nome && <><span className="font-medium">Captador:</span> {im.captador_nome}</>}
-                          {!isTrainee && im.proprietario_nome && (
-                            <span> · <span className="font-medium">Prop.:</span> {im.proprietario_nome}</span>
-                          )}
+                          <span className="font-medium">Captador:</span> {im.captador_nome}
                         </p>
                       )}
 
@@ -965,11 +962,6 @@ export default function Properties() {
                             {im.captador_nome
                               ? <span className="text-sm text-foreground/80">{im.captador_nome}</span>
                               : <span className="text-xs text-muted-foreground/40">—</span>}
-                            {!isTrainee && im.proprietario_nome && (
-                              <span className="text-xs text-muted-foreground" title="Proprietário">
-                                🏠 {im.proprietario_nome}
-                              </span>
-                            )}
                           </div>
                         </td>
 
