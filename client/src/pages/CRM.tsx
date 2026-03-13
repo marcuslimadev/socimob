@@ -24,6 +24,7 @@ import {
   Maximize2,
   Minimize2,
   Key,
+  Eye,
   Filter,
   Trash2,
 } from 'lucide-react';

@@ -185,6 +185,10 @@ const defaultFormData = {
   descricao_resumida: '',
   local_chaves: '',
   status_chaves: 'disponivel',
+  proprietario_nome: '',
+  proprietario_telefone: '',
+  proprietario_email: '',
+  proprietario_observacoes: '',
   caracteristicas: [] as string[],
   classificacoes: [] as string[],
   visibilidade_endereco: 'bairro_cidade',
@@ -365,6 +369,10 @@ export default function ImovelFormWizard() {
           descricao_resumida: item.descricao_resumida || '',
           local_chaves: item.local_chaves || '',
           status_chaves: item.status_chaves || 'disponivel',
+          proprietario_nome: item.proprietario_nome || '',
+          proprietario_telefone: item.proprietario_telefone || '',
+          proprietario_email: item.proprietario_email || '',
+          proprietario_observacoes: item.proprietario_observacoes || '',
           caracteristicas: Array.from(new Set([
             ...parseStoredSelections(item.caracteristicas),
             ...(item.em_condominio ? ['condominio'] : []),
@@ -501,6 +509,10 @@ export default function ImovelFormWizard() {
             nome_condominio: formData.nome_condominio,
             descricao: formData.descricao,
             descricao_resumida: formData.descricao_resumida,
+            proprietario_nome: formData.proprietario_nome,
+            proprietario_telefone: formData.proprietario_telefone,
+            proprietario_email: formData.proprietario_email,
+            proprietario_observacoes: formData.proprietario_observacoes,
             caracteristicas: stringifySelections(formData.caracteristicas),
             classificacoes: stringifySelections(formData.classificacoes),
             visibilidade_endereco: formData.visibilidade_endereco,
@@ -857,6 +869,10 @@ export default function ImovelFormWizard() {
       if (formData.descricao_resumida) formDataToSend.append('descricao_resumida', formData.descricao_resumida);
       if (formData.local_chaves) formDataToSend.append('local_chaves', formData.local_chaves);
       if (formData.status_chaves) formDataToSend.append('status_chaves', formData.status_chaves);
+      if (formData.proprietario_nome) formDataToSend.append('proprietario_nome', formData.proprietario_nome);
+      if (formData.proprietario_telefone) formDataToSend.append('proprietario_telefone', formData.proprietario_telefone);
+      if (formData.proprietario_email) formDataToSend.append('proprietario_email', formData.proprietario_email);
+      if (formData.proprietario_observacoes) formDataToSend.append('proprietario_observacoes', formData.proprietario_observacoes);
       if (formData.visibilidade_endereco) formDataToSend.append('visibilidade_endereco', formData.visibilidade_endereco);
       formData.portal_tenant_ids.forEach((tenantId) => {
         formDataToSend.append('portal_tenant_ids[]', String(tenantId));
@@ -1058,6 +1074,10 @@ export default function ImovelFormWizard() {
       if (formData.descricao_resumida) formDataToSend.append('descricao_resumida', formData.descricao_resumida);
       if (formData.local_chaves) formDataToSend.append('local_chaves', formData.local_chaves);
       if (formData.status_chaves) formDataToSend.append('status_chaves', formData.status_chaves);
+      if (formData.proprietario_nome) formDataToSend.append('proprietario_nome', formData.proprietario_nome);
+      if (formData.proprietario_telefone) formDataToSend.append('proprietario_telefone', formData.proprietario_telefone);
+      if (formData.proprietario_email) formDataToSend.append('proprietario_email', formData.proprietario_email);
+      if (formData.proprietario_observacoes) formDataToSend.append('proprietario_observacoes', formData.proprietario_observacoes);
       if (formData.visibilidade_endereco) formDataToSend.append('visibilidade_endereco', formData.visibilidade_endereco);
       formData.portal_tenant_ids.forEach((tenantId) => formDataToSend.append('portal_tenant_ids[]', String(tenantId)));
       formDataToSend.append('active', formData.active ? '1' : '0');
@@ -1739,6 +1759,55 @@ export default function ImovelFormWizard() {
                 </div>
               </div>
             </div>
+
+            <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 p-4">
+              <p className="text-sm font-semibold text-foreground mb-1">Dados do proprietário</p>
+              <p className="text-xs text-amber-100/80 mb-4">Uso interno. Esses dados não aparecem no portal.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Nome do proprietário</label>
+                  <input
+                    type="text"
+                    value={formData.proprietario_nome}
+                    onChange={(e) => setFormData({ ...formData, proprietario_nome: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    placeholder="Nome completo"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Telefone do proprietário</label>
+                  <input
+                    type="text"
+                    value={formData.proprietario_telefone}
+                    onChange={(e) => setFormData({ ...formData, proprietario_telefone: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">E-mail do proprietário</label>
+                  <input
+                    type="email"
+                    value={formData.proprietario_email}
+                    onChange={(e) => setFormData({ ...formData, proprietario_email: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    placeholder="email@exemplo.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Observações</label>
+                  <input
+                    type="text"
+                    value={formData.proprietario_observacoes}
+                    onChange={(e) => setFormData({ ...formData, proprietario_observacoes: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    placeholder="Observações internas"
+                  />
+                </div>
+              </div>
+            </div>
           </motion.div>
         );
 
@@ -2202,6 +2271,38 @@ export default function ImovelFormWizard() {
                 </div>
               )}
             </div>
+
+            {(formData.proprietario_nome || formData.proprietario_telefone || formData.proprietario_email || formData.proprietario_observacoes) && (
+              <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+                <h3 className="text-lg font-bold text-foreground mb-4">Proprietário</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  {formData.proprietario_nome && (
+                    <div>
+                      <span className="text-muted-foreground">Nome:</span>
+                      <span className="ml-2 text-foreground font-medium">{formData.proprietario_nome}</span>
+                    </div>
+                  )}
+                  {formData.proprietario_telefone && (
+                    <div>
+                      <span className="text-muted-foreground">Telefone:</span>
+                      <span className="ml-2 text-foreground font-medium">{formData.proprietario_telefone}</span>
+                    </div>
+                  )}
+                  {formData.proprietario_email && (
+                    <div>
+                      <span className="text-muted-foreground">E-mail:</span>
+                      <span className="ml-2 text-foreground font-medium">{formData.proprietario_email}</span>
+                    </div>
+                  )}
+                  {formData.proprietario_observacoes && (
+                    <div className="md:col-span-2">
+                      <span className="text-muted-foreground">Observações:</span>
+                      <span className="ml-2 text-foreground font-medium">{formData.proprietario_observacoes}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="bg-white/5 rounded-lg p-6 border border-white/10">
               <h3 className="text-lg font-bold text-foreground mb-4">Fotos e Vídeos</h3>
