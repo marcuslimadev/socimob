@@ -177,7 +177,13 @@ function normalizeOriginValue(value: unknown) {
     .trim();
 
   if (normalized === 'chaves na mao') return 'Chaves na Mão';
-  if (['site', 'form', 'formulario', 'portal', 'manual'].includes(normalized)) return 'Site';
+  if (
+    ['site', 'form', 'formulario', 'portal', 'manual', 'crm', 'lead crm', 'outro'].includes(normalized) ||
+    normalized.includes('form') ||
+    normalized.includes('site') ||
+    normalized.includes('portal') ||
+    normalized.includes('crm')
+  ) return 'Site';
   if (normalized === 'whatsapp') return 'WhatsApp';
   if (normalized === 'sms') return 'SMS';
   if (/^[A-Z0-9\s]+$/.test(rawValue)) return rawValue;
@@ -352,6 +358,25 @@ function formatPhoneDisplay(phone: string | null | undefined) {
   return phone;
 }
 
+function normalizeWhatsAppPhone(phone: string | null | undefined) {
+  if (!phone) return '';
+
+  const digits = phone.replace(/\D/g, '');
+  if (!digits) return '';
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) return digits;
+  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+
+  return digits;
+}
+
+function buildWhatsAppUrl(phone: string | null | undefined, message?: string | null) {
+  const normalizedPhone = normalizeWhatsAppPhone(phone);
+  if (!normalizedPhone) return '';
+
+  const encodedMessage = message?.trim() ? `?text=${encodeURIComponent(message.trim())}` : '';
+  return `https://wa.me/${normalizedPhone}${encodedMessage}`;
+}
+
 function formatHtmlMessage(html: string) {
   return html.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
 }
@@ -371,6 +396,102 @@ function normalizeObservacoes(value?: string | null) {
   const sepIdx = text.indexOf('--- Atualização de Lead ---');
   if (sepIdx > 0) text = text.slice(0, sepIdx).trim();
   return text;
+}
+
+function extractLeadInterest(client: CRMClient) {
+  const normalizedSources = [
+    normalizeObservacoes(client.observacoes_cliente),
+    normalizeObservacoes(client.observacoes),
+  ].filter(Boolean);
+
+  let summary = '';
+  let propertyLink = '';
+  let propertyTitle = '';
+  let propertyCode = '';
+
+  const summaryPatterns = [
+    /tenho interesse no imóvel.+/i,
+    /imóvel id\s*\d+:.+/i,
+    /referência do imóvel:.+/i,
+    /referência:.+/i,
+    /solicitou avaliação de imóvel.+/i,
+    /solicitou avaliacao de imovel.+/i,
+    /solicitou cadastro de imóvel.+/i,
+    /solicitou cadastro de imovel.+/i,
+  ];
+
+  const cleanFragment = (value: string) => value
+    .replace(/^\[[^\]]+\]\s*/, '')
+    .replace(/^[-:;,\s]+|[-:;,\s]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  for (const source of normalizedSources) {
+    const compactSource = source.replace(/\s+/g, ' ').trim();
+
+    if (!propertyLink) {
+      const matchedLink = compactSource.match(/https?:\/\/[^\s]+\/portal\/imovel\/\d+/i);
+      if (matchedLink) {
+        propertyLink = matchedLink[0];
+      }
+    }
+
+    if (!propertyTitle) {
+      const quotedTitleMatch = compactSource.match(/tenho interesse no imóvel\s+["“]?([^"”.]+?)["”]?(?:\.|,| Localização:| Valor anunciado:| Link do imóvel:|$)/i);
+      const idTitleMatch = compactSource.match(/imóvel id\s*(\d+)\s*:\s*([^\n]+?)(?:\.|$)/i);
+
+      if (quotedTitleMatch?.[1]) {
+        propertyTitle = cleanFragment(quotedTitleMatch[1]);
+      } else if (idTitleMatch?.[2]) {
+        propertyTitle = cleanFragment(idTitleMatch[2]);
+        if (!propertyCode && idTitleMatch[1]) {
+          propertyCode = `ID ${idTitleMatch[1]}`;
+        }
+      }
+    }
+
+    if (!propertyCode) {
+      const codeMatch = compactSource.match(/refer[êe]ncia(?: do imóvel)?\s*:\s*([^\.\n]+)/i);
+      if (codeMatch?.[1]) {
+        propertyCode = cleanFragment(codeMatch[1]);
+      }
+    }
+
+    if (!summary) {
+      const lines = source
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => line.replace(/^\[[^\]]+\]\s*/, '').trim());
+
+      for (const line of lines) {
+        if (summaryPatterns.some((pattern) => pattern.test(line))) {
+          summary = cleanFragment(line);
+          break;
+        }
+      }
+    }
+
+    if (summary && propertyLink && propertyTitle && propertyCode) {
+      break;
+    }
+  }
+
+  const displayLabel = propertyTitle
+    ? propertyCode && !propertyTitle.toLowerCase().includes(propertyCode.toLowerCase())
+      ? `${propertyTitle} (${propertyCode})`
+      : propertyTitle
+    : propertyCode
+      ? `Código ${propertyCode}`
+      : summary;
+
+  return {
+    summary,
+    propertyLink,
+    propertyTitle,
+    propertyCode,
+    displayLabel,
+  };
 }
 
 function isAudioMessage(m: Message) {
@@ -691,15 +812,20 @@ export default function CRM() {
     return [];
   }, [originSummaryClients, allClients, tableData]);
 
+  const localTableSource = useMemo(() => {
+    if (summaryClients.length > 0) return summaryClients;
+    return allClients;
+  }, [summaryClients, allClients]);
+
   const useLocalTableData = flatTableError || originFilter !== 'all';
 
-  const filteredClients = useMemo(() => filterClients(allClients, {
+  const filteredClients = useMemo(() => filterClients(localTableSource, {
     term: tableSearch,
     statusFilter,
     classificacaoFilter,
     corretorFilter,
     originFilter,
-  }), [allClients, tableSearch, statusFilter, classificacaoFilter, corretorFilter, originFilter]);
+  }), [localTableSource, tableSearch, statusFilter, classificacaoFilter, corretorFilter, originFilter]);
 
   const originStats = useMemo(() => {
     const counts = new Map<string, number>();
@@ -1115,6 +1241,23 @@ export default function CRM() {
     return groups;
   }, [messages]);
 
+  const selectedLeadInterest = useMemo(() => {
+    if (!selectedClient) return null;
+    return extractLeadInterest(selectedClient);
+  }, [selectedClient]);
+
+  const selectedClientWhatsappUrl = useMemo(() => {
+    if (!selectedClient) return '';
+
+    const interestLabel = selectedLeadInterest?.displayLabel || selectedLeadInterest?.summary || '';
+    return buildWhatsAppUrl(
+      selectedClient.telefone,
+      interestLabel
+        ? `Olá, ${selectedClient.nome}! Vi seu interesse em ${interestLabel}.`
+        : `Olá, ${selectedClient.nome}!`,
+    );
+  }, [selectedClient, selectedLeadInterest]);
+
   // ─── Render: Drawer content ────────────────────────────────────────
 
   const renderChatTab = () => {
@@ -1258,6 +1401,8 @@ export default function CRM() {
   const renderPerfilTab = () => {
     if (!selectedClient) return null;
     const p = selectedClient.pessoa;
+    const leadInterest = selectedLeadInterest;
+    const whatsappUrl = selectedClientWhatsappUrl;
     type PerfilMediaItem = {
       id: string;
       url: string;
@@ -1340,7 +1485,21 @@ export default function CRM() {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           <div className="space-y-3">
-            <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Dados do Lead</h4>
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Dados do Lead</h4>
+              {whatsappUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
+                  onClick={() => window.open(whatsappUrl, '_blank', 'noopener,noreferrer')}
+                >
+                  <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
+                  WhatsApp
+                </Button>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <InfoField label="Nome" value={selectedClient.nome} />
               <InfoField label="Telefone" value={formatPhoneDisplay(selectedClient.telefone)} />
@@ -1350,6 +1509,29 @@ export default function CRM() {
               <InfoField label="Origem" value={selectedClient.origem} />
               {selectedClient.valor && <InfoField label="Valor" value={`R$ ${selectedClient.valor.toLocaleString('pt-BR')}`} />}
             </div>
+            {(leadInterest?.displayLabel || leadInterest?.propertyLink || leadInterest?.propertyCode || leadInterest?.propertyTitle) && (
+              <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+                {leadInterest?.displayLabel && <InfoField label="Imóvel de interesse" value={leadInterest.displayLabel} />}
+                <div className="grid grid-cols-2 gap-3">
+                  {leadInterest?.propertyTitle && <InfoField label="Título do imóvel" value={leadInterest.propertyTitle} />}
+                  {leadInterest?.propertyCode && <InfoField label="Código/Referência" value={leadInterest.propertyCode} />}
+                </div>
+                {leadInterest?.summary && leadInterest.summary !== leadInterest.displayLabel && (
+                  <InfoField label="Detalhe capturado" value={leadInterest.summary} />
+                )}
+                {leadInterest?.propertyLink && (
+                  <a
+                    href={leadInterest.propertyLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Abrir imóvel no portal
+                  </a>
+                )}
+              </div>
+            )}
           </div>
 
           {p && (
@@ -1900,6 +2082,18 @@ export default function CRM() {
               </div>
 
               <div className="flex items-center gap-1">
+                {selectedClientWhatsappUrl && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                    onClick={() => window.open(selectedClientWhatsappUrl, '_blank', 'noopener,noreferrer')}
+                    title="Abrir conversa no WhatsApp"
+                  >
+                    <MessageCircle className="w-4 h-4 sm:mr-1.5" />
+                    <span className="hidden sm:inline">WhatsApp</span>
+                  </Button>
+                )}
                 {!isMobile && (
                   <Button
                     variant="ghost"

@@ -43,19 +43,40 @@ class CRMController extends Controller
     {
         $rawOrigin = trim((string) $origin);
         $normalizedOrigin = mb_strtolower($rawOrigin);
+        $normalizedOrigin = str_replace(['_', '-'], ' ', $normalizedOrigin);
+        $normalizedOrigin = preg_replace('/\s+/', ' ', $normalizedOrigin ?? '') ?? '';
+        $normalizedOrigin = trim($normalizedOrigin);
 
-        if ($normalizedOrigin !== '') {
-            return match ($normalizedOrigin) {
-                'chaves_na_mao', 'chaves na mao', 'chaves na mão', 'chaves-na-mao', 'chaves-na-mão' => 'Chaves na Mão',
-                'site', 'form', 'formulario', 'formulário', 'portal', 'manual' => 'Site',
-                'whatsapp' => 'WhatsApp',
-                'sms' => 'SMS',
-                default => $rawOrigin,
-            };
+        $isChavesLead = $lead->isFromIntegration() || !empty($lead->chaves_na_mao_status) || !empty($lead->chaves_na_mao_sent_at);
+
+        if ($isChavesLead) {
+            return 'Chaves na Mão';
         }
 
-        if ($lead->isFromIntegration() || !empty($lead->chaves_na_mao_status) || !empty($lead->chaves_na_mao_sent_at)) {
-            return 'Chaves na Mão';
+        if ($normalizedOrigin !== '') {
+            if (in_array($normalizedOrigin, ['chaves na mao', 'chaves na mão'], true)) {
+                return 'Chaves na Mão';
+            }
+
+            if (in_array($normalizedOrigin, ['whatsapp'], true)) {
+                return 'WhatsApp';
+            }
+
+            if (in_array($normalizedOrigin, ['sms'], true)) {
+                return 'SMS';
+            }
+
+            if (
+                in_array($normalizedOrigin, ['site', 'form', 'formulario', 'formulário', 'portal', 'manual', 'crm', 'lead crm', 'outro'], true)
+                || str_contains($normalizedOrigin, 'form')
+                || str_contains($normalizedOrigin, 'site')
+                || str_contains($normalizedOrigin, 'portal')
+                || str_contains($normalizedOrigin, 'crm')
+            ) {
+                return 'Site';
+            }
+
+            return $rawOrigin;
         }
 
         return 'Site';
