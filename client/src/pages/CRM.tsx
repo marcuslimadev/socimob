@@ -408,6 +408,9 @@ function extractLeadInterest(client: CRMClient) {
   let propertyLink = '';
   let propertyTitle = '';
   let propertyCode = '';
+  let propertyLocation = '';
+  let propertyValue = '';
+  let captureSource = '';
 
   const summaryPatterns = [
     /tenho interesse no imóvel.+/i,
@@ -457,6 +460,27 @@ function extractLeadInterest(client: CRMClient) {
       }
     }
 
+    if (!propertyLocation) {
+      const locationMatch = compactSource.match(/localiza[cç][aã]o\s*:\s*([^\.]+?)(?:\.\s|\.$|\svalor\s*:|\svalor anunciado\s*:|\sorigem\s*:|\slink do imóvel\s*:|$)/i);
+      if (locationMatch?.[1]) {
+        propertyLocation = cleanFragment(locationMatch[1]);
+      }
+    }
+
+    if (!propertyValue) {
+      const valueMatch = compactSource.match(/valor(?: anunciado)?\s*:\s*([^\.]+?)(?:\.\s|\.$|\sorigem\s*:|\slink do imóvel\s*:|$)/i);
+      if (valueMatch?.[1]) {
+        propertyValue = cleanFragment(valueMatch[1]);
+      }
+    }
+
+    if (!captureSource) {
+      const sourceMatch = compactSource.match(/origem\s*:\s*([^\.]+?)(?:\.\s|\.$|\slink do imóvel\s*:|$)/i);
+      if (sourceMatch?.[1]) {
+        captureSource = cleanFragment(sourceMatch[1]);
+      }
+    }
+
     if (!summary) {
       const lines = source
         .split('\n')
@@ -485,12 +509,20 @@ function extractLeadInterest(client: CRMClient) {
       ? `Código ${propertyCode}`
       : summary;
 
+  const compactSummary = [displayLabel, propertyLocation, propertyValue]
+    .filter(Boolean)
+    .join(' • ');
+
   return {
     summary,
     propertyLink,
     propertyTitle,
     propertyCode,
+    propertyLocation,
+    propertyValue,
+    captureSource,
     displayLabel,
+    compactSummary,
   };
 }
 
@@ -610,6 +642,11 @@ const ClientCard = memo(({ client, isSelected, onSelect }: {
               {truncateMsg(client.ultima_mensagem, 40)}
             </p>
           )}
+          {leadInterest.compactSummary && (
+            <p className="text-[11px] text-emerald-400/90 truncate mt-1">
+              {leadInterest.compactSummary}
+            </p>
+          )}
           <div className="flex items-center gap-2 mt-2">
             {classif && (
               <span className={cn(
@@ -686,6 +723,11 @@ const DataRow = memo(({ client, isSelected, onSelect, onDelete, isDeleting }: {
               )}
             </div>
             <p className="text-xs text-muted-foreground truncate mt-0.5">{client.email || <span className="opacity-40">—</span>}</p>
+            {leadInterest.compactSummary && (
+              <p className="text-[11px] text-emerald-400/90 truncate mt-1 max-w-[320px]">
+                {leadInterest.compactSummary}
+              </p>
+            )}
           </div>
         </div>
       </td>
@@ -1564,6 +1606,9 @@ export default function CRM() {
                 <div className="grid grid-cols-2 gap-3">
                   {leadInterest?.propertyTitle && <InfoField label="Título do imóvel" value={leadInterest.propertyTitle} />}
                   {leadInterest?.propertyCode && <InfoField label="Código/Referência" value={leadInterest.propertyCode} />}
+                  {leadInterest?.propertyLocation && <InfoField label="Localização" value={leadInterest.propertyLocation} />}
+                  {leadInterest?.propertyValue && <InfoField label="Valor" value={leadInterest.propertyValue} />}
+                  {leadInterest?.captureSource && <InfoField label="Origem da captura" value={leadInterest.captureSource} />}
                 </div>
                 {leadInterest?.summary && leadInterest.summary !== leadInterest.displayLabel && (
                   <InfoField label="Detalhe capturado" value={leadInterest.summary} />
@@ -2128,6 +2173,9 @@ export default function CRM() {
               <div className="flex-1 min-w-0">
                 <h2 className="font-semibold text-foreground truncate">{selectedClient.nome}</h2>
                 <p className="text-xs text-muted-foreground truncate">{formatPhoneDisplay(selectedClient.telefone)}</p>
+                {selectedLeadInterest?.compactSummary && (
+                  <p className="text-[11px] text-emerald-400/90 truncate mt-0.5">{selectedLeadInterest.compactSummary}</p>
+                )}
               </div>
 
               <div className="flex items-center gap-1">
