@@ -160,7 +160,7 @@ class PropertyController extends Controller
 
         $captador = User::query()
             ->where('tenant_id', $tenantId)
-            ->where('role', 'corretor')
+            ->whereIn('role', ['corretor', 'admin'])
             ->where('id', $captadorId)
             ->select('id', 'name')
             ->first();
@@ -408,7 +408,7 @@ class PropertyController extends Controller
 
         $captadores = User::query()
             ->where('tenant_id', $tenantId)
-            ->where('role', 'corretor')
+            ->whereIn('role', ['corretor', 'admin'])
             ->where(function ($query) {
                 $query->whereNull('is_active')->orWhere('is_active', true);
             })
