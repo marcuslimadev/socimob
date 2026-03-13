@@ -958,7 +958,7 @@ export default function CRM() {
       const params: any = {
         flat: 1,
         page: 1,
-        per_page: 200,
+        per_page: 1000,
       };
       if (debouncedTableSearch) params.search = debouncedTableSearch;
       if (corretorFilter) params.corretor_id = corretorFilter;
@@ -988,31 +988,25 @@ export default function CRM() {
     return [];
   }, [originSummaryClients, allClients, tableData]);
 
-  const localTableSource = useMemo(() => {
-    if (summaryClients.length > 0) return summaryClients;
-    return allClients;
-  }, [summaryClients, allClients]);
-
-  const useLocalTableData = flatTableError || originFilter !== 'all';
-
-  const filteredClients = useMemo(() => filterClients(localTableSource, {
+  const scopedSummaryClients = useMemo(() => filterClients(summaryClients, {
     term: tableSearch,
     statusFilter,
     classificacaoFilter,
     corretorFilter,
-    originFilter,
-  }), [localTableSource, tableSearch, statusFilter, classificacaoFilter, corretorFilter, originFilter]);
+    originFilter: 'all',
+  }), [summaryClients, tableSearch, statusFilter, classificacaoFilter, corretorFilter]);
+
+  const useLocalTableData = flatTableError || originFilter !== 'all';
+
+  const filteredClients = useMemo(() => {
+    if (originFilter === 'all') return scopedSummaryClients;
+    return scopedSummaryClients.filter((client) => normalizeOriginValue(client.origem) === originFilter);
+  }, [scopedSummaryClients, originFilter]);
 
   const originStats = useMemo(() => {
     const counts = new Map<string, number>();
 
-    filterClients(summaryClients, {
-      term: '',
-      statusFilter,
-      classificacaoFilter,
-      corretorFilter,
-      originFilter: 'all',
-    }).forEach((client) => {
+    scopedSummaryClients.forEach((client) => {
       const origin = normalizeOriginValue(client.origem);
       counts.set(origin, (counts.get(origin) || 0) + 1);
     });
@@ -1025,7 +1019,7 @@ export default function CRM() {
         if (orderA !== orderB) return orderA - orderB;
         return a.label.localeCompare(b.label, 'pt-BR');
       });
-  }, [summaryClients, statusFilter, classificacaoFilter, corretorFilter]);
+  }, [scopedSummaryClients]);
 
   const tableClients = useMemo(() => {
     if (!useLocalTableData && Array.isArray(tableData?.data)) {
