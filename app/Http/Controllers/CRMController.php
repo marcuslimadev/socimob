@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Conversa;
 use App\Models\Lead;
+use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -82,8 +83,218 @@ class CRMController extends Controller
         return 'Site';
     }
 
+    private function normalizeObservationText(?string $value): string
+    {
+        $text = trim((string) $value);
+        if ($text === '') {
+            return '';
+        }
+
+        $text = preg_replace('/<\s*br\s*\/?>/i', "\n", $text) ?? $text;
+        $text = strip_tags($text);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        $separatorPosition = mb_stripos($text, '--- Atualização de Lead ---');
+        if ($separatorPosition !== false && $separatorPosition > 0) {
+            $text = mb_substr($text, 0, $separatorPosition);
+        }
+
+        return trim($text);
+    }
+
+    private function normalizeLooseText(?string $value): string
+    {
+        $text = mb_strtolower(trim((string) $value));
+        $text = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text) ?: $text;
+        $text = preg_replace('/[^a-z0-9]+/', ' ', $text) ?? $text;
+
+        return trim($text);
+    }
+
+    private function extractLeadPropertyContext(Lead $lead): array
+    {
+        $sources = array_values(array_filter([
+            $this->normalizeObservationText($lead->observacoes_cliente),
+            $this->normalizeObservationText($lead->observacoes),
+        ]));
+
+        $context = [
+            'portal_link' => null,
+            'title' => null,
+            'code' => null,
+            'location' => null,
+            'city' => null,
+            'neighborhood' => null,
+            'value' => null,
+        ];
+
+        foreach ($sources as $source) {
+            $compactSource = preg_replace('/\s+/', ' ', $source) ?? $source;
+
+            if ($context['portal_link'] === null && preg_match('/https?:\/\/[^\s]+\/portal\/imovel\/(\d+)/i', $compactSource, $matches)) {
+                $context['portal_link'] = $matches[0];
+            }
+
+            if ($context['title'] === null && preg_match('/interesse no im[oó]vel\s+["“]?([^"”.]+?)?["”]?(?:\.|,| Localiza[cç][aã]o:| Valor:| Valor anunciado:| Origem:|$)/iu', $compactSource, $matches)) {
+                $context['title'] = trim((string) ($matches[1] ?? '')) ?: null;
+            }
+
+            if ($context['code'] === null && preg_match('/refer[êe]ncia(?: do im[oó]vel)?\s*:\s*([^\.]+)/iu', $compactSource, $matches)) {
+                $context['code'] = trim((string) ($matches[1] ?? '')) ?: null;
+            }
+
+            if ($context['location'] === null && preg_match('/localiza[cç][aã]o\s*:\s*([^\.]+?)(?:\.\s|\.$|\svalor\s*:|\svalor anunciado\s*:|\sorigem\s*:|$)/iu', $compactSource, $matches)) {
+                $context['location'] = trim((string) ($matches[1] ?? '')) ?: null;
+                if ($context['location']) {
+                    $parts = array_map('trim', explode(',', $context['location']));
+                    $context['neighborhood'] = $parts[0] ?? null;
+                    if (isset($parts[1])) {
+                        $cityAndState = preg_split('/\//', $parts[1]);
+                        $context['city'] = trim((string) ($cityAndState[0] ?? '')) ?: null;
+                    }
+                }
+            }
+
+            if ($context['value'] === null && preg_match('/valor(?: anunciado)?\s*:\s*R\$\s*([0-9\.\,]+)/iu', $compactSource, $matches)) {
+                $rawValue = str_replace(['.', ','], ['', '.'], (string) $matches[1]);
+                $context['value'] = is_numeric($rawValue) ? (float) $rawValue : null;
+            }
+        }
+
+        return $context;
+    }
+
+    private function resolveLeadProperty(Lead $lead): ?array
+    {
+        static $cache = [];
+
+        $context = $this->extractLeadPropertyContext($lead);
+        $cacheKey = md5(json_encode([$lead->tenant_id, $context], JSON_UNESCAPED_UNICODE));
+
+        if (array_key_exists($cacheKey, $cache)) {
+            return $cache[$cacheKey];
+        }
+
+        if ($context['portal_link'] && preg_match('/\/portal\/imovel\/(\d+)/', $context['portal_link'], $matches)) {
+            $property = Property::query()
+                ->where('id', (int) $matches[1])
+                ->where(function ($query) use ($lead) {
+                    $query->where('tenant_id', $lead->tenant_id)
+                        ->orWhereNull('tenant_id');
+                })
+                ->first();
+
+            if ($property) {
+                return $cache[$cacheKey] = [
+                    'id' => $property->id,
+                    'title' => $property->titulo,
+                    'code' => $property->codigo ?: $property->referencia_imovel ?: $property->codigo_imovel,
+                    'location' => trim(implode(', ', array_filter([$property->bairro, $property->cidade]))),
+                    'value' => $property->valor_venda ?? $property->preco,
+                    'link' => "/portal/imovel/{$property->id}",
+                ];
+            }
+        }
+
+        if (empty($context['title']) && empty($context['code'])) {
+            return $cache[$cacheKey] = null;
+        }
+
+        $query = Property::query()
+            ->where(function ($builder) use ($lead) {
+                $builder->where('tenant_id', $lead->tenant_id)
+                    ->orWhereNull('tenant_id');
+            })
+            ->where(function ($builder) use ($context) {
+                if (!empty($context['code'])) {
+                    $builder->orWhere('codigo', 'like', '%' . $context['code'] . '%')
+                        ->orWhere('referencia_imovel', 'like', '%' . $context['code'] . '%')
+                        ->orWhere('codigo_imovel', 'like', '%' . $context['code'] . '%');
+                }
+
+                if (!empty($context['title'])) {
+                    $builder->orWhere('titulo', 'like', '%' . $context['title'] . '%');
+                }
+            })
+            ->limit(25)
+            ->get(['id', 'titulo', 'codigo', 'referencia_imovel', 'codigo_imovel', 'bairro', 'cidade', 'valor_venda', 'preco']);
+
+        if ($query->isEmpty()) {
+            return $cache[$cacheKey] = null;
+        }
+
+        $normalizedTitle = $this->normalizeLooseText($context['title']);
+        $normalizedNeighborhood = $this->normalizeLooseText($context['neighborhood']);
+        $normalizedCity = $this->normalizeLooseText($context['city']);
+        $expectedValue = $context['value'];
+
+        $bestProperty = $query
+            ->map(function (Property $property) use ($normalizedTitle, $normalizedNeighborhood, $normalizedCity, $expectedValue, $context) {
+                $score = 0;
+                $propertyTitle = $this->normalizeLooseText($property->titulo);
+                $propertyNeighborhood = $this->normalizeLooseText($property->bairro);
+                $propertyCity = $this->normalizeLooseText($property->cidade);
+                $propertyCode = trim((string) ($property->codigo ?: $property->referencia_imovel ?: $property->codigo_imovel));
+                $propertyValue = $property->valor_venda ?? $property->preco;
+
+                if (!empty($context['code']) && $propertyCode !== '' && str_contains($propertyCode, (string) $context['code'])) {
+                    $score += 120;
+                }
+
+                if ($normalizedTitle !== '') {
+                    if ($propertyTitle === $normalizedTitle) {
+                        $score += 100;
+                    } elseif (str_contains($propertyTitle, $normalizedTitle) || str_contains($normalizedTitle, $propertyTitle)) {
+                        $score += 70;
+                    }
+                }
+
+                if ($normalizedNeighborhood !== '' && $propertyNeighborhood !== '' && str_contains($propertyNeighborhood, $normalizedNeighborhood)) {
+                    $score += 20;
+                }
+
+                if ($normalizedCity !== '' && $propertyCity !== '' && str_contains($propertyCity, $normalizedCity)) {
+                    $score += 20;
+                }
+
+                if ($expectedValue !== null && $propertyValue !== null) {
+                    $delta = abs((float) $propertyValue - (float) $expectedValue);
+                    if ($delta < 1) {
+                        $score += 80;
+                    } elseif ($expectedValue > 0 && ($delta / $expectedValue) <= 0.03) {
+                        $score += 40;
+                    }
+                }
+
+                return [
+                    'score' => $score,
+                    'property' => $property,
+                ];
+            })
+            ->sortByDesc('score')
+            ->first();
+
+        if (!$bestProperty || ($bestProperty['score'] ?? 0) < 60) {
+            return $cache[$cacheKey] = null;
+        }
+
+        /** @var Property $property */
+        $property = $bestProperty['property'];
+
+        return $cache[$cacheKey] = [
+            'id' => $property->id,
+            'title' => $property->titulo,
+            'code' => $property->codigo ?: $property->referencia_imovel ?: $property->codigo_imovel,
+            'location' => trim(implode(', ', array_filter([$property->bairro, $property->cidade]))),
+            'value' => $property->valor_venda ?? $property->preco,
+            'link' => "/portal/imovel/{$property->id}",
+        ];
+    }
+
     private function mapLead(Lead $lead, ?object $lastMsg, int $unread, ?int $conversaId): array
     {
+        $property = $this->resolveLeadProperty($lead);
+
         return [
             'id' => $lead->id,
             'pessoa_id' => $lead->pessoa_id,
@@ -120,6 +331,12 @@ class CRMController extends Controller
                 $lead->pessoa?->origem ?? null,
             ]), $lead),
             'sms_enviado' => (bool) $lead->sms_enviado,
+            'property_id' => $property['id'] ?? null,
+            'property_title' => $property['title'] ?? null,
+            'property_code' => $property['code'] ?? null,
+            'property_location' => $property['location'] ?? null,
+            'property_value' => $property['value'] ?? null,
+            'property_link' => $property['link'] ?? null,
             'updated_at' => $lead->updated_at?->toIso8601String(),
             'created_at' => $lead->created_at?->toIso8601String(),
         ];

@@ -58,6 +58,12 @@ interface CRMClient {
   unread: number;
   origem: string | null;
   sms_enviado: boolean;
+  property_id?: number | null;
+  property_title?: string | null;
+  property_code?: string | null;
+  property_location?: string | null;
+  property_value?: number | null;
+  property_link?: string | null;
   updated_at: string | null;
   created_at: string | null;
 }
@@ -159,6 +165,12 @@ function normalizeCRMClient(raw: Partial<CRMClient> & { pessoa?: any; whatsapp_n
     unread: Number(raw.unread || 0),
     origem: normalizeOriginValue(raw.origem ?? pessoa?.origem ?? null),
     sms_enviado: Boolean(raw.sms_enviado),
+    property_id: raw.property_id ?? null,
+    property_title: raw.property_title ?? null,
+    property_code: raw.property_code ?? null,
+    property_location: raw.property_location ?? null,
+    property_value: raw.property_value ?? null,
+    property_link: raw.property_link ?? null,
     updated_at: raw.updated_at ?? null,
     created_at: raw.created_at ?? null,
   };
@@ -405,11 +417,11 @@ function extractLeadInterest(client: CRMClient) {
   ].filter(Boolean);
 
   let summary = '';
-  let propertyLink = '';
-  let propertyTitle = '';
-  let propertyCode = '';
-  let propertyLocation = '';
-  let propertyValue = '';
+  let propertyLink = client.property_link || '';
+  let propertyTitle = client.property_title || '';
+  let propertyCode = client.property_code || '';
+  let propertyLocation = client.property_location || '';
+  let propertyValue = client.property_value ? `R$ ${Number(client.property_value).toLocaleString('pt-BR')}` : '';
   let captureSource = '';
 
   const summaryPatterns = [
