@@ -598,10 +598,59 @@ const WhatsAppShortcutButton = memo(({ phone, name, interestLabel, onClick }: {
   );
 });
 
-const ClientCard = memo(({ client, isSelected, onSelect }: {
+const PropertyInterestActions = memo(({
+  propertyLink,
+  propertyLabel,
+  onQuickView,
+  compact = false,
+}: {
+  propertyLink?: string;
+  propertyLabel?: string;
+  onQuickView: () => void;
+  compact?: boolean;
+}) => {
+  if (!propertyLink) return null;
+
+  return (
+    <div className={cn('flex items-center gap-2 flex-wrap', compact && 'gap-1.5')}>
+      <a
+        href={propertyLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(event) => event.stopPropagation()}
+        className={cn(
+          'inline-flex items-center gap-1 text-xs text-primary hover:underline',
+          compact && 'text-[11px]'
+        )}
+        title={propertyLabel ? `Abrir ${propertyLabel}` : 'Abrir imóvel'}
+      >
+        <ExternalLink className="w-3.5 h-3.5" />
+        Ver imóvel
+      </a>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onQuickView();
+        }}
+        className={cn(
+          'inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors',
+          compact && 'text-[11px]'
+        )}
+        title="Visualização rápida"
+      >
+        <Eye className="w-3.5 h-3.5" />
+        Pré-visualizar
+      </button>
+    </div>
+  );
+});
+
+const ClientCard = memo(({ client, isSelected, onSelect, onQuickViewProperty }: {
   client: CRMClient;
   isSelected: boolean;
   onSelect: (client: CRMClient) => void;
+  onQuickViewProperty: (url: string, title: string) => void;
 }) => {
   const classif = client.classificacao;
   const leadInterest = extractLeadInterest(client);
@@ -647,6 +696,17 @@ const ClientCard = memo(({ client, isSelected, onSelect }: {
               {leadInterest.compactSummary}
             </p>
           )}
+          <div className="mt-1">
+            <PropertyInterestActions
+              propertyLink={leadInterest.propertyLink}
+              propertyLabel={leadInterest.displayLabel}
+              compact
+              onQuickView={() => onQuickViewProperty(
+                leadInterest.propertyLink || '',
+                leadInterest.displayLabel || leadInterest.propertyTitle || 'Imóvel'
+              )}
+            />
+          </div>
           <div className="flex items-center gap-2 mt-2">
             {classif && (
               <span className={cn(
@@ -671,12 +731,13 @@ const ClientCard = memo(({ client, isSelected, onSelect }: {
   );
 });
 
-const DataRow = memo(({ client, isSelected, onSelect, onDelete, isDeleting }: {
+const DataRow = memo(({ client, isSelected, onSelect, onDelete, isDeleting, onQuickViewProperty }: {
   client: CRMClient;
   isSelected: boolean;
   onSelect: (client: CRMClient) => void;
   onDelete: (client: CRMClient) => void;
   isDeleting: boolean;
+  onQuickViewProperty: (url: string, title: string) => void;
 }) => {
   const statusConf = STATUS_CONFIG[client.status as StatusKey] || STATUS_CONFIG.novo;
   const classif = client.classificacao;
@@ -728,6 +789,17 @@ const DataRow = memo(({ client, isSelected, onSelect, onDelete, isDeleting }: {
                 {leadInterest.compactSummary}
               </p>
             )}
+            <div className="mt-1">
+              <PropertyInterestActions
+                propertyLink={leadInterest.propertyLink}
+                propertyLabel={leadInterest.displayLabel}
+                compact
+                onQuickView={() => onQuickViewProperty(
+                  leadInterest.propertyLink || '',
+                  leadInterest.displayLabel || leadInterest.propertyTitle || 'Imóvel'
+                )}
+              />
+            </div>
           </div>
         </div>
       </td>
@@ -801,6 +873,7 @@ export default function CRM() {
   const [isMobile, setIsMobile] = useState(false);
   const [flatTableError, setFlatTableError] = useState(false);
   const [deletingLeadId, setDeletingLeadId] = useState<number | null>(null);
+  const [quickViewProperty, setQuickViewProperty] = useState<{ url: string; title: string } | null>(null);
 
   // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -1024,6 +1097,11 @@ export default function CRM() {
       setDeletingLeadId(null);
     }
   }, [queryClient, selectedClient?.id]);
+
+  const handleOpenQuickView = useCallback((url: string, title: string) => {
+    if (!url) return;
+    setQuickViewProperty({ url, title });
+  }, []);
 
   const handleSort = useCallback((key: 'updated_at' | 'nome' | 'status') => {
     if (sortKey === key) {
@@ -1614,15 +1692,14 @@ export default function CRM() {
                   <InfoField label="Detalhe capturado" value={leadInterest.summary} />
                 )}
                 {leadInterest?.propertyLink && (
-                  <a
-                    href={leadInterest.propertyLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Abrir imóvel no portal
-                  </a>
+                  <PropertyInterestActions
+                    propertyLink={leadInterest.propertyLink}
+                    propertyLabel={leadInterest.displayLabel}
+                    onQuickView={() => handleOpenQuickView(
+                      leadInterest.propertyLink || '',
+                      leadInterest.displayLabel || leadInterest.propertyTitle || 'Imóvel'
+                    )}
+                  />
                 )}
               </div>
             )}
@@ -2033,6 +2110,7 @@ export default function CRM() {
                               onSelect={handleSelectClient}
                               onDelete={handleDeleteLead}
                               isDeleting={deletingLeadId === client.id}
+                              onQuickViewProperty={handleOpenQuickView}
                             />
                           ))
                         )}
@@ -2126,7 +2204,13 @@ export default function CRM() {
                     </div>
                   ) : (
                     (crmData?.[mobileStatus] || []).map((client) => (
-                      <ClientCard key={client.id} client={client} isSelected={selectedClientId === client.id} onSelect={handleSelectClient} />
+                      <ClientCard
+                        key={client.id}
+                        client={client}
+                        isSelected={selectedClientId === client.id}
+                        onSelect={handleSelectClient}
+                        onQuickViewProperty={handleOpenQuickView}
+                      />
                     ))
                   )}
                 </div>
@@ -2159,7 +2243,7 @@ export default function CRM() {
               )}
             >
             {/* Header */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
+            <div className="flex items-start gap-3 px-4 py-3 border-b border-border bg-card">
               {drawerDocked ? (
                 <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)} className="flex-shrink-0">
                   <ArrowLeft className="w-5 h-5" />
@@ -2170,15 +2254,28 @@ export default function CRM() {
                 </div>
               )}
 
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 pr-2">
                 <h2 className="font-semibold text-foreground truncate">{selectedClient.nome}</h2>
                 <p className="text-xs text-muted-foreground truncate">{formatPhoneDisplay(selectedClient.telefone)}</p>
                 {selectedLeadInterest?.compactSummary && (
                   <p className="text-[11px] text-emerald-400/90 truncate mt-0.5">{selectedLeadInterest.compactSummary}</p>
                 )}
+                {selectedLeadInterest?.propertyLink && (
+                  <div className="mt-1.5">
+                    <PropertyInterestActions
+                      propertyLink={selectedLeadInterest.propertyLink}
+                      propertyLabel={selectedLeadInterest.displayLabel}
+                      compact
+                      onQuickView={() => handleOpenQuickView(
+                        selectedLeadInterest.propertyLink || '',
+                        selectedLeadInterest.displayLabel || selectedLeadInterest.propertyTitle || 'Imóvel'
+                      )}
+                    />
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-shrink-0 self-start">
                 {selectedClientWhatsappUrl && (
                   <Button
                     variant="ghost"
@@ -2254,6 +2351,39 @@ export default function CRM() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {quickViewProperty && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4">
+          <div className="absolute inset-0" onClick={() => setQuickViewProperty(null)} />
+          <div className="relative w-full max-w-6xl h-[85vh] rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-card">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-foreground truncate">{quickViewProperty.title}</h3>
+                <p className="text-[11px] text-muted-foreground truncate">Visualização rápida do imóvel</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <a
+                  href={quickViewProperty.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Abrir em nova aba
+                </a>
+                <Button variant="ghost" size="icon" onClick={() => setQuickViewProperty(null)} title="Fechar pré-visualização">
+                  <ChevronDown className="w-4 h-4 rotate-45" />
+                </Button>
+              </div>
+            </div>
+            <iframe
+              src={quickViewProperty.url}
+              title={quickViewProperty.title}
+              className="w-full h-[calc(85vh-57px)] bg-white"
+            />
           </div>
         </div>
       )}
