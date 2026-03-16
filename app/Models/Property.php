@@ -70,6 +70,7 @@ class Property extends Model
         // Captador do imóvel (interno)
         'captador_user_id',
         'captador_nome',
+        'construtora_pessoa_id',
         // Dados do proprietário (interno, não exibir ao portal)
         'proprietario_nome',
         'proprietario_telefone',
@@ -101,6 +102,7 @@ class Property extends Model
         'imagens' => 'array',      // Mudado de 'fotos'
         'latitude' => 'float',
         'longitude' => 'float',
+        'construtora_pessoa_id' => 'integer',
         'last_sync' => 'datetime',
         'deleted_at' => 'datetime',
         'trash_metadata' => 'array',
@@ -206,6 +208,11 @@ class Property extends Model
     public function documentos()
     {
         return $this->hasMany(PropertyDocument::class, 'property_id');
+    }
+
+    public function construtora()
+    {
+        return $this->belongsTo(Pessoa::class, 'construtora_pessoa_id');
     }
 
     public function scopePortalInventory($query)

@@ -18,6 +18,9 @@ class DocumentoFiscal extends Model
         'cobranca_id',
         'locador_pessoa_id',
         'locatario_pessoa_id',
+        'tomador_pessoa_id',
+        'property_id',
+        'contexto_emissao',
         'tipo',
         'status',
         'numero',
@@ -45,5 +48,10 @@ class DocumentoFiscal extends Model
     public function cobranca()
     {
         return $this->belongsTo(CobrancaContrato::class, 'cobranca_id');
+    }
+
+    public function tomador()
+    {
+        return $this->belongsTo(Pessoa::class, 'tomador_pessoa_id');
     }
 }

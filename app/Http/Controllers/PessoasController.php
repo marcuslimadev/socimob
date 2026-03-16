@@ -92,6 +92,8 @@ class PessoasController extends Controller
             'numero' => 'nullable|string|max:20',
             'complemento' => 'nullable|string|max:255',
             'contatos' => 'nullable|array',
+            'papeis' => 'nullable|array',
+            'papeis.*' => 'string|max:50',
             'observacoes' => 'nullable|string',
         ]);
 
@@ -200,6 +202,8 @@ class PessoasController extends Controller
             'numero' => 'nullable|string|max:20',
             'complemento' => 'nullable|string|max:255',
             'contatos' => 'nullable|array',
+            'papeis' => 'nullable|array',
+            'papeis.*' => 'string|max:50',
             'observacoes' => 'nullable|string',
             'ativo' => 'nullable|boolean',
         ]);
@@ -733,7 +737,7 @@ class PessoasController extends Controller
 
         $validator = Validator::make($request->all(), [
             'acao' => 'required|string|in:adicionar,remover',
-            'papel' => 'required|string|in:cliente,proprietario,corretor,prestador_servico,inquilino,fiador,investidor',
+            'papel' => 'required|string|in:cliente,proprietario,corretor,prestador_servico,inquilino,fiador,investidor,construtora,construtor',
         ]);
 
         if ($validator->fails()) {

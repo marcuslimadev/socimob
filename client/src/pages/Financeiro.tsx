@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 
+type ContextoEmissao = 'comissao' | 'locatario' | 'construtora';
+
 interface Corretor {
   id: number;
   name: string;
@@ -14,6 +16,7 @@ interface PessoaTomador {
   id: number;
   nome: string;
   tipo: 'fisica' | 'juridica';
+  papeis?: string[] | null;
   cpf?: string | null;
   cnpj?: string | null;
   razao_social?: string | null;
@@ -30,12 +33,21 @@ interface PessoaTomador {
 
 interface FinanceiroItem {
   id: number;
-  tipo_nota: 'corretagem' | 'aluguel';
+  registro_tipo: 'commission_invoice' | 'documento_fiscal';
+  contexto_emissao: ContextoEmissao;
+  tipo_nota: string;
+  titulo: string;
   corretor: {
     id: number;
     name: string;
     email: string | null;
-  };
+  } | null;
+  tomador?: {
+    id?: number | null;
+    nome?: string | null;
+    documento?: string | null;
+    email?: string | null;
+  } | null;
   valor_total: number;
   aliquota_iss: number;
   valor_iss: number;
@@ -86,6 +98,7 @@ export default function Financeiro() {
   const [corretores, setCorretores] = useState<Corretor[]>([]);
   const [pessoasTomador, setPessoasTomador] = useState<PessoaTomador[]>([]);
   const [items, setItems] = useState<FinanceiroItem[]>([]);
+  const [contextoEmissao, setContextoEmissao] = useState<ContextoEmissao>('comissao');
   const [corretorId, setCorretorId] = useState('');
   const [tipoNota, setTipoNota] = useState<'corretagem' | 'aluguel'>('corretagem');
   const [valor, setValor] = useState('');
@@ -113,6 +126,17 @@ export default function Financeiro() {
 
   const valorNumerico = useMemo(() => parseCurrency(valor), [valor]);
   const valorIss = useMemo(() => (valorNumerico * (Number(aliquotaIss) || 0)) / 100, [valorNumerico, aliquotaIss]);
+  const tomadoresDisponiveis = useMemo(() => {
+    if (contextoEmissao === 'locatario') {
+      return pessoasTomador.filter((pessoa) => (pessoa.papeis || []).includes('inquilino'));
+    }
+
+    if (contextoEmissao === 'construtora') {
+      return pessoasTomador.filter((pessoa) => pessoa.tipo === 'juridica' && (pessoa.papeis || []).includes('construtora'));
+    }
+
+    return pessoasTomador;
+  }, [contextoEmissao, pessoasTomador]);
 
   const itensFiltrados = useMemo(() => {
     if (!statusFiltro) return items;
@@ -201,7 +225,7 @@ export default function Financeiro() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!corretorId || valorNumerico <= 0 || !tomadorNome || !tomadorDocumento) {
+    if ((contextoEmissao === 'comissao' && !corretorId) || valorNumerico <= 0 || !tomadorNome || !tomadorDocumento) {
       toast.error('Preencha os campos obrigatórios');
       return;
     }
@@ -210,7 +234,9 @@ export default function Financeiro() {
 
     try {
       const response = await api.post('/admin/financeiro/notas-servico', {
-        corretor_id: Number(corretorId),
+        contexto_emissao: contextoEmissao,
+        corretor_id: contextoEmissao === 'comissao' ? Number(corretorId) : undefined,
+        pessoa_tomador_id: pessoaTomadorId ? Number(pessoaTomadorId) : undefined,
         tipo_nota: tipoNota,
         valor: valorNumerico,
         aliquota_iss: Number(aliquotaIss) || 0,
@@ -234,15 +260,17 @@ export default function Financeiro() {
           vencimento: vencimento || undefined,
           forma_pagamento: formaPagamento,
           descricao:
-            tipoNota === 'aluguel'
+            contextoEmissao === 'locatario'
               ? 'Cobrança de aluguel - emissão com boleto'
+              : contextoEmissao === 'construtora'
+                ? 'Cobrança de serviços imobiliários para construtora'
               : 'Cobrança de comissão',
         },
       });
 
       if (response.data?.success) {
         toast.success(
-          tipoNota === 'aluguel' && formaPagamento === 'boleto'
+          contextoEmissao === 'locatario' && formaPagamento === 'boleto'
             ? 'Lançamento de aluguel emitido com fluxo de boleto'
             : 'Lançamento financeiro emitido com sucesso'
         );
@@ -299,20 +327,44 @@ export default function Financeiro() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Contexto de emissão</label>
+                    <select
+                      value={contextoEmissao}
+                      onChange={(event) => {
+                        const value = event.target.value as ContextoEmissao;
+                        setContextoEmissao(value);
+                        if (value === 'locatario') {
+                          setFormaPagamento('boleto');
+                          setTipoNota('aluguel');
+                        } else if (value === 'construtora') {
+                          setTipoNota('corretagem');
+                          setFormaPagamento('pix');
+                        }
+                      }}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                    >
+                      <option value="comissao">Comissão</option>
+                      <option value="locatario">Locatário</option>
+                      <option value="construtora">Construtora</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
                     <label className="text-sm font-semibold text-foreground">Tipo de nota</label>
                     <select
                       value={tipoNota}
                       onChange={(event) => {
                         const value = event.target.value as 'corretagem' | 'aluguel';
                         setTipoNota(value);
-                        if (value === 'aluguel') setFormaPagamento('boleto');
+                        if (contextoEmissao === 'locatario' || value === 'aluguel') setFormaPagamento('boleto');
                       }}
                       className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                      disabled={contextoEmissao !== 'comissao'}
                     >
                       <option value="corretagem">Corretagem</option>
                       <option value="aluguel">Aluguel</option>
                     </select>
                   </div>
+                  {contextoEmissao === 'comissao' && (
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-foreground flex items-center gap-2">
                       <User size={16} /> Corretor
@@ -331,6 +383,7 @@ export default function Financeiro() {
                       ))}
                     </select>
                   </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -393,7 +446,7 @@ export default function Financeiro() {
                       className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
                     >
                       <option value="">Preencher manualmente</option>
-                      {pessoasTomador.map((pessoa) => (
+                      {tomadoresDisponiveis.map((pessoa) => (
                         <option key={pessoa.id} value={pessoa.id}>
                           {pessoa.tipo === 'juridica'
                             ? `${pessoa.razao_social || pessoa.nome} (PJ)`
@@ -545,7 +598,9 @@ export default function Financeiro() {
                   disabled={isSubmitting}
                   className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold hover:from-emerald-600 hover:to-teal-600 transition disabled:opacity-60"
                 >
-                  {isSubmitting ? 'Emitindo...' : `Emitir ${tipoNota === 'aluguel' ? 'aluguel' : 'comissão'} com NFSe`}
+                  {isSubmitting
+                    ? 'Emitindo...'
+                    : `Emitir ${contextoEmissao === 'locatario' ? 'nota para locatário' : contextoEmissao === 'construtora' ? 'nota para construtora' : tipoNota === 'aluguel' ? 'aluguel' : 'comissão'} com NFSe`}
                 </button>
               </form>
             </div>
@@ -557,9 +612,9 @@ export default function Financeiro() {
                   Fluxo operacional
                 </div>
                 <ol className="space-y-2 text-sm text-muted-foreground">
-                  <li>Crie um lançamento de corretagem ou aluguel.</li>
+                  <li>Escolha se a emissão é para comissão, locatário ou construtora.</li>
                   <li>O backend emite a NFS-e na NFE.io.</li>
-                  <li>Para aluguel, selecione boleto para seguir fluxo de cobrança.</li>
+                  <li>Para locatário, o fluxo padrão usa boleto.</li>
                   <li>Acompanhe status fiscal e financeiro no histórico abaixo.</li>
                 </ol>
               </div>
@@ -604,11 +659,17 @@ export default function Financeiro() {
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                       <div>
                         <p className="font-semibold text-foreground">
-                          {item.tipo_nota === 'aluguel' ? 'Aluguel' : 'Corretagem'} • {item.corretor.name}
+                          {item.titulo}
+                          {item.corretor?.name ? ` • ${item.corretor.name}` : item.tomador?.nome ? ` • ${item.tomador.nome}` : ''}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Valor: R$ {formatCurrency(item.valor_total)} • ISS: R$ {formatCurrency(item.valor_iss)}
                         </p>
+                        {item.tomador?.documento && (
+                          <p className="text-xs text-muted-foreground">
+                            Tomador: {item.tomador.documento}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground">{item.descricao_servico}</p>
                         {item.created_at && (
                           <p className="text-xs text-muted-foreground">
@@ -663,7 +724,7 @@ export default function Financeiro() {
                           XML da NFSe
                         </a>
                       )}
-                      {item.tipo_nota === 'aluguel' && item.forma_pagamento === 'boleto' && (
+                      {item.contexto_emissao === 'locatario' && item.forma_pagamento === 'boleto' && (
                         <span className="text-xs text-amber-300">
                           Boleto: acompanhar integração financeira / webhook de baixa
                         </span>

@@ -1102,6 +1102,7 @@ class PropertyController extends Controller
             'existing_images' => 'nullable|string', // JSON array de URLs existentes
             'destaque_index' => 'nullable|integer',
             'captador_user_id' => 'nullable|integer',
+            'construtora_pessoa_id' => 'nullable|integer',
             // Dados do proprietário (interno)
             'proprietario_nome' => 'nullable|string|max:150',
             'proprietario_telefone' => 'nullable|string|max:30',
@@ -1385,6 +1386,7 @@ class PropertyController extends Controller
             'existing_images' => 'nullable|string', // JSON array de URLs existentes
             'destaque_index' => 'nullable|integer',
             'captador_user_id' => 'nullable|integer',
+            'construtora_pessoa_id' => 'nullable|integer',
             // Dados do proprietário (interno)
             'proprietario_nome' => 'nullable|string|max:150',
             'proprietario_telefone' => 'nullable|string|max:30',

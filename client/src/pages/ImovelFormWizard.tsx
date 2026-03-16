@@ -186,6 +186,7 @@ const defaultFormData = {
   local_chaves: '',
   status_chaves: 'disponivel',
   captador_user_id: '',
+  construtora_pessoa_id: '',
   proprietario_nome: '',
   proprietario_telefone: '',
   proprietario_email: '',
@@ -232,6 +233,14 @@ interface CaptadorOption {
   email?: string;
 }
 
+interface ConstrutoraOption {
+  id: number;
+  nome: string;
+  razao_social?: string | null;
+  cnpj?: string | null;
+  papeis?: string[] | null;
+}
+
 interface PropertyDocument {
   id: number;
   nome: string;
@@ -275,6 +284,8 @@ export default function ImovelFormWizard() {
   const [isLoadingPortalOptions, setIsLoadingPortalOptions] = useState(false);
   const [captadores, setCaptadores] = useState<CaptadorOption[]>([]);
   const [isLoadingCaptadores, setIsLoadingCaptadores] = useState(false);
+  const [construtoras, setConstrutoras] = useState<ConstrutoraOption[]>([]);
+  const [isLoadingConstrutoras, setIsLoadingConstrutoras] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isSendingImobiBrasil, setIsSendingImobiBrasil] = useState(false);
   const [imobibrasilStatus, setImobiBrasilStatus] = useState<{ enviado: boolean; data_envio?: string; erro?: string }>({ enviado: false });
@@ -332,6 +343,36 @@ export default function ImovelFormWizard() {
     };
 
     loadCaptadores();
+  }, []);
+
+  useEffect(() => {
+    const loadConstrutoras = async () => {
+      try {
+        setIsLoadingConstrutoras(true);
+        const response = await api.get('/pessoas', {
+          params: {
+            per_page: 200,
+            ativo: 1,
+            tipo: 'juridica',
+          },
+        });
+
+        const allPeople = Array.isArray(response.data?.data) ? response.data.data : [];
+        setConstrutoras(
+          allPeople.filter((pessoa: ConstrutoraOption) => {
+            const papeis = pessoa.papeis || [];
+            return papeis.includes('construtora') || papeis.includes('construtor');
+          })
+        );
+      } catch (error) {
+        console.error('Erro ao carregar construtoras:', error);
+        setConstrutoras([]);
+      } finally {
+        setIsLoadingConstrutoras(false);
+      }
+    };
+
+    loadConstrutoras();
   }, []);
 
   const handleBuscarCep = async () => {
@@ -396,6 +437,7 @@ export default function ImovelFormWizard() {
           local_chaves: item.local_chaves || '',
           status_chaves: item.status_chaves || 'disponivel',
           captador_user_id: item.captador_user_id != null ? String(item.captador_user_id) : '',
+          construtora_pessoa_id: item.construtora_pessoa_id != null ? String(item.construtora_pessoa_id) : '',
           proprietario_nome: item.proprietario_nome || '',
           proprietario_telefone: item.proprietario_telefone || '',
           proprietario_email: item.proprietario_email || '',
@@ -537,6 +579,7 @@ export default function ImovelFormWizard() {
             descricao: formData.descricao,
             descricao_resumida: formData.descricao_resumida,
             captador_user_id: formData.captador_user_id ? Number(formData.captador_user_id) : null,
+            construtora_pessoa_id: formData.construtora_pessoa_id ? Number(formData.construtora_pessoa_id) : null,
             proprietario_nome: formData.proprietario_nome,
             proprietario_telefone: formData.proprietario_telefone,
             proprietario_email: formData.proprietario_email,
@@ -898,6 +941,7 @@ export default function ImovelFormWizard() {
       if (formData.local_chaves) formDataToSend.append('local_chaves', formData.local_chaves);
       if (formData.status_chaves) formDataToSend.append('status_chaves', formData.status_chaves);
       if (formData.captador_user_id) formDataToSend.append('captador_user_id', formData.captador_user_id);
+      if (formData.construtora_pessoa_id) formDataToSend.append('construtora_pessoa_id', formData.construtora_pessoa_id);
       if (formData.proprietario_nome) formDataToSend.append('proprietario_nome', formData.proprietario_nome);
       if (formData.proprietario_telefone) formDataToSend.append('proprietario_telefone', formData.proprietario_telefone);
       if (formData.proprietario_email) formDataToSend.append('proprietario_email', formData.proprietario_email);
@@ -1104,6 +1148,7 @@ export default function ImovelFormWizard() {
       if (formData.local_chaves) formDataToSend.append('local_chaves', formData.local_chaves);
       if (formData.status_chaves) formDataToSend.append('status_chaves', formData.status_chaves);
       if (formData.captador_user_id) formDataToSend.append('captador_user_id', formData.captador_user_id);
+      if (formData.construtora_pessoa_id) formDataToSend.append('construtora_pessoa_id', formData.construtora_pessoa_id);
       if (formData.proprietario_nome) formDataToSend.append('proprietario_nome', formData.proprietario_nome);
       if (formData.proprietario_telefone) formDataToSend.append('proprietario_telefone', formData.proprietario_telefone);
       if (formData.proprietario_email) formDataToSend.append('proprietario_email', formData.proprietario_email);
@@ -1809,6 +1854,31 @@ export default function ImovelFormWizard() {
                   <p className="mt-2 text-xs text-muted-foreground">Carregando corretores...</p>
                 )}
               </div>
+              {requiresSalePrice(formData.finalidade_imovel) && (
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-foreground mb-2">Construtora vinculada</label>
+                  <select
+                    value={formData.construtora_pessoa_id}
+                    onChange={(e) => setFormData({ ...formData, construtora_pessoa_id: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  >
+                    <option value="">Nenhuma construtora vinculada</option>
+                    {construtoras.map((construtora) => (
+                      <option key={construtora.id} value={construtora.id}>
+                        {(construtora.razao_social || construtora.nome)}{construtora.cnpj ? ` • ${construtora.cnpj}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {isLoadingConstrutoras && (
+                    <p className="mt-2 text-xs text-muted-foreground">Carregando construtoras...</p>
+                  )}
+                  {!isLoadingConstrutoras && construtoras.length === 0 && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Nenhuma construtora cadastrada com esse papel. Cadastre em Pessoas para vincular ao imóvel.
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-foreground mb-2">Nome do proprietário</label>

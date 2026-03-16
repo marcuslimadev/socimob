@@ -469,8 +469,14 @@ export default function Pessoas() {
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">Papéis</label>
               <div className="flex flex-wrap gap-2">
-                {(['proprietario', 'inquilino', 'fiador', 'cliente'] as const).map((papel) => {
-                  const labels: Record<string, string> = { proprietario: 'Proprietário', inquilino: 'Inquilino', fiador: 'Fiador', cliente: 'Cliente' };
+                {(['proprietario', 'inquilino', 'fiador', 'cliente', 'construtora'] as const).map((papel) => {
+                  const labels: Record<string, string> = {
+                    proprietario: 'Proprietário',
+                    inquilino: 'Inquilino',
+                    fiador: 'Fiador',
+                    cliente: 'Cliente',
+                    construtora: 'Construtora',
+                  };
                   const active = (formData.papeis as string[]).includes(papel);
                   return (
                     <button
