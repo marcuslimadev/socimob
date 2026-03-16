@@ -102,6 +102,12 @@ interface CRMTableResponse {
   per_page: number;
 }
 
+interface LoggedUser {
+  id: number | null;
+  role: string | null;
+  name: string | null;
+}
+
 type StatusKey = 'novo' | 'em_atendimento' | 'qualificado' | 'proposta' | 'fechado' | 'perdido';
 type ClassificationFilter = 'all' | 'quente' | 'morno' | 'frio';
 
@@ -881,6 +887,9 @@ export default function CRM() {
   const [sortKey, setSortKey] = useState<'updated_at' | 'nome' | 'status'>('updated_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [corretores, setCorretores] = useState<Array<{ id: number; name: string; email?: string }>>([]);
+  const [currentUser, setCurrentUser] = useState<LoggedUser>({ id: null, role: null, name: null });
+  const [assignmentSubmitting, setAssignmentSubmitting] = useState<'assume' | 'assign' | null>(null);
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
   const [tablePage, setTablePage] = useState(1);
   const [tablePerPage, setTablePerPage] = useState(50);
   const [isMobile, setIsMobile] = useState(false);
@@ -1085,6 +1094,12 @@ export default function CRM() {
     }
   }, [queryClient]);
 
+  const invalidateCRMQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['crm-clientes'] });
+    queryClient.invalidateQueries({ queryKey: ['crm-clientes-table'] });
+    queryClient.invalidateQueries({ queryKey: ['crm-clientes-origin-summary'] });
+  }, [queryClient]);
+
   const handleDeleteLead = useCallback(async (client: CRMClient) => {
     const confirmed = window.confirm(`Excluir o lead de ${client.nome}? Esta ação não pode ser desfeita.`);
     if (!confirmed) return;
@@ -1093,8 +1108,7 @@ export default function CRM() {
       setDeletingLeadId(client.id);
       await api.delete(`/leads/${client.id}`);
       toast.success('Lead excluído com sucesso');
-      queryClient.invalidateQueries({ queryKey: ['crm-clientes'] });
-      queryClient.invalidateQueries({ queryKey: ['crm-clientes-table'] });
+      invalidateCRMQueries();
       if (selectedClient?.id === client.id) {
         setSelectedClient(null);
       }
@@ -1103,7 +1117,44 @@ export default function CRM() {
     } finally {
       setDeletingLeadId(null);
     }
-  }, [queryClient, selectedClient?.id]);
+  }, [invalidateCRMQueries, selectedClient?.id]);
+
+  const handleAssumeAtendimento = useCallback(async (client: CRMClient) => {
+    try {
+      setAssignmentSubmitting('assume');
+      const res = await api.post(`/crm/clientes/${client.id}/assume`);
+      const updatedClient = normalizeCRMClient(res?.data?.data ?? client);
+      setSelectedClient((prev) => prev?.id === client.id ? updatedClient : prev);
+      setSelectedAssigneeId(updatedClient.corretor_id ? String(updatedClient.corretor_id) : '');
+      invalidateCRMQueries();
+      toast.success(res?.data?.message || 'Atendimento assumido com sucesso');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Erro ao assumir atendimento');
+    } finally {
+      setAssignmentSubmitting(null);
+    }
+  }, [invalidateCRMQueries]);
+
+  const handleAssignAtendimento = useCallback(async (client: CRMClient, corretorId: string) => {
+    if (!corretorId) {
+      toast.error('Selecione um atendente');
+      return;
+    }
+
+    try {
+      setAssignmentSubmitting('assign');
+      const res = await api.post(`/crm/clientes/${client.id}/assign`, { corretor_id: Number(corretorId) });
+      const updatedClient = normalizeCRMClient(res?.data?.data ?? client);
+      setSelectedClient((prev) => prev?.id === client.id ? updatedClient : prev);
+      setSelectedAssigneeId(updatedClient.corretor_id ? String(updatedClient.corretor_id) : corretorId);
+      invalidateCRMQueries();
+      toast.success(res?.data?.message || 'Atendente designado com sucesso');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Erro ao designar atendente');
+    } finally {
+      setAssignmentSubmitting(null);
+    }
+  }, [invalidateCRMQueries]);
 
   const handleOpenQuickView = useCallback((url: string, title: string) => {
     if (!url) return;
@@ -1142,6 +1193,11 @@ export default function CRM() {
       const storedUser = localStorage.getItem('user');
       if (!storedUser) return;
       const user = JSON.parse(storedUser);
+      setCurrentUser({
+        id: typeof user?.id === 'number' ? user.id : Number(user?.id || 0) || null,
+        role: user?.role || null,
+        name: user?.name || null,
+      });
       const role = user?.role;
       if (role === 'admin' || role === 'super_admin') {
         api.get('/admin/corretores')
@@ -1160,6 +1216,43 @@ export default function CRM() {
       // ignore
     }
   }, []);
+
+  const isAdminUser = currentUser.role === 'admin' || currentUser.role === 'super_admin';
+  const isBrokerUser = currentUser.role === 'user' || currentUser.role === 'corretor';
+
+  const assignableUsers = useMemo(() => {
+    const entries = new Map<number, { id: number; name: string; email?: string }>();
+
+    corretores.forEach((item) => {
+      if (!item?.id) return;
+      entries.set(item.id, item);
+    });
+
+    if (isAdminUser && currentUser.id && currentUser.name && !entries.has(currentUser.id)) {
+      entries.set(currentUser.id, { id: currentUser.id, name: currentUser.name });
+    }
+
+    return Array.from(entries.values()).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  }, [corretores, currentUser.id, currentUser.name, isAdminUser]);
+
+  useEffect(() => {
+    if (!selectedClient) {
+      setSelectedAssigneeId('');
+      return;
+    }
+
+    if (selectedClient.corretor_id) {
+      setSelectedAssigneeId(String(selectedClient.corretor_id));
+      return;
+    }
+
+    if (isAdminUser && currentUser.id) {
+      setSelectedAssigneeId(String(currentUser.id));
+      return;
+    }
+
+    setSelectedAssigneeId('');
+  }, [selectedClient, isAdminUser, currentUser.id]);
 
   const getDocumentsEndpoint = useCallback((client: CRMClient) => {
     if (client.pessoa_id) return `/pessoas/${client.pessoa_id}/documentos`;
@@ -2264,6 +2357,11 @@ export default function CRM() {
               <div className="flex-1 min-w-0 pr-2">
                 <h2 className="font-semibold text-foreground truncate">{selectedClient.nome}</h2>
                 <p className="text-xs text-muted-foreground truncate">{formatPhoneDisplay(selectedClient.telefone)}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                  <span>
+                    Atendente: <span className="font-semibold text-foreground">{selectedClient.corretor_nome || 'Não designado'}</span>
+                  </span>
+                </div>
                 {selectedLeadInterest?.compactSummary && (
                   <p className="text-[11px] text-emerald-400/90 truncate mt-0.5">{selectedLeadInterest.compactSummary}</p>
                 )}
@@ -2278,6 +2376,47 @@ export default function CRM() {
                         selectedLeadInterest.displayLabel || selectedLeadInterest.propertyTitle || 'Imóvel'
                       )}
                     />
+                  </div>
+                )}
+                {(isAdminUser || isBrokerUser) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={assignmentSubmitting !== null || (!isAdminUser && Boolean(selectedClient.corretor_id && selectedClient.corretor_id !== currentUser.id))}
+                      className="h-8 px-3 text-xs"
+                      onClick={() => handleAssumeAtendimento(selectedClient)}
+                      title={!isAdminUser && selectedClient.corretor_id && selectedClient.corretor_id !== currentUser.id ? 'Este atendimento já está com outro corretor' : 'Assumir atendimento'}
+                    >
+                      {assignmentSubmitting === 'assume' ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                      {selectedClient.corretor_id === currentUser.id ? 'Atendimento comigo' : 'Assumir atendimento'}
+                    </Button>
+
+                    {isAdminUser && (
+                      <>
+                        <select
+                          value={selectedAssigneeId}
+                          onChange={(event) => setSelectedAssigneeId(event.target.value)}
+                          disabled={assignmentSubmitting !== null}
+                          className="h-8 min-w-[180px] rounded-lg border border-border bg-muted/30 px-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        >
+                          <option value="">Selecionar atendente</option>
+                          {assignableUsers.map((item) => (
+                            <option key={item.id} value={item.id}>{item.name}</option>
+                          ))}
+                        </select>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={assignmentSubmitting !== null || !selectedAssigneeId}
+                          className="h-8 px-3 text-xs"
+                          onClick={() => handleAssignAtendimento(selectedClient, selectedAssigneeId)}
+                        >
+                          {assignmentSubmitting === 'assign' ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                          Designar atendente
+                        </Button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

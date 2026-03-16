@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Conversa;
 use App\Models\Lead;
 use App\Models\Property;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -11,6 +12,16 @@ use Illuminate\Support\Facades\Validator;
 
 class CRMController extends Controller
 {
+    private function isAdminRole(?string $role): bool
+    {
+        return in_array($role, ['admin', 'super_admin'], true);
+    }
+
+    private function isBrokerRole(?string $role): bool
+    {
+        return in_array($role, ['user', 'corretor'], true);
+    }
+
     private function normalizeStatus(?string $status): string
     {
         return match (mb_strtolower(trim((string) $status))) {
@@ -342,6 +353,168 @@ class CRMController extends Controller
         ];
     }
 
+    private function buildLeadResponse(Lead $lead, ?Conversa $conversa = null): array
+    {
+        $lead->loadMissing(['pessoa:id,nome,tipo,cpf,email,telefone,celular,observacoes,origem', 'corretor:id,name']);
+
+        if (!$conversa) {
+            $conversa = Conversa::where('tenant_id', $lead->tenant_id)
+                ->where('lead_id', $lead->id)
+                ->orderByDesc('ultima_atividade')
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        $lastMsg = null;
+        $unread = 0;
+
+        if ($conversa) {
+            $lastMsg = DB::table('mensagens')
+                ->where('conversa_id', $conversa->id)
+                ->orderByDesc('id')
+                ->first();
+
+            $unread = (int) DB::table('mensagens')
+                ->where('conversa_id', $conversa->id)
+                ->where('direction', 'incoming')
+                ->where(function ($q) {
+                    $q->whereNull('read_at')
+                        ->orWhere('read_at', '');
+                })
+                ->count();
+        }
+
+        return $this->mapLead($lead, $lastMsg, $unread, $conversa?->id);
+    }
+
+    private function resolveAssignableUser(int $tenantId, int $userId): User
+    {
+        return User::query()
+            ->where('tenant_id', $tenantId)
+            ->where('id', $userId)
+            ->whereIn('role', ['admin', 'user', 'corretor'])
+            ->firstOrFail();
+    }
+
+    private function findBlockingBrokerLead(int $tenantId, int $brokerId, int $currentLeadId): ?array
+    {
+        $blockingConversa = Conversa::query()
+            ->where('tenant_id', $tenantId)
+            ->where('corretor_id', $brokerId)
+            ->where(function ($query) {
+                $query->whereNull('finalizada_em')
+                    ->orWhere('status', 'ativa')
+                    ->orWhere('status', 'em_atendimento')
+                    ->orWhere('stage', 'atendimento_humano');
+            })
+            ->where(function ($query) use ($currentLeadId) {
+                $query->whereNull('lead_id')
+                    ->orWhere('lead_id', '!=', $currentLeadId);
+            })
+            ->orderByDesc('ultima_atividade')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($blockingConversa && $blockingConversa->lead_id) {
+            $blockingLead = Lead::query()
+                ->where('tenant_id', $tenantId)
+                ->find($blockingConversa->lead_id);
+
+            return [
+                'lead' => $blockingLead,
+                'conversa' => $blockingConversa,
+            ];
+        }
+
+        $blockingLead = Lead::query()
+            ->where('tenant_id', $tenantId)
+            ->where('corretor_id', $brokerId)
+            ->where('status', 'em_atendimento')
+            ->where('id', '!=', $currentLeadId)
+            ->orderByDesc('updated_at')
+            ->first();
+
+        if (!$blockingLead) {
+            return null;
+        }
+
+        return [
+            'lead' => $blockingLead,
+            'conversa' => null,
+        ];
+    }
+
+    private function assignLeadAtendimento(int $tenantId, int $leadId, User $actor, User $target, bool $allowAdminOverride = false): array
+    {
+        return DB::transaction(function () use ($tenantId, $leadId, $actor, $target, $allowAdminOverride) {
+            $lead = Lead::query()
+                ->where('tenant_id', $tenantId)
+                ->where('id', $leadId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $conversa = Conversa::query()
+                ->where('tenant_id', $tenantId)
+                ->where('lead_id', $lead->id)
+                ->orderByDesc('ultima_atividade')
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first();
+
+            $actorIsAdmin = $this->isAdminRole($actor->role ?? null);
+            $targetIsAdmin = $this->isAdminRole($target->role ?? null);
+            $targetIsBroker = $this->isBrokerRole($target->role ?? null);
+
+            if (!$targetIsAdmin && !$targetIsBroker) {
+                abort(response()->json([
+                    'success' => false,
+                    'message' => 'Usuário selecionado não pode assumir atendimento.',
+                ], 422));
+            }
+
+            $currentOwnerId = $conversa?->corretor_id ?: $lead->corretor_id;
+            if (!$allowAdminOverride && !$actorIsAdmin && $currentOwnerId && $currentOwnerId !== $target->id) {
+                abort(response()->json([
+                    'success' => false,
+                    'message' => 'Este atendimento já está com outro corretor.',
+                ], 409));
+            }
+
+            if ($targetIsBroker) {
+                $blocking = $this->findBlockingBrokerLead($tenantId, $target->id, $lead->id);
+                if ($blocking) {
+                    /** @var Lead|null $blockingLead */
+                    $blockingLead = $blocking['lead'];
+                    $blockingName = trim((string) ($blockingLead?->nome ?? 'outro atendimento'));
+
+                    abort(response()->json([
+                        'success' => false,
+                        'message' => "{$target->name} já está atendendo {$blockingName}. Redesignar o atendimento atual antes de assumir outro.",
+                    ], 409));
+                }
+            }
+
+            $lead->corretor_id = $target->id;
+            $lead->status = 'em_atendimento';
+            $lead->updated_at = now();
+            $lead->save();
+
+            if ($conversa) {
+                $conversa->corretor_id = $target->id;
+                $conversa->user_id = $target->id;
+                $conversa->status = 'em_atendimento';
+                $conversa->stage = 'atendimento_humano';
+                $conversa->updated_at = now();
+                $conversa->save();
+            }
+
+            return [
+                'lead' => $lead->fresh(['pessoa:id,nome,tipo,cpf,email,telefone,celular,observacoes,origem', 'corretor:id,name']),
+                'conversa' => $conversa?->fresh(),
+            ];
+        });
+    }
+
     /**
      * Listar clientes do CRM agrupados por status
      * GET /api/crm/clientes
@@ -575,6 +748,91 @@ class CRMController extends Controller
                 'success' => false,
                 'error' => 'Erro ao atualizar status',
             ], 500);
+        }
+    }
+
+    /**
+     * Corretor/admin assume um atendimento no CRM.
+     * POST /api/crm/clientes/{id}/assume
+     */
+    public function assume(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            $tenantId = $request->attributes->get('tenant_id') ?? $user?->tenant_id;
+
+            if (!$user || !$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
+
+            if (!$this->isAdminRole($user->role ?? null) && !$this->isBrokerRole($user->role ?? null)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Você não tem permissão para assumir atendimento.',
+                ], 403);
+            }
+
+            $result = $this->assignLeadAtendimento($tenantId, (int) $id, $user, $user, $this->isAdminRole($user->role ?? null));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Atendimento assumido com sucesso.',
+                'data' => $this->buildLeadResponse($result['lead'], $result['conversa']),
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cliente não encontrado.',
+            ], 404);
+        }
+    }
+
+    /**
+     * Admin designa o atendente de um cliente no CRM.
+     * POST /api/crm/clientes/{id}/assign
+     */
+    public function assign(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            $tenantId = $request->attributes->get('tenant_id') ?? $user?->tenant_id;
+
+            if (!$user || !$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
+
+            if (!$this->isAdminRole($user->role ?? null)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Apenas administradores podem designar atendimento.',
+                ], 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'corretor_id' => 'required|integer',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Dados inválidos',
+                    'messages' => $validator->errors(),
+                ], 422);
+            }
+
+            $target = $this->resolveAssignableUser($tenantId, (int) $request->input('corretor_id'));
+            $result = $this->assignLeadAtendimento($tenantId, (int) $id, $user, $target, true);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Atendente designado com sucesso.',
+                'data' => $this->buildLeadResponse($result['lead'], $result['conversa']),
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cliente ou atendente não encontrado.',
+            ], 404);
         }
     }
 }

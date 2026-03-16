@@ -500,6 +500,8 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     // CRM unificado
     $router->get('/crm/clientes', 'App\Http\Controllers\CRMController@index');
     $router->patch('/crm/clientes/{id}/status', 'App\Http\Controllers\CRMController@updateStatus');
+    $router->post('/crm/clientes/{id}/assume', 'App\Http\Controllers\CRMController@assume');
+    $router->post('/crm/clientes/{id}/assign', 'App\Http\Controllers\CRMController@assign');
 
     // Configurações do CRM / IA
     $router->get('/settings', 'App\Http\Controllers\SettingsController@index');

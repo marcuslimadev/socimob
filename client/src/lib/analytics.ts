@@ -3,6 +3,18 @@ type ConsentState = 'granted' | 'denied' | null;
 const CONSENT_KEY = 'analytics_consent';
 const CONSENT_DATE_KEY = 'analytics_consent_at';
 const SESSION_KEY = 'analytics_session_id';
+const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID?.trim();
+
+type GoogleAnalyticsEventValue = string | number | boolean;
+
+declare global {
+  interface Window {
+    dataLayer?: unknown[];
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
+let googleAnalyticsLoadPromise: Promise<void> | null = null;
 
 const getCookie = (name: string) => {
   const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
@@ -19,6 +31,124 @@ const generateId = () => {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 };
 
+const isGoogleAnalyticsEnabled = () => Boolean(GA_MEASUREMENT_ID);
+
+const getGoogleConsentPayload = (state: Exclude<ConsentState, null>) => ({
+  analytics_storage: state,
+  ad_storage: 'denied',
+  ad_user_data: 'denied',
+  ad_personalization: 'denied',
+});
+
+const installGoogleAnalyticsStub = () => {
+  window.dataLayer = window.dataLayer || [];
+
+  if (!window.gtag) {
+    window.gtag = (...args: unknown[]) => {
+      window.dataLayer?.push(args);
+    };
+  }
+};
+
+const loadGoogleAnalytics = async () => {
+  if (!isGoogleAnalyticsEnabled() || typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  if (googleAnalyticsLoadPromise) {
+    return googleAnalyticsLoadPromise;
+  }
+
+  installGoogleAnalyticsStub();
+  window.gtag?.('consent', 'default', getGoogleConsentPayload('denied'));
+  window.gtag?.('js', new Date());
+  window.gtag?.('config', GA_MEASUREMENT_ID, {
+    send_page_view: false,
+    anonymize_ip: true,
+  });
+
+  const existingScript = document.querySelector(`script[data-google-analytics="${GA_MEASUREMENT_ID}"]`);
+  if (existingScript) {
+    googleAnalyticsLoadPromise = Promise.resolve();
+    return googleAnalyticsLoadPromise;
+  }
+
+  googleAnalyticsLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_MEASUREMENT_ID || '')}`;
+    script.setAttribute('data-google-analytics', GA_MEASUREMENT_ID || '');
+    script.onload = () => resolve();
+    script.onerror = () => {
+      googleAnalyticsLoadPromise = null;
+      reject(new Error('Failed to load Google Analytics'));
+    };
+    document.head.appendChild(script);
+  });
+
+  return googleAnalyticsLoadPromise;
+};
+
+const updateGoogleAnalyticsConsent = (state: ConsentState) => {
+  if (!isGoogleAnalyticsEnabled() || !state || typeof window === 'undefined') {
+    return;
+  }
+
+  if (state === 'granted') {
+    void loadGoogleAnalytics()
+      .then(() => {
+        window.gtag?.('consent', 'update', getGoogleConsentPayload(state));
+      })
+      .catch(() => undefined);
+    return;
+  }
+
+  window.gtag?.('consent', 'update', getGoogleConsentPayload(state));
+};
+
+const normalizeGoogleAnalyticsValue = (value: unknown): GoogleAnalyticsEventValue | undefined => {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const sendGoogleAnalyticsEvent = (event: string, properties?: Record<string, unknown>) => {
+  if (!isGoogleAnalyticsEnabled() || getConsent() !== 'granted') {
+    return;
+  }
+
+  const normalizedProperties = Object.entries(properties || {}).reduce<Record<string, GoogleAnalyticsEventValue>>(
+    (accumulator, [key, value]) => {
+      const normalizedValue = normalizeGoogleAnalyticsValue(value);
+      if (normalizedValue !== undefined) {
+        accumulator[key] = normalizedValue;
+      }
+      return accumulator;
+    },
+    {},
+  );
+
+  void loadGoogleAnalytics()
+    .then(() => {
+      window.gtag?.('event', event, normalizedProperties);
+    })
+    .catch(() => undefined);
+};
+
 export const getConsent = (): ConsentState => {
   const stored = localStorage.getItem(CONSENT_KEY) as ConsentState | null;
   if (stored === 'granted' || stored === 'denied') return stored;
@@ -32,6 +162,7 @@ export const setConsent = (value: ConsentState) => {
   localStorage.setItem(CONSENT_KEY, value);
   localStorage.setItem(CONSENT_DATE_KEY, new Date().toISOString());
   setCookie(CONSENT_KEY, value, 180);
+  updateGoogleAnalyticsConsent(value);
 };
 
 export const getConsentAt = () => {
@@ -72,7 +203,15 @@ const detectBrowser = () => {
   return 'Other';
 };
 
-export const trackEvent = (event: string, properties?: Record<string, any>) => {
+export const initializeAnalytics = () => {
+  updateGoogleAnalyticsConsent(getConsent());
+};
+
+export const trackEvent = (
+  event: string,
+  properties?: Record<string, any>,
+  options?: { skipGoogleAnalytics?: boolean },
+) => {
   const consent = getConsent();
   if (consent !== 'granted') return;
 
@@ -101,15 +240,25 @@ export const trackEvent = (event: string, properties?: Record<string, any>) => {
 
   if (navigator.sendBeacon) {
     navigator.sendBeacon('/api/analytics/collect', new Blob([body], { type: 'application/json' }));
-    return;
+  } else {
+    fetch('/api/analytics/collect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+    }).catch(() => undefined);
   }
 
-  fetch('/api/analytics/collect', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body,
-    keepalive: true,
-  }).catch(() => undefined);
+  if (!options?.skipGoogleAnalytics) {
+    sendGoogleAnalyticsEvent(event, properties);
+  }
 };
 
-export const trackPageView = () => trackEvent('pageview');
+export const trackPageView = () => {
+  trackEvent('pageview', undefined, { skipGoogleAnalytics: true });
+  sendGoogleAnalyticsEvent('page_view', {
+    page_title: document.title,
+    page_location: window.location.href,
+    page_path: `${window.location.pathname}${window.location.search}`,
+  });
+};
