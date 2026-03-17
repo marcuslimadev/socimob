@@ -212,6 +212,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->get('/ads/logs',                           'App\Http\Controllers\Ads\AdsListingController@logs');
 
     // Property Ads (Propaganda de Imóveis)
+    $router->get('/property-ads/proxy-image', 'App\Http\Controllers\Admin\PropertyAdsController@proxyImage');
     $router->get('/property-ads', function () use ($router) {
         $user = app('request')->user();
         if (!$user) {

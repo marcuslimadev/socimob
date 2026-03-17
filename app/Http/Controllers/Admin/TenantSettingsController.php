@@ -44,6 +44,11 @@ class TenantSettingsController extends Controller
         }
 
         $config = $tenant->config;
+        $configData = $config ? $config->toArray() : null;
+
+        if (is_array($configData)) {
+            $configData['google_calendar_embed_url'] = $config->metadata['google_calendar_embed_url'] ?? null;
+        }
 
         return response()->json([
             'tenant' => [
@@ -65,7 +70,7 @@ class TenantSettingsController extends Controller
                 'cnpj' => $tenant->metadata['cnpj'] ?? null,
                 'endereco' => $tenant->metadata['endereco'] ?? null,
             ],
-            'config' => $config,
+            'config' => $configData,
             'integrations_managed_by_env' => true,
         ]);
     }
@@ -149,6 +154,7 @@ class TenantSettingsController extends Controller
             'config.twilio_auth_token' => 'nullable|string',
             'config.twilio_whatsapp_from' => 'nullable|string|max:50',
             'config.whatsapp_number' => 'nullable|string|max:30',
+            'config.google_calendar_embed_url' => 'nullable|url|max:2000',
         ]);
 
         if ($validator->fails()) {
@@ -251,6 +257,19 @@ class TenantSettingsController extends Controller
                 if (array_key_exists($field, $configData)) {
                     $configUpdates[$field] = $configData[$field];
                 }
+            }
+
+            if (array_key_exists('google_calendar_embed_url', $configData)) {
+                $metadata = $config->metadata ?? [];
+                $googleCalendarEmbedUrl = trim((string) ($configData['google_calendar_embed_url'] ?? ''));
+
+                if ($googleCalendarEmbedUrl === '') {
+                    unset($metadata['google_calendar_embed_url']);
+                } else {
+                    $metadata['google_calendar_embed_url'] = $googleCalendarEmbedUrl;
+                }
+
+                $configUpdates['metadata'] = $metadata;
             }
             
             if (!empty($configUpdates)) {

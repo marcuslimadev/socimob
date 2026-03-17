@@ -289,10 +289,20 @@ class CommissionController extends Controller
     public function listarCorretores(Request $request)
     {
         try {
-            $tenantId = $request->get('tenant_id');
+            $tenantId = $request->attributes->get('tenant_id')
+                ?? $request->get('tenant_id')
+                ?? $request->user()?->tenant_id;
+
+            if (!$tenantId) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Tenant não identificado'
+                ], 403);
+            }
             
             $corretores = User::where('tenant_id', $tenantId)
-                ->whereIn('role', ['admin', 'user'])
+                ->whereIn('role', ['corretor', 'admin', 'super_admin'])
+                ->where('is_active', true)
                 ->orderBy('name')
                 ->get(['id', 'name', 'email', 'pix_key', 'pix_type', 'banco', 'agencia', 'conta']);
 

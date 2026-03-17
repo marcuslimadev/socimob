@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarClock, RefreshCcw, Search } from 'lucide-react';
+import { CalendarClock, CalendarDays, ExternalLink, RefreshCcw, Save, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
+import { Calendar } from '@/components/ui/calendar';
 import { api } from '@/lib/api';
 
 interface Visita {
@@ -14,6 +15,12 @@ interface Visita {
   data_hora: string;
   status: 'pendente' | 'confirmada' | 'cancelada' | 'concluida';
   observacoes?: string | null;
+}
+
+interface TenantSettingsResponse {
+  config?: {
+    google_calendar_embed_url?: string | null;
+  } | null;
 }
 
 const statusConfig: Record<Visita['status'], { label: string; className: string }> = {
@@ -42,24 +49,90 @@ const formatDateTime = (value: string) => {
   return `${dateLabel} • ${timeLabel}`;
 };
 
+const formatLongDate = (value: Date) =>
+  value.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+
+const sameCalendarDay = (left: Date, right: Date) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+
+const parseVisitaDate = (value: string) => {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const toGoogleCalendarDate = (value: Date) => value.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+
+const buildGoogleCalendarUrl = (visita: Visita) => {
+  const start = parseVisitaDate(visita.data_hora) ?? new Date();
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const title = visita.property_titulo ? `Visita ao imóvel: ${visita.property_titulo}` : `Visita com ${visita.nome}`;
+  const details = [
+    `Cliente: ${visita.nome}`,
+    visita.email ? `Email: ${visita.email}` : null,
+    visita.telefone ? `Telefone: ${visita.telefone}` : null,
+    visita.observacoes ? `Observações: ${visita.observacoes}` : null,
+  ].filter(Boolean).join('\n');
+
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: `${toGoogleCalendarDate(start)}/${toGoogleCalendarDate(end)}`,
+    details,
+    location: visita.property_titulo || 'Imóvel sob consulta',
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+};
+
 export default function Agenda() {
   const [visitas, setVisitas] = useState<Visita[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [googleCalendarEmbedUrl, setGoogleCalendarEmbedUrl] = useState('');
+  const [googleCalendarDraft, setGoogleCalendarDraft] = useState('');
+  const [isSavingGoogleCalendar, setIsSavingGoogleCalendar] = useState(false);
 
   const filteredVisitas = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
     return visitas.filter((visita) => {
+      const visitaDate = parseVisitaDate(visita.data_hora);
       const matchSearch =
         !normalizedSearch ||
         visita.nome.toLowerCase().includes(normalizedSearch) ||
         visita.property_titulo?.toLowerCase().includes(normalizedSearch);
       const matchStatus = !statusFilter || visita.status === statusFilter;
-      return matchSearch && matchStatus;
+      const matchDate = !selectedDate || (visitaDate ? sameCalendarDay(visitaDate, selectedDate) : false);
+      return matchSearch && matchStatus && matchDate;
     });
-  }, [search, statusFilter, visitas]);
+  }, [search, selectedDate, statusFilter, visitas]);
+
+  const visitDays = useMemo(
+    () => visitas.map((visita) => parseVisitaDate(visita.data_hora)).filter((value): value is Date => Boolean(value)),
+    [visitas],
+  );
+
+  const todayCount = useMemo(() => {
+    const today = new Date();
+    return visitas.filter((visita) => {
+      const visitaDate = parseVisitaDate(visita.data_hora);
+      return visitaDate ? sameCalendarDay(visitaDate, today) : false;
+    }).length;
+  }, [visitas]);
+
+  const confirmedCount = useMemo(
+    () => visitas.filter((visita) => visita.status === 'confirmada').length,
+    [visitas],
+  );
 
   const carregarVisitas = async () => {
     setIsLoading(true);
@@ -79,6 +152,17 @@ export default function Agenda() {
     }
   };
 
+  const carregarConfiguracaoAgenda = async () => {
+    try {
+      const response = await api.get<TenantSettingsResponse>('/admin/settings');
+      const embedUrl = response.data?.config?.google_calendar_embed_url?.trim() || '';
+      setGoogleCalendarEmbedUrl(embedUrl);
+      setGoogleCalendarDraft(embedUrl);
+    } catch (error) {
+      console.error('Erro ao carregar configuração do Google Agenda:', error);
+    }
+  };
+
   const atualizarStatus = async (id: number, status: Visita['status']) => {
     setUpdatingId(id);
     try {
@@ -93,8 +177,29 @@ export default function Agenda() {
     }
   };
 
+  const salvarGoogleCalendar = async () => {
+    try {
+      setIsSavingGoogleCalendar(true);
+      const embedUrl = googleCalendarDraft.trim();
+      await api.put('/admin/settings', {
+        config: {
+          google_calendar_embed_url: embedUrl || null,
+        },
+      });
+      setGoogleCalendarEmbedUrl(embedUrl);
+      setGoogleCalendarDraft(embedUrl);
+      toast.success(embedUrl ? 'Google Agenda conectado na tela' : 'Integração do Google Agenda removida');
+    } catch (error: any) {
+      console.error('Erro ao salvar Google Agenda:', error);
+      toast.error(error?.response?.data?.error || 'Não foi possível salvar a integração do Google Agenda');
+    } finally {
+      setIsSavingGoogleCalendar(false);
+    }
+  };
+
   useEffect(() => {
     carregarVisitas();
+    carregarConfiguracaoAgenda();
   }, []);
 
   return (
@@ -113,16 +218,39 @@ export default function Agenda() {
                 <CalendarClock className="text-blue-300" size={32} />
                 Agenda de Visitas
               </h1>
-              <p className="page-subtitle">Acompanhe confirmações e prepare cada visita com antecedência.</p>
+              <p className="page-subtitle">Acompanhe as visitas no calendário, filtre por dia e envie cada compromisso para o Google Agenda.</p>
             </div>
-            <button
-              type="button"
-              onClick={carregarVisitas}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-white/20 sm:w-auto"
-            >
-              <RefreshCcw size={16} />
-              Atualizar
-            </button>
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+              <button
+                type="button"
+                onClick={() => window.open('https://calendar.google.com/calendar/u/0/r', '_blank', 'noopener,noreferrer')}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-sky-400/30 bg-sky-500/15 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/25 sm:w-auto"
+              >
+                <ExternalLink size={16} />
+                Abrir Google Agenda
+              </button>
+              <button
+                type="button"
+                onClick={carregarVisitas}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-white/20 sm:w-auto"
+              >
+                <RefreshCcw size={16} />
+                Atualizar
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+            {[
+              { label: 'Visitas cadastradas', value: visitas.length },
+              { label: 'Visitas hoje', value: todayCount },
+              { label: 'Confirmadas', value: confirmedCount },
+            ].map((item) => (
+              <div key={item.label} className="glass-panel rounded-2xl p-5">
+                <p className="text-sm text-muted-foreground">{item.label}</p>
+                <p className="mt-2 text-3xl font-bold text-foreground">{item.value}</p>
+              </div>
+            ))}
           </div>
 
           <div className="glass-panel p-4 rounded-2xl mb-6">
@@ -148,6 +276,101 @@ export default function Agenda() {
                 <option value="concluida">Concluídas</option>
                 <option value="cancelada">Canceladas</option>
               </select>
+            </div>
+          </div>
+
+          <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-[420px_1fr]">
+            <div className="glass-panel rounded-3xl p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Calendário</p>
+                  <p className="text-xs text-muted-foreground">Selecione um dia para filtrar as visitas.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(undefined)}
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-white/10"
+                >
+                  Limpar filtro
+                </button>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl bg-white/5 p-2">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  modifiers={{ hasVisit: visitDays }}
+                  modifiersClassNames={{
+                    hasVisit: 'bg-amber-400/15 text-amber-100 font-semibold',
+                  }}
+                  className="w-full text-foreground"
+                />
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm font-semibold text-foreground">
+                  {selectedDate ? formatLongDate(selectedDate) : 'Todos os dias'}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {selectedDate
+                    ? `${filteredVisitas.length} visita(s) encontradas para a data selecionada.`
+                    : 'Dias com visitas aparecem destacados no calendário.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="glass-panel rounded-3xl p-5">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 text-foreground">
+                    <CalendarDays size={18} className="text-sky-300" />
+                    <p className="text-sm font-semibold">Google Agenda</p>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Cole a URL de incorporação do Google Calendar para ver o calendário oficial lado a lado com a agenda interna.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 md:flex-row">
+                <input
+                  type="url"
+                  value={googleCalendarDraft}
+                  onChange={(event) => setGoogleCalendarDraft(event.target.value)}
+                  placeholder="https://calendar.google.com/calendar/embed?..."
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={salvarGoogleCalendar}
+                  disabled={isSavingGoogleCalendar}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 disabled:opacity-60"
+                >
+                  <Save size={16} />
+                  {isSavingGoogleCalendar ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-white/10 bg-[#07111d]/70 p-3">
+                {googleCalendarEmbedUrl ? (
+                  <iframe
+                    src={googleCalendarEmbedUrl}
+                    title="Google Agenda"
+                    className="h-[420px] w-full rounded-2xl border border-white/10 bg-white"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                ) : (
+                  <div className="flex h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 text-center text-muted-foreground">
+                    <CalendarDays size={28} className="mb-3 text-sky-300" />
+                    <p className="font-medium text-foreground">Google Agenda ainda não configurado</p>
+                    <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                      Use a URL de incorporação do seu calendário do Google para acompanhar a agenda externa sem sair desta tela.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -188,6 +411,15 @@ export default function Agenda() {
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${config.className}`}>
                           {config.label}
                         </span>
+                        <a
+                          href={buildGoogleCalendarUrl(visita)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 rounded-xl border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-sm font-medium text-sky-100 transition hover:bg-sky-500/20"
+                        >
+                          <ExternalLink size={14} />
+                          Google Agenda
+                        </a>
                         <select
                           value={visita.status}
                           onChange={(event) =>

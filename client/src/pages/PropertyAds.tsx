@@ -38,14 +38,48 @@ interface Property {
 const STORY_WIDTH = 1080;
 const STORY_HEIGHT = 1920;
 
-const loadImage = (src: string) =>
-  new Promise<HTMLImageElement>((resolve, reject) => {
+const isAbsoluteHttpUrl = (value: string) => /^https?:\/\//i.test(value);
+
+const isCrossOriginUrl = (value: string) => {
+  if (typeof window === 'undefined' || !isAbsoluteHttpUrl(value)) {
+    return false;
+  }
+
+  try {
+    return new URL(value).origin !== window.location.origin;
+  } catch {
+    return false;
+  }
+};
+
+const fetchImageBlobUrl = async (src: string) => {
+  const response = await api.get('/admin/property-ads/proxy-image', {
+    params: { url: src },
+    responseType: 'blob',
+    headers: {
+      Accept: 'image/*',
+    },
+  });
+
+  return URL.createObjectURL(response.data);
+};
+
+const loadImage = async (src: string, objectUrls: string[] = []) => {
+  const resolvedSrc = isCrossOriginUrl(src)
+    ? await fetchImageBlobUrl(src)
+    : src;
+
+  if (resolvedSrc.startsWith('blob:')) {
+    objectUrls.push(resolvedSrc);
+  }
+
+  return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new window.Image();
-    image.crossOrigin = 'anonymous';
     image.onload = () => resolve(image);
     image.onerror = reject;
-    image.src = src;
+    image.src = resolvedSrc;
   });
+};
 
 const normalizePhotos = (property: Property): string[] => {
   const items = [
@@ -70,6 +104,8 @@ const getPrice = (property: Property) => property.price || property.valor_venda 
 
 const formatCurrency = (value: number) =>
   value > 0 ? `R$ ${value.toLocaleString('pt-BR')}` : 'Consulte valor';
+
+const getTransactionLabel = (type: string) => (type === 'aluguel' ? 'Aluguel' : 'Venda');
 
 const getLocationText = (property: Property) =>
   [getNeighborhood(property), `${getCity(property)}/${getState(property)}`]
@@ -170,7 +206,8 @@ export default function PropertyAds() {
     }
   };
 
-  const createStoryImage = async (property: Property, generatedText: string) => {
+  const createStoryImage = async (property: Property) => {
+    const objectUrls: string[] = [];
     const canvas = document.createElement('canvas');
     canvas.width = STORY_WIDTH;
     canvas.height = STORY_HEIGHT;
@@ -182,160 +219,210 @@ export default function PropertyAds() {
 
     const photos = normalizePhotos(property);
     const mainPhotoUrl = photos[0];
-    const thumbUrls = photos.slice(1, 4);
+    const transactionType = getTransactionType(property);
     const primaryColor = tenant?.primary_color || '#0f172a';
     const secondaryColor = tenant?.secondary_color || '#d4a34f';
+    const cardX = 40;
+    const cardY = 40;
+    const cardWidth = STORY_WIDTH - 80;
+    const cardHeight = STORY_HEIGHT - 80;
+    const cardRadius = 78;
+    const panelX = cardX + 48;
+    const panelY = cardY + cardHeight - 580;
+    const panelWidth = cardWidth - 96;
+    const panelHeight = 500;
+    const panelRadius = 58;
 
-    ctx.fillStyle = '#09111f';
+    const drawPill = (
+      x: number,
+      y: number,
+      text: string,
+      options: {
+        fill: string;
+        textColor: string;
+        stroke?: string;
+        font?: string;
+        horizontalPadding?: number;
+        height?: number;
+      },
+    ) => {
+      const {
+        fill,
+        textColor,
+        stroke,
+        font = '600 32px sans-serif',
+        horizontalPadding = 28,
+        height = 72,
+      } = options;
+
+      ctx.font = font;
+      const textWidth = ctx.measureText(text).width;
+      const width = textWidth + horizontalPadding * 2;
+
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.roundRect(x, y, width, height, height / 2);
+      ctx.fill();
+
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = textColor;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, x + horizontalPadding, y + height / 2);
+
+      return width;
+    };
+
+    ctx.fillStyle = '#050b14';
     ctx.fillRect(0, 0, STORY_WIDTH, STORY_HEIGHT);
 
-    if (mainPhotoUrl) {
-      try {
-        const mainImage = await loadImage(mainPhotoUrl);
-        const scale = Math.max(STORY_WIDTH / mainImage.width, 980 / mainImage.height);
-        const drawWidth = mainImage.width * scale;
-        const drawHeight = mainImage.height * scale;
-        const drawX = (STORY_WIDTH - drawWidth) / 2;
-        const drawY = 0;
-        ctx.drawImage(mainImage, drawX, drawY, drawWidth, drawHeight);
-      } catch {
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(0, 0, STORY_WIDTH, 980);
-      }
-    } else {
-      const topGradient = ctx.createLinearGradient(0, 0, STORY_WIDTH, 980);
-      topGradient.addColorStop(0, primaryColor);
-      topGradient.addColorStop(1, '#0b1220');
-      ctx.fillStyle = topGradient;
-      ctx.fillRect(0, 0, STORY_WIDTH, 980);
-    }
+    try {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(cardX, cardY, cardWidth, cardHeight, cardRadius);
+      ctx.clip();
 
-    const overlay = ctx.createLinearGradient(0, 0, 0, STORY_HEIGHT);
-    overlay.addColorStop(0, 'rgba(0,0,0,0.18)');
-    overlay.addColorStop(0.45, 'rgba(0,0,0,0.38)');
-    overlay.addColorStop(0.7, 'rgba(7,12,21,0.88)');
-    overlay.addColorStop(1, 'rgba(7,12,21,1)');
-    ctx.fillStyle = overlay;
-    ctx.fillRect(0, 0, STORY_WIDTH, STORY_HEIGHT);
-
-    ctx.fillStyle = 'rgba(255,255,255,0.10)';
-    ctx.fillRect(72, 70, STORY_WIDTH - 144, 2);
-
-    ctx.fillStyle = 'rgba(8,15,26,0.88)';
-    ctx.fillRect(72, 1060, STORY_WIDTH - 144, 690);
-
-    ctx.fillStyle = secondaryColor;
-    ctx.fillRect(72, 1060, 12, 690);
-
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(120, 1365, STORY_WIDTH - 240, 2);
-
-    const logoUrl = tenant?.logo_url || tenant?.logo;
-    if (logoUrl) {
-      try {
-        const logo = await loadImage(logoUrl);
-        const logoMaxWidth = 220;
-        const logoMaxHeight = 88;
-        const scale = Math.min(logoMaxWidth / logo.width, logoMaxHeight / logo.height);
-        const width = logo.width * scale;
-        const height = logo.height * scale;
-        ctx.fillStyle = 'rgba(255,255,255,0.96)';
-        ctx.beginPath();
-        ctx.roundRect(72, 96, 248, 116, 28);
-        ctx.fill();
-        ctx.drawImage(logo, 86, 110, width, height);
-      } catch {
-        // ignore logo load failure
-      }
-    }
-
-    ctx.fillStyle = 'rgba(255,255,255,0.72)';
-    ctx.font = '600 28px sans-serif';
-    ctx.fillText((tenant?.name || 'Imobiliária').toUpperCase(), 360, 150);
-
-    ctx.fillStyle = secondaryColor;
-    ctx.font = '700 36px sans-serif';
-    ctx.fillText(getTransactionType(property) === 'aluguel' ? 'PARA ALUGAR' : 'IMÓVEL EM DESTAQUE', 120, 1140);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '700 68px sans-serif';
-    const titleLines = splitLines(getPropertyTitle(property), 22, 2);
-    titleLines.forEach((line, index) => {
-      ctx.fillText(line, 120, 1220 + index * 78);
-    });
-
-    ctx.fillStyle = 'rgba(255,255,255,0.78)';
-    ctx.font = '500 36px sans-serif';
-    ctx.fillText(getLocationText(property) || 'Localização sob consulta', 120, 1380);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '700 66px sans-serif';
-    ctx.fillText(formatCurrency(getPrice(property)), 120, 1480);
-
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.font = '600 34px sans-serif';
-    const specs = [
-      getBedrooms(property) > 0 ? `${getBedrooms(property)} quartos` : null,
-      getBathrooms(property) > 0 ? `${getBathrooms(property)} banheiros` : null,
-      getArea(property) > 0 ? `${getArea(property)}m²` : null,
-    ].filter(Boolean).join('  •  ');
-    if (specs) {
-      ctx.fillText(specs, 120, 1545);
-    }
-
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.font = '500 34px sans-serif';
-    const textLines = splitLines(generatedText, 44, 4);
-    textLines.forEach((line, index) => {
-      ctx.fillText(line, 120, 1635 + index * 48);
-    });
-
-    ctx.fillStyle = secondaryColor;
-    ctx.beginPath();
-    ctx.roundRect(120, 1780, 420, 84, 42);
-    ctx.fill();
-    ctx.fillStyle = '#08111d';
-    ctx.font = '700 32px sans-serif';
-    ctx.fillText('BAIXE E PUBLIQUE', 180, 1835);
-
-    if (thumbUrls.length > 0) {
-      for (let index = 0; index < thumbUrls.length; index += 1) {
-        const x = 650 + index * 118;
-        const y = 1766;
-        ctx.fillStyle = 'rgba(255,255,255,0.18)';
-        ctx.beginPath();
-        ctx.roundRect(x, y, 96, 96, 24);
-        ctx.fill();
-
+      if (mainPhotoUrl) {
         try {
-          const thumb = await loadImage(thumbUrls[index]);
+          const mainImage = await loadImage(mainPhotoUrl, objectUrls);
+          const scale = Math.max(cardWidth / mainImage.width, cardHeight / mainImage.height);
+          const drawWidth = mainImage.width * scale;
+          const drawHeight = mainImage.height * scale;
+          const drawX = cardX + (cardWidth - drawWidth) / 2;
+          const drawY = cardY + (cardHeight - drawHeight) / 2;
+          ctx.drawImage(mainImage, drawX, drawY, drawWidth, drawHeight);
+        } catch {
+          const fallback = ctx.createLinearGradient(cardX, cardY, cardX + cardWidth, cardY + cardHeight);
+          fallback.addColorStop(0, primaryColor);
+          fallback.addColorStop(1, '#0b1220');
+          ctx.fillStyle = fallback;
+          ctx.fillRect(cardX, cardY, cardWidth, cardHeight);
+        }
+      } else {
+        const fallback = ctx.createLinearGradient(cardX, cardY, cardX + cardWidth, cardY + cardHeight);
+        fallback.addColorStop(0, primaryColor);
+        fallback.addColorStop(1, '#0b1220');
+        ctx.fillStyle = fallback;
+        ctx.fillRect(cardX, cardY, cardWidth, cardHeight);
+      }
+
+      const overlay = ctx.createLinearGradient(0, cardY, 0, cardY + cardHeight);
+      overlay.addColorStop(0, 'rgba(0,0,0,0.08)');
+      overlay.addColorStop(0.48, 'rgba(0,0,0,0.28)');
+      overlay.addColorStop(0.72, 'rgba(7,17,29,0.46)');
+      overlay.addColorStop(1, 'rgba(7,17,29,0.92)');
+      ctx.fillStyle = overlay;
+      ctx.fillRect(cardX, cardY, cardWidth, cardHeight);
+
+      const logoUrl = tenant?.logo_url || tenant?.logo;
+      if (logoUrl) {
+        try {
+          const logo = await loadImage(logoUrl, objectUrls);
+          const logoMaxWidth = 360;
+          const logoMaxHeight = 160;
+          const scale = Math.min(logoMaxWidth / logo.width, logoMaxHeight / logo.height);
+          const width = logo.width * scale;
+          const height = logo.height * scale;
           ctx.save();
-          ctx.beginPath();
-          ctx.roundRect(x, y, 96, 96, 24);
-          ctx.clip();
-          const scale = Math.max(96 / thumb.width, 96 / thumb.height);
-          const width = thumb.width * scale;
-          const height = thumb.height * scale;
-          ctx.drawImage(thumb, x + (96 - width) / 2, y + (96 - height) / 2, width, height);
+          ctx.globalAlpha = 0.16;
+          ctx.drawImage(logo, cardX + (cardWidth - width) / 2, cardY + 640, width, height);
           ctx.restore();
         } catch {
-          // ignore thumb load failure
+          // ignore logo load failure
         }
       }
+
+      ctx.restore();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(cardX, cardY, cardWidth, cardHeight, cardRadius);
+      ctx.stroke();
+
+      drawPill(cardX + 48, cardY + 48, getTransactionLabel(transactionType), {
+        fill: transactionType === 'aluguel' ? 'rgba(14,165,233,0.22)' : 'rgba(16,185,129,0.22)',
+        stroke: transactionType === 'aluguel' ? 'rgba(56,189,248,0.42)' : 'rgba(52,211,153,0.38)',
+        textColor: transactionType === 'aluguel' ? '#d8f3ff' : '#d9ffef',
+        font: '700 28px sans-serif',
+        horizontalPadding: 26,
+        height: 68,
+      });
+
+      const storyBadgeText = 'Story 9:16';
+      ctx.font = '500 28px sans-serif';
+      const storyBadgeWidth = ctx.measureText(storyBadgeText).width + 44;
+      drawPill(cardX + cardWidth - storyBadgeWidth - 48, cardY + 48, storyBadgeText, {
+        fill: 'rgba(0,0,0,0.36)',
+        textColor: 'rgba(255,255,255,0.88)',
+        font: '500 28px sans-serif',
+        horizontalPadding: 22,
+        height: 68,
+      });
+
+      ctx.fillStyle = 'rgba(7,17,29,0.88)';
+      ctx.beginPath();
+      ctx.roundRect(panelX, panelY, panelWidth, panelHeight, panelRadius);
+      ctx.fill();
+
+      const tenantLabel = (tenant?.name || 'Imobiliária').toUpperCase();
+      ctx.fillStyle = secondaryColor;
+      ctx.font = '700 26px sans-serif';
+      ctx.fillText(tenantLabel, panelX + 44, panelY + 66);
+
+      const photosLabel = `${photos.length} foto${photos.length === 1 ? '' : 's'}`;
+      ctx.font = '600 24px sans-serif';
+      const photosBadgeWidth = ctx.measureText(photosLabel).width + 40;
+      drawPill(panelX + panelWidth - photosBadgeWidth - 36, panelY + 28, photosLabel, {
+        fill: 'rgba(255,255,255,0.10)',
+        textColor: 'rgba(255,255,255,0.78)',
+        font: '600 24px sans-serif',
+        horizontalPadding: 20,
+        height: 58,
+      });
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 74px sans-serif';
+      const titleLines = splitLines(getPropertyTitle(property), 22, 2);
+      titleLines.forEach((line, index) => {
+        ctx.fillText(line, panelX + 44, panelY + 150 + index * 84);
+      });
+
+      const locationY = panelY + 150 + titleLines.length * 84 + 22;
+      ctx.fillStyle = 'rgba(255,255,255,0.78)';
+      ctx.font = '500 38px sans-serif';
+      ctx.fillText(getLocationText(property) || 'Localização sob consulta', panelX + 44, locationY);
+
+      const priceY = locationY + 88;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 82px sans-serif';
+      ctx.fillText(formatCurrency(getPrice(property)), panelX + 44, priceY);
+
+      const specs = [
+        getBedrooms(property) > 0 ? `${getBedrooms(property)} quartos` : null,
+        getBathrooms(property) > 0 ? `${getBathrooms(property)} banheiros` : null,
+        getArea(property) > 0 ? `${getArea(property)}m²` : null,
+      ].filter(Boolean).join('   ');
+      if (specs) {
+        ctx.fillStyle = 'rgba(255,255,255,0.82)';
+        ctx.font = '600 31px sans-serif';
+        ctx.fillText(specs, panelX + 44, priceY + 72);
+      }
+
+      return canvas.toDataURL('image/png');
+    } finally {
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
     }
-
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.font = '500 24px sans-serif';
-    ctx.fillText(tenant?.contact_phone || 'Entre em contato para mais informações', 120, 1888);
-
-    return canvas.toDataURL('image/png');
   };
 
   const handleDownloadStory = async (property: Property) => {
     try {
       setDownloadingPropertyId(property.id);
-      const generatedText = await fetchAdText(property);
-      const dataUrl = await createStoryImage(property, generatedText);
+      const dataUrl = await createStoryImage(property);
       const link = document.createElement('a');
       const safeTitle = getPropertyTitle(property)
         .toLowerCase()
@@ -455,7 +542,7 @@ export default function PropertyAds() {
 
                         <div className="absolute inset-x-4 top-4 flex items-center justify-between">
                           <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${getTransactionBadge(transactionType)}`}>
-                            {transactionType === 'aluguel' ? 'Aluguel' : 'Venda'}
+                            {getTransactionLabel(transactionType)}
                           </span>
                           <span className="rounded-full bg-black/45 px-2.5 py-1 text-[11px] text-white/85">
                             Story 9:16
