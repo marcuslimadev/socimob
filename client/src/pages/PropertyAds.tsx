@@ -169,11 +169,6 @@ const getLocationText = (property: Property) =>
     .filter(Boolean)
     .join(', ');
 
-const getPhotoCardLabel = (property: Property) => {
-  const location = getLocationText(property);
-  return location || getPropertyType(property);
-};
-
 const splitLines = (text: string, maxLength: number, maxLines: number) => {
   const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
@@ -469,69 +464,40 @@ export default function PropertyAds() {
       }
 
       if (thumbUrls.length > 0) {
+        const thumbSize = 176;
         const thumbGap = 18;
-        const thumbsPerRow = 2;
+        const thumbsPerRow = 3;
         const maxThumbs = 6;
         const visibleThumbs = thumbUrls.slice(0, maxThumbs);
-        const cardWidth = 198;
-        const cardHeight = 164;
-        const footerHeight = 44;
-        const cardRadius = 26;
-        const totalThumbsWidth = cardWidth * thumbsPerRow + thumbGap * (thumbsPerRow - 1);
+        const totalThumbsWidth = thumbSize * thumbsPerRow + thumbGap * (thumbsPerRow - 1);
         const thumbStartX = panelX + (panelWidth - totalThumbsWidth) / 2;
-        const thumbStartY = panelY + panelHeight - (cardHeight + footerHeight) * 3 - thumbGap * 2 - 30;
-        const photoCardLabel = getPhotoCardLabel(property);
+        const thumbStartY = panelY + panelHeight - thumbSize * 2 - thumbGap - 38;
 
         for (let index = 0; index < visibleThumbs.length; index += 1) {
           const row = Math.floor(index / thumbsPerRow);
           const column = index % thumbsPerRow;
-          const x = thumbStartX + column * (cardWidth + thumbGap);
-          const y = thumbStartY + row * (cardHeight + footerHeight + thumbGap);
+          const x = thumbStartX + column * (thumbSize + thumbGap);
+          const y = thumbStartY + row * (thumbSize + thumbGap);
 
-          ctx.save();
-          ctx.fillStyle = 'rgba(255,255,255,0.96)';
+          ctx.fillStyle = 'rgba(255,255,255,0.12)';
           ctx.beginPath();
-          ctx.roundRect(x, y, cardWidth, cardHeight + footerHeight, cardRadius);
+          ctx.roundRect(x, y, thumbSize, thumbSize, 26);
           ctx.fill();
-
-          if (index < 2) {
-            drawPill(x + 12, y + 12, 'Destaque', {
-              fill: 'rgba(255,255,255,0.92)',
-              textColor: '#0f172a',
-              font: '700 18px sans-serif',
-              horizontalPadding: 14,
-              height: 34,
-            });
-          }
 
           try {
             const thumb = await loadImage(visibleThumbs[index], objectUrls);
             ctx.save();
             ctx.beginPath();
-            ctx.roundRect(x, y, cardWidth, cardHeight, cardRadius);
+            ctx.roundRect(x, y, thumbSize, thumbSize, 26);
             ctx.clip();
-            const scale = Math.max(cardWidth / thumb.width, cardHeight / thumb.height);
+            const scale = Math.max(thumbSize / thumb.width, thumbSize / thumb.height);
             const width = thumb.width * scale;
             const height = thumb.height * scale;
-            ctx.drawImage(thumb, x + (cardWidth - width) / 2, y + (cardHeight - height) / 2, width, height);
+            ctx.drawImage(thumb, x + (thumbSize - width) / 2, y + (thumbSize - height) / 2, width, height);
             ctx.restore();
           } catch {
-            ctx.fillStyle = 'rgba(148,163,184,0.22)';
-            ctx.beginPath();
-            ctx.roundRect(x, y, cardWidth, cardHeight, cardRadius);
-            ctx.fill();
+            // ignore thumb load failure
           }
-
-          ctx.fillStyle = '#111827';
-          ctx.font = '700 18px sans-serif';
-          const labelText = splitLines(photoCardLabel, 22, 1)[0] || 'Localização';
-          ctx.fillText(labelText, x + 14, y + cardHeight + 24);
-
-          ctx.fillStyle = 'rgba(17,24,39,0.68)';
-          ctx.font = '500 14px sans-serif';
-          const specText = primarySpecs.slice(0, 2).join(' • ') || getPropertyType(property);
-          ctx.fillText(specText, x + 14, y + cardHeight + 42);
-          ctx.restore();
         }
       }
 
@@ -726,25 +692,10 @@ export default function PropertyAds() {
                             </div>
                           )}
                           {thumbPhotos.length > 0 && (
-                            <div className="mt-3 grid grid-cols-2 gap-2.5">
+                            <div className="mt-3 grid grid-cols-3 gap-2">
                               {thumbPhotos.map((photo, index) => (
-                                <div key={`${property.id}-${index}`} className="overflow-hidden rounded-[18px] bg-white/95 shadow-[0_10px_30px_rgba(15,23,42,0.18)]">
-                                  <div className="relative aspect-[1.16/1] overflow-hidden">
-                                    <img src={photo} alt={`${getPropertyTitle(property)} ${index + 2}`} className="h-full w-full object-cover" />
-                                    {index < 2 && (
-                                      <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[9px] font-semibold text-slate-900">
-                                        Destaque
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="px-2.5 py-2 text-slate-900">
-                                    <p className="truncate text-[10px] font-semibold">
-                                      {getPhotoCardLabel(property) || 'Localização'}
-                                    </p>
-                                    <p className="mt-0.5 truncate text-[9px] text-slate-500">
-                                      {primarySpecs.slice(0, 2).join(' • ') || getPropertyType(property)}
-                                    </p>
-                                  </div>
+                                <div key={`${property.id}-${index}`} className="overflow-hidden rounded-xl bg-white/10 aspect-square">
+                                  <img src={photo} alt={`${getPropertyTitle(property)} ${index + 2}`} className="h-full w-full object-cover" />
                                 </div>
                               ))}
                             </div>
