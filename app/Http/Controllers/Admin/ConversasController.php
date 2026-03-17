@@ -10,6 +10,16 @@ use Illuminate\Support\Facades\Log;
 
 class ConversasController extends Controller
 {
+    private function isAdminRole(?string $role): bool
+    {
+        return in_array($role, ['admin', 'super_admin'], true);
+    }
+
+    private function isBrokerRole(?string $role): bool
+    {
+        return $role === 'corretor';
+    }
+
     /**
      * Listar todas as conversas do corretor/admin
      */
@@ -38,7 +48,7 @@ class ConversasController extends Controller
                 });
             
             // Se for corretor, buscar suas conversas + todas as conversas ainda não atendidas (sem outgoing)
-            if ($user->role === 'corretor') {
+            if ($this->isBrokerRole($user->role ?? null)) {
                 // Buscar conversas do corretor
                 $minhasConversas = DB::table('conversas')
                     ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
@@ -123,13 +133,8 @@ class ConversasController extends Controller
                     ->unique('id')
                     ->values();
             } else {
-                // Admin vê suas conversas + conversas livres (sem corretor_id)
-                $userId = $user->id;
+                // Admin vê todas as conversas do tenant.
                 $conversas = $query
-                    ->where(function ($q) use ($userId) {
-                        $q->whereNull('conversas.corretor_id')
-                          ->orWhere('conversas.corretor_id', $userId);
-                    })
                     ->orderBy('conversas.ultima_atividade', 'desc')
                     ->orderBy('conversas.created_at', 'asc')
                     ->get();
@@ -280,7 +285,7 @@ class ConversasController extends Controller
             $tenantId = $request->attributes->get('tenant_id');
             
             // Apenas corretores podem pegar conversas da fila
-            if ($user->role !== 'corretor') {
+            if (!$this->isBrokerRole($user->role ?? null)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Apenas corretores podem pegar conversas da fila'
@@ -368,7 +373,7 @@ class ConversasController extends Controller
             }
             
             // Verificar permissão
-            if ($user->role === 'corretor' && $conversa->corretor_id != $user->id) {
+            if ($this->isBrokerRole($user->role ?? null) && $conversa->corretor_id != $user->id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Você não tem permissão para devolver esta conversa'
@@ -815,7 +820,7 @@ class ConversasController extends Controller
             $user = $request->user();
             $tenantId = $request->attributes->get('tenant_id');
 
-            if (!$user || ($user->role ?? null) !== 'admin') {
+            if (!$user || !$this->isAdminRole($user->role ?? null)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Apenas administradores podem atribuir conversas'
@@ -852,7 +857,7 @@ class ConversasController extends Controller
                     ], 404);
                 }
 
-                if (!in_array($target->role ?? null, ['corretor', 'admin'], true)) {
+                if (!in_array($target->role ?? null, ['corretor', 'admin', 'super_admin'], true)) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Usuário alvo inválido para atribuição'

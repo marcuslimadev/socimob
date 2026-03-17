@@ -1218,7 +1218,7 @@ export default function CRM() {
   }, []);
 
   const isAdminUser = currentUser.role === 'admin' || currentUser.role === 'super_admin';
-  const isBrokerUser = currentUser.role === 'user' || currentUser.role === 'corretor';
+  const isBrokerUser = currentUser.role === 'corretor';
 
   const assignableUsers = useMemo(() => {
     const entries = new Map<number, { id: number; name: string; email?: string }>();

@@ -19,7 +19,21 @@ class CRMController extends Controller
 
     private function isBrokerRole(?string $role): bool
     {
-        return in_array($role, ['user', 'corretor'], true);
+        return $role === 'corretor';
+    }
+
+    private function ensureBrokerCanAccessLead(User $user, Lead $lead): void
+    {
+        if (!$this->isBrokerRole($user->role ?? null)) {
+            return;
+        }
+
+        if ($lead->corretor_id !== null && (int) $lead->corretor_id !== (int) $user->id) {
+            abort(response()->json([
+                'success' => false,
+                'message' => 'Você só pode acessar atendimentos livres ou atribuídos a você.',
+            ], 403));
+        }
     }
 
     private function normalizeStatus(?string $status): string
@@ -392,7 +406,7 @@ class CRMController extends Controller
         return User::query()
             ->where('tenant_id', $tenantId)
             ->where('id', $userId)
-            ->whereIn('role', ['admin', 'user', 'corretor'])
+            ->whereIn('role', ['admin', 'super_admin', 'corretor'])
             ->firstOrFail();
     }
 
@@ -528,8 +542,8 @@ class CRMController extends Controller
             $query = Lead::with(['pessoa:id,nome,tipo,cpf,email,telefone,celular,observacoes,origem', 'corretor:id,name'])
                 ->where('tenant_id', $tenantId);
 
-            // Permissoes: corretor ve so os seus + livres
-            if (!in_array($user->role, ['admin', 'super_admin'])) {
+            // Permissões: corretor vê somente o que estiver livre ou atribuído a ele.
+            if ($this->isBrokerRole($user->role ?? null)) {
                 $query->where(function ($q) use ($user) {
                     $q->where('corretor_id', $user->id)
                       ->orWhereNull('corretor_id');
@@ -724,7 +738,9 @@ class CRMController extends Controller
             if (!$tenantId) {
                 return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
             }
+            $user = $request->user();
             $lead = Lead::where('tenant_id', $tenantId)->findOrFail($id);
+            $this->ensureBrokerCanAccessLead($user, $lead);
             $lead->status = $request->status;
             $lead->updated_at = now();
             $lead->save();
