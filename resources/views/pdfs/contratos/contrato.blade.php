@@ -9,11 +9,11 @@
 
     .watermark {
         position: fixed;
-        top: 50%;
+        top: 44%;
         left: 50%;
-        width: 62%;
+        width: 36%;
         transform: translate(-50%, -50%);
-        opacity: 0.08;
+        opacity: 0.05;
         z-index: -1;
     }
 

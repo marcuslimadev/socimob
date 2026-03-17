@@ -134,8 +134,8 @@ function AssinaturaModal({
 }) {
   const [signatarios, setSignatarios] = useState<Signatario[]>(() => {
     const inicial: Signatario[] = [];
-    if (locatario?.email) inicial.push({ email: locatario.email, nome: locatario.nome, papel: 'Locatário', icp_brasil: false });
-    if (locador?.email)   inicial.push({ email: locador.email,   nome: locador.nome,   papel: 'Locador',   icp_brasil: false });
+    if (locatario?.email) inicial.push({ email: locatario.email, nome: locatario.nome, papel: 'Locatário', icp_brasil: true });
+    if (locador?.email)   inicial.push({ email: locador.email,   nome: locador.nome,   papel: 'Locador',   icp_brasil: true });
     return inicial;
   });
   const [loading, setLoading] = useState(false);
