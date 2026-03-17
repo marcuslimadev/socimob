@@ -10,6 +10,8 @@ interface Property {
   id: number;
   title?: string;
   titulo?: string;
+  codigo?: string;
+  referencia?: string;
   type?: string;
   tipo_imovel?: string;
   transaction_type?: string;
@@ -22,12 +24,18 @@ interface Property {
   bairro?: string;
   bedrooms?: number;
   dormitorios?: number;
+  suites?: number;
   bathrooms?: number;
   banheiros?: number;
+  vagas_garagem?: number;
+  garages?: number;
   area?: number;
+  area_util?: number;
+  area_privativa?: number;
   area_total?: number;
   price?: number;
   valor_venda?: number;
+  valor_aluguel?: number;
   photos?: string[];
   imagens?: string[];
   imagem_destaque?: string;
@@ -98,14 +106,49 @@ const getCity = (property: Property) => property.city || property.cidade || '';
 const getState = (property: Property) => property.state || property.estado || '';
 const getNeighborhood = (property: Property) => property.neighborhood || property.bairro || '';
 const getBedrooms = (property: Property) => property.bedrooms || property.dormitorios || 0;
+const getSuites = (property: Property) => property.suites || 0;
 const getBathrooms = (property: Property) => property.bathrooms || property.banheiros || 0;
-const getArea = (property: Property) => property.area || property.area_total || 0;
-const getPrice = (property: Property) => property.price || property.valor_venda || 0;
+const getGarageSpots = (property: Property) => property.garages || property.vagas_garagem || 0;
+const getArea = (property: Property) => property.area || property.area_util || property.area_privativa || property.area_total || 0;
+const getPropertyCode = (property: Property) => property.codigo || property.referencia || '';
+const getPrice = (property: Property) => {
+  const transactionType = getTransactionType(property);
+  if (transactionType === 'aluguel') {
+    return property.valor_aluguel || property.price || property.valor_venda || 0;
+  }
+
+  return property.price || property.valor_venda || property.valor_aluguel || 0;
+};
+
+const formatArea = (value: number) => (value > 0 ? `${value.toLocaleString('pt-BR')}m²` : '');
 
 const formatCurrency = (value: number) =>
   value > 0 ? `R$ ${value.toLocaleString('pt-BR')}` : 'Consulte valor';
 
 const getTransactionLabel = (type: string) => (type === 'aluguel' ? 'Aluguel' : 'Venda');
+
+const getDetailTags = (property: Property) => {
+  const tags = [getPropertyType(property)];
+  const code = getPropertyCode(property);
+
+  if (code) tags.push(`Cód. ${code}`);
+  if (getSuites(property) > 0) tags.push(`${getSuites(property)} suíte${getSuites(property) === 1 ? '' : 's'}`);
+  if (getGarageSpots(property) > 0) tags.push(`${getGarageSpots(property)} vaga${getGarageSpots(property) === 1 ? '' : 's'}`);
+
+  return tags;
+};
+
+const getPrimarySpecs = (property: Property) => [
+  getBedrooms(property) > 0 ? `${getBedrooms(property)} quartos` : null,
+  getBathrooms(property) > 0 ? `${getBathrooms(property)} banheiros` : null,
+  getArea(property) > 0 ? formatArea(getArea(property)) : null,
+].filter(Boolean) as string[];
+
+const getSecondarySpecs = (property: Property) => [
+  getSuites(property) > 0 ? `${getSuites(property)} suíte${getSuites(property) === 1 ? '' : 's'}` : null,
+  getGarageSpots(property) > 0 ? `${getGarageSpots(property)} vaga${getGarageSpots(property) === 1 ? '' : 's'}` : null,
+  getPropertyCode(property) ? `Ref. ${getPropertyCode(property)}` : null,
+].filter(Boolean) as string[];
 
 const getLocationText = (property: Property) =>
   [getNeighborhood(property), `${getCity(property)}/${getState(property)}`]
@@ -166,46 +209,6 @@ export default function PropertyAds() {
     }
   };
 
-  const generateFallbackText = (property: Property) => {
-    const parts = [];
-    const transactionType = getTransactionType(property);
-
-    if (transactionType === 'venda') {
-      parts.push(`${getPropertyType(property)} à venda`);
-    } else if (transactionType === 'aluguel') {
-      parts.push(`${getPropertyType(property)} para alugar`);
-    } else {
-      parts.push(getPropertyType(property));
-    }
-
-    const location = getLocationText(property);
-    if (location) parts.push(`em ${location}`);
-    if (getBedrooms(property) > 0) parts.push(`${getBedrooms(property)} quartos`);
-    if (getBathrooms(property) > 0) parts.push(`${getBathrooms(property)} banheiros`);
-    if (getArea(property) > 0) parts.push(`${getArea(property)}m²`);
-    parts.push('Fale conosco para agendar uma visita.');
-
-    return parts.join(' | ').substring(0, 400);
-  };
-
-  const fetchAdText = async (property: Property) => {
-    try {
-      const response = await api.post(`/properties/${property.id}/generate-ad-description`);
-
-      if (response.data.success) {
-        return response.data.description as string;
-      }
-
-      throw new Error(response.data.error || 'Erro ao gerar texto');
-    } catch (error: any) {
-      console.error('Erro ao gerar propaganda:', error);
-      const errorMsg = error.response?.data?.error || 'Erro ao gerar texto com IA';
-      toast.error(errorMsg);
-
-      return generateFallbackText(property);
-    }
-  };
-
   const createStoryImage = async (property: Property) => {
     const objectUrls: string[] = [];
     const canvas = document.createElement('canvas');
@@ -219,7 +222,11 @@ export default function PropertyAds() {
 
     const photos = normalizePhotos(property);
     const mainPhotoUrl = photos[0];
+    const thumbUrls = photos.slice(1, 7);
     const transactionType = getTransactionType(property);
+    const detailTags = getDetailTags(property);
+    const primarySpecs = getPrimarySpecs(property);
+    const secondarySpecs = getSecondarySpecs(property);
     const primaryColor = tenant?.primary_color || '#0f172a';
     const secondaryColor = tenant?.secondary_color || '#d4a34f';
     const cardX = 40;
@@ -228,9 +235,9 @@ export default function PropertyAds() {
     const cardHeight = STORY_HEIGHT - 80;
     const cardRadius = 78;
     const panelX = cardX + 48;
-    const panelY = cardY + cardHeight - 580;
+    const panelY = cardY + cardHeight - 720;
     const panelWidth = cardWidth - 96;
-    const panelHeight = 500;
+    const panelHeight = 640;
     const panelRadius = 58;
 
     const drawPill = (
@@ -259,6 +266,7 @@ export default function PropertyAds() {
       const textWidth = ctx.measureText(text).width;
       const width = textWidth + horizontalPadding * 2;
 
+      ctx.save();
       ctx.fillStyle = fill;
       ctx.beginPath();
       ctx.roundRect(x, y, width, height, height / 2);
@@ -273,6 +281,7 @@ export default function PropertyAds() {
       ctx.fillStyle = textColor;
       ctx.textBaseline = 'middle';
       ctx.fillText(text, x + horizontalPadding, y + height / 2);
+      ctx.restore();
 
       return width;
     };
@@ -353,17 +362,6 @@ export default function PropertyAds() {
         height: 68,
       });
 
-      const storyBadgeText = 'Story 9:16';
-      ctx.font = '500 28px sans-serif';
-      const storyBadgeWidth = ctx.measureText(storyBadgeText).width + 44;
-      drawPill(cardX + cardWidth - storyBadgeWidth - 48, cardY + 48, storyBadgeText, {
-        fill: 'rgba(0,0,0,0.36)',
-        textColor: 'rgba(255,255,255,0.88)',
-        font: '500 28px sans-serif',
-        horizontalPadding: 22,
-        height: 68,
-      });
-
       ctx.fillStyle = 'rgba(7,17,29,0.88)';
       ctx.beginPath();
       ctx.roundRect(panelX, panelY, panelWidth, panelHeight, panelRadius);
@@ -397,20 +395,64 @@ export default function PropertyAds() {
       ctx.font = '500 38px sans-serif';
       ctx.fillText(getLocationText(property) || 'Localização sob consulta', panelX + 44, locationY);
 
-      const priceY = locationY + 88;
+      if (detailTags.length > 0) {
+        ctx.fillStyle = 'rgba(255,255,255,0.74)';
+        ctx.font = '600 28px sans-serif';
+        ctx.fillText(detailTags.join('   •   '), panelX + 44, locationY + 54);
+      }
+
+      const priceY = locationY + 140;
       ctx.fillStyle = '#ffffff';
       ctx.font = '700 82px sans-serif';
       ctx.fillText(formatCurrency(getPrice(property)), panelX + 44, priceY);
 
-      const specs = [
-        getBedrooms(property) > 0 ? `${getBedrooms(property)} quartos` : null,
-        getBathrooms(property) > 0 ? `${getBathrooms(property)} banheiros` : null,
-        getArea(property) > 0 ? `${getArea(property)}m²` : null,
-      ].filter(Boolean).join('   ');
-      if (specs) {
+      if (primarySpecs.length > 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.82)';
         ctx.font = '600 31px sans-serif';
-        ctx.fillText(specs, panelX + 44, priceY + 72);
+        ctx.fillText(primarySpecs.join('   •   '), panelX + 44, priceY + 72);
+      }
+
+      if (secondarySpecs.length > 0) {
+        ctx.fillStyle = 'rgba(255,255,255,0.66)';
+        ctx.font = '500 27px sans-serif';
+        ctx.fillText(secondarySpecs.join('   •   '), panelX + 44, priceY + 122);
+      }
+
+      if (thumbUrls.length > 0) {
+        const thumbSize = 108;
+        const thumbGap = 16;
+        const maxThumbs = 6;
+        const totalThumbsWidth = thumbSize * Math.min(thumbUrls.length, maxThumbs) + thumbGap * (Math.min(thumbUrls.length, maxThumbs) - 1);
+        let thumbX = panelX + 44;
+        const thumbY = panelY + panelHeight - thumbSize - 38;
+
+        if (totalThumbsWidth < panelWidth - 88) {
+          thumbX = panelX + (panelWidth - totalThumbsWidth) / 2;
+        }
+
+        for (let index = 0; index < Math.min(thumbUrls.length, maxThumbs); index += 1) {
+          const x = thumbX + index * (thumbSize + thumbGap);
+
+          ctx.fillStyle = 'rgba(255,255,255,0.12)';
+          ctx.beginPath();
+          ctx.roundRect(x, thumbY, thumbSize, thumbSize, 24);
+          ctx.fill();
+
+          try {
+            const thumb = await loadImage(thumbUrls[index], objectUrls);
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(x, thumbY, thumbSize, thumbSize, 24);
+            ctx.clip();
+            const scale = Math.max(thumbSize / thumb.width, thumbSize / thumb.height);
+            const width = thumb.width * scale;
+            const height = thumb.height * scale;
+            ctx.drawImage(thumb, x + (thumbSize - width) / 2, thumbY + (thumbSize - height) / 2, width, height);
+            ctx.restore();
+          } catch {
+            // ignore thumb load failure
+          }
+        }
       }
 
       return canvas.toDataURL('image/png');
@@ -517,7 +559,11 @@ export default function PropertyAds() {
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {filteredProperties.map((property) => {
                 const photos = normalizePhotos(property);
+                const thumbPhotos = photos.slice(1, 7);
                 const transactionType = getTransactionType(property);
+                const detailTags = getDetailTags(property);
+                const primarySpecs = getPrimarySpecs(property);
+                const secondarySpecs = getSecondarySpecs(property);
 
                 return (
                   <motion.div
@@ -540,12 +586,9 @@ export default function PropertyAds() {
 
                         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-[#07111d]" />
 
-                        <div className="absolute inset-x-4 top-4 flex items-center justify-between">
+                        <div className="absolute inset-x-4 top-4 flex items-center justify-start">
                           <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${getTransactionBadge(transactionType)}`}>
                             {getTransactionLabel(transactionType)}
-                          </span>
-                          <span className="rounded-full bg-black/45 px-2.5 py-1 text-[11px] text-white/85">
-                            Story 9:16
                           </span>
                         </div>
 
@@ -564,14 +607,37 @@ export default function PropertyAds() {
                           <p className="mt-2 line-clamp-2 text-xs text-white/72">
                             {getLocationText(property) || 'Localização sob consulta'}
                           </p>
+                          {detailTags.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-white/62">
+                              {detailTags.map((tag) => (
+                                <span key={tag} className="rounded-full bg-white/8 px-2 py-1">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                           <p className="mt-3 text-2xl font-bold text-white">
                             {formatCurrency(getPrice(property))}
                           </p>
-                          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-white/78">
-                            {getBedrooms(property) > 0 && <span>{getBedrooms(property)} quartos</span>}
-                            {getBathrooms(property) > 0 && <span>{getBathrooms(property)} banheiros</span>}
-                            {getArea(property) > 0 && <span>{getArea(property)}m²</span>}
-                          </div>
+                          {primarySpecs.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-white/78">
+                              {primarySpecs.map((spec) => <span key={spec}>{spec}</span>)}
+                            </div>
+                          )}
+                          {secondarySpecs.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-white/58">
+                              {secondarySpecs.map((spec) => <span key={spec}>{spec}</span>)}
+                            </div>
+                          )}
+                          {thumbPhotos.length > 0 && (
+                            <div className="mt-3 grid grid-cols-6 gap-1.5">
+                              {thumbPhotos.map((photo, index) => (
+                                <div key={`${property.id}-${index}`} className="overflow-hidden rounded-xl bg-white/10 aspect-square">
+                                  <img src={photo} alt={`${getPropertyTitle(property)} ${index + 2}`} className="h-full w-full object-cover" />
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
 
