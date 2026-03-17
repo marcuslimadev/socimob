@@ -26,9 +26,6 @@ import {
   KeyRound,
   Link2,
   Zap,
-  ChevronDown,
-  ChevronRight,
-  Layers,
   Briefcase,
   DollarSign,
   Star,
@@ -50,12 +47,12 @@ interface SidebarItem {
   badge?: number;
 }
 
-interface SidebarGroup {
+interface SidebarSection {
   id: string;
   icon: React.ReactNode;
   label: string;
+  href: string;
   items: SidebarItem[];
-  defaultOpen?: boolean;
 }
 
 interface TenantConfig {
@@ -75,157 +72,146 @@ interface UserData {
   avatar?: string;
 }
 
-// Componente de grupo expansível
-const NavGroup = ({
-  group,
-  location,
-  isCollapsed,
-  onItemClick,
+const isRouteMatch = (currentPath: string, targetPath: string) => {
+  if (targetPath === '/') {
+    return currentPath === targetPath;
+  }
+
+  return currentPath === targetPath || currentPath.startsWith(`${targetPath}/`);
+};
+
+const getSectionBadge = (section: SidebarSection) => {
+  const total = section.items.reduce((sum, item) => sum + (item.badge || 0), 0);
+  return total || undefined;
+};
+
+const SidebarLink = ({
+  item,
+  active,
+  collapsed,
+  onClick,
 }: {
-  group: SidebarGroup;
-  location: string;
-  isCollapsed: boolean;
-  onItemClick?: () => void;
+  item: SidebarItem;
+  active: boolean;
+  collapsed: boolean;
+  onClick?: () => void;
 }) => {
-  const hasActiveItem = group.items.some(
-    (item) => location === item.href || (item.href !== '/dashboard' && location.startsWith(item.href))
+  const content = (
+    <div
+      onClick={onClick}
+      className={`relative flex items-center ${collapsed ? 'justify-center' : 'gap-2.5'} px-3 py-2.5 rounded-xl transition-all duration-200 cursor-pointer ${
+        active
+          ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 text-white shadow-[0_12px_32px_rgba(59,130,246,0.18)]'
+          : 'text-muted-foreground hover:bg-white/10'
+      }`}
+    >
+      <div className="shrink-0">{item.icon}</div>
+      {!collapsed && <span className="flex-1 font-medium text-sm">{item.label}</span>}
+      {!collapsed && item.badge ? (
+        <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+          {item.badge}
+        </span>
+      ) : null}
+      {collapsed && item.badge ? (
+        <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
+          {item.badge}
+        </span>
+      ) : null}
+    </div>
   );
-  const [isOpen, setIsOpen] = useState(group.defaultOpen || hasActiveItem);
-  const totalBadge = group.items.reduce((sum, item) => sum + (item.badge || 0), 0);
 
-  // Quando sidebar colapsa, fecha os grupos
-  useEffect(() => {
-    if (isCollapsed) setIsOpen(false);
-  }, [isCollapsed]);
-
-  if (isCollapsed) {
-    // No modo colapsado: mostra apenas o ícone do grupo sem expandir
-    return (
-      <div className="relative group/tooltip">
-        <div
-          className={`relative flex items-center justify-center p-2.5 rounded-xl transition-all duration-200 cursor-pointer ${
-            hasActiveItem
-              ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 text-white'
-              : 'text-muted-foreground hover:bg-white/10'
-          }`}
-        >
-          {group.icon}
-          {totalBadge > 0 && (
-            <div className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
-              {totalBadge}
-            </div>
-          )}
-        </div>
-
-        {/* Tooltip com subitens */}
-        <div className="absolute left-full top-0 ml-3 hidden group-hover/tooltip:flex flex-col gap-1 bg-black/80 backdrop-blur-sm border border-white/10 rounded-xl p-2 z-50 min-w-[180px] shadow-xl">
-          <p className="text-xs font-semibold text-muted-foreground px-2 pb-1 border-b border-white/10 mb-1">
-            {group.label}
-          </p>
-          {group.items.map((item) => {
-            const isActive = location === item.href || (item.href !== '/dashboard' && location.startsWith(item.href));
-            return (
-              <Link key={item.label} to={item.href}>
-                <div
-                  onClick={onItemClick}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all cursor-pointer text-sm ${
-                    isActive ? 'bg-blue-500/30 text-white' : 'text-muted-foreground hover:bg-white/10'
-                  }`}
-                >
-                  <div className="shrink-0">{item.icon}</div>
-                  <span className="font-medium">{item.label}</span>
-                  {item.badge ? (
-                    <span className="ml-auto bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-    );
+  if (!collapsed) {
+    return <Link to={item.href}>{content}</Link>;
   }
 
   return (
-    <div>
-      {/* Cabeçalho do grupo */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 cursor-pointer ${
-          hasActiveItem && !isOpen
-            ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-white'
-            : 'text-muted-foreground hover:bg-white/8'
-        }`}
-      >
-        <div className="shrink-0">{group.icon}</div>
-        <span className="flex-1 text-left text-xs font-semibold uppercase tracking-wider">
-          {group.label}
-        </span>
-        {totalBadge > 0 && !isOpen && (
-          <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-            {totalBadge}
-          </span>
-        )}
-        <motion.div
-          animate={{ rotate: isOpen ? 90 : 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <ChevronRight size={14} />
-        </motion.div>
-      </button>
-
-      {/* Itens do grupo */}
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="overflow-hidden"
-          >
-            <div className="ml-3 mt-0.5 mb-1 pl-3 border-l border-white/10 flex flex-col gap-0.5">
-              {group.items.map((item) => {
-                const isActive = location === item.href || (item.href !== '/dashboard' && location.startsWith(item.href));
-                return (
-                  <Link key={item.label} to={item.href}>
-                    <div
-                      onClick={onItemClick}
-                      className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-200 cursor-pointer ${
-                        isActive
-                          ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 text-white'
-                          : 'text-muted-foreground hover:bg-white/10'
-                      }`}
-                    >
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeIndicator"
-                          className="absolute left-0 top-0 bottom-0 w-0.5 bg-blue-500 rounded-r"
-                          transition={{ type: 'spring', stiffness: 200 }}
-                        />
-                      )}
-                      <div className="shrink-0">{item.icon}</div>
-                      <span className="flex-1 font-medium text-sm">{item.label}</span>
-                      {item.badge ? (
-                        <motion.span
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
-                        >
-                          {item.badge}
-                        </motion.span>
-                      ) : null}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="relative group/tooltip">
+      <Link to={item.href}>{content}</Link>
+      <div className="absolute left-full top-1/2 ml-3 hidden -translate-y-1/2 group-hover/tooltip:flex items-center bg-black/80 backdrop-blur-sm border border-white/10 rounded-xl px-3 py-2 z-50 shadow-xl whitespace-nowrap">
+        <span className="text-sm text-white font-medium">{item.label}</span>
+      </div>
     </div>
+  );
+};
+
+const SectionTabsDock = ({
+  section,
+  location,
+  isCollapsed,
+}: {
+  section: SidebarSection | null;
+  location: string;
+  isCollapsed: boolean;
+}) => {
+  if (!section || section.items.length <= 1) {
+    return null;
+  }
+
+  const desktopLeft = isCollapsed ? 112 : 312;
+
+  return (
+    <>
+      <div
+        className="hidden md:block fixed top-4 right-6 z-30"
+        style={{ left: `${desktopLeft}px` }}
+      >
+        <div className="rounded-[28px] border border-white/10 bg-slate-950/72 backdrop-blur-xl shadow-[0_24px_80px_rgba(15,23,42,0.38)] px-3 py-3">
+          <div className="flex items-center gap-3 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 pl-2 whitespace-nowrap">
+              {section.label}
+            </span>
+            {section.items.map((item) => {
+              const isActive = isRouteMatch(location, item.href);
+
+              return (
+                <Link key={item.href} to={item.href}>
+                  <div
+                    className={`flex items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-2 text-sm transition-all duration-200 ${
+                      isActive
+                        ? 'bg-white text-slate-950 shadow-[0_12px_30px_rgba(255,255,255,0.22)]'
+                        : 'text-slate-300 hover:bg-white/8 hover:text-white'
+                    }`}
+                  >
+                    <div className="shrink-0">{item.icon}</div>
+                    <span className="font-medium">{item.label}</span>
+                    {item.badge ? (
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-slate-950/10 text-slate-950' : 'bg-white/10 text-white'}`}>
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="md:hidden fixed top-[4.5rem] left-4 right-4 z-30">
+        <div className="rounded-[24px] border border-white/10 bg-slate-950/78 backdrop-blur-xl shadow-[0_20px_60px_rgba(15,23,42,0.34)] px-2 py-2">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+            {section.items.map((item) => {
+              const isActive = isRouteMatch(location, item.href);
+
+              return (
+                <Link key={item.href} to={item.href}>
+                  <div
+                    className={`flex items-center gap-2 whitespace-nowrap rounded-2xl px-3 py-2 text-sm transition-all duration-200 ${
+                      isActive
+                        ? 'bg-white text-slate-950'
+                        : 'text-slate-300 hover:bg-white/8 hover:text-white'
+                    }`}
+                  >
+                    <div className="shrink-0">{item.icon}</div>
+                    <span className="font-medium">{item.label}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </>
   );
 };
 
@@ -258,7 +244,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         const { default: axios } = await import('axios');
         const response = await axios.get('/api/portal/config', {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
             'X-Tenant-Domain': window.location.hostname,
           },
         });
@@ -321,97 +307,118 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Grupos de navegação
-  const navGroups: SidebarGroup[] = [
+  const sections: SidebarSection[] = [
     {
       id: 'principal',
-      icon: <BarChart3 size={16} />,
+      icon: <BarChart3 size={18} />,
       label: 'Principal',
-      defaultOpen: true,
+      href: '/dashboard',
       items: [
-        { icon: <BarChart3 size={17} />, label: 'Dashboard', href: '/dashboard' },
-        { icon: <Bell size={17} />, label: 'Notificações', href: '/notifications', badge: notificationCount || undefined },
-        { icon: <CalendarClock size={17} />, label: 'Agenda', href: '/agenda' },
+        { icon: <BarChart3 size={16} />, label: 'Dashboard', href: '/dashboard' },
+        { icon: <Bell size={16} />, label: 'Notificações', href: '/notifications', badge: notificationCount || undefined },
+        { icon: <CalendarClock size={16} />, label: 'Agenda', href: '/agenda' },
       ],
     },
     {
       id: 'crm',
-      icon: <Users size={16} />,
+      icon: <Users size={18} />,
       label: 'CRM & Clientes',
+      href: '/crm',
       items: [
-        { icon: <Users size={17} />, label: 'CRM', href: '/crm', badge: (leadsCount || 0) + (unreadMessagesCount || 0) || undefined },
-        { icon: <UserRound size={17} />, label: 'Pessoas', href: '/pessoas' },
-        { icon: <Zap size={17} />, label: 'Marketing / Anúncios', href: '/ads' },
+        {
+          icon: <Users size={16} />,
+          label: 'CRM',
+          href: '/crm',
+          badge: (leadsCount || 0) + (unreadMessagesCount || 0) || undefined,
+        },
+        { icon: <UserRound size={16} />, label: 'Pessoas', href: '/pessoas' },
+        { icon: <Zap size={16} />, label: 'Marketing / Anúncios', href: '/ads' },
       ],
     },
     {
       id: 'imoveis',
-      icon: <Home size={16} />,
+      icon: <Home size={18} />,
       label: 'Imóveis',
+      href: '/properties',
       items: [
-        { icon: <Home size={17} />, label: 'Imóveis', href: '/properties' },
-        { icon: <KeyRound size={17} />, label: 'Controle de Chaves', href: '/controle-chaves' },
-        { icon: <Building2 size={17} />, label: 'ImobiBrasil', href: '/imobi-brasil' },
+        { icon: <Home size={16} />, label: 'Imóveis', href: '/properties' },
+        { icon: <KeyRound size={16} />, label: 'Controle de Chaves', href: '/controle-chaves' },
+        { icon: <Building2 size={16} />, label: 'ImobiBrasil', href: '/imobi-brasil' },
       ],
     },
     {
       id: 'operacional',
-      icon: <Briefcase size={16} />,
+      icon: <Briefcase size={18} />,
       label: 'Operacional',
+      href: '/vistorias',
       items: [
-        { icon: <ClipboardCheck size={17} />, label: 'Vistorias', href: '/financeiro/locacao' },
-        { icon: <FileSignature size={17} />, label: 'Assinaturas', href: '/assinaturas' },
-        { icon: <FileSpreadsheet size={17} />, label: 'Locação/Operação', href: '/financeiro/locacao' },
-        { icon: <FileText size={17} />, label: 'Templates de Contrato', href: '/contrato-templates' },
+        { icon: <ClipboardCheck size={16} />, label: 'Vistorias', href: '/vistorias' },
+        { icon: <FileSignature size={16} />, label: 'Assinaturas', href: '/assinaturas' },
+        { icon: <FileSpreadsheet size={16} />, label: 'Locação / Operação', href: '/financeiro/locacao' },
+        { icon: <FileText size={16} />, label: 'Templates de Contrato', href: '/contrato-templates' },
       ],
     },
     {
       id: 'financeiro',
-      icon: <DollarSign size={16} />,
+      icon: <DollarSign size={18} />,
       label: 'Financeiro',
+      href: '/financeiro',
       items: [
-        { icon: <Wallet size={17} />, label: 'Financeiro', href: '/financeiro' },
-        { icon: <BookOpen size={17} />, label: 'Contas a Pagar/Receber', href: '/financeiro/contas' },
+        { icon: <Wallet size={16} />, label: 'Financeiro', href: '/financeiro' },
+        { icon: <BookOpen size={16} />, label: 'Contas a Pagar/Receber', href: '/financeiro/contas' },
       ],
     },
+    ...((user?.role === 'admin' || user?.role === 'super_admin')
+      ? [
+          {
+            id: 'admin',
+            icon: <Shield size={18} />,
+            label: 'Administração',
+            href: '/analytics',
+            items: [
+              { icon: <LineChart size={16} />, label: 'Estatísticas', href: '/analytics' },
+              { icon: <Shield size={16} />, label: 'Usuários', href: '/admin/users' },
+              { icon: <Image size={16} />, label: 'Propaganda', href: '/admin/property-ads' },
+              { icon: <FileText size={16} />, label: 'Logs do Sistema', href: '/system-logs' },
+            ],
+          } as SidebarSection,
+        ]
+      : []),
+    ...(user?.role === 'super_admin'
+      ? [
+          {
+            id: 'superadmin',
+            icon: <Star size={18} />,
+            label: 'Super Admin',
+            href: '/tenants',
+            items: [
+              { icon: <Building2 size={16} />, label: 'Tenants', href: '/tenants' },
+              { icon: <Link2 size={16} />, label: 'Assoc. Tenants', href: '/tenants/associacoes' },
+            ],
+          } as SidebarSection,
+        ]
+      : []),
   ];
 
-  // Grupos condicionais para admin
-  const adminGroup: SidebarGroup | null =
-    user?.role === 'admin' || user?.role === 'super_admin'
-      ? {
-          id: 'admin',
-          icon: <Shield size={16} />,
-          label: 'Administração',
-          items: [
-            { icon: <LineChart size={17} />, label: 'Estatísticas', href: '/analytics' },
-            { icon: <Shield size={17} />, label: 'Usuários', href: '/admin/users' },
-            { icon: <Image size={17} />, label: 'Propaganda', href: '/admin/property-ads' },
-            { icon: <FileText size={17} />, label: 'Logs do Sistema', href: '/system-logs' },
-          ],
-        }
-      : null;
+  const currentSection =
+    sections.find(
+      (section) => isRouteMatch(location, section.href) || section.items.some((item) => isRouteMatch(location, item.href))
+    ) || null;
 
-  const superAdminGroup: SidebarGroup | null =
-    user?.role === 'super_admin'
-      ? {
-          id: 'superadmin',
-          icon: <Star size={16} />,
-          label: 'Super Admin',
-          items: [
-            { icon: <Building2 size={17} />, label: 'Tenants', href: '/tenants' },
-            { icon: <Link2 size={17} />, label: 'Assoc. Tenants', href: '/tenants/associacoes' },
-          ],
-        }
-      : null;
+  useEffect(() => {
+    if (currentSection && currentSection.items.length > 1) {
+      document.body.dataset.sectionTabs = 'active';
+      return () => {
+        delete document.body.dataset.sectionTabs;
+      };
+    }
 
-  const allGroups = [
-    ...navGroups,
-    ...(adminGroup ? [adminGroup] : []),
-    ...(superAdminGroup ? [superAdminGroup] : []),
-  ];
+    delete document.body.dataset.sectionTabs;
+    return undefined;
+  }, [currentSection]);
 
   const settingsItem: SidebarItem = { icon: <Settings size={17} />, label: 'Configurações', href: '/settings' };
+  const settingsActive = isRouteMatch(location, settingsItem.href);
 
   const sidebarVariants = {
     expanded: { width: 260 },
@@ -444,11 +451,10 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     window.location.href = '/login';
   };
 
-  const settingsActive = location === settingsItem.href || location.startsWith(settingsItem.href);
-
   return (
     <>
-      {/* Mobile Menu Button */}
+      <SectionTabsDock section={currentSection} location={location} isCollapsed={isCollapsed} />
+
       {!onClose && (
         <button
           onClick={() => setInternalIsOpen(!internalIsOpen)}
@@ -459,13 +465,11 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         </button>
       )}
 
-      {/* Desktop Sidebar */}
       <motion.div
         animate={isCollapsed ? 'collapsed' : 'expanded'}
         variants={sidebarVariants}
         className="hidden md:flex fixed left-0 top-0 h-screen glass-panel m-4 rounded-3xl flex-col justify-between py-5 z-40 overflow-hidden"
       >
-        {/* Header */}
         <div className="flex flex-col items-center gap-3 px-3">
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
@@ -504,7 +508,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             </motion.div>
           )}
 
-          {/* User Info */}
           {user && !isCollapsed && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -546,54 +549,26 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           <div className="blur-divider w-full" />
         </div>
 
-        {/* Navigation Groups */}
-        <nav className="flex-1 flex flex-col gap-0.5 px-2 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent py-1">
-          {allGroups.map((group) => (
-            <NavGroup
-              key={group.id}
-              group={group}
-              location={location}
-              isCollapsed={isCollapsed}
-            />
-          ))}
+        <nav className="flex-1 flex flex-col gap-1 px-2 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent py-1">
+          {sections.map((section) => {
+            const badge = getSectionBadge(section);
+            const active = currentSection?.id === section.id;
 
-          {/* Separador + Configurações */}
-          <div className="mt-1 pt-1 border-t border-white/10">
-            {isCollapsed ? (
-              <div className="relative group/tooltip">
-                <Link to={settingsItem.href}>
-                  <div
-                    className={`flex items-center justify-center p-2.5 rounded-xl transition-all duration-200 cursor-pointer ${
-                      settingsActive
-                        ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 text-white'
-                        : 'text-muted-foreground hover:bg-white/10'
-                    }`}
-                  >
-                    {settingsItem.icon}
-                  </div>
-                </Link>
-                <div className="absolute left-full top-0 ml-3 hidden group-hover/tooltip:flex items-center bg-black/80 backdrop-blur-sm border border-white/10 rounded-xl px-3 py-2 z-50 shadow-xl whitespace-nowrap">
-                  <span className="text-sm text-white font-medium">{settingsItem.label}</span>
-                </div>
-              </div>
-            ) : (
-              <Link to={settingsItem.href}>
-                <div
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 cursor-pointer ${
-                    settingsActive
-                      ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 text-white'
-                      : 'text-muted-foreground hover:bg-white/10'
-                  }`}
-                >
-                  {settingsItem.icon}
-                  <span className="font-medium text-sm">{settingsItem.label}</span>
-                </div>
-              </Link>
-            )}
+            return (
+              <SidebarLink
+                key={section.id}
+                item={{ icon: section.icon, label: section.label, href: section.href, badge }}
+                active={active}
+                collapsed={isCollapsed}
+              />
+            );
+          })}
+
+          <div className="mt-2 pt-2 border-t border-white/10">
+            <SidebarLink item={settingsItem} active={settingsActive} collapsed={isCollapsed} />
           </div>
         </nav>
 
-        {/* Footer */}
         <div className="flex flex-col gap-1.5 px-2">
           <div className="blur-divider w-full" />
 
@@ -654,7 +629,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         </div>
       </motion.div>
 
-      {/* Mobile Sidebar */}
       <AnimatePresence>
         {actualIsOpen && (
           <>
@@ -699,7 +673,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 </div>
               )}
 
-              {/* User Info Mobile */}
               <div className="flex items-center gap-3 mb-5 px-1">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
                   {user ? getInitials(user.name) : '?'}
@@ -712,36 +685,32 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 </div>
               </div>
 
-              {/* Navigation Mobile - grupos */}
-              <nav className="flex-1 flex flex-col gap-0.5 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                {allGroups.map((group) => (
-                  <NavGroup
-                    key={group.id}
-                    group={group}
-                    location={location}
-                    isCollapsed={false}
-                    onItemClick={handleClose}
-                  />
-                ))}
+              <nav className="flex-1 flex flex-col gap-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                {sections.map((section) => {
+                  const badge = getSectionBadge(section);
+                  const active = currentSection?.id === section.id;
 
-                <div className="mt-1 pt-1 border-t border-white/10">
-                  <Link to={settingsItem.href}>
-                    <div
+                  return (
+                    <SidebarLink
+                      key={section.id}
+                      item={{ icon: section.icon, label: section.label, href: section.href, badge }}
+                      active={active}
+                      collapsed={false}
                       onClick={handleClose}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 cursor-pointer ${
-                        settingsActive
-                          ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 text-white'
-                          : 'text-muted-foreground hover:bg-white/10'
-                      }`}
-                    >
-                      {settingsItem.icon}
-                      <span className="font-medium text-sm">{settingsItem.label}</span>
-                    </div>
-                  </Link>
+                    />
+                  );
+                })}
+
+                <div className="mt-2 pt-2 border-t border-white/10">
+                  <SidebarLink
+                    item={settingsItem}
+                    active={settingsActive}
+                    collapsed={false}
+                    onClick={handleClose}
+                  />
                 </div>
               </nav>
 
-              {/* Version + Logout Mobile */}
               <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 mt-3">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />

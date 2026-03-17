@@ -202,6 +202,10 @@
     transition: margin-left 0.3s ease;
   }
 
+  body[data-section-tabs='active'] .page-shell {
+    @apply pt-36 md:pt-28;
+  }
+
   body[data-sidebar="collapsed"] .page-shell {
     @apply md:ml-24;
   }
@@ -209,6 +213,16 @@
   /* Layouts full-height (CRM, Chat) que usam md:ml-80 direto */
   .md\:ml-80 {
     transition: margin-left 0.3s ease;
+  }
+
+  body[data-section-tabs='active'] .md\:ml-80 {
+    padding-top: 5.5rem;
+  }
+
+  @media (min-width: 768px) {
+    body[data-section-tabs='active'] .md\:ml-80 {
+      padding-top: 5rem;
+    }
   }
 
   body[data-sidebar="collapsed"] .md\:ml-80 {
