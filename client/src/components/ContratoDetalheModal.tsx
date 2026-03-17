@@ -258,9 +258,10 @@ function AssinaturaModal({
 
         {showGovBr && (
           <div className="p-3 rounded-xl bg-muted/40 text-xs text-muted-foreground mb-4 space-y-1.5">
-            <p><strong className="text-foreground">Opção 1 — D4Sign com ICP-Brasil (recomendado):</strong> marque "Exigir certificado ICP-Brasil" acima. O signatário assina com certificado digital (token/cartão) ou pelo app <strong>Gov.br</strong> (Nível Prata/Ouro). Validade jurídica máxima.</p>
-            <p><strong className="text-foreground">Opção 2 — Assinar.gov.br (gratuito):</strong> baixe o PDF, acesse <a href="https://assinador.iti.br" target="_blank" rel="noreferrer" className="text-primary underline inline-flex items-center gap-0.5">assinador.iti.br <ExternalLink size={10} /></a>, faça upload e envie o link de assinatura. Gratuito, sem integração direta.</p>
-            <p><strong className="text-foreground">Diferença:</strong> ICP-Brasil é o padrão do governo (igual ao gov.br Prata/Ouro). Assinatura simples (D4Sign sem ICP) também tem validade jurídica mas menor força probatória.</p>
+            <p><strong className="text-foreground">Como o sistema funciona hoje:</strong> você gera o PDF aqui e envia pela D4Sign. Cada signatário recebe um e-mail com o link para assinar.</p>
+            <p><strong className="text-foreground">Se marcar "Exigir certificado ICP-Brasil":</strong> a D4Sign vai exigir assinatura com certificado ICP-Brasil. Na prática, o signatário poderá concluir usando certificado digital compatível e, quando disponível no fluxo dele, autenticação vinculada ao <strong>Gov.br</strong> com conta Prata ou Ouro.</p>
+            <p><strong className="text-foreground">Se não marcar:</strong> a assinatura segue como eletrônica simples pela D4Sign, com validade jurídica, mas sem a exigência do padrão ICP-Brasil.</p>
+            <p><strong className="text-foreground">Opção externa gratuita:</strong> se preferir fazer tudo fora da D4Sign, baixe o PDF e envie pelo <a href="https://assinador.iti.br" target="_blank" rel="noreferrer" className="text-primary underline inline-flex items-center gap-0.5">assinador.iti.br <ExternalLink size={10} /></a>. Isso usa a estrutura oficial do governo, mas hoje não está integrado ao sistema.</p>
           </div>
         )}
 

@@ -3,11 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <style>
+    @page { margin: 28mm 16mm 22mm 16mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #222; line-height: 1.6; }
 
+    .watermark {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 62%;
+        transform: translate(-50%, -50%);
+        opacity: 0.08;
+        z-index: -1;
+    }
+
+    .watermark img { width: 100%; height: auto; }
+
     /* ─── CABEÇALHO ─── */
-    .header { text-align: center; border-bottom: 2px solid #222; padding-bottom: 12px; margin-bottom: 18px; }
+    .header { text-align: center; border-bottom: 2px solid var(--tenant-primary-color); padding-bottom: 12px; margin-bottom: 18px; }
+    .header-brand { display: table; width: 100%; margin-bottom: 8px; }
+    .header-brand-cell { display: table-cell; vertical-align: middle; }
+    .header-brand-cell.right { text-align: right; }
+    .header-logo { max-width: 140px; max-height: 58px; }
     .header h1 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold; }
     .header p  { font-size: 9px; margin-top: 4px; color: #555; }
 
@@ -15,11 +32,11 @@
 
     /* ─── QUADRO RESUMO (tabela) ─── */
     .quadro { border: 1.5px solid #444; margin-bottom: 18px; }
-    .quadro-title { background: #333; color: #fff; text-align: center; font-size: 11px; font-weight: bold;
+    .quadro-title { background: var(--tenant-primary-color); color: #fff; text-align: center; font-size: 11px; font-weight: bold;
                     text-transform: uppercase; letter-spacing: 1px; padding: 5px 8px; }
     .quadro-table { width: 100%; border-collapse: collapse; }
     .quadro-table td { padding: 5px 10px; border-bottom: 1px solid #ddd; vertical-align: top; font-size: 10px; }
-    .quadro-table td.qlabel { font-weight: bold; width: 32%; background: #f5f5f5; color: #444; }
+    .quadro-table td.qlabel { font-weight: bold; width: 32%; background: var(--tenant-secondary-color); color: #444; }
     .quadro-table tr:last-child td { border-bottom: none; }
 
     /* ─── CLÁUSULAS ─── */
@@ -35,7 +52,7 @@
 
     /* ─── TABELA FIADORES ─── */
     .fiad-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 9px; }
-    .fiad-table th { background: #333; color: #fff; padding: 4px 8px; text-align: left; }
+    .fiad-table th { background: var(--tenant-primary-color); color: #fff; padding: 4px 8px; text-align: left; }
     .fiad-table td { padding: 4px 8px; border-bottom: 1px solid #ddd; }
     .fiad-table tr:nth-child(even) td { background: #f9f9f9; }
 
@@ -52,24 +69,33 @@
 
     .mt-12 { margin-top: 12px; }
     .section-label { font-size: 10px; font-weight: bold; text-transform: uppercase;
-                     background: #eee; padding: 3px 8px; border-left: 3px solid #333;
+                     background: #eee; padding: 3px 8px; border-left: 3px solid var(--tenant-primary-color);
                      margin-bottom: 6px; margin-top: 14px; }
 </style>
 </head>
-<body>
+<body style="--tenant-primary-color: {{ $tenant?->primary_color ?? '#333333' }}; --tenant-secondary-color: {{ $tenant?->secondary_color ?? '#f5f5f5' }};">
+
+@if(!empty($tenantWatermarkSrc))
+<div class="watermark">
+    <img src="{{ $tenantWatermarkSrc }}" alt="Marca d'água" />
+</div>
+@endif
 
 {{-- ══════════════════════════════════════════════════════════
      CABEÇALHO
 ════════════════════════════════════════════════════════════ --}}
 <div class="header">
+    @if(!empty($tenantLogoSrc) && ($tenantTemplate?->incluir_logo ?? true))
+    <div class="header-brand">
+        <div class="header-brand-cell"></div>
+        <div class="header-brand-cell right">
+            <img src="{{ $tenantLogoSrc }}" alt="Logotipo {{ $tenant?->name ?? 'Imobiliária' }}" class="header-logo" />
+        </div>
+    </div>
+    @endif
     <h1>{{ $tenantTemplate?->titulo ?? 'Contrato de Locação de Imóvel Urbano' }}</h1>
     <p>Contrato Nº {{ $contrato->numero_contrato ?? $contrato->id }} &nbsp;|&nbsp; Gerado em {{ $geradoEm->format('d/m/Y H:i') }}</p>
 </div>
-
-{{-- TEXTO DE ABERTURA do tenant --}}
-@if(!empty($tenantTemplate?->intro_texto))
-<div class="intro-texto">{!! nl2br(e($tenantTemplate->intro_texto)) !!}</div>
-@endif
 
 {{-- ══════════════════════════════════════════════════════════
      QUADRO RESUMO
@@ -240,9 +266,8 @@
      ABERTURA DO CONTRATO
 ════════════════════════════════════════════════════════════ --}}
 <p class="abertura">
-    As partes identificadas no item 1 e no item 2 do Quadro Resumo resolvem firmar o presente
-    <strong>"Contrato de Locação de Imóvel Urbano"</strong>, que se regerá pelas seguintes
-    cláusulas e condições, que mutuamente outorgam e aceitam:
+    {!! nl2br(e($tenantTemplate?->intro_texto
+        ?? 'As partes identificadas no item 1 e no item 2 do Quadro Resumo resolvem firmar o presente "Contrato de Locação de Imóvel Urbano", que se regerá pelas seguintes cláusulas e condições, que mutuamente outorgam e aceitam:')) !!}
 </p>
 
 {{-- ══════════════════════════════════════════════════════════

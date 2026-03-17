@@ -4,6 +4,7 @@ namespace App\Services;
 use App\Models\ContratoDocumento;
 use App\Models\ContratoLocacao;
 use App\Models\ContratoTemplate;
+use App\Models\Tenant;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -46,6 +47,10 @@ class ContratoDocumentoService
             ->where('tenant_id', $contrato->tenant_id)
             ->first();
 
+        $tenant = Tenant::find($contrato->tenant_id);
+        $logoPath = $this->resolvePdfImageData($tenant?->logo_url);
+        $watermarkPath = $this->resolvePdfImageData($tenant?->watermark_url) ?? $logoPath;
+
         $pdf = Pdf::loadView($viewName, [
             'contrato'       => $contrato,
             'locador'        => $contrato->locador,
@@ -54,6 +59,9 @@ class ContratoDocumentoService
             'fiadores'       => $contrato->fiadores,
             'geradoEm'       => now(),
             'tenantTemplate' => $tenantTemplate,
+            'tenant'         => $tenant,
+            'tenantLogoSrc'  => $logoPath,
+            'tenantWatermarkSrc' => $watermarkPath,
         ]);
 
         $pdf->setPaper('A4', 'portrait');
@@ -98,5 +106,62 @@ class ContratoDocumentoService
         $numero = $contrato->numero_contrato ?? $contrato->id;
 
         return "{$nome} - Contrato #{$numero}";
+    }
+
+    private function resolvePdfImageData(?string $asset): ?string
+    {
+        if (!$asset) {
+            return null;
+        }
+
+        $asset = trim($asset);
+        if ($asset === '' || !preg_match('/\.(png|jpe?g|webp|svg)$/i', $asset)) {
+            return null;
+        }
+
+        $content = null;
+        $mimeType = null;
+
+        if (filter_var($asset, FILTER_VALIDATE_URL)) {
+            $content = @file_get_contents($asset);
+            if ($content !== false) {
+                $mimeType = $this->guessMimeType($asset, $content);
+            }
+        } else {
+            $relativePath = ltrim($asset, '/');
+            $candidates = [
+                public_path($relativePath),
+                storage_path('app/public/' . $relativePath),
+            ];
+
+            foreach ($candidates as $candidate) {
+                if (is_file($candidate)) {
+                    $content = @file_get_contents($candidate);
+                    if ($content !== false) {
+                        $mimeType = $this->guessMimeType($candidate, $content);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!$content || !$mimeType) {
+            return null;
+        }
+
+        return sprintf('data:%s;base64,%s', $mimeType, base64_encode($content));
+    }
+
+    private function guessMimeType(string $path, string $content): ?string
+    {
+        $extension = strtolower(pathinfo(parse_url($path, PHP_URL_PATH) ?? $path, PATHINFO_EXTENSION));
+
+        return match ($extension) {
+            'png' => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+            default => null,
+        };
     }
 }
