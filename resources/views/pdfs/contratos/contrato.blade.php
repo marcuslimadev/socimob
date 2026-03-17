@@ -253,8 +253,17 @@
 
     {{-- Cláusulas personalizadas do tenant --}}
     @foreach($tenantTemplate->clausulas_padrao as $i => $clausula)
+    @php
+        $clausulaTexto = trim((string) $clausula);
+        $clausulaPersonalizadaTemTitulo = \\Illuminate\\Support\\Str::startsWith(
+            \\Illuminate\\Support\\Str::upper($clausulaTexto),
+            'CLÁUSULA '
+        );
+    @endphp
+    @unless($clausulaPersonalizadaTemTitulo)
     <div class="clausula-titulo">Cláusula {{ $i + 1 }}</div>
-    <div class="clausula-body">{{ $clausula }}</div>
+    @endunless
+    <div class="clausula-body">{!! nl2br(e($clausulaTexto)) !!}</div>
     @endforeach
 
 @else

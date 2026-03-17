@@ -65,10 +65,10 @@ class ContratoTemplatesController extends Controller
 
         $validator = Validator::make($request->all(), [
             'titulo'           => 'nullable|string|max:255',
-            'intro_texto'      => 'nullable|string|max:5000',
+            'intro_texto'      => 'nullable|string|max:20000',
             'clausulas_padrao' => 'nullable|array',
-            'clausulas_padrao.*'=> 'string|max:2000',
-            'rodape_texto'     => 'nullable|string|max:1000',
+            'clausulas_padrao.*'=> 'string|max:10000',
+            'rodape_texto'     => 'nullable|string|max:5000',
             'incluir_logo'     => 'nullable|boolean',
             'ativo'            => 'nullable|boolean',
         ]);

@@ -55,7 +55,7 @@ export default function ContratoTemplates() {
       const { data } = await api.get('/admin/financeiro/contrato-templates');
       if (data.success) {
         setTemplates(data.items);
-        setEditando(normalizar(data.items[tipoAtivo]));
+        setEditando(normalizar(data.items[tipoAtivo], tipoAtivo));
       }
     } catch {
       toast.error('Erro ao carregar templates.');
@@ -64,18 +64,52 @@ export default function ContratoTemplates() {
     }
   };
 
+  const loadTemplate = async (tipo: string) => {
+    try {
+      const { data } = await api.get(`/admin/financeiro/contrato-templates/${tipo}`);
+      if (data.success) {
+        setTemplates((prev) => ({ ...prev, [tipo]: data.item }));
+        setEditando(normalizar(data.item, tipo));
+      }
+    } catch {
+      toast.error('Erro ao carregar o template selecionado.');
+    }
+  };
+
   useEffect(() => { loadTemplates(); }, []);
 
   // Ao trocar de tipo, carrega o template correspondente
   useEffect(() => {
     if (templates[tipoAtivo]) {
-      setEditando(normalizar(templates[tipoAtivo]));
+      setEditando(normalizar(templates[tipoAtivo], tipoAtivo));
     }
-  }, [tipoAtivo, templates]);
 
-  function normalizar(t: any): Template {
+    loadTemplate(tipoAtivo);
+  }, [tipoAtivo]);
+
+  useEffect(() => {
+    const handleVisibilityRefresh = () => {
+      if (document.visibilityState === 'visible') {
+        loadTemplate(tipoAtivo);
+      }
+    };
+
+    const handleFocusRefresh = () => {
+      loadTemplate(tipoAtivo);
+    };
+
+    window.addEventListener('focus', handleFocusRefresh);
+    document.addEventListener('visibilitychange', handleVisibilityRefresh);
+
+    return () => {
+      window.removeEventListener('focus', handleFocusRefresh);
+      document.removeEventListener('visibilitychange', handleVisibilityRefresh);
+    };
+  }, [tipoAtivo]);
+
+  function normalizar(t: any, tipo = tipoAtivo): Template {
     return {
-      tipo:            t?.tipo ?? tipoAtivo,
+      tipo:            t?.tipo ?? tipo,
       titulo:          t?.titulo ?? '',
       intro_texto:     t?.intro_texto ?? '',
       clausulas_padrao: Array.isArray(t?.clausulas_padrao) ? t.clausulas_padrao : [],
