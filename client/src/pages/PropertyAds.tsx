@@ -198,6 +198,73 @@ const splitLines = (text: string, maxLength: number, maxLines: number) => {
   return lines;
 };
 
+const wrapCanvasText = (
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  maxLines: number,
+) => {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = '';
+
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (ctx.measureText(next).width <= maxWidth) {
+      current = next;
+      continue;
+    }
+
+    if (current) {
+      lines.push(current);
+    }
+
+    current = word;
+
+    if (lines.length === maxLines - 1) {
+      break;
+    }
+  }
+
+  if (lines.length < maxLines && current) {
+    lines.push(current);
+  }
+
+  if (words.join(' ') !== lines.join(' ')) {
+    const lastIndex = lines.length - 1;
+    if (lastIndex >= 0) {
+      let truncated = lines[lastIndex].replace(/[. ]+$/, '');
+      while (truncated && ctx.measureText(`${truncated}...`).width > maxWidth) {
+        truncated = truncated.slice(0, -1).trimEnd();
+      }
+      lines[lastIndex] = `${truncated}...`;
+    }
+  }
+
+  return lines;
+};
+
+const fitCanvasFontSize = (
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  initialSize: number,
+  minSize: number,
+  maxWidth: number,
+  fontWeight: string,
+) => {
+  let fontSize = initialSize;
+
+  while (fontSize > minSize) {
+    ctx.font = `${fontWeight} ${fontSize}px sans-serif`;
+    if (ctx.measureText(text).width <= maxWidth) {
+      return fontSize;
+    }
+    fontSize -= 2;
+  }
+
+  return minSize;
+};
+
 export default function PropertyAds() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenant, setTenant] = useState<TenantBranding | null>(null);
@@ -417,6 +484,16 @@ export default function PropertyAds() {
         ctx.fillText(tenantPhone, tenantLabelX, panelY + 102);
       }
 
+      const infoMaxWidth = panelWidth - 88;
+      const thumbSize = 176;
+      const thumbGap = 18;
+      const thumbsPerRow = 3;
+      const maxThumbs = 6;
+      const visibleThumbs = thumbUrls.slice(0, maxThumbs);
+      const totalThumbsWidth = thumbSize * thumbsPerRow + thumbGap * (thumbsPerRow - 1);
+      const thumbStartX = panelX + (panelWidth - totalThumbsWidth) / 2;
+      const thumbStartY = panelY + panelHeight - thumbSize * 2 - thumbGap - 38;
+
       ctx.fillStyle = '#ffffff';
       ctx.font = '700 74px sans-serif';
       const titleLines = splitLines(getPropertyTitle(property), 22, 2);
@@ -424,44 +501,52 @@ export default function PropertyAds() {
         ctx.fillText(line, panelX + 44, panelY + 150 + index * 84);
       });
 
-      const locationY = panelY + 150 + titleLines.length * 84 + 22;
+      let currentY = panelY + 150 + titleLines.length * 84 + 22;
       ctx.fillStyle = 'rgba(255,255,255,0.78)';
       ctx.font = '500 42px sans-serif';
-      ctx.fillText(getLocationText(property) || 'Localização sob consulta', panelX + 44, locationY);
+      const locationLines = wrapCanvasText(ctx, getLocationText(property) || 'Localização sob consulta', infoMaxWidth, 2);
+      locationLines.forEach((line, index) => {
+        ctx.fillText(line, panelX + 44, currentY + index * 46);
+      });
+      currentY += locationLines.length * 46;
 
       if (detailTags.length > 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.74)';
         ctx.font = '600 31px sans-serif';
-        ctx.fillText(detailTags.join('   •   '), panelX + 44, locationY + 54);
+        const detailLines = wrapCanvasText(ctx, detailTags.join('   •   '), infoMaxWidth, 2);
+        detailLines.forEach((line, index) => {
+          ctx.fillText(line, panelX + 44, currentY + 18 + index * 36);
+        });
+        currentY += 18 + detailLines.length * 36;
       }
 
-      const priceY = locationY + 140;
+      currentY += 54;
       ctx.fillStyle = '#ffffff';
-      ctx.font = '700 86px sans-serif';
-      ctx.fillText(formatCurrency(getPrice(property)), panelX + 44, priceY);
+      const priceText = formatCurrency(getPrice(property));
+      const priceFontSize = fitCanvasFontSize(ctx, priceText, 86, 64, infoMaxWidth, '700');
+      ctx.font = `700 ${priceFontSize}px sans-serif`;
+      ctx.fillText(priceText, panelX + 44, currentY);
 
       if (primarySpecs.length > 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.82)';
         ctx.font = '600 34px sans-serif';
-        ctx.fillText(primarySpecs.join('   •   '), panelX + 44, priceY + 72);
+        const primaryLines = wrapCanvasText(ctx, primarySpecs.join('   •   '), infoMaxWidth, 2);
+        primaryLines.forEach((line, index) => {
+          ctx.fillText(line, panelX + 44, currentY + 62 + index * 38);
+        });
+        currentY += 62 + primaryLines.length * 38;
       }
 
       if (secondarySpecs.length > 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.66)';
         ctx.font = '500 30px sans-serif';
-        ctx.fillText(secondarySpecs.join('   •   '), panelX + 44, priceY + 122);
+        const secondaryLines = wrapCanvasText(ctx, secondarySpecs.join('   •   '), infoMaxWidth, 2);
+        secondaryLines.forEach((line, index) => {
+          ctx.fillText(line, panelX + 44, currentY + 16 + index * 34);
+        });
       }
 
-      if (thumbUrls.length > 0) {
-        const thumbSize = 176;
-        const thumbGap = 18;
-        const thumbsPerRow = 3;
-        const maxThumbs = 6;
-        const visibleThumbs = thumbUrls.slice(0, maxThumbs);
-        const totalThumbsWidth = thumbSize * thumbsPerRow + thumbGap * (thumbsPerRow - 1);
-        const thumbStartX = panelX + (panelWidth - totalThumbsWidth) / 2;
-        const thumbStartY = panelY + panelHeight - thumbSize * 2 - thumbGap - 38;
-
+      if (visibleThumbs.length > 0) {
         for (let index = 0; index < visibleThumbs.length; index += 1) {
           const row = Math.floor(index / thumbsPerRow);
           const column = index % thumbsPerRow;
@@ -714,23 +799,14 @@ export default function PropertyAds() {
                         </div>
                       </div>
 
-                      <div className="mt-4">
-                        <p className="text-sm font-semibold text-foreground">Prévia da arte</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Abra para gerar o texto e baixar a imagem final com logo e fotos do imóvel.
-                        </p>
-                      </div>
-
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                      <button
                         onClick={() => handleDownloadStory(property)}
                         disabled={downloadingPropertyId === property.id}
-                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-amber-500 px-4 py-3 font-semibold text-slate-950"
+                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/8 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-70"
                       >
                         {downloadingPropertyId === property.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                        {downloadingPropertyId === property.id ? 'Gerando imagem...' : 'Baixar imagem'}
-                      </motion.button>
+                        {downloadingPropertyId === property.id ? 'Gerando...' : 'Baixar'}
+                      </button>
                     </div>
                   </motion.div>
                 );
