@@ -3,6 +3,8 @@ export interface TenantBranding {
   slogan?: string;
   logo?: string;
   logo_url?: string;
+  tenant_phone?: string;
+  whatsapp_phone?: string;
   favicon_url?: string;
   mascot_url?: string;
   primary_color?: string;

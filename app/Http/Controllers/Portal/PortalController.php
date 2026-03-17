@@ -156,7 +156,7 @@ class PortalController extends Controller
             $portalFinalidades = $config->portal_finalidades;
         }
 
-        // Usar WhatsApp configurado (campo whatsapp_number)
+        // Mantem o numero configurado para WhatsApp sem perder o telefone real do tenant.
         $whatsappNumber = $config && $config->whatsapp_number 
             ? $config->whatsapp_number 
             : $tenant->contact_phone;
@@ -166,6 +166,8 @@ class PortalController extends Controller
             'data' => [
                 'name' => $tenant->name,
                 'contact_phone' => $whatsappNumber,
+                'tenant_phone' => $tenant->contact_phone,
+                'whatsapp_phone' => $whatsappNumber,
                 'contact_email' => $tenant->contact_email,
                 'domain' => $tenant->domain,
                 'slogan' => $tenant->slogan ?? 'Encontre o Imóvel dos Seus Sonhos',

@@ -125,6 +125,20 @@ const formatArea = (value: number) => (value > 0 ? `${value.toLocaleString('pt-B
 const formatCurrency = (value: number) =>
   value > 0 ? `R$ ${value.toLocaleString('pt-BR')}` : 'Consulte valor';
 
+const formatPhone = (value?: string | null) => {
+  const digits = (value || '').replace(/\D/g, '');
+
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+
+  return value || '';
+};
+
 const getTransactionLabel = (type: string) => (type === 'aluguel' ? 'Aluguel' : 'Venda');
 
 const getDetailTags = (property: Property) => {
@@ -154,6 +168,11 @@ const getLocationText = (property: Property) =>
   [getNeighborhood(property), `${getCity(property)}/${getState(property)}`]
     .filter(Boolean)
     .join(', ');
+
+const getPhotoCardLabel = (property: Property) => {
+  const location = getLocationText(property);
+  return location || getPropertyType(property);
+};
 
 const splitLines = (text: string, maxLength: number, maxLines: number) => {
   const words = text.split(/\s+/).filter(Boolean);
@@ -229,6 +248,7 @@ export default function PropertyAds() {
     const secondarySpecs = getSecondarySpecs(property);
     const primaryColor = tenant?.primary_color || '#0f172a';
     const secondaryColor = tenant?.secondary_color || '#d4a34f';
+    const tenantPhone = formatPhone(tenant?.tenant_phone || tenant?.contact_phone);
     const cardX = 40;
     const cardY = 40;
     const cardWidth = STORY_WIDTH - 80;
@@ -367,10 +387,40 @@ export default function PropertyAds() {
       ctx.roundRect(panelX, panelY, panelWidth, panelHeight, panelRadius);
       ctx.fill();
 
+      let tenantLabelX = panelX + 44;
+
+      if (logoUrl) {
+        try {
+          const headerLogo = await loadImage(logoUrl, objectUrls);
+          const logoMaxWidth = 150;
+          const logoMaxHeight = 48;
+          const scale = Math.min(logoMaxWidth / headerLogo.width, logoMaxHeight / headerLogo.height);
+          const width = headerLogo.width * scale;
+          const height = headerLogo.height * scale;
+
+          ctx.save();
+          ctx.fillStyle = 'rgba(255,255,255,0.96)';
+          ctx.beginPath();
+          ctx.roundRect(panelX + 34, panelY + 24, width + 22, height + 18, 18);
+          ctx.fill();
+          ctx.drawImage(headerLogo, panelX + 45, panelY + 33, width, height);
+          ctx.restore();
+          tenantLabelX = panelX + 44 + width + 42;
+        } catch {
+          // ignore logo load failure
+        }
+      }
+
       const tenantLabel = (tenant?.name || 'Imobiliária').toUpperCase();
       ctx.fillStyle = secondaryColor;
       ctx.font = '700 26px sans-serif';
-      ctx.fillText(tenantLabel, panelX + 44, panelY + 66);
+      ctx.fillText(tenantLabel, tenantLabelX, panelY + 66);
+
+      if (tenantPhone) {
+        ctx.fillStyle = 'rgba(255,255,255,0.84)';
+        ctx.font = '500 24px sans-serif';
+        ctx.fillText(tenantPhone, tenantLabelX, panelY + 102);
+      }
 
       const photosLabel = `${photos.length} foto${photos.length === 1 ? '' : 's'}`;
       ctx.font = '600 24px sans-serif';
@@ -419,40 +469,69 @@ export default function PropertyAds() {
       }
 
       if (thumbUrls.length > 0) {
-        const thumbSize = 176;
         const thumbGap = 18;
-        const thumbsPerRow = 3;
+        const thumbsPerRow = 2;
         const maxThumbs = 6;
         const visibleThumbs = thumbUrls.slice(0, maxThumbs);
-        const totalThumbsWidth = thumbSize * thumbsPerRow + thumbGap * (thumbsPerRow - 1);
+        const cardWidth = 198;
+        const cardHeight = 164;
+        const footerHeight = 44;
+        const cardRadius = 26;
+        const totalThumbsWidth = cardWidth * thumbsPerRow + thumbGap * (thumbsPerRow - 1);
         const thumbStartX = panelX + (panelWidth - totalThumbsWidth) / 2;
-        const thumbStartY = panelY + panelHeight - thumbSize * 2 - thumbGap - 38;
+        const thumbStartY = panelY + panelHeight - (cardHeight + footerHeight) * 3 - thumbGap * 2 - 30;
+        const photoCardLabel = getPhotoCardLabel(property);
 
         for (let index = 0; index < visibleThumbs.length; index += 1) {
           const row = Math.floor(index / thumbsPerRow);
           const column = index % thumbsPerRow;
-          const x = thumbStartX + column * (thumbSize + thumbGap);
-          const y = thumbStartY + row * (thumbSize + thumbGap);
+          const x = thumbStartX + column * (cardWidth + thumbGap);
+          const y = thumbStartY + row * (cardHeight + footerHeight + thumbGap);
 
-          ctx.fillStyle = 'rgba(255,255,255,0.12)';
+          ctx.save();
+          ctx.fillStyle = 'rgba(255,255,255,0.96)';
           ctx.beginPath();
-          ctx.roundRect(x, y, thumbSize, thumbSize, 26);
+          ctx.roundRect(x, y, cardWidth, cardHeight + footerHeight, cardRadius);
           ctx.fill();
+
+          if (index < 2) {
+            drawPill(x + 12, y + 12, 'Destaque', {
+              fill: 'rgba(255,255,255,0.92)',
+              textColor: '#0f172a',
+              font: '700 18px sans-serif',
+              horizontalPadding: 14,
+              height: 34,
+            });
+          }
 
           try {
             const thumb = await loadImage(visibleThumbs[index], objectUrls);
             ctx.save();
             ctx.beginPath();
-            ctx.roundRect(x, y, thumbSize, thumbSize, 26);
+            ctx.roundRect(x, y, cardWidth, cardHeight, cardRadius);
             ctx.clip();
-            const scale = Math.max(thumbSize / thumb.width, thumbSize / thumb.height);
+            const scale = Math.max(cardWidth / thumb.width, cardHeight / thumb.height);
             const width = thumb.width * scale;
             const height = thumb.height * scale;
-            ctx.drawImage(thumb, x + (thumbSize - width) / 2, y + (thumbSize - height) / 2, width, height);
+            ctx.drawImage(thumb, x + (cardWidth - width) / 2, y + (cardHeight - height) / 2, width, height);
             ctx.restore();
           } catch {
-            // ignore thumb load failure
+            ctx.fillStyle = 'rgba(148,163,184,0.22)';
+            ctx.beginPath();
+            ctx.roundRect(x, y, cardWidth, cardHeight, cardRadius);
+            ctx.fill();
           }
+
+          ctx.fillStyle = '#111827';
+          ctx.font = '700 18px sans-serif';
+          const labelText = splitLines(photoCardLabel, 22, 1)[0] || 'Localização';
+          ctx.fillText(labelText, x + 14, y + cardHeight + 24);
+
+          ctx.fillStyle = 'rgba(17,24,39,0.68)';
+          ctx.font = '500 14px sans-serif';
+          const specText = primarySpecs.slice(0, 2).join(' • ') || getPropertyType(property);
+          ctx.fillText(specText, x + 14, y + cardHeight + 42);
+          ctx.restore();
         }
       }
 
@@ -565,6 +644,8 @@ export default function PropertyAds() {
                 const detailTags = getDetailTags(property);
                 const primarySpecs = getPrimarySpecs(property);
                 const secondarySpecs = getSecondarySpecs(property);
+                const logoSrc = tenant?.logo_url || tenant?.logo;
+                const tenantPhone = formatPhone(tenant?.tenant_phone || tenant?.contact_phone);
 
                 return (
                   <motion.div
@@ -594,10 +675,24 @@ export default function PropertyAds() {
                         </div>
 
                         <div className="absolute inset-x-4 bottom-4 rounded-[26px] bg-[#07111d]/72 p-4 backdrop-blur-sm">
-                          <div className="mb-2 flex items-center justify-between gap-3">
-                            <p className="text-[10px] uppercase tracking-[0.28em] text-amber-300">
-                              {tenant?.name || 'Tenant'}
-                            </p>
+                          <div className="mb-2 flex items-start justify-between gap-3">
+                            <div className="flex min-w-0 items-start gap-2">
+                              {logoSrc && (
+                                <div className="mt-0.5 flex h-7 items-center rounded-md bg-white/95 px-2 py-1">
+                                  <img src={logoSrc} alt={tenant?.name || 'Logo'} className="max-h-5 w-auto object-contain" />
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="truncate text-[10px] uppercase tracking-[0.28em] text-amber-300">
+                                  {tenant?.name || 'Tenant'}
+                                </p>
+                                {tenantPhone && (
+                                  <p className="mt-1 truncate text-[11px] font-medium text-white/82">
+                                    {tenantPhone}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                             <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] text-white/75">
                               {photos.length} foto{photos.length === 1 ? '' : 's'}
                             </span>
@@ -631,10 +726,25 @@ export default function PropertyAds() {
                             </div>
                           )}
                           {thumbPhotos.length > 0 && (
-                            <div className="mt-3 grid grid-cols-3 gap-2">
+                            <div className="mt-3 grid grid-cols-2 gap-2.5">
                               {thumbPhotos.map((photo, index) => (
-                                <div key={`${property.id}-${index}`} className="overflow-hidden rounded-xl bg-white/10 aspect-square">
-                                  <img src={photo} alt={`${getPropertyTitle(property)} ${index + 2}`} className="h-full w-full object-cover" />
+                                <div key={`${property.id}-${index}`} className="overflow-hidden rounded-[18px] bg-white/95 shadow-[0_10px_30px_rgba(15,23,42,0.18)]">
+                                  <div className="relative aspect-[1.16/1] overflow-hidden">
+                                    <img src={photo} alt={`${getPropertyTitle(property)} ${index + 2}`} className="h-full w-full object-cover" />
+                                    {index < 2 && (
+                                      <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[9px] font-semibold text-slate-900">
+                                        Destaque
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="px-2.5 py-2 text-slate-900">
+                                    <p className="truncate text-[10px] font-semibold">
+                                      {getPhotoCardLabel(property) || 'Localização'}
+                                    </p>
+                                    <p className="mt-0.5 truncate text-[9px] text-slate-500">
+                                      {primarySpecs.slice(0, 2).join(' • ') || getPropertyType(property)}
+                                    </p>
+                                  </div>
                                 </div>
                               ))}
                             </div>
