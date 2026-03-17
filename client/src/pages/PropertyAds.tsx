@@ -426,29 +426,29 @@ export default function PropertyAds() {
 
       const locationY = panelY + 150 + titleLines.length * 84 + 22;
       ctx.fillStyle = 'rgba(255,255,255,0.78)';
-      ctx.font = '500 38px sans-serif';
+      ctx.font = '500 42px sans-serif';
       ctx.fillText(getLocationText(property) || 'Localização sob consulta', panelX + 44, locationY);
 
       if (detailTags.length > 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.74)';
-        ctx.font = '600 28px sans-serif';
+        ctx.font = '600 31px sans-serif';
         ctx.fillText(detailTags.join('   •   '), panelX + 44, locationY + 54);
       }
 
       const priceY = locationY + 140;
       ctx.fillStyle = '#ffffff';
-      ctx.font = '700 82px sans-serif';
+      ctx.font = '700 86px sans-serif';
       ctx.fillText(formatCurrency(getPrice(property)), panelX + 44, priceY);
 
       if (primarySpecs.length > 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.82)';
-        ctx.font = '600 31px sans-serif';
+        ctx.font = '600 34px sans-serif';
         ctx.fillText(primarySpecs.join('   •   '), panelX + 44, priceY + 72);
       }
 
       if (secondarySpecs.length > 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.66)';
-        ctx.font = '500 27px sans-serif';
+        ctx.font = '500 30px sans-serif';
         ctx.fillText(secondarySpecs.join('   •   '), panelX + 44, priceY + 122);
       }
 
@@ -469,19 +469,19 @@ export default function PropertyAds() {
           const y = thumbStartY + row * (thumbSize + thumbGap);
 
           ctx.save();
-          ctx.shadowColor = 'rgba(15, 23, 42, 0.42)';
-          ctx.shadowBlur = 28;
+          ctx.shadowColor = 'rgba(15, 23, 42, 0.24)';
+          ctx.shadowBlur = 20;
           ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = 14;
-          ctx.fillStyle = 'rgba(255,255,255,0.16)';
+          ctx.shadowOffsetY = 10;
+          ctx.fillStyle = 'rgba(255,255,255,0.10)';
           ctx.beginPath();
           ctx.roundRect(x, y, thumbSize, thumbSize, 26);
           ctx.fill();
           ctx.restore();
 
           const frameGradient = ctx.createLinearGradient(x, y, x + thumbSize, y + thumbSize);
-          frameGradient.addColorStop(0, 'rgba(255,255,255,0.26)');
-          frameGradient.addColorStop(1, 'rgba(255,255,255,0.06)');
+          frameGradient.addColorStop(0, 'rgba(255,255,255,0.16)');
+          frameGradient.addColorStop(1, 'rgba(255,255,255,0.03)');
           ctx.strokeStyle = frameGradient;
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -499,9 +499,9 @@ export default function PropertyAds() {
             const height = thumb.height * scale;
             ctx.drawImage(thumb, x + (thumbSize - width) / 2, y + (thumbSize - height) / 2, width, height);
             const thumbOverlay = ctx.createLinearGradient(x, y, x, y + thumbSize);
-            thumbOverlay.addColorStop(0, 'rgba(255,255,255,0.12)');
+            thumbOverlay.addColorStop(0, 'rgba(255,255,255,0.07)');
             thumbOverlay.addColorStop(0.58, 'rgba(255,255,255,0.02)');
-            thumbOverlay.addColorStop(1, 'rgba(15,23,42,0.18)');
+            thumbOverlay.addColorStop(1, 'rgba(15,23,42,0.10)');
             ctx.fillStyle = thumbOverlay;
             ctx.fillRect(x, y, thumbSize, thumbSize);
             ctx.restore();
@@ -673,11 +673,11 @@ export default function PropertyAds() {
                           <h3 className="line-clamp-2 text-xl font-bold leading-tight text-white">
                             {getPropertyTitle(property)}
                           </h3>
-                          <p className="mt-2 line-clamp-2 text-xs text-white/72">
+                          <p className="mt-2 line-clamp-2 text-sm text-white/72">
                             {getLocationText(property) || 'Localização sob consulta'}
                           </p>
                           {detailTags.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-white/62">
+                            <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-white/62">
                               {detailTags.map((tag) => (
                                 <span key={tag} className="rounded-full bg-white/8 px-2 py-1">
                                   {tag}
@@ -685,16 +685,16 @@ export default function PropertyAds() {
                               ))}
                             </div>
                           )}
-                          <p className="mt-3 text-2xl font-bold text-white">
+                          <p className="mt-3 text-[1.7rem] font-bold text-white leading-none">
                             {formatCurrency(getPrice(property))}
                           </p>
                           {primarySpecs.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-white/78">
+                            <div className="mt-2 flex flex-wrap gap-2 text-[12px] text-white/78">
                               {primarySpecs.map((spec) => <span key={spec}>{spec}</span>)}
                             </div>
                           )}
                           {secondarySpecs.length > 0 && (
-                            <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-white/58">
+                            <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-white/58">
                               {secondarySpecs.map((spec) => <span key={spec}>{spec}</span>)}
                             </div>
                           )}
@@ -703,10 +703,10 @@ export default function PropertyAds() {
                               {thumbPhotos.map((photo, index) => (
                                 <div
                                   key={`${property.id}-${index}`}
-                                  className="relative aspect-square overflow-hidden rounded-xl border border-white/15 bg-white/10 shadow-[0_14px_30px_rgba(15,23,42,0.34),0_3px_10px_rgba(15,23,42,0.2)]"
+                                  className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-[0_10px_22px_rgba(15,23,42,0.22),0_2px_6px_rgba(15,23,42,0.12)]"
                                 >
                                   <img src={photo} alt={`${getPropertyTitle(property)} ${index + 2}`} className="h-full w-full object-cover" />
-                                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-slate-950/18" />
+                                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-slate-950/10" />
                                 </div>
                               ))}
                             </div>
