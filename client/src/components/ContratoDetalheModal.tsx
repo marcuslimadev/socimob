@@ -51,10 +51,14 @@ interface ContratoDetalhes {
 interface Documento {
   id: number;
   tipo: string;
+  categoria?: string;
+  versao?: number;
+  referencia_documento_id?: number | null;
   nome?: string;
   status: string; // assinatura_status
   url_documento?: string;
   d4sign_uuid?: string;
+  assinado_em?: string;
   created_at: string;
 }
 
@@ -95,6 +99,18 @@ const statusDocLabel: Record<string, { label: string; color: string; icon: React
   recusado:    { label: 'Recusado',    color: 'text-red-700 bg-red-100',              icon: <AlertCircle size={12} /> },
 };
 
+const categoriaDocLabel: Record<string, string> = {
+  original: 'Original',
+  revisado: 'Revisado',
+  assinado: 'Assinado',
+};
+
+const categoriaDocOrder: Record<string, number> = {
+  original: 0,
+  revisado: 1,
+  assinado: 2,
+};
+
 function fmt(v?: string) {
   if (!v) return '-';
   const [y, m, d] = v.slice(0, 10).split('-');
@@ -102,6 +118,27 @@ function fmt(v?: string) {
 }
 function fmtMoney(v?: number) {
   return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+}
+
+function documentoTitulo(doc: Documento) {
+  const tipoLabel = tiposDocumento.find((t) => t.value === doc.tipo)?.label ?? doc.tipo;
+  const categoria = categoriaDocLabel[doc.categoria || 'original'] || 'Documento';
+  const versao = doc.versao ?? 1;
+  return `${tipoLabel} • ${categoria} V${versao}`;
+}
+
+function ordenarDocumentos(documentos: Documento[]) {
+  return [...documentos].sort((a, b) => {
+    const versaoA = a.versao ?? 1;
+    const versaoB = b.versao ?? 1;
+    if (versaoA !== versaoB) return versaoB - versaoA;
+
+    const ordemA = categoriaDocOrder[a.categoria || 'original'] ?? 99;
+    const ordemB = categoriaDocOrder[b.categoria || 'original'] ?? 99;
+    if (ordemA !== ordemB) return ordemA - ordemB;
+
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 }
 
 // ─── Subcomponentes ──────────────────────────────────────────────────────────
@@ -283,6 +320,89 @@ function AssinaturaModal({
   );
 }
 
+function UploadAssinadoModal({
+  documento,
+  contratoId,
+  onClose,
+  onUploaded,
+}: {
+  documento: Documento;
+  contratoId: number;
+  onClose: () => void;
+  onUploaded: () => void;
+}) {
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleUpload = async () => {
+    if (!arquivo) {
+      toast.error('Selecione o PDF assinado para enviar.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('arquivo', arquivo);
+
+    setLoading(true);
+    try {
+      await api.post(
+        `/admin/financeiro/contratos/${contratoId}/documentos/${documento.id}/upload-assinado`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      );
+      toast.success('PDF assinado enviado e vinculado ao contrato.');
+      onUploaded();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Erro ao enviar o PDF assinado.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]">
+      <div className="glass-panel rounded-2xl p-6 w-full max-w-lg mx-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-semibold text-base">Enviar PDF Assinado</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">{documentoTitulo(documento)}</p>
+          </div>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
+        </div>
+
+        <div className="p-3 rounded-xl bg-muted/40 border border-border text-xs text-muted-foreground mb-4 space-y-1.5">
+          <p>Baixe a versão pronta, colete as assinaturas fora do sistema e envie aqui o PDF final.</p>
+          <p>Se já existir um assinado para esta versão, ele será substituído pelo novo arquivo.</p>
+        </div>
+
+        <label className="block mb-4">
+          <span className="text-[11px] text-muted-foreground">Arquivo PDF assinado</span>
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+            className="w-full mt-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm file:mr-3 file:border-0 file:bg-transparent file:text-sm"
+          />
+        </label>
+
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-border hover:bg-accent text-sm">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleUpload}
+            disabled={loading}
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 text-sm disabled:opacity-60"
+          >
+            {loading ? 'Enviando...' : 'Salvar assinado'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Modal Principal ──────────────────────────────────────────────────────────
 
 export default function ContratoDetalheModal({ contratoId, onClose, onEncerrar, onRenovar, onReajuste }: Props) {
@@ -292,6 +412,7 @@ export default function ContratoDetalheModal({ contratoId, onClose, onEncerrar, 
   const [pdfDropdown, setPdfDropdown] = useState(false);
   const [addFiador, setAddFiador] = useState({ open: false, pessoa_id: '' });
   const [docParaAssinar, setDocParaAssinar] = useState<Documento | null>(null);
+  const [docParaUpload, setDocParaUpload] = useState<Documento | null>(null);
   const [deletandoDoc, setDeletandoDoc] = useState<number | null>(null);
 
   const loadContrato = async () => {
@@ -364,6 +485,7 @@ export default function ContratoDetalheModal({ contratoId, onClose, onEncerrar, 
   if (!contrato) return null;
 
   const isRescindido = contrato.status === 'rescindido' || !!contrato.rescindido_em;
+  const documentosOrdenados = ordenarDocumentos(contrato.documentos || []);
 
   return (
     <>
@@ -546,24 +668,33 @@ export default function ContratoDetalheModal({ contratoId, onClose, onEncerrar, 
           )}
 
           {/* Documentos */}
-          <Section title="Documentos gerados">
+          <Section title="Documentos do contrato">
+            <div className="p-3 mb-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-200 space-y-1.5">
+              <p>Fluxo recomendado: gere o PDF, baixe a versão pronta, colete as assinaturas e use o botão <strong>Enviar assinado</strong> para guardar o arquivo final no contrato.</p>
+              <p>O sistema organiza as versões como Original, Assinado, Revisado e novo Assinado, sem acumular documentos desnecessários.</p>
+            </div>
             {(contrato.documentos?.length ?? 0) === 0 ? (
               <p className="text-xs text-muted-foreground">
                 Nenhum documento gerado. Use "Gerar PDF" acima para criar o contrato.
               </p>
             ) : (
               <div className="space-y-2">
-                {contrato.documentos!.map((doc) => {
+                {documentosOrdenados.map((doc) => {
                   const st = statusDocLabel[doc.status] ?? statusDocLabel['nao_enviado'];
-                  const tipoLabel = tiposDocumento.find((t) => t.value === doc.tipo)?.label ?? doc.tipo;
+                  const podeReceberAssinado = !isRescindido && (doc.categoria ?? 'original') !== 'assinado';
                   return (
-                    <div key={doc.id} className="flex items-center justify-between px-3 py-2.5 bg-muted/40 border border-border/50 rounded-xl text-xs">
+                    <div key={doc.id} className="flex items-center justify-between gap-3 px-3 py-2.5 bg-muted/40 border border-border/50 rounded-xl text-xs">
                       <div className="flex-1 min-w-0 mr-3">
-                        <p className="font-medium text-foreground text-sm truncate">{doc.nome || tipoLabel}</p>
-                        <p className="text-muted-foreground mt-0.5">{new Date(doc.created_at).toLocaleDateString('pt-BR')}</p>
+                        <p className="font-medium text-foreground text-sm truncate">{documentoTitulo(doc)}</p>
+                        <p className="text-muted-foreground mt-0.5">{doc.nome || documentoTitulo(doc)}</p>
+                        <p className="text-muted-foreground mt-0.5">
+                          {doc.categoria === 'assinado' && doc.assinado_em
+                            ? `Assinado em ${new Date(doc.assinado_em).toLocaleDateString('pt-BR')}`
+                            : `Criado em ${new Date(doc.created_at).toLocaleDateString('pt-BR')}`}
+                        </p>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                         {/* Status badge */}
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${st.color}`}>
                           {st.icon} {st.label}
@@ -575,27 +706,41 @@ export default function ContratoDetalheModal({ contratoId, onClose, onEncerrar, 
                             href={doc.url_documento}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-center gap-1 px-2 py-1 rounded-lg border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                             title="Baixar PDF"
                           >
                             <Download size={13} />
+                            <span>Baixar</span>
                           </a>
                         )}
 
                         {/* Enviar para assinatura */}
-                        {doc.status === 'nao_enviado' && !isRescindido && (
+                        {doc.status === 'nao_enviado' && podeReceberAssinado && (
                           <button
                             type="button"
                             onClick={() => setDocParaAssinar(doc)}
-                            className="flex items-center gap-1 px-2 py-1 rounded-lg border border-primary/50 text-primary hover:bg-primary/5 transition-colors"
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-primary/50 text-primary hover:bg-primary/5 transition-colors"
                             title="Enviar para assinatura"
                           >
                             <Send size={13} />
+                            <span>D4Sign</span>
+                          </button>
+                        )}
+
+                        {podeReceberAssinado && (
+                          <button
+                            type="button"
+                            onClick={() => setDocParaUpload(doc)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/5 transition-colors"
+                            title="Enviar PDF assinado"
+                          >
+                            <CheckCircle2 size={13} />
+                            <span>Enviar assinado</span>
                           </button>
                         )}
 
                         {/* Deletar */}
-                        {doc.status === 'nao_enviado' && (
+                        {(doc.status === 'nao_enviado' || (doc.categoria ?? 'original') === 'assinado') && (
                           <button
                             type="button"
                             onClick={() => handleDeletarDoc(doc.id)}
@@ -634,6 +779,18 @@ export default function ContratoDetalheModal({ contratoId, onClose, onEncerrar, 
           onClose={() => setDocParaAssinar(null)}
           onSent={async () => {
             setDocParaAssinar(null);
+            await loadContrato();
+          }}
+        />
+      )}
+
+      {docParaUpload && (
+        <UploadAssinadoModal
+          documento={docParaUpload}
+          contratoId={contratoId}
+          onClose={() => setDocParaUpload(null)}
+          onUploaded={async () => {
+            setDocParaUpload(null);
             await loadContrato();
           }}
         />

@@ -16,6 +16,9 @@ class ContratoDocumento extends Model
         'contrato_id',
         'cobranca_id',
         'tipo',
+        'categoria',
+        'versao',
+        'referencia_documento_id',
         'nome',
         'arquivo_path',
         'assinatura_status',
@@ -29,6 +32,8 @@ class ContratoDocumento extends Model
     protected $appends = ['url_documento', 'status'];
 
     protected $casts = [
+        'versao' => 'integer',
+        'referencia_documento_id' => 'integer',
         'assinado_em' => 'datetime',
         'gerado_em' => 'datetime',
     ];
@@ -53,6 +58,16 @@ class ContratoDocumento extends Model
     public function cobranca()
     {
         return $this->belongsTo(CobrancaContrato::class, 'cobranca_id');
+    }
+
+    public function documentoBase()
+    {
+        return $this->belongsTo(self::class, 'referencia_documento_id');
+    }
+
+    public function versoesAssinadas()
+    {
+        return $this->hasMany(self::class, 'referencia_documento_id');
     }
 
     public function isAssinado(): bool

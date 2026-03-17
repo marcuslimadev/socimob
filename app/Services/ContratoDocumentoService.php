@@ -6,6 +6,7 @@ use App\Models\ContratoLocacao;
 use App\Models\ContratoTemplate;
 use App\Models\Tenant;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -28,6 +29,11 @@ class ContratoDocumentoService
     public function gerarPdf(ContratoLocacao $contrato, string $tipo, ?string $template = null): ContratoDocumento
     {
         $viewName = $template ?? (self::TEMPLATES[$tipo] ?? self::TEMPLATES['contrato']);
+        $proximaVersao = ((int) ContratoDocumento::where('contrato_id', $contrato->id)
+            ->where('tipo', $tipo)
+            ->whereIn('categoria', ['original', 'revisado'])
+            ->max('versao')) + 1;
+        $categoria = $proximaVersao === 1 ? 'original' : 'revisado';
 
         // Garante que todas as relações estão carregadas (incluindo aninhadas)
         $contrato->loadMissing([
@@ -80,19 +86,121 @@ class ContratoDocumentoService
             'tenant_id' => $contrato->tenant_id,
             'contrato_id' => $contrato->id,
             'tipo' => $tipo,
-            'nome' => $this->nomeAmigavel($tipo, $contrato),
+            'categoria' => $categoria,
+            'versao' => $proximaVersao,
+            'nome' => $this->nomeAmigavel($tipo, $contrato, $categoria, $proximaVersao),
             'arquivo_path' => $filename,
             'assinatura_status' => 'nao_enviado',
         ]);
     }
 
-    public function excluir(ContratoDocumento $documento): void
+    public function registrarDocumentoAssinado(ContratoDocumento $documentoBase, UploadedFile $arquivo, ?int $userId = null): ContratoDocumento
     {
-        Storage::disk('public')->delete($documento->arquivo_path);
-        $documento->delete();
+        $documentoBase->loadMissing('contrato');
+        $versao = max(1, (int) ($documentoBase->versao ?? 1));
+
+        $filename = sprintf(
+            'contratos/%d/%s-%s-v%d-assinado-%s.pdf',
+            $documentoBase->tenant_id,
+            $documentoBase->contrato_id,
+            $documentoBase->tipo,
+            $versao,
+            now()->format('YmdHis'),
+        );
+
+        Storage::disk('public')->putFileAs(
+            dirname($filename),
+            $arquivo,
+            basename($filename),
+        );
+
+        $documentoAssinado = ContratoDocumento::where('referencia_documento_id', $documentoBase->id)
+            ->where('categoria', 'assinado')
+            ->first();
+
+        if ($documentoAssinado?->arquivo_path) {
+            Storage::disk('public')->delete($documentoAssinado->arquivo_path);
+        }
+
+        $payload = [
+            'tenant_id' => $documentoBase->tenant_id,
+            'contrato_id' => $documentoBase->contrato_id,
+            'tipo' => $documentoBase->tipo,
+            'categoria' => 'assinado',
+            'versao' => $versao,
+            'referencia_documento_id' => $documentoBase->id,
+            'nome' => $this->nomeAmigavel($documentoBase->tipo, $documentoBase->contrato, 'assinado', $versao),
+            'arquivo_path' => $filename,
+            'assinatura_status' => 'assinado',
+            'assinado_em' => now(),
+            'gerado_por_user_id' => $userId,
+            'gerado_em' => now(),
+            'd4sign_uuid' => null,
+            'd4sign_key' => null,
+        ];
+
+        if ($documentoAssinado) {
+            $documentoAssinado->update($payload);
+            $documentoAssinado = $documentoAssinado->fresh();
+        } else {
+            $documentoAssinado = ContratoDocumento::create($payload);
+        }
+
+        $documentoBase->update([
+            'assinatura_status' => 'assinado',
+            'assinado_em' => $documentoAssinado->assinado_em,
+        ]);
+
+        return $documentoAssinado;
     }
 
-    private function nomeAmigavel(string $tipo, ContratoLocacao $contrato): string
+    public function sincronizarStatusDocumentoBase(ContratoDocumento $documento): void
+    {
+        if ($documento->categoria !== 'assinado' || !$documento->referencia_documento_id) {
+            return;
+        }
+
+        $documentoBase = ContratoDocumento::find($documento->referencia_documento_id);
+        if (!$documentoBase) {
+            return;
+        }
+
+        $temAssinado = ContratoDocumento::where('referencia_documento_id', $documentoBase->id)
+            ->where('categoria', 'assinado')
+            ->exists();
+
+        if ($temAssinado) {
+            return;
+        }
+
+        $documentoBase->update([
+            'assinatura_status' => $documentoBase->d4sign_uuid ? 'aguardando' : 'nao_enviado',
+            'assinado_em' => null,
+        ]);
+    }
+
+    public function excluir(ContratoDocumento $documento): void
+    {
+        $documento->loadMissing('versoesAssinadas');
+
+        foreach ($documento->versoesAssinadas as $versaoAssinada) {
+            if ($versaoAssinada->arquivo_path) {
+                Storage::disk('public')->delete($versaoAssinada->arquivo_path);
+            }
+
+            $versaoAssinada->delete();
+        }
+
+        if ($documento->arquivo_path) {
+            Storage::disk('public')->delete($documento->arquivo_path);
+        }
+
+        $documento->delete();
+
+        $this->sincronizarStatusDocumentoBase($documento);
+    }
+
+    private function nomeAmigavel(string $tipo, ContratoLocacao $contrato, string $categoria = 'original', int $versao = 1): string
     {
         $nomes = [
             'contrato' => 'Contrato de Locação',
@@ -104,8 +212,13 @@ class ContratoDocumentoService
 
         $nome = $nomes[$tipo] ?? Str::title($tipo);
         $numero = $contrato->numero_contrato ?? $contrato->id;
+        $categoriaLabel = match ($categoria) {
+            'assinado' => 'Assinado',
+            'revisado' => 'Revisado',
+            default => 'Original',
+        };
 
-        return "{$nome} - Contrato #{$numero}";
+        return "{$nome} - {$categoriaLabel} V{$versao} - Contrato #{$numero}";
     }
 
     private function resolvePdfImageData(?string $asset): ?string

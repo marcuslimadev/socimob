@@ -1,7 +1,8 @@
 <?php
-namespace App\Http\Controllers\Admin;
-use App\Http\Controllers\Controller;
 
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
 use App\Models\ContratoDocumento;
 use App\Models\ContratoLocacao;
 use App\Services\ContratoDocumentoService;
@@ -25,6 +26,8 @@ class ContratoDocumentosController extends Controller
         }
 
         $items = ContratoDocumento::where('contrato_id', $contratoId)
+            ->orderByDesc('versao')
+            ->orderByRaw("case categoria when 'original' then 0 when 'revisado' then 1 when 'assinado' then 2 else 9 end")
             ->orderByDesc('created_at')
             ->get();
 
@@ -59,7 +62,6 @@ class ContratoDocumentosController extends Controller
             $validator->validated()['template'] ?? null,
         );
 
-        // Reload to include appended url_documento and status
         $documento->refresh();
 
         return response()->json([
@@ -74,6 +76,10 @@ class ContratoDocumentosController extends Controller
         $documento = ContratoDocumento::where('contrato_id', $contratoId)->find($documentoId);
         if (!$documento) {
             return response()->json(['success' => false, 'message' => 'Documento não encontrado'], 404);
+        }
+
+        if ($documento->categoria === 'assinado') {
+            return response()->json(['success' => false, 'message' => 'Envie para assinatura a versão original ou revisada, não o arquivo já assinado.'], 422);
         }
 
         $validator = Validator::make($request->all(), [
@@ -104,6 +110,38 @@ class ContratoDocumentosController extends Controller
         ]);
 
         return response()->json(['success' => true, 'item' => $documento->fresh()]);
+    }
+
+    public function uploadAssinado(Request $request, int $contratoId, int $documentoId)
+    {
+        $documento = ContratoDocumento::where('contrato_id', $contratoId)->find($documentoId);
+        if (!$documento) {
+            return response()->json(['success' => false, 'message' => 'Documento não encontrado'], 404);
+        }
+
+        if ($documento->categoria === 'assinado') {
+            return response()->json(['success' => false, 'message' => 'Selecione a versão original ou revisada para anexar o PDF assinado.'], 422);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'arquivo' => 'required|file|mimes:pdf|max:20480',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $documentoAssinado = $this->documentoService->registrarDocumentoAssinado(
+            $documento,
+            $request->file('arquivo'),
+            $request->user()?->id,
+        );
+
+        return response()->json([
+            'success' => true,
+            'item' => $documentoAssinado->fresh(),
+            'url_documento' => $documentoAssinado->url_documento,
+        ], 201);
     }
 
     public function destroy(int $contratoId, int $documentoId)

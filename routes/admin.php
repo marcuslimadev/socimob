@@ -270,6 +270,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->get('/financeiro/contratos/{contratoId}/documentos',                             'App\Http\Controllers\Admin\ContratoDocumentosController@index');
     $router->post('/financeiro/contratos/{contratoId}/documentos/gerar-pdf',                  'App\Http\Controllers\Admin\ContratoDocumentosController@gerarPdf');
     $router->post('/financeiro/contratos/{contratoId}/documentos/{id}/enviar-assinatura',     'App\Http\Controllers\Admin\ContratoDocumentosController@enviarParaAssinatura');
+    $router->post('/financeiro/contratos/{contratoId}/documentos/{id}/upload-assinado',       'App\Http\Controllers\Admin\ContratoDocumentosController@uploadAssinado');
     $router->delete('/financeiro/contratos/{contratoId}/documentos/{id}',                     'App\Http\Controllers\Admin\ContratoDocumentosController@destroy');
 
     // Templates de contrato (personalização por tenant)

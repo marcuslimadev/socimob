@@ -19,6 +19,14 @@
 
     .watermark img { width: 100%; height: auto; }
 
+    .document-shell {
+        padding: 20mm 16mm 18mm;
+        border: 1px solid rgba(31, 41, 55, 0.08);
+        border-radius: 10px;
+        min-height: calc(100vh - 38mm);
+        background: rgba(255, 255, 255, 0.92);
+    }
+
     /* ─── CABEÇALHO ─── */
     .header { text-align: center; border-bottom: 2px solid var(--tenant-primary-color); padding-bottom: 12px; margin-bottom: 18px; }
     .header-brand { display: table; width: 100%; margin-bottom: 8px; }
@@ -80,6 +88,8 @@
     <img src="{{ $tenantWatermarkSrc }}" alt="Marca d'água" />
 </div>
 @endif
+
+<div class="document-shell">
 
 {{-- ══════════════════════════════════════════════════════════
      CABEÇALHO
@@ -484,6 +494,8 @@
     @else
         Documento gerado automaticamente em {{ $geradoEm->format('d/m/Y H:i') }} | Contrato Nº {{ $contrato->numero_contrato ?? $contrato->id }}
     @endif
+</div>
+
 </div>
 
 </body>
