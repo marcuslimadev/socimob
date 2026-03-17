@@ -355,7 +355,7 @@ function StoryPreviewCard({ property, tenant, photos, storyRef, className }: Sto
             </div>
           </div>
         </div>
-        <h3 className="line-clamp-2 text-[1.95rem] font-bold leading-[1.02] text-white">
+        <h3 className="line-clamp-2 text-[1.58rem] font-bold leading-[1.06] text-white">
           {getPropertyTitle(property)}
         </h3>
         <p className="mt-2 line-clamp-2 text-sm text-white/72">
