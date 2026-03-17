@@ -283,6 +283,28 @@ const fitCanvasFontSize = (
 const measureTextBlockHeight = (lineCount: number, lineHeight: number) =>
   lineCount > 0 ? lineCount * lineHeight : 0;
 
+const disableRemoteFontStylesheets = () => {
+  const remoteFontLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
+    .filter((link) => {
+      const href = link.href || '';
+      return href.includes('fonts.googleapis.com') || href.includes('fonts.cdnfonts.com');
+    });
+
+  remoteFontLinks.forEach((link) => {
+    link.dataset.exportDisabled = link.disabled ? 'already-disabled' : 'enabled';
+    link.disabled = true;
+  });
+
+  return () => {
+    remoteFontLinks.forEach((link) => {
+      if (link.dataset.exportDisabled === 'enabled') {
+        link.disabled = false;
+      }
+      delete link.dataset.exportDisabled;
+    });
+  };
+};
+
 interface StoryPreviewCardProps {
   property: Property;
   tenant: TenantBranding | null;
@@ -348,14 +370,14 @@ function StoryPreviewCard({ property, tenant, photos, storyRef, className }: Sto
                 {tenant?.name || 'Tenant'}
               </p>
               {tenantPhone && (
-                <p className="mt-1 truncate text-[11px] font-medium text-white/82">
+                <p className="mt-1 truncate text-[10px] font-semibold tracking-[0.08em] text-white/82">
                   {tenantPhone}
                 </p>
               )}
             </div>
           </div>
         </div>
-        <h3 className="line-clamp-2 text-[1.58rem] font-bold leading-[1.06] text-white">
+        <h3 className="line-clamp-2 text-[1.38rem] font-bold leading-[1.08] text-white">
           {getPropertyTitle(property)}
         </h3>
         <p className="mt-2 line-clamp-2 text-sm text-white/72">
@@ -833,6 +855,7 @@ export default function PropertyAds() {
   };
 
   const handleDownloadStory = async (property: Property) => {
+    let restoreRemoteFonts = () => undefined;
     try {
       setDownloadingPropertyId(property.id);
       cleanupExportAssets();
@@ -858,24 +881,14 @@ export default function PropertyAds() {
         throw new Error('Prévia de exportação não disponível');
       }
 
-      const previewDataUrl = await toPng(exportStoryRef.current, {
+      restoreRemoteFonts = disableRemoteFontStylesheets();
+
+      const dataUrl = await toPng(exportStoryRef.current, {
         cacheBust: true,
         pixelRatio: 4,
         backgroundColor: '#0a1320',
+        fontEmbedCSS: '',
       });
-
-      const previewImage = await loadImage(previewDataUrl);
-      const canvas = document.createElement('canvas');
-      canvas.width = STORY_WIDTH;
-      canvas.height = STORY_HEIGHT;
-      const ctx = canvas.getContext('2d');
-
-      if (!ctx) {
-        throw new Error('Canvas não disponível');
-      }
-
-      ctx.drawImage(previewImage, 0, 0, STORY_WIDTH, STORY_HEIGHT);
-      const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       const safeTitle = getPropertyTitle(property)
         .toLowerCase()
@@ -892,6 +905,7 @@ export default function PropertyAds() {
       console.error('Erro ao gerar imagem da propaganda:', error);
       toast.error('Não foi possível gerar a imagem');
     } finally {
+      restoreRemoteFonts();
       setExportStory(null);
       cleanupExportAssets();
       setDownloadingPropertyId(null);
@@ -1000,7 +1014,7 @@ export default function PropertyAds() {
             property={exportStory.property}
             tenant={exportStory.logoSrc ? { ...tenant, logo_url: exportStory.logoSrc, logo: exportStory.logoSrc } : tenant}
             photos={exportStory.photos}
-            className="relative aspect-[9/16] w-[330px] overflow-hidden rounded-[30px] border border-white/15 bg-[#0a1320]"
+            className="relative aspect-[9/16] w-[330px] overflow-hidden rounded-[30px] border border-white/15 bg-[#0a1320] [font-family:Arial,sans-serif]"
           />
         </div>
       )}
