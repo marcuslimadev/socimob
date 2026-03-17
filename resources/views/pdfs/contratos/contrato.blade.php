@@ -255,8 +255,8 @@
     @foreach($tenantTemplate->clausulas_padrao as $i => $clausula)
     @php
         $clausulaTexto = trim((string) $clausula);
-        $clausulaPersonalizadaTemTitulo = \\Illuminate\\Support\\Str::startsWith(
-            \\Illuminate\\Support\\Str::upper($clausulaTexto),
+        $clausulaPersonalizadaTemTitulo = \Illuminate\Support\Str::startsWith(
+            \Illuminate\Support\Str::upper($clausulaTexto),
             'CLÁUSULA '
         );
     @endphp
@@ -330,7 +330,17 @@
 
     @if(!empty($contrato->garantidora_nome) || $contrato->tipo_garantia === 'seguro_fianca')
     <div class="clausula-titulo">Cláusula Décima Quarta — Garantia Locatícia — Seguro Fiança</div>
-    <div class="clausula-body">O presente Contrato é garantido por Seguro Fiança prestado por <strong>{{ $contrato->garantidora_nome ?? 'empresa garantidora a ser indicada' }}</strong>@if(!empty($contrato->garantidora_cnpj)), inscrita no CNPJ sob o nº <strong>{{ $contrato->garantidora_cnpj }}</strong>@endif@if(!empty($contrato->garantidora_endereco)), com sede à {{ $contrato->garantidora_endereco }}@endif, que se compromete a efetuar o pagamento de eventuais débitos relativos aos aluguéis e encargos inadimplidos pelo LOCATÁRIO, conforme Termos e Condições Gerais dos Serviços, que integram o presente Contrato como Anexo.</div>
+    <div class="clausula-body">
+        O presente Contrato é garantido por Seguro Fiança prestado por
+        <strong>{{ $contrato->garantidora_nome ?? 'empresa garantidora a ser indicada' }}</strong>
+        @if(!empty($contrato->garantidora_cnpj))
+            , inscrita no CNPJ sob o nº <strong>{{ $contrato->garantidora_cnpj }}</strong>
+        @endif
+        @if(!empty($contrato->garantidora_endereco))
+            , com sede à {{ $contrato->garantidora_endereco }}
+        @endif
+        , que se compromete a efetuar o pagamento de eventuais débitos relativos aos aluguéis e encargos inadimplidos pelo LOCATÁRIO, conforme Termos e Condições Gerais dos Serviços, que integram o presente Contrato como Anexo.
+    </div>
     @endif
 
     <div class="clausula-titulo">Cláusula {{ (!empty($contrato->garantidora_nome) || $contrato->tipo_garantia === 'seguro_fianca') ? 'Décima Quinta' : 'Décima Quarta' }} — Foro</div>
