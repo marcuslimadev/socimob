@@ -417,17 +417,6 @@ export default function PropertyAds() {
         ctx.fillText(tenantPhone, tenantLabelX, panelY + 102);
       }
 
-      const photosLabel = `${photos.length} foto${photos.length === 1 ? '' : 's'}`;
-      ctx.font = '600 24px sans-serif';
-      const photosBadgeWidth = ctx.measureText(photosLabel).width + 40;
-      drawPill(panelX + panelWidth - photosBadgeWidth - 36, panelY + 28, photosLabel, {
-        fill: 'rgba(255,255,255,0.10)',
-        textColor: 'rgba(255,255,255,0.78)',
-        font: '600 24px sans-serif',
-        horizontalPadding: 20,
-        height: 58,
-      });
-
       ctx.fillStyle = '#ffffff';
       ctx.font = '700 74px sans-serif';
       const titleLines = splitLines(getPropertyTitle(property), 22, 2);
@@ -479,10 +468,25 @@ export default function PropertyAds() {
           const x = thumbStartX + column * (thumbSize + thumbGap);
           const y = thumbStartY + row * (thumbSize + thumbGap);
 
-          ctx.fillStyle = 'rgba(255,255,255,0.12)';
+          ctx.save();
+          ctx.shadowColor = 'rgba(15, 23, 42, 0.42)';
+          ctx.shadowBlur = 28;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 14;
+          ctx.fillStyle = 'rgba(255,255,255,0.16)';
           ctx.beginPath();
           ctx.roundRect(x, y, thumbSize, thumbSize, 26);
           ctx.fill();
+          ctx.restore();
+
+          const frameGradient = ctx.createLinearGradient(x, y, x + thumbSize, y + thumbSize);
+          frameGradient.addColorStop(0, 'rgba(255,255,255,0.26)');
+          frameGradient.addColorStop(1, 'rgba(255,255,255,0.06)');
+          ctx.strokeStyle = frameGradient;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(x + 1, y + 1, thumbSize - 2, thumbSize - 2, 25);
+          ctx.stroke();
 
           try {
             const thumb = await loadImage(visibleThumbs[index], objectUrls);
@@ -494,6 +498,12 @@ export default function PropertyAds() {
             const width = thumb.width * scale;
             const height = thumb.height * scale;
             ctx.drawImage(thumb, x + (thumbSize - width) / 2, y + (thumbSize - height) / 2, width, height);
+            const thumbOverlay = ctx.createLinearGradient(x, y, x, y + thumbSize);
+            thumbOverlay.addColorStop(0, 'rgba(255,255,255,0.12)');
+            thumbOverlay.addColorStop(0.58, 'rgba(255,255,255,0.02)');
+            thumbOverlay.addColorStop(1, 'rgba(15,23,42,0.18)');
+            ctx.fillStyle = thumbOverlay;
+            ctx.fillRect(x, y, thumbSize, thumbSize);
             ctx.restore();
           } catch {
             // ignore thumb load failure
@@ -659,9 +669,6 @@ export default function PropertyAds() {
                                 )}
                               </div>
                             </div>
-                            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] text-white/75">
-                              {photos.length} foto{photos.length === 1 ? '' : 's'}
-                            </span>
                           </div>
                           <h3 className="line-clamp-2 text-xl font-bold leading-tight text-white">
                             {getPropertyTitle(property)}
@@ -694,8 +701,12 @@ export default function PropertyAds() {
                           {thumbPhotos.length > 0 && (
                             <div className="mt-3 grid grid-cols-3 gap-2">
                               {thumbPhotos.map((photo, index) => (
-                                <div key={`${property.id}-${index}`} className="overflow-hidden rounded-xl bg-white/10 aspect-square">
+                                <div
+                                  key={`${property.id}-${index}`}
+                                  className="relative aspect-square overflow-hidden rounded-xl border border-white/15 bg-white/10 shadow-[0_14px_30px_rgba(15,23,42,0.34),0_3px_10px_rgba(15,23,42,0.2)]"
+                                >
                                   <img src={photo} alt={`${getPropertyTitle(property)} ${index + 2}`} className="h-full w-full object-cover" />
+                                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-slate-950/18" />
                                 </div>
                               ))}
                             </div>
