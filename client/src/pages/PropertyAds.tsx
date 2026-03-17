@@ -966,13 +966,6 @@ export default function PropertyAds() {
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {filteredProperties.map((property) => {
                 const photos = normalizePhotos(property);
-                const thumbPhotos = photos.slice(1, 7);
-                const transactionType = getTransactionType(property);
-                const detailTags = getDetailTags(property);
-                const primarySpecs = getPrimarySpecs(property);
-                const secondarySpecs = getSecondarySpecs(property);
-                const logoSrc = tenant?.logo_url || tenant?.logo;
-                const tenantPhone = formatPhone(tenant?.tenant_phone || tenant?.contact_phone);
 
                 return (
                   <motion.div
@@ -982,88 +975,7 @@ export default function PropertyAds() {
                     className="glass-panel overflow-hidden rounded-[28px] transition-all hover:bg-white/10"
                   >
                     <div className="p-4">
-                      <div className="relative mx-auto aspect-[9/16] w-full max-w-[330px] overflow-hidden rounded-[30px] border border-white/15 bg-[#0a1320]">
-                        {photos.length > 0 ? (
-                          <img
-                            src={photos[0]}
-                            alt={getPropertyTitle(property)}
-                            className="absolute inset-0 h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-950" />
-                        )}
-
-                        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-[#07111d]" />
-
-                        <div className="absolute inset-x-4 top-4 flex items-center justify-start">
-                          <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${getTransactionBadge(transactionType)}`}>
-                            {getTransactionLabel(transactionType)}
-                          </span>
-                        </div>
-
-                        <div className="absolute inset-x-4 bottom-4 rounded-[26px] bg-[#07111d]/72 p-4 backdrop-blur-sm">
-                          <div className="mb-2 flex items-start justify-between gap-3">
-                            <div className="flex min-w-0 items-start gap-2">
-                              {logoSrc && (
-                                <div className="mt-0.5 flex h-7 items-center rounded-md bg-white/95 px-2 py-1">
-                                  <img src={logoSrc} alt={tenant?.name || 'Logo'} className="max-h-5 w-auto object-contain" />
-                                </div>
-                              )}
-                              <div className="min-w-0">
-                                <p className="truncate text-[10px] uppercase tracking-[0.28em] text-amber-300">
-                                  {tenant?.name || 'Tenant'}
-                                </p>
-                                {tenantPhone && (
-                                  <p className="mt-1 truncate text-[11px] font-medium text-white/82">
-                                    {tenantPhone}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <h3 className="line-clamp-2 text-xl font-bold leading-tight text-white">
-                            {getPropertyTitle(property)}
-                          </h3>
-                          <p className="mt-2 line-clamp-2 text-sm text-white/72">
-                            {getLocationText(property) || 'Localização sob consulta'}
-                          </p>
-                          {detailTags.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-white/62">
-                              {detailTags.map((tag) => (
-                                <span key={tag} className="rounded-full bg-white/8 px-2 py-1">
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          <p className="mt-3 text-[1.7rem] font-bold text-white leading-none">
-                            {formatCurrency(getPrice(property))}
-                          </p>
-                          {primarySpecs.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2 text-[12px] text-white/78">
-                              {primarySpecs.map((spec) => <span key={spec}>{spec}</span>)}
-                            </div>
-                          )}
-                          {secondarySpecs.length > 0 && (
-                            <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-white/58">
-                              {secondarySpecs.map((spec) => <span key={spec}>{spec}</span>)}
-                            </div>
-                          )}
-                          {thumbPhotos.length > 0 && (
-                            <div className="mt-3 grid grid-cols-3 gap-2">
-                              {thumbPhotos.map((photo, index) => (
-                                <div
-                                  key={`${property.id}-${index}`}
-                                  className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-[0_10px_22px_rgba(15,23,42,0.22),0_2px_6px_rgba(15,23,42,0.12)]"
-                                >
-                                  <img src={photo} alt={`${getPropertyTitle(property)} ${index + 2}`} className="h-full w-full object-cover" />
-                                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-slate-950/10" />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <StoryPreviewCard property={property} tenant={tenant} photos={photos} />
 
                       <button
                         onClick={() => handleDownloadStory(property)}
