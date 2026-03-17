@@ -222,7 +222,7 @@ export default function PropertyAds() {
 
     const photos = normalizePhotos(property);
     const mainPhotoUrl = photos[0];
-    const thumbUrls = photos.slice(1, 13);
+    const thumbUrls = photos.slice(1, 7);
     const transactionType = getTransactionType(property);
     const detailTags = getDetailTags(property);
     const primarySpecs = getPrimarySpecs(property);
@@ -235,9 +235,9 @@ export default function PropertyAds() {
     const cardHeight = STORY_HEIGHT - 80;
     const cardRadius = 78;
     const panelX = cardX + 48;
-    const panelY = cardY + cardHeight - 900;
+    const panelY = cardY + cardHeight - 840;
     const panelWidth = cardWidth - 96;
-    const panelHeight = 820;
+    const panelHeight = 760;
     const panelRadius = 58;
 
     const drawPill = (
@@ -362,7 +362,7 @@ export default function PropertyAds() {
         height: 68,
       });
 
-      ctx.fillStyle = 'rgba(7,17,29,0.88)';
+      ctx.fillStyle = 'rgba(7,17,29,0.72)';
       ctx.beginPath();
       ctx.roundRect(panelX, panelY, panelWidth, panelHeight, panelRadius);
       ctx.fill();
@@ -419,10 +419,10 @@ export default function PropertyAds() {
       }
 
       if (thumbUrls.length > 0) {
-        const thumbSize = 88;
-        const thumbGap = 12;
-        const thumbsPerRow = 6;
-        const maxThumbs = 12;
+        const thumbSize = 176;
+        const thumbGap = 18;
+        const thumbsPerRow = 3;
+        const maxThumbs = 6;
         const visibleThumbs = thumbUrls.slice(0, maxThumbs);
         const totalThumbsWidth = thumbSize * thumbsPerRow + thumbGap * (thumbsPerRow - 1);
         const thumbStartX = panelX + (panelWidth - totalThumbsWidth) / 2;
@@ -436,14 +436,14 @@ export default function PropertyAds() {
 
           ctx.fillStyle = 'rgba(255,255,255,0.12)';
           ctx.beginPath();
-          ctx.roundRect(x, y, thumbSize, thumbSize, 18);
+          ctx.roundRect(x, y, thumbSize, thumbSize, 26);
           ctx.fill();
 
           try {
             const thumb = await loadImage(visibleThumbs[index], objectUrls);
             ctx.save();
             ctx.beginPath();
-            ctx.roundRect(x, y, thumbSize, thumbSize, 18);
+            ctx.roundRect(x, y, thumbSize, thumbSize, 26);
             ctx.clip();
             const scale = Math.max(thumbSize / thumb.width, thumbSize / thumb.height);
             const width = thumb.width * scale;
@@ -560,7 +560,7 @@ export default function PropertyAds() {
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {filteredProperties.map((property) => {
                 const photos = normalizePhotos(property);
-                const thumbPhotos = photos.slice(1, 13);
+                const thumbPhotos = photos.slice(1, 7);
                 const transactionType = getTransactionType(property);
                 const detailTags = getDetailTags(property);
                 const primarySpecs = getPrimarySpecs(property);
@@ -593,7 +593,7 @@ export default function PropertyAds() {
                           </span>
                         </div>
 
-                        <div className="absolute inset-x-4 bottom-4 rounded-[26px] bg-[#07111d]/88 p-4 backdrop-blur-sm">
+                        <div className="absolute inset-x-4 bottom-4 rounded-[26px] bg-[#07111d]/72 p-4 backdrop-blur-sm">
                           <div className="mb-2 flex items-center justify-between gap-3">
                             <p className="text-[10px] uppercase tracking-[0.28em] text-amber-300">
                               {tenant?.name || 'Tenant'}
@@ -631,9 +631,9 @@ export default function PropertyAds() {
                             </div>
                           )}
                           {thumbPhotos.length > 0 && (
-                            <div className="mt-3 grid grid-cols-6 gap-1.5">
+                            <div className="mt-3 grid grid-cols-3 gap-2">
                               {thumbPhotos.map((photo, index) => (
-                                <div key={`${property.id}-${index}`} className="overflow-hidden rounded-lg bg-white/10 aspect-square">
+                                <div key={`${property.id}-${index}`} className="overflow-hidden rounded-xl bg-white/10 aspect-square">
                                   <img src={photo} alt={`${getPropertyTitle(property)} ${index + 2}`} className="h-full w-full object-cover" />
                                 </div>
                               ))}
