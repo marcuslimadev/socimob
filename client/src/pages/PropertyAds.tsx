@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type Ref } from 'react';
 import { motion } from 'framer-motion';
-import { Image, Search, Loader2, Sparkles, Download } from 'lucide-react';
+import { Image, Search, Loader2, Download } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -87,6 +88,20 @@ const loadImage = async (src: string, objectUrls: string[] = []) => {
     image.onerror = reject;
     image.src = resolvedSrc;
   });
+};
+
+const resolveAssetUrl = async (src?: string | null, objectUrls: string[] = []) => {
+  if (!src) return '';
+
+  const resolvedSrc = isCrossOriginUrl(src)
+    ? await fetchImageBlobUrl(src)
+    : src;
+
+  if (resolvedSrc.startsWith('blob:')) {
+    objectUrls.push(resolvedSrc);
+  }
+
+  return resolvedSrc;
 };
 
 const normalizePhotos = (property: Property): string[] => {
@@ -268,12 +283,133 @@ const fitCanvasFontSize = (
 const measureTextBlockHeight = (lineCount: number, lineHeight: number) =>
   lineCount > 0 ? lineCount * lineHeight : 0;
 
+interface StoryPreviewCardProps {
+  property: Property;
+  tenant: TenantBranding | null;
+  photos: string[];
+  storyRef?: Ref<HTMLDivElement>;
+  className?: string;
+}
+
+interface ExportStoryState {
+  property: Property;
+  photos: string[];
+  logoSrc: string;
+}
+
+function StoryPreviewCard({ property, tenant, photos, storyRef, className }: StoryPreviewCardProps) {
+  const thumbPhotos = photos.slice(1, 7);
+  const transactionType = getTransactionType(property);
+  const detailTags = getDetailTags(property);
+  const primarySpecs = getPrimarySpecs(property);
+  const secondarySpecs = getSecondarySpecs(property);
+  const logoSrc = tenant?.logo_url || tenant?.logo;
+  const tenantPhone = formatPhone(tenant?.tenant_phone || tenant?.contact_phone);
+
+  const getTransactionBadge = (type: string) => (
+    type === 'venda'
+      ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/40'
+      : 'bg-sky-500/20 text-sky-200 border-sky-400/40'
+  );
+
+  return (
+    <div
+      ref={storyRef}
+      className={className || 'relative mx-auto aspect-[9/16] w-full max-w-[330px] overflow-hidden rounded-[30px] border border-white/15 bg-[#0a1320]'}
+    >
+      {photos.length > 0 ? (
+        <img
+          src={photos[0]}
+          alt={getPropertyTitle(property)}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-950" />
+      )}
+
+      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-[#07111d]" />
+
+      <div className="absolute inset-x-4 top-4 flex items-center justify-start">
+        <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${getTransactionBadge(transactionType)}`}>
+          {getTransactionLabel(transactionType)}
+        </span>
+      </div>
+
+      <div className="absolute inset-x-4 bottom-4 rounded-[26px] bg-[#07111d]/72 p-4 backdrop-blur-sm">
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2">
+            {logoSrc && (
+              <div className="mt-0.5 flex h-7 items-center rounded-md bg-white/95 px-2 py-1">
+                <img src={logoSrc} alt={tenant?.name || 'Logo'} className="max-h-5 w-auto object-contain" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-[10px] uppercase tracking-[0.28em] text-amber-300">
+                {tenant?.name || 'Tenant'}
+              </p>
+              {tenantPhone && (
+                <p className="mt-1 truncate text-[11px] font-medium text-white/82">
+                  {tenantPhone}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+        <h3 className="line-clamp-2 text-[1.95rem] font-bold leading-[1.02] text-white">
+          {getPropertyTitle(property)}
+        </h3>
+        <p className="mt-2 line-clamp-2 text-sm text-white/72">
+          {getLocationText(property) || 'Localização sob consulta'}
+        </p>
+        {detailTags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-white/62">
+            {detailTags.map((tag) => (
+              <span key={tag} className="rounded-full bg-white/8 px-2 py-1">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+        <p className="mt-3 text-[1.7rem] font-bold leading-none text-white">
+          {formatCurrency(getPrice(property))}
+        </p>
+        {primarySpecs.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2 text-[12px] text-white/78">
+            {primarySpecs.map((spec) => <span key={spec}>{spec}</span>)}
+          </div>
+        )}
+        {secondarySpecs.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-white/58">
+            {secondarySpecs.map((spec) => <span key={spec}>{spec}</span>)}
+          </div>
+        )}
+        {thumbPhotos.length > 0 && (
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {thumbPhotos.map((photo, index) => (
+              <div
+                key={`${property.id}-${index}`}
+                className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-[0_10px_22px_rgba(15,23,42,0.22),0_2px_6px_rgba(15,23,42,0.12)]"
+              >
+                <img src={photo} alt={`${getPropertyTitle(property)} ${index + 2}`} className="h-full w-full object-cover" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-slate-950/10" />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function PropertyAds() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenant, setTenant] = useState<TenantBranding | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [downloadingPropertyId, setDownloadingPropertyId] = useState<number | null>(null);
+  const [exportStory, setExportStory] = useState<ExportStoryState | null>(null);
+  const exportStoryRef = useRef<HTMLDivElement | null>(null);
+  const exportObjectUrlsRef = useRef<string[]>([]);
 
   useEffect(() => {
     fetchProperties();
@@ -686,10 +822,60 @@ export default function PropertyAds() {
     }
   };
 
+  const cleanupExportAssets = () => {
+    exportObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    exportObjectUrlsRef.current = [];
+  };
+
+  const waitForNextPaint = async () => {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  };
+
   const handleDownloadStory = async (property: Property) => {
     try {
       setDownloadingPropertyId(property.id);
-      const dataUrl = await createStoryImage(property);
+      cleanupExportAssets();
+
+      const objectUrls: string[] = [];
+      const normalizedPhotos = normalizePhotos(property).slice(0, 7);
+      const resolvedPhotos = await Promise.all(
+        normalizedPhotos.map((photo) => resolveAssetUrl(photo, objectUrls)),
+      );
+      const tenantLogoSrc = tenant?.logo_url || tenant?.logo;
+      const resolvedLogoSrc = await resolveAssetUrl(tenantLogoSrc, objectUrls);
+
+      exportObjectUrlsRef.current = objectUrls;
+      setExportStory({
+        property,
+        photos: resolvedPhotos.filter(Boolean),
+        logoSrc: resolvedLogoSrc || tenantLogoSrc || '',
+      });
+
+      await waitForNextPaint();
+
+      if (!exportStoryRef.current) {
+        throw new Error('Prévia de exportação não disponível');
+      }
+
+      const previewDataUrl = await toPng(exportStoryRef.current, {
+        cacheBust: true,
+        pixelRatio: 4,
+        backgroundColor: '#0a1320',
+      });
+
+      const previewImage = await loadImage(previewDataUrl);
+      const canvas = document.createElement('canvas');
+      canvas.width = STORY_WIDTH;
+      canvas.height = STORY_HEIGHT;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        throw new Error('Canvas não disponível');
+      }
+
+      ctx.drawImage(previewImage, 0, 0, STORY_WIDTH, STORY_HEIGHT);
+      const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       const safeTitle = getPropertyTitle(property)
         .toLowerCase()
@@ -706,6 +892,8 @@ export default function PropertyAds() {
       console.error('Erro ao gerar imagem da propaganda:', error);
       toast.error('Não foi possível gerar a imagem');
     } finally {
+      setExportStory(null);
+      cleanupExportAssets();
       setDownloadingPropertyId(null);
     }
   };
@@ -714,12 +902,6 @@ export default function PropertyAds() {
     getPropertyTitle(prop).toLowerCase().includes(searchTerm.toLowerCase()) ||
     getNeighborhood(prop).toLowerCase().includes(searchTerm.toLowerCase()) ||
     getCity(prop).toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  const getTransactionBadge = (type: string) => (
-    type === 'venda'
-      ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/40'
-      : 'bg-sky-500/20 text-sky-200 border-sky-400/40'
   );
 
   return (
@@ -899,6 +1081,17 @@ export default function PropertyAds() {
           )}
         </motion.div>
       </div>
+      {exportStory && (
+        <div className="pointer-events-none fixed -left-[9999px] top-0 opacity-100">
+          <StoryPreviewCard
+            storyRef={exportStoryRef}
+            property={exportStory.property}
+            tenant={exportStory.logoSrc ? { ...tenant, logo_url: exportStory.logoSrc, logo: exportStory.logoSrc } : tenant}
+            photos={exportStory.photos}
+            className="relative aspect-[9/16] w-[330px] overflow-hidden rounded-[30px] border border-white/15 bg-[#0a1320]"
+          />
+        </div>
+      )}
     </div>
   );
 }

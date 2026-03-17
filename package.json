@@ -58,6 +58,7 @@
         "framer-motion": "^12.37.0",
         "highcharts": "^12.5.0",
         "highcharts-react-official": "^3.2.3",
+        "html-to-image": "^1.11.13",
         "input-otp": "^1.4.2",
         "leaflet": "^1.9.4",
         "lucide-react": "^0.577.0",
