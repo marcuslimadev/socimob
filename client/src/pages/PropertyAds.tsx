@@ -222,7 +222,7 @@ export default function PropertyAds() {
 
     const photos = normalizePhotos(property);
     const mainPhotoUrl = photos[0];
-    const thumbUrls = photos.slice(1, 7);
+    const thumbUrls = photos.slice(1, 13);
     const transactionType = getTransactionType(property);
     const detailTags = getDetailTags(property);
     const primarySpecs = getPrimarySpecs(property);
@@ -235,9 +235,9 @@ export default function PropertyAds() {
     const cardHeight = STORY_HEIGHT - 80;
     const cardRadius = 78;
     const panelX = cardX + 48;
-    const panelY = cardY + cardHeight - 720;
+    const panelY = cardY + cardHeight - 900;
     const panelWidth = cardWidth - 96;
-    const panelHeight = 640;
+    const panelHeight = 820;
     const panelRadius = 58;
 
     const drawPill = (
@@ -419,35 +419,36 @@ export default function PropertyAds() {
       }
 
       if (thumbUrls.length > 0) {
-        const thumbSize = 108;
-        const thumbGap = 16;
-        const maxThumbs = 6;
-        const totalThumbsWidth = thumbSize * Math.min(thumbUrls.length, maxThumbs) + thumbGap * (Math.min(thumbUrls.length, maxThumbs) - 1);
-        let thumbX = panelX + 44;
-        const thumbY = panelY + panelHeight - thumbSize - 38;
+        const thumbSize = 88;
+        const thumbGap = 12;
+        const thumbsPerRow = 6;
+        const maxThumbs = 12;
+        const visibleThumbs = thumbUrls.slice(0, maxThumbs);
+        const totalThumbsWidth = thumbSize * thumbsPerRow + thumbGap * (thumbsPerRow - 1);
+        const thumbStartX = panelX + (panelWidth - totalThumbsWidth) / 2;
+        const thumbStartY = panelY + panelHeight - thumbSize * 2 - thumbGap - 38;
 
-        if (totalThumbsWidth < panelWidth - 88) {
-          thumbX = panelX + (panelWidth - totalThumbsWidth) / 2;
-        }
-
-        for (let index = 0; index < Math.min(thumbUrls.length, maxThumbs); index += 1) {
-          const x = thumbX + index * (thumbSize + thumbGap);
+        for (let index = 0; index < visibleThumbs.length; index += 1) {
+          const row = Math.floor(index / thumbsPerRow);
+          const column = index % thumbsPerRow;
+          const x = thumbStartX + column * (thumbSize + thumbGap);
+          const y = thumbStartY + row * (thumbSize + thumbGap);
 
           ctx.fillStyle = 'rgba(255,255,255,0.12)';
           ctx.beginPath();
-          ctx.roundRect(x, thumbY, thumbSize, thumbSize, 24);
+          ctx.roundRect(x, y, thumbSize, thumbSize, 18);
           ctx.fill();
 
           try {
-            const thumb = await loadImage(thumbUrls[index], objectUrls);
+            const thumb = await loadImage(visibleThumbs[index], objectUrls);
             ctx.save();
             ctx.beginPath();
-            ctx.roundRect(x, thumbY, thumbSize, thumbSize, 24);
+            ctx.roundRect(x, y, thumbSize, thumbSize, 18);
             ctx.clip();
             const scale = Math.max(thumbSize / thumb.width, thumbSize / thumb.height);
             const width = thumb.width * scale;
             const height = thumb.height * scale;
-            ctx.drawImage(thumb, x + (thumbSize - width) / 2, thumbY + (thumbSize - height) / 2, width, height);
+            ctx.drawImage(thumb, x + (thumbSize - width) / 2, y + (thumbSize - height) / 2, width, height);
             ctx.restore();
           } catch {
             // ignore thumb load failure
@@ -559,7 +560,7 @@ export default function PropertyAds() {
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {filteredProperties.map((property) => {
                 const photos = normalizePhotos(property);
-                const thumbPhotos = photos.slice(1, 7);
+                const thumbPhotos = photos.slice(1, 13);
                 const transactionType = getTransactionType(property);
                 const detailTags = getDetailTags(property);
                 const primarySpecs = getPrimarySpecs(property);
@@ -632,7 +633,7 @@ export default function PropertyAds() {
                           {thumbPhotos.length > 0 && (
                             <div className="mt-3 grid grid-cols-6 gap-1.5">
                               {thumbPhotos.map((photo, index) => (
-                                <div key={`${property.id}-${index}`} className="overflow-hidden rounded-xl bg-white/10 aspect-square">
+                                <div key={`${property.id}-${index}`} className="overflow-hidden rounded-lg bg-white/10 aspect-square">
                                   <img src={photo} alt={`${getPropertyTitle(property)} ${index + 2}`} className="h-full w-full object-cover" />
                                 </div>
                               ))}
