@@ -265,6 +265,9 @@ const fitCanvasFontSize = (
   return minSize;
 };
 
+const measureTextBlockHeight = (lineCount: number, lineHeight: number) =>
+  lineCount > 0 ? lineCount * lineHeight : 0;
+
 export default function PropertyAds() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenant, setTenant] = useState<TenantBranding | null>(null);
@@ -493,56 +496,137 @@ export default function PropertyAds() {
       const totalThumbsWidth = thumbSize * thumbsPerRow + thumbGap * (thumbsPerRow - 1);
       const thumbStartX = panelX + (panelWidth - totalThumbsWidth) / 2;
       const thumbStartY = panelY + panelHeight - thumbSize * 2 - thumbGap - 38;
+      const textTopY = panelY + 150;
+      const textBottomLimit = thumbStartY - 28;
+      const titleText = getPropertyTitle(property);
+      const locationText = getLocationText(property) || 'Localização sob consulta';
+      const detailText = detailTags.join('   •   ');
+      const priceText = formatCurrency(getPrice(property));
+      const primaryText = primarySpecs.join('   •   ');
+      const secondaryText = secondarySpecs.join('   •   ');
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '700 74px sans-serif';
-      const titleLines = splitLines(getPropertyTitle(property), 22, 2);
-      titleLines.forEach((line, index) => {
-        ctx.fillText(line, panelX + 44, panelY + 150 + index * 84);
-      });
+      let layoutScale = 1;
+      let titleLines: string[] = [];
+      let locationLines: string[] = [];
+      let detailLines: string[] = [];
+      let primaryLines: string[] = [];
+      let secondaryLines: string[] = [];
+      let titleFontSize = 74;
+      let locationFontSize = 42;
+      let detailFontSize = 31;
+      let priceFontSize = 86;
+      let primaryFontSize = 34;
+      let secondaryFontSize = 30;
+      let titleLineHeight = 84;
+      let locationLineHeight = 46;
+      let detailLineHeight = 36;
+      let primaryLineHeight = 38;
+      let secondaryLineHeight = 34;
+      let titleBottomSpacing = 22;
+      let detailTopSpacing = 18;
+      let priceTopSpacing = 54;
+      let primaryTopSpacing = 62;
+      let secondaryTopSpacing = 16;
 
-      let currentY = panelY + 150 + titleLines.length * 84 + 22;
-      ctx.fillStyle = 'rgba(255,255,255,0.78)';
-      ctx.font = '500 42px sans-serif';
-      const locationLines = wrapCanvasText(ctx, getLocationText(property) || 'Localização sob consulta', infoMaxWidth, 2);
-      locationLines.forEach((line, index) => {
-        ctx.fillText(line, panelX + 44, currentY + index * 46);
-      });
-      currentY += locationLines.length * 46;
+      while (layoutScale >= 0.72) {
+        titleFontSize = Math.round(74 * layoutScale);
+        locationFontSize = Math.round(42 * layoutScale);
+        detailFontSize = Math.round(31 * layoutScale);
+        primaryFontSize = Math.round(34 * layoutScale);
+        secondaryFontSize = Math.round(30 * layoutScale);
+        titleLineHeight = Math.round(84 * layoutScale);
+        locationLineHeight = Math.round(46 * layoutScale);
+        detailLineHeight = Math.round(36 * layoutScale);
+        primaryLineHeight = Math.round(38 * layoutScale);
+        secondaryLineHeight = Math.round(34 * layoutScale);
+        titleBottomSpacing = Math.round(22 * layoutScale);
+        detailTopSpacing = Math.round(18 * layoutScale);
+        priceTopSpacing = Math.round(54 * layoutScale);
+        primaryTopSpacing = Math.round(62 * layoutScale);
+        secondaryTopSpacing = Math.round(16 * layoutScale);
 
-      if (detailTags.length > 0) {
-        ctx.fillStyle = 'rgba(255,255,255,0.74)';
-        ctx.font = '600 31px sans-serif';
-        const detailLines = wrapCanvasText(ctx, detailTags.join('   •   '), infoMaxWidth, 2);
-        detailLines.forEach((line, index) => {
-          ctx.fillText(line, panelX + 44, currentY + 18 + index * 36);
-        });
-        currentY += 18 + detailLines.length * 36;
+        ctx.font = `700 ${titleFontSize}px sans-serif`;
+        titleLines = wrapCanvasText(ctx, titleText, infoMaxWidth, 2);
+
+        ctx.font = `500 ${locationFontSize}px sans-serif`;
+        locationLines = wrapCanvasText(ctx, locationText, infoMaxWidth, 2);
+
+        ctx.font = `600 ${detailFontSize}px sans-serif`;
+        detailLines = detailText ? wrapCanvasText(ctx, detailText, infoMaxWidth, 2) : [];
+
+        priceFontSize = fitCanvasFontSize(ctx, priceText, Math.round(86 * layoutScale), Math.round(60 * layoutScale), infoMaxWidth, '700');
+
+        ctx.font = `600 ${primaryFontSize}px sans-serif`;
+        primaryLines = primaryText ? wrapCanvasText(ctx, primaryText, infoMaxWidth, 2) : [];
+
+        ctx.font = `500 ${secondaryFontSize}px sans-serif`;
+        secondaryLines = secondaryText ? wrapCanvasText(ctx, secondaryText, infoMaxWidth, 2) : [];
+
+        const totalHeight =
+          measureTextBlockHeight(titleLines.length, titleLineHeight) +
+          titleBottomSpacing +
+          measureTextBlockHeight(locationLines.length, locationLineHeight) +
+          (detailLines.length > 0 ? detailTopSpacing + measureTextBlockHeight(detailLines.length, detailLineHeight) : 0) +
+          priceTopSpacing +
+          priceFontSize +
+          (primaryLines.length > 0 ? primaryTopSpacing + measureTextBlockHeight(primaryLines.length, primaryLineHeight) : 0) +
+          (secondaryLines.length > 0 ? secondaryTopSpacing + measureTextBlockHeight(secondaryLines.length, secondaryLineHeight) : 0);
+
+        if (textTopY + totalHeight <= textBottomLimit) {
+          break;
+        }
+
+        layoutScale -= 0.04;
       }
 
-      currentY += 54;
+      let currentY = textTopY;
+
       ctx.fillStyle = '#ffffff';
-      const priceText = formatCurrency(getPrice(property));
-      const priceFontSize = fitCanvasFontSize(ctx, priceText, 86, 64, infoMaxWidth, '700');
+      ctx.font = `700 ${titleFontSize}px sans-serif`;
+      titleLines.forEach((line, index) => {
+        ctx.fillText(line, panelX + 44, currentY + index * titleLineHeight);
+      });
+      currentY += measureTextBlockHeight(titleLines.length, titleLineHeight) + titleBottomSpacing;
+
+      ctx.fillStyle = 'rgba(255,255,255,0.78)';
+      ctx.font = `500 ${locationFontSize}px sans-serif`;
+      locationLines.forEach((line, index) => {
+        ctx.fillText(line, panelX + 44, currentY + index * locationLineHeight);
+      });
+      currentY += measureTextBlockHeight(locationLines.length, locationLineHeight);
+
+      if (detailLines.length > 0) {
+        currentY += detailTopSpacing;
+        ctx.fillStyle = 'rgba(255,255,255,0.74)';
+        ctx.font = `600 ${detailFontSize}px sans-serif`;
+        detailLines.forEach((line, index) => {
+          ctx.fillText(line, panelX + 44, currentY + index * detailLineHeight);
+        });
+        currentY += measureTextBlockHeight(detailLines.length, detailLineHeight);
+      }
+
+      currentY += priceTopSpacing;
+      ctx.fillStyle = '#ffffff';
       ctx.font = `700 ${priceFontSize}px sans-serif`;
       ctx.fillText(priceText, panelX + 44, currentY);
+      currentY += priceFontSize;
 
-      if (primarySpecs.length > 0) {
+      if (primaryLines.length > 0) {
+        currentY += primaryTopSpacing;
         ctx.fillStyle = 'rgba(255,255,255,0.82)';
-        ctx.font = '600 34px sans-serif';
-        const primaryLines = wrapCanvasText(ctx, primarySpecs.join('   •   '), infoMaxWidth, 2);
+        ctx.font = `600 ${primaryFontSize}px sans-serif`;
         primaryLines.forEach((line, index) => {
-          ctx.fillText(line, panelX + 44, currentY + 62 + index * 38);
+          ctx.fillText(line, panelX + 44, currentY + index * primaryLineHeight);
         });
-        currentY += 62 + primaryLines.length * 38;
+        currentY += measureTextBlockHeight(primaryLines.length, primaryLineHeight);
       }
 
-      if (secondarySpecs.length > 0) {
+      if (secondaryLines.length > 0) {
+        currentY += secondaryTopSpacing;
         ctx.fillStyle = 'rgba(255,255,255,0.66)';
-        ctx.font = '500 30px sans-serif';
-        const secondaryLines = wrapCanvasText(ctx, secondarySpecs.join('   •   '), infoMaxWidth, 2);
+        ctx.font = `500 ${secondaryFontSize}px sans-serif`;
         secondaryLines.forEach((line, index) => {
-          ctx.fillText(line, panelX + 44, currentY + 16 + index * 34);
+          ctx.fillText(line, panelX + 44, currentY + index * secondaryLineHeight);
         });
       }
 
