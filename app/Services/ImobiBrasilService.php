@@ -11,6 +11,61 @@ use Illuminate\Support\Facades\Log;
 
 class ImobiBrasilService
 {
+    private static function reclaimExternalIdIfStale(Property $property, string|int $externalId): void
+    {
+        $externalId = trim((string) $externalId);
+        if ($externalId === '') {
+            return;
+        }
+
+        $conflictingProperty = Property::withTrashed()
+            ->where('tenant_id', $property->tenant_id)
+            ->where('imobi_brasil_external_id', $externalId)
+            ->where('id', '!=', $property->id)
+            ->first();
+
+        if (!$conflictingProperty) {
+            return;
+        }
+
+        $sameCode = collect([
+            $property->codigo,
+            $property->codigo_imovel,
+            $property->referencia_imovel,
+        ])->filter()->contains(function ($value) use ($conflictingProperty) {
+            return in_array($value, array_filter([
+                $conflictingProperty->codigo,
+                $conflictingProperty->codigo_imovel,
+                $conflictingProperty->referencia_imovel,
+            ]), true);
+        });
+
+        if ($conflictingProperty->trashed() && $sameCode) {
+            Log::warning('Reivindicando external_id Imobi Brasil preso em imóvel na lixeira', [
+                'external_id' => $externalId,
+                'current_property_id' => $property->id,
+                'conflicting_property_id' => $conflictingProperty->id,
+                'codigo' => $property->codigo,
+            ]);
+
+            $conflictingProperty->forceFill([
+                'imobi_brasil_sent' => false,
+                'imobi_brasil_sent_at' => null,
+                'imobi_brasil_external_id' => null,
+                'imobi_brasil_error' => 'External ID reassociado ao imóvel ativo #' . $property->id,
+            ])->save();
+
+            return;
+        }
+
+        throw new \RuntimeException(sprintf(
+            'Código Imobi Brasil %s já está vinculado ao imóvel #%d (%s).',
+            $externalId,
+            $conflictingProperty->id,
+            $conflictingProperty->codigo ?: $conflictingProperty->codigo_imovel ?: 'sem-codigo'
+        ));
+    }
+
     /**
      * Obter a URL base da API do Imobi Brasil
      * Usa a mesma URL que a importação de imóveis (api_url_externa)
@@ -218,6 +273,7 @@ class ImobiBrasilService
                     'property_id' => $property->id,
                     'external_id' => $existingId,
                 ]);
+                self::reclaimExternalIdIfStale($property, $existingId);
                 $property->update([
                     'imobi_brasil_sent' => true,
                     'imobi_brasil_external_id' => $existingId,
@@ -272,6 +328,8 @@ class ImobiBrasilService
                 $externalId = self::findPropertyCodeByReference($property, $tenant, $apiKey, $baseUrl);
 
                 if ($externalId) {
+                    self::reclaimExternalIdIfStale($property, $externalId);
+
                     // Atualizar imóvel com informações do servidor
                     $property->update([
                         'imobi_brasil_sent' => true,
