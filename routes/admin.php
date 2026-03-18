@@ -38,7 +38,9 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
 
     // Financeiro - Comissões
     $router->get('/financeiro/notas-servico', 'App\Http\Controllers\Admin\\FinanceiroController@index');
+    $router->get('/financeiro/notas-servico/{registroTipo}/{id}', 'App\Http\Controllers\Admin\FinanceiroController@showNotaServico');
     $router->post('/financeiro/notas-servico', 'App\Http\Controllers\Admin\FinanceiroController@emitirNfseComissao');
+    $router->post('/financeiro/notas-servico/{id}/sincronizar', 'App\Http\Controllers\Admin\FinanceiroController@sincronizarDocumentoFiscal');
     $router->post('/financeiro/comissoes/nfse', 'App\Http\Controllers\Admin\FinanceiroController@emitirNfseComissao'); // legado
     $router->get('/financeiro/contratos', 'App\Http\Controllers\Admin\ContratosLocacaoController@index');
     $router->post('/financeiro/contratos', 'App\Http\Controllers\Admin\ContratosLocacaoController@store');

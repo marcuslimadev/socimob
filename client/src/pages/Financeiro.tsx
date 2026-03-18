@@ -54,6 +54,7 @@ interface FinanceiroItem {
   descricao_servico: string;
   status: string;
   financeiro_status: string;
+  erro_detalhe?: string | null;
   forma_pagamento?: string | null;
   vencimento?: string | null;
   nfse: {
@@ -61,6 +62,10 @@ interface FinanceiroItem {
     pdf_url?: string | null;
     xml_url?: string | null;
     integracao_id?: string | null;
+    codigo_verificacao?: string | null;
+    rps?: string | null;
+    emitida_em?: string | null;
+    status_externo?: string | null;
   };
   created_at?: string;
 }
@@ -186,6 +191,7 @@ export default function Financeiro() {
   const [statusFiltro, setStatusFiltro] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [syncingIds, setSyncingIds] = useState<number[]>([]);
 
   const valorNumerico = useMemo(() => parseCurrency(valor), [valor]);
   const valorIss = useMemo(() => (valorNumerico * (Number(aliquotaIss) || 0)) / 100, [valorNumerico, aliquotaIss]);
@@ -227,7 +233,34 @@ export default function Financeiro() {
     try {
       const response = await api.get('/admin/financeiro/notas-servico');
       if (response.data?.success) {
-        setItems(response.data.items || []);
+        const loadedItems = response.data.items || [];
+        setItems(loadedItems);
+
+        const pendentesDeSincronizacao = loadedItems.filter((item: FinanceiroItem) => {
+          const precisaSincronizarNumero = !item.nfse.numero || item.nfse.numero === '0';
+          const precisaSincronizarArquivos = !item.nfse.pdf_url || !item.nfse.xml_url;
+
+          return (
+            item.registro_tipo === 'documento_fiscal' &&
+            (item.status === 'issued' || item.status === 'pending') &&
+            !!item.nfse.integracao_id &&
+            (precisaSincronizarNumero || precisaSincronizarArquivos)
+          );
+        });
+
+        if (pendentesDeSincronizacao.length > 0) {
+          const idsParaSincronizar = pendentesDeSincronizacao.slice(0, 5).map((item: FinanceiroItem) => item.id);
+          const resultados = await Promise.allSettled(
+            idsParaSincronizar.map((id: number) => api.post(`/admin/financeiro/notas-servico/${id}/sincronizar`))
+          );
+
+          if (resultados.some((resultado) => resultado.status === 'fulfilled')) {
+            const refreshed = await api.get('/admin/financeiro/notas-servico');
+            if (refreshed.data?.success) {
+              setItems(refreshed.data.items || []);
+            }
+          }
+        }
       } else {
         setItems([]);
       }
@@ -287,6 +320,31 @@ export default function Financeiro() {
     setTomadorNumero('');
     setTomadorBairro('');
     setVencimento('');
+  };
+
+  const sincronizarDocumento = async (itemId: number) => {
+    setSyncingIds((current) => [...current, itemId]);
+
+    try {
+      const response = await api.post(`/admin/financeiro/notas-servico/${itemId}/sincronizar`);
+      const syncedItem = response.data?.item as FinanceiroItem | undefined;
+
+      if (syncedItem) {
+        setItems((current) => current.map((item) => (item.id === itemId && item.registro_tipo === 'documento_fiscal' ? syncedItem : item)));
+      }
+
+      if (syncedItem?.nfse.pdf_url || syncedItem?.nfse.xml_url || (syncedItem?.nfse.numero && syncedItem.nfse.numero !== '0')) {
+        toast.success('NFSe sincronizada com sucesso');
+      } else {
+        toast.message('NFSe ainda está em processamento na NFe.io');
+      }
+    } catch (error: any) {
+      const apiMessage = error?.response?.data?.message;
+      const apiError = error?.response?.data?.error;
+      toast.error(apiMessage || apiError || 'Erro ao sincronizar NFSe');
+    } finally {
+      setSyncingIds((current) => current.filter((id) => id !== itemId));
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -744,6 +802,18 @@ export default function Financeiro() {
                     key={item.id}
                     className="flex flex-col gap-4 rounded-2xl bg-white/5 border border-white/10 p-4"
                   >
+                    {(() => {
+                      const precisaSincronizarNumero = !item.nfse.numero || item.nfse.numero === '0';
+                      const precisaSincronizarArquivos = !item.nfse.pdf_url || !item.nfse.xml_url;
+                      const podeSincronizar =
+                        item.registro_tipo === 'documento_fiscal' &&
+                        (item.status === 'issued' || item.status === 'pending') &&
+                        !!item.nfse.integracao_id &&
+                        (precisaSincronizarNumero || precisaSincronizarArquivos);
+                      const isSyncing = syncingIds.includes(item.id);
+
+                      return (
+                        <>
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                       <div>
                         <p className="font-semibold text-foreground">
@@ -789,9 +859,16 @@ export default function Financeiro() {
                       <span>Pagamento: {item.forma_pagamento || 'N/A'}</span>
                       <span>Vencimento: {item.vencimento || 'N/A'}</span>
                       <span>NFSe nº: {item.nfse.numero || 'N/A'}</span>
+                      {item.nfse.integracao_id && <span>Integração: {item.nfse.integracao_id}</span>}
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3 items-center">
+                      <a
+                        href={`/financeiro/notas/${item.registro_tipo}/${item.id}`}
+                        className="text-xs text-emerald-300 hover:text-emerald-200"
+                      >
+                        Verificar nota
+                      </a>
                       {item.nfse.pdf_url && (
                         <a
                           href={item.nfse.pdf_url}
@@ -812,12 +889,30 @@ export default function Financeiro() {
                           XML da NFSe
                         </a>
                       )}
+                      {podeSincronizar && (
+                        <button
+                          type="button"
+                          onClick={() => sincronizarDocumento(item.id)}
+                          disabled={isSyncing}
+                          className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/20 disabled:opacity-60"
+                        >
+                          {isSyncing ? 'Sincronizando NFSe...' : 'Buscar número/PDF/XML'}
+                        </button>
+                      )}
+                      {podeSincronizar && !isSyncing && (
+                        <span className="text-xs text-amber-300">
+                          Documento aguardando retorno final completo da NFe.io.
+                        </span>
+                      )}
                       {item.contexto_emissao === 'locatario' && item.forma_pagamento === 'boleto' && (
                         <span className="text-xs text-amber-300">
                           Boleto: acompanhar integração financeira / webhook de baixa
                         </span>
                       )}
                     </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 ))}
             </div>

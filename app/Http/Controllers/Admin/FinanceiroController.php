@@ -81,6 +81,120 @@ class FinanceiroController extends Controller
         ]);
     }
 
+    public function showNotaServico(Request $request, string $registroTipo, int $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($registroTipo === 'commission_invoice') {
+            $invoice = CommissionInvoice::with(['corretor:id,name,email'])
+                ->where('tenant_id', $user->tenant_id)
+                ->find($id);
+
+            if (!$invoice) {
+                return response()->json(['message' => 'Nota fiscal não encontrada'], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'item' => $this->mapCommissionInvoice($invoice),
+            ]);
+        }
+
+        if ($registroTipo === 'documento_fiscal') {
+            $documento = DocumentoFiscal::with(['tomador:id,nome,razao_social,tipo,cpf,cnpj,email'])
+                ->where('tenant_id', $user->tenant_id)
+                ->find($id);
+
+            if (!$documento) {
+                return response()->json(['message' => 'Nota fiscal não encontrada'], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'item' => $this->mapDocumentoFiscal($documento),
+            ]);
+        }
+
+        return response()->json(['message' => 'Tipo de nota fiscal inválido'], 404);
+    }
+
+    public function sincronizarDocumentoFiscal(Request $request, int $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $documento = DocumentoFiscal::with(['tomador:id,nome,razao_social,tipo,cpf,cnpj,email'])
+            ->where('tenant_id', $user->tenant_id)
+            ->find($id);
+
+        if (!$documento) {
+            return response()->json(['message' => 'Documento fiscal não encontrado'], 404);
+        }
+
+        $integracaoId = data_get($documento->payload, 'integracao_id');
+        if (!$integracaoId) {
+            return response()->json(['message' => 'Documento fiscal sem identificador de integração'], 422);
+        }
+
+        try {
+            $numeroAnterior = $documento->numero;
+            $pdfAnterior = $documento->url_pdf;
+            $xmlAnterior = $documento->url_xml;
+            $nfseData = $this->nfseService->consultar($user->tenant_id, (string) $integracaoId, [
+                'documento_fiscal_id' => $documento->id,
+                'contexto_emissao' => $documento->contexto_emissao,
+            ]);
+
+            $statusAnterior = $documento->status;
+            $statusAtualizado = $this->normalizarStatusNfse($nfseData['status'] ?? null, $documento->status);
+            $payloadAtualizado = array_merge($documento->payload ?? [], [
+                'integracao_id' => $nfseData['integracao_id'] ?? $integracaoId,
+                'nfe_status' => $nfseData['status'] ?? null,
+                'ultima_sincronizacao_nfse' => now()->toIso8601String(),
+            ]);
+
+            $documento->update([
+                'status' => $statusAtualizado,
+                'numero' => $this->resolverNumeroNfse($nfseData['numero'] ?? null, $documento->numero),
+                'codigo_verificacao' => $nfseData['codigo_verificacao'] ?? $documento->codigo_verificacao,
+                'emitida_em' => $statusAtualizado === 'issued'
+                    ? ($documento->emitida_em ?? now())
+                    : $documento->emitida_em,
+                'url_pdf' => $nfseData['pdf_url'] ?? $documento->url_pdf,
+                'url_xml' => $nfseData['xml_url'] ?? $documento->url_xml,
+                'retorno' => $nfseData['raw_response'] ?? $documento->retorno,
+                'payload' => $payloadAtualizado,
+            ]);
+
+            $documentoAtualizado = $documento->fresh(['tomador:id,nome,razao_social,tipo,cpf,cnpj,email']);
+
+            return response()->json([
+                'success' => true,
+                'updated' => $statusAnterior !== $statusAtualizado
+                    || $numeroAnterior !== $documentoAtualizado->numero
+                    || $pdfAnterior !== $documentoAtualizado->url_pdf
+                    || $xmlAnterior !== $documentoAtualizado->url_xml,
+                'item' => $this->mapDocumentoFiscal($documentoAtualizado),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Erro ao sincronizar NFSe manual', [
+                'documento_fiscal_id' => $documento->id,
+                'integracao_id' => $integracaoId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => $this->normalizarMensagemErroEmissao($e),
+                'error' => $e->getMessage(),
+            ], $this->determinarStatusErroEmissao($e));
+        }
+    }
+
     public function emitirNfseComissao(Request $request)
     {
         $user = $request->user();
@@ -428,6 +542,7 @@ class FinanceiroController extends Controller
             'descricao_servico' => $invoice->descricao_servico,
             'status' => $invoice->status,
             'financeiro_status' => $invoice->financeiro_status,
+            'erro_detalhe' => $invoice->erro_integracao,
             'forma_pagamento' => $metadata['forma_pagamento'] ?? null,
             'vencimento' => $invoice->financeiro_vencimento?->toDateString(),
             'nfse' => [
@@ -435,6 +550,10 @@ class FinanceiroController extends Controller
                 'pdf_url' => $invoice->nfse_pdf_url,
                 'xml_url' => $invoice->nfse_xml_url,
                 'integracao_id' => $invoice->integracao_id,
+                'codigo_verificacao' => $invoice->nfse_codigo_verificacao,
+                'rps' => $invoice->nfse_rps,
+                'emitida_em' => null,
+                'status_externo' => data_get($invoice->retorno_integracao, 'status'),
             ],
             'created_at' => $invoice->created_at?->toIso8601String(),
         ];
@@ -469,6 +588,9 @@ class FinanceiroController extends Controller
             'descricao_servico' => data_get($payload, 'descricao_servico', 'Documento fiscal emitido'),
             'status' => $documento->status,
             'financeiro_status' => data_get($payload, 'financeiro.forma_pagamento') ? 'emitido_manual' : 'n/a',
+            'erro_detalhe' => data_get($documento->retorno, 'message')
+                ?: data_get($documento->retorno, 'error.message')
+                ?: data_get($documento->retorno, 'errors.0.message'),
             'forma_pagamento' => data_get($payload, 'financeiro.forma_pagamento'),
             'vencimento' => data_get($payload, 'financeiro.vencimento'),
             'nfse' => [
@@ -476,6 +598,10 @@ class FinanceiroController extends Controller
                 'pdf_url' => $documento->url_pdf,
                 'xml_url' => $documento->url_xml,
                 'integracao_id' => data_get($payload, 'integracao_id'),
+                'codigo_verificacao' => $documento->codigo_verificacao,
+                'rps' => data_get($documento->retorno, 'rps') ?: data_get($documento->payload, 'rps'),
+                'emitida_em' => $documento->emitida_em?->toIso8601String(),
+                'status_externo' => data_get($payload, 'nfe_status'),
             ],
             'created_at' => $documento->created_at?->toIso8601String(),
         ];
@@ -494,6 +620,30 @@ class FinanceiroController extends Controller
         $sufixoImovel = $referenciaImovel ? ' - Imóvel: ' . $referenciaImovel : '';
 
         return $prefixo . $sufixoImovel . ' - Valor: R$ ' . number_format($valor, 2, ',', '.');
+    }
+
+    private function resolverNumeroNfse(mixed $numeroRecebido, mixed $numeroAtual): ?string
+    {
+        $numeroNormalizado = is_scalar($numeroRecebido) ? trim((string) $numeroRecebido) : '';
+
+        if ($numeroNormalizado !== '' && $numeroNormalizado !== '0') {
+            return $numeroNormalizado;
+        }
+
+        $numeroExistente = is_scalar($numeroAtual) ? trim((string) $numeroAtual) : '';
+
+        return $numeroExistente !== '' ? $numeroExistente : null;
+    }
+
+    private function normalizarStatusNfse(?string $statusExterno, string $statusAtual): string
+    {
+        return match (strtolower(trim((string) $statusExterno))) {
+            'issued', 'authorized' => 'issued',
+            'processing', 'pending', 'created', 'draft' => 'pending',
+            'cancelled', 'canceled' => 'cancelled',
+            'denied', 'rejected', 'error', 'failed' => 'error',
+            default => $statusAtual,
+        };
     }
 
     private function normalizarMensagemErroEmissao(\Throwable $e): string

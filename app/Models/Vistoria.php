@@ -15,6 +15,7 @@ class Vistoria extends Model
     protected $fillable = [
         'tenant_id',
         'contrato_id',
+        'responsavel_pessoa_id',
         'codigo',
         'status',
         'cliente_nome',
@@ -22,6 +23,7 @@ class Vistoria extends Model
         'tipo',
         'vistoriadores',
         'pessoas',
+        'participantes_ids',
         'metragem',
         'mobiliado',
         'data_vistoria',
@@ -31,16 +33,33 @@ class Vistoria extends Model
         'assinatura_proprietario_status',
     ];
 
+    protected $casts = [
+        'vistoriadores' => 'array',
+        'pessoas' => 'array',
+        'participantes_ids' => 'array',
+        'comodos' => 'array',
+        'metragem' => 'decimal:2',
+        'mobiliado' => 'boolean',
+        'data_vistoria' => 'datetime',
+    ];
+
     public function fotos()
     {
         return $this->hasMany(VistoriaFoto::class, 'vistoria_id')->orderBy('comodo')->orderBy('ordem');
     }
 
-    protected $casts = [
-        'vistoriadores' => 'array',
-        'pessoas' => 'array',
-        'metragem' => 'decimal:2',
-        'mobiliado' => 'boolean',
-        'data_vistoria' => 'datetime',
-    ];
+    public function contrato()
+    {
+        return $this->belongsTo(ContratoLocacao::class, 'contrato_id');
+    }
+
+    public function imovel()
+    {
+        return $this->belongsTo(Property::class, 'imovel_id');
+    }
+
+    public function responsavel()
+    {
+        return $this->belongsTo(Pessoa::class, 'responsavel_pessoa_id');
+    }
 }

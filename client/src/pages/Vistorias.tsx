@@ -1,778 +1,125 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-  ClipboardCheck,
-  Filter,
-  Search,
-  Loader2,
-  Calendar,
-  Check,
-  X,
-  Plus,
-  Edit2,
-  Trash2,
-  Save,
-} from 'lucide-react';
+import { Building2, ClipboardCheck, Loader2, Pencil, Plus, Search, Trash2, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
-interface Vistoria {
-  id: number;
-  codigo: string | null;
-  status: string;
-  cliente_nome: string | null;
-  imovel_id: number | null;
-  tipo: string | null;
-  vistoriadores?: string[] | null;
-  pessoas?: string[] | null;
-  metragem?: string | null;
-  mobiliado?: boolean | null;
-  data_vistoria?: string | null;
-  observacoes?: string | null;
-}
+type Pessoa = { id: number; nome: string; email?: string | null; celular?: string | null };
+type Imovel = { id: number; codigo?: string | null; titulo?: string | null; endereco?: string | null; area_total?: number | null; metragem?: number | null; logradouro?: string | null; bairro?: string | null; cidade?: string | null; estado?: string | null };
+type Contrato = { id: number; numero_contrato?: string | null; locador?: Pessoa | null; locatario?: Pessoa | null; imovel?: Imovel | null };
+type Vistoria = { id: number; codigo: string | null; status: string; tipo: string | null; cliente_nome: string | null; contrato_id: number | null; imovel_id: number | null; responsavel_pessoa_id: number | null; participantes_ids?: number[]; participantes_nomes?: string[]; vistoriadores?: string[]; metragem?: string | number | null; mobiliado?: boolean | null; data_vistoria?: string | null; observacoes?: string | null; assinatura_inquilino_status?: string | null; assinatura_proprietario_status?: string | null; contrato?: Contrato | null; imovel?: Imovel | null; responsavel?: Pessoa | null; fotos?: Array<{ id: number }> };
+
+type FormState = { id: number; codigo: string; status: string; tipo: string; contrato_id: string; imovel_id: string; responsavel_pessoa_id: string; participantes_ids: number[]; vistoriadores: string; cliente_nome: string; metragem: string; mobiliado: boolean; data_vistoria: string; observacoes: string; assinatura_inquilino_status: string; assinatura_proprietario_status: string };
+
+const emptyForm = (): FormState => ({ id: 0, codigo: '', status: 'solicitada', tipo: 'entrada', contrato_id: '', imovel_id: '', responsavel_pessoa_id: '', participantes_ids: [], vistoriadores: '', cliente_nome: '', metragem: '', mobiliado: false, data_vistoria: '', observacoes: '', assinatura_inquilino_status: 'pendente', assinatura_proprietario_status: 'pendente' });
+const emptyFilters = () => ({ codigo: '', cliente: '', status: 'todos', tipo: 'todos', contrato_id: '', imovel_id: '', responsavel_pessoa_id: '' });
+
+const statusOptions = [['solicitada','Solicitada'],['designada','Designada'],['andamento','Em andamento'],['concluida','Concluída'],['cancelada','Cancelada']];
+const tipoOptions = [['entrada','Entrada'],['saida','Saída'],['periodica','Periódica']];
+const assinaturaOptions = [['pendente','Pendente'],['enviado','Enviado'],['assinado','Assinado'],['cancelado','Cancelado']];
+
+const formatDate = (value?: string | null) => value ? new Date(value).toLocaleString('pt-BR') : '-';
+const formatMetric = (value?: string | number | null) => value ? `${Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m²` : '-';
+const personText = (p?: Pessoa | null) => p ? `${p.nome}${p.email ? ` • ${p.email}` : p.celular ? ` • ${p.celular}` : ''}` : 'Não definido';
+const imovelText = (i?: Imovel | null) => { if (!i) return 'Sem imóvel'; const n = i.titulo || (i.codigo ? `Imóvel ${i.codigo}` : `Imóvel #${i.id}`); const e = i.endereco || [i.logradouro, i.bairro, i.cidade].filter(Boolean).join(', '); return e ? `${n} • ${e}` : n; };
+const contratoText = (c?: Contrato | null) => c ? `${c.numero_contrato || `#${c.id}`} • ${c.locatario?.nome || 'Sem locatário'}` : 'Sem contrato';
+const badgeClass = (status: string) => ({ solicitada: 'bg-amber-500/15 text-amber-300 border-amber-500/30', designada: 'bg-blue-500/15 text-blue-300 border-blue-500/30', andamento: 'bg-violet-500/15 text-violet-300 border-violet-500/30', concluida: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', cancelada: 'bg-red-500/15 text-red-300 border-red-500/30' }[status] || 'bg-white/10 text-foreground border-white/10');
 
 export default function Vistorias() {
   const [vistorias, setVistorias] = useState<Vistoria[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [pessoas, setPessoas] = useState<Pessoa[]>([]);
+  const [imoveis, setImoveis] = useState<Imovel[]>([]);
+  const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [filters, setFilters] = useState(emptyFilters());
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
-  const [showModal, setShowModal] = useState(false);
-  const [editingVistoria, setEditingVistoria] = useState<Vistoria | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [filters, setFilters] = useState({
-    codigo: '',
-    status: 'todos',
-    cliente: '',
-    tipo: 'todos',
-    imovel_id: '',
-    vistoriador: '',
-    pessoa: '',
-    metragem_min: '',
-    metragem_max: '',
-    mobiliado: 'todos',
-    data_inicio: '',
-    data_fim: '',
-  });
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: number | null }>({
-    open: false,
-    id: null,
-  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState<FormState>(emptyForm());
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  useEffect(() => {
-    fetchVistorias();
-  }, [page]);
+  const stats = useMemo(() => vistorias.reduce((acc, item) => ({ total: acc.total + 1, solicitada: acc.solicitada + (item.status === 'solicitada' ? 1 : 0), andamento: acc.andamento + ((item.status === 'designada' || item.status === 'andamento') ? 1 : 0), concluida: acc.concluida + (item.status === 'concluida' ? 1 : 0) }), { total: 0, solicitada: 0, andamento: 0, concluida: 0 }), [vistorias]);
+  const currentContrato = contratos.find((item) => String(item.id) === form.contrato_id) || null;
 
-  const getFilterParams = () => {
-    const params: Record<string, string | number | boolean | undefined> = {};
-
-    if (filters.codigo) params.codigo = filters.codigo;
-    if (filters.status !== 'todos') params.status = filters.status;
-    if (filters.cliente) params.cliente = filters.cliente;
-    if (filters.tipo !== 'todos') params.tipo = filters.tipo;
-    if (filters.imovel_id) params.imovel_id = filters.imovel_id;
-    if (filters.vistoriador) params.vistoriador = filters.vistoriador;
-    if (filters.pessoa) params.pessoa = filters.pessoa;
-    if (filters.metragem_min) params.metragem_min = filters.metragem_min;
-    if (filters.metragem_max) params.metragem_max = filters.metragem_max;
-    if (filters.mobiliado !== 'todos') params.mobiliado = filters.mobiliado === 'sim';
-    if (filters.data_inicio) params.data_inicio = filters.data_inicio;
-    if (filters.data_fim) params.data_fim = filters.data_fim;
-
+  const getParams = (nextPage = page) => {
+    const params: Record<string, string | number> = { page: nextPage, per_page: 12 };
+    Object.entries(filters).forEach(([key, value]) => { if (value && value !== 'todos') params[key] = value; });
     return params;
   };
 
-  const fetchVistorias = async () => {
+  const loadMeta = async () => {
+    const { data } = await api.get('/vistorias/meta');
+    setPessoas(data.pessoas || []);
+    setImoveis((data.imoveis || []).map((item: any) => ({ ...item, endereco: [item.logradouro, item.bairro, item.cidade, item.estado].filter(Boolean).join(', '), metragem: item.area_total })));
+    setContratos(data.contratos || []);
+  };
+
+  const loadVistorias = async (nextPage = page) => {
+    setLoading(true);
     try {
-      setIsLoading(true);
-      const params: Record<string, string | number | boolean | undefined> = {
-        page,
-        per_page: 10,
-      };
-
-      Object.assign(params, getFilterParams());
-
-      const response = await api.get('/vistorias', { params });
-      setVistorias(response.data.data || []);
-      setPage(response.data.current_page || 1);
-      setLastPage(response.data.last_page || 1);
+      const { data } = await api.get('/vistorias', { params: getParams(nextPage) });
+      setVistorias(data.data || []);
+      setPage(data.current_page || 1);
+      setLastPage(data.last_page || 1);
     } catch (error) {
-      console.error('Erro ao carregar vistorias:', error);
-      toast.error('Erro ao carregar vistorias');
-    } finally {
-      setIsLoading(false);
-    }
+      console.error(error);
+      toast.error('Erro ao carregar vistorias.');
+    } finally { setLoading(false); }
   };
 
-  const handleFilterChange = (field: string, value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
+  useEffect(() => { Promise.all([loadMeta(), loadVistorias(1)]).catch(() => toast.error('Erro ao carregar dados de vistoria.')); }, []);
+  useEffect(() => { if (page !== 1) loadVistorias(page); }, [page]);
+
+  const applyFilters = () => { setPage(1); loadVistorias(1); };
+  const resetFilters = () => { setFilters(emptyFilters()); setPage(1); setTimeout(() => loadVistorias(1), 0); };
+
+  const openCreate = () => { setForm(emptyForm()); setShowForm(true); };
+  const openEdit = (item: Vistoria) => {
+    setForm({ id: item.id, codigo: item.codigo || '', status: item.status, tipo: item.tipo || 'entrada', contrato_id: item.contrato_id ? String(item.contrato_id) : '', imovel_id: item.imovel_id ? String(item.imovel_id) : '', responsavel_pessoa_id: item.responsavel_pessoa_id ? String(item.responsavel_pessoa_id) : '', participantes_ids: item.participantes_ids || [], vistoriadores: (item.vistoriadores || []).join(', '), cliente_nome: item.cliente_nome || '', metragem: item.metragem ? String(item.metragem) : '', mobiliado: Boolean(item.mobiliado), data_vistoria: item.data_vistoria ? new Date(item.data_vistoria).toISOString().slice(0, 16) : '', observacoes: item.observacoes || '', assinatura_inquilino_status: item.assinatura_inquilino_status || 'pendente', assinatura_proprietario_status: item.assinatura_proprietario_status || 'pendente' });
+    setShowForm(true);
   };
 
-  const applyFilters = () => {
-    setPage(1);
-    fetchVistorias();
+  const onContratoChange = (value: string) => {
+    const contrato = contratos.find((item) => String(item.id) === value);
+    setForm((prev) => ({ ...prev, contrato_id: value, imovel_id: contrato?.imovel?.id ? String(contrato.imovel.id) : prev.imovel_id, cliente_nome: contrato?.locatario?.nome || prev.cliente_nome, participantes_ids: contrato ? [contrato.locador?.id, contrato.locatario?.id].filter((id): id is number => Boolean(id)) : prev.participantes_ids, metragem: contrato?.imovel?.metragem ? String(contrato.imovel.metragem) : prev.metragem }));
   };
 
-  const resetFilters = () => {
-    setFilters({
-      codigo: '',
-      status: 'todos',
-      cliente: '',
-      tipo: 'todos',
-      imovel_id: '',
-      vistoriador: '',
-      pessoa: '',
-      metragem_min: '',
-      metragem_max: '',
-      mobiliado: 'todos',
-      data_inicio: '',
-      data_fim: '',
-    });
-    setPage(1);
-    fetchVistorias();
-  };
-
-  const handleExport = async () => {
+  const save = async () => {
+    if (!form.contrato_id && !form.imovel_id) return toast.error('Selecione um contrato ou imóvel.');
+    setSaving(true);
     try {
-      const response = await api.get('/vistorias/export', {
-        params: getFilterParams(),
-        responseType: 'blob',
-      });
-      const blob = new Blob([response.data], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `vistorias_${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Erro ao exportar vistorias:', error);
-      toast.error('Erro ao exportar vistorias');
-    }
-  };
-
-  const formatDate = (dateString?: string | null) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { dateStyle: 'short' });
-  };
-
-  const handleCreate = () => {
-    setEditingVistoria({
-      id: 0,
-      codigo: '',
-      status: 'pendente',
-      cliente_nome: '',
-      imovel_id: null,
-      tipo: 'entrada',
-      vistoriadores: [],
-      pessoas: [],
-      metragem: '',
-      mobiliado: false,
-      data_vistoria: '',
-      observacoes: '',
-    });
-    setShowModal(true);
-  };
-
-  const handleEdit = (vistoria: Vistoria) => {
-    setEditingVistoria({
-      ...vistoria,
-      data_vistoria: vistoria.data_vistoria 
-        ? new Date(vistoria.data_vistoria).toISOString().slice(0, 16)
-        : '',
-    });
-    setShowModal(true);
-  };
-
-  const handleSave = async () => {
-    if (!editingVistoria) return;
-
-    try {
-      setIsSaving(true);
-      
-      const payload = {
-        ...editingVistoria,
-        metragem: editingVistoria.metragem ? parseFloat(editingVistoria.metragem as string) : null,
-        imovel_id: editingVistoria.imovel_id || null,
-      };
-
-      if (editingVistoria.id === 0) {
-        // Create new
-        const response = await api.post('/vistorias', payload);
-        if (response.data?.success) {
-          toast.success('Vistoria criada com sucesso');
-          fetchVistorias();
-          setShowModal(false);
-          setEditingVistoria(null);
-        }
-      } else {
-        // Update existing
-        const response = await api.put(`/vistorias/${editingVistoria.id}`, payload);
-        if (response.data?.success) {
-          toast.success('Vistoria atualizada com sucesso');
-          fetchVistorias();
-          setShowModal(false);
-          setEditingVistoria(null);
-        }
-      }
+      const payload = { codigo: form.codigo || null, status: form.status, tipo: form.tipo, contrato_id: form.contrato_id ? Number(form.contrato_id) : null, imovel_id: form.contrato_id ? null : (form.imovel_id ? Number(form.imovel_id) : null), responsavel_pessoa_id: form.responsavel_pessoa_id ? Number(form.responsavel_pessoa_id) : null, participantes_ids: form.participantes_ids, vistoriadores: form.vistoriadores.split(',').map((item) => item.trim()).filter(Boolean), cliente_nome: form.cliente_nome || null, metragem: form.metragem ? Number(form.metragem.replace(',', '.')) : null, mobiliado: form.mobiliado, data_vistoria: form.data_vistoria || null, observacoes: form.observacoes || null, assinatura_inquilino_status: form.assinatura_inquilino_status, assinatura_proprietario_status: form.assinatura_proprietario_status };
+      if (form.id === 0) await api.post('/vistorias', payload); else await api.put(`/vistorias/${form.id}`, payload);
+      toast.success(form.id === 0 ? 'Vistoria criada.' : 'Vistoria atualizada.');
+      setShowForm(false); setForm(emptyForm()); setPage(1); await loadVistorias(1);
     } catch (error: any) {
-      console.error('Erro ao salvar vistoria:', error);
-      toast.error(error?.response?.data?.message || 'Erro ao salvar vistoria');
-    } finally {
-      setIsSaving(false);
-    }
+      console.error(error);
+      toast.error(error?.response?.data?.message || 'Erro ao salvar vistoria.');
+    } finally { setSaving(false); }
   };
 
-  const handleDeleteClick = (id: number) => {
-    setDeleteDialog({ open: true, id });
+  const remove = async () => {
+    if (!deleteId) return;
+    try { await api.delete(`/vistorias/${deleteId}`); toast.success('Vistoria excluída.'); setDeleteId(null); await loadVistorias(page); }
+    catch (error: any) { console.error(error); toast.error(error?.response?.data?.message || 'Erro ao excluir vistoria.'); }
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!deleteDialog.id) return;
+  return <div className="flex"><Sidebar /><div className="page-shell"><motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-auto space-y-6">
+    <div className="page-header"><div><h1 className="page-title mb-2">Central de Vistorias</h1><p className="page-subtitle">Vistorias integradas ao cadastro de contratos, imóveis e pessoas.</p></div><div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row"><button onClick={openCreate} className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 px-5 py-3 text-sm font-semibold text-white"><Plus size={18} />Nova vistoria</button><Link to="/vistorias/solicitacoes" className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-foreground">Solicitações</Link><Link to="/vistorias/contestacoes" className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-foreground">Contestações</Link></div></div>
 
-    try {
-      const response = await api.delete(`/vistorias/${deleteDialog.id}`);
-      if (response.data?.success) {
-        toast.success('Vistoria deletada com sucesso');
-        fetchVistorias();
-      }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Erro ao deletar vistoria');
-    } finally {
-      setDeleteDialog({ open: false, id: null });
-    }
-  };
+    <div className="grid gap-4 md:grid-cols-4">{[{ label: 'No painel', value: stats.total, icon: ClipboardCheck }, { label: 'Solicitadas', value: stats.solicitada, icon: Users }, { label: 'Em operação', value: stats.andamento, icon: Building2 }, { label: 'Concluídas', value: stats.concluida, icon: ClipboardCheck }].map((card) => <div key={card.label} className="glass-panel rounded-2xl p-5"><div className="mb-3 flex items-center justify-between text-muted-foreground"><card.icon size={18} /><span className="text-xs uppercase tracking-[0.22em]">Vistorias</span></div><p className="text-sm text-muted-foreground">{card.label}</p><p className="mt-2 text-3xl font-semibold text-foreground">{card.value}</p></div>)}</div>
 
-  const getStatusBadge = (status: string) => {
-    const map: Record<string, string> = {
-      solicitada: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-      designada: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
-      andamento: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
-      concluida: 'bg-green-500/20 text-green-300 border-green-500/40',
-      cancelada: 'bg-red-500/20 text-red-300 border-red-500/40',
-    };
-    return map[status] || 'bg-white/10 text-foreground border-white/20';
-  };
+    <div className="glass-panel rounded-2xl p-5 space-y-4"><div className="grid gap-3 md:grid-cols-4"><label className="relative block"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={filters.codigo} onChange={(e) => setFilters((prev) => ({ ...prev, codigo: e.target.value }))} placeholder="Código" className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-foreground" /></label><input value={filters.cliente} onChange={(e) => setFilters((prev) => ({ ...prev, cliente: e.target.value }))} placeholder="Cliente" className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground" /><select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="todos">Todos os status</option>{statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><select value={filters.tipo} onChange={(e) => setFilters((prev) => ({ ...prev, tipo: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="todos">Todos os tipos</option>{tipoOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="grid gap-3 md:grid-cols-3"><select value={filters.contrato_id} onChange={(e) => setFilters((prev) => ({ ...prev, contrato_id: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="">Filtrar por contrato</option>{contratos.map((item) => <option key={item.id} value={item.id}>{contratoText(item)}</option>)}</select><select value={filters.imovel_id} onChange={(e) => setFilters((prev) => ({ ...prev, imovel_id: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="">Filtrar por imóvel</option>{imoveis.map((item) => <option key={item.id} value={item.id}>{imovelText(item)}</option>)}</select><select value={filters.responsavel_pessoa_id} onChange={(e) => setFilters((prev) => ({ ...prev, responsavel_pessoa_id: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="">Filtrar por responsável</option>{pessoas.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></div><div className="flex items-center justify-end gap-2"><button onClick={resetFilters} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-foreground">Limpar</button><button onClick={applyFilters} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Aplicar</button></div></div>
 
-  return (
-    <div className="flex">
-      <Sidebar />
+    <div className="glass-panel rounded-2xl p-5">{loading ? <div className="flex items-center justify-center py-16 text-muted-foreground"><Loader2 className="mr-2 h-6 w-6 animate-spin" />Carregando vistorias...</div> : vistorias.length === 0 ? <div className="rounded-2xl border border-dashed border-white/10 px-6 py-14 text-center text-sm text-muted-foreground">Nenhuma vistoria encontrada.</div> : <div className="grid gap-4 lg:grid-cols-2">{vistorias.map((item) => <div key={item.id} className="rounded-2xl border border-white/10 bg-white/5 p-5"><div className="mb-4 flex items-start justify-between gap-3"><div><div className="mb-2 flex flex-wrap items-center gap-2"><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${badgeClass(item.status)}`}>{statusOptions.find(([value]) => value === item.status)?.[1] || item.status}</span><span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-muted-foreground">{tipoOptions.find(([value]) => value === item.tipo)?.[1] || item.tipo || '-'}</span></div><h3 className="text-lg font-semibold text-foreground">{item.codigo || `Vistoria #${item.id}`}</h3><p className="mt-1 text-sm text-muted-foreground">{item.cliente_nome || item.contrato?.locatario?.nome || 'Sem cliente vinculado'}</p></div><div className="flex items-center gap-2"><Link to={`/vistorias/${item.id}`} className="rounded-xl border border-white/10 px-3 py-2 text-xs text-foreground">Detalhe</Link><button onClick={() => { openEdit(item); setShowForm(true); }} className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs text-blue-300"><span className="inline-flex items-center gap-1"><Pencil size={12} />Editar</span></button><button onClick={() => setDeleteId(item.id)} className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300"><span className="inline-flex items-center gap-1"><Trash2 size={12} />Excluir</span></button></div></div><div className="grid gap-3 md:grid-cols-2"><div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Contrato</p><p className="text-sm text-foreground">{contratoText(item.contrato)}</p></div><div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Imóvel</p><p className="text-sm text-foreground">{imovelText(item.imovel || item.contrato?.imovel)}</p></div><div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Responsável</p><p className="text-sm text-foreground">{personText(item.responsavel)}</p></div><div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Execução</p><p className="text-sm text-foreground">{formatDate(item.data_vistoria)}</p><p className="mt-1 text-xs text-muted-foreground">{formatMetric(item.metragem)} • {item.mobiliado ? 'Mobiliado' : 'Sem mobília'}</p></div></div><div className="mt-4 rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Participantes</p><p className="text-sm text-foreground">{item.participantes_nomes?.length ? item.participantes_nomes.join(', ') : 'Sem participantes vinculados.'}</p></div>{item.observacoes ? <p className="mt-4 text-sm leading-6 text-muted-foreground">{item.observacoes}</p> : null}</div>)}</div>}<div className="mt-6 flex items-center justify-center gap-3"><button onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-foreground disabled:opacity-40">Anterior</button><span className="text-sm text-muted-foreground">Página {page} de {lastPage}</span><button onClick={() => setPage((prev) => Math.min(lastPage, prev + 1))} disabled={page >= lastPage} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-foreground disabled:opacity-40">Próxima</button></div></div>
+  </motion.div></div>
 
-      <div className="page-shell">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-7xl mx-auto"
-        >
-          <div className="page-header mb-8">
-            <div>
-              <h1 className="page-title mb-2">Vistorias</h1>
-              <p className="page-subtitle">Gerencie solicitações e inspeções do portfólio.</p>
-            </div>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleCreate}
-                className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-3 font-semibold text-white hover:from-blue-600 hover:to-blue-700 sm:w-auto flex items-center justify-center gap-2"
-              >
-                <Plus size={20} />
-                Nova Vistoria
-              </motion.button>
-              <Link to="/vistorias/solicitacoes">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 font-semibold text-foreground sm:w-auto"
-                >
-                  Solicitações
-                </motion.button>
-              </Link>
-            </div>
-          </div>
+  {showForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"><div className="glass-panel max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl p-6"><div className="mb-6 flex items-start justify-between gap-3"><div><h2 className="text-2xl font-semibold text-foreground">{form.id === 0 ? 'Nova vistoria integrada' : `Editar ${form.codigo || `vistoria #${form.id}`}`}</h2><p className="mt-1 text-sm text-muted-foreground">Vincule a vistoria ao contrato, imóvel e participantes corretos.</p></div><button onClick={() => setShowForm(false)} className="rounded-xl border border-white/10 p-2 text-muted-foreground hover:text-foreground"><X size={18} /></button></div><div className="grid gap-6 lg:grid-cols-2"><div className="space-y-5"><section className="rounded-2xl border border-white/10 bg-black/10 p-4"><p className="text-sm font-semibold text-foreground">Vínculo</p><div className="mt-4 grid gap-4 md:grid-cols-2"><div><label className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-muted-foreground">Contrato</label><select value={form.contrato_id} onChange={(e) => onContratoChange(e.target.value)} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="">Selecione</option>{contratos.map((item) => <option key={item.id} value={item.id}>{contratoText(item)}</option>)}</select></div><div><label className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-muted-foreground">Imóvel</label><select value={form.imovel_id} onChange={(e) => setForm((prev) => ({ ...prev, imovel_id: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="">Selecione</option>{imoveis.map((item) => <option key={item.id} value={item.id}>{imovelText(item)}</option>)}</select></div></div></section><section className="rounded-2xl border border-white/10 bg-black/10 p-4"><p className="text-sm font-semibold text-foreground">Pessoas e execução</p><div className="mt-4 grid gap-4 md:grid-cols-2"><div><label className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-muted-foreground">Responsável</label><select value={form.responsavel_pessoa_id} onChange={(e) => setForm((prev) => ({ ...prev, responsavel_pessoa_id: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="">Selecione</option>{pessoas.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></div><div><label className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-muted-foreground">Participantes</label><select multiple value={form.participantes_ids.map(String)} onChange={(e) => setForm((prev) => ({ ...prev, participantes_ids: Array.from(e.target.selectedOptions).map((opt) => Number(opt.value)) }))} className="min-h-[130px] w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground">{pessoas.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></div></div><div className="mt-4 grid gap-4 md:grid-cols-3"><div><label className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-muted-foreground">Status</label><select value={form.status} onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground">{statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div><div><label className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-muted-foreground">Tipo</label><select value={form.tipo} onChange={(e) => setForm((prev) => ({ ...prev, tipo: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground">{tipoOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div><div><label className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-muted-foreground">Data e hora</label><input type="datetime-local" value={form.data_vistoria} onChange={(e) => setForm((prev) => ({ ...prev, data_vistoria: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground" /></div></div><div className="mt-4 grid gap-4 md:grid-cols-3"><input value={form.codigo} onChange={(e) => setForm((prev) => ({ ...prev, codigo: e.target.value }))} placeholder="Código" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground" /><input value={form.cliente_nome} onChange={(e) => setForm((prev) => ({ ...prev, cliente_nome: e.target.value }))} placeholder="Cliente" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground" /><input value={form.vistoriadores} onChange={(e) => setForm((prev) => ({ ...prev, vistoriadores: e.target.value }))} placeholder="Vistoriadores" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground" /></div><div className="mt-4 grid gap-4 md:grid-cols-3"><input value={form.metragem} onChange={(e) => setForm((prev) => ({ ...prev, metragem: e.target.value }))} placeholder="Metragem" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground" /><label className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><input type="checkbox" checked={form.mobiliado} onChange={(e) => setForm((prev) => ({ ...prev, mobiliado: e.target.checked }))} />Imóvel mobiliado</label></div><textarea value={form.observacoes} onChange={(e) => setForm((prev) => ({ ...prev, observacoes: e.target.value }))} rows={4} placeholder="Observações" className="mt-4 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground" /></section></div><div className="space-y-5"><section className="rounded-2xl border border-white/10 bg-black/10 p-4"><p className="text-sm font-semibold text-foreground">Assinaturas</p><div className="mt-4 space-y-4"><select value={form.assinatura_inquilino_status} onChange={(e) => setForm((prev) => ({ ...prev, assinatura_inquilino_status: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground">{assinaturaOptions.map(([value, label]) => <option key={value} value={value}>Inquilino: {label}</option>)}</select><select value={form.assinatura_proprietario_status} onChange={(e) => setForm((prev) => ({ ...prev, assinatura_proprietario_status: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground">{assinaturaOptions.map(([value, label]) => <option key={value} value={value}>Proprietário: {label}</option>)}</select></div></section><section className="rounded-2xl border border-white/10 bg-black/10 p-4"><p className="text-sm font-semibold text-foreground">Resumo do vínculo</p><div className="mt-4 space-y-3 text-sm"><div className="rounded-xl border border-white/10 bg-white/5 p-3"><p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Contrato</p><p className="mt-1 text-foreground">{contratoText(currentContrato)}</p></div><div className="rounded-xl border border-white/10 bg-white/5 p-3"><p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Imóvel</p><p className="mt-1 text-foreground">{imovelText(currentContrato?.imovel || imoveis.find((item) => String(item.id) === form.imovel_id))}</p></div><div className="rounded-xl border border-white/10 bg-white/5 p-3"><p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Participantes</p><p className="mt-1 text-foreground">{form.participantes_ids.length ? pessoas.filter((item) => form.participantes_ids.includes(item.id)).map((item) => item.nome).join(', ') : 'Nenhum participante selecionado'}</p></div></div></section></div></div><div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:justify-end"><button onClick={() => setShowForm(false)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-foreground">Cancelar</button><button onClick={save} disabled={saving} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? 'Salvando...' : form.id === 0 ? 'Criar vistoria' : 'Salvar alterações'}</button></div></div></div>}
 
-          <div className="glass-panel p-6 rounded-2xl mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                <input
-                  type="text"
-                  placeholder="Codigo"
-                  value={filters.codigo}
-                  onChange={(e) => handleFilterChange('codigo', e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                />
-              </div>
-              <input
-                type="text"
-                placeholder="Cliente"
-                value={filters.cliente}
-                onChange={(e) => handleFilterChange('cliente', e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-              <input
-                type="text"
-                placeholder="Imovel ID"
-                value={filters.imovel_id}
-                onChange={(e) => handleFilterChange('imovel_id', e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
-              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              >
-                <option value="todos">Status</option>
-                <option value="solicitada">Solicitada</option>
-                <option value="designada">Designada</option>
-                <option value="andamento">Em andamento</option>
-                <option value="concluida">Concluida</option>
-                <option value="cancelada">Cancelada</option>
-              </select>
-              <select
-                value={filters.tipo}
-                onChange={(e) => handleFilterChange('tipo', e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              >
-                <option value="todos">Tipo</option>
-                <option value="entrada">Entrada</option>
-                <option value="saida">Saida</option>
-                <option value="periodica">Periodica</option>
-              </select>
-              <select
-                value={filters.mobiliado}
-                onChange={(e) => handleFilterChange('mobiliado', e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              >
-                <option value="todos">Mobiliado</option>
-                <option value="sim">Sim</option>
-                <option value="nao">Nao</option>
-              </select>
-              <div className="flex gap-2">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={applyFilters}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-white font-semibold"
-                >
-                  <Filter size={18} />
-                  Filtrar
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={resetFilters}
-                  className="px-4 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-foreground"
-                >
-                  <X size={18} />
-                </motion.button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-4">
-              <input
-                type="text"
-                placeholder="Vistoriador"
-                value={filters.vistoriador}
-                onChange={(e) => handleFilterChange('vistoriador', e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-              <input
-                type="text"
-                placeholder="Pessoa"
-                value={filters.pessoa}
-                onChange={(e) => handleFilterChange('pessoa', e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-              <input
-                type="number"
-                placeholder="Metragem min"
-                value={filters.metragem_min}
-                onChange={(e) => handleFilterChange('metragem_min', e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-              <input
-                type="number"
-                placeholder="Metragem max"
-                value={filters.metragem_max}
-                onChange={(e) => handleFilterChange('metragem_max', e.target.value)}
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-                  <input
-                    type="date"
-                    value={filters.data_inicio}
-                    onChange={(e) => handleFilterChange('data_inicio', e.target.value)}
-                    className="w-full pl-9 pr-3 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-                  <input
-                    type="date"
-                    value={filters.data_fim}
-                    onChange={(e) => handleFilterChange('data_fim', e.target.value)}
-                    className="w-full pl-9 pr-3 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="glass-panel p-6 rounded-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-                <ClipboardCheck size={22} />
-                Listagem de Vistorias
-              </h2>
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground">
-                  Pagina {page} de {lastPage}
-                </span>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleExport}
-                  className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-foreground text-sm font-semibold"
-                >
-                  Exportar CSV
-                </motion.button>
-              </div>
-            </div>
-
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
-            ) : vistorias.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                Nenhuma vistoria encontrada.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-muted-foreground">
-                      <th className="pb-3">Codigo</th>
-                      <th className="pb-3">Status</th>
-                      <th className="pb-3">Cliente</th>
-                      <th className="pb-3">Imovel</th>
-                      <th className="pb-3">Tipo</th>
-                      <th className="pb-3">Metragem</th>
-                      <th className="pb-3">Mobiliado</th>
-                      <th className="pb-3">Data</th>
-                      <th className="pb-3 text-right">Acoes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {vistorias.map((vistoria) => (
-                      <tr key={vistoria.id} className="border-t border-white/10">
-                        <td className="py-3 text-foreground">{vistoria.codigo || `#${vistoria.id}`}</td>
-                        <td className="py-3">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold ${getStatusBadge(vistoria.status)}`}>
-                            {vistoria.status}
-                          </span>
-                        </td>
-                        <td className="py-3 text-foreground">{vistoria.cliente_nome || '-'}</td>
-                        <td className="py-3 text-foreground">{vistoria.imovel_id || '-'}</td>
-                        <td className="py-3 text-foreground">{vistoria.tipo || '-'}</td>
-                        <td className="py-3 text-foreground">{vistoria.metragem ? `${vistoria.metragem} m2` : '-'}</td>
-                        <td className="py-3">
-                          {vistoria.mobiliado ? (
-                            <span className="inline-flex items-center gap-1 text-green-300">
-                              <Check size={14} /> Sim
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-muted-foreground">
-                              <X size={14} /> Nao
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 text-foreground">{formatDate(vistoria.data_vistoria)}</td>
-                        <td className="py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => handleEdit(vistoria)}
-                              className="px-3 py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-semibold flex items-center gap-1"
-                            >
-                              <Edit2 size={12} />
-                              Editar
-                            </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => handleDeleteClick(vistoria.id)}
-                              className="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 text-xs font-semibold flex items-center gap-1"
-                            >
-                              <Trash2 size={12} />
-                              Deletar
-                            </motion.button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {!isLoading && vistorias.length > 0 && (
-              <div className="flex items-center justify-center gap-3 mt-8">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                  disabled={page === 1}
-                  className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-foreground disabled:opacity-40"
-                >
-                  Anterior
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setPage((prev) => Math.min(lastPage, prev + 1))}
-                  disabled={page === lastPage}
-                  className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-foreground disabled:opacity-40"
-                >
-                  Proxima
-                </motion.button>
-              </div>
-            )}
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Create/Edit Modal */}
-      {showModal && editingVistoria && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-panel p-6 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                {editingVistoria.id === 0 ? <Plus size={24} /> : <Edit2 size={24} />}
-                {editingVistoria.id === 0 ? 'Nova Vistoria' : 'Editar Vistoria'}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setEditingVistoria(null);
-                }}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">
-                    Código
-                  </label>
-                  <input
-                    type="text"
-                    value={editingVistoria.codigo || ''}
-                    onChange={(e) =>
-                      setEditingVistoria({ ...editingVistoria, codigo: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Auto-gerado se vazio"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">
-                    Status *
-                  </label>
-                  <select
-                    value={editingVistoria.status}
-                    onChange={(e) =>
-                      setEditingVistoria({ ...editingVistoria, status: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="pendente">Pendente</option>
-                    <option value="agendada">Agendada</option>
-                    <option value="concluida">Concluída</option>
-                    <option value="cancelada">Cancelada</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
-                  Cliente *
-                </label>
-                <input
-                  type="text"
-                  value={editingVistoria.cliente_nome || ''}
-                  onChange={(e) =>
-                    setEditingVistoria({ ...editingVistoria, cliente_nome: e.target.value })
-                  }
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">
-                    Tipo *
-                  </label>
-                  <select
-                    value={editingVistoria.tipo || 'entrada'}
-                    onChange={(e) =>
-                      setEditingVistoria({ ...editingVistoria, tipo: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="entrada">Entrada</option>
-                    <option value="saida">Saída</option>
-                    <option value="periodica">Periódica</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">
-                    ID do Imóvel
-                  </label>
-                  <input
-                    type="number"
-                    value={editingVistoria.imovel_id || ''}
-                    onChange={(e) =>
-                      setEditingVistoria({
-                        ...editingVistoria,
-                        imovel_id: e.target.value ? parseInt(e.target.value) : null,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">
-                    Metragem (m²)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={editingVistoria.metragem || ''}
-                    onChange={(e) =>
-                      setEditingVistoria({ ...editingVistoria, metragem: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">
-                    Data da Vistoria
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={editingVistoria.data_vistoria || ''}
-                    onChange={(e) =>
-                      setEditingVistoria({ ...editingVistoria, data_vistoria: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editingVistoria.mobiliado || false}
-                    onChange={(e) =>
-                      setEditingVistoria({ ...editingVistoria, mobiliado: e.target.checked })
-                    }
-                    className="w-5 h-5 rounded border-white/20 bg-white/10 text-blue-500 focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-sm font-semibold text-foreground">Imóvel Mobiliado</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
-                  Observações
-                </label>
-                <textarea
-                  value={editingVistoria.observacoes || ''}
-                  onChange={(e) =>
-                    setEditingVistoria({ ...editingVistoria, observacoes: e.target.value })
-                  }
-                  rows={3}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleSave}
-                  disabled={isSaving || !editingVistoria.cliente_nome}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  {isSaving ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <Save size={18} />
-                  )}
-                  Salvar
-                </motion.button>
-
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingVistoria(null);
-                  }}
-                  className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-lg font-semibold text-foreground transition-all"
-                >
-                  Cancelar
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}>
-        <AlertDialogContent className="bg-[#0f0f0f] border border-white/10">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Vistoria</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja deletar esta vistoria? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/20 hover:bg-white/10">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
+  <AlertDialog open={deleteId !== null} onOpenChange={(open) => !open && setDeleteId(null)}><AlertDialogContent className="bg-[#0f0f0f] border border-white/10"><AlertDialogHeader><AlertDialogTitle>Excluir vistoria</AlertDialogTitle><AlertDialogDescription>Essa remoção apaga o vínculo operacional da vistoria.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="border-white/20 hover:bg-white/10">Cancelar</AlertDialogCancel><AlertDialogAction onClick={remove} className="bg-red-600 hover:bg-red-700">Excluir</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+  </div>;
 }

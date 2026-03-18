@@ -302,8 +302,12 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->get('/dashboard/timeline', 'App\Http\Controllers\DashboardController@timeline');
 
     // Vistorias
+    $router->get('/vistorias/meta', 'App\Http\Controllers\VistoriasController@meta');
     $router->get('/vistorias', 'App\Http\Controllers\VistoriasController@index');
+    $router->post('/vistorias', 'App\Http\Controllers\VistoriasController@store');
     $router->get('/vistorias/export', 'App\Http\Controllers\VistoriasController@export');
+    $router->put('/vistorias/{id}', 'App\Http\Controllers\VistoriasController@update');
+    $router->delete('/vistorias/{id}', 'App\Http\Controllers\VistoriasController@destroy');
     $router->get('/vistorias/solicitacoes', 'App\Http\Controllers\VistoriaSolicitacoesController@index');
     $router->post('/vistorias/solicitacoes', 'App\Http\Controllers\VistoriaSolicitacoesController@store');
     $router->put('/vistorias/solicitacoes/{id}/status', 'App\Http\Controllers\VistoriaSolicitacoesController@updateStatus');
@@ -546,3 +550,4 @@ require __DIR__ . '/subscriptions.php';
 require __DIR__ . '/themes.php';
 require __DIR__ . '/domains.php';
 require __DIR__ . '/portal.php';
+

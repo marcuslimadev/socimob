@@ -10,21 +10,33 @@ use RuntimeException;
 
 class NfseService
 {
-    public function emitir(int $tenantId, array $payload, array $context = []): array
+    private function getTenantNfeConfig(int $tenantId): array
     {
         $tenant = Tenant::find($tenantId);
-        $baseUrl = $tenant?->getIntegrationValue(
-            'nfeio_base_url',
-            env('NFE_IO_BASE_URL', env('NFSE_API_URL', 'https://api.nfe.io'))
-        );
-        $apiKey = $tenant?->getIntegrationValue(
-            'nfeio_api_key',
-            env('NFE_IO_API_KEY', env('NFSE_API_TOKEN'))
-        );
-        $companyId = $tenant?->getIntegrationValue(
-            'nfeio_company_id',
-            env('NFE_IO_COMPANY_ID')
-        );
+
+        return [
+            'base_url' => $tenant?->getIntegrationValue(
+                'nfeio_base_url',
+                env('NFE_IO_BASE_URL', env('NFSE_API_URL', 'https://api.nfe.io'))
+            ),
+            'api_key' => $tenant?->getIntegrationValue(
+                'nfeio_api_key',
+                env('NFE_IO_API_KEY', env('NFSE_API_TOKEN'))
+            ),
+            'company_id' => $tenant?->getIntegrationValue(
+                'nfeio_company_id',
+                env('NFE_IO_COMPANY_ID')
+            ),
+        ];
+    }
+
+    public function emitir(int $tenantId, array $payload, array $context = []): array
+    {
+        [
+            'base_url' => $baseUrl,
+            'api_key' => $apiKey,
+            'company_id' => $companyId,
+        ] = $this->getTenantNfeConfig($tenantId);
 
         if (!$baseUrl || !$apiKey || !$companyId) {
             throw new RuntimeException('Credenciais da NFe.io não configuradas (NFE_IO_BASE_URL, NFE_IO_API_KEY, NFE_IO_COMPANY_ID)');
@@ -74,6 +86,62 @@ class NfseService
             'integracao_id' => data_get($body, 'id') ?? data_get($body, 'nfse.id') ?? Str::uuid()->toString(),
             'raw_response' => $body,
             'payload' => $payload,
+            'status' => data_get($body, 'status') ?? data_get($body, 'financeiro.status'),
+        ];
+    }
+
+    public function consultar(int $tenantId, string $integracaoId, array $context = []): array
+    {
+        [
+            'base_url' => $baseUrl,
+            'api_key' => $apiKey,
+            'company_id' => $companyId,
+        ] = $this->getTenantNfeConfig($tenantId);
+
+        if (!$baseUrl || !$apiKey || !$companyId) {
+            throw new RuntimeException('Credenciais da NFe.io não configuradas (NFE_IO_BASE_URL, NFE_IO_API_KEY, NFE_IO_COMPANY_ID)');
+        }
+
+        $endpoint = rtrim($baseUrl, '/') . '/v1/companies/' . $companyId . '/serviceinvoices/' . $integracaoId;
+
+        Log::info('Consultando NFSe na NFe.io', [
+            'tenant_id' => $tenantId,
+            'endpoint' => $endpoint,
+            'integracao_id' => $integracaoId,
+            'context' => $context,
+        ]);
+
+        $response = Http::withHeaders([
+            'X-NFE-APIKEY' => $apiKey,
+            'Authorization' => $apiKey,
+            'Accept' => 'application/json',
+        ])->timeout(30)->get($endpoint);
+
+        $body = $response->json() ?? [];
+
+        if ($response->failed()) {
+            Log::error('Falha ao consultar NFSe na NFe.io', [
+                'tenant_id' => $tenantId,
+                'status' => $response->status(),
+                'body' => $body ?: $response->body(),
+                'context' => $context,
+            ]);
+
+            $message = data_get($body, 'error.message')
+                ?? data_get($body, 'message')
+                ?? 'Erro ao consultar NFSe na NFe.io';
+
+            throw new RuntimeException($message);
+        }
+
+        return [
+            'numero' => data_get($body, 'number') ?? data_get($body, 'nfse.numero'),
+            'codigo_verificacao' => data_get($body, 'checkCode') ?? data_get($body, 'nfse.codigo_verificacao'),
+            'rps' => data_get($body, 'rpsNumber') ?? data_get($body, 'nfse.rps'),
+            'pdf_url' => data_get($body, 'pdfUrl') ?? data_get($body, 'links.pdf'),
+            'xml_url' => data_get($body, 'xmlUrl') ?? data_get($body, 'links.xml'),
+            'integracao_id' => data_get($body, 'id') ?? $integracaoId,
+            'raw_response' => $body,
             'status' => data_get($body, 'status') ?? data_get($body, 'financeiro.status'),
         ];
     }
