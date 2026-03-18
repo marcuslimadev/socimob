@@ -170,7 +170,7 @@ printf "%s\n" "=== MIGRATIONS ==="
 
 printf "\n"
 printf "%s\n" "=== VALIDAR SCHEMA IMOBI BRASIL ==="
-/opt/alt/php83/usr/bin/php artisan tinker --execute="if (!Illuminate\\Support\\Facades\\Schema::hasColumn('imo_properties', 'imobi_brasil_images_sent_at')) { fwrite(STDERR, 'imobi_brasil_images_sent_at=MISSING'); exit(1); } echo 'imobi_brasil_images_sent_at=OK';"
+/opt/alt/php83/usr/bin/php -r "require \"vendor/autoload.php\"; \$app = require \"bootstrap/app.php\"; \$kernel = \$app->make(Illuminate\\Contracts\\Console\\Kernel::class); \$kernel->bootstrap(); if (!Illuminate\\Support\\Facades\\Schema::hasColumn(\"imo_properties\", \"imobi_brasil_images_sent_at\")) { fwrite(STDERR, \"imobi_brasil_images_sent_at=MISSING\"); exit(1); } echo \"imobi_brasil_images_sent_at=OK\";"
 
 printf "\n"
 printf "%s\n" "=== VERIFICAR BUILD ==="
