@@ -394,26 +394,26 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     <>
       <div className="fixed inset-x-0 top-0 z-40 border-b border-white/8 bg-[linear-gradient(180deg,rgba(8,14,27,0.97),rgba(6,12,22,0.92))] shadow-[0_20px_48px_rgba(2,6,23,0.42)] backdrop-blur-xl">
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 lg:px-8">
-          <div className="flex min-h-[78px] items-center justify-between gap-4 py-3 md:min-h-[86px] md:py-4">
-            <div className="flex min-w-0 items-center gap-3 md:gap-4">
+          <div className="flex min-h-[68px] items-center justify-between gap-3 py-2.5 md:min-h-[72px] md:py-3">
+            <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
               {tenant?.logo_url || tenant?.logo ? (
                 <img
                   src={tenant.logo_url || tenant.logo}
                   alt={tenant.name}
-                  className="h-12 w-12 rounded-2xl border border-cyan-300/10 bg-white/[0.04] object-contain p-1.5 shadow-[0_14px_30px_rgba(2,6,23,0.28)]"
+                  className="h-10 w-10 rounded-xl border border-cyan-300/10 bg-white/[0.04] object-contain p-1.5 shadow-[0_14px_30px_rgba(2,6,23,0.28)]"
                 />
               ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/10 bg-white/[0.04] text-white shadow-[0_14px_30px_rgba(2,6,23,0.28)]">
-                  <Building2 size={19} />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/10 bg-white/[0.04] text-white shadow-[0_14px_30px_rgba(2,6,23,0.28)]">
+                  <Building2 size={17} />
                 </div>
               )}
 
               <div className="min-w-0">
-                <p className="truncate font-serif text-[1.08rem] font-semibold leading-tight tracking-[0.01em] text-white md:text-[1.24rem]">
+                <p className="truncate font-serif text-[1rem] font-semibold leading-tight tracking-[0.01em] text-white md:text-[1.12rem]">
                   {tenant?.name || 'SOCIMOB'}
                 </p>
                 <div className="flex min-w-0 items-center gap-2">
-                  <p className="truncate text-[10px] uppercase tracking-[0.22em] text-slate-400 md:text-[11px]">
+                  <p className="truncate text-[9px] uppercase tracking-[0.2em] text-slate-400 md:text-[10px]">
                     {currentSection?.label || 'Navegação'}
                   </p>
                   {activePrimaryTab?.badge ? (
@@ -425,18 +425,18 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
               </div>
             </div>
 
-            <div className="hidden items-center gap-2 md:flex lg:gap-3">
+            <div className="hidden items-center gap-2 md:flex lg:gap-2.5">
               {user?.role === 'super_admin' && <div className="w-[240px]"><TenantSelector isSuperAdmin={true} /></div>}
               <button
                 onClick={toggleTheme}
-                className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3.5 text-[13px] text-slate-200 transition-colors hover:border-white/16 hover:bg-white/[0.08]"
+                className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 text-[12px] text-slate-200 transition-colors hover:border-white/16 hover:bg-white/[0.08]"
               >
                 {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
                 <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
               </button>
               <button
                 onClick={handleLogout}
-                className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3.5 text-[13px] text-slate-200 transition-colors hover:border-white/16 hover:bg-white/[0.08]"
+                className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 text-[12px] text-slate-200 transition-colors hover:border-white/16 hover:bg-white/[0.08]"
               >
                 <LogOut size={16} />
                 <span>Sair</span>
@@ -453,7 +453,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             </button>
           </div>
 
-          <nav className="hidden border-t border-white/8 py-3 md:block">
+          <nav className="hidden border-t border-white/8 py-2 md:block">
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
               {sections.map((section) => {
                 const isActive = currentSection?.id === section.id;
@@ -462,7 +462,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 return (
                   <Link key={section.id} to={section.href}>
                     <div
-                      className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-[13px] transition-all ${
+                      className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[12px] transition-all ${
                         isActive
                           ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(32,54,73,0.95),rgba(16,31,49,0.95))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_24px_rgba(2,6,23,0.18)]'
                           : 'border-transparent bg-white/[0.03] text-slate-300 hover:border-white/10 hover:bg-white/[0.07] hover:text-white'
@@ -480,11 +480,11 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 );
               })}
 
-              <div className="mx-1 h-7 w-px shrink-0 bg-white/10" />
+              <div className="mx-1 h-6 w-px shrink-0 bg-white/10" />
 
               <Link to={settingsItem.href}>
                 <div
-                  className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-[13px] transition-all ${
+                  className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[12px] transition-all ${
                     settingsActive
                       ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(32,54,73,0.95),rgba(16,31,49,0.95))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_24px_rgba(2,6,23,0.18)]'
                       : 'border-transparent bg-white/[0.03] text-slate-300 hover:border-white/10 hover:bg-white/[0.07] hover:text-white'
@@ -498,9 +498,9 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           </nav>
 
           {showFixedSubmenu && (
-            <div className="hidden border-t border-white/8 py-3 md:block">
+            <div className="hidden border-t border-white/8 py-2 md:block">
               <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                <div className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                <div className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                   {currentSection?.label}
                 </div>
 
@@ -510,7 +510,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                   return (
                     <Link key={item.href} to={item.href}>
                       <div
-                        className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] transition-all ${
+                        className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] transition-all ${
                           isActive
                             ? 'border-cyan-400/18 bg-cyan-400/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
                             : 'border-transparent bg-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.05] hover:text-white'
