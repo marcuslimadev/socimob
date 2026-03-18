@@ -120,6 +120,12 @@ class FinanceiroController extends Controller
             ], 422);
         }
 
+        if (!$this->validarDocumentoFederal((string) $request->input('tomador.documento'))) {
+            return response()->json([
+                'message' => 'CPF/CNPJ do tomador é inválido',
+            ], 422);
+        }
+
         $corretor = User::where('tenant_id', $user->tenant_id)->find($request->input('corretor_id'));
         if (!$corretor) {
             return response()->json(['message' => 'Corretor não encontrado'], 404);
@@ -172,12 +178,13 @@ class FinanceiroController extends Controller
             Log::error('Erro ao emitir NFSe de comissão', [
                 'invoice_id' => $invoice->id,
                 'error' => $e->getMessage(),
+                'tomador_documento' => $this->nfseService->somenteDigitos($request->input('tomador.documento')),
             ]);
 
             return response()->json([
-                'message' => 'Erro ao emitir NFSe de comissão',
+                'message' => $this->normalizarMensagemErroEmissao($e),
                 'error' => $e->getMessage(),
-            ], 502);
+            ], $this->determinarStatusErroEmissao($e));
         }
 
         $transaction = $this->financialIntegrationService->registrarRecebimentoComissao($invoice, $financeiroDados);
@@ -217,6 +224,12 @@ class FinanceiroController extends Controller
             return response()->json([
                 'message' => 'Dados inválidos para emissão da NFSe',
                 'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        if (!$this->validarDocumentoFederal((string) $request->input('tomador.documento'))) {
+            return response()->json([
+                'message' => 'CPF/CNPJ do tomador é inválido',
             ], 422);
         }
 
@@ -297,12 +310,13 @@ class FinanceiroController extends Controller
                 'documento_fiscal_id' => $documento->id,
                 'contexto_emissao' => $contextoEmissao,
                 'error' => $e->getMessage(),
+                'tomador_documento' => $this->nfseService->somenteDigitos($request->input('tomador.documento')),
             ]);
 
             return response()->json([
-                'message' => 'Erro ao emitir NFSe',
+                'message' => $this->normalizarMensagemErroEmissao($e),
                 'error' => $e->getMessage(),
-            ], 502);
+            ], $this->determinarStatusErroEmissao($e));
         }
 
         return response()->json([
@@ -480,5 +494,98 @@ class FinanceiroController extends Controller
         $sufixoImovel = $referenciaImovel ? ' - Imóvel: ' . $referenciaImovel : '';
 
         return $prefixo . $sufixoImovel . ' - Valor: R$ ' . number_format($valor, 2, ',', '.');
+    }
+
+    private function normalizarMensagemErroEmissao(\Throwable $e): string
+    {
+        $message = trim($e->getMessage());
+
+        if ($message === '') {
+            return 'Erro ao emitir NFSe';
+        }
+
+        if (str_contains($message, 'borrower.federalTaxNumber')) {
+            return 'CPF/CNPJ do tomador foi rejeitado pela NFe.io';
+        }
+
+        return $message;
+    }
+
+    private function determinarStatusErroEmissao(\Throwable $e): int
+    {
+        $message = $e->getMessage();
+
+        if (str_contains($message, 'borrower.federalTaxNumber')) {
+            return 422;
+        }
+
+        if (str_contains($message, 'Credenciais da NFe.io não configuradas')) {
+            return 500;
+        }
+
+        return 502;
+    }
+
+    private function validarDocumentoFederal(string $documento): bool
+    {
+        $digits = preg_replace('/\D+/', '', $documento);
+
+        if (!$digits) {
+            return false;
+        }
+
+        return match (strlen($digits)) {
+            11 => $this->validarCpf($digits),
+            14 => $this->validarCnpj($digits),
+            default => false,
+        };
+    }
+
+    private function validarCpf(string $cpf): bool
+    {
+        if (preg_match('/^(\d)\1{10}$/', $cpf)) {
+            return false;
+        }
+
+        for ($digitIndex = 9; $digitIndex < 11; $digitIndex++) {
+            $sum = 0;
+
+            for ($index = 0; $index < $digitIndex; $index++) {
+                $sum += ((int) $cpf[$index]) * (($digitIndex + 1) - $index);
+            }
+
+            $digit = ((10 * $sum) % 11) % 10;
+
+            if ((int) $cpf[$digitIndex] !== $digit) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function validarCnpj(string $cnpj): bool
+    {
+        if (preg_match('/^(\d)\1{13}$/', $cnpj)) {
+            return false;
+        }
+
+        $calculateDigit = function (string $base, array $factors): int {
+            $sum = 0;
+
+            foreach ($factors as $index => $factor) {
+                $sum += ((int) $base[$index]) * $factor;
+            }
+
+            $remainder = $sum % 11;
+
+            return $remainder < 2 ? 0 : 11 - $remainder;
+        };
+
+        $base = substr($cnpj, 0, 12);
+        $firstDigit = $calculateDigit($base, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+        $secondDigit = $calculateDigit($base . $firstDigit, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+
+        return $cnpj === $base . $firstDigit . $secondDigit;
     }
 }

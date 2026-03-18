@@ -79,6 +79,69 @@ const parseCurrency = (value: string) => {
   return Number(normalized) || 0;
 };
 
+const onlyDigits = (value: string) => value.replace(/\D/g, '');
+
+const isValidCpf = (value: string) => {
+  const digits = onlyDigits(value);
+  if (digits.length !== 11 || /^([0-9])\1{10}$/.test(digits)) {
+    return false;
+  }
+
+  let sum = 0;
+  for (let index = 0; index < 9; index += 1) {
+    sum += Number(digits[index]) * (10 - index);
+  }
+
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10) remainder = 0;
+  if (remainder !== Number(digits[9])) {
+    return false;
+  }
+
+  sum = 0;
+  for (let index = 0; index < 10; index += 1) {
+    sum += Number(digits[index]) * (11 - index);
+  }
+
+  remainder = (sum * 10) % 11;
+  if (remainder === 10) remainder = 0;
+
+  return remainder === Number(digits[10]);
+};
+
+const isValidCnpj = (value: string) => {
+  const digits = onlyDigits(value);
+  if (digits.length !== 14 || /^([0-9])\1{13}$/.test(digits)) {
+    return false;
+  }
+
+  const calculateDigit = (base: string, factors: number[]) => {
+    const total = factors.reduce((sum, factor, index) => sum + Number(base[index]) * factor, 0);
+    const remainder = total % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+
+  const base = digits.slice(0, 12);
+  const firstDigit = calculateDigit(base, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const secondDigit = calculateDigit(`${base}${firstDigit}`, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+
+  return digits === `${base}${firstDigit}${secondDigit}`;
+};
+
+const isValidFederalTaxNumber = (value: string) => {
+  const digits = onlyDigits(value);
+
+  if (digits.length === 11) {
+    return isValidCpf(digits);
+  }
+
+  if (digits.length === 14) {
+    return isValidCnpj(digits);
+  }
+
+  return false;
+};
+
 const formatCurrency = (value: number) =>
   value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -234,6 +297,11 @@ export default function Financeiro() {
       return;
     }
 
+    if (!isValidFederalTaxNumber(tomadorDocumento)) {
+      toast.error('CPF/CNPJ do tomador é inválido');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -288,8 +356,16 @@ export default function Financeiro() {
         toast.error(response.data?.message || 'Erro ao emitir lançamento');
       }
     } catch (error: any) {
-      console.error('Erro ao emitir lançamento:', error);
-      toast.error(error?.response?.data?.message || 'Erro ao emitir lançamento');
+      console.error('Erro ao emitir lançamento:', {
+        status: error?.response?.status,
+        data: error?.response?.data,
+        message: error?.message,
+      });
+
+      const apiMessage = error?.response?.data?.message;
+      const apiError = error?.response?.data?.error;
+
+      toast.error(apiMessage || apiError || 'Erro ao emitir lançamento');
     } finally {
       setIsSubmitting(false);
     }
