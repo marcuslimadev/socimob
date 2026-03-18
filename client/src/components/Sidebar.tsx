@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { useLocation, Link } from 'wouter';
 import {
   BarChart3,
@@ -163,10 +163,10 @@ const SectionTabsDock = ({
   return (
     <>
       <div
-        className="hidden md:block fixed top-0 right-0 z-30 border-b border-white/8 bg-[#050814]/96 backdrop-blur-xl shadow-[0_18px_40px_rgba(2,6,23,0.42)]"
+        className="hidden md:block fixed top-0 right-0 z-30 h-[106px] border-b border-white/8 bg-[#050814] backdrop-blur-xl shadow-[0_18px_40px_rgba(2,6,23,0.42)]"
         style={{ left: `${desktopLeft}px` }}
       >
-        <div className="px-6 pt-4 pb-0">
+        <div className="flex h-full flex-col justify-end px-6 pt-3 pb-0">
           <div className="mb-2 flex items-center gap-3 px-1">
             <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 whitespace-nowrap">
               {section.label}
@@ -201,7 +201,7 @@ const SectionTabsDock = ({
         </div>
       </div>
 
-      <div className="md:hidden fixed top-[4.25rem] left-0 right-0 z-30 border-b border-white/8 bg-[#050814]/96 px-4 pb-0 pt-3 backdrop-blur-xl shadow-[0_16px_36px_rgba(2,6,23,0.34)]">
+      <div className="md:hidden fixed top-[4.25rem] left-0 right-0 z-30 h-[92px] border-b border-white/8 bg-[#050814] px-4 pb-0 pt-3 backdrop-blur-xl shadow-[0_16px_36px_rgba(2,6,23,0.34)]">
         <div className="mb-2 flex items-center gap-2 px-1">
           <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400 whitespace-nowrap">
             {section.label}
@@ -235,7 +235,6 @@ const SectionTabsDock = ({
 
 const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [location] = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
@@ -245,8 +244,12 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
-    document.body.dataset.sidebar = isCollapsed ? 'collapsed' : 'expanded';
-  }, [isCollapsed]);
+    document.body.dataset.sidebar = 'topnav';
+
+    return () => {
+      delete document.body.dataset.sidebar;
+    };
+  }, []);
 
   const actualIsOpen = onClose ? isOpen : internalIsOpen;
   const handleClose = onClose || (() => setInternalIsOpen(false));
@@ -472,11 +475,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const settingsItem: SidebarItem = { icon: <Settings size={17} />, label: 'Configurações', href: '/settings' };
   const settingsActive = isRouteMatch(location, settingsItem.href);
 
-  const sidebarVariants = {
-    expanded: { width: 260 },
-    collapsed: { width: 68 },
-  };
-
   const getInitials = (name: string) => {
     if (!name) return '?';
     const parts = name.trim().split(' ');
@@ -503,289 +501,180 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     window.location.href = '/login';
   };
 
+  const primaryTabs: SidebarItem[] = [
+    ...sections.map((section) => ({
+      icon: section.icon,
+      label: section.label,
+      href: section.href,
+      badge: getSectionBadge(section),
+    })),
+    settingsItem,
+  ];
+
+  const secondaryTabs = currentSection?.items || [];
+
   return (
     <>
-      <SectionTabsDock section={currentSection} location={location} isCollapsed={isCollapsed} />
-
       {!onClose && (
         <button
           onClick={() => setInternalIsOpen(!internalIsOpen)}
-          className="md:hidden fixed top-4 left-4 z-50 glass-panel p-3 rounded-xl hover:bg-white/20 transition-all"
-          aria-label="Toggle menu"
+          className="md:hidden fixed top-4 left-4 z-50 rounded-xl border border-white/10 bg-[#050814]/96 p-3 text-white shadow-[0_12px_28px_rgba(2,6,23,0.35)] backdrop-blur-xl"
+          aria-label="Abrir navegação"
         >
-          {internalIsOpen ? <X size={24} /> : <Menu size={24} />}
+          {actualIsOpen ? <LogOut size={0} className="hidden" /> : <Menu size={22} />}
+          {actualIsOpen && <X size={22} />}
         </button>
       )}
 
-      <motion.div
-        animate={isCollapsed ? 'collapsed' : 'expanded'}
-        variants={sidebarVariants}
-        className="hidden md:flex fixed left-0 top-0 h-screen glass-panel m-4 rounded-3xl flex-col justify-between py-5 z-40 overflow-hidden"
-      >
-        <div className="flex flex-col items-center gap-3 px-3">
-          <motion.div
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: 'spring', stiffness: 200 }}
-            className="relative"
-          >
+      <div className="fixed inset-x-0 top-0 z-40 border-b border-white/8 bg-[#050814] shadow-[0_18px_40px_rgba(2,6,23,0.42)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 md:px-8">
+          <div className="flex min-w-0 items-center gap-3">
             {tenant?.logo_url || tenant?.logo ? (
               <img
                 src={tenant.logo_url || tenant.logo}
                 alt={tenant.name}
-                className="w-14 h-14 rounded-xl object-contain bg-white/5 p-2"
+                className="h-10 w-10 rounded-xl bg-white/5 object-contain p-1.5"
               />
             ) : (
-              <div className="w-14 h-14 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-2xl">
-                <Building2 size={28} />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/8 text-white">
+                <Building2 size={20} />
               </div>
             )}
-          </motion.div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">{tenant?.name || 'SOCIMOB'}</p>
+              <p className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                {currentSection?.label || 'Navegação'}
+              </p>
+            </div>
+          </div>
 
-          {!isCollapsed && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.15 }}
-              className="text-center w-full"
+          <div className="hidden items-center gap-2 md:flex">
+            {user?.role === 'super_admin' && <div className="w-[220px]"><TenantSelector isSuperAdmin={true} /></div>}
+            <button
+              onClick={toggleTheme}
+              className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200 hover:bg-white/[0.08]"
             >
-              <h1 className="font-bold text-sm text-foreground line-clamp-1">
-                {tenant?.name || 'SOCIMOB'}
-              </h1>
-              {tenant?.slogan && (
-                <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                  {tenant.slogan}
-                </p>
-              )}
-            </motion.div>
-          )}
-
-          {user && !isCollapsed && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10"
+              {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+              <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200 hover:bg-white/[0.08]"
             >
-              <div className="flex items-center gap-2.5">
-                {user.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt={user.name}
-                    className="w-8 h-8 rounded-full object-cover shrink-0"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                    {getInitials(user.name)}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground truncate">{user.name}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{getRoleLabel(user.role)}</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {user?.role === 'super_admin' && !isCollapsed && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-              className="w-full"
-            >
-              <TenantSelector isSuperAdmin={true} />
-            </motion.div>
-          )}
-
-          <div className="blur-divider w-full" />
+              <LogOut size={16} />
+              <span>Sair</span>
+            </button>
+          </div>
         </div>
 
-        <nav className="flex-1 flex flex-col gap-1 px-2 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent py-1">
-          {sections.map((section) => {
-            const badge = getSectionBadge(section);
-            const active = currentSection?.id === section.id;
+        <div className="mx-auto max-w-[1600px] px-4 md:px-8">
+          <div className="hidden gap-2 overflow-x-auto pb-0 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent md:flex">
+            {primaryTabs.map((tab) => {
+              const isActive = sections.some((section) => section.href === tab.href)
+                ? currentSection?.href === tab.href || currentSection?.id === sections.find((section) => section.href === tab.href)?.id
+                : settingsActive;
 
-            return (
-              <SidebarLink
-                key={section.id}
-                item={{ icon: section.icon, label: section.label, href: section.href, badge }}
-                active={active}
-                collapsed={isCollapsed}
-              />
-            );
-          })}
-
-          <div className="mt-2 pt-2 border-t border-white/10">
-            <SidebarLink item={settingsItem} active={settingsActive} collapsed={isCollapsed} />
+              return (
+                <Link key={tab.href} to={tab.href}>
+                  <div
+                    className={`flex items-center gap-2 whitespace-nowrap rounded-t-[18px] rounded-b-[10px] border border-b-0 px-4 py-3 text-sm transition-colors ${
+                      isActive
+                        ? 'border-white/18 bg-white text-slate-950 shadow-[0_12px_32px_rgba(255,255,255,0.16)]'
+                        : 'border-white/8 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'
+                    }`}
+                  >
+                    <div className="shrink-0">{tab.icon}</div>
+                    <span className="font-medium">{tab.label}</span>
+                    {tab.badge ? (
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-slate-950/10 text-slate-950' : 'bg-white/10 text-white'}`}>
+                        {tab.badge}
+                      </span>
+                    ) : null}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
-        </nav>
 
-        <div className="flex flex-col gap-1.5 px-2">
-          <div className="blur-divider w-full" />
+          {secondaryTabs.length > 0 && (
+            <div className="hidden items-center gap-2 border-t border-white/8 py-3 md:flex">
+              {secondaryTabs.map((item) => {
+                const isActive = isRouteMatch(location, item.href);
 
-          {!isCollapsed ? (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="px-3 py-2 rounded-xl bg-white/5 border border-white/10"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground">SOCIMOB v1.0.0</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Build {new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          ) : (
-            <div className="flex justify-center py-1">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                return (
+                  <Link key={item.href} to={item.href}>
+                    <div
+                      className={`flex items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm transition-colors ${
+                        isActive
+                          ? 'border-sky-400/30 bg-sky-400/14 text-white'
+                          : 'border-white/8 bg-white/[0.03] text-slate-300 hover:bg-white/[0.08] hover:text-white'
+                      }`}
+                    >
+                      <div className="shrink-0">{item.icon}</div>
+                      <span className="font-medium">{item.label}</span>
+                      {item.badge ? <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-white">{item.badge}</span> : null}
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
 
-          <motion.button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="flex items-center gap-3 px-3 py-2 rounded-xl text-muted-foreground hover:bg-white/10 transition-all duration-300"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Menu size={18} />
-            {!isCollapsed && <span className="text-sm font-medium">Recolher</span>}
-          </motion.button>
+          <div className="md:hidden pb-3">
+            {actualIsOpen && (
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                <div className="grid gap-2">
+                  {primaryTabs.map((tab) => {
+                    const isActive = sections.some((section) => section.href === tab.href)
+                      ? currentSection?.href === tab.href || currentSection?.id === sections.find((section) => section.href === tab.href)?.id
+                      : settingsActive;
 
-          <motion.button
-            onClick={toggleTheme}
-            className="flex items-center gap-3 px-3 py-2 rounded-xl text-muted-foreground hover:bg-white/10 transition-all duration-300"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
-            {!isCollapsed && (
-              <span className="text-sm font-medium">Tema {theme === 'dark' ? 'Claro' : 'Escuro'}</span>
+                    return (
+                      <Link key={tab.href} to={tab.href}>
+                        <div
+                          onClick={handleClose}
+                          className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm ${
+                            isActive
+                              ? 'border-white/18 bg-white text-slate-950'
+                              : 'border-white/8 bg-white/[0.04] text-slate-200'
+                          }`}
+                        >
+                          <div className="shrink-0">{tab.icon}</div>
+                          <span className="font-medium">{tab.label}</span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {secondaryTabs.length > 0 && (
+                  <div className="grid gap-2 border-t border-white/8 pt-3">
+                    {secondaryTabs.map((item) => {
+                      const isActive = isRouteMatch(location, item.href);
+
+                      return (
+                        <Link key={item.href} to={item.href}>
+                          <div
+                            onClick={handleClose}
+                            className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm ${
+                              isActive
+                                ? 'border-sky-400/30 bg-sky-400/14 text-white'
+                                : 'border-white/8 bg-white/[0.03] text-slate-200'
+                            }`}
+                          >
+                            <div className="shrink-0">{item.icon}</div>
+                            <span className="font-medium">{item.label}</span>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             )}
-          </motion.button>
-
-          <motion.button
-            onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2 rounded-xl text-destructive hover:bg-destructive/10 transition-all duration-300"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <LogOut size={18} />
-            {!isCollapsed && <span className="text-sm font-medium">Sair</span>}
-          </motion.button>
+          </div>
         </div>
-      </motion.div>
-
-      <AnimatePresence>
-        {actualIsOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={handleClose}
-              className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
-            />
-
-            <motion.div
-              initial={{ x: -300 }}
-              animate={{ x: 0 }}
-              exit={{ x: -300 }}
-              transition={{ type: 'spring', damping: 25 }}
-              className={`md:hidden fixed left-0 ${onClose ? 'top-16' : 'top-0'} bottom-0 w-72 glass-panel z-40 flex flex-col py-6 px-3`}
-            >
-              {!onClose && tenant && (
-                <div className="flex flex-col gap-4 mb-5 pb-4 border-b border-white/10">
-                  <div className="flex items-center gap-3">
-                    {tenant?.logo_url || tenant?.logo ? (
-                      <img
-                        src={tenant.logo_url || tenant.logo}
-                        alt={tenant.name}
-                        className="w-11 h-11 rounded-lg object-contain bg-white/5 p-1"
-                      />
-                    ) : (
-                      <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                        <Building2 size={22} />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h1 className="font-bold text-foreground text-sm truncate">
-                        {tenant?.name || 'SOCIMOB'}
-                      </h1>
-                      {tenant?.slogan && (
-                        <p className="text-xs text-muted-foreground truncate">{tenant.slogan}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-3 mb-5 px-1">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
-                  {user ? getInitials(user.name) : '?'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="font-bold text-foreground text-sm truncate">{user?.name || 'Usuário'}</h2>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {user ? getRoleLabel(user.role) : 'Carregando...'}
-                  </p>
-                </div>
-              </div>
-
-              <nav className="flex-1 flex flex-col gap-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                {sections.map((section) => {
-                  const badge = getSectionBadge(section);
-                  const active = currentSection?.id === section.id;
-
-                  return (
-                    <SidebarLink
-                      key={section.id}
-                      item={{ icon: section.icon, label: section.label, href: section.href, badge }}
-                      active={active}
-                      collapsed={false}
-                      onClick={handleClose}
-                    />
-                  );
-                })}
-
-                <div className="mt-2 pt-2 border-t border-white/10">
-                  <SidebarLink
-                    item={settingsItem}
-                    active={settingsActive}
-                    collapsed={false}
-                    onClick={handleClose}
-                  />
-                </div>
-              </nav>
-
-              <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 mt-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-foreground">SOCIMOB v1.0.0</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Build {new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-destructive hover:bg-destructive/10 w-full mt-2"
-              >
-                <LogOut size={18} />
-                <span className="font-medium text-sm">Sair</span>
-              </button>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      </div>
     </>
   );
 };
