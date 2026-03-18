@@ -84,6 +84,9 @@ const shorten = (value: string, maxLength = 30) => {
 };
 
 const createBaseChartOptions = (): Highcharts.Options => ({
+  accessibility: {
+    enabled: false,
+  },
   chart: {
     backgroundColor: 'transparent',
     spacing: [12, 12, 12, 12],

@@ -884,7 +884,7 @@ export default function PropertyAds() {
       restoreRemoteFonts = disableRemoteFontStylesheets();
 
       const dataUrl = await toPng(exportStoryRef.current, {
-        cacheBust: true,
+        cacheBust: false,
         pixelRatio: 4,
         backgroundColor: '#0a1320',
         fontEmbedCSS: '',
