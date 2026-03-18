@@ -166,7 +166,11 @@ printf "%s\n" "=== COMPOSER INSTALL ==="
 
 printf "\n"
 printf "%s\n" "=== MIGRATIONS ==="
-(/opt/alt/php83/usr/bin/php artisan migrate --force 2>&1 || true)
+/opt/alt/php83/usr/bin/php artisan migrate --force
+
+printf "\n"
+printf "%s\n" "=== VALIDAR SCHEMA IMOBI BRASIL ==="
+/opt/alt/php83/usr/bin/php artisan tinker --execute="if (!Illuminate\\Support\\Facades\\Schema::hasColumn('imo_properties', 'imobi_brasil_images_sent_at')) { fwrite(STDERR, 'imobi_brasil_images_sent_at=MISSING'); exit(1); } echo 'imobi_brasil_images_sent_at=OK';"
 
 printf "\n"
 printf "%s\n" "=== VERIFICAR BUILD ==="
