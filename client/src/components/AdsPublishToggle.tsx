@@ -9,6 +9,7 @@
  */
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { Zap, CheckCircle2, XCircle, AlertTriangle, Loader2, ExternalLink } from 'lucide-react';
@@ -51,15 +52,32 @@ function StatusIcon({ status }: { status: string }) {
 export function AdsPublishToggle({ listingId, compact = false }: Props) {
   const queryClient = useQueryClient();
 
-  const { data: adsData, isLoading } = useQuery<AdsListingStatus[]>({
+  const { data: adsData, isLoading } = useQuery<AdsListingStatus[] | null>({
     queryKey: ['ads-listing-status', listingId],
     queryFn: async () => {
-      const r = await api.get(`/listings/${listingId}/ads/status`);
-      return r.data.data ?? [];
+      try {
+        const r = await api.get(`/listings/${listingId}/ads/status`);
+        return r.data.data ?? [];
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+          return null;
+        }
+
+        throw error;
+      }
     },
     enabled: !!listingId,
-    refetchInterval: 10000, // poll quando publicando
+    retry: (failureCount, error) => {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return false;
+      }
+
+      return failureCount < 3;
+    },
+    refetchInterval: (query) => (query.state.data === null ? false : 10000),
   });
+
+  const adsModuleUnavailable = adsData === null;
 
   const publishMutation = useMutation({
     mutationFn: async (provider: string) => {
@@ -98,6 +116,10 @@ export function AdsPublishToggle({ listingId, compact = false }: Props) {
   };
 
   const handleToggle = (provider: string, newValue: boolean) => {
+    if (adsModuleUnavailable) {
+      return;
+    }
+
     if (newValue) {
       publishMutation.mutate(provider);
     } else {
@@ -112,6 +134,10 @@ export function AdsPublishToggle({ listingId, compact = false }: Props) {
         Carregando status…
       </div>
     );
+  }
+
+  if (adsModuleUnavailable) {
+    return null;
   }
 
   if (compact) {
