@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 
-type ContextoEmissao = 'comissao' | 'locatario' | 'construtora';
+type ContextoEmissao = 'comissao' | 'locatario' | 'construtora' | 'proprietario';
 
 interface Corretor {
   id: number;
@@ -133,6 +133,10 @@ export default function Financeiro() {
 
     if (contextoEmissao === 'construtora') {
       return pessoasTomador.filter((pessoa) => pessoa.tipo === 'juridica' && (pessoa.papeis || []).includes('construtora'));
+    }
+
+    if (contextoEmissao === 'proprietario') {
+      return pessoasTomador.filter((pessoa) => pessoa.tipo === 'fisica' && (pessoa.papeis || []).includes('proprietario'));
     }
 
     return pessoasTomador;
@@ -264,6 +268,8 @@ export default function Financeiro() {
               ? 'Cobrança de aluguel - emissão com boleto'
               : contextoEmissao === 'construtora'
                 ? 'Cobrança de serviços imobiliários para construtora'
+                : contextoEmissao === 'proprietario'
+                  ? 'Cobrança de corretagem imobiliária ao proprietário vendedor'
               : 'Cobrança de comissão',
         },
       });
@@ -272,7 +278,9 @@ export default function Financeiro() {
         toast.success(
           contextoEmissao === 'locatario' && formaPagamento === 'boleto'
             ? 'Lançamento de aluguel emitido com fluxo de boleto'
-            : 'Lançamento financeiro emitido com sucesso'
+            : contextoEmissao === 'proprietario'
+              ? 'NFSe para proprietária emitida com sucesso'
+              : 'Lançamento financeiro emitido com sucesso'
         );
         limparFormulario();
         await carregarHistorico();
@@ -339,6 +347,9 @@ export default function Financeiro() {
                         } else if (value === 'construtora') {
                           setTipoNota('corretagem');
                           setFormaPagamento('pix');
+                        } else if (value === 'proprietario') {
+                          setTipoNota('corretagem');
+                          setFormaPagamento('pix');
                         }
                       }}
                       className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
@@ -346,6 +357,7 @@ export default function Financeiro() {
                       <option value="comissao">Comissão</option>
                       <option value="locatario">Locatário</option>
                       <option value="construtora">Construtora</option>
+                      <option value="proprietario">Proprietário vendedor</option>
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -600,7 +612,7 @@ export default function Financeiro() {
                 >
                   {isSubmitting
                     ? 'Emitindo...'
-                    : `Emitir ${contextoEmissao === 'locatario' ? 'nota para locatário' : contextoEmissao === 'construtora' ? 'nota para construtora' : tipoNota === 'aluguel' ? 'aluguel' : 'comissão'} com NFSe`}
+                    : `Emitir ${contextoEmissao === 'locatario' ? 'nota para locatário' : contextoEmissao === 'construtora' ? 'nota para construtora' : contextoEmissao === 'proprietario' ? 'nota para proprietária' : tipoNota === 'aluguel' ? 'aluguel' : 'comissão'} com NFSe`}
                 </button>
               </form>
             </div>
@@ -612,7 +624,7 @@ export default function Financeiro() {
                   Fluxo operacional
                 </div>
                 <ol className="space-y-2 text-sm text-muted-foreground">
-                  <li>Escolha se a emissão é para comissão, locatário ou construtora.</li>
+                  <li>Escolha se a emissão é para comissão, locatário, construtora ou proprietário vendedor.</li>
                   <li>O backend emite a NFS-e na NFE.io.</li>
                   <li>Para locatário, o fluxo padrão usa boleto.</li>
                   <li>Acompanhe status fiscal e financeiro no histórico abaixo.</li>

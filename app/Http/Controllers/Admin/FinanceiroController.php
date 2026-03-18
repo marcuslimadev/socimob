@@ -90,7 +90,7 @@ class FinanceiroController extends Controller
 
         $contextoEmissao = $request->input('contexto_emissao', 'comissao');
 
-        if (in_array($contextoEmissao, ['locatario', 'construtora'], true)) {
+        if (in_array($contextoEmissao, ['locatario', 'construtora', 'proprietario'], true)) {
             return $this->emitirDocumentoFiscalManual($request, $user->tenant_id, $contextoEmissao);
         }
 
@@ -198,7 +198,7 @@ class FinanceiroController extends Controller
     private function emitirDocumentoFiscalManual(Request $request, int $tenantId, string $contextoEmissao)
     {
         $validator = Validator::make($request->all(), [
-            'pessoa_tomador_id' => 'required|integer',
+            'pessoa_tomador_id' => 'nullable|integer',
             'property_id' => 'nullable|integer',
             'valor' => 'required|numeric|min:0.01',
             'aliquota_iss' => 'nullable|numeric|min:0',
@@ -220,8 +220,11 @@ class FinanceiroController extends Controller
             ], 422);
         }
 
-        $tomadorPessoa = Pessoa::where('tenant_id', $tenantId)->find($request->input('pessoa_tomador_id'));
-        if (!$tomadorPessoa) {
+        $tomadorPessoa = $request->filled('pessoa_tomador_id')
+            ? Pessoa::where('tenant_id', $tenantId)->find($request->input('pessoa_tomador_id'))
+            : null;
+
+        if ($request->filled('pessoa_tomador_id') && !$tomadorPessoa) {
             return response()->json(['message' => 'Tomador não encontrado'], 404);
         }
 
@@ -233,16 +236,26 @@ class FinanceiroController extends Controller
         $aliquota = (float) $request->input('aliquota_iss', 0);
         $valorImpostos = $valor * ($aliquota / 100);
         $descricao = $request->input('descricao')
-            ?: $this->gerarDescricaoDocumentoFiscalManual($contextoEmissao, $valor, $property, $tomadorPessoa);
+            ?: $this->gerarDescricaoDocumentoFiscalManual(
+                $contextoEmissao,
+                $valor,
+                $property,
+                $tomadorPessoa,
+                $request->input('tomador', [])
+            );
         $financeiroDados = $request->input('financeiro', []);
 
         $documento = DocumentoFiscal::create([
             'tenant_id' => $tenantId,
-            'locatario_pessoa_id' => $contextoEmissao === 'locatario' ? $tomadorPessoa->id : null,
-            'tomador_pessoa_id' => $tomadorPessoa->id,
+            'locatario_pessoa_id' => $contextoEmissao === 'locatario' ? $tomadorPessoa?->id : null,
+            'tomador_pessoa_id' => $tomadorPessoa?->id,
             'property_id' => $property?->id,
             'contexto_emissao' => $contextoEmissao,
-            'tipo' => $contextoEmissao === 'locatario' ? 'nfse_locatario' : 'nfse_construtora',
+            'tipo' => match ($contextoEmissao) {
+                'locatario' => 'nfse_locatario',
+                'proprietario' => 'nfse_proprietario',
+                default => 'nfse_construtora',
+            },
             'status' => 'pending',
             'valor_servico' => $valor,
             'valor_impostos' => $valorImpostos,
@@ -345,11 +358,19 @@ class FinanceiroController extends Controller
         return implode(' | ', $partes);
     }
 
-    private function gerarDescricaoDocumentoFiscalManual(string $contextoEmissao, float $valor, ?Property $property, Pessoa $tomador): string
+    private function gerarDescricaoDocumentoFiscalManual(
+        string $contextoEmissao,
+        float $valor,
+        ?Property $property,
+        ?Pessoa $tomador,
+        array $tomadorData = []
+    ): string
     {
-        $prefixo = $contextoEmissao === 'construtora'
-            ? 'Serviços imobiliários prestados para construtora'
-            : 'Cobrança de locação imobiliária para locatário';
+        $prefixo = match ($contextoEmissao) {
+            'construtora' => 'Serviços imobiliários prestados para construtora',
+            'proprietario' => 'Serviços de corretagem imobiliária pela intermediação de venda do imóvel',
+            default => 'Cobrança de locação imobiliária para locatário',
+        };
 
         $referenciaImovel = $property?->codigo
             ?? $property?->codigo_imovel
@@ -361,7 +382,11 @@ class FinanceiroController extends Controller
             $partes[] = 'Imóvel: ' . $referenciaImovel;
         }
 
-        $partes[] = 'Tomador: ' . ($tomador->razao_social ?: $tomador->nome);
+        $nomeTomador = $tomador?->razao_social
+            ?: $tomador?->nome
+            ?: ($tomadorData['nome'] ?? 'Tomador avulso');
+
+        $partes[] = 'Tomador: ' . $nomeTomador;
         $partes[] = 'Valor: R$ ' . number_format($valor, 2, ',', '.');
 
         return implode(' - ', $partes);
@@ -412,7 +437,11 @@ class FinanceiroController extends Controller
             'registro_tipo' => 'documento_fiscal',
             'contexto_emissao' => $documento->contexto_emissao ?? 'manual',
             'tipo_nota' => $documento->contexto_emissao ?? $documento->tipo,
-            'titulo' => $documento->contexto_emissao === 'construtora' ? 'Construtora' : 'Locatário',
+            'titulo' => match ($documento->contexto_emissao) {
+                'construtora' => 'Construtora',
+                'proprietario' => 'Proprietário',
+                default => 'Locatário',
+            },
             'corretor' => null,
             'tomador' => [
                 'id' => $tomador?->id,
