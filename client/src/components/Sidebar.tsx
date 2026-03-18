@@ -422,7 +422,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 return (
                   <div
                     key={section.id}
-                    className="relative"
+                    className="relative pb-3"
                     onMouseEnter={() => setOpenDesktopMenu(section.id)}
                     onMouseLeave={() => setOpenDesktopMenu((current) => (current === section.id ? null : current))}
                   >
@@ -446,7 +446,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                     </button>
 
                     <div
-                      className={`absolute left-0 top-full z-50 mt-3 w-72 rounded-2xl border border-white/10 bg-[#0b1627] p-2 shadow-[0_18px_40px_rgba(2,6,23,0.45)] transition-all ${
+                      className={`absolute left-0 top-full z-50 mt-0 w-72 rounded-2xl border border-white/10 bg-[#0b1627] p-2 shadow-[0_18px_40px_rgba(2,6,23,0.45)] transition-all ${
                         isOpen ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
                       }`}
                     >
