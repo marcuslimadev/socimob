@@ -392,32 +392,32 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
   return (
     <>
-      <div className="fixed inset-x-0 top-0 z-40 border-b border-white/8 bg-[rgba(6,12,22,0.92)] shadow-[0_18px_40px_rgba(2,6,23,0.38)] backdrop-blur-xl">
+      <div className="fixed inset-x-0 top-0 z-40 border-b border-white/8 bg-[linear-gradient(180deg,rgba(8,14,27,0.97),rgba(6,12,22,0.92))] shadow-[0_20px_48px_rgba(2,6,23,0.42)] backdrop-blur-xl">
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 lg:px-8">
-          <div className="flex min-h-[76px] items-center justify-between gap-4 py-3 md:min-h-[84px] md:py-4">
+          <div className="flex min-h-[78px] items-center justify-between gap-4 py-3 md:min-h-[86px] md:py-4">
             <div className="flex min-w-0 items-center gap-3 md:gap-4">
               {tenant?.logo_url || tenant?.logo ? (
                 <img
                   src={tenant.logo_url || tenant.logo}
                   alt={tenant.name}
-                  className="h-11 w-11 rounded-2xl border border-white/10 bg-white/5 object-contain p-1.5 shadow-[0_12px_24px_rgba(2,6,23,0.24)]"
+                  className="h-12 w-12 rounded-2xl border border-cyan-300/10 bg-white/[0.04] object-contain p-1.5 shadow-[0_14px_30px_rgba(2,6,23,0.28)]"
                 />
               ) : (
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white shadow-[0_12px_24px_rgba(2,6,23,0.24)]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/10 bg-white/[0.04] text-white shadow-[0_14px_30px_rgba(2,6,23,0.28)]">
                   <Building2 size={19} />
                 </div>
               )}
 
               <div className="min-w-0">
-                <p className="truncate font-serif text-[1.05rem] font-semibold leading-tight tracking-[0.01em] text-white md:text-[1.18rem]">
+                <p className="truncate font-serif text-[1.08rem] font-semibold leading-tight tracking-[0.01em] text-white md:text-[1.24rem]">
                   {tenant?.name || 'SOCIMOB'}
                 </p>
                 <div className="flex min-w-0 items-center gap-2">
-                  <p className="truncate text-[10px] uppercase tracking-[0.22em] text-slate-500 md:text-[11px]">
+                  <p className="truncate text-[10px] uppercase tracking-[0.22em] text-slate-400 md:text-[11px]">
                     {currentSection?.label || 'Navegação'}
                   </p>
                   {activePrimaryTab?.badge ? (
-                    <span className="hidden rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-100 md:inline-flex">
+                    <span className="hidden rounded-full border border-cyan-400/18 bg-cyan-400/12 px-2 py-0.5 text-[10px] font-semibold text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] md:inline-flex">
                       {activePrimaryTab.badge}
                     </span>
                   ) : null}
@@ -429,14 +429,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
               {user?.role === 'super_admin' && <div className="w-[240px]"><TenantSelector isSuperAdmin={true} /></div>}
               <button
                 onClick={toggleTheme}
-                className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 text-[13px] text-slate-200 transition-colors hover:bg-white/10"
+                className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3.5 text-[13px] text-slate-200 transition-colors hover:border-white/16 hover:bg-white/[0.08]"
               >
                 {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
                 <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
               </button>
               <button
                 onClick={handleLogout}
-                className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 text-[13px] text-slate-200 transition-colors hover:bg-white/10"
+                className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3.5 text-[13px] text-slate-200 transition-colors hover:border-white/16 hover:bg-white/[0.08]"
               >
                 <LogOut size={16} />
                 <span>Sair</span>
@@ -446,7 +446,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             <button
               type="button"
               onClick={toggleMobileMenu}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white transition-colors hover:bg-white/10 md:hidden"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] text-white transition-colors hover:border-white/16 hover:bg-white/[0.08] md:hidden"
               aria-label={actualIsOpen ? 'Fechar navegação' : 'Abrir navegação'}
             >
               {actualIsOpen ? <X size={20} /> : <Menu size={20} />}
@@ -462,16 +462,16 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 return (
                   <Link key={section.id} to={section.href}>
                     <div
-                      className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-[13px] transition-colors ${
+                      className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-[13px] transition-all ${
                         isActive
-                          ? 'border-white/14 bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
+                          ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(32,54,73,0.95),rgba(16,31,49,0.95))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_24px_rgba(2,6,23,0.18)]'
                           : 'border-transparent bg-white/[0.03] text-slate-300 hover:border-white/10 hover:bg-white/[0.07] hover:text-white'
                       }`}
                     >
                       <div className="shrink-0">{section.icon}</div>
                       <span className="font-medium tracking-[0.01em]">{section.label}</span>
                       {sectionBadge ? (
-                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-white/15 text-white' : 'bg-white/10 text-slate-200'}`}>
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-cyan-300/14 text-cyan-100' : 'bg-white/10 text-slate-200'}`}>
                           {sectionBadge}
                         </span>
                       ) : null}
@@ -484,9 +484,9 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
               <Link to={settingsItem.href}>
                 <div
-                  className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-[13px] transition-colors ${
+                  className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-[13px] transition-all ${
                     settingsActive
-                      ? 'border-white/14 bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
+                      ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(32,54,73,0.95),rgba(16,31,49,0.95))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_24px_rgba(2,6,23,0.18)]'
                       : 'border-transparent bg-white/[0.03] text-slate-300 hover:border-white/10 hover:bg-white/[0.07] hover:text-white'
                   }`}
                 >
@@ -510,9 +510,9 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                   return (
                     <Link key={item.href} to={item.href}>
                       <div
-                        className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] transition-colors ${
+                        className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] transition-all ${
                           isActive
-                            ? 'border-cyan-400/18 bg-cyan-400/10 text-white'
+                            ? 'border-cyan-400/18 bg-cyan-400/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
                             : 'border-transparent bg-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.05] hover:text-white'
                         }`}
                       >

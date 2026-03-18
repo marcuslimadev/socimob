@@ -1956,13 +1956,14 @@ export default function CRM() {
   const selectedClientId = selectedClient?.id ?? null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+    <div className="flex min-h-screen bg-[#050814] text-foreground">
       <Sidebar />
 
-      <div className="relative flex-1 min-h-0 flex flex-col md:ml-80">
+      <div className="page-shell relative flex min-h-screen flex-col overflow-hidden">
         {/* Top Bar */}
-        <div className="border-b border-border bg-card px-4 py-3">
-          <div className="flex items-center gap-3 flex-wrap">
+        <div className="page-content">
+          <div className="rounded-[28px] border border-white/8 bg-[#0b1322]/88 px-5 py-4 shadow-[0_18px_42px_rgba(2,6,23,0.28)]">
+            <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
               <h1 className="text-lg font-bold text-foreground">CRM</h1>
@@ -1984,6 +1985,7 @@ export default function CRM() {
             <Button variant="ghost" size="icon" onClick={() => refetch()} className="text-muted-foreground hover:text-foreground">
               <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
             </Button>
+            </div>
           </div>
         </div>
 
@@ -1995,8 +1997,8 @@ export default function CRM() {
         ) : (
           <>
             {/* Desktop: Kanban */}
-            <div className="hidden lg:flex flex-1 min-h-0 p-4">
-              <div className="w-full flex flex-col gap-3">
+            <div className="page-content hidden lg:flex flex-1 min-h-0 pt-4">
+              <div className="flex w-full min-h-0 flex-col gap-3 rounded-[28px] border border-white/8 bg-[#0b1322]/82 p-4 shadow-[0_18px_42px_rgba(2,6,23,0.24)]">
                 <div className="flex flex-wrap items-center gap-2">
                   {/* Search */}
                   <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -2139,8 +2141,8 @@ export default function CRM() {
                     </button>
                   ))}
                 </div>
-                <div className="rounded-xl border border-white/10 overflow-hidden">
-                  <ScrollArea className="max-h-[calc(100vh-240px)]">
+                <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[#07111d]/62">
+                  <ScrollArea className="max-h-[calc(100vh-24rem)]">
                     <table className="w-full text-left">
                       <thead className="sticky top-0 bg-card border-b border-border z-10">
                         <tr className="text-xs text-muted-foreground">
@@ -2275,7 +2277,8 @@ export default function CRM() {
             </div>
 
             {/* Mobile: Tabs + List */}
-            <div className="lg:hidden flex-1 min-h-0 flex flex-col">
+            <div className="page-content flex flex-1 min-h-0 flex-col pt-4 lg:hidden">
+              <div className="overflow-hidden rounded-[28px] border border-white/8 bg-[#0b1322]/82 shadow-[0_18px_42px_rgba(2,6,23,0.24)]">
               <div className="flex border-b border-border bg-card overflow-x-auto scrollbar-hide">
                 {ALL_STATUSES.map((s) => {
                   const count = (crmData?.[s] || []).length;
@@ -2296,7 +2299,7 @@ export default function CRM() {
                 })}
               </div>
               <ScrollArea className="flex-1 min-h-0">
-                <div className="p-3 space-y-2">
+                <div className="space-y-2 p-3">
                   {(crmData?.[mobileStatus] || []).length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3">
                       <Users className="w-10 h-10 text-muted-foreground/30" />
@@ -2315,6 +2318,7 @@ export default function CRM() {
                   )}
                 </div>
               </ScrollArea>
+              </div>
             </div>
           </>
         )}

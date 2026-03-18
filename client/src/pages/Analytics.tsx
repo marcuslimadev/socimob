@@ -383,8 +383,8 @@ export default function Analytics() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="page-shell bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.10),transparent_24%),radial-gradient(circle_at_top_right,rgba(251,191,36,0.10),transparent_20%),linear-gradient(180deg,#020617_0%,#07111f_52%,#0a1728_100%)]">
-        <div className="mx-auto max-w-7xl">
+      <div className="page-shell">
+        <div className="page-content">
           <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-[#07111f]/88 px-6 py-7 shadow-[0_24px_60px_rgba(2,6,23,0.55)] sm:px-8">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(125,211,252,0.16),transparent_30%),radial-gradient(circle_at_80%_0%,rgba(251,191,36,0.18),transparent_24%)]" />
             <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">

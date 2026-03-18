@@ -199,12 +199,28 @@
 
   .page-shell {
     @apply flex-1 min-h-screen px-4 pb-10 pt-20 md:ml-[296px] md:px-8 md:pt-8;
+    background-color: #050814;
     transition: margin-left 0.3s ease;
+  }
+
+  .page-content {
+    width: 100%;
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .page-content-compact {
+    width: 100%;
+    max-width: 72rem;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   body[data-sidebar='topnav'] .page-shell {
     margin-left: 0;
     padding-top: 5.75rem;
+    background-color: #050814;
     background-image: linear-gradient(180deg, #050814 0, #050814 5.25rem, transparent 5.25rem);
     background-repeat: no-repeat;
   }
