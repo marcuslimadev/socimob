@@ -12,6 +12,12 @@ AddHandler application/x-httpd-php83 .php
     RewriteCond %{REQUEST_URI} ^/portal/svelte/
     RewriteRule ^ - [L]
 
+    # Servir uploads legados armazenados dentro de public/
+    RewriteCond %{REQUEST_URI} ^/(uploads|storage)/(.*)$ [NC]
+    RewriteCond %{DOCUMENT_ROOT}/public/%1/%2 -f [OR]
+    RewriteCond %{DOCUMENT_ROOT}/public/%1/%2 -d
+    RewriteRule ^(uploads|storage)/(.*)$ public/$1/$2 [L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
