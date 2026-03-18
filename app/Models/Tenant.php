@@ -231,21 +231,55 @@ class Tenant extends Model
             return $this->metadata[$key];
         }
 
-        // 3. Verificar .env específico do tenant (ex: EXCLUSIVA_TWILIO_ACCOUNT_SID)
-        $tenantPrefix = strtoupper(str_replace('-', '_', $this->slug ?? ''));
-        $tenantEnvKey = $tenantPrefix . '_' . strtoupper($key);
-        $valueFromTenantEnv = env($tenantEnvKey);
+        // 3. Verificar .env específico do tenant por aliases do slug e do nome.
+        $tenantPrefixes = collect([
+            $this->slug,
+            $this->name,
+        ])
+            ->filter()
+            ->flatMap(function (string $value) {
+                $normalized = preg_replace('/[^A-Za-z0-9]+/', '_', $value);
+                $normalized = trim((string) $normalized, '_');
 
-        if ($valueFromTenantEnv !== null && $valueFromTenantEnv !== '') {
-            return $valueFromTenantEnv;
+                if ($normalized === '') {
+                    return [];
+                }
+
+                $parts = array_values(array_filter(explode('_', strtoupper($normalized))));
+
+                return array_values(array_unique(array_filter([
+                    implode('_', $parts),
+                    $parts[0] ?? null,
+                ])));
+            })
+            ->unique()
+            ->values();
+
+        $envKeyAliases = collect([
+            strtoupper($key),
+            str_starts_with($key, 'nfeio_') ? 'NFE_IO_' . strtoupper(substr($key, strlen('nfeio_'))) : null,
+        ])
+            ->filter()
+            ->unique()
+            ->values();
+
+        foreach ($tenantPrefixes as $tenantPrefix) {
+            foreach ($envKeyAliases as $envKeyAlias) {
+                $valueFromTenantEnv = env($tenantPrefix . '_' . $envKeyAlias);
+
+                if ($valueFromTenantEnv !== null && $valueFromTenantEnv !== '') {
+                    return $valueFromTenantEnv;
+                }
+            }
         }
 
-        // 4. Verificar .env global (ex: TWILIO_ACCOUNT_SID, OPENAI_API_KEY)
-        $globalEnvKey = strtoupper($key);
-        $valueFromGlobalEnv = env($globalEnvKey);
+        // 4. Verificar .env global (ex: TWILIO_ACCOUNT_SID, NFE_IO_API_KEY)
+        foreach ($envKeyAliases as $envKeyAlias) {
+            $valueFromGlobalEnv = env($envKeyAlias);
 
-        if ($valueFromGlobalEnv !== null && $valueFromGlobalEnv !== '') {
-            return $valueFromGlobalEnv;
+            if ($valueFromGlobalEnv !== null && $valueFromGlobalEnv !== '') {
+                return $valueFromGlobalEnv;
+            }
         }
 
         // 5. Retornar default
