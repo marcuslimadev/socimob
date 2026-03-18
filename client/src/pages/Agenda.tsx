@@ -210,7 +210,7 @@ export default function Agenda() {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-6xl mx-auto"
+          className="page-content"
         >
           <div className="page-header gap-4 mb-8">
             <div>

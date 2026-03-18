@@ -298,7 +298,7 @@ export default function Financeiro() {
       <Sidebar />
 
       <div className="page-shell">
-        <div className="max-w-6xl mx-auto space-y-8">
+        <div className="page-content space-y-8">
           <div className="page-header gap-4">
             <div>
               <h1 className="page-title mb-2 flex items-center gap-3">

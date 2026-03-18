@@ -591,7 +591,7 @@ export default function Settings() {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="max-w-6xl mx-auto"
+          className="page-content"
         >
           <motion.div variants={itemVariants} className="mb-8">
             <h1 className="page-title mb-2 flex items-center gap-3">
@@ -601,9 +601,9 @@ export default function Settings() {
             <p className="page-subtitle">Personalize sua experiência no SOCIMOB</p>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
             <motion.div variants={itemVariants} className="lg:col-span-1">
-              <div className="glass-panel p-4 rounded-2xl sticky top-24 space-y-2">
+              <div className="glass-panel sticky top-32 space-y-2 rounded-2xl p-4 xl:top-36">
                 {sections.map((section) => (
                   <motion.button
                     key={section.id}
