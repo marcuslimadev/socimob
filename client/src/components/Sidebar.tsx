@@ -29,6 +29,7 @@ import {
   DollarSign,
   Star,
   BookOpen,
+  ChevronDown,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -113,6 +114,7 @@ const isTransientNetworkError = (error: unknown) => {
 const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [location] = useLocation();
   const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [openDesktopMenu, setOpenDesktopMenu] = useState<string | null>(null);
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
   const [notificationCount, setNotificationCount] = useState(0);
@@ -130,6 +132,10 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
   const actualIsOpen = onClose ? isOpen : internalIsOpen;
   const handleClose = onClose || (() => setInternalIsOpen(false));
+
+  useEffect(() => {
+    setOpenDesktopMenu(null);
+  }, [location]);
 
   useEffect(() => {
     const loadTenantAndUser = async () => {
@@ -370,13 +376,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
   const secondaryTabs = currentSection?.items || [];
   const activePrimaryTab = primaryTabs.find((tab) => isPrimaryTabActive(tab, sections, currentSection, settingsActive)) || null;
+  const showFixedSubmenu = secondaryTabs.length > 1;
 
   return (
     <>
       {!onClose && (
         <button
           onClick={() => setInternalIsOpen(!internalIsOpen)}
-          className="md:hidden fixed top-3 left-4 z-50 rounded-xl border border-white/10 bg-[#050814]/96 p-3 text-white shadow-[0_12px_28px_rgba(2,6,23,0.35)] backdrop-blur-xl"
+          className="md:hidden fixed top-3 left-4 z-50 rounded-xl border border-slate-200 bg-white/95 p-3 text-slate-700 shadow-[0_12px_28px_rgba(15,23,42,0.14)] backdrop-blur-xl"
           aria-label="Abrir navegação"
         >
           {actualIsOpen ? <LogOut size={0} className="hidden" /> : <Menu size={22} />}
@@ -384,53 +391,110 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         </button>
       )}
 
-      <div className="fixed inset-x-0 top-0 z-40 border-b border-white/8 bg-[#050814] shadow-[0_18px_40px_rgba(2,6,23,0.42)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 md:px-8 md:py-3">
+      <div className="fixed inset-x-0 top-0 z-40 border-b border-slate-200/90 bg-[rgba(252,252,250,0.94)] shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-6 px-4 py-3 md:px-8 md:py-3">
           <div className="flex min-w-0 items-center gap-3">
             {tenant?.logo_url || tenant?.logo ? (
               <img
                 src={tenant.logo_url || tenant.logo}
                 alt={tenant.name}
-                className="h-10 w-10 rounded-xl bg-white/5 object-contain p-1.5"
+                className="h-10 w-10 rounded-xl border border-slate-200 bg-white object-contain p-1.5"
               />
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/8 text-white">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700">
                 <Building2 size={19} />
               </div>
             )}
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold leading-tight text-white">{tenant?.name || 'SOCIMOB'}</p>
-              <p className="truncate text-[11px] uppercase tracking-[0.16em] text-slate-400">
+              <p className="truncate font-serif text-base font-semibold leading-tight text-slate-900">{tenant?.name || 'SOCIMOB'}</p>
+              <p className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-500">
                 {currentSection?.label || 'Navegação'}
               </p>
             </div>
           </div>
 
           <nav className="hidden min-w-0 flex-1 items-center justify-center md:flex">
-            <div className="flex items-center gap-1 rounded-2xl border border-white/8 bg-white/[0.04] p-1">
-              {primaryTabs.map((tab) => {
-                const isActive = isPrimaryTabActive(tab, sections, currentSection, settingsActive);
+            <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/90 px-2 py-1 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+              {sections.map((section) => {
+                const isActive = currentSection?.id === section.id;
+                const isOpen = openDesktopMenu === section.id;
 
                 return (
-                  <Link key={tab.href} to={tab.href}>
-                    <div
-                      className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${
-                        isActive
-                          ? 'bg-white text-slate-950 shadow-[0_10px_24px_rgba(255,255,255,0.14)]'
-                          : 'text-slate-300 hover:bg-white/[0.08] hover:text-white'
+                  <div
+                    key={section.id}
+                    className="relative"
+                    onMouseEnter={() => setOpenDesktopMenu(section.id)}
+                    onMouseLeave={() => setOpenDesktopMenu((current) => (current === section.id ? null : current))}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenDesktopMenu((current) => (current === section.id ? null : section.id))}
+                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
+                        isActive || isOpen
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                       }`}
                     >
-                      <div className="shrink-0">{tab.icon}</div>
-                      <span className="font-medium">{tab.label}</span>
-                      {tab.badge ? (
-                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-slate-950/10 text-slate-950' : 'bg-white/10 text-white'}`}>
-                          {tab.badge}
+                      <div className="shrink-0">{section.icon}</div>
+                      <span className="font-medium">{section.label}</span>
+                      {getSectionBadge(section) ? (
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive || isOpen ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                          {getSectionBadge(section)}
                         </span>
                       ) : null}
+                      <ChevronDown size={15} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <div
+                      className={`absolute left-0 top-full z-50 mt-2 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_40px_rgba(15,23,42,0.12)] transition-all ${
+                        isOpen ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
+                      }`}
+                    >
+                      <div className="mb-2 px-2 pt-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">{section.label}</p>
+                      </div>
+                      <div className="grid gap-1">
+                        {section.items.map((item) => {
+                          const itemActive = isRouteMatch(location, item.href);
+
+                          return (
+                            <Link key={item.href} to={item.href}>
+                              <div
+                                className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm transition-colors ${
+                                  itemActive
+                                    ? 'bg-slate-900 text-white'
+                                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                                }`}
+                              >
+                                <div className="shrink-0">{item.icon}</div>
+                                <span className="font-medium">{item.label}</span>
+                                {item.badge ? (
+                                  <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${itemActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                                    {item.badge}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </Link>
+                  </div>
                 );
               })}
+
+              <Link to={settingsItem.href}>
+                <div
+                  className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
+                    settingsActive
+                      ? 'bg-slate-900 text-white'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="shrink-0">{settingsItem.icon}</div>
+                  <span className="font-medium">{settingsItem.label}</span>
+                </div>
+              </Link>
             </div>
           </nav>
 
@@ -438,14 +502,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             {user?.role === 'super_admin' && <div className="w-[220px]"><TenantSelector isSuperAdmin={true} /></div>}
             <button
               onClick={toggleTheme}
-              className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200 hover:bg-white/[0.08]"
+              className="flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
             >
               {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
               <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
             </button>
             <button
               onClick={handleLogout}
-              className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200 hover:bg-white/[0.08]"
+              className="flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
             >
               <LogOut size={16} />
               <span>Sair</span>
@@ -453,30 +517,30 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           </div>
         </div>
 
-        <div className="border-t border-white/8 bg-black/10">
+        <div className="border-t border-slate-200/80 bg-[rgba(248,246,240,0.86)]">
           <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-2 md:px-8">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Menu atual</p>
-              <p className="truncate text-sm font-medium text-white">{activePrimaryTab?.label || 'Navegação'}</p>
+              <p className="truncate text-sm font-medium text-slate-900">{activePrimaryTab?.label || 'Navegação'}</p>
             </div>
 
-            {secondaryTabs.length > 0 && (
-              <div className="hidden min-w-0 flex-1 items-center justify-end gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent md:flex">
+            {showFixedSubmenu && (
+              <div className="hidden min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent md:flex">
                 {secondaryTabs.map((item) => {
                   const isActive = isRouteMatch(location, item.href);
 
                   return (
                     <Link key={item.href} to={item.href}>
                       <div
-                        className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors ${
+                        className={`flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-sm transition-colors ${
                           isActive
-                            ? 'bg-sky-400/16 text-white'
-                            : 'text-slate-300 hover:bg-white/[0.07] hover:text-white'
+                            ? 'bg-slate-900 text-white'
+                            : 'text-slate-600 hover:bg-white hover:text-slate-900'
                         }`}
                       >
                         <div className="shrink-0">{item.icon}</div>
                         <span className="font-medium">{item.label}</span>
-                        {item.badge ? <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-white">{item.badge}</span> : null}
+                        {item.badge ? <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700'}`}>{item.badge}</span> : null}
                       </div>
                     </Link>
                   );
@@ -487,18 +551,18 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         </div>
 
         <div className="md:hidden px-4 pb-3">
-          {secondaryTabs.length > 0 && (
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 pt-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+          {showFixedSubmenu && (
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 pt-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
               {secondaryTabs.map((item) => {
                 const isActive = isRouteMatch(location, item.href);
 
                 return (
                   <Link key={item.href} to={item.href}>
                     <div
-                      className={`flex items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm ${
+                      className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-2 text-sm ${
                         isActive
-                          ? 'border-sky-400/30 bg-sky-400/14 text-white'
-                          : 'border-white/8 bg-white/[0.03] text-slate-200'
+                          ? 'border-slate-900 bg-slate-900 text-white'
+                          : 'border-slate-200 bg-white text-slate-700'
                       }`}
                     >
                       <div className="shrink-0">{item.icon}</div>
@@ -512,15 +576,15 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
           {actualIsOpen && (
             <div className="space-y-3 pt-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3 shadow-[0_18px_40px_rgba(2,6,23,0.3)]">
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Menu principal</p>
-                    <p className="text-sm font-medium text-white">Escolha a seção</p>
+                    <p className="text-sm font-medium text-slate-900">Escolha a seção</p>
                   </div>
                   <button
                     onClick={handleClose}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-200"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700"
                     aria-label="Fechar navegação"
                   >
                     <X size={18} />
@@ -537,14 +601,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                           onClick={handleClose}
                           className={`flex items-center gap-2 rounded-xl px-3 py-3 text-sm ${
                             isActive
-                              ? 'bg-white text-slate-950'
-                              : 'border border-white/8 bg-white/[0.04] text-slate-200'
+                              ? 'bg-slate-900 text-white'
+                              : 'border border-slate-200 bg-white text-slate-700'
                           }`}
                         >
                           <div className="shrink-0">{tab.icon}</div>
                           <span className="font-medium">{tab.label}</span>
                           {tab.badge ? (
-                            <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-slate-950/10 text-slate-950' : 'bg-white/10 text-white'}`}>
+                            <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700'}`}>
                               {tab.badge}
                             </span>
                           ) : null}
@@ -554,8 +618,8 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                   })}
                 </div>
 
-                {secondaryTabs.length > 0 && (
-                  <div className="mt-4 border-t border-white/8 pt-4">
+                {showFixedSubmenu && (
+                  <div className="mt-4 border-t border-slate-200 pt-4">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Submenu</p>
                     <div className="grid gap-2">
                       {secondaryTabs.map((item) => {
@@ -567,13 +631,13 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                               onClick={handleClose}
                               className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm ${
                                 isActive
-                                  ? 'border-sky-400/30 bg-sky-400/14 text-white'
-                                  : 'border-white/8 bg-white/[0.03] text-slate-200'
+                                  ? 'border-slate-900 bg-slate-900 text-white'
+                                  : 'border-slate-200 bg-white text-slate-700'
                               }`}
                             >
                               <div className="shrink-0">{item.icon}</div>
                               <span className="font-medium">{item.label}</span>
-                              {item.badge ? <span className="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-white">{item.badge}</span> : null}
+                              {item.badge ? <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700'}`}>{item.badge}</span> : null}
                             </div>
                           </Link>
                         );
@@ -588,21 +652,21 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                       toggleTheme();
                       handleClose();
                     }}
-                    className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200"
+                    className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700"
                   >
                     {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
                     <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200"
+                    className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700"
                   >
                     <LogOut size={15} />
                     <span>Sair</span>
                   </button>
                 </div>
 
-                {user?.role === 'super_admin' && <div className="mt-4 rounded-xl border border-white/8 bg-black/10 p-2"><TenantSelector isSuperAdmin={true} /></div>}
+                {user?.role === 'super_admin' && <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-2"><TenantSelector isSuperAdmin={true} /></div>}
               </div>
             </div>
           )}
