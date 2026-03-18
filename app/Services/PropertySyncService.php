@@ -293,18 +293,8 @@ class PropertySyncService
             }
         }
         
-        // Imagem destaque
-        $imagemDestaque = $this->getImagemDestaque($imovel['imagens'] ?? []);
-        
-        // Preparar dados de imagens - apenas URLs (strings)
-        $imagensData = [];
-        if (!empty($imovel['imagens']) && is_array($imovel['imagens'])) {
-            foreach ($imovel['imagens'] as $img) {
-                if (isset($img['url'])) {
-                    $imagensData[] = $img['url'];
-                }
-            }
-        }
+        $imagensData = $this->resolvePropertyImageUrls($imovel);
+        $imagemDestaque = $imagensData[0] ?? null;
 
         $latitude = $imovel['endereco']['latitude'] ?? null;
         $longitude = $imovel['endereco']['longitude'] ?? null;
@@ -1225,6 +1215,88 @@ class PropertySyncService
         });
 
         return $processed;
+    }
+
+    private function resolvePropertyImageUrls(array $imovel): array
+    {
+        $remoteUrls = [];
+
+        if (!empty($imovel['imagens']) && is_array($imovel['imagens'])) {
+            foreach ($imovel['imagens'] as $img) {
+                if (isset($img['url']) && is_string($img['url']) && $img['url'] !== '') {
+                    $remoteUrls[] = $img['url'];
+                }
+            }
+        }
+
+        $referenceCode = (string) ($imovel['referenciaImovel'] ?? '');
+        $localUrls = $this->getLocalPropertyUploadUrls($referenceCode);
+
+        if (!empty($remoteUrls) && !empty($localUrls) && $this->containsOnlyLegacyExclusivaMedia($remoteUrls)) {
+            Log::warning('Usando uploads locais para substituir midia legada inacessivel', [
+                'reference_code' => $referenceCode,
+                'remote_count' => count($remoteUrls),
+                'local_count' => count($localUrls),
+                'sample_remote_url' => $remoteUrls[0] ?? null,
+                'sample_local_url' => $localUrls[0] ?? null,
+            ]);
+
+            return $localUrls;
+        }
+
+        return $remoteUrls;
+    }
+
+    private function getLocalPropertyUploadUrls(string $referenceCode): array
+    {
+        $referenceCode = trim($referenceCode);
+        if ($referenceCode === '') {
+            return [];
+        }
+
+        $tenant = $this->resolveSyncTenant();
+        if (!$tenant) {
+            return [];
+        }
+
+        $relativeDir = "uploads/properties/tenant_{$tenant->id}/{$referenceCode}";
+        $fullDir = public_path($relativeDir);
+        if (!is_dir($fullDir)) {
+            return [];
+        }
+
+        $files = glob($fullDir . DIRECTORY_SEPARATOR . '*.{jpg,jpeg,png,gif,webp,JPG,JPEG,PNG,GIF,WEBP}', GLOB_BRACE) ?: [];
+        sort($files, SORT_NATURAL | SORT_FLAG_CASE);
+
+        return array_values(array_map(
+            static fn (string $filePath) => url(str_replace('\\', '/', $relativeDir) . '/' . basename($filePath)),
+            $files
+        ));
+    }
+
+    private function containsOnlyLegacyExclusivaMedia(array $urls): bool
+    {
+        if (empty($urls)) {
+            return false;
+        }
+
+        foreach ($urls as $url) {
+            if (!is_string($url) || !$this->isLegacyExclusivaMediaUrl($url)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isLegacyExclusivaMediaUrl(string $url): bool
+    {
+        $parts = parse_url($url);
+        $host = strtolower($parts['host'] ?? '');
+        $path = $parts['path'] ?? '';
+
+        return in_array($host, ['exclusivalarimoveis.com', 'www.exclusivalarimoveis.com.br', 'exclusivalarimoveis.com.br'], true)
+            && str_contains($path, '/uploads/properties/tenant_');
     }
 
     /**

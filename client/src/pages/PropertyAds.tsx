@@ -320,13 +320,28 @@ interface ExportStoryState {
 }
 
 function StoryPreviewCard({ property, tenant, photos, storyRef, className }: StoryPreviewCardProps) {
-  const thumbPhotos = photos.slice(1, 7);
+  const [renderablePhotos, setRenderablePhotos] = useState<string[]>(photos);
+  const [showLogo, setShowLogo] = useState(true);
+  const photoSignature = photos.join('||');
+  const thumbPhotos = renderablePhotos.slice(1, 7);
   const transactionType = getTransactionType(property);
   const detailTags = getDetailTags(property);
   const primarySpecs = getPrimarySpecs(property);
   const secondarySpecs = getSecondarySpecs(property);
   const logoSrc = tenant?.logo_url || tenant?.logo;
   const tenantPhone = formatPhone(tenant?.tenant_phone || tenant?.contact_phone);
+
+  useEffect(() => {
+    setRenderablePhotos(photos);
+  }, [photoSignature]);
+
+  useEffect(() => {
+    setShowLogo(true);
+  }, [logoSrc]);
+
+  const removePhoto = (photoUrl: string) => {
+    setRenderablePhotos((currentPhotos) => currentPhotos.filter((currentPhoto) => currentPhoto !== photoUrl));
+  };
 
   const getTransactionBadge = (type: string) => (
     type === 'venda'
@@ -339,11 +354,12 @@ function StoryPreviewCard({ property, tenant, photos, storyRef, className }: Sto
       ref={storyRef}
       className={className || 'relative mx-auto aspect-[9/16] w-full max-w-[330px] overflow-hidden rounded-[30px] border border-white/15 bg-[#0a1320]'}
     >
-      {photos.length > 0 ? (
+      {renderablePhotos.length > 0 ? (
         <img
-          src={photos[0]}
+          src={renderablePhotos[0]}
           alt={getPropertyTitle(property)}
           className="absolute inset-0 h-full w-full object-cover"
+          onError={() => removePhoto(renderablePhotos[0])}
         />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-950" />
@@ -360,9 +376,14 @@ function StoryPreviewCard({ property, tenant, photos, storyRef, className }: Sto
       <div className="absolute inset-x-4 bottom-4 rounded-[26px] bg-[#07111d]/72 p-4 backdrop-blur-sm">
         <div className="mb-2 flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-2">
-            {logoSrc && (
+            {logoSrc && showLogo && (
               <div className="mt-0.5 flex h-7 items-center rounded-md bg-white/95 px-2 py-1">
-                <img src={logoSrc} alt={tenant?.name || 'Logo'} className="max-h-5 w-auto object-contain" />
+                <img
+                  src={logoSrc}
+                  alt={tenant?.name || 'Logo'}
+                  className="max-h-5 w-auto object-contain"
+                  onError={() => setShowLogo(false)}
+                />
               </div>
             )}
             <div className="min-w-0">
@@ -409,10 +430,15 @@ function StoryPreviewCard({ property, tenant, photos, storyRef, className }: Sto
           <div className="mt-3 grid grid-cols-3 gap-2">
             {thumbPhotos.map((photo, index) => (
               <div
-                key={`${property.id}-${index}`}
+                key={`${property.id}-${photo}-${index}`}
                 className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-[0_10px_22px_rgba(15,23,42,0.22),0_2px_6px_rgba(15,23,42,0.12)]"
               >
-                <img src={photo} alt={`${getPropertyTitle(property)} ${index + 2}`} className="h-full w-full object-cover" />
+                <img
+                  src={photo}
+                  alt={`${getPropertyTitle(property)} ${index + 2}`}
+                  className="h-full w-full object-cover"
+                  onError={() => removePhoto(photo)}
+                />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-slate-950/10" />
               </div>
             ))}
