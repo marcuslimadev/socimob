@@ -392,8 +392,8 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       )}
 
       <div className="fixed inset-x-0 top-0 z-40 border-b border-white/8 bg-[rgba(6,12,22,0.92)] shadow-[0_18px_40px_rgba(2,6,23,0.38)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-6 px-4 py-3 md:px-8 md:py-3">
-          <div className="flex min-w-0 items-center gap-3">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-6 px-4 py-4 md:px-8 md:py-4">
+          <div className="flex min-w-0 items-center gap-3 md:gap-4">
             {tenant?.logo_url || tenant?.logo ? (
               <img
                 src={tenant.logo_url || tenant.logo}
@@ -406,15 +406,15 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
               </div>
             )}
             <div className="min-w-0">
-              <p className="truncate font-serif text-base font-semibold leading-tight text-white">{tenant?.name || 'SOCIMOB'}</p>
-              <p className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-400">
+              <p className="truncate font-serif text-[1.05rem] font-semibold leading-tight tracking-[0.01em] text-white">{tenant?.name || 'SOCIMOB'}</p>
+              <p className="truncate text-[10px] uppercase tracking-[0.22em] text-slate-500">
                 {currentSection?.label || 'Navegação'}
               </p>
             </div>
           </div>
 
           <nav className="hidden min-w-0 flex-1 items-center justify-center md:flex">
-            <div className="flex items-center gap-1 px-2">
+            <div className="flex min-w-0 items-center gap-2 rounded-[28px] border border-white/8 bg-white/[0.03] px-3 py-2 shadow-[0_12px_28px_rgba(2,6,23,0.2)]">
               {sections.map((section) => {
                 const isActive = currentSection?.id === section.id;
                 const isOpen = openDesktopMenu === section.id;
@@ -429,14 +429,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                     <button
                       type="button"
                       onClick={() => setOpenDesktopMenu((current) => (current === section.id ? null : section.id))}
-                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
+                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-[13px] transition-colors ${
                         isActive || isOpen
-                          ? 'bg-white/10 text-white'
-                          : 'text-slate-300 hover:bg-white/6 hover:text-white'
+                          ? 'bg-white/11 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
+                          : 'text-slate-300 hover:bg-white/[0.05] hover:text-white'
                       }`}
                     >
                       <div className="shrink-0">{section.icon}</div>
-                      <span className="font-medium">{section.label}</span>
+                      <span className="font-medium tracking-[0.01em]">{section.label}</span>
                       {getSectionBadge(section) ? (
                         <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive || isOpen ? 'bg-white/15 text-white' : 'bg-white/10 text-slate-200'}`}>
                           {getSectionBadge(section)}
@@ -446,7 +446,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                     </button>
 
                     <div
-                      className={`absolute left-0 top-full z-50 mt-2 w-72 rounded-2xl border border-white/10 bg-[#0b1627] p-2 shadow-[0_18px_40px_rgba(2,6,23,0.45)] transition-all ${
+                      className={`absolute left-0 top-full z-50 mt-3 w-72 rounded-2xl border border-white/10 bg-[#0b1627] p-2 shadow-[0_18px_40px_rgba(2,6,23,0.45)] transition-all ${
                         isOpen ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
                       }`}
                     >
@@ -485,16 +485,43 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
               <Link to={settingsItem.href}>
                 <div
-                  className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
+                  className={`flex items-center gap-2 rounded-full px-4 py-2 text-[13px] transition-colors ${
                     settingsActive
-                      ? 'bg-white/10 text-white'
-                      : 'text-slate-300 hover:bg-white/6 hover:text-white'
+                      ? 'bg-white/11 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
+                      : 'text-slate-300 hover:bg-white/[0.05] hover:text-white'
                   }`}
                 >
                   <div className="shrink-0">{settingsItem.icon}</div>
                   <span className="font-medium">{settingsItem.label}</span>
                 </div>
               </Link>
+
+              {showFixedSubmenu && (
+                <>
+                  <div className="mx-1 h-7 w-px bg-white/10" />
+                  <div className="flex min-w-0 items-center gap-1 overflow-x-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                    {secondaryTabs.map((item) => {
+                      const isActive = isRouteMatch(location, item.href);
+
+                      return (
+                        <Link key={item.href} to={item.href}>
+                          <div
+                            className={`flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-[13px] transition-colors ${
+                              isActive
+                                ? 'bg-white/11 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
+                                : 'text-slate-400 hover:bg-white/[0.05] hover:text-white'
+                            }`}
+                          >
+                            <div className="shrink-0">{item.icon}</div>
+                            <span className="font-medium tracking-[0.01em]">{item.label}</span>
+                            {item.badge ? <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-white/15 text-white' : 'bg-white/10 text-slate-200'}`}>{item.badge}</span> : null}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           </nav>
 
@@ -502,14 +529,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             {user?.role === 'super_admin' && <div className="w-[220px]"><TenantSelector isSuperAdmin={true} /></div>}
             <button
               onClick={toggleTheme}
-              className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-sm text-slate-200 hover:bg-white/10"
+              className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 text-[13px] text-slate-200 hover:bg-white/10"
             >
               {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
               <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
             </button>
             <button
               onClick={handleLogout}
-              className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-sm text-slate-200 hover:bg-white/10"
+              className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 text-[13px] text-slate-200 hover:bg-white/10"
             >
               <LogOut size={16} />
               <span>Sair</span>
@@ -517,62 +544,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           </div>
         </div>
 
-        {showFixedSubmenu && (
-          <div className="border-t border-white/8 bg-[#08111f]/88">
-            <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-2 md:px-8">
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{activePrimaryTab?.label || 'Navegação'}</p>
-              </div>
-
-              <div className="hidden min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent md:flex">
-                {secondaryTabs.map((item) => {
-                  const isActive = isRouteMatch(location, item.href);
-
-                  return (
-                    <Link key={item.href} to={item.href}>
-                      <div
-                        className={`flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-sm transition-colors ${
-                          isActive
-                            ? 'bg-white/10 text-white'
-                            : 'text-slate-300 hover:bg-white/6 hover:text-white'
-                        }`}
-                      >
-                        <div className="shrink-0">{item.icon}</div>
-                        <span className="font-medium">{item.label}</span>
-                        {item.badge ? <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-white/15 text-white' : 'bg-white/10 text-slate-200'}`}>{item.badge}</span> : null}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="md:hidden px-4 pb-3">
-          {showFixedSubmenu && (
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 pt-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-              {secondaryTabs.map((item) => {
-                const isActive = isRouteMatch(location, item.href);
-
-                return (
-                  <Link key={item.href} to={item.href}>
-                    <div
-                      className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-2 text-sm ${
-                        isActive
-                          ? 'border-white/15 bg-white/10 text-white'
-                          : 'border-white/10 bg-white/5 text-slate-200'
-                      }`}
-                    >
-                      <div className="shrink-0">{item.icon}</div>
-                      <span className="font-medium">{item.label}</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-
           {actualIsOpen && (
             <div className="space-y-3 pt-3">
               <div className="rounded-2xl border border-white/10 bg-[#0b1627] p-3 shadow-[0_18px_40px_rgba(2,6,23,0.45)]">
