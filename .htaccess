@@ -1,0 +1,35 @@
+# Use PHP 8.3 for this domain
+AddHandler application/x-httpd-php83 .php
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Exceção para Portal Svelte (servir arquivos estáticos)
+    RewriteCond %{REQUEST_URI} ^/portal/svelte/
+    RewriteRule ^ - [L]
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Serve existing files/directories directly
+    RewriteCond %{REQUEST_FILENAME} -d [OR]
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Backend routes go to Laravel
+    RewriteCond %{REQUEST_URI} ^/(api|api-public|webhook|webhooks|github|debug|test|db-test|migrate-now-please|sync) [NC]
+    RewriteRule ^(.*)$ public/index.php [L]
+
+    # SPA fallback for React routes
+    RewriteRule ^ index.html [L]
+</IfModule>

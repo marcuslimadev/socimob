@@ -5,7 +5,8 @@
 param(
     [string]$CommitMessage = "build: update frontend build",
     [switch]$Force,
-    [switch]$RemoteFailureSelfTest
+    [switch]$RemoteFailureSelfTest,
+    [string]$HealthUrl
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,7 +44,11 @@ $APP_URL = Get-DotEnvValue -Key "APP_URL"
 if ([string]::IsNullOrWhiteSpace($APP_URL)) {
     $APP_URL = "https://exclusivalarimoveis.com"
 }
-$HEALTH_URL = "$($APP_URL.TrimEnd('/'))/api/health"
+if ([string]::IsNullOrWhiteSpace($HealthUrl)) {
+    $HEALTH_URL = "$($APP_URL.TrimEnd('/'))/api/health"
+} else {
+    $HEALTH_URL = $HealthUrl.Trim()
+}
 
 try {
     Write-Host "`n" -NoNewline
@@ -68,6 +73,7 @@ try {
         Write-Step "COPIAR BUILD PARA public/"
         try {
             Copy-Item -Path dist/public/* -Destination public/ -Recurse -Force
+            Copy-Item -Path public/.htaccess -Destination .htaccess -Force
             Write-Success "Build copiado para public/"
         } catch {
             throw "Erro ao copiar build: $_"
@@ -146,6 +152,7 @@ git pull origin master
 printf "\n"
 printf "%s\n" "=== COPIAR BUILD ==="
 cp -rf dist/public/* ./
+cp public/.htaccess ./.htaccess
 
 printf "\n"
 printf "%s\n" "=== COMPOSER INSTALL ==="
@@ -158,6 +165,7 @@ printf "%s\n" "=== MIGRATIONS ==="
 printf "\n"
 printf "%s\n" "=== VERIFICAR BUILD ==="
 grep "index-" index.html
+test -f .htaccess
 
 printf "%s\n" "=== DEPLOY CONCLUIDO ==="
 date
