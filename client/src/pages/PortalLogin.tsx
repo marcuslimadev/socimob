@@ -5,8 +5,7 @@ import { ArrowRight, Lock, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
-
-declare const google: any;
+import { initializeGoogleIdentity, renderGoogleIdentityButton } from '@/lib/googleIdentity';
 
 export default function PortalLogin() {
   const [, navigate] = useLocation();
@@ -27,13 +26,9 @@ export default function PortalLogin() {
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId || !googleBtnRef.current) return;
-    if (typeof google === 'undefined') return;
+    if (!initializeGoogleIdentity(clientId, handleGoogleCredential)) return;
 
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleGoogleCredential,
-    });
-    google.accounts.id.renderButton(googleBtnRef.current, {
+    renderGoogleIdentityButton(googleBtnRef.current, {
       theme: 'outline',
       size: 'large',
       width: googleBtnRef.current.offsetWidth || 360,
@@ -43,6 +38,11 @@ export default function PortalLogin() {
   }, [tenant]);
 
   const handleGoogleCredential = async (response: { credential: string }) => {
+    if (!response?.credential) {
+      toast.error('Resposta inválida ao entrar com Google.');
+      return;
+    }
+
     try {
       setLoading(true);
       const res = await api.post('/auth/google', { token: response.credential });

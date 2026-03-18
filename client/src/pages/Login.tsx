@@ -3,10 +3,9 @@ import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { fetchTenantBranding, hexToRgba, TenantBranding } from '@/lib/tenantBranding';
+import { initializeGoogleIdentity, renderGoogleIdentityButton } from '@/lib/googleIdentity';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
-
-declare const google: any;
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -41,13 +40,9 @@ export default function Login() {
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId || !googleBtnRef.current) return;
-    if (typeof google === 'undefined') return;
+    if (!initializeGoogleIdentity(clientId, handleGoogleCredential)) return;
 
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleGoogleCredential,
-    });
-    google.accounts.id.renderButton(googleBtnRef.current, {
+    renderGoogleIdentityButton(googleBtnRef.current, {
       theme: 'outline',
       size: 'large',
       width: googleBtnRef.current.offsetWidth || 360,
@@ -57,6 +52,11 @@ export default function Login() {
   }, [tenant]);
 
   const handleGoogleCredential = async (response: { credential: string }) => {
+    if (!response?.credential) {
+      toast.error('Resposta inválida ao entrar com Google.');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const res = await api.post('/auth/google', { token: response.credential });
