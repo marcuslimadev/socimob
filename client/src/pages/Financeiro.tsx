@@ -36,6 +36,8 @@ interface FinanceiroItem {
   registro_tipo: 'commission_invoice' | 'documento_fiscal';
   contexto_emissao: ContextoEmissao;
   tipo_nota: string;
+  codigo_servico?: string | null;
+  codigo_servico_fonte?: string | null;
   titulo: string;
   corretor: {
     id: number;
@@ -859,7 +861,9 @@ export default function Financeiro() {
                       <span>Pagamento: {item.forma_pagamento || 'N/A'}</span>
                       <span>Vencimento: {item.vencimento || 'N/A'}</span>
                       <span>NFSe nº: {item.nfse.numero || 'N/A'}</span>
+                      <span>Código do serviço: {item.codigo_servico || 'N/A'}</span>
                       {item.nfse.integracao_id && <span>Integração: {item.nfse.integracao_id}</span>}
+                      {item.codigo_servico_fonte && <span>Origem código: {item.codigo_servico_fonte}</span>}
                     </div>
 
                     <div className="flex flex-wrap gap-3 items-center">

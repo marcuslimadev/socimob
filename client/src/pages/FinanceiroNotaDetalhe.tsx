@@ -13,6 +13,8 @@ interface FinanceiroItemDetalhe {
   registro_tipo: RegistroTipo;
   contexto_emissao: ContextoEmissao;
   tipo_nota: string;
+  codigo_servico?: string | null;
+  codigo_servico_fonte?: string | null;
   titulo: string;
   corretor: {
     id: number;
@@ -235,6 +237,14 @@ export default function FinanceiroNotaDetalhe() {
                     <div className="flex items-center justify-between gap-4">
                       <span>Status NFe.io</span>
                       <span className="text-foreground">{item.nfse.status_externo || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>Código do serviço</span>
+                      <span className="text-foreground">{item.codigo_servico || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>Origem do código</span>
+                      <span className="text-foreground text-right">{item.codigo_servico_fonte || 'N/A'}</span>
                     </div>
                     <div className="flex items-center justify-between gap-4">
                       <span>Criada em</span>

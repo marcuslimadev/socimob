@@ -86,7 +86,10 @@ class NfseCommissionService
             'pdf_url' => $pdfUrl,
             'xml_url' => $xmlUrl,
             'integracao_id' => $integracaoId,
-            'raw_response' => $body,
+            'raw_response' => array_merge($body, [
+                'submitted_payload' => $payload,
+                'service_code_used' => $payload['cityServiceCode'] ?? null,
+            ]),
             'payload' => $payload,
             'financeiro_status' => $status,
         ];

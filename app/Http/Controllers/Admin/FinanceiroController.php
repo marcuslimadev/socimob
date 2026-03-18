@@ -607,6 +607,8 @@ class FinanceiroController extends Controller
             'registro_tipo' => 'commission_invoice',
             'contexto_emissao' => 'comissao',
             'tipo_nota' => $metadata['tipo_nota'] ?? 'corretagem',
+            'codigo_servico' => $this->resolverCodigoServicoCommissionInvoice($invoice),
+            'codigo_servico_fonte' => $this->resolverFonteCodigoServicoCommissionInvoice($invoice),
             'titulo' => 'Corretagem',
             'corretor' => [
                 'id' => $invoice->corretor_id,
@@ -648,6 +650,8 @@ class FinanceiroController extends Controller
             'registro_tipo' => 'documento_fiscal',
             'contexto_emissao' => $documento->contexto_emissao ?? 'manual',
             'tipo_nota' => $documento->contexto_emissao ?? $documento->tipo,
+            'codigo_servico' => $this->resolverCodigoServicoDocumentoFiscal($documento),
+            'codigo_servico_fonte' => $this->resolverFonteCodigoServicoDocumentoFiscal($documento),
             'titulo' => match ($documento->contexto_emissao) {
                 'construtora' => 'Construtora',
                 'proprietario' => 'Proprietário',
@@ -698,6 +702,177 @@ class FinanceiroController extends Controller
         $sufixoImovel = $referenciaImovel ? ' - Imóvel: ' . $referenciaImovel : '';
 
         return $prefixo . $sufixoImovel . ' - Valor: R$ ' . number_format($valor, 2, ',', '.');
+    }
+
+    private function resolverCodigoServicoCommissionInvoice(CommissionInvoice $invoice): ?string
+    {
+        $codigo = data_get($invoice->retorno_integracao, 'service_code_used')
+            ?: data_get($invoice->retorno_integracao, 'submitted_payload.cityServiceCode')
+            ?: data_get($invoice->retorno_integracao, 'cityServiceCode');
+
+        if (is_scalar($codigo) && trim((string) $codigo) !== '') {
+            return trim((string) $codigo);
+        }
+
+        $tenant = Tenant::find($invoice->tenant_id);
+        $tipoNota = strtolower((string) data_get($invoice->financeiro_metadata, 'tipo_nota', 'corretagem'));
+
+        if ($tipoNota === 'aluguel') {
+            return $tenant?->getIntegrationValue('nfeio_service_code_aluguel')
+                ?: $tenant?->getIntegrationValue('nfeio_service_code_locatario')
+                ?: $tenant?->getIntegrationValue('nfeio_service_code')
+                ?: env('NFE_IO_SERVICE_CODE_ALUGUEL', env('NFE_IO_SERVICE_CODE_LOCATARIO', env('NFE_IO_SERVICE_CODE', '01.01')));
+        }
+
+        return $tenant?->getIntegrationValue('nfeio_service_code_corretagem')
+            ?: $tenant?->getIntegrationValue('nfeio_service_code_proprietario')
+            ?: $tenant?->getIntegrationValue('nfeio_service_code')
+            ?: env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE', '004')));
+    }
+
+    private function resolverFonteCodigoServicoCommissionInvoice(CommissionInvoice $invoice): string
+    {
+        if (data_get($invoice->retorno_integracao, 'service_code_used') || data_get($invoice->retorno_integracao, 'submitted_payload.cityServiceCode')) {
+            return 'payload_emitido';
+        }
+
+        $tenant = Tenant::find($invoice->tenant_id);
+        $tipoNota = strtolower((string) data_get($invoice->financeiro_metadata, 'tipo_nota', 'corretagem'));
+
+        if ($tipoNota === 'aluguel') {
+            if ($tenant?->getIntegrationValue('nfeio_service_code_aluguel')) {
+                return 'tenant.nfeio_service_code_aluguel';
+            }
+
+            if ($tenant?->getIntegrationValue('nfeio_service_code_locatario')) {
+                return 'tenant.nfeio_service_code_locatario';
+            }
+
+            if ($tenant?->getIntegrationValue('nfeio_service_code')) {
+                return 'tenant.nfeio_service_code';
+            }
+
+            if (env('NFE_IO_SERVICE_CODE_ALUGUEL')) {
+                return 'env.NFE_IO_SERVICE_CODE_ALUGUEL';
+            }
+
+            if (env('NFE_IO_SERVICE_CODE_LOCATARIO')) {
+                return 'env.NFE_IO_SERVICE_CODE_LOCATARIO';
+            }
+
+            return 'env.NFE_IO_SERVICE_CODE';
+        }
+
+        if ($tenant?->getIntegrationValue('nfeio_service_code_corretagem')) {
+            return 'tenant.nfeio_service_code_corretagem';
+        }
+
+        if ($tenant?->getIntegrationValue('nfeio_service_code_proprietario')) {
+            return 'tenant.nfeio_service_code_proprietario';
+        }
+
+        if ($tenant?->getIntegrationValue('nfeio_service_code')) {
+            return 'tenant.nfeio_service_code';
+        }
+
+        if (env('NFE_IO_SERVICE_CODE_CORRETAGEM')) {
+            return 'env.NFE_IO_SERVICE_CODE_CORRETAGEM';
+        }
+
+        if (env('NFE_IO_SERVICE_CODE_PROPRIETARIO')) {
+            return 'env.NFE_IO_SERVICE_CODE_PROPRIETARIO';
+        }
+
+        return 'env.NFE_IO_SERVICE_CODE';
+    }
+
+    private function resolverCodigoServicoDocumentoFiscal(DocumentoFiscal $documento): ?string
+    {
+        $codigo = data_get($documento->payload, 'nfe_payload.cityServiceCode')
+            ?: $documento->city_service_code
+            ?: data_get($documento->retorno, 'cityServiceCode');
+
+        if (is_scalar($codigo) && trim((string) $codigo) !== '') {
+            return trim((string) $codigo);
+        }
+
+        return $this->resolverCityServiceCodeManual($documento->tenant_id, $documento->contexto_emissao);
+    }
+
+    private function resolverFonteCodigoServicoDocumentoFiscal(DocumentoFiscal $documento): string
+    {
+        if (data_get($documento->payload, 'nfe_payload.cityServiceCode')) {
+            return 'payload_emitido';
+        }
+
+        if ($documento->city_service_code) {
+            return 'documento.city_service_code';
+        }
+
+        $tenant = Tenant::find($documento->tenant_id);
+        $contexto = strtolower((string) $documento->contexto_emissao);
+
+        if ($contexto === 'proprietario') {
+            if ($tenant?->getIntegrationValue('nfeio_service_code_proprietario')) {
+                return 'tenant.nfeio_service_code_proprietario';
+            }
+
+            if ($tenant?->getIntegrationValue('nfeio_service_code_corretagem')) {
+                return 'tenant.nfeio_service_code_corretagem';
+            }
+
+            if ($tenant?->getIntegrationValue('nfeio_service_code')) {
+                return 'tenant.nfeio_service_code';
+            }
+
+            if (env('NFE_IO_SERVICE_CODE_PROPRIETARIO')) {
+                return 'env.NFE_IO_SERVICE_CODE_PROPRIETARIO';
+            }
+
+            if (env('NFE_IO_SERVICE_CODE_CORRETAGEM')) {
+                return 'env.NFE_IO_SERVICE_CODE_CORRETAGEM';
+            }
+
+            return 'env.NFE_IO_SERVICE_CODE';
+        }
+
+        if ($contexto === 'locatario') {
+            if ($tenant?->getIntegrationValue('nfeio_service_code_locatario')) {
+                return 'tenant.nfeio_service_code_locatario';
+            }
+
+            if ($tenant?->getIntegrationValue('nfeio_service_code_aluguel')) {
+                return 'tenant.nfeio_service_code_aluguel';
+            }
+
+            if ($tenant?->getIntegrationValue('nfeio_service_code')) {
+                return 'tenant.nfeio_service_code';
+            }
+
+            if (env('NFE_IO_SERVICE_CODE_LOCATARIO')) {
+                return 'env.NFE_IO_SERVICE_CODE_LOCATARIO';
+            }
+
+            if (env('NFE_IO_SERVICE_CODE_ALUGUEL')) {
+                return 'env.NFE_IO_SERVICE_CODE_ALUGUEL';
+            }
+
+            return 'env.NFE_IO_SERVICE_CODE';
+        }
+
+        if ($tenant?->getIntegrationValue('nfeio_service_code_construtora')) {
+            return 'tenant.nfeio_service_code_construtora';
+        }
+
+        if ($tenant?->getIntegrationValue('nfeio_service_code')) {
+            return 'tenant.nfeio_service_code';
+        }
+
+        if (env('NFE_IO_SERVICE_CODE_CONSTRUTORA')) {
+            return 'env.NFE_IO_SERVICE_CODE_CONSTRUTORA';
+        }
+
+        return 'env.NFE_IO_SERVICE_CODE';
     }
 
     private function resolverNumeroNfse(mixed $numeroRecebido, mixed $numeroAtual): ?string
