@@ -10,6 +10,8 @@ use RuntimeException;
 
 class NfseService
 {
+    private const NFSE_FILE_REDIRECT_STATUSES = [301, 302, 303, 307, 308];
+
     private function getTenantNfeConfig(int $tenantId): array
     {
         $tenant = Tenant::find($tenantId);
@@ -77,16 +79,27 @@ class NfseService
             throw new RuntimeException($message);
         }
 
+        $integracaoId = data_get($body, 'id') ?? data_get($body, 'nfse.id') ?? Str::uuid()->toString();
+        $status = data_get($body, 'status') ?? data_get($body, 'financeiro.status');
+        ['pdf_url' => $pdfUrl, 'xml_url' => $xmlUrl] = $this->resolverDocumentoUrls(
+            $baseUrl,
+            $apiKey,
+            $companyId,
+            $integracaoId,
+            $status,
+            $body
+        );
+
         return [
             'numero' => data_get($body, 'number') ?? data_get($body, 'nfse.numero'),
             'codigo_verificacao' => data_get($body, 'checkCode') ?? data_get($body, 'nfse.codigo_verificacao'),
             'rps' => data_get($body, 'rpsNumber') ?? data_get($body, 'nfse.rps'),
-            'pdf_url' => data_get($body, 'pdfUrl') ?? data_get($body, 'links.pdf'),
-            'xml_url' => data_get($body, 'xmlUrl') ?? data_get($body, 'links.xml'),
-            'integracao_id' => data_get($body, 'id') ?? data_get($body, 'nfse.id') ?? Str::uuid()->toString(),
+            'pdf_url' => $pdfUrl,
+            'xml_url' => $xmlUrl,
+            'integracao_id' => $integracaoId,
             'raw_response' => $body,
             'payload' => $payload,
-            'status' => data_get($body, 'status') ?? data_get($body, 'financeiro.status'),
+            'status' => $status,
         ];
     }
 
@@ -134,16 +147,103 @@ class NfseService
             throw new RuntimeException($message);
         }
 
+        $resolvedIntegracaoId = data_get($body, 'id') ?? $integracaoId;
+        $status = data_get($body, 'status') ?? data_get($body, 'financeiro.status');
+        ['pdf_url' => $pdfUrl, 'xml_url' => $xmlUrl] = $this->resolverDocumentoUrls(
+            $baseUrl,
+            $apiKey,
+            $companyId,
+            $resolvedIntegracaoId,
+            $status,
+            $body
+        );
+
         return [
             'numero' => data_get($body, 'number') ?? data_get($body, 'nfse.numero'),
             'codigo_verificacao' => data_get($body, 'checkCode') ?? data_get($body, 'nfse.codigo_verificacao'),
             'rps' => data_get($body, 'rpsNumber') ?? data_get($body, 'nfse.rps'),
-            'pdf_url' => data_get($body, 'pdfUrl') ?? data_get($body, 'links.pdf'),
-            'xml_url' => data_get($body, 'xmlUrl') ?? data_get($body, 'links.xml'),
-            'integracao_id' => data_get($body, 'id') ?? $integracaoId,
+            'pdf_url' => $pdfUrl,
+            'xml_url' => $xmlUrl,
+            'integracao_id' => $resolvedIntegracaoId,
             'raw_response' => $body,
-            'status' => data_get($body, 'status') ?? data_get($body, 'financeiro.status'),
+            'status' => $status,
         ];
+    }
+
+    private function resolverDocumentoUrls(
+        string $baseUrl,
+        string $apiKey,
+        string $companyId,
+        ?string $integracaoId,
+        mixed $status,
+        array $body
+    ): array {
+        $pdfUrl = data_get($body, 'pdfUrl')
+            ?? data_get($body, 'links.pdf')
+            ?? data_get($body, 'pdf.url')
+            ?? data_get($body, 'pdf.downloadUrl');
+        $xmlUrl = data_get($body, 'xmlUrl')
+            ?? data_get($body, 'links.xml')
+            ?? data_get($body, 'xml.url')
+            ?? data_get($body, 'xml.downloadUrl');
+
+        $statusNormalizado = strtolower(trim((string) $status));
+        $podeResolverArquivos = $integracaoId
+            && in_array($statusNormalizado, ['issued', 'authorized'], true);
+
+        if (!$podeResolverArquivos) {
+            return [
+                'pdf_url' => $pdfUrl,
+                'xml_url' => $xmlUrl,
+            ];
+        }
+
+        return [
+            'pdf_url' => $pdfUrl ?: $this->resolverArquivoNfse($baseUrl, $apiKey, $companyId, $integracaoId, 'pdf'),
+            'xml_url' => $xmlUrl ?: $this->resolverArquivoNfse($baseUrl, $apiKey, $companyId, $integracaoId, 'xml'),
+        ];
+    }
+
+    private function resolverArquivoNfse(
+        string $baseUrl,
+        string $apiKey,
+        string $companyId,
+        string $integracaoId,
+        string $tipoArquivo
+    ): ?string {
+        $endpoint = rtrim($baseUrl, '/') . '/v1/companies/' . $companyId . '/serviceinvoices/' . $integracaoId . '/' . $tipoArquivo;
+
+        try {
+            $response = Http::withHeaders([
+                'X-NFE-APIKEY' => $apiKey,
+                'Authorization' => $apiKey,
+                'Accept' => '*/*',
+            ])->withOptions([
+                'allow_redirects' => false,
+            ])->timeout(30)->get($endpoint);
+
+            if (in_array($response->status(), self::NFSE_FILE_REDIRECT_STATUSES, true)) {
+                return $response->header('Location');
+            }
+
+            if ($response->successful()) {
+                return $endpoint;
+            }
+
+            Log::warning('NFe.io não retornou URL assinada para arquivo da NFSe', [
+                'endpoint' => $endpoint,
+                'status' => $response->status(),
+                'tipo_arquivo' => $tipoArquivo,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Falha ao resolver arquivo da NFSe na NFe.io', [
+                'endpoint' => $endpoint,
+                'tipo_arquivo' => $tipoArquivo,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
     }
 
     public function limparPayload(array $payload): array
