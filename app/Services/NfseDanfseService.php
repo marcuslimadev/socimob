@@ -456,8 +456,8 @@ class NfseDanfseService
             data_get($retorno, 'serviceCity'),
             data_get($retorno, 'serviceCity.name'),
             data_get($nfePayload, 'serviceCity.name'),
-            $property ? trim(implode(' - ', array_filter([$property->cidade, $property->estado]))) : null,
             $emitenteEndereco['city_line'] ?? null,
+            $property ? trim(implode(' - ', array_filter([$property->cidade, $property->estado]))) : null,
         );
     }
 
