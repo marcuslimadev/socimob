@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, Link } from 'wouter';
 import {
   BarChart3,
@@ -107,7 +107,12 @@ const isTransientNetworkError = (error: unknown) => {
   const maybeError = error as { code?: string; message?: string };
   const message = maybeError.message?.toLowerCase() || '';
 
-  return maybeError.code === 'ERR_NETWORK' || message.includes('network changed');
+  return (
+    maybeError.code === 'ERR_NETWORK' ||
+    message.includes('network changed') ||
+    message.includes('connection closed') ||
+    message.includes('socket hang up')
+  );
 };
 
 const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
@@ -119,6 +124,9 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [leadsCount, setLeadsCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const { theme, toggleTheme } = useTheme();
+  const badgePollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const badgePollingInFlightRef = useRef(false);
+  const badgePollingFailureCountRef = useRef(0);
 
   const actualIsOpen = onClose ? isOpen : internalIsOpen;
 
@@ -179,44 +187,74 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   }, []);
 
   useEffect(() => {
+    const clearBadgePollingTimer = () => {
+      if (badgePollingTimeoutRef.current) {
+        clearTimeout(badgePollingTimeoutRef.current);
+        badgePollingTimeoutRef.current = null;
+      }
+    };
+
+    const scheduleNextBadgePoll = (delayMs: number) => {
+      clearBadgePollingTimer();
+      badgePollingTimeoutRef.current = setTimeout(() => {
+        void loadBadgeCounts();
+      }, delayMs);
+    };
+
     const loadBadgeCounts = async () => {
+      if (badgePollingInFlightRef.current) {
+        return;
+      }
+
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        scheduleNextBadgePoll(120000);
         return;
       }
 
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        scheduleNextBadgePoll(120000);
         return;
       }
 
+      badgePollingInFlightRef.current = true;
+
       try {
-        const [notifResult, leadsResult, messagesResult] = await Promise.allSettled([
-          api.get('/notifications/unread-count'),
-          api.get('/leads/stats'),
-          api.get('/admin/conversas/fila/estatisticas'),
-        ]);
-
-        if (notifResult.status === 'fulfilled' && notifResult.value.data?.unread_count !== undefined) {
-          setNotificationCount(notifResult.value.data.unread_count);
+        const notifResult = await api.get('/notifications/unread-count');
+        if (notifResult.data?.unread_count !== undefined) {
+          setNotificationCount(notifResult.data.unread_count);
         }
 
-        if (leadsResult.status === 'fulfilled' && leadsResult.value.data?.success && leadsResult.value.data?.data?.novos !== undefined) {
-          setLeadsCount(leadsResult.value.data.data.novos);
+        const leadsResult = await api.get('/leads/stats');
+        if (leadsResult.data?.success && leadsResult.data?.data?.novos !== undefined) {
+          setLeadsCount(leadsResult.data.data.novos);
         }
 
-        if (messagesResult.status === 'fulfilled' && messagesResult.value.data?.success && messagesResult.value.data?.data?.aguardando !== undefined) {
-          setUnreadMessagesCount(messagesResult.value.data.data.aguardando);
+        const messagesResult = await api.get('/admin/conversas/fila/estatisticas');
+        if (messagesResult.data?.success && messagesResult.data?.data?.aguardando !== undefined) {
+          setUnreadMessagesCount(messagesResult.data.data.aguardando);
         }
+
+        badgePollingFailureCountRef.current = 0;
+        scheduleNextBadgePoll(60000);
       } catch (error) {
-        if (!isTransientNetworkError(error)) {
-          // Silently handle non-transient polling failures.
+        const failureCount = badgePollingFailureCountRef.current + 1;
+        badgePollingFailureCountRef.current = failureCount;
+
+        if (isTransientNetworkError(error)) {
+          const delayMs = Math.min(60000 * Math.max(failureCount, 1), 5 * 60 * 1000);
+          scheduleNextBadgePoll(delayMs);
+        } else {
+          scheduleNextBadgePoll(120000);
         }
+      } finally {
+        badgePollingInFlightRef.current = false;
       }
     };
 
-    loadBadgeCounts();
-    const interval = setInterval(loadBadgeCounts, 30000);
+    void loadBadgeCounts();
 
     const handleOnline = () => {
+      badgePollingFailureCountRef.current = 0;
       void loadBadgeCounts();
     };
 
@@ -230,7 +268,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      clearInterval(interval);
+      clearBadgePollingTimer();
       window.removeEventListener('online', handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
