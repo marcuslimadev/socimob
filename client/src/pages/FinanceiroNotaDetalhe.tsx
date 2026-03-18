@@ -84,6 +84,7 @@ export default function FinanceiroNotaDetalhe() {
   const [item, setItem] = useState<FinanceiroItemDetalhe | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const danfseUrl = item ? `/api/admin/financeiro/notas-servico/${item.registro_tipo}/${item.id}/danfse` : null;
 
   useEffect(() => {
     const loadItem = async () => {
@@ -298,6 +299,17 @@ export default function FinanceiroNotaDetalhe() {
                 </div>
 
                 <div className="flex flex-wrap gap-3">
+                  {danfseUrl && (
+                    <a
+                      href={danfseUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20"
+                    >
+                      <FileText size={16} />
+                      Abrir DANFSe espelhado
+                    </a>
+                  )}
                   {item.nfse.pdf_url && (
                     <a
                       href={item.nfse.pdf_url}
@@ -306,7 +318,7 @@ export default function FinanceiroNotaDetalhe() {
                       className="inline-flex items-center gap-2 rounded-lg border border-blue-400/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/20"
                     >
                       <FileText size={16} />
-                      Abrir PDF da NFSe
+                      Abrir PDF original da NFSe
                     </a>
                   )}
                   {item.nfse.xml_url && (

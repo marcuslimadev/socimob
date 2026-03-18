@@ -10,6 +10,7 @@ use App\Models\Pessoa;
 use App\Models\Property;
 use App\Models\User;
 use App\Services\FinancialIntegrationService;
+use App\Services\NfseDanfseService;
 use App\Services\NfseCommissionService;
 use App\Services\NfseService;
 use Carbon\Carbon;
@@ -22,7 +23,8 @@ class FinanceiroController extends Controller
     public function __construct(
         private readonly NfseCommissionService $nfseCommissionService,
         private readonly FinancialIntegrationService $financialIntegrationService,
-        private readonly NfseService $nfseService
+        private readonly NfseService $nfseService,
+        private readonly NfseDanfseService $nfseDanfseService
     ) {
     }
 
@@ -115,6 +117,52 @@ class FinanceiroController extends Controller
             return response()->json([
                 'success' => true,
                 'item' => $this->mapDocumentoFiscal($documento),
+            ]);
+        }
+
+        return response()->json(['message' => 'Tipo de nota fiscal inválido'], 404);
+    }
+
+    public function downloadDanfse(Request $request, string $registroTipo, int $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($registroTipo === 'commission_invoice') {
+            $invoice = CommissionInvoice::with(['corretor:id,name,email', 'property'])
+                ->where('tenant_id', $user->tenant_id)
+                ->find($id);
+
+            if (!$invoice) {
+                return response()->json(['message' => 'Nota fiscal não encontrada'], 404);
+            }
+
+            $pdf = $this->nfseDanfseService->gerarParaCommissionInvoice($invoice);
+            $filename = 'danfse-comissao-' . ($invoice->nfse_numero ?: $invoice->id) . '.pdf';
+
+            return response($pdf->output(), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            ]);
+        }
+
+        if ($registroTipo === 'documento_fiscal') {
+            $documento = DocumentoFiscal::with(['tomador:id,nome,razao_social,tipo,cpf,cnpj,email,telefone,celular,cep,estado,cidade,bairro,endereco,numero,complemento,inscricao_municipal'])
+                ->where('tenant_id', $user->tenant_id)
+                ->find($id);
+
+            if (!$documento) {
+                return response()->json(['message' => 'Nota fiscal não encontrada'], 404);
+            }
+
+            $pdf = $this->nfseDanfseService->gerarParaDocumentoFiscal($documento);
+            $filename = 'danfse-manual-' . ($documento->numero ?: $documento->id) . '.pdf';
+
+            return response($pdf->output(), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $filename . '"',
             ]);
         }
 

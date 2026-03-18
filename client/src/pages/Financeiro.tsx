@@ -869,6 +869,14 @@ export default function Financeiro() {
                       >
                         Verificar nota
                       </a>
+                      <a
+                        href={`/api/admin/financeiro/notas-servico/${item.registro_tipo}/${item.id}/danfse`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-emerald-300 hover:text-emerald-200"
+                      >
+                        Abrir DANFSe
+                      </a>
                       {item.nfse.pdf_url && (
                         <a
                           href={item.nfse.pdf_url}
@@ -876,7 +884,7 @@ export default function Financeiro() {
                           rel="noreferrer"
                           className="text-xs text-blue-300 hover:text-blue-200"
                         >
-                          Baixar NFSe (PDF)
+                          PDF original
                         </a>
                       )}
                       {item.nfse.xml_url && (
