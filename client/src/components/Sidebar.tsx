@@ -85,6 +85,21 @@ const getSectionBadge = (section: SidebarSection) => {
   return total || undefined;
 };
 
+const isPrimaryTabActive = (
+  tab: SidebarItem,
+  sections: SidebarSection[],
+  currentSection: SidebarSection | null,
+  settingsActive: boolean,
+) => {
+  const matchedSection = sections.find((section) => section.href === tab.href);
+
+  if (matchedSection) {
+    return currentSection?.href === tab.href || currentSection?.id === matchedSection.id;
+  }
+
+  return settingsActive;
+};
+
 const isTransientNetworkError = (error: unknown) => {
   if (!error || typeof error !== 'object') {
     return false;
@@ -527,22 +542,22 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       )}
 
       <div className="fixed inset-x-0 top-0 z-40 border-b border-white/8 bg-[#050814] shadow-[0_18px_40px_rgba(2,6,23,0.42)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 md:px-8">
-          <div className="flex min-w-0 items-center gap-3">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 py-2.5 md:px-8 md:py-2">
+          <div className="flex min-w-0 items-center gap-2.5">
             {tenant?.logo_url || tenant?.logo ? (
               <img
                 src={tenant.logo_url || tenant.logo}
                 alt={tenant.name}
-                className="h-10 w-10 rounded-xl bg-white/5 object-contain p-1.5"
+                className="h-9 w-9 rounded-xl bg-white/5 object-contain p-1.5"
               />
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/8 text-white">
-                <Building2 size={20} />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/8 text-white">
+                <Building2 size={18} />
               </div>
             )}
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{tenant?.name || 'SOCIMOB'}</p>
-              <p className="truncate text-[11px] uppercase tracking-[0.18em] text-slate-400">
+              <p className="truncate text-[13px] font-semibold leading-tight text-white">{tenant?.name || 'SOCIMOB'}</p>
+              <p className="truncate text-[10px] uppercase tracking-[0.16em] text-slate-400">
                 {currentSection?.label || 'Navegação'}
               </p>
             </div>
@@ -552,16 +567,16 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             {user?.role === 'super_admin' && <div className="w-[220px]"><TenantSelector isSuperAdmin={true} /></div>}
             <button
               onClick={toggleTheme}
-              className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200 hover:bg-white/[0.08]"
+              className="flex h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200 hover:bg-white/[0.08]"
             >
-              {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+              {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
               <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
             </button>
             <button
               onClick={handleLogout}
-              className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200 hover:bg-white/[0.08]"
+              className="flex h-9 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200 hover:bg-white/[0.08]"
             >
-              <LogOut size={16} />
+              <LogOut size={15} />
               <span>Sair</span>
             </button>
           </div>
@@ -570,21 +585,20 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         <div className="mx-auto max-w-[1600px] px-4 md:px-8">
           <div className="hidden gap-2 overflow-x-auto pb-0 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent md:flex">
             {primaryTabs.map((tab) => {
-              const isActive = sections.some((section) => section.href === tab.href)
-                ? currentSection?.href === tab.href || currentSection?.id === sections.find((section) => section.href === tab.href)?.id
-                : settingsActive;
+              const isActive = isPrimaryTabActive(tab, sections, currentSection, settingsActive);
 
               return (
                 <Link key={tab.href} to={tab.href}>
                   <div
-                    className={`flex items-center gap-2 whitespace-nowrap rounded-t-[18px] rounded-b-[10px] border border-b-0 px-4 py-3 text-sm transition-colors ${
+                    className={`relative flex items-center gap-2 whitespace-nowrap rounded-t-[18px] rounded-b-[10px] border border-b-0 px-4 py-2.5 text-sm transition-all duration-200 ${
                       isActive
-                        ? 'border-white/18 bg-white text-slate-950 shadow-[0_12px_32px_rgba(255,255,255,0.16)]'
+                        ? 'border-sky-200/70 bg-white text-slate-950 shadow-[0_14px_30px_rgba(255,255,255,0.2)] ring-1 ring-sky-300/35'
                         : 'border-white/8 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'
                     }`}
                   >
+                    {isActive ? <span className="absolute inset-x-3 top-0 h-[3px] rounded-full bg-gradient-to-r from-sky-400 via-cyan-300 to-emerald-300" /> : null}
                     <div className="shrink-0">{tab.icon}</div>
-                    <span className="font-medium">{tab.label}</span>
+                    <span className={`font-semibold ${isActive ? 'tracking-[0.01em]' : ''}`}>{tab.label}</span>
                     {tab.badge ? (
                       <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-slate-950/10 text-slate-950' : 'bg-white/10 text-white'}`}>
                         {tab.badge}
@@ -597,14 +611,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           </div>
 
           {secondaryTabs.length > 0 && (
-            <div className="hidden items-center gap-2 border-t border-white/8 py-3 md:flex">
+            <div className="hidden items-center gap-2 border-t border-white/8 py-2.5 md:flex">
               {secondaryTabs.map((item) => {
                 const isActive = isRouteMatch(location, item.href);
 
                 return (
                   <Link key={item.href} to={item.href}>
                     <div
-                      className={`flex items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm transition-colors ${
+                      className={`flex items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-1.5 text-sm transition-colors ${
                         isActive
                           ? 'border-sky-400/30 bg-sky-400/14 text-white'
                           : 'border-white/8 bg-white/[0.03] text-slate-300 hover:bg-white/[0.08] hover:text-white'
@@ -620,56 +634,95 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             </div>
           )}
 
-          <div className="md:hidden pb-3">
-            {actualIsOpen && (
-              <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                <div className="grid gap-2">
-                  {primaryTabs.map((tab) => {
-                    const isActive = sections.some((section) => section.href === tab.href)
-                      ? currentSection?.href === tab.href || currentSection?.id === sections.find((section) => section.href === tab.href)?.id
-                      : settingsActive;
+          <div className="md:hidden pb-2.5">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+              {primaryTabs.map((tab) => {
+                const isActive = isPrimaryTabActive(tab, sections, currentSection, settingsActive);
 
-                    return (
-                      <Link key={tab.href} to={tab.href}>
-                        <div
-                          onClick={handleClose}
-                          className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm ${
-                            isActive
-                              ? 'border-white/18 bg-white text-slate-950'
-                              : 'border-white/8 bg-white/[0.04] text-slate-200'
-                          }`}
-                        >
-                          <div className="shrink-0">{tab.icon}</div>
-                          <span className="font-medium">{tab.label}</span>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                return (
+                  <Link key={tab.href} to={tab.href}>
+                    <div
+                      className={`relative flex min-h-[42px] items-center gap-2 whitespace-nowrap rounded-2xl border px-3 py-2 text-sm transition-all duration-200 ${
+                        isActive
+                          ? 'border-sky-300/55 bg-white text-slate-950 shadow-[0_12px_24px_rgba(255,255,255,0.16)]'
+                          : 'border-white/8 bg-white/[0.05] text-slate-200'
+                      }`}
+                    >
+                      {isActive ? <span className="absolute inset-x-3 top-0 h-[3px] rounded-full bg-gradient-to-r from-sky-400 via-cyan-300 to-emerald-300" /> : null}
+                      <div className="shrink-0">{tab.icon}</div>
+                      <span className="font-semibold">{tab.label}</span>
+                      {tab.badge ? (
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-slate-950/10 text-slate-950' : 'bg-white/10 text-white'}`}>
+                          {tab.badge}
+                        </span>
+                      ) : null}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {secondaryTabs.length > 0 && (
+              <div className="-mx-1 flex gap-2 overflow-x-auto border-t border-white/8 px-1 pt-2 pb-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                {secondaryTabs.map((item) => {
+                  const isActive = isRouteMatch(location, item.href);
+
+                  return (
+                    <Link key={item.href} to={item.href}>
+                      <div
+                        className={`flex min-h-[40px] items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm ${
+                          isActive
+                            ? 'border-sky-400/30 bg-sky-400/14 text-white'
+                            : 'border-white/8 bg-white/[0.03] text-slate-200'
+                        }`}
+                      >
+                        <div className="shrink-0">{item.icon}</div>
+                        <span className="font-medium">{item.label}</span>
+                        {item.badge ? <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-white">{item.badge}</span> : null}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+
+            {actualIsOpen && (
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.05] p-3 shadow-[0_18px_40px_rgba(2,6,23,0.3)]">
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-white/8 bg-black/10 px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Sessão atual</p>
+                    <p className="truncate text-sm font-semibold text-white">{currentSection?.label || 'Navegação'}</p>
+                  </div>
+                  <button
+                    onClick={handleClose}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-200"
+                    aria-label="Fechar navegação"
+                  >
+                    <X size={18} />
+                  </button>
                 </div>
 
-                {secondaryTabs.length > 0 && (
-                  <div className="grid gap-2 border-t border-white/8 pt-3">
-                    {secondaryTabs.map((item) => {
-                      const isActive = isRouteMatch(location, item.href);
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      toggleTheme();
+                      handleClose();
+                    }}
+                    className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200"
+                  >
+                    {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
+                    <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-slate-200"
+                  >
+                    <LogOut size={15} />
+                    <span>Sair</span>
+                  </button>
+                </div>
 
-                      return (
-                        <Link key={item.href} to={item.href}>
-                          <div
-                            onClick={handleClose}
-                            className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm ${
-                              isActive
-                                ? 'border-sky-400/30 bg-sky-400/14 text-white'
-                                : 'border-white/8 bg-white/[0.03] text-slate-200'
-                            }`}
-                          >
-                            <div className="shrink-0">{item.icon}</div>
-                            <span className="font-medium">{item.label}</span>
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
+                {user?.role === 'super_admin' && <div className="rounded-xl border border-white/8 bg-black/10 p-2"><TenantSelector isSuperAdmin={true} /></div>}
               </div>
             )}
           </div>
