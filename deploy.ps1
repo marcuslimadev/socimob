@@ -146,8 +146,14 @@ bash -lc '
 set -euo pipefail
 cd "$DEPLOY_PATH"
 
-printf "%s\n" "=== GIT PULL ==="
-git pull origin master
+printf "%s\n" "=== PREPARAR WORKTREE ==="
+rm -f .htaccess index.html favicon.ico manifest.webmanifest sw.js workbox-*.js
+rm -rf assets __manus__
+
+printf "\n"
+printf "%s\n" "=== SINCRONIZAR REPOSITORIO ==="
+git fetch origin master
+git reset --hard origin/master
 
 printf "\n"
 printf "%s\n" "=== COPIAR BUILD ==="
