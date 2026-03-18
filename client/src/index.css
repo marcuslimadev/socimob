@@ -203,7 +203,7 @@
   }
 
   body[data-section-tabs='active'] .page-shell {
-    @apply pt-36 md:pt-28;
+    @apply pt-44 md:pt-36;
   }
 
   body[data-sidebar="collapsed"] .page-shell {
@@ -216,12 +216,12 @@
   }
 
   body[data-section-tabs='active'] .md\:ml-80 {
-    padding-top: 5.5rem;
+    padding-top: 7rem;
   }
 
   @media (min-width: 768px) {
     body[data-section-tabs='active'] .md\:ml-80 {
-      padding-top: 5rem;
+      padding-top: 6.5rem;
     }
   }
 

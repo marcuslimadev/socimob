@@ -85,6 +85,17 @@ const getSectionBadge = (section: SidebarSection) => {
   return total || undefined;
 };
 
+const isTransientNetworkError = (error: unknown) => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeError = error as { code?: string; message?: string };
+  const message = maybeError.message?.toLowerCase() || '';
+
+  return maybeError.code === 'ERR_NETWORK' || message.includes('network changed');
+};
+
 const SidebarLink = ({
   item,
   active,
@@ -152,24 +163,27 @@ const SectionTabsDock = ({
   return (
     <>
       <div
-        className="hidden md:block fixed top-4 right-6 z-30"
+        className="hidden md:block fixed top-0 right-0 z-30 border-b border-white/8 bg-[#050814]/96 backdrop-blur-xl shadow-[0_18px_40px_rgba(2,6,23,0.42)]"
         style={{ left: `${desktopLeft}px` }}
       >
-        <div className="rounded-[28px] border border-white/10 bg-slate-950/72 backdrop-blur-xl shadow-[0_24px_80px_rgba(15,23,42,0.38)] px-3 py-3">
-          <div className="flex items-center gap-3 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 pl-2 whitespace-nowrap">
+        <div className="px-6 pt-4 pb-0">
+          <div className="mb-2 flex items-center gap-3 px-1">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 whitespace-nowrap">
               {section.label}
             </span>
+            <div className="h-px flex-1 bg-white/8" />
+          </div>
+          <div className="flex items-end gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             {section.items.map((item) => {
               const isActive = isRouteMatch(location, item.href);
 
               return (
                 <Link key={item.href} to={item.href}>
                   <div
-                    className={`flex items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-2 text-sm transition-all duration-200 ${
+                    className={`relative flex items-center gap-2 whitespace-nowrap rounded-t-[18px] rounded-b-[10px] border border-b-0 px-4 py-3 text-sm transition-all duration-200 ${
                       isActive
-                        ? 'bg-white text-slate-950 shadow-[0_12px_30px_rgba(255,255,255,0.22)]'
-                        : 'text-slate-300 hover:bg-white/8 hover:text-white'
+                        ? 'border-white/20 bg-white text-slate-950 shadow-[0_12px_32px_rgba(255,255,255,0.18)]'
+                        : 'border-white/8 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'
                     }`}
                   >
                     <div className="shrink-0">{item.icon}</div>
@@ -187,19 +201,24 @@ const SectionTabsDock = ({
         </div>
       </div>
 
-      <div className="md:hidden fixed top-[4.5rem] left-4 right-4 z-30">
-        <div className="rounded-[24px] border border-white/10 bg-slate-950/78 backdrop-blur-xl shadow-[0_20px_60px_rgba(15,23,42,0.34)] px-2 py-2">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      <div className="md:hidden fixed top-[4.25rem] left-0 right-0 z-30 border-b border-white/8 bg-[#050814]/96 px-4 pb-0 pt-3 backdrop-blur-xl shadow-[0_16px_36px_rgba(2,6,23,0.34)]">
+        <div className="mb-2 flex items-center gap-2 px-1">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400 whitespace-nowrap">
+            {section.label}
+          </span>
+          <div className="h-px flex-1 bg-white/8" />
+        </div>
+        <div className="flex items-end gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             {section.items.map((item) => {
               const isActive = isRouteMatch(location, item.href);
 
               return (
                 <Link key={item.href} to={item.href}>
                   <div
-                    className={`flex items-center gap-2 whitespace-nowrap rounded-2xl px-3 py-2 text-sm transition-all duration-200 ${
+                    className={`flex items-center gap-2 whitespace-nowrap rounded-t-[16px] rounded-b-[10px] border border-b-0 px-3 py-2.5 text-sm transition-all duration-200 ${
                       isActive
-                        ? 'bg-white text-slate-950'
-                        : 'text-slate-300 hover:bg-white/8 hover:text-white'
+                        ? 'border-white/20 bg-white text-slate-950'
+                        : 'border-white/8 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] hover:text-white'
                     }`}
                   >
                     <div className="shrink-0">{item.icon}</div>
@@ -208,7 +227,6 @@ const SectionTabsDock = ({
                 </Link>
               );
             })}
-          </div>
         </div>
       </div>
     </>
@@ -282,29 +300,63 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
   useEffect(() => {
     const loadBadgeCounts = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return;
+      }
+
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
       try {
-        const notifResponse = await api.get('/notifications/unread-count');
-        if (notifResponse.data?.unread_count !== undefined) {
+        const [notifResult, leadsResult, messagesResult] = await Promise.allSettled([
+          api.get('/notifications/unread-count'),
+          api.get('/leads/stats'),
+          api.get('/admin/conversas/fila/estatisticas'),
+        ]);
+
+        if (notifResult.status === 'fulfilled' && notifResult.value.data?.unread_count !== undefined) {
+          const notifResponse = notifResult.value;
           setNotificationCount(notifResponse.data.unread_count);
         }
 
-        const leadsResponse = await api.get('/leads/stats');
-        if (leadsResponse.data?.success && leadsResponse.data?.data?.novos !== undefined) {
+        if (leadsResult.status === 'fulfilled' && leadsResult.value.data?.success && leadsResult.value.data?.data?.novos !== undefined) {
+          const leadsResponse = leadsResult.value;
           setLeadsCount(leadsResponse.data.data.novos);
         }
 
-        const messagesResponse = await api.get('/admin/conversas/fila/estatisticas');
-        if (messagesResponse.data?.success && messagesResponse.data?.data?.aguardando !== undefined) {
+        if (messagesResult.status === 'fulfilled' && messagesResult.value.data?.success && messagesResult.value.data?.data?.aguardando !== undefined) {
+          const messagesResponse = messagesResult.value;
           setUnreadMessagesCount(messagesResponse.data.data.aguardando);
         }
       } catch (error) {
-        // Silently handle error
+        if (!isTransientNetworkError(error)) {
+          // Silently handle non-transient errors to avoid noisy polling failures.
+        }
       }
     };
 
     loadBadgeCounts();
     const interval = setInterval(loadBadgeCounts, 30000);
-    return () => clearInterval(interval);
+
+    const handleOnline = () => {
+      void loadBadgeCounts();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadBadgeCounts();
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const sections: SidebarSection[] = [
