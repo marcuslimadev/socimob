@@ -8,6 +8,7 @@ use App\Models\DocumentoFiscal;
 use App\Models\Lead;
 use App\Models\Pessoa;
 use App\Models\Property;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Services\FinancialIntegrationService;
 use App\Services\NfseDanfseService;
@@ -419,6 +420,7 @@ class FinanceiroController extends Controller
                 $request->input('tomador', [])
             );
         $financeiroDados = $request->input('financeiro', []);
+        $cityServiceCode = $this->resolverCityServiceCodeManual($tenantId, $contextoEmissao);
 
         $documento = DocumentoFiscal::create([
             'tenant_id' => $tenantId,
@@ -434,6 +436,7 @@ class FinanceiroController extends Controller
             'status' => 'pending',
             'valor_servico' => $valor,
             'valor_impostos' => $valorImpostos,
+            'city_service_code' => $cityServiceCode,
             'payload' => [
                 'tomador' => $request->input('tomador'),
                 'financeiro' => $financeiroDados,
@@ -493,7 +496,7 @@ class FinanceiroController extends Controller
         $documentoTomador = $this->nfseService->somenteDigitos($tomador['documento'] ?? null);
 
         $payload = [
-            'cityServiceCode' => $documento->city_service_code ?: env('NFE_IO_SERVICE_CODE', '01.01'),
+            'cityServiceCode' => $documento->city_service_code ?: $this->resolverCityServiceCodeManual($documento->tenant_id, $documento->contexto_emissao),
             'description' => $descricao,
             'servicesAmount' => (float) $documento->valor_servico,
             'borrower' => [
@@ -510,6 +513,33 @@ class FinanceiroController extends Controller
         }
 
         return $this->nfseService->limparPayload($payload);
+    }
+
+    private function resolverCityServiceCodeManual(int $tenantId, ?string $contextoEmissao): string
+    {
+        $tenant = Tenant::find($tenantId);
+        $contexto = strtolower(trim((string) $contextoEmissao));
+
+        $keys = match ($contexto) {
+            'proprietario' => ['nfeio_service_code_proprietario', 'nfeio_service_code_corretagem', 'nfeio_service_code'],
+            'locatario' => ['nfeio_service_code_locatario', 'nfeio_service_code_aluguel', 'nfeio_service_code'],
+            'construtora' => ['nfeio_service_code_construtora', 'nfeio_service_code'],
+            default => ['nfeio_service_code'],
+        };
+
+        foreach ($keys as $key) {
+            $value = $tenant?->getIntegrationValue($key);
+            if (is_string($value) && trim($value) !== '') {
+                return trim($value);
+            }
+        }
+
+        return match ($contexto) {
+            'proprietario' => env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE', '004'))),
+            'locatario' => env('NFE_IO_SERVICE_CODE_LOCATARIO', env('NFE_IO_SERVICE_CODE_ALUGUEL', env('NFE_IO_SERVICE_CODE', '01.01'))),
+            'construtora' => env('NFE_IO_SERVICE_CODE_CONSTRUTORA', env('NFE_IO_SERVICE_CODE', '01.01')),
+            default => env('NFE_IO_SERVICE_CODE', '01.01'),
+        };
     }
 
     private function montarInformacoesDocumentoFiscal(DocumentoFiscal $documento, array $financeiro): string

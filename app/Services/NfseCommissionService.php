@@ -171,9 +171,10 @@ class NfseCommissionService
     private function montarPayload(CommissionInvoice $invoice, array $tomador, array $financeiro, ?Tenant $tenant): array
     {
         $documento = $this->somenteDigitos($tomador['documento'] ?? null);
+        $cityServiceCode = $this->resolverCityServiceCode($invoice, $tenant);
 
         $payload = [
-            'cityServiceCode' => $tenant?->getIntegrationValue('nfeio_service_code', env('NFE_IO_SERVICE_CODE', '01.01')),
+            'cityServiceCode' => $cityServiceCode,
             'description' => $invoice->descricao_servico,
             'servicesAmount' => (float) $invoice->valor_total,
             'borrower' => [
@@ -190,6 +191,28 @@ class NfseCommissionService
         }
 
         return $this->limparPayload($payload);
+    }
+
+    private function resolverCityServiceCode(CommissionInvoice $invoice, ?Tenant $tenant): string
+    {
+        $tipoNota = strtolower((string) data_get($invoice->financeiro_metadata, 'tipo_nota', 'corretagem'));
+
+        $keys = $tipoNota === 'aluguel'
+            ? ['nfeio_service_code_aluguel', 'nfeio_service_code_locatario', 'nfeio_service_code']
+            : ['nfeio_service_code_corretagem', 'nfeio_service_code_proprietario', 'nfeio_service_code'];
+
+        foreach ($keys as $key) {
+            $value = $tenant?->getIntegrationValue($key);
+            if (is_string($value) && trim($value) !== '') {
+                return trim($value);
+            }
+        }
+
+        if ($tipoNota === 'aluguel') {
+            return env('NFE_IO_SERVICE_CODE_ALUGUEL', env('NFE_IO_SERVICE_CODE_LOCATARIO', env('NFE_IO_SERVICE_CODE', '01.01')));
+        }
+
+        return env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE', '004')));
     }
 
     private function montarInformacoesAdicionais(CommissionInvoice $invoice, array $financeiro): string
