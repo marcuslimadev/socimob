@@ -451,18 +451,21 @@ class FinanceiroController extends Controller
                 'documento_fiscal_id' => $documento->id,
                 'contexto_emissao' => $contextoEmissao,
             ]);
+            $statusAtualizado = $this->normalizarStatusNfse($nfseData['status'] ?? null, 'pending');
 
             $documento->update([
-                'status' => 'issued',
-                'numero' => $nfseData['numero'] ?? null,
+                'status' => $statusAtualizado,
+                'numero' => $this->resolverNumeroNfse($nfseData['numero'] ?? null, null),
                 'codigo_verificacao' => $nfseData['codigo_verificacao'] ?? null,
-                'emitida_em' => now(),
+                'emitida_em' => $statusAtualizado === 'issued' ? now() : null,
                 'url_pdf' => $nfseData['pdf_url'] ?? null,
                 'url_xml' => $nfseData['xml_url'] ?? null,
                 'retorno' => $nfseData['raw_response'] ?? null,
                 'payload' => array_merge($documento->payload ?? [], [
                     'integracao_id' => $nfseData['integracao_id'] ?? null,
                     'nfe_payload' => $payload,
+                    'nfe_status' => $nfseData['status'] ?? null,
+                    'nfe_flow_status' => data_get($nfseData, 'raw_response.flowStatus'),
                 ]),
             ]);
         } catch (\Throwable $e) {
@@ -601,6 +604,16 @@ class FinanceiroController extends Controller
     private function mapCommissionInvoice(CommissionInvoice $invoice): array
     {
         $metadata = $invoice->financeiro_metadata ?? [];
+        $diagnosticos = $this->montarDiagnosticosNfse(
+            $invoice->retorno_integracao ?? [],
+            [
+                'nfe_payload' => [
+                    'cityServiceCode' => $this->resolverCodigoServicoCommissionInvoice($invoice),
+                ],
+            ],
+            'comissao',
+            (float) $invoice->aliquota_iss
+        );
 
         return [
             'id' => $invoice->id,
@@ -634,6 +647,12 @@ class FinanceiroController extends Controller
                 'rps' => $invoice->nfse_rps,
                 'emitida_em' => null,
                 'status_externo' => data_get($invoice->retorno_integracao, 'status'),
+                'flow_status' => $diagnosticos['flow_status'],
+                'iss_rate' => $diagnosticos['iss_rate'],
+                'iss_tax_amount' => $diagnosticos['iss_tax_amount'],
+                'provider_municipal_tax_number' => $diagnosticos['provider_municipal_tax_number'],
+                'national_tax_code' => $diagnosticos['national_tax_code'],
+                'warnings' => $diagnosticos['warnings'],
             ],
             'created_at' => $invoice->created_at?->toIso8601String(),
         ];
@@ -644,6 +663,12 @@ class FinanceiroController extends Controller
         $payload = $documento->payload ?? [];
         $tomador = $documento->tomador;
         $tomadorData = $payload['tomador'] ?? [];
+        $diagnosticos = $this->montarDiagnosticosNfse(
+            $documento->retorno ?? [],
+            $payload,
+            $documento->contexto_emissao,
+            (float) data_get($payload, 'aliquota_iss', 0)
+        );
 
         return [
             'id' => $documento->id,
@@ -684,9 +709,80 @@ class FinanceiroController extends Controller
                 'rps' => data_get($documento->retorno, 'rps') ?: data_get($documento->payload, 'rps'),
                 'emitida_em' => $documento->emitida_em?->toIso8601String(),
                 'status_externo' => data_get($payload, 'nfe_status'),
+                'flow_status' => $diagnosticos['flow_status'],
+                'iss_rate' => $diagnosticos['iss_rate'],
+                'iss_tax_amount' => $diagnosticos['iss_tax_amount'],
+                'provider_municipal_tax_number' => $diagnosticos['provider_municipal_tax_number'],
+                'national_tax_code' => $diagnosticos['national_tax_code'],
+                'warnings' => $diagnosticos['warnings'],
             ],
             'created_at' => $documento->created_at?->toIso8601String(),
         ];
+    }
+
+    private function montarDiagnosticosNfse(array $retorno, array $payload, ?string $contextoEmissao, float $aliquotaIss): array
+    {
+        $flowStatus = $this->normalizarTextoDiagnostico(data_get($retorno, 'flowStatus'));
+        $providerMunicipalTaxNumber = $this->normalizarTextoDiagnostico(
+            data_get($retorno, 'provider.municipalTaxNumber')
+                ?? data_get($retorno, 'seller.municipalTaxNumber')
+                ?? data_get($retorno, 'provider.taxNumber')
+        );
+        $issRate = is_numeric(data_get($retorno, 'issRate')) ? (float) data_get($retorno, 'issRate') : null;
+        $issTaxAmount = is_numeric(data_get($retorno, 'issTaxAmount')) ? (float) data_get($retorno, 'issTaxAmount') : null;
+        $nationalTaxCode = $this->normalizarTextoDiagnostico(data_get($retorno, 'nationalTaxCode'))
+            ?? $this->resolverCodigoTributacaoNacionalPadrao($contextoEmissao);
+
+        $warnings = [];
+
+        if (($flowStatus ? strtolower($flowStatus) : null) === 'waitingcalculatetaxes') {
+            $warnings[] = 'A NFE.io ainda nao concluiu o calculo dos tributos desta NFSe.';
+        }
+
+        if ($providerMunicipalTaxNumber === null) {
+            $warnings[] = 'A inscricao municipal do emitente nao retornou da NFE.io; revise o cadastro fiscal da empresa no provedor.';
+        }
+
+        if ($aliquotaIss > 0 && $issRate !== null && $issRate <= 0) {
+            $warnings[] = 'A aliquota de ISS informada no SOCIMOB e maior que zero, mas a NFE.io retornou ISS zerado.';
+        }
+
+        if ($nationalTaxCode === null && in_array($contextoEmissao, ['proprietario', 'comissao'], true)) {
+            $warnings[] = 'O codigo nacional do servico nao retornou da NFE.io para esta nota.';
+        }
+
+        $numeroRetornado = is_scalar(data_get($retorno, 'number')) ? trim((string) data_get($retorno, 'number')) : '';
+        if ($numeroRetornado === '0' || $numeroRetornado === '') {
+            $warnings[] = 'A NFSe ainda nao recebeu numeracao definitiva no retorno da NFE.io.';
+        }
+
+        return [
+            'flow_status' => $flowStatus,
+            'iss_rate' => $issRate,
+            'iss_tax_amount' => $issTaxAmount,
+            'provider_municipal_tax_number' => $providerMunicipalTaxNumber,
+            'national_tax_code' => $nationalTaxCode,
+            'warnings' => array_values(array_unique($warnings)),
+        ];
+    }
+
+    private function resolverCodigoTributacaoNacionalPadrao(?string $contextoEmissao): ?string
+    {
+        return match (strtolower(trim((string) $contextoEmissao))) {
+            'proprietario', 'comissao' => '10.05.01',
+            default => null,
+        };
+    }
+
+    private function normalizarTextoDiagnostico(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $text = trim((string) $value);
+
+        return $text !== '' ? $text : null;
     }
 
     private function gerarDescricaoNota(string $tipoNota, float $valor, ?Property $property): string

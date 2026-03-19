@@ -238,6 +238,9 @@
                 <td><span class="label">País da Prestação</span><span class="value">{{ $servico['pais_prestacao'] }}</span></td>
             </tr>
             <tr>
+                <td colspan="2"><span class="label">CNAE</span><span class="value">{{ $servico['cnae'] }}</span></td>
+            </tr>
+            <tr>
                 <td colspan="2"><span class="label">Descrição do Serviço</span><span class="value">{{ $servico['descricao'] }}</span></td>
             </tr>
         </table>

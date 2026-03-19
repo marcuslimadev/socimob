@@ -45,6 +45,12 @@ interface FinanceiroItemDetalhe {
     rps?: string | null;
     emitida_em?: string | null;
     status_externo?: string | null;
+    flow_status?: string | null;
+    iss_rate?: number | null;
+    iss_tax_amount?: number | null;
+    provider_municipal_tax_number?: string | null;
+    national_tax_code?: string | null;
+    warnings?: string[];
   };
   created_at?: string;
 }
@@ -239,6 +245,30 @@ export default function FinanceiroNotaDetalhe() {
                       <span className="text-foreground">{item.nfse.status_externo || 'N/A'}</span>
                     </div>
                     <div className="flex items-center justify-between gap-4">
+                      <span>Fluxo NFe.io</span>
+                      <span className="text-foreground text-right">{item.nfse.flow_status || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>ISS NFe.io</span>
+                      <span className="text-foreground">
+                        {typeof item.nfse.iss_tax_amount === 'number' ? `R$ ${formatCurrency(item.nfse.iss_tax_amount)}` : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>Alíquota NFe.io</span>
+                      <span className="text-foreground">
+                        {typeof item.nfse.iss_rate === 'number' ? `${item.nfse.iss_rate}%` : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>Código nacional</span>
+                      <span className="text-foreground text-right">{item.nfse.national_tax_code || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>IM emitente NFe.io</span>
+                      <span className="text-foreground text-right">{item.nfse.provider_municipal_tax_number || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
                       <span>Código do serviço</span>
                       <span className="text-foreground">{item.codigo_servico || 'N/A'}</span>
                     </div>
@@ -353,6 +383,17 @@ export default function FinanceiroNotaDetalhe() {
                 {item.erro_detalhe && (
                   <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">
                     {item.erro_detalhe}
+                  </div>
+                )}
+
+                {!!item.nfse.warnings?.length && (
+                  <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                    <div className="font-semibold text-amber-200">Diagnóstico fiscal</div>
+                    <ul className="mt-2 space-y-1 list-disc pl-5">
+                      {item.nfse.warnings.map((warning) => (
+                        <li key={warning}>{warning}</li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>

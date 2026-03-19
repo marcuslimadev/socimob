@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Banknote, FileText, History, RefreshCcw, User } from 'lucide-react';
+import { ArrowUpDown, Banknote, Download, Eye, FileText, History, MoreVertical, RefreshCcw, Search, User } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { api } from '@/lib/api';
 
 type ContextoEmissao = 'comissao' | 'locatario' | 'construtora' | 'proprietario';
@@ -71,6 +78,9 @@ interface FinanceiroItem {
   };
   created_at?: string;
 }
+
+type NotaSortKey = 'data' | 'contexto' | 'titulo' | 'tomador' | 'valor' | 'status' | 'financeiro';
+type NotaSortDirection = 'asc' | 'desc';
 
 const formatCurrencyInput = (value: string) => {
   const digits = value.replace(/\D/g, '');
@@ -152,6 +162,23 @@ const isValidFederalTaxNumber = (value: string) => {
 const formatCurrency = (value: number) =>
   value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const formatDate = (value?: string | null) => {
+  if (!value) return 'N/A';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString('pt-BR');
+};
+
+const normalizeText = (value?: string | null) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
 const statusStyles: Record<string, string> = {
   pending: 'bg-yellow-500/20 text-yellow-200 border border-yellow-500/30',
   issued: 'bg-blue-500/20 text-blue-200 border border-blue-500/30',
@@ -162,6 +189,23 @@ const statusStyles: Record<string, string> = {
   lancado: 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/30',
   pendente: 'bg-yellow-500/20 text-yellow-200 border border-yellow-500/30',
   cancelado: 'bg-red-500/20 text-red-200 border border-red-500/30',
+};
+
+const contextoLabels: Record<ContextoEmissao, string> = {
+  comissao: 'Comissão',
+  locatario: 'Locatário',
+  construtora: 'Construtora',
+  proprietario: 'Proprietário vendedor',
+};
+
+const paymentMethodLabels: Record<string, string> = {
+  pix: 'PIX',
+  boleto: 'Boleto',
+};
+
+const registroTipoLabels: Record<FinanceiroItem['registro_tipo'], string> = {
+  commission_invoice: 'Comissão',
+  documento_fiscal: 'Documento fiscal',
 };
 
 export default function Financeiro() {
@@ -190,10 +234,15 @@ export default function Financeiro() {
 
   const [formaPagamento, setFormaPagamento] = useState<'pix' | 'boleto'>('pix');
   const [vencimento, setVencimento] = useState('');
-  const [statusFiltro, setStatusFiltro] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [syncingIds, setSyncingIds] = useState<number[]>([]);
+  const [notaBusca, setNotaBusca] = useState('');
+  const [notaStatusFiltro, setNotaStatusFiltro] = useState('todos');
+  const [notaPeriodoFiltro, setNotaPeriodoFiltro] = useState<'12m' | '90d' | '30d' | 'todos'>('12m');
+  const [notaPagina, setNotaPagina] = useState(1);
+  const [notaOrdenacao, setNotaOrdenacao] = useState<{ key: NotaSortKey; direction: NotaSortDirection }>({ key: 'data', direction: 'desc' });
+  const [notasPorPagina, setNotasPorPagina] = useState(10);
 
   const valorNumerico = useMemo(() => parseCurrency(valor), [valor]);
   const valorIss = useMemo(() => (valorNumerico * (Number(aliquotaIss) || 0)) / 100, [valorNumerico, aliquotaIss]);
@@ -213,10 +262,172 @@ export default function Financeiro() {
     return pessoasTomador;
   }, [contextoEmissao, pessoasTomador]);
 
-  const itensFiltrados = useMemo(() => {
-    if (!statusFiltro) return items;
-    return items.filter((item) => item.status === statusFiltro || item.financeiro_status === statusFiltro);
-  }, [items, statusFiltro]);
+  const getNotaDataReferencia = (item: FinanceiroItem) => item.nfse.emitida_em || item.created_at || null;
+
+  const podeSincronizarDocumento = (item: FinanceiroItem) => {
+    const precisaSincronizarNumero = !item.nfse.numero || item.nfse.numero === '0';
+    const precisaSincronizarArquivos = !item.nfse.pdf_url || !item.nfse.xml_url;
+
+    return (
+      item.registro_tipo === 'documento_fiscal' &&
+      (item.status === 'issued' || item.status === 'pending') &&
+      !!item.nfse.integracao_id &&
+      (precisaSincronizarNumero || precisaSincronizarArquivos)
+    );
+  };
+
+  const notasFiltradas = useMemo(() => {
+    const now = new Date();
+
+    const filtered = [...items]
+      .filter((item) => {
+        const term = normalizeText(notaBusca);
+        const matchesSearch =
+          term === '' ||
+          [
+            contextoLabels[item.contexto_emissao],
+            registroTipoLabels[item.registro_tipo],
+            item.nfse.numero,
+            item.nfse.rps,
+            item.titulo,
+            item.tomador?.nome,
+            item.tomador?.documento,
+            item.descricao_servico,
+            item.codigo_servico,
+            item.status,
+          ].some((field) => normalizeText(field).includes(term));
+
+        const matchesStatus = notaStatusFiltro === 'todos'
+          ? true
+          : item.status === notaStatusFiltro || item.financeiro_status === notaStatusFiltro;
+
+        const dataReferencia = getNotaDataReferencia(item);
+        const data = dataReferencia ? new Date(dataReferencia) : null;
+
+        let matchesPeriodo = true;
+        if (data && !Number.isNaN(data.getTime())) {
+          if (notaPeriodoFiltro === '30d') {
+            const limit = new Date(now);
+            limit.setDate(limit.getDate() - 30);
+            matchesPeriodo = data >= limit;
+          } else if (notaPeriodoFiltro === '90d') {
+            const limit = new Date(now);
+            limit.setDate(limit.getDate() - 90);
+            matchesPeriodo = data >= limit;
+          } else if (notaPeriodoFiltro === '12m') {
+            const limit = new Date(now);
+            limit.setMonth(limit.getMonth() - 12);
+            matchesPeriodo = data >= limit;
+          }
+        } else if (notaPeriodoFiltro !== 'todos') {
+          matchesPeriodo = false;
+        }
+
+        return matchesSearch && matchesStatus && matchesPeriodo;
+      });
+
+    return filtered.sort((left, right) => {
+      const leftDate = getNotaDataReferencia(left) ? new Date(getNotaDataReferencia(left) as string).getTime() : 0;
+      const rightDate = getNotaDataReferencia(right) ? new Date(getNotaDataReferencia(right) as string).getTime() : 0;
+
+      const leftValue = (() => {
+        switch (notaOrdenacao.key) {
+          case 'contexto':
+            return contextoLabels[left.contexto_emissao];
+          case 'titulo':
+            return left.titulo || left.descricao_servico || '';
+          case 'tomador':
+            return left.tomador?.nome || '';
+          case 'valor':
+            return left.valor_total || 0;
+          case 'status':
+            return left.status || '';
+          case 'financeiro':
+            return left.financeiro_status || '';
+          case 'data':
+          default:
+            return leftDate;
+        }
+      })();
+
+      const rightValue = (() => {
+        switch (notaOrdenacao.key) {
+          case 'contexto':
+            return contextoLabels[right.contexto_emissao];
+          case 'titulo':
+            return right.titulo || right.descricao_servico || '';
+          case 'tomador':
+            return right.tomador?.nome || '';
+          case 'valor':
+            return right.valor_total || 0;
+          case 'status':
+            return right.status || '';
+          case 'financeiro':
+            return right.financeiro_status || '';
+          case 'data':
+          default:
+            return rightDate;
+        }
+      })();
+
+      if (typeof leftValue === 'number' && typeof rightValue === 'number') {
+        return notaOrdenacao.direction === 'asc' ? leftValue - rightValue : rightValue - leftValue;
+      }
+
+      const comparison = String(leftValue).localeCompare(String(rightValue), 'pt-BR', { sensitivity: 'base' });
+      return notaOrdenacao.direction === 'asc' ? comparison : -comparison;
+    });
+  }, [items, notaBusca, notaOrdenacao, notaPeriodoFiltro, notaStatusFiltro]);
+
+  const totalPaginasNotas = Math.max(1, Math.ceil(notasFiltradas.length / notasPorPagina));
+  const notasPaginadas = notasFiltradas.slice((notaPagina - 1) * notasPorPagina, notaPagina * notasPorPagina);
+  const notaInicio = notasFiltradas.length === 0 ? 0 : (notaPagina - 1) * notasPorPagina + 1;
+  const notaFim = Math.min(notaPagina * notasPorPagina, notasFiltradas.length);
+
+  useEffect(() => {
+    setNotaPagina(1);
+  }, [notaBusca, notaOrdenacao, notaPeriodoFiltro, notaStatusFiltro, notasPorPagina]);
+
+  const alternarOrdenacao = (key: NotaSortKey) => {
+    setNotaOrdenacao((current) => {
+      if (current.key === key) {
+        return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
+      }
+
+      return { key, direction: key === 'data' ? 'desc' : 'asc' };
+    });
+  };
+
+  const exportarNotasCsv = () => {
+    const headers = ['Status', 'NF', 'RPS', 'Data', 'Tomador', 'Valor', 'Descricao', 'CodigoServico', 'Integracao'];
+    const rows = notasFiltradas.map((item) => [
+      item.status,
+      item.nfse.numero || '',
+      item.nfse.rps || '',
+      formatDate(getNotaDataReferencia(item)),
+      item.tomador?.nome || item.corretor?.name || '',
+      String(item.valor_total),
+      item.descricao_servico,
+      item.codigo_servico || '',
+      item.nfse.integracao_id || '',
+    ]);
+
+    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const csv = [headers, ...rows]
+      .map((row) => row.map((value) => escapeCsv(String(value ?? ''))).join(';'))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `notas-fiscais-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Notas fiscais exportadas em CSV');
+  };
 
   const carregarCorretores = async () => {
     try {
@@ -770,163 +981,288 @@ export default function Financeiro() {
           </div>
 
           <div className="glass-panel p-6 rounded-2xl space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                <History size={20} />
-                Histórico unificado (aluguel + comissão)
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <History size={20} />
+                  Histórico unificado (aluguel + comissão)
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Datatable operacional com busca, filtros, ordenação e ações rápidas para aluguel e comissão no mesmo lugar.
+                </p>
               </div>
-              <select
-                value={statusFiltro}
-                onChange={(event) => setStatusFiltro(event.target.value)}
-                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-              >
-                <option value="">Todos</option>
-                <option value="pending">Pendente</option>
-                <option value="issued">Emitida</option>
-                <option value="paid">Paga</option>
-                <option value="cancelled">Cancelada</option>
-                <option value="error">Erro</option>
-                <option value="lancado">Lançado</option>
-                <option value="created">Criado</option>
-              </select>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {notaPeriodoFiltro !== 'todos' && (
+                  <button
+                    type="button"
+                    onClick={() => setNotaPeriodoFiltro('todos')}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-foreground hover:bg-white/10"
+                  >
+                    {notaPeriodoFiltro === '12m' ? 'Criado nos últimos 12 meses' : notaPeriodoFiltro === '90d' ? 'Criado nos últimos 90 dias' : 'Criado nos últimos 30 dias'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-1 flex-col gap-3 lg:flex-row">
+                <label className="relative flex-1">
+                  <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={notaBusca}
+                    onChange={(event) => setNotaBusca(event.target.value)}
+                    placeholder="Buscar por número, contexto, tomador, descrição ou código"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground"
+                  />
+                </label>
+                <select
+                  value={notaStatusFiltro}
+                  onChange={(event) => setNotaStatusFiltro(event.target.value)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-foreground"
+                >
+                  <option value="todos">Todos os status</option>
+                  <option value="issued">Emitida</option>
+                  <option value="pending">Pendente</option>
+                  <option value="created">Criada</option>
+                  <option value="cancelled">Cancelada</option>
+                  <option value="error">Erro</option>
+                </select>
+                <select
+                  value={notaPeriodoFiltro}
+                  onChange={(event) => setNotaPeriodoFiltro(event.target.value as '12m' | '90d' | '30d' | 'todos')}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-foreground"
+                >
+                  <option value="12m">Últimos 12 meses</option>
+                  <option value="90d">Últimos 90 dias</option>
+                  <option value="30d">Últimos 30 dias</option>
+                  <option value="todos">Todo o período</option>
+                </select>
+                <select
+                  value={String(notasPorPagina)}
+                  onChange={(event) => setNotasPorPagina(Number(event.target.value))}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-foreground"
+                >
+                  <option value="10">10 linhas</option>
+                  <option value="25">25 linhas</option>
+                  <option value="50">50 linhas</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotaBusca('');
+                    setNotaStatusFiltro('todos');
+                    setNotaPeriodoFiltro('12m');
+                  }}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/10"
+                >
+                  Limpar
+                </button>
+                <button
+                  type="button"
+                  onClick={exportarNotasCsv}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/20"
+                >
+                  <Download size={16} />
+                  Exportar
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+              <div>
+                Exibindo {notaInicio}-{notaFim} de {notasFiltradas.length} registro(s)
+              </div>
+              <div className="flex items-center gap-3">
+                <span>Ordenado por {notaOrdenacao.key} ({notaOrdenacao.direction === 'asc' ? 'crescente' : 'decrescente'})</span>
+              </div>
             </div>
 
             {isLoading && <p className="text-muted-foreground">Carregando histórico...</p>}
 
-            {!isLoading && itensFiltrados.length === 0 && (
+            {!isLoading && notasFiltradas.length === 0 && (
               <p className="text-muted-foreground">Nenhum lançamento encontrado.</p>
             )}
 
-            <div className="space-y-4">
-              {!isLoading &&
-                itensFiltrados.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex flex-col gap-4 rounded-2xl bg-white/5 border border-white/10 p-4"
-                  >
-                    {(() => {
-                      const precisaSincronizarNumero = !item.nfse.numero || item.nfse.numero === '0';
-                      const precisaSincronizarArquivos = !item.nfse.pdf_url || !item.nfse.xml_url;
-                      const podeSincronizar =
-                        item.registro_tipo === 'documento_fiscal' &&
-                        (item.status === 'issued' || item.status === 'pending') &&
-                        !!item.nfse.integracao_id &&
-                        (precisaSincronizarNumero || precisaSincronizarArquivos);
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/10">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1260px] text-sm">
+                  <thead className="bg-white/5 text-left text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-3">Documento</th>
+                      <th className="px-4 py-3">
+                        <button type="button" onClick={() => alternarOrdenacao('data')} className="inline-flex items-center gap-2 hover:text-foreground">
+                          Data
+                          <ArrowUpDown size={14} />
+                        </button>
+                      </th>
+                      <th className="px-4 py-3">
+                        <button type="button" onClick={() => alternarOrdenacao('contexto')} className="inline-flex items-center gap-2 hover:text-foreground">
+                          Contexto
+                          <ArrowUpDown size={14} />
+                        </button>
+                      </th>
+                      <th className="px-4 py-3">
+                        <button type="button" onClick={() => alternarOrdenacao('titulo')} className="inline-flex items-center gap-2 hover:text-foreground">
+                          Título
+                          <ArrowUpDown size={14} />
+                        </button>
+                      </th>
+                      <th className="px-4 py-3">
+                        <button type="button" onClick={() => alternarOrdenacao('tomador')} className="inline-flex items-center gap-2 hover:text-foreground">
+                          Tomador
+                          <ArrowUpDown size={14} />
+                        </button>
+                      </th>
+                      <th className="px-4 py-3 text-right">
+                        <button type="button" onClick={() => alternarOrdenacao('valor')} className="inline-flex items-center gap-2 hover:text-foreground">
+                          Valor (R$)
+                          <ArrowUpDown size={14} />
+                        </button>
+                      </th>
+                      <th className="px-4 py-3">
+                        <button type="button" onClick={() => alternarOrdenacao('status')} className="inline-flex items-center gap-2 hover:text-foreground">
+                          Status fiscal
+                          <ArrowUpDown size={14} />
+                        </button>
+                      </th>
+                      <th className="px-4 py-3">
+                        <button type="button" onClick={() => alternarOrdenacao('financeiro')} className="inline-flex items-center gap-2 hover:text-foreground">
+                          Status financeiro
+                          <ArrowUpDown size={14} />
+                        </button>
+                      </th>
+                      <th className="px-4 py-3">Pagamento</th>
+                      <th className="px-4 py-3 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!isLoading && notasPaginadas.map((item) => {
                       const isSyncing = syncingIds.includes(item.id);
+                      const podeSincronizar = podeSincronizarDocumento(item);
 
                       return (
-                        <>
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-foreground">
-                          {item.titulo}
-                          {item.corretor?.name ? ` • ${item.corretor.name}` : item.tomador?.nome ? ` • ${item.tomador.nome}` : ''}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Valor: R$ {formatCurrency(item.valor_total)} • ISS: R$ {formatCurrency(item.valor_iss)}
-                        </p>
-                        {item.tomador?.documento && (
-                          <p className="text-xs text-muted-foreground">
-                            Tomador: {item.tomador.documento}
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground">{item.descricao_servico}</p>
-                        {item.created_at && (
-                          <p className="text-xs text-muted-foreground">
-                            Criado em {new Date(item.created_at).toLocaleDateString('pt-BR')}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            statusStyles[item.status] || 'bg-white/10 text-muted-foreground'
-                          }`}
-                        >
-                          Fiscal: {item.status}
-                        </span>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            statusStyles[item.financeiro_status?.toLowerCase?.() || item.financeiro_status] ||
-                            'bg-white/10 text-muted-foreground'
-                          }`}
-                        >
-                          Financeiro: {item.financeiro_status}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                      <span>Pagamento: {item.forma_pagamento || 'N/A'}</span>
-                      <span>Vencimento: {item.vencimento || 'N/A'}</span>
-                      <span>NFSe nº: {item.nfse.numero || 'N/A'}</span>
-                      <span>Código do serviço: {item.codigo_servico || 'N/A'}</span>
-                      {item.nfse.integracao_id && <span>Integração: {item.nfse.integracao_id}</span>}
-                      {item.codigo_servico_fonte && <span>Origem código: {item.codigo_servico_fonte}</span>}
-                    </div>
-
-                    <div className="flex flex-wrap gap-3 items-center">
-                      <a
-                        href={`/financeiro/notas/${item.registro_tipo}/${item.id}`}
-                        className="text-xs text-emerald-300 hover:text-emerald-200"
-                      >
-                        Verificar nota
-                      </a>
-                      <a
-                        href={`/api/admin/financeiro/notas-servico/${item.registro_tipo}/${item.id}/danfse`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs text-emerald-300 hover:text-emerald-200"
-                      >
-                        Abrir DANFSe
-                      </a>
-                      {item.nfse.pdf_url && (
-                        <a
-                          href={item.nfse.pdf_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-blue-300 hover:text-blue-200"
-                        >
-                          PDF original
-                        </a>
-                      )}
-                      {item.nfse.xml_url && (
-                        <a
-                          href={item.nfse.xml_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-blue-300 hover:text-blue-200"
-                        >
-                          XML da NFSe
-                        </a>
-                      )}
-                      {podeSincronizar && (
-                        <button
-                          type="button"
-                          onClick={() => sincronizarDocumento(item.id)}
-                          disabled={isSyncing}
-                          className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/20 disabled:opacity-60"
-                        >
-                          {isSyncing ? 'Sincronizando NFSe...' : 'Buscar número/PDF/XML'}
-                        </button>
-                      )}
-                      {podeSincronizar && !isSyncing && (
-                        <span className="text-xs text-amber-300">
-                          Documento aguardando retorno final completo da NFe.io.
-                        </span>
-                      )}
-                      {item.contexto_emissao === 'locatario' && item.forma_pagamento === 'boleto' && (
-                        <span className="text-xs text-amber-300">
-                          Boleto: acompanhar integração financeira / webhook de baixa
-                        </span>
-                      )}
-                    </div>
-                        </>
+                        <tr key={`${item.registro_tipo}-${item.id}`} className="border-t border-white/10 text-foreground/90">
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-foreground">{item.nfse.numero || 'Sem NF'}</div>
+                            <div className="text-xs text-muted-foreground">{registroTipoLabels[item.registro_tipo]} · RPS {item.nfse.rps || '—'}</div>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">{formatDate(getNotaDataReferencia(item))}</td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-foreground">{contextoLabels[item.contexto_emissao]}</div>
+                            <div className="text-xs text-muted-foreground">{item.tipo_nota}</div>
+                          </td>
+                          <td className="max-w-[240px] px-4 py-3">
+                            <div className="truncate font-medium text-foreground" title={item.titulo}>{item.titulo}</div>
+                            <div className="truncate text-xs text-muted-foreground" title={item.descricao_servico}>{item.descricao_servico}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-foreground">{item.tomador?.nome || 'Tomador não informado'}</div>
+                            <div className="text-xs text-muted-foreground">{item.tomador?.documento || 'Documento não informado'}</div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.valor_total)}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[item.status] || 'bg-white/10 text-muted-foreground'}`}>
+                              {item.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[item.financeiro_status] || 'bg-white/10 text-muted-foreground'}`}>
+                              {item.financeiro_status || '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-foreground">{paymentMethodLabels[item.forma_pagamento || ''] || item.forma_pagamento || '—'}</div>
+                            <div className="text-xs text-muted-foreground">Venc. {formatDate(item.vencimento)}</div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <a
+                                href={`/financeiro/notas/${item.registro_tipo}/${item.id}`}
+                                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-white/10"
+                              >
+                                <Eye size={14} />
+                                Ver
+                              </a>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/5 p-2 text-foreground hover:bg-white/10"
+                                  >
+                                    <MoreVertical size={14} />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                  <DropdownMenuItem onSelect={() => { window.location.href = `/financeiro/notas/${item.registro_tipo}/${item.id}`; }}>
+                                    Verificar nota
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => { window.open(`/api/admin/financeiro/notas-servico/${item.registro_tipo}/${item.id}/danfse`, '_blank', 'noopener,noreferrer'); }}>
+                                    Abrir DANFSe espelhado
+                                  </DropdownMenuItem>
+                                  {item.nfse.pdf_url && (
+                                    <DropdownMenuItem onSelect={() => { window.open(item.nfse.pdf_url, '_blank', 'noopener,noreferrer'); }}>
+                                      Abrir PDF original
+                                    </DropdownMenuItem>
+                                  )}
+                                  {item.nfse.xml_url && (
+                                    <DropdownMenuItem onSelect={() => { window.open(item.nfse.xml_url, '_blank', 'noopener,noreferrer'); }}>
+                                      Abrir XML da NFSe
+                                    </DropdownMenuItem>
+                                  )}
+                                  {podeSincronizar && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onSelect={() => sincronizarDocumento(item.id)} disabled={isSyncing}>
+                                        {isSyncing ? 'Sincronizando NFSe...' : 'Buscar número/PDF/XML'}
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </td>
+                        </tr>
                       );
-                    })()}
-                  </div>
-                ))}
+                    })}
+                    {!isLoading && notasPaginadas.length === 0 && (
+                      <tr>
+                        <td colSpan={10} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                          Nenhuma nota fiscal encontrada para os filtros aplicados.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-white/10 px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                  <span>Linhas por página: {notasPorPagina}</span>
+                  <span>{notasFiltradas.length} registro(s)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>Página {notaPagina} de {totalPaginasNotas}</span>
+                  <button
+                    type="button"
+                    onClick={() => setNotaPagina((current) => Math.max(1, current - 1))}
+                    disabled={notaPagina <= 1}
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-foreground hover:bg-white/10 disabled:opacity-50"
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNotaPagina((current) => Math.min(totalPaginasNotas, current + 1))}
+                    disabled={notaPagina >= totalPaginasNotas}
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-foreground hover:bg-white/10 disabled:opacity-50"
+                  >
+                    Próxima
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

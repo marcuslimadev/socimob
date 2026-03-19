@@ -162,6 +162,11 @@ class NfseDanfseService
                 ),
                 'local_prestacao' => $localPrestacao,
                 'pais_prestacao' => $this->textoOuTraco(data_get($retorno, 'serviceCountry'), 'Brasil'),
+                'cnae' => $this->textoOuTraco(
+                    data_get($retorno, 'cnae'),
+                    data_get($retorno, 'provider.cnae'),
+                    data_get($tenant?->metadata, 'nfse_cnae')
+                ),
                 'descricao' => $this->textoOuTraco(
                     data_get($retorno, 'description'),
                     data_get($nfePayload, 'description'),
@@ -172,7 +177,7 @@ class NfseDanfseService
                 'tributacao_issqn' => $this->textoOuTraco(data_get($retorno, 'issTaxationType'), 'Operação Tributável'),
                 'pais_resultado' => $this->textoOuTraco(data_get($retorno, 'serviceResultCountry')),
                 'municipio_incidencia' => $localPrestacao,
-                'regime_especial' => $this->textoOuTraco(data_get($retorno, 'specialTaxRegime'), 'Nenhum'),
+                'regime_especial' => $this->textoOuTraco(data_get($retorno, 'specialTaxRegime'), data_get($retorno, 'provider.specialTaxRegime'), 'Nenhum'),
                 'tipo_imunidade' => $this->textoOuTraco(data_get($retorno, 'immunityType')),
                 'suspensao_exigibilidade' => $this->textoOuTraco(data_get($retorno, 'issSuspended') ? 'Sim' : 'Não'),
                 'numero_processo' => $this->textoOuTraco(data_get($retorno, 'issSuspensionProcessNumber')),
@@ -181,7 +186,11 @@ class NfseDanfseService
                 'desconto_incondicionado' => $this->formatarMoedaOuTraco(data_get($retorno, 'unconditionalDiscountAmount')),
                 'total_deducoes' => $this->formatarMoedaOuTraco(data_get($retorno, 'deductionsAmount')),
                 'calculo_bm' => $this->formatarMoedaOuTraco(data_get($retorno, 'bmAmount')),
-                'bc_issqn' => $this->formatarMoedaOuTraco(data_get($retorno, 'taxableAmount')),
+                'bc_issqn' => $this->formatarMoedaOuTraco(
+                    data_get($retorno, 'taxableAmount')
+                    ?? data_get($retorno, 'baseTaxAmount')
+                    ?? $servicoValor
+                ),
                 'aliquota_aplicada' => $this->formatarPercentual($aliquotaIss),
                 'retencao_issqn' => $this->textoOuTraco(data_get($retorno, 'issWithheld') ? 'Retido' : 'Não Retido'),
                 'issqn_apurado' => $this->formatarMoedaOuTraco($valorIss),
@@ -276,13 +285,14 @@ class NfseDanfseService
                 'codigo_tributacao_municipal' => $this->textoOuTraco(data_get($retorno, 'cityServiceCode'), '004 - Agenciamento de bens imóveis'),
                 'local_prestacao' => $localPrestacao,
                 'pais_prestacao' => 'Brasil',
+                'cnae' => $this->textoOuTraco(data_get($retorno, 'cnae'), data_get($retorno, 'provider.cnae'), data_get($tenant?->metadata, 'nfse_cnae')),
                 'descricao' => $this->textoOuTraco($invoice->descricao_servico, data_get($retorno, 'description')),
             ],
             'tributacao_municipal' => [
                 'tributacao_issqn' => $this->textoOuTraco(data_get($retorno, 'issTaxationType'), 'Operação Tributável'),
                 'pais_resultado' => $this->textoOuTraco(data_get($retorno, 'serviceResultCountry')),
                 'municipio_incidencia' => $localPrestacao,
-                'regime_especial' => $this->textoOuTraco(data_get($retorno, 'specialTaxRegime'), 'Nenhum'),
+                'regime_especial' => $this->textoOuTraco(data_get($retorno, 'specialTaxRegime'), data_get($retorno, 'provider.specialTaxRegime'), 'Nenhum'),
                 'tipo_imunidade' => $this->textoOuTraco(data_get($retorno, 'immunityType')),
                 'suspensao_exigibilidade' => $this->textoOuTraco(data_get($retorno, 'issSuspended') ? 'Sim' : 'Não'),
                 'numero_processo' => $this->textoOuTraco(data_get($retorno, 'issSuspensionProcessNumber')),
@@ -291,7 +301,11 @@ class NfseDanfseService
                 'desconto_incondicionado' => $this->formatarMoedaOuTraco(data_get($retorno, 'unconditionalDiscountAmount')),
                 'total_deducoes' => $this->formatarMoedaOuTraco(data_get($retorno, 'deductionsAmount')),
                 'calculo_bm' => $this->formatarMoedaOuTraco(data_get($retorno, 'bmAmount')),
-                'bc_issqn' => $this->formatarMoedaOuTraco(data_get($retorno, 'taxableAmount')),
+                'bc_issqn' => $this->formatarMoedaOuTraco(
+                    data_get($retorno, 'taxableAmount')
+                    ?? data_get($retorno, 'baseTaxAmount')
+                    ?? $servicoValor
+                ),
                 'aliquota_aplicada' => $this->formatarPercentual((float) $invoice->aliquota_iss),
                 'retencao_issqn' => $this->textoOuTraco(data_get($retorno, 'issWithheld') ? 'Retido' : 'Não Retido'),
                 'issqn_apurado' => $this->formatarMoedaOuTraco($valorIss),
