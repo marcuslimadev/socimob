@@ -270,7 +270,7 @@ class NfseCommissionService
         }
 
         if ($tipoNota !== 'aluguel') {
-            return '100501';
+            return '100501004';
         }
 
         return $this->normalizarNationalTaxCode(
@@ -286,7 +286,7 @@ class NfseCommissionService
 
         $digits = preg_replace('/\D+/', '', (string) $value) ?: '';
 
-        return strlen($digits) === 6 ? $digits : null;
+        return in_array(strlen($digits), [6, 9], true) ? $digits : null;
     }
 
     private function montarInformacoesAdicionais(CommissionInvoice $invoice, array $financeiro): string

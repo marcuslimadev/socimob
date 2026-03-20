@@ -31,7 +31,7 @@ class NfseCommissionServiceTest extends TestCase
                 'nfeio_api_key' => 'apikey-test',
                 'nfeio_company_id' => 'company-test',
                 'nfeio_service_code_corretagem' => '01.01',
-                'nfse_national_service_code' => '100501',
+                'nfse_national_service_code' => '100501004',
             ],
         ]);
 
@@ -78,10 +78,10 @@ class NfseCommissionServiceTest extends TestCase
         $this->assertTrue($request->hasHeader('Authorization', 'apikey-test'));
         $this->assertTrue($request->hasHeader('Idempotency-Key'));
         $this->assertSame('01.01', data_get($request->data(), 'cityServiceCode'));
-        $this->assertSame('100501', data_get($request->data(), 'nationalTaxCode'));
+        $this->assertSame('100501004', data_get($request->data(), 'nationalTaxCode'));
         $this->assertSame('01.01', data_get($request->data(), 'serviceCode.city'));
         $this->assertSame('01.01', data_get($request->data(), 'serviceCode.municipal'));
-        $this->assertSame('100501', data_get($request->data(), 'serviceCode.national'));
+        $this->assertSame('100501004', data_get($request->data(), 'serviceCode.national'));
         $this->assertSame('12345678901', data_get($request->data(), 'borrower.federalTaxNumber'));
         $this->assertSame(1500.75, data_get($request->data(), 'servicesAmount'));
 
