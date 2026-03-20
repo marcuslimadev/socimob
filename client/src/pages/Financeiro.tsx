@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpDown, Banknote, Download, Eye, FileText, History, MoreVertical, RefreshCcw, Search, User } from 'lucide-react';
+import { ArrowUpDown, Banknote, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, Download, Eye, FileText, History, MoreVertical, RefreshCcw, Search, Trash2, User } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useViaCep } from '@/hooks/useViaCep';
 import { api } from '@/lib/api';
 
 type ContextoEmissao = 'comissao' | 'locatario' | 'construtora' | 'proprietario';
@@ -97,6 +108,46 @@ const parseCurrency = (value: string) => {
 };
 
 const onlyDigits = (value: string) => value.replace(/\D/g, '');
+
+const formatCepInput = (value: string) => {
+  const digits = onlyDigits(value).slice(0, 8);
+  if (digits.length <= 5) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+};
+
+const formatFederalTaxNumberInput = (value: string) => {
+  const digits = onlyDigits(value).slice(0, 14);
+
+  if (digits.length <= 11) {
+    return digits
+      .replace(/^(\d{3})(\d)/, '$1.$2')
+      .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1-$2');
+  }
+
+  return digits
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\/\d{4})(\d)/, '$1-$2');
+};
+
+const formatPhoneInput = (value: string) => {
+  const digits = onlyDigits(value).slice(0, 11);
+
+  if (digits.length <= 10) {
+    return digits
+      .replace(/^(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  }
+
+  return digits
+    .replace(/^(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d)/, '$1-$2');
+};
 
 const isValidCpf = (value: string) => {
   const digits = onlyDigits(value);
@@ -208,6 +259,48 @@ const registroTipoLabels: Record<FinanceiroItem['registro_tipo'], string> = {
   documento_fiscal: 'Documento fiscal',
 };
 
+const wizardSteps = [
+  { id: 0, title: 'Contexto' },
+  { id: 1, title: 'Valores' },
+  { id: 2, title: 'Tomador' },
+  { id: 3, title: 'Revisão' },
+] as const;
+
+const contextoHints: Record<ContextoEmissao, string> = {
+  comissao: 'Emissão de comissão para corretor com NFSe e lançamento financeiro.',
+  locatario: 'Fluxo de aluguel com vencimento e boleto como padrão.',
+  construtora: 'Cobrança de serviços imobiliários para pessoa jurídica.',
+  proprietario: 'Cobrança de corretagem imobiliária para proprietário vendedor.',
+};
+
+const FINANCEIRO_DRAFT_KEY = 'financeiro-emissao-draft';
+
+interface FinanceiroWizardDraft {
+  contextoEmissao: ContextoEmissao;
+  corretorId: string;
+  tipoNota: 'corretagem' | 'aluguel';
+  valor: string;
+  aliquotaIss: string;
+  descricao: string;
+  tomadorNome: string;
+  tomadorDocumento: string;
+  tomadorEmail: string;
+  tomadorTelefone: string;
+  tomadorCep: string;
+  tomadorLogradouro: string;
+  tomadorNumero: string;
+  tomadorBairro: string;
+  tomadorCidade: string;
+  tomadorUf: string;
+  tomadorCodigoMunicipio: string;
+  pessoaTomadorId: string;
+  formaPagamento: 'pix' | 'boleto';
+  vencimento: string;
+  wizardStep: number;
+  enderecoTravado: boolean;
+  updatedAt: string;
+}
+
 export default function Financeiro() {
   const [corretores, setCorretores] = useState<Corretor[]>([]);
   const [pessoasTomador, setPessoasTomador] = useState<PessoaTomador[]>([]);
@@ -237,12 +330,24 @@ export default function Financeiro() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [syncingIds, setSyncingIds] = useState<number[]>([]);
+  const [deletingKeys, setDeletingKeys] = useState<string[]>([]);
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: FinanceiroItem | null }>({
+    open: false,
+    item: null,
+  });
   const [notaBusca, setNotaBusca] = useState('');
+  const [notaContextoFiltro, setNotaContextoFiltro] = useState<'todos' | ContextoEmissao>('todos');
   const [notaStatusFiltro, setNotaStatusFiltro] = useState('todos');
   const [notaPeriodoFiltro, setNotaPeriodoFiltro] = useState<'12m' | '90d' | '30d' | 'todos'>('12m');
   const [notaPagina, setNotaPagina] = useState(1);
   const [notaOrdenacao, setNotaOrdenacao] = useState<{ key: NotaSortKey; direction: NotaSortDirection }>({ key: 'data', direction: 'desc' });
   const [notasPorPagina, setNotasPorPagina] = useState(10);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [rascunhoRestaurado, setRascunhoRestaurado] = useState(false);
+  const [ultimoRascunhoSalvo, setUltimoRascunhoSalvo] = useState<string | null>(null);
+  const [statusCep, setStatusCep] = useState<'idle' | 'success' | 'error'>('idle');
+  const [enderecoTravado, setEnderecoTravado] = useState(false);
+  const { buscarCep, isLoading: isLoadingCep } = useViaCep();
 
   const valorNumerico = useMemo(() => parseCurrency(valor), [valor]);
   const valorIss = useMemo(() => (valorNumerico * (Number(aliquotaIss) || 0)) / 100, [valorNumerico, aliquotaIss]);
@@ -264,6 +369,38 @@ export default function Financeiro() {
 
   const getNotaDataReferencia = (item: FinanceiroItem) => item.nfse.emitida_em || item.created_at || null;
 
+  const checklistEmissao = useMemo(() => {
+    const itens = [
+      { label: 'Contexto definido', done: Boolean(contextoEmissao) },
+      { label: 'Responsável selecionado', done: contextoEmissao !== 'comissao' || Boolean(corretorId) },
+      { label: 'Valor informado', done: valorNumerico > 0 },
+      { label: 'Tomador identificado', done: Boolean(tomadorNome && tomadorDocumento) },
+      { label: 'Documento válido', done: !tomadorDocumento || isValidFederalTaxNumber(tomadorDocumento) },
+    ];
+
+    return itens;
+  }, [contextoEmissao, corretorId, tomadorDocumento, tomadorNome, valorNumerico]);
+
+  const camposPendentes = useMemo(
+    () => checklistEmissao.filter((item) => !item.done).map((item) => item.label),
+    [checklistEmissao],
+  );
+
+  const resumoEmissao = useMemo(() => {
+    const corretorSelecionado = corretores.find((item) => String(item.id) === corretorId);
+
+    return {
+      contexto: contextoLabels[contextoEmissao],
+      descricaoContexto: contextoHints[contextoEmissao],
+      tipoNota: tipoNota === 'aluguel' ? 'Aluguel' : 'Corretagem',
+      responsavel: corretorSelecionado ? corretorSelecionado.name : 'Não se aplica',
+      pagamento: paymentMethodLabels[formaPagamento] || formaPagamento,
+      total: formatCurrency(valorNumerico),
+      iss: formatCurrency(valorIss),
+      tomador: tomadorNome || 'Não informado',
+    };
+  }, [aliquotaIss, contextoEmissao, corretorId, corretores, formaPagamento, tipoNota, tomadorNome, valorIss, valorNumerico]);
+
   const podeSincronizarDocumento = (item: FinanceiroItem) => {
     const precisaSincronizarNumero = !item.nfse.numero || item.nfse.numero === '0';
     const precisaSincronizarArquivos = !item.nfse.pdf_url || !item.nfse.xml_url;
@@ -274,6 +411,32 @@ export default function Financeiro() {
       !!item.nfse.integracao_id &&
       (precisaSincronizarNumero || precisaSincronizarArquivos)
     );
+  };
+
+  const getItemKey = (item: Pick<FinanceiroItem, 'registro_tipo' | 'id'>) => `${item.registro_tipo}-${item.id}`;
+
+  const canDeleteNota = (item: FinanceiroItem) => {
+    const financeiroStatus = String(item.financeiro_status || '').toLowerCase();
+    const hasIssuedNumber = Boolean(item.nfse.numero && item.nfse.numero !== '0');
+    const hasExternalIntegration = Boolean(item.nfse.integracao_id);
+
+    if (item.registro_tipo === 'commission_invoice') {
+      if (item.status === 'issued' || hasIssuedNumber || hasExternalIntegration) {
+        return false;
+      }
+
+      if (['paid', 'pago', 'lancado', 'pendente'].includes(financeiroStatus)) {
+        return false;
+      }
+
+      return true;
+    }
+
+    if (item.registro_tipo === 'documento_fiscal') {
+      return item.status !== 'issued' && !hasIssuedNumber && !hasExternalIntegration;
+    }
+
+    return false;
   };
 
   const notasFiltradas = useMemo(() => {
@@ -301,6 +464,10 @@ export default function Financeiro() {
           ? true
           : item.status === notaStatusFiltro || item.financeiro_status === notaStatusFiltro;
 
+        const matchesContexto = notaContextoFiltro === 'todos'
+          ? true
+          : item.contexto_emissao === notaContextoFiltro;
+
         const dataReferencia = getNotaDataReferencia(item);
         const data = dataReferencia ? new Date(dataReferencia) : null;
 
@@ -323,7 +490,7 @@ export default function Financeiro() {
           matchesPeriodo = false;
         }
 
-        return matchesSearch && matchesStatus && matchesPeriodo;
+        return matchesSearch && matchesStatus && matchesContexto && matchesPeriodo;
       });
 
     return filtered.sort((left, right) => {
@@ -377,7 +544,7 @@ export default function Financeiro() {
       const comparison = String(leftValue).localeCompare(String(rightValue), 'pt-BR', { sensitivity: 'base' });
       return notaOrdenacao.direction === 'asc' ? comparison : -comparison;
     });
-  }, [items, notaBusca, notaOrdenacao, notaPeriodoFiltro, notaStatusFiltro]);
+  }, [items, notaBusca, notaContextoFiltro, notaOrdenacao, notaPeriodoFiltro, notaStatusFiltro]);
 
   const totalPaginasNotas = Math.max(1, Math.ceil(notasFiltradas.length / notasPorPagina));
   const notasPaginadas = notasFiltradas.slice((notaPagina - 1) * notasPorPagina, notaPagina * notasPorPagina);
@@ -386,7 +553,7 @@ export default function Financeiro() {
 
   useEffect(() => {
     setNotaPagina(1);
-  }, [notaBusca, notaOrdenacao, notaPeriodoFiltro, notaStatusFiltro, notasPorPagina]);
+  }, [notaBusca, notaContextoFiltro, notaOrdenacao, notaPeriodoFiltro, notaStatusFiltro, notasPorPagina]);
 
   const alternarOrdenacao = (key: NotaSortKey) => {
     setNotaOrdenacao((current) => {
@@ -396,6 +563,52 @@ export default function Financeiro() {
 
       return { key, direction: key === 'data' ? 'desc' : 'asc' };
     });
+  };
+
+  const validarEtapa = (step: number) => {
+    if (step === 0) {
+      if (contextoEmissao === 'comissao' && !corretorId) {
+        toast.error('Selecione o corretor para continuar');
+        return false;
+      }
+
+      return true;
+    }
+
+    if (step === 1) {
+      if (valorNumerico <= 0) {
+        toast.error('Informe um valor válido para continuar');
+        return false;
+      }
+
+      return true;
+    }
+
+    if (step === 2) {
+      if (!tomadorNome || !tomadorDocumento) {
+        toast.error('Preencha nome e CPF/CNPJ do tomador');
+        return false;
+      }
+
+      if (!isValidFederalTaxNumber(tomadorDocumento)) {
+        toast.error('CPF/CNPJ do tomador é inválido');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const avancarEtapa = () => {
+    if (!validarEtapa(wizardStep)) {
+      return;
+    }
+
+    setWizardStep((current) => Math.min(current + 1, wizardSteps.length - 1));
+  };
+
+  const voltarEtapa = () => {
+    setWizardStep((current) => Math.max(current - 1, 0));
   };
 
   const exportarNotasCsv = () => {
@@ -509,19 +722,58 @@ export default function Financeiro() {
 
     const documento = pessoa.tipo === 'juridica' ? pessoa.cnpj : pessoa.cpf;
     setTomadorNome((pessoa.tipo === 'juridica' ? pessoa.razao_social : pessoa.nome) || pessoa.nome || '');
-    setTomadorDocumento(documento || '');
+    setTomadorDocumento(formatFederalTaxNumberInput(documento || ''));
     setTomadorEmail(pessoa.email || '');
-    setTomadorTelefone(pessoa.celular || pessoa.telefone || '');
-    setTomadorCep(pessoa.cep || '');
+    setTomadorTelefone(formatPhoneInput(pessoa.celular || pessoa.telefone || ''));
+    setTomadorCep(formatCepInput(pessoa.cep || ''));
     setTomadorLogradouro(pessoa.endereco || '');
     setTomadorNumero(pessoa.numero || '');
     setTomadorBairro(pessoa.bairro || '');
     setTomadorCidade(pessoa.cidade || 'Belo Horizonte');
     setTomadorUf(pessoa.estado || 'MG');
+    setStatusCep('idle');
+    setEnderecoTravado(false);
+  };
+
+  const preencherEnderecoPorCep = async () => {
+    const cepDigits = onlyDigits(tomadorCep);
+    if (cepDigits.length !== 8) {
+      setStatusCep('error');
+      return;
+    }
+
+    const endereco = await buscarCep(tomadorCep);
+    if (!endereco) {
+      setStatusCep('error');
+      return;
+    }
+
+    setTomadorCep(formatCepInput(endereco.cep || tomadorCep));
+    setTomadorLogradouro((current) => current || endereco.logradouro || '');
+    setTomadorBairro((current) => current || endereco.bairro || '');
+    setTomadorCidade(endereco.localidade || '');
+    setTomadorUf(endereco.uf || '');
+    setTomadorCodigoMunicipio(endereco.ibge || '');
+    setStatusCep('success');
+    setEnderecoTravado(true);
+  };
+
+  const limparRascunho = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.removeItem(FINANCEIRO_DRAFT_KEY);
+    setUltimoRascunhoSalvo(null);
+    setRascunhoRestaurado(false);
   };
 
   const limparFormulario = () => {
+    setContextoEmissao('comissao');
+    setCorretorId('');
+    setTipoNota('corretagem');
     setValor('');
+    setAliquotaIss('5');
     setDescricao('');
     setPessoaTomadorId('');
     setTomadorNome('');
@@ -532,7 +784,15 @@ export default function Financeiro() {
     setTomadorLogradouro('');
     setTomadorNumero('');
     setTomadorBairro('');
+    setTomadorCidade('Belo Horizonte');
+    setTomadorUf('MG');
+    setTomadorCodigoMunicipio('3106200');
+    setFormaPagamento('pix');
     setVencimento('');
+    setStatusCep('idle');
+    setEnderecoTravado(false);
+    setWizardStep(0);
+    limparRascunho();
   };
 
   const sincronizarDocumento = async (itemId: number) => {
@@ -558,6 +818,43 @@ export default function Financeiro() {
     } finally {
       setSyncingIds((current) => current.filter((id) => id !== itemId));
     }
+  };
+
+  const excluirNota = async (item: FinanceiroItem) => {
+    const itemKey = getItemKey(item);
+
+    setDeletingKeys((current) => [...current, itemKey]);
+
+    try {
+      const response = await api.delete(`/admin/financeiro/notas-servico/${item.registro_tipo}/${item.id}`);
+
+      if (response.data?.success) {
+        setItems((current) => current.filter((currentItem) => getItemKey(currentItem) !== itemKey));
+        setDeleteDialog({ open: false, item: null });
+        toast.success(response.data?.message || 'Lançamento excluído com sucesso');
+        return;
+      }
+
+      toast.error(response.data?.message || 'Não foi possível excluir o lançamento');
+    } catch (error: any) {
+      const apiMessage = error?.response?.data?.message;
+      const apiError = error?.response?.data?.error;
+      toast.error(apiMessage || apiError || 'Erro ao excluir lançamento');
+    } finally {
+      setDeletingKeys((current) => current.filter((key) => key !== itemKey));
+    }
+  };
+
+  const solicitarExclusao = (item: FinanceiroItem) => {
+    setDeleteDialog({ open: true, item });
+  };
+
+  const confirmarExclusao = async () => {
+    if (!deleteDialog.item) {
+      return;
+    }
+
+    await excluirNota(deleteDialog.item);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -586,11 +883,11 @@ export default function Financeiro() {
         descricao: descricao || undefined,
         tomador: {
           nome: tomadorNome,
-          documento: tomadorDocumento,
+          documento: onlyDigits(tomadorDocumento),
           email: tomadorEmail || undefined,
-          telefone: tomadorTelefone || undefined,
+          telefone: onlyDigits(tomadorTelefone) || undefined,
           endereco: {
-            cep: tomadorCep || undefined,
+            cep: onlyDigits(tomadorCep) || undefined,
             logradouro: tomadorLogradouro || undefined,
             numero: tomadorNumero || undefined,
             bairro: tomadorBairro || undefined,
@@ -648,6 +945,100 @@ export default function Financeiro() {
     carregarHistorico();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const rawDraft = window.localStorage.getItem(FINANCEIRO_DRAFT_KEY);
+    if (!rawDraft) {
+      return;
+    }
+
+    try {
+      const draft = JSON.parse(rawDraft) as Partial<FinanceiroWizardDraft>;
+      setContextoEmissao(draft.contextoEmissao || 'comissao');
+      setCorretorId(draft.corretorId || '');
+      setTipoNota(draft.tipoNota || 'corretagem');
+      setValor(draft.valor || '');
+      setAliquotaIss(draft.aliquotaIss || '5');
+      setDescricao(draft.descricao || '');
+      setTomadorNome(draft.tomadorNome || '');
+      setTomadorDocumento(formatFederalTaxNumberInput(draft.tomadorDocumento || ''));
+      setTomadorEmail(draft.tomadorEmail || '');
+      setTomadorTelefone(formatPhoneInput(draft.tomadorTelefone || ''));
+      setTomadorCep(formatCepInput(draft.tomadorCep || ''));
+      setTomadorLogradouro(draft.tomadorLogradouro || '');
+      setTomadorNumero(draft.tomadorNumero || '');
+      setTomadorBairro(draft.tomadorBairro || '');
+      setTomadorCidade(draft.tomadorCidade || 'Belo Horizonte');
+      setTomadorUf(draft.tomadorUf || 'MG');
+      setTomadorCodigoMunicipio(draft.tomadorCodigoMunicipio || '3106200');
+      setPessoaTomadorId(draft.pessoaTomadorId || '');
+      setFormaPagamento(draft.formaPagamento || 'pix');
+      setVencimento(draft.vencimento || '');
+      setEnderecoTravado(Boolean(draft.enderecoTravado));
+      setStatusCep(draft.enderecoTravado ? 'success' : 'idle');
+      setWizardStep(typeof draft.wizardStep === 'number' ? Math.max(0, Math.min(draft.wizardStep, wizardSteps.length - 1)) : 0);
+      setUltimoRascunhoSalvo(draft.updatedAt || null);
+      setRascunhoRestaurado(true);
+    } catch {
+      limparRascunho();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const updatedAt = new Date().toISOString();
+
+    const draft: FinanceiroWizardDraft = {
+      contextoEmissao,
+      corretorId,
+      tipoNota,
+      valor,
+      aliquotaIss,
+      descricao,
+      tomadorNome,
+      tomadorDocumento,
+      tomadorEmail,
+      tomadorTelefone,
+      tomadorCep,
+      tomadorLogradouro,
+      tomadorNumero,
+      tomadorBairro,
+      tomadorCidade,
+      tomadorUf,
+      tomadorCodigoMunicipio,
+      pessoaTomadorId,
+      formaPagamento,
+      vencimento,
+      wizardStep,
+      enderecoTravado,
+      updatedAt,
+    };
+
+    const hasContent = Object.entries(draft).some(([key, value]) => {
+      if (key === 'contextoEmissao') return value !== 'comissao';
+      if (key === 'tipoNota') return value !== 'corretagem';
+      if (key === 'aliquotaIss') return value !== '5';
+      if (key === 'formaPagamento') return value !== 'pix';
+      if (key === 'wizardStep') return value !== 0;
+      if (key === 'enderecoTravado') return Boolean(value);
+      return typeof value === 'string' ? value.trim() !== '' : Boolean(value);
+    });
+
+    if (!hasContent) {
+      limparRascunho();
+      return;
+    }
+
+    window.localStorage.setItem(FINANCEIRO_DRAFT_KEY, JSON.stringify(draft));
+    setUltimoRascunhoSalvo(updatedAt);
+  }, [aliquotaIss, contextoEmissao, corretorId, descricao, enderecoTravado, formaPagamento, pessoaTomadorId, tipoNota, tomadorBairro, tomadorCep, tomadorCidade, tomadorCodigoMunicipio, tomadorDocumento, tomadorEmail, tomadorLogradouro, tomadorNome, tomadorNumero, tomadorTelefone, tomadorUf, valor, vencimento, wizardStep]);
+
   return (
     <div className="flex">
       <Sidebar />
@@ -672,315 +1063,442 @@ export default function Financeiro() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.7fr)_360px] gap-6">
             <div className="glass-panel p-6 rounded-2xl space-y-6">
               <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                 <FileText size={20} />
-                Novo Lançamento
+                Wizard de emissão
+              </div>
+
+              <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Etapa {wizardStep + 1} de {wizardSteps.length}</span>
+                  <span>{wizardSteps[wizardStep].title}</span>
+                </div>
+                <div className="h-2 rounded-full bg-black/20">
+                  <div className="h-2 rounded-full bg-emerald-400 transition-all" style={{ width: `${((wizardStep + 1) / wizardSteps.length) * 100}%` }} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                  {wizardSteps.map((step) => (
+                    <button
+                      key={step.id}
+                      type="button"
+                      onClick={() => {
+                        if (step.id <= wizardStep || validarEtapa(wizardStep)) {
+                          setWizardStep(step.id);
+                        }
+                      }}
+                      className={`rounded-xl border px-3 py-2 text-left text-sm transition ${step.id === wizardStep ? 'border-emerald-400/50 bg-emerald-500/10 text-foreground' : 'border-white/10 bg-transparent text-muted-foreground hover:bg-white/5'}`}
+                    >
+                      {step.title}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    {rascunhoRestaurado ? 'Rascunho restaurado automaticamente' : 'Rascunho salvo automaticamente'}
+                    {ultimoRascunhoSalvo ? ` · último rascunho salvo às ${new Date(ultimoRascunhoSalvo).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                  </span>
+                  <button type="button" onClick={limparRascunho} className="hover:text-foreground">
+                    Limpar rascunho local
+                  </button>
+                </div>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Contexto de emissão</label>
-                    <select
-                      value={contextoEmissao}
-                      onChange={(event) => {
-                        const value = event.target.value as ContextoEmissao;
-                        setContextoEmissao(value);
-                        if (value === 'locatario') {
-                          setFormaPagamento('boleto');
-                          setTipoNota('aluguel');
-                        } else if (value === 'construtora') {
-                          setTipoNota('corretagem');
-                          setFormaPagamento('pix');
-                        } else if (value === 'proprietario') {
-                          setTipoNota('corretagem');
-                          setFormaPagamento('pix');
-                        }
-                      }}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    >
-                      <option value="comissao">Comissão</option>
-                      <option value="locatario">Locatário</option>
-                      <option value="construtora">Construtora</option>
-                      <option value="proprietario">Proprietário vendedor</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Tipo de nota</label>
-                    <select
-                      value={tipoNota}
-                      onChange={(event) => {
-                        const value = event.target.value as 'corretagem' | 'aluguel';
-                        setTipoNota(value);
-                        if (contextoEmissao === 'locatario' || value === 'aluguel') setFormaPagamento('boleto');
-                      }}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                      disabled={contextoEmissao !== 'comissao'}
-                    >
-                      <option value="corretagem">Corretagem</option>
-                      <option value="aluguel">Aluguel</option>
-                    </select>
-                  </div>
-                  {contextoEmissao === 'comissao' && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <User size={16} /> Corretor
-                    </label>
-                    <select
-                      value={corretorId}
-                      onChange={(event) => setCorretorId(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                      required
-                    >
-                      <option value="">Selecione</option>
-                      {corretores.map((corretor) => (
-                        <option key={corretor.id} value={corretor.id}>
-                          {corretor.name} - {corretor.email}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  )}
-                </div>
+                {wizardStep === 0 && (
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Contexto de emissão</label>
+                        <select
+                          value={contextoEmissao}
+                          onChange={(event) => {
+                            const value = event.target.value as ContextoEmissao;
+                            setContextoEmissao(value);
+                            if (value === 'locatario') {
+                              setFormaPagamento('boleto');
+                              setTipoNota('aluguel');
+                            } else {
+                              setTipoNota('corretagem');
+                              setFormaPagamento('pix');
+                            }
+                          }}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                        >
+                          <option value="comissao">Comissão</option>
+                          <option value="locatario">Locatário</option>
+                          <option value="construtora">Construtora</option>
+                          <option value="proprietario">Proprietário vendedor</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Tipo de nota</label>
+                        <select
+                          value={tipoNota}
+                          onChange={(event) => {
+                            const value = event.target.value as 'corretagem' | 'aluguel';
+                            setTipoNota(value);
+                            if (contextoEmissao === 'locatario' || value === 'aluguel') setFormaPagamento('boleto');
+                          }}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                          disabled={contextoEmissao !== 'comissao'}
+                        >
+                          <option value="corretagem">Corretagem</option>
+                          <option value="aluguel">Aluguel</option>
+                        </select>
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Valor</label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">R$</span>
-                      <input
-                        type="text"
-                        value={valor}
-                        onChange={(event) => setValor(formatCurrencyInput(event.target.value))}
-                        placeholder="0,00"
-                        className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                        required
-                      />
+                    {contextoEmissao === 'comissao' && (
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                          <User size={16} /> Corretor
+                        </label>
+                        <select
+                          value={corretorId}
+                          onChange={(event) => setCorretorId(event.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                        >
+                          <option value="">Selecione</option>
+                          {corretores.map((corretor) => (
+                            <option key={corretor.id} value={corretor.id}>
+                              {corretor.name} - {corretor.email}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    <div className="rounded-2xl border border-white/10 bg-black/15 p-4 text-sm text-muted-foreground">
+                      {contextoHints[contextoEmissao]}
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Alíquota ISS (%)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={aliquotaIss}
-                      onChange={(event) => setAliquotaIss(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    />
+                )}
+
+                {wizardStep === 1 && (
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div className="space-y-2 md:col-span-1">
+                        <label className="text-sm font-semibold text-foreground">Valor</label>
+                        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5">
+                          <span className="text-sm text-muted-foreground">R$</span>
+                          <input
+                            type="text"
+                            value={valor}
+                            onChange={(event) => setValor(formatCurrencyInput(event.target.value))}
+                            placeholder="0,00"
+                            className="w-full bg-transparent text-foreground outline-none"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Alíquota ISS (%)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={aliquotaIss}
+                          onChange={(event) => setAliquotaIss(event.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Vencimento</label>
+                        <input
+                          type="date"
+                          value={vencimento}
+                          onChange={(event) => setVencimento(event.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Base</p>
+                        <p className="mt-2 text-2xl font-semibold text-foreground">R$ {formatCurrency(valorNumerico)}</p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">ISS estimado</p>
+                        <p className="mt-2 text-2xl font-semibold text-foreground">R$ {formatCurrency(valorIss)}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Forma de pagamento</label>
+                        <select
+                          value={formaPagamento}
+                          onChange={(event) => setFormaPagamento(event.target.value as 'pix' | 'boleto')}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                        >
+                          <option value="pix">PIX</option>
+                          <option value="boleto">Boleto</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Descrição de serviço</label>
+                        <textarea
+                          value={descricao}
+                          onChange={(event) => setDescricao(event.target.value)}
+                          rows={3}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                          placeholder="Se vazio, o backend gera automaticamente"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Vencimento</label>
-                    <input
-                      type="date"
-                      value={vencimento}
-                      onChange={(event) => setVencimento(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    />
+                )}
+
+                {wizardStep === 2 && (
+                  <div className="space-y-5">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground">Tomador (cadastro de pessoas)</label>
+                      <select
+                        value={pessoaTomadorId}
+                        onChange={(event) => {
+                          const id = event.target.value;
+                          setPessoaTomadorId(id);
+                          if (!id) return;
+
+                          const pessoa = pessoasTomador.find((item) => String(item.id) === id);
+                          preencherTomadorPorPessoa(pessoa);
+                        }}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                      >
+                        <option value="">Preencher manualmente</option>
+                        {tomadoresDisponiveis.map((pessoa) => (
+                          <option key={pessoa.id} value={pessoa.id}>
+                            {pessoa.tipo === 'juridica' ? `${pessoa.razao_social || pessoa.nome} (PJ)` : `${pessoa.nome} (PF)`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Nome</label>
+                        <input
+                          type="text"
+                          value={tomadorNome}
+                          onChange={(event) => setTomadorNome(event.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">CPF/CNPJ</label>
+                        <input
+                          type="text"
+                          value={tomadorDocumento}
+                          onChange={(event) => setTomadorDocumento(formatFederalTaxNumberInput(event.target.value))}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Email</label>
+                        <input
+                          type="email"
+                          value={tomadorEmail}
+                          onChange={(event) => setTomadorEmail(event.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Telefone</label>
+                        <input
+                          type="text"
+                          value={tomadorTelefone}
+                          onChange={(event) => setTomadorTelefone(formatPhoneInput(event.target.value))}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">CEP</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={tomadorCep}
+                            onChange={(event) => {
+                              setTomadorCep(formatCepInput(event.target.value));
+                              setStatusCep('idle');
+                              setEnderecoTravado(false);
+                            }}
+                            onBlur={preencherEnderecoPorCep}
+                            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground"
+                          />
+                          <button
+                            type="button"
+                            onClick={preencherEnderecoPorCep}
+                            disabled={isLoadingCep}
+                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-medium text-foreground hover:bg-white/10 disabled:opacity-50"
+                          >
+                            {isLoadingCep ? 'Buscando' : 'CEP'}
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className={statusCep === 'success' ? 'text-emerald-300' : statusCep === 'error' ? 'text-red-300' : 'text-muted-foreground'}>
+                            {statusCep === 'success' ? 'CEP encontrado' : statusCep === 'error' ? 'CEP não encontrado' : 'Informe um CEP para auto-preenchimento'}
+                          </span>
+                          {enderecoTravado && (
+                            <button
+                              type="button"
+                              onClick={() => setEnderecoTravado(false)}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              Editar endereço
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-sm font-semibold text-foreground">Logradouro</label>
+                        <input type="text" value={tomadorLogradouro} onChange={(event) => setTomadorLogradouro(event.target.value)} disabled={enderecoTravado} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground disabled:opacity-60" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Número</label>
+                        <input type="text" value={tomadorNumero} onChange={(event) => setTomadorNumero(event.target.value)} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Bairro</label>
+                        <input type="text" value={tomadorBairro} onChange={(event) => setTomadorBairro(event.target.value)} disabled={enderecoTravado} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground disabled:opacity-60" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Cidade</label>
+                        <input type="text" value={tomadorCidade} onChange={(event) => setTomadorCidade(event.target.value)} disabled={enderecoTravado} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground disabled:opacity-60" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">UF</label>
+                        <input type="text" value={tomadorUf} onChange={(event) => setTomadorUf(event.target.value)} disabled={enderecoTravado} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground disabled:opacity-60" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground">Código IBGE</label>
+                        <input type="text" value={tomadorCodigoMunicipio} onChange={(event) => setTomadorCodigoMunicipio(event.target.value)} disabled={enderecoTravado} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-foreground disabled:opacity-60" />
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div className="rounded-2xl bg-white/5 border border-white/10 p-4 text-center">
-                  <p className="text-sm text-muted-foreground">Base / ISS</p>
-                  <p className="text-2xl font-bold text-emerald-300">
-                    R$ {formatCurrency(valorNumerico)} / R$ {formatCurrency(valorIss)}
-                  </p>
-                </div>
+                {wizardStep === 3 && (
+                  <div className="space-y-5">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Contexto</p>
+                          <p className="mt-1 font-medium text-foreground">{resumoEmissao.contexto}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{resumoEmissao.descricaoContexto}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Tomador</p>
+                          <p className="mt-1 font-medium text-foreground">{resumoEmissao.tomador}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{tomadorDocumento || 'Documento pendente'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Tipo / pagamento</p>
+                          <p className="mt-1 font-medium text-foreground">{resumoEmissao.tipoNota} · {resumoEmissao.pagamento}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Base / ISS</p>
+                          <p className="mt-1 font-medium text-foreground">R$ {resumoEmissao.total} · R$ {resumoEmissao.iss}</p>
+                        </div>
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-semibold text-foreground">Tomador (cadastro de pessoas)</label>
-                    <select
-                      value={pessoaTomadorId}
-                      onChange={(event) => {
-                        const id = event.target.value;
-                        setPessoaTomadorId(id);
-                        if (!id) return;
+                    {camposPendentes.length > 0 && (
+                      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
+                        <div className="mb-2 flex items-center gap-2 font-medium">
+                          <CircleAlert size={16} /> Pendências antes da emissão
+                        </div>
+                        <ul className="space-y-1">
+                          {camposPendentes.map((campo) => (
+                            <li key={campo}>{campo}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                        const pessoa = pessoasTomador.find((item) => String(item.id) === id);
-                        preencherTomadorPorPessoa(pessoa);
-                      }}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
+                <div className="flex flex-col gap-3 border-t border-white/10 pt-4 md:flex-row md:items-center md:justify-between">
+                  <button
+                    type="button"
+                    onClick={voltarEtapa}
+                    disabled={wizardStep === 0}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/10 disabled:opacity-50"
+                  >
+                    <ChevronLeft size={16} /> Voltar
+                  </button>
+
+                  <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={limparFormulario}
+                      className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-white/5"
                     >
-                      <option value="">Preencher manualmente</option>
-                      {tomadoresDisponiveis.map((pessoa) => (
-                        <option key={pessoa.id} value={pessoa.id}>
-                          {pessoa.tipo === 'juridica'
-                            ? `${pessoa.razao_social || pessoa.nome} (PJ)`
-                            : `${pessoa.nome} (PF)`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      Limpar
+                    </button>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Tomador - Nome</label>
-                    <input
-                      type="text"
-                      value={tomadorNome}
-                      onChange={(event) => setTomadorNome(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Tomador - CPF/CNPJ</label>
-                    <input
-                      type="text"
-                      value={tomadorDocumento}
-                      onChange={(event) => setTomadorDocumento(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                      required
-                    />
+                    {wizardStep < wizardSteps.length - 1 ? (
+                      <button
+                        type="button"
+                        onClick={avancarEtapa}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-slate-950 px-4 py-2.5 text-sm font-semibold hover:bg-slate-100"
+                      >
+                        Próxima etapa <ChevronRight size={16} />
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={isSubmitting || camposPendentes.length > 0}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:from-emerald-600 hover:to-teal-600 disabled:opacity-60"
+                      >
+                        <CheckCircle2 size={16} />
+                        {isSubmitting ? 'Emitindo...' : 'Emitir nota'}
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Email</label>
-                    <input
-                      type="email"
-                      value={tomadorEmail}
-                      onChange={(event) => setTomadorEmail(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Telefone</label>
-                    <input
-                      type="text"
-                      value={tomadorTelefone}
-                      onChange={(event) => setTomadorTelefone(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">CEP</label>
-                    <input
-                      type="text"
-                      value={tomadorCep}
-                      onChange={(event) => setTomadorCep(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-semibold text-foreground">Logradouro</label>
-                    <input
-                      type="text"
-                      value={tomadorLogradouro}
-                      onChange={(event) => setTomadorLogradouro(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Número</label>
-                    <input
-                      type="text"
-                      value={tomadorNumero}
-                      onChange={(event) => setTomadorNumero(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Bairro</label>
-                    <input
-                      type="text"
-                      value={tomadorBairro}
-                      onChange={(event) => setTomadorBairro(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Cidade</label>
-                    <input
-                      type="text"
-                      value={tomadorCidade}
-                      onChange={(event) => setTomadorCidade(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">UF</label>
-                    <input
-                      type="text"
-                      value={tomadorUf}
-                      onChange={(event) => setTomadorUf(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Código do município (IBGE)</label>
-                    <input
-                      type="text"
-                      value={tomadorCodigoMunicipio}
-                      onChange={(event) => setTomadorCodigoMunicipio(event.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">Forma de pagamento</label>
-                    <select
-                      value={formaPagamento}
-                      onChange={(event) => setFormaPagamento(event.target.value as 'pix' | 'boleto')}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    >
-                      <option value="pix">PIX</option>
-                      <option value="boleto">Boleto</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-foreground">Descrição de serviço (opcional)</label>
-                  <textarea
-                    value={descricao}
-                    onChange={(event) => setDescricao(event.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground"
-                    placeholder="Se vazio, o backend gera automaticamente"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold hover:from-emerald-600 hover:to-teal-600 transition disabled:opacity-60"
-                >
-                  {isSubmitting
-                    ? 'Emitindo...'
-                    : `Emitir ${contextoEmissao === 'locatario' ? 'nota para locatário' : contextoEmissao === 'construtora' ? 'nota para construtora' : contextoEmissao === 'proprietario' ? 'nota para proprietária' : tipoNota === 'aluguel' ? 'aluguel' : 'comissão'} com NFSe`}
-                </button>
               </form>
             </div>
 
             <div className="space-y-6">
               <div className="glass-panel p-6 rounded-2xl">
-                <div className="flex items-center gap-2 text-lg font-semibold text-foreground mb-4">
+                <div className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
                   <Banknote size={20} />
-                  Fluxo operacional
+                  Resumo da emissão
                 </div>
-                <ol className="space-y-2 text-sm text-muted-foreground">
-                  <li>Escolha se a emissão é para comissão, locatário, construtora ou proprietário vendedor.</li>
-                  <li>O backend emite a NFS-e na NFE.io.</li>
-                  <li>Para locatário, o fluxo padrão usa boleto.</li>
-                  <li>Acompanhe status fiscal e financeiro no histórico abaixo.</li>
-                </ol>
+                <div className="space-y-4 text-sm">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Pronto para emitir</p>
+                    <p className="mt-2 text-3xl font-semibold text-foreground">{Math.round((checklistEmissao.filter((item) => item.done).length / checklistEmissao.length) * 100)}%</p>
+                  </div>
+                  <div className="space-y-2">
+                    {checklistEmissao.map((item) => (
+                      <div key={item.label} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-muted-foreground">
+                        {item.done ? <CheckCircle2 size={16} className="text-emerald-300" /> : <CircleAlert size={16} className="text-amber-300" />}
+                        <span className={item.done ? 'text-foreground' : ''}>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/15 p-4 text-muted-foreground">
+                    <p className="font-medium text-foreground">{resumoEmissao.contexto}</p>
+                    <p className="mt-1">{resumoEmissao.descricaoContexto}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="glass-panel p-6 rounded-2xl space-y-6">
+          <div className="glass-panel p-6 rounded-2xl space-y-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
@@ -988,37 +1506,38 @@ export default function Financeiro() {
                   Histórico unificado (aluguel + comissão)
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Datatable operacional com busca, filtros, ordenação e ações rápidas para aluguel e comissão no mesmo lugar.
+                  Visual limpo, busca rápida e ações diretas por lançamento.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                {notaPeriodoFiltro !== 'todos' && (
-                  <button
-                    type="button"
-                    onClick={() => setNotaPeriodoFiltro('todos')}
-                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-foreground hover:bg-white/10"
-                  >
-                    {notaPeriodoFiltro === '12m' ? 'Criado nos últimos 12 meses' : notaPeriodoFiltro === '90d' ? 'Criado nos últimos 90 dias' : 'Criado nos últimos 30 dias'}
-                  </button>
-                )}
-              </div>
+              <div className="text-sm text-muted-foreground">{notasFiltradas.length} registro(s)</div>
             </div>
 
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-1 flex-col gap-3 lg:flex-row">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-1 flex-col gap-3 md:flex-row">
                 <label className="relative flex-1">
                   <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <input
                     value={notaBusca}
                     onChange={(event) => setNotaBusca(event.target.value)}
                     placeholder="Buscar por número, contexto, tomador, descrição ou código"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground"
+                    className="w-full rounded-xl border border-white/10 bg-transparent py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground"
                   />
                 </label>
                 <select
+                  value={notaContextoFiltro}
+                  onChange={(event) => setNotaContextoFiltro(event.target.value as 'todos' | ContextoEmissao)}
+                  className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-foreground"
+                >
+                  <option value="todos">Todos os contextos</option>
+                  <option value="comissao">Comissão</option>
+                  <option value="locatario">Locatário</option>
+                  <option value="construtora">Construtora</option>
+                  <option value="proprietario">Proprietário vendedor</option>
+                </select>
+                <select
                   value={notaStatusFiltro}
                   onChange={(event) => setNotaStatusFiltro(event.target.value)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-foreground"
+                  className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-foreground"
                 >
                   <option value="todos">Todos os status</option>
                   <option value="issued">Emitida</option>
@@ -1030,7 +1549,7 @@ export default function Financeiro() {
                 <select
                   value={notaPeriodoFiltro}
                   onChange={(event) => setNotaPeriodoFiltro(event.target.value as '12m' | '90d' | '30d' | 'todos')}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-foreground"
+                  className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-foreground"
                 >
                   <option value="12m">Últimos 12 meses</option>
                   <option value="90d">Últimos 90 dias</option>
@@ -1040,7 +1559,7 @@ export default function Financeiro() {
                 <select
                   value={String(notasPorPagina)}
                   onChange={(event) => setNotasPorPagina(Number(event.target.value))}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-foreground"
+                  className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-foreground"
                 >
                   <option value="10">10 linhas</option>
                   <option value="25">25 linhas</option>
@@ -1053,30 +1572,22 @@ export default function Financeiro() {
                   type="button"
                   onClick={() => {
                     setNotaBusca('');
+                    setNotaContextoFiltro('todos');
                     setNotaStatusFiltro('todos');
                     setNotaPeriodoFiltro('12m');
                   }}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/10"
+                  className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5"
                 >
                   Limpar
                 </button>
                 <button
                   type="button"
                   onClick={exportarNotasCsv}
-                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/20"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-white/10"
                 >
                   <Download size={16} />
                   Exportar
                 </button>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-              <div>
-                Exibindo {notaInicio}-{notaFim} de {notasFiltradas.length} registro(s)
-              </div>
-              <div className="flex items-center gap-3">
-                <span>Ordenado por {notaOrdenacao.key} ({notaOrdenacao.direction === 'asc' ? 'crescente' : 'decrescente'})</span>
               </div>
             </div>
 
@@ -1086,10 +1597,10 @@ export default function Financeiro() {
               <p className="text-muted-foreground">Nenhum lançamento encontrado.</p>
             )}
 
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/10">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-transparent">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1260px] text-sm">
-                  <thead className="bg-white/5 text-left text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                <table className="w-full min-w-[980px] text-sm">
+                  <thead className="border-b border-white/10 text-left text-xs text-muted-foreground">
                     <tr>
                       <th className="px-4 py-3">Documento</th>
                       <th className="px-4 py-3">
@@ -1101,12 +1612,6 @@ export default function Financeiro() {
                       <th className="px-4 py-3">
                         <button type="button" onClick={() => alternarOrdenacao('contexto')} className="inline-flex items-center gap-2 hover:text-foreground">
                           Contexto
-                          <ArrowUpDown size={14} />
-                        </button>
-                      </th>
-                      <th className="px-4 py-3">
-                        <button type="button" onClick={() => alternarOrdenacao('titulo')} className="inline-flex items-center gap-2 hover:text-foreground">
-                          Título
                           <ArrowUpDown size={14} />
                         </button>
                       </th>
@@ -1134,33 +1639,30 @@ export default function Financeiro() {
                           <ArrowUpDown size={14} />
                         </button>
                       </th>
-                      <th className="px-4 py-3">Pagamento</th>
                       <th className="px-4 py-3 text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {!isLoading && notasPaginadas.map((item) => {
                       const isSyncing = syncingIds.includes(item.id);
+                      const isDeleting = deletingKeys.includes(getItemKey(item));
+                      const canDeleteItem = canDeleteNota(item);
                       const podeSincronizar = podeSincronizarDocumento(item);
 
                       return (
-                        <tr key={`${item.registro_tipo}-${item.id}`} className="border-t border-white/10 text-foreground/90">
+                        <tr key={`${item.registro_tipo}-${item.id}`} className="border-b border-white/10 text-foreground/90 last:border-b-0">
                           <td className="px-4 py-3">
                             <div className="font-medium text-foreground">{item.nfse.numero || 'Sem NF'}</div>
-                            <div className="text-xs text-muted-foreground">{registroTipoLabels[item.registro_tipo]} · RPS {item.nfse.rps || '—'}</div>
+                            <div className="text-xs text-muted-foreground">{registroTipoLabels[item.registro_tipo]} · {formatDate(getNotaDataReferencia(item))}</div>
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">{formatDate(getNotaDataReferencia(item))}</td>
                           <td className="px-4 py-3">
                             <div className="font-medium text-foreground">{contextoLabels[item.contexto_emissao]}</div>
-                            <div className="text-xs text-muted-foreground">{item.tipo_nota}</div>
-                          </td>
-                          <td className="max-w-[240px] px-4 py-3">
-                            <div className="truncate font-medium text-foreground" title={item.titulo}>{item.titulo}</div>
-                            <div className="truncate text-xs text-muted-foreground" title={item.descricao_servico}>{item.descricao_servico}</div>
+                            <div className="text-xs text-muted-foreground">{item.tipo_nota} · {paymentMethodLabels[item.forma_pagamento || ''] || item.forma_pagamento || '—'}</div>
                           </td>
                           <td className="px-4 py-3">
                             <div className="font-medium text-foreground">{item.tomador?.nome || 'Tomador não informado'}</div>
-                            <div className="text-xs text-muted-foreground">{item.tomador?.documento || 'Documento não informado'}</div>
+                            <div className="text-xs text-muted-foreground">{item.tomador?.documento || item.titulo || 'Documento não informado'}</div>
                           </td>
                           <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.valor_total)}</td>
                           <td className="px-4 py-3">
@@ -1173,15 +1675,11 @@ export default function Financeiro() {
                               {item.financeiro_status || '—'}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="font-medium text-foreground">{paymentMethodLabels[item.forma_pagamento || ''] || item.forma_pagamento || '—'}</div>
-                            <div className="text-xs text-muted-foreground">Venc. {formatDate(item.vencimento)}</div>
-                          </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <a
                                 href={`/financeiro/notas/${item.registro_tipo}/${item.id}`}
-                                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-white/10"
+                                className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-white/5"
                               >
                                 <Eye size={14} />
                                 Ver
@@ -1190,7 +1688,8 @@ export default function Financeiro() {
                                 <DropdownMenuTrigger asChild>
                                   <button
                                     type="button"
-                                    className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/5 p-2 text-foreground hover:bg-white/10"
+                                    disabled={isDeleting}
+                                    className="inline-flex items-center justify-center rounded-lg border border-white/10 p-2 text-foreground hover:bg-white/5"
                                   >
                                     <MoreVertical size={14} />
                                   </button>
@@ -1220,6 +1719,19 @@ export default function Financeiro() {
                                       </DropdownMenuItem>
                                     </>
                                   )}
+                                  {canDeleteItem && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onSelect={() => solicitarExclusao(item)}
+                                        disabled={isDeleting}
+                                        className="text-red-300 focus:text-red-200"
+                                      >
+                                        <Trash2 size={14} className="mr-2" />
+                                        {isDeleting ? 'Excluindo...' : 'Excluir lançamento'}
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
@@ -1229,7 +1741,7 @@ export default function Financeiro() {
                     })}
                     {!isLoading && notasPaginadas.length === 0 && (
                       <tr>
-                        <td colSpan={10} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                        <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">
                           Nenhuma nota fiscal encontrada para os filtros aplicados.
                         </td>
                       </tr>
@@ -1240,8 +1752,7 @@ export default function Financeiro() {
 
               <div className="flex flex-col gap-3 border-t border-white/10 px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-4">
-                  <span>Linhas por página: {notasPorPagina}</span>
-                  <span>{notasFiltradas.length} registro(s)</span>
+                  <span>{notaInicio}-{notaFim} de {notasFiltradas.length}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span>Página {notaPagina} de {totalPaginasNotas}</span>
@@ -1267,6 +1778,37 @@ export default function Financeiro() {
           </div>
         </div>
       </div>
+
+      <AlertDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog((current) => ({ open, item: open ? current.item : null }))}
+      >
+        <AlertDialogContent className="border border-white/10 bg-[#0f0f0f]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lançamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteDialog.item ? (
+                <>
+                  Confirma a exclusão de <strong>{deleteDialog.item.nfse.numero ? `NF ${deleteDialog.item.nfse.numero}` : deleteDialog.item.titulo || 'este lançamento'}</strong>?
+                  Esta ação não pode ser desfeita.
+                </>
+              ) : (
+                'Esta ação não pode ser desfeita.'
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-white/20 hover:bg-white/10">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarExclusao}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteDialog.item ? deletingKeys.includes(getItemKey(deleteDialog.item)) : false}
+            >
+              {deleteDialog.item && deletingKeys.includes(getItemKey(deleteDialog.item)) ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

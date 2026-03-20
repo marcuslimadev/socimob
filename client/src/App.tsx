@@ -102,10 +102,10 @@ function Router() {
       <Route path="/portal" component={ClientPortalRefined} />
       <Route path="/portal/classic" component={ClientPortal} />
       <Route path="/agenda" component={Agenda} />
-      <Route path="/financeiro/notas/:registroTipo/:id" component={FinanceiroNotaDetalhe} />
-      <Route path="/financeiro" component={Financeiro} />
-      <Route path="/financeiro/locacao" component={AdminGestaoLocacao} />
-      <Route path="/financeiro/contas" component={ContasFinanceiras} />
+      <Route path="/financeiro/notas/:registroTipo/:id" component={AdminFinanceiroNotaDetalheGate} />
+      <Route path="/financeiro" component={AdminFinanceiroGate} />
+      <Route path="/financeiro/locacao" component={AdminGestaoLocacaoGate} />
+      <Route path="/financeiro/contas" component={AdminContasFinanceirasGate} />
       <Route path="/portal/meu-financeiro" component={PortalFinanceiroGate} />
       <Route path="/vistorias" component={Vistorias} />
       <Route path="/vistorias/solicitacoes" component={VistoriaSolicitacoes} />
@@ -134,6 +134,58 @@ function Router() {
     </Switch>
     </Suspense>
   );
+}
+
+function AdminOnlyPage({ component: Component }: { component: React.ComponentType }) {
+  const [, setLocation] = useLocation();
+  const [canAccess, setCanAccess] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const rawUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    let user: any = null;
+
+    try {
+      user = rawUser ? JSON.parse(rawUser) : null;
+    } catch {
+      user = null;
+    }
+
+    const role = (user?.role || '').toLowerCase();
+
+    if (!token) {
+      setLocation('/login');
+      setCanAccess(false);
+      return;
+    }
+
+    if (!['admin', 'super_admin'].includes(role)) {
+      setLocation('/dashboard');
+      setCanAccess(false);
+      return;
+    }
+
+    setCanAccess(true);
+  }, [setLocation]);
+
+  if (canAccess !== true) return null;
+  return <Component />;
+}
+
+function AdminFinanceiroGate() {
+  return <AdminOnlyPage component={Financeiro} />;
+}
+
+function AdminFinanceiroNotaDetalheGate() {
+  return <AdminOnlyPage component={FinanceiroNotaDetalhe} />;
+}
+
+function AdminGestaoLocacaoGate() {
+  return <AdminOnlyPage component={AdminGestaoLocacao} />;
+}
+
+function AdminContasFinanceirasGate() {
+  return <AdminOnlyPage component={ContasFinanceiras} />;
 }
 
 function PortalFinanceiroGate() {

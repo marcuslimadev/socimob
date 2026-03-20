@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 
 use App\Models\CommissionInvoice;
 use App\Models\DocumentoFiscal;
+use App\Models\FinancialTransaction;
 use App\Models\Lead;
 use App\Models\Pessoa;
 use App\Models\Property;
@@ -34,6 +35,10 @@ class FinanceiroController extends Controller
         $user = $request->user();
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($adminResponse = $this->ensureAdmin($user)) {
+            return $adminResponse;
         }
 
         $query = CommissionInvoice::with(['corretor:id,name,email'])
@@ -91,6 +96,10 @@ class FinanceiroController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
+        if ($adminResponse = $this->ensureAdmin($user)) {
+            return $adminResponse;
+        }
+
         if ($registroTipo === 'commission_invoice') {
             $invoice = CommissionInvoice::with(['corretor:id,name,email'])
                 ->where('tenant_id', $user->tenant_id)
@@ -129,6 +138,10 @@ class FinanceiroController extends Controller
         $user = $request->user();
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($adminResponse = $this->ensureAdmin($user)) {
+            return $adminResponse;
         }
 
         if ($registroTipo === 'commission_invoice') {
@@ -175,6 +188,10 @@ class FinanceiroController extends Controller
         $user = $request->user();
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($adminResponse = $this->ensureAdmin($user)) {
+            return $adminResponse;
         }
 
         $documento = DocumentoFiscal::with(['tomador:id,nome,razao_social,tipo,cpf,cnpj,email'])
@@ -249,6 +266,10 @@ class FinanceiroController extends Controller
         $user = $request->user();
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($adminResponse = $this->ensureAdmin($user)) {
+            return $adminResponse;
         }
 
         $contextoEmissao = $request->input('contexto_emissao', 'comissao');
@@ -492,6 +513,87 @@ class FinanceiroController extends Controller
             'tipo_nota' => $contextoEmissao,
             'documento_fiscal' => $documento->fresh('tomador'),
         ], 201);
+    }
+
+    public function destroyNotaServico(Request $request, string $registroTipo, int $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($adminResponse = $this->ensureAdmin($user)) {
+            return $adminResponse;
+        }
+
+        if ($registroTipo === 'commission_invoice') {
+            $invoice = CommissionInvoice::where('tenant_id', $user->tenant_id)->find($id);
+
+            if (!$invoice) {
+                return response()->json(['message' => 'Nota fiscal não encontrada'], 404);
+            }
+
+            $hasFinancialTransaction = FinancialTransaction::where('tenant_id', $user->tenant_id)
+                ->where('commission_invoice_id', $invoice->id)
+                ->exists();
+
+            if (
+                $invoice->status === 'issued'
+                || !empty($invoice->nfse_numero)
+                || !empty($invoice->integracao_id)
+                || $hasFinancialTransaction
+                || in_array(strtolower((string) $invoice->financeiro_status), ['paid', 'pago', 'lancado', 'pendente'], true)
+            ) {
+                return response()->json([
+                    'message' => 'Só é permitido excluir notas de comissão ainda não emitidas e sem lançamento financeiro vinculado.',
+                ], 422);
+            }
+
+            $invoice->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Nota de comissão excluída com sucesso.',
+            ]);
+        }
+
+        if ($registroTipo === 'documento_fiscal') {
+            $documento = DocumentoFiscal::where('tenant_id', $user->tenant_id)->find($id);
+
+            if (!$documento) {
+                return response()->json(['message' => 'Nota fiscal não encontrada'], 404);
+            }
+
+            if (
+                $documento->status === 'issued'
+                || !empty($documento->numero)
+                || !empty(data_get($documento->payload, 'integracao_id'))
+            ) {
+                return response()->json([
+                    'message' => 'Só é permitido excluir documentos fiscais que ainda não foram emitidos definitivamente.',
+                ], 422);
+            }
+
+            $documento->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Documento fiscal excluído com sucesso.',
+            ]);
+        }
+
+        return response()->json(['message' => 'Tipo de nota fiscal inválido'], 404);
+    }
+
+    private function ensureAdmin($user)
+    {
+        $role = strtolower((string) ($user->role ?? ''));
+
+        if (!in_array($role, ['admin', 'super_admin'], true)) {
+            return response()->json(['message' => 'Acesso restrito ao admin'], 403);
+        }
+
+        return null;
     }
 
     private function montarPayloadDocumentoFiscal(DocumentoFiscal $documento, array $tomador, array $financeiro, string $descricao): array

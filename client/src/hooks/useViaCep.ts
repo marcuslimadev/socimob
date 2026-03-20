@@ -8,6 +8,7 @@ interface ViaCepResponse {
   bairro: string;
   localidade: string;
   uf: string;
+  ibge?: string;
   erro?: boolean;
 }
 

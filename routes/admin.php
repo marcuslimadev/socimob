@@ -42,6 +42,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->get('/financeiro/notas-servico/{registroTipo}/{id}/danfse', 'App\Http\Controllers\Admin\FinanceiroController@downloadDanfse');
     $router->post('/financeiro/notas-servico', 'App\Http\Controllers\Admin\FinanceiroController@emitirNfseComissao');
     $router->post('/financeiro/notas-servico/{id}/sincronizar', 'App\Http\Controllers\Admin\FinanceiroController@sincronizarDocumentoFiscal');
+    $router->delete('/financeiro/notas-servico/{registroTipo}/{id}', 'App\Http\Controllers\Admin\FinanceiroController@destroyNotaServico');
     $router->post('/financeiro/comissoes/nfse', 'App\Http\Controllers\Admin\FinanceiroController@emitirNfseComissao'); // legado
     $router->get('/financeiro/contratos', 'App\Http\Controllers\Admin\ContratosLocacaoController@index');
     $router->post('/financeiro/contratos', 'App\Http\Controllers\Admin\ContratosLocacaoController@store');
