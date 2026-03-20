@@ -152,7 +152,7 @@ class NfseDanfseService
                     data_get($retorno, 'nationalTaxCode'),
                     data_get($retorno, 'serviceCode.national'),
                     data_get($tenant?->metadata, 'nfse_national_service_code'),
-                    $documento->contexto_emissao === 'proprietario' ? '10.05.01 - Agenciamento, corretagem ou intermediação de bens imóveis' : null,
+                    $documento->contexto_emissao === 'proprietario' ? '100501 - Agenciamento, corretagem ou intermediação de bens móveis ou imóveis, não abrangidos em outros itens ou subitens, por quaisquer meios' : null,
                 ),
                 'codigo_tributacao_municipal' => $this->textoOuTraco(
                     data_get($retorno, 'cityServiceCode'),
@@ -281,7 +281,7 @@ class NfseDanfseService
                 'cep' => $tomadorEndereco['postal_code'],
             ],
             'servico' => [
-                'codigo_tributacao_nacional' => $this->textoOuTraco(data_get($retorno, 'nationalTaxCode'), '10.05.01 - Agenciamento, corretagem ou intermediação de bens imóveis'),
+                'codigo_tributacao_nacional' => $this->textoOuTraco(data_get($retorno, 'nationalTaxCode'), '100501 - Agenciamento, corretagem ou intermediação de bens móveis ou imóveis, não abrangidos em outros itens ou subitens, por quaisquer meios'),
                 'codigo_tributacao_municipal' => $this->textoOuTraco(data_get($retorno, 'cityServiceCode'), '004 - Agenciamento de bens imóveis'),
                 'local_prestacao' => $localPrestacao,
                 'pais_prestacao' => 'Brasil',

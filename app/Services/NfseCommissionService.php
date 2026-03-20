@@ -175,9 +175,11 @@ class NfseCommissionService
     {
         $documento = $this->somenteDigitos($tomador['documento'] ?? null);
         $cityServiceCode = $this->resolverCityServiceCode($invoice, $tenant);
+        $nationalTaxCode = $this->resolverNationalTaxCode($invoice, $tenant);
 
         $payload = [
             'cityServiceCode' => $cityServiceCode,
+            'nationalTaxCode' => $nationalTaxCode,
             'description' => $invoice->descricao_servico,
             'servicesAmount' => (float) $invoice->valor_total,
             'borrower' => [
@@ -216,6 +218,50 @@ class NfseCommissionService
         }
 
         return env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE', '004')));
+    }
+
+    private function resolverNationalTaxCode(CommissionInvoice $invoice, ?Tenant $tenant): ?string
+    {
+        $tipoNota = strtolower((string) data_get($invoice->financeiro_metadata, 'tipo_nota', 'corretagem'));
+
+        $keys = $tipoNota === 'aluguel'
+            ? ['nfse_national_service_code_aluguel', 'nfse_national_service_code_locatario', 'nfse_national_service_code']
+            : ['nfse_national_service_code_corretagem', 'nfse_national_service_code_proprietario', 'nfse_national_service_code'];
+
+        foreach ($keys as $key) {
+            $normalized = $this->normalizarNationalTaxCode($tenant?->getIntegrationValue($key));
+            if ($normalized) {
+                return $normalized;
+            }
+        }
+
+        $metadataKey = $tipoNota === 'aluguel'
+            ? 'nfse_national_service_code_locatario'
+            : 'nfse_national_service_code';
+
+        $normalizedMetadata = $this->normalizarNationalTaxCode(data_get($tenant?->metadata, $metadataKey));
+        if ($normalizedMetadata) {
+            return $normalizedMetadata;
+        }
+
+        if ($tipoNota !== 'aluguel') {
+            return '100501';
+        }
+
+        return $this->normalizarNationalTaxCode(
+            env('NFE_IO_NATIONAL_TAX_CODE_ALUGUEL', env('NFE_IO_NATIONAL_TAX_CODE_LOCATARIO', env('NFE_IO_NATIONAL_TAX_CODE')))
+        );
+    }
+
+    private function normalizarNationalTaxCode(mixed $value): ?string
+    {
+        if (!is_scalar($value)) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', (string) $value) ?: '';
+
+        return strlen($digits) === 6 ? $digits : null;
     }
 
     private function montarInformacoesAdicionais(CommissionInvoice $invoice, array $financeiro): string

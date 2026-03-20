@@ -1063,49 +1063,50 @@ export default function Financeiro() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.7fr)_360px] gap-6">
-            <div className="glass-panel p-6 rounded-2xl space-y-6">
-              <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                <FileText size={20} />
-                Wizard de emissão
-              </div>
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(340px,0.92fr)_minmax(0,1.08fr)] gap-6 items-start">
+            <div className="space-y-6">
+              <div className="glass-panel p-6 rounded-2xl space-y-6">
+                <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <FileText size={20} />
+                  Wizard de emissão
+                </div>
 
-              <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>Etapa {wizardStep + 1} de {wizardSteps.length}</span>
-                  <span>{wizardSteps[wizardStep].title}</span>
-                </div>
-                <div className="h-2 rounded-full bg-black/20">
-                  <div className="h-2 rounded-full bg-emerald-400 transition-all" style={{ width: `${((wizardStep + 1) / wizardSteps.length) * 100}%` }} />
-                </div>
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                  {wizardSteps.map((step) => (
-                    <button
-                      key={step.id}
-                      type="button"
-                      onClick={() => {
-                        if (step.id <= wizardStep || validarEtapa(wizardStep)) {
-                          setWizardStep(step.id);
-                        }
-                      }}
-                      className={`rounded-xl border px-3 py-2 text-left text-sm transition ${step.id === wizardStep ? 'border-emerald-400/50 bg-emerald-500/10 text-foreground' : 'border-white/10 bg-transparent text-muted-foreground hover:bg-white/5'}`}
-                    >
-                      {step.title}
+                <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Etapa {wizardStep + 1} de {wizardSteps.length}</span>
+                    <span>{wizardSteps[wizardStep].title}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-black/20">
+                    <div className="h-2 rounded-full bg-emerald-400 transition-all" style={{ width: `${((wizardStep + 1) / wizardSteps.length) * 100}%` }} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                    {wizardSteps.map((step) => (
+                      <button
+                        key={step.id}
+                        type="button"
+                        onClick={() => {
+                          if (step.id <= wizardStep || validarEtapa(wizardStep)) {
+                            setWizardStep(step.id);
+                          }
+                        }}
+                        className={`rounded-xl border px-3 py-2 text-left text-sm transition ${step.id === wizardStep ? 'border-emerald-400/50 bg-emerald-500/10 text-foreground' : 'border-white/10 bg-transparent text-muted-foreground hover:bg-white/5'}`}
+                      >
+                        {step.title}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      {rascunhoRestaurado ? 'Rascunho restaurado automaticamente' : 'Rascunho salvo automaticamente'}
+                      {ultimoRascunhoSalvo ? ` · último rascunho salvo às ${new Date(ultimoRascunhoSalvo).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                    </span>
+                    <button type="button" onClick={limparRascunho} className="hover:text-foreground">
+                      Limpar rascunho local
                     </button>
-                  ))}
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    {rascunhoRestaurado ? 'Rascunho restaurado automaticamente' : 'Rascunho salvo automaticamente'}
-                    {ultimoRascunhoSalvo ? ` · último rascunho salvo às ${new Date(ultimoRascunhoSalvo).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}
-                  </span>
-                  <button type="button" onClick={limparRascunho} className="hover:text-foreground">
-                    Limpar rascunho local
-                  </button>
-                </div>
-              </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
                 {wizardStep === 0 && (
                   <div className="space-y-5">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -1428,49 +1429,48 @@ export default function Financeiro() {
                   </div>
                 )}
 
-                <div className="flex flex-col gap-3 border-t border-white/10 pt-4 md:flex-row md:items-center md:justify-between">
-                  <button
-                    type="button"
-                    onClick={voltarEtapa}
-                    disabled={wizardStep === 0}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/10 disabled:opacity-50"
-                  >
-                    <ChevronLeft size={16} /> Voltar
-                  </button>
-
-                  <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                  <div className="flex flex-col gap-3 border-t border-white/10 pt-4 md:flex-row md:items-center md:justify-between">
                     <button
                       type="button"
-                      onClick={limparFormulario}
-                      className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-white/5"
+                      onClick={voltarEtapa}
+                      disabled={wizardStep === 0}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/10 disabled:opacity-50"
                     >
-                      Limpar
+                      <ChevronLeft size={16} /> Voltar
                     </button>
 
-                    {wizardStep < wizardSteps.length - 1 ? (
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row">
                       <button
                         type="button"
-                        onClick={avancarEtapa}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-slate-950 px-4 py-2.5 text-sm font-semibold hover:bg-slate-100"
+                        onClick={limparFormulario}
+                        className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-white/5"
                       >
-                        Próxima etapa <ChevronRight size={16} />
+                        Limpar
                       </button>
-                    ) : (
-                      <button
-                        type="submit"
-                        disabled={isSubmitting || camposPendentes.length > 0}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:from-emerald-600 hover:to-teal-600 disabled:opacity-60"
-                      >
-                        <CheckCircle2 size={16} />
-                        {isSubmitting ? 'Emitindo...' : 'Emitir nota'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </form>
-            </div>
 
-            <div className="space-y-6">
+                      {wizardStep < wizardSteps.length - 1 ? (
+                        <button
+                          type="button"
+                          onClick={avancarEtapa}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-slate-950 px-4 py-2.5 text-sm font-semibold hover:bg-slate-100"
+                        >
+                          Próxima etapa <ChevronRight size={16} />
+                        </button>
+                      ) : (
+                        <button
+                          type="submit"
+                          disabled={isSubmitting || camposPendentes.length > 0}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:from-emerald-600 hover:to-teal-600 disabled:opacity-60"
+                        >
+                          <CheckCircle2 size={16} />
+                          {isSubmitting ? 'Emitindo...' : 'Emitir nota'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </form>
+              </div>
+
               <div className="glass-panel p-6 rounded-2xl">
                 <div className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
                   <Banknote size={20} />
@@ -1496,110 +1496,109 @@ export default function Financeiro() {
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="glass-panel p-6 rounded-2xl space-y-5">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-              <div>
-                <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                  <History size={20} />
-                  Histórico unificado (aluguel + comissão)
+            <div className="glass-panel p-6 rounded-2xl space-y-5 min-w-0">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                    <History size={20} />
+                    Histórico unificado (aluguel + comissão)
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Visual limpo, busca rápida e ações diretas por lançamento.
+                  </p>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Visual limpo, busca rápida e ações diretas por lançamento.
-                </p>
-              </div>
-              <div className="text-sm text-muted-foreground">{notasFiltradas.length} registro(s)</div>
-            </div>
-
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-1 flex-col gap-3 md:flex-row">
-                <label className="relative flex-1">
-                  <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    value={notaBusca}
-                    onChange={(event) => setNotaBusca(event.target.value)}
-                    placeholder="Buscar por número, contexto, tomador, descrição ou código"
-                    className="w-full rounded-xl border border-white/10 bg-transparent py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground"
-                  />
-                </label>
-                <select
-                  value={notaContextoFiltro}
-                  onChange={(event) => setNotaContextoFiltro(event.target.value as 'todos' | ContextoEmissao)}
-                  className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-foreground"
-                >
-                  <option value="todos">Todos os contextos</option>
-                  <option value="comissao">Comissão</option>
-                  <option value="locatario">Locatário</option>
-                  <option value="construtora">Construtora</option>
-                  <option value="proprietario">Proprietário vendedor</option>
-                </select>
-                <select
-                  value={notaStatusFiltro}
-                  onChange={(event) => setNotaStatusFiltro(event.target.value)}
-                  className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-foreground"
-                >
-                  <option value="todos">Todos os status</option>
-                  <option value="issued">Emitida</option>
-                  <option value="pending">Pendente</option>
-                  <option value="created">Criada</option>
-                  <option value="cancelled">Cancelada</option>
-                  <option value="error">Erro</option>
-                </select>
-                <select
-                  value={notaPeriodoFiltro}
-                  onChange={(event) => setNotaPeriodoFiltro(event.target.value as '12m' | '90d' | '30d' | 'todos')}
-                  className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-foreground"
-                >
-                  <option value="12m">Últimos 12 meses</option>
-                  <option value="90d">Últimos 90 dias</option>
-                  <option value="30d">Últimos 30 dias</option>
-                  <option value="todos">Todo o período</option>
-                </select>
-                <select
-                  value={String(notasPorPagina)}
-                  onChange={(event) => setNotasPorPagina(Number(event.target.value))}
-                  className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-foreground"
-                >
-                  <option value="10">10 linhas</option>
-                  <option value="25">25 linhas</option>
-                  <option value="50">50 linhas</option>
-                </select>
+                <div className="text-sm text-muted-foreground">{notasFiltradas.length} registro(s)</div>
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNotaBusca('');
-                    setNotaContextoFiltro('todos');
-                    setNotaStatusFiltro('todos');
-                    setNotaPeriodoFiltro('12m');
-                  }}
-                  className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5"
-                >
-                  Limpar
-                </button>
-                <button
-                  type="button"
-                  onClick={exportarNotasCsv}
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-white/10"
-                >
-                  <Download size={16} />
-                  Exportar
-                </button>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-1 flex-col gap-3 md:flex-row md:flex-wrap">
+                  <label className="relative flex-1 md:min-w-[260px]">
+                    <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      value={notaBusca}
+                      onChange={(event) => setNotaBusca(event.target.value)}
+                      placeholder="Buscar por número, contexto, tomador, descrição ou código"
+                      className="w-full rounded-xl border border-white/10 bg-transparent py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground"
+                    />
+                  </label>
+                  <select
+                    value={notaContextoFiltro}
+                    onChange={(event) => setNotaContextoFiltro(event.target.value as 'todos' | ContextoEmissao)}
+                    className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-foreground"
+                  >
+                    <option value="todos">Todos os contextos</option>
+                    <option value="comissao">Comissão</option>
+                    <option value="locatario">Locatário</option>
+                    <option value="construtora">Construtora</option>
+                    <option value="proprietario">Proprietário vendedor</option>
+                  </select>
+                  <select
+                    value={notaStatusFiltro}
+                    onChange={(event) => setNotaStatusFiltro(event.target.value)}
+                    className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-foreground"
+                  >
+                    <option value="todos">Todos os status</option>
+                    <option value="issued">Emitida</option>
+                    <option value="pending">Pendente</option>
+                    <option value="created">Criada</option>
+                    <option value="cancelled">Cancelada</option>
+                    <option value="error">Erro</option>
+                  </select>
+                  <select
+                    value={notaPeriodoFiltro}
+                    onChange={(event) => setNotaPeriodoFiltro(event.target.value as '12m' | '90d' | '30d' | 'todos')}
+                    className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-foreground"
+                  >
+                    <option value="12m">Últimos 12 meses</option>
+                    <option value="90d">Últimos 90 dias</option>
+                    <option value="30d">Últimos 30 dias</option>
+                    <option value="todos">Todo o período</option>
+                  </select>
+                  <select
+                    value={String(notasPorPagina)}
+                    onChange={(event) => setNotasPorPagina(Number(event.target.value))}
+                    className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm text-foreground"
+                  >
+                    <option value="10">10 linhas</option>
+                    <option value="25">25 linhas</option>
+                    <option value="50">50 linhas</option>
+                  </select>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNotaBusca('');
+                      setNotaContextoFiltro('todos');
+                      setNotaStatusFiltro('todos');
+                      setNotaPeriodoFiltro('12m');
+                    }}
+                    className="rounded-xl border border-white/10 bg-transparent px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5"
+                  >
+                    Limpar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportarNotasCsv}
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-white/10"
+                  >
+                    <Download size={16} />
+                    Exportar
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {isLoading && <p className="text-muted-foreground">Carregando histórico...</p>}
+              {isLoading && <p className="text-muted-foreground">Carregando histórico...</p>}
 
-            {!isLoading && notasFiltradas.length === 0 && (
-              <p className="text-muted-foreground">Nenhum lançamento encontrado.</p>
-            )}
+              {!isLoading && notasFiltradas.length === 0 && (
+                <p className="text-muted-foreground">Nenhum lançamento encontrado.</p>
+              )}
 
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-transparent">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[980px] text-sm">
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-transparent">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[980px] text-sm">
                   <thead className="border-b border-white/10 text-left text-xs text-muted-foreground">
                     <tr>
                       <th className="px-4 py-3">Documento</th>
@@ -1747,31 +1746,32 @@ export default function Financeiro() {
                       </tr>
                     )}
                   </tbody>
-                </table>
-              </div>
-
-              <div className="flex flex-col gap-3 border-t border-white/10 px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-4">
-                  <span>{notaInicio}-{notaFim} de {notasFiltradas.length}</span>
+                  </table>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span>Página {notaPagina} de {totalPaginasNotas}</span>
-                  <button
-                    type="button"
-                    onClick={() => setNotaPagina((current) => Math.max(1, current - 1))}
-                    disabled={notaPagina <= 1}
-                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-foreground hover:bg-white/10 disabled:opacity-50"
-                  >
-                    Anterior
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNotaPagina((current) => Math.min(totalPaginasNotas, current + 1))}
-                    disabled={notaPagina >= totalPaginasNotas}
-                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-foreground hover:bg-white/10 disabled:opacity-50"
-                  >
-                    Próxima
-                  </button>
+
+                <div className="flex flex-col gap-3 border-t border-white/10 px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-center gap-4">
+                    <span>{notaInicio}-{notaFim} de {notasFiltradas.length}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>Página {notaPagina} de {totalPaginasNotas}</span>
+                    <button
+                      type="button"
+                      onClick={() => setNotaPagina((current) => Math.max(1, current - 1))}
+                      disabled={notaPagina <= 1}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-foreground hover:bg-white/10 disabled:opacity-50"
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNotaPagina((current) => Math.min(totalPaginasNotas, current + 1))}
+                      disabled={notaPagina >= totalPaginasNotas}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-foreground hover:bg-white/10 disabled:opacity-50"
+                    >
+                      Próxima
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

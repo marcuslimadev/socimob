@@ -153,8 +153,8 @@ export default function FinanceiroNotaDetalhe() {
     <div className="min-h-screen bg-background text-foreground flex">
       <Sidebar />
 
-      <div className="flex-1 lg:ml-72">
-        <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      <div className="page-shell">
+        <div className="max-w-5xl mx-auto space-y-6">
           <div className="glass-panel rounded-2xl p-6 space-y-4">
             <button
               type="button"

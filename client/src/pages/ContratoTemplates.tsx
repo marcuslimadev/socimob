@@ -179,7 +179,8 @@ export default function ContratoTemplates() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 ml-[calc(260px+2rem)] p-8 max-w-6xl">
+      <main className="page-shell">
+        <div className="mx-auto max-w-6xl">
         {/* Page Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -435,6 +436,7 @@ export default function ContratoTemplates() {
               </>
             )}
           </div>
+        </div>
         </div>
       </main>
     </div>

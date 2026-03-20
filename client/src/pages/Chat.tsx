@@ -578,10 +578,10 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+    <div className="flex min-h-screen overflow-hidden bg-background text-foreground">
       <Sidebar />
 
-      <div className="relative flex-1 min-h-0 flex flex-col md:ml-80">
+      <div className="page-shell relative flex min-h-0 flex-col overflow-hidden !px-0 !pb-0">
         {/* Global Search */}
         <div className="border-b border-border bg-card px-5 py-4">
           <div className="max-w-5xl mx-auto flex items-center gap-3">

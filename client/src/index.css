@@ -43,6 +43,7 @@
 }
 
 :root {
+  --app-header-offset: 5rem;
   --font-primary: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-secondary: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --primary: #001775;
@@ -203,6 +204,11 @@
     transition: margin-left 0.3s ease;
   }
 
+  .topnav-offset-shell {
+    padding-top: var(--app-header-offset);
+    transition: padding-top 0.3s ease;
+  }
+
   .page-content {
     width: 100%;
     max-width: 80rem;
@@ -219,7 +225,7 @@
 
   body[data-sidebar='topnav'] .page-shell {
     margin-left: 0;
-    padding-top: 5.75rem;
+    padding-top: var(--app-header-offset);
     background-color: #050814;
     background-image: linear-gradient(180deg, #050814 0, #050814 5.25rem, transparent 5.25rem);
     background-repeat: no-repeat;
@@ -229,11 +235,11 @@
     background-color: #050814;
     background-image: linear-gradient(180deg, #050814 0, #050814 5.25rem, transparent 5.25rem);
     background-repeat: no-repeat;
-    padding-top: 5.75rem;
+    padding-top: var(--app-header-offset);
   }
 
   body[data-sidebar='topnav'][data-section-tabs='active'] .page-shell {
-    padding-top: 5.75rem;
+    padding-top: var(--app-header-offset);
     background-image: linear-gradient(180deg, #050814 0, #050814 5.25rem, transparent 5.25rem);
   }
 
@@ -248,24 +254,34 @@
 
   body[data-sidebar='topnav'] .md\:ml-80 {
     margin-left: 0 !important;
-    padding-top: 5.75rem;
+    padding-top: var(--app-header-offset);
     background-image: linear-gradient(180deg, #050814 0, #050814 5.25rem, transparent 5.25rem);
     background-repeat: no-repeat;
   }
 
+  body[data-sidebar='topnav'] .topnav-offset-shell,
+  body[data-section-tabs='active'] .topnav-offset-shell,
+  body[data-sidebar='topnav'][data-section-tabs='active'] .topnav-offset-shell {
+    padding-top: var(--app-header-offset);
+  }
+
   @media (max-width: 767px) {
+    body[data-sidebar='topnav'] {
+      --app-header-offset: 5.75rem;
+    }
+
     body[data-sidebar='topnav'] .page-shell {
-      padding-top: 5.75rem;
+      padding-top: var(--app-header-offset);
       background-image: linear-gradient(180deg, #050814 0, #050814 5.25rem, transparent 5.25rem);
     }
 
     body[data-sidebar='topnav'][data-section-tabs='active'] .page-shell {
-      padding-top: 5.75rem;
+      padding-top: var(--app-header-offset);
       background-image: linear-gradient(180deg, #050814 0, #050814 5.25rem, transparent 5.25rem);
     }
 
     body[data-sidebar='topnav'] .md\:ml-80 {
-      padding-top: 5.75rem;
+      padding-top: var(--app-header-offset);
       background-image: linear-gradient(180deg, #050814 0, #050814 5.25rem, transparent 5.25rem);
     }
   }
@@ -275,32 +291,40 @@
   }
 
   @media (min-width: 768px) {
+    body[data-sidebar='topnav'] {
+      --app-header-offset: 10.75rem;
+    }
+
+    body[data-sidebar='topnav'][data-section-tabs='active'] {
+      --app-header-offset: 14rem;
+    }
+
     body[data-sidebar='topnav'] .page-shell {
-      padding-top: 10.75rem;
+      padding-top: var(--app-header-offset);
       background-image: linear-gradient(180deg, #050814 0, #050814 9.5rem, transparent 9.5rem);
     }
 
     body[data-section-tabs='active'] .page-shell {
       background-image: linear-gradient(180deg, #050814 0, #050814 12.75rem, transparent 12.75rem);
-      padding-top: 14rem;
+      padding-top: var(--app-header-offset);
     }
 
     body[data-sidebar='topnav'][data-section-tabs='active'] .page-shell {
-      padding-top: 14rem;
+      padding-top: var(--app-header-offset);
       background-image: linear-gradient(180deg, #050814 0, #050814 12.75rem, transparent 12.75rem);
     }
 
     body[data-sidebar='topnav'] .md\:ml-80 {
-      padding-top: 10.75rem;
+      padding-top: var(--app-header-offset);
       background-image: linear-gradient(180deg, #050814 0, #050814 9.5rem, transparent 9.5rem);
     }
 
     body[data-section-tabs='active'] .md\:ml-80 {
-      padding-top: 14rem;
+      padding-top: var(--app-header-offset);
     }
 
     body[data-sidebar='topnav'][data-section-tabs='active'] .md\:ml-80 {
-      padding-top: 14rem;
+      padding-top: var(--app-header-offset);
       background-image: linear-gradient(180deg, #050814 0, #050814 12.75rem, transparent 12.75rem);
     }
   }

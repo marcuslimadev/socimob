@@ -599,9 +599,11 @@ class FinanceiroController extends Controller
     private function montarPayloadDocumentoFiscal(DocumentoFiscal $documento, array $tomador, array $financeiro, string $descricao): array
     {
         $documentoTomador = $this->nfseService->somenteDigitos($tomador['documento'] ?? null);
+        $nationalTaxCode = $this->resolverNationalTaxCodeManual($documento->tenant_id, $documento->contexto_emissao);
 
         $payload = [
             'cityServiceCode' => $documento->city_service_code ?: $this->resolverCityServiceCodeManual($documento->tenant_id, $documento->contexto_emissao),
+            'nationalTaxCode' => $nationalTaxCode,
             'description' => $descricao,
             'servicesAmount' => (float) $documento->valor_servico,
             'borrower' => [
@@ -871,9 +873,56 @@ class FinanceiroController extends Controller
     private function resolverCodigoTributacaoNacionalPadrao(?string $contextoEmissao): ?string
     {
         return match (strtolower(trim((string) $contextoEmissao))) {
-            'proprietario', 'comissao' => '10.05.01',
+            'proprietario', 'comissao' => '100501',
             default => null,
         };
+    }
+
+    private function resolverNationalTaxCodeManual(int $tenantId, ?string $contextoEmissao): ?string
+    {
+        $tenant = Tenant::find($tenantId);
+        $contexto = strtolower(trim((string) $contextoEmissao));
+
+        $keys = match ($contexto) {
+            'proprietario' => ['nfse_national_service_code_proprietario', 'nfse_national_service_code_corretagem', 'nfse_national_service_code'],
+            'locatario' => ['nfse_national_service_code_locatario', 'nfse_national_service_code_aluguel', 'nfse_national_service_code'],
+            'construtora' => ['nfse_national_service_code_construtora', 'nfse_national_service_code'],
+            default => ['nfse_national_service_code'],
+        };
+
+        foreach ($keys as $key) {
+            $normalized = $this->normalizarNationalTaxCode($tenant?->getIntegrationValue($key));
+            if ($normalized) {
+                return $normalized;
+            }
+        }
+
+        $normalizedMetadata = $this->normalizarNationalTaxCode(data_get($tenant?->metadata, 'nfse_national_service_code'));
+        if ($normalizedMetadata) {
+            return $normalizedMetadata;
+        }
+
+        return match ($contexto) {
+            'proprietario' => '100501',
+            'locatario' => $this->normalizarNationalTaxCode(
+                env('NFE_IO_NATIONAL_TAX_CODE_LOCATARIO', env('NFE_IO_NATIONAL_TAX_CODE_ALUGUEL', env('NFE_IO_NATIONAL_TAX_CODE')))
+            ),
+            'construtora' => $this->normalizarNationalTaxCode(
+                env('NFE_IO_NATIONAL_TAX_CODE_CONSTRUTORA', env('NFE_IO_NATIONAL_TAX_CODE'))
+            ),
+            default => $this->normalizarNationalTaxCode(env('NFE_IO_NATIONAL_TAX_CODE')),
+        };
+    }
+
+    private function normalizarNationalTaxCode(mixed $value): ?string
+    {
+        if (!is_scalar($value)) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', (string) $value) ?: '';
+
+        return strlen($digits) === 6 ? $digits : null;
     }
 
     private function normalizarTextoDiagnostico(mixed $value): ?string
