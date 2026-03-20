@@ -608,17 +608,15 @@ class FinanceiroController extends Controller
     private function montarPayloadDocumentoFiscal(DocumentoFiscal $documento, array $tomador, array $financeiro, string $descricao): array
     {
         $documentoTomador = $this->nfseService->somenteDigitos($tomador['documento'] ?? null);
-        $nationalTaxCode = $this->resolverNationalTaxCodeManual($documento->tenant_id, $documento->contexto_emissao);
+        $cityServiceCode = $this->normalizarCityServiceCodeManual(
+            $documento->city_service_code ?: $this->resolverCityServiceCodeManual($documento->tenant_id, $documento->contexto_emissao),
+            $documento->contexto_emissao ?? 'manual'
+        );
+        $federalServiceCode = $this->resolverFederalServiceCodeManual($documento->tenant_id, $documento->contexto_emissao);
 
         $payload = [
-            'cityServiceCode' => $documento->city_service_code ?: $this->resolverCityServiceCodeManual($documento->tenant_id, $documento->contexto_emissao),
-            'federalServiceCode' => $nationalTaxCode,
-            'nationalTaxCode' => $nationalTaxCode,
-            'serviceCode' => $this->nfseService->limparPayload([
-                'city' => $documento->city_service_code ?: $this->resolverCityServiceCodeManual($documento->tenant_id, $documento->contexto_emissao),
-                'municipal' => $documento->city_service_code ?: $this->resolverCityServiceCodeManual($documento->tenant_id, $documento->contexto_emissao),
-                'national' => $nationalTaxCode,
-            ]),
+            'cityServiceCode' => $cityServiceCode,
+            'federalServiceCode' => $federalServiceCode,
             'description' => $descricao,
             'servicesAmount' => (float) $documento->valor_servico,
             'borrower' => [
@@ -657,7 +655,7 @@ class FinanceiroController extends Controller
         }
 
         return $this->normalizarCityServiceCodeManual(match ($contexto) {
-            'proprietario' => env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE', '10.05'))),
+            'proprietario' => env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE', '100501.004'))),
             'locatario' => env('NFE_IO_SERVICE_CODE_LOCATARIO', env('NFE_IO_SERVICE_CODE_ALUGUEL', env('NFE_IO_SERVICE_CODE', '01.01'))),
             'construtora' => env('NFE_IO_SERVICE_CODE_CONSTRUTORA', env('NFE_IO_SERVICE_CODE', '01.01')),
             default => env('NFE_IO_SERVICE_CODE', '01.01'),
@@ -668,8 +666,50 @@ class FinanceiroController extends Controller
     {
         $code = trim((string) $value);
 
-        if (in_array($contexto, ['proprietario', 'comissao'], true) && $code === '004') {
-            return '10.05';
+        if (in_array($contexto, ['proprietario', 'comissao'], true)) {
+            if ($code === '' || in_array($code, ['004', '10.05', '100501', '100501004', '100501.004'], true)) {
+                return '100501.004';
+            }
+        }
+
+        return $code !== '' ? $code : (in_array($contexto, ['proprietario', 'comissao'], true) ? '100501.004' : '01.01');
+    }
+
+    private function resolverFederalServiceCodeManual(int $tenantId, ?string $contextoEmissao): string
+    {
+        $tenant = Tenant::find($tenantId);
+        $contexto = strtolower(trim((string) $contextoEmissao));
+
+        $keys = match ($contexto) {
+            'proprietario' => ['nfeio_service_code_proprietario', 'nfeio_service_code_corretagem', 'nfeio_service_code'],
+            'locatario' => ['nfeio_service_code_locatario', 'nfeio_service_code_aluguel', 'nfeio_service_code'],
+            'construtora' => ['nfeio_service_code_construtora', 'nfeio_service_code'],
+            default => ['nfeio_service_code'],
+        };
+
+        foreach ($keys as $key) {
+            $value = $tenant?->getIntegrationValue($key);
+            if (is_string($value) && trim($value) !== '') {
+                return $this->normalizarFederalServiceCodeManual(trim($value), $contexto);
+            }
+        }
+
+        return $this->normalizarFederalServiceCodeManual(match ($contexto) {
+            'proprietario' => env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE', '10.05'))),
+            'locatario' => env('NFE_IO_SERVICE_CODE_LOCATARIO', env('NFE_IO_SERVICE_CODE_ALUGUEL', env('NFE_IO_SERVICE_CODE', '01.01'))),
+            'construtora' => env('NFE_IO_SERVICE_CODE_CONSTRUTORA', env('NFE_IO_SERVICE_CODE', '01.01')),
+            default => env('NFE_IO_SERVICE_CODE', '01.01'),
+        }, $contexto);
+    }
+
+    private function normalizarFederalServiceCodeManual(?string $value, string $contexto): string
+    {
+        $code = trim((string) $value);
+
+        if (in_array($contexto, ['proprietario', 'comissao'], true)) {
+            if ($code === '' || in_array($code, ['004', '10.05', '100501', '100501004', '100501.004'], true)) {
+                return '10.05';
+            }
         }
 
         return $code !== '' ? $code : (in_array($contexto, ['proprietario', 'comissao'], true) ? '10.05' : '01.01');
@@ -1025,7 +1065,7 @@ class FinanceiroController extends Controller
         return $tenant?->getIntegrationValue('nfeio_service_code_corretagem')
             ?: $tenant?->getIntegrationValue('nfeio_service_code_proprietario')
             ?: $tenant?->getIntegrationValue('nfeio_service_code')
-            ?: env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE', '10.05')));
+            ?: env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE', '100501.004')));
     }
 
     private function resolverFonteCodigoServicoCommissionInvoice(CommissionInvoice $invoice): string

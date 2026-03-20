@@ -158,7 +158,7 @@ class NfseDanfseService
                     data_get($retorno, 'cityServiceCode'),
                     data_get($nfePayload, 'cityServiceCode'),
                     $documento->city_service_code,
-                    $documento->contexto_emissao === 'proprietario' ? '004 - Agenciamento de bens imóveis' : null,
+                    $documento->contexto_emissao === 'proprietario' ? '100501.004 - Agenciamento de bens imóveis' : null,
                 ),
                 'local_prestacao' => $localPrestacao,
                 'pais_prestacao' => $this->textoOuTraco(data_get($retorno, 'serviceCountry'), 'Brasil'),
@@ -282,7 +282,7 @@ class NfseDanfseService
             ],
             'servico' => [
                 'codigo_tributacao_nacional' => $this->textoOuTraco(data_get($retorno, 'nationalTaxCode'), '100501 - Agenciamento, corretagem ou intermediação de bens móveis ou imóveis, não abrangidos em outros itens ou subitens, por quaisquer meios'),
-                'codigo_tributacao_municipal' => $this->textoOuTraco(data_get($retorno, 'cityServiceCode'), '004 - Agenciamento de bens imóveis'),
+                'codigo_tributacao_municipal' => $this->textoOuTraco(data_get($retorno, 'cityServiceCode'), '100501.004 - Agenciamento de bens imóveis'),
                 'local_prestacao' => $localPrestacao,
                 'pais_prestacao' => 'Brasil',
                 'cnae' => $this->textoOuTraco(data_get($retorno, 'cnae'), data_get($retorno, 'provider.cnae'), data_get($tenant?->metadata, 'nfse_cnae')),
