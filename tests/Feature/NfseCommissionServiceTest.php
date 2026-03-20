@@ -78,6 +78,7 @@ class NfseCommissionServiceTest extends TestCase
         $this->assertTrue($request->hasHeader('Authorization', 'apikey-test'));
         $this->assertTrue($request->hasHeader('Idempotency-Key'));
         $this->assertSame('01.01', data_get($request->data(), 'cityServiceCode'));
+        $this->assertSame('100501004', data_get($request->data(), 'federalServiceCode'));
         $this->assertSame('100501004', data_get($request->data(), 'nationalTaxCode'));
         $this->assertSame('01.01', data_get($request->data(), 'serviceCode.city'));
         $this->assertSame('01.01', data_get($request->data(), 'serviceCode.municipal'));

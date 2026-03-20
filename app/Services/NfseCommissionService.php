@@ -182,6 +182,7 @@ class NfseCommissionService
 
         $payload = [
             'cityServiceCode' => $cityServiceCode,
+            'federalServiceCode' => $nationalTaxCode,
             'nationalTaxCode' => $nationalTaxCode,
             'serviceCode' => $this->limparPayload([
                 'city' => $cityServiceCode,
@@ -370,6 +371,7 @@ class NfseCommissionService
     {
         return [
             'cityServiceCode' => data_get($payload, 'cityServiceCode'),
+            'federalServiceCode' => data_get($payload, 'federalServiceCode'),
             'nationalTaxCode' => data_get($payload, 'nationalTaxCode'),
             'serviceCode' => data_get($payload, 'serviceCode'),
             'servicesAmount' => data_get($payload, 'servicesAmount'),
