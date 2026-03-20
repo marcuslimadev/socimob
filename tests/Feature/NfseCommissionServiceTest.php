@@ -30,7 +30,8 @@ class NfseCommissionServiceTest extends TestCase
                 'nfeio_base_url' => 'https://api.nfe.io',
                 'nfeio_api_key' => 'apikey-test',
                 'nfeio_company_id' => 'company-test',
-                'nfeio_service_code' => '01.01',
+                'nfeio_service_code_corretagem' => '01.01',
+                'nfse_national_service_code' => '100501',
             ],
         ]);
 
@@ -67,15 +68,22 @@ class NfseCommissionServiceTest extends TestCase
             'vencimento' => '2026-02-28',
         ]);
 
-        Http::assertSent(function ($request) {
-            return $request->url() === 'https://api.nfe.io/v1/companies/company-test/serviceinvoices'
-                && $request->hasHeader('X-NFE-APIKEY', 'apikey-test')
-                && $request->hasHeader('Authorization', 'apikey-test')
-                && $request->hasHeader('Idempotency-Key')
-                && data_get($request->data(), 'cityServiceCode') === '01.01'
-                && data_get($request->data(), 'borrower.federalTaxNumber') === '12345678901'
-                && data_get($request->data(), 'servicesAmount') === 1500.75;
-        });
+        Http::assertSentCount(1);
+
+        $recorded = Http::recorded();
+        $request = $recorded[0][0];
+
+        $this->assertSame('https://api.nfe.io/v1/companies/company-test/serviceinvoices', $request->url());
+        $this->assertTrue($request->hasHeader('X-NFE-APIKEY', 'apikey-test'));
+        $this->assertTrue($request->hasHeader('Authorization', 'apikey-test'));
+        $this->assertTrue($request->hasHeader('Idempotency-Key'));
+        $this->assertSame('01.01', data_get($request->data(), 'cityServiceCode'));
+        $this->assertSame('100501', data_get($request->data(), 'nationalTaxCode'));
+        $this->assertSame('01.01', data_get($request->data(), 'serviceCode.city'));
+        $this->assertSame('01.01', data_get($request->data(), 'serviceCode.municipal'));
+        $this->assertSame('100501', data_get($request->data(), 'serviceCode.national'));
+        $this->assertSame('12345678901', data_get($request->data(), 'borrower.federalTaxNumber'));
+        $this->assertSame(1500.75, data_get($request->data(), 'servicesAmount'));
 
         $this->assertSame('1001', $result['nfse_numero']);
         $this->assertSame('ABC123', $result['codigo_verificacao']);

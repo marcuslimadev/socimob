@@ -180,6 +180,11 @@ class NfseCommissionService
         $payload = [
             'cityServiceCode' => $cityServiceCode,
             'nationalTaxCode' => $nationalTaxCode,
+            'serviceCode' => $this->limparPayload([
+                'city' => $cityServiceCode,
+                'municipal' => $cityServiceCode,
+                'national' => $nationalTaxCode,
+            ]),
             'description' => $invoice->descricao_servico,
             'servicesAmount' => (float) $invoice->valor_total,
             'borrower' => [

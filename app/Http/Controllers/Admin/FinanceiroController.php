@@ -604,6 +604,11 @@ class FinanceiroController extends Controller
         $payload = [
             'cityServiceCode' => $documento->city_service_code ?: $this->resolverCityServiceCodeManual($documento->tenant_id, $documento->contexto_emissao),
             'nationalTaxCode' => $nationalTaxCode,
+            'serviceCode' => $this->nfseService->limparPayload([
+                'city' => $documento->city_service_code ?: $this->resolverCityServiceCodeManual($documento->tenant_id, $documento->contexto_emissao),
+                'municipal' => $documento->city_service_code ?: $this->resolverCityServiceCodeManual($documento->tenant_id, $documento->contexto_emissao),
+                'national' => $nationalTaxCode,
+            ]),
             'description' => $descricao,
             'servicesAmount' => (float) $documento->valor_servico,
             'borrower' => [
