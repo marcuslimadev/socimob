@@ -361,6 +361,10 @@ class FinanceiroController extends Controller
 
             Log::error('Erro ao emitir NFSe de comissão', [
                 'invoice_id' => $invoice->id,
+                'contexto_emissao' => 'comissao',
+                'tipo_nota' => data_get($invoice->financeiro_metadata, 'tipo_nota', 'corretagem'),
+                'city_service_code' => $this->resolverCodigoServicoCommissionInvoice($invoice),
+                'national_tax_code' => $this->resolverCodigoTributacaoNacionalCommissionInvoice($invoice),
                 'error' => $e->getMessage(),
                 'tomador_documento' => $this->nfseService->somenteDigitos($request->input('tomador.documento')),
             ]);
@@ -466,6 +470,8 @@ class FinanceiroController extends Controller
             ],
         ]);
 
+        $payload = [];
+
         try {
             $payload = $this->montarPayloadDocumentoFiscal($documento, $request->input('tomador'), $financeiroDados, $descricao);
             $nfseData = $this->nfseService->emitir($tenantId, $payload, [
@@ -498,6 +504,9 @@ class FinanceiroController extends Controller
             Log::error('Erro ao emitir NFSe manual', [
                 'documento_fiscal_id' => $documento->id,
                 'contexto_emissao' => $contextoEmissao,
+                'city_service_code' => data_get($payload, 'cityServiceCode'),
+                'national_tax_code' => data_get($payload, 'nationalTaxCode'),
+                'service_code' => data_get($payload, 'serviceCode'),
                 'error' => $e->getMessage(),
                 'tomador_documento' => $this->nfseService->somenteDigitos($request->input('tomador.documento')),
             ]);
@@ -883,6 +892,31 @@ class FinanceiroController extends Controller
         };
     }
 
+    private function resolverCodigoTributacaoNacionalCommissionInvoice(CommissionInvoice $invoice): ?string
+    {
+        $tenant = $invoice->tenant ?? Tenant::find($invoice->tenant_id);
+        $tipoNota = strtolower((string) data_get($invoice->financeiro_metadata, 'tipo_nota', 'corretagem'));
+
+        $keys = $tipoNota === 'aluguel'
+            ? ['nfse_national_service_code_aluguel', 'nfse_national_service_code_locatario', 'nfse_national_service_code']
+            : ['nfse_national_service_code_corretagem', 'nfse_national_service_code_proprietario', 'nfse_national_service_code'];
+
+        foreach ($keys as $key) {
+            $normalized = $this->normalizarNationalTaxCode($tenant?->getIntegrationValue($key));
+            if ($normalized) {
+                return $normalized;
+            }
+        }
+
+        if ($tipoNota !== 'aluguel') {
+            return '100501';
+        }
+
+        return $this->normalizarNationalTaxCode(
+            env('NFE_IO_NATIONAL_TAX_CODE_ALUGUEL', env('NFE_IO_NATIONAL_TAX_CODE_LOCATARIO', env('NFE_IO_NATIONAL_TAX_CODE')))
+        );
+    }
+
     private function resolverNationalTaxCodeManual(int $tenantId, ?string $contextoEmissao): ?string
     {
         $tenant = Tenant::find($tenantId);
@@ -1161,6 +1195,10 @@ class FinanceiroController extends Controller
 
         if (str_contains($message, 'borrower.federalTaxNumber')) {
             return 'CPF/CNPJ do tomador foi rejeitado pela NFe.io';
+        }
+
+        if (str_contains($message, 'E0310')) {
+            return 'A NFe.io rejeitou o codigo de tributacao nacional informado para esta NFSe. Verifique a configuracao fiscal do tenant em nfse_national_service_code e nas variacoes por contexto, como nfse_national_service_code_corretagem, nfse_national_service_code_proprietario, nfse_national_service_code_locatario ou nfse_national_service_code_aluguel.';
         }
 
         return $message;

@@ -42,6 +42,7 @@ class NfseCommissionService
             'endpoint' => $endpoint,
             'tenant_id' => $invoice->tenant_id,
             'idempotency_key' => $idempotencyKey,
+            'payload_debug' => $this->resumirPayloadFiscal($payload),
         ]);
 
         $response = Http::withHeaders([
@@ -60,6 +61,8 @@ class NfseCommissionService
                 'invoice_id' => $invoice->id,
                 'status' => $response->status(),
                 'body' => $body ?: $response->body(),
+                'payload_debug' => $this->resumirPayloadFiscal($payload),
+                'payload' => $payload,
             ]);
 
             $message = data_get($body, 'error.message')
@@ -344,5 +347,15 @@ class NfseCommissionService
                 return !is_null($value);
             })
             ->all();
+    }
+
+    private function resumirPayloadFiscal(array $payload): array
+    {
+        return [
+            'cityServiceCode' => data_get($payload, 'cityServiceCode'),
+            'nationalTaxCode' => data_get($payload, 'nationalTaxCode'),
+            'serviceCode' => data_get($payload, 'serviceCode'),
+            'servicesAmount' => data_get($payload, 'servicesAmount'),
+        ];
     }
 }

@@ -52,6 +52,7 @@ class NfseService
             'endpoint' => $endpoint,
             'idempotency_key' => $idempotencyKey,
             'context' => $context,
+            'payload_debug' => $this->resumirPayloadFiscal($payload),
         ]);
 
         $response = Http::withHeaders([
@@ -70,6 +71,8 @@ class NfseService
                 'status' => $response->status(),
                 'body' => $body ?: $response->body(),
                 'context' => $context,
+                'payload_debug' => $this->resumirPayloadFiscal($payload),
+                'payload' => $payload,
             ]);
 
             $message = data_get($body, 'error.message')
@@ -295,5 +298,15 @@ class NfseService
         }
 
         return preg_replace('/\D+/', '', $value);
+    }
+
+    private function resumirPayloadFiscal(array $payload): array
+    {
+        return [
+            'cityServiceCode' => data_get($payload, 'cityServiceCode'),
+            'nationalTaxCode' => data_get($payload, 'nationalTaxCode'),
+            'serviceCode' => data_get($payload, 'serviceCode'),
+            'servicesAmount' => data_get($payload, 'servicesAmount'),
+        ];
     }
 }
