@@ -651,16 +651,27 @@ class FinanceiroController extends Controller
         foreach ($keys as $key) {
             $value = $tenant?->getIntegrationValue($key);
             if (is_string($value) && trim($value) !== '') {
-                return trim($value);
+                return $this->normalizarCityServiceCodeManual(trim($value), $contexto);
             }
         }
 
-        return match ($contexto) {
-            'proprietario' => env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE', '004'))),
+        return $this->normalizarCityServiceCodeManual(match ($contexto) {
+            'proprietario' => env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE', '10.05'))),
             'locatario' => env('NFE_IO_SERVICE_CODE_LOCATARIO', env('NFE_IO_SERVICE_CODE_ALUGUEL', env('NFE_IO_SERVICE_CODE', '01.01'))),
             'construtora' => env('NFE_IO_SERVICE_CODE_CONSTRUTORA', env('NFE_IO_SERVICE_CODE', '01.01')),
             default => env('NFE_IO_SERVICE_CODE', '01.01'),
-        };
+        }, $contexto);
+    }
+
+    private function normalizarCityServiceCodeManual(?string $value, string $contexto): string
+    {
+        $code = trim((string) $value);
+
+        if (in_array($contexto, ['proprietario', 'comissao'], true) && $code === '004') {
+            return '10.05';
+        }
+
+        return $code !== '' ? $code : (in_array($contexto, ['proprietario', 'comissao'], true) ? '10.05' : '01.01');
     }
 
     private function montarInformacoesDocumentoFiscal(DocumentoFiscal $documento, array $financeiro): string
@@ -1013,7 +1024,7 @@ class FinanceiroController extends Controller
         return $tenant?->getIntegrationValue('nfeio_service_code_corretagem')
             ?: $tenant?->getIntegrationValue('nfeio_service_code_proprietario')
             ?: $tenant?->getIntegrationValue('nfeio_service_code')
-            ?: env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE', '004')));
+            ?: env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE', '10.05')));
     }
 
     private function resolverFonteCodigoServicoCommissionInvoice(CommissionInvoice $invoice): string

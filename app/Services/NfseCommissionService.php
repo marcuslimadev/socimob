@@ -217,15 +217,32 @@ class NfseCommissionService
         foreach ($keys as $key) {
             $value = $tenant?->getIntegrationValue($key);
             if (is_string($value) && trim($value) !== '') {
-                return trim($value);
+                return $this->normalizarCityServiceCode(trim($value), $tipoNota);
             }
         }
 
         if ($tipoNota === 'aluguel') {
-            return env('NFE_IO_SERVICE_CODE_ALUGUEL', env('NFE_IO_SERVICE_CODE_LOCATARIO', env('NFE_IO_SERVICE_CODE', '01.01')));
+            return $this->normalizarCityServiceCode(
+                env('NFE_IO_SERVICE_CODE_ALUGUEL', env('NFE_IO_SERVICE_CODE_LOCATARIO', env('NFE_IO_SERVICE_CODE', '01.01'))),
+                $tipoNota
+            );
         }
 
-        return env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE', '004')));
+        return $this->normalizarCityServiceCode(
+            env('NFE_IO_SERVICE_CODE_CORRETAGEM', env('NFE_IO_SERVICE_CODE_PROPRIETARIO', env('NFE_IO_SERVICE_CODE', '10.05'))),
+            $tipoNota
+        );
+    }
+
+    private function normalizarCityServiceCode(?string $value, string $tipoNota): string
+    {
+        $code = trim((string) $value);
+
+        if ($tipoNota !== 'aluguel' && $code === '004') {
+            return '10.05';
+        }
+
+        return $code !== '' ? $code : ($tipoNota === 'aluguel' ? '01.01' : '10.05');
     }
 
     private function resolverNationalTaxCode(CommissionInvoice $invoice, ?Tenant $tenant): ?string
