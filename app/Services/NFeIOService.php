@@ -58,18 +58,28 @@ class NFeIOService
 
             // Adicionar endereço do tomador se fornecido
             if (isset($data['tomador']['endereco'])) {
+                $endEndereco = $data['tomador']['endereco'];
+                $codigoMunicipio = $endEndereco['codigoMunicipio'] ?? '';
+
+                if (empty($codigoMunicipio)) {
+                    $cep = preg_replace('/\D/', '', $endEndereco['cep'] ?? '');
+                    if (strlen($cep) === 8) {
+                        $codigoMunicipio = $this->buscarCodigoMunicipioPorCep($cep) ?? '';
+                    }
+                }
+
                 $payload['borrower']['address'] = [
                     'country' => 'BRA',
-                    'postalCode' => $data['tomador']['endereco']['cep'] ?? '',
-                    'street' => $data['tomador']['endereco']['logradouro'] ?? '',
-                    'number' => $data['tomador']['endereco']['numero'] ?? 'S/N',
-                    'additionalInformation' => $data['tomador']['endereco']['complemento'] ?? '',
-                    'district' => $data['tomador']['endereco']['bairro'] ?? '',
+                    'postalCode' => $endEndereco['cep'] ?? '',
+                    'street' => $endEndereco['logradouro'] ?? '',
+                    'number' => $endEndereco['numero'] ?? 'S/N',
+                    'additionalInformation' => $endEndereco['complemento'] ?? '',
+                    'district' => $endEndereco['bairro'] ?? '',
                     'city' => [
-                        'code' => $data['tomador']['endereco']['codigoMunicipio'] ?? '',
-                        'name' => $data['tomador']['endereco']['cidade'] ?? ''
+                        'code' => $codigoMunicipio,
+                        'name' => $endEndereco['cidade'] ?? ''
                     ],
-                    'state' => $data['tomador']['endereco']['uf'] ?? ''
+                    'state' => $endEndereco['uf'] ?? ''
                 ];
             }
 
@@ -244,6 +254,27 @@ class NFeIOService
     private function limparCpfCnpj($cpfCnpj)
     {
         return preg_replace('/[^0-9]/', '', $cpfCnpj);
+    }
+
+    private function buscarCodigoMunicipioPorCep(string $cep): ?string
+    {
+        try {
+            $response = Http::timeout(5)->get("https://viacep.com.br/ws/{$cep}/json/");
+
+            if ($response->successful()) {
+                $data = $response->json();
+                if (!empty($data['ibge']) && empty($data['erro'])) {
+                    return (string) $data['ibge'];
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('NFeIOService: falha ao buscar código IBGE via ViaCEP', [
+                'cep' => $cep,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
     }
 
     /**

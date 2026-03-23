@@ -359,6 +359,15 @@ class NfseCommissionService
             return null;
         }
 
+        $codigoMunicipio = $endereco['codigoMunicipio'] ?? $endereco['city_code'] ?? null;
+
+        if (!$codigoMunicipio) {
+            $cep = $this->somenteDigitos($endereco['cep'] ?? null);
+            if ($cep && strlen($cep) === 8) {
+                $codigoMunicipio = $this->buscarCodigoMunicipioPorCep($cep);
+            }
+        }
+
         return $this->limparPayload([
             'country' => 'BRA',
             'postalCode' => $this->somenteDigitos($endereco['cep'] ?? null),
@@ -367,11 +376,32 @@ class NfseCommissionService
             'additionalInformation' => $endereco['complemento'] ?? $endereco['additionalInformation'] ?? null,
             'district' => $endereco['bairro'] ?? $endereco['district'] ?? null,
             'city' => [
-                'code' => $endereco['codigoMunicipio'] ?? $endereco['city_code'] ?? null,
+                'code' => $codigoMunicipio,
                 'name' => $endereco['cidade'] ?? $endereco['city'] ?? null,
             ],
             'state' => $endereco['uf'] ?? $endereco['state'] ?? null,
         ]);
+    }
+
+    private function buscarCodigoMunicipioPorCep(string $cep): ?string
+    {
+        try {
+            $response = Http::timeout(5)->get("https://viacep.com.br/ws/{$cep}/json/");
+
+            if ($response->successful()) {
+                $data = $response->json();
+                if (!empty($data['ibge']) && empty($data['erro'])) {
+                    return (string) $data['ibge'];
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('NfseCommissionService: falha ao buscar código IBGE via ViaCEP', [
+                'cep' => $cep,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
     }
 
     private function somenteDigitos(?string $value): ?string
