@@ -875,20 +875,115 @@ export default function ImovelFormWizard() {
     try {
       setIsSubmitting(true);
 
-      // ── PRE-UPLOAD: in edit mode, upload new files in batches of 20 first ──
-      // This avoids PHP's max_file_uploads limit silently dropping files.
       let effectiveMediaFiles = mediaFiles;
-      if (isEditMode && propertyId && mediaFiles.some(m => m.file)) {
-        toast.info('Enviando fotos...');
-        const allUrls = await preUploadNewFiles(propertyId, mediaFiles);
+      let effectivePropertyId = isEditMode ? propertyId : null;
+
+      const buildFormData = (includeMedia: boolean) => {
+        const fd = new FormData();
+        // Dados básicos do imóvel
+        fd.append('tipo_imovel', formData.tipo_imovel);
+        fd.append('finalidade_imovel', formData.finalidade_imovel);
+        fd.append('valor_venda', parseCurrencyInput(formData.valor_venda));
+        fd.append('valor_aluguel', parseCurrencyInput(formData.valor_aluguel) || '0');
+
+        if (formData.valor_condominio) fd.append('valor_condominio', parseCurrencyInput(formData.valor_condominio));
+        if (formData.valor_iptu) fd.append('valor_iptu', parseCurrencyInput(formData.valor_iptu));
+        
+        // Localização
+        fd.append('cep', formData.cep);
+        fd.append('estado', formData.estado);
+        fd.append('cidade', formData.cidade);
+        fd.append('bairro', formData.bairro);
+        fd.append('logradouro', formData.logradouro);
+        if (formData.numero) fd.append('numero', formData.numero);
+        if (formData.complemento) fd.append('complemento', formData.complemento);
+        
+        // Características
+        if (formData.dormitorios) fd.append('dormitorios', formData.dormitorios);
+        if (formData.suites) fd.append('suites', formData.suites);
+        if (formData.banheiros) fd.append('banheiros', formData.banheiros);
+        if (formData.garagem) fd.append('garagem', formData.garagem);
+        if (formData.area_total) fd.append('area_total', parseAreaInput(formData.area_total));
+        if (formData.area_privativa) fd.append('area_privativa', parseAreaInput(formData.area_privativa));
+        if (formData.area_terreno) fd.append('area_terreno', parseAreaInput(formData.area_terreno));
+        
+        fd.append('em_condominio', formData.em_condominio ? '1' : '0');
+        fd.append('caracteristicas', stringifySelections(formData.caracteristicas));
+        fd.append('classificacoes', stringifySelections(formData.classificacoes));
+        if (formData.em_condominio && formData.nome_condominio) {
+          fd.append('nome_condominio', formData.nome_condominio);
+        }
+        
+        if (formData.descricao) fd.append('descricao', formData.descricao);
+        if (formData.descricao_resumida) fd.append('descricao_resumida', formData.descricao_resumida);
+        if (formData.local_chaves) fd.append('local_chaves', formData.local_chaves);
+        if (formData.status_chaves) fd.append('status_chaves', formData.status_chaves);
+        if (formData.captador_user_id) fd.append('captador_user_id', formData.captador_user_id);
+        if (formData.construtora_pessoa_id) fd.append('construtora_pessoa_id', formData.construtora_pessoa_id);
+        if (formData.proprietario_nome) fd.append('proprietario_nome', formData.proprietario_nome);
+        if (formData.proprietario_telefone) fd.append('proprietario_telefone', formData.proprietario_telefone);
+        if (formData.proprietario_email) fd.append('proprietario_email', formData.proprietario_email);
+        if (formData.proprietario_observacoes) fd.append('proprietario_observacoes', formData.proprietario_observacoes);
+        if (formData.visibilidade_endereco) fd.append('visibilidade_endereco', formData.visibilidade_endereco);
+        formData.portal_tenant_ids.forEach((tenantId) => {
+          fd.append('portal_tenant_ids[]', String(tenantId));
+        });
+        
+        fd.append('active', formData.active ? '1' : '0');
+        fd.append('exibir_imovel', formData.exibir_imovel ? '1' : '0');
+        fd.append('exclusividade', formData.exclusividade ? '1' : '0');
+
+        if (includeMedia) {
+          const destaqueFile = effectiveMediaFiles.find(m => m.destaque);
+          effectiveMediaFiles.forEach((media, index) => {
+            if (media.file) {
+              fd.append(`media[]`, media.file);
+              if (media.id === destaqueFile?.id) {
+                fd.append('destaque_index', String(index));
+              }
+            }
+          });
+
+          const existingUrls = effectiveMediaFiles.filter(m => !m.file).map(m => m.url);
+          if (existingUrls.length > 0) {
+            fd.append('existing_images', JSON.stringify(existingUrls));
+          }
+        }
+        
+        return fd;
+      };
+
+      // Se for um novo imóvel e tiver arquivos, precisamos criar o registro de texto antes
+      // para obtermos um ID e fazermos o loteamento seguro (batch pre-upload)
+      if (!isEditMode && mediaFiles.some(m => m.file)) {
+        toast.info('Cadastrando dados básicos...');
+        const initialForm = buildFormData(false);
+        const res = await api.post('/imoveis', initialForm, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        effectivePropertyId = res.data?.data?.id ?? res.data?.id;
+        
+        if (!effectivePropertyId) {
+          throw new Error('Falha ao obter o ID do novo imóvel.');
+        }
+      }
+
+      // ── BATCH PRE-UPLOAD: Fazemos em ambos os modos, desde que tenhamos um propertyId ──
+      // Isso evita que o limite de max_file_uploads e post_max_size do PHP falhe silenciosamente.
+      if (effectivePropertyId && mediaFiles.some(m => m.file)) {
+        toast.info('Enviando fotos e vídeos...');
+        const allUrls = await preUploadNewFiles(effectivePropertyId, mediaFiles);
         if (allUrls === null) {
-          toast.error('Falha ao enviar uma ou mais fotos. Verifique e tente novamente.');
+          toast.error('Grave: Falha ao enviar fotos. O imóvel foi salvo mas as imagens podem estar incompletas.');
           setIsSubmitting(false);
+          setLocation('/properties');
           return;
         }
-        // Rebuild effectiveMediaFiles with all items as existing URLs
+        
+        // Reconstrói a lista com as novas imagens convertidas em 'existing' URLs
         const destaqueUrl = mediaFiles.find(m => m.destaque)?.url ||
           mediaFiles.find(m => m.destaque)?.preview || '';
+        
         effectiveMediaFiles = allUrls.map((url, i) => ({
           id: `existing-${i}`,
           url,
@@ -896,112 +991,45 @@ export default function ImovelFormWizard() {
           preview: url,
           destaque: destaqueUrl ? url === destaqueUrl : i === 0,
         }));
-        // Update state so UI reflects the final list
+        
+        // Atualiza a interface (opcional, pois já vamos redirecionar)
         setMediaFiles(effectiveMediaFiles);
       }
-      // ─────────────────────────────────────────────────────────────────────
-
-      const formDataToSend = new FormData();
-
-      // Dados básicos do imóvel
-      formDataToSend.append('tipo_imovel', formData.tipo_imovel);
-      formDataToSend.append('finalidade_imovel', formData.finalidade_imovel);
-      formDataToSend.append('valor_venda', parseCurrencyInput(formData.valor_venda));
-      formDataToSend.append('valor_aluguel', parseCurrencyInput(formData.valor_aluguel) || '0');
-
-      if (formData.valor_condominio) formDataToSend.append('valor_condominio', parseCurrencyInput(formData.valor_condominio));
-      if (formData.valor_iptu) formDataToSend.append('valor_iptu', parseCurrencyInput(formData.valor_iptu));
       
-      // Localização
-      formDataToSend.append('cep', formData.cep);
-      formDataToSend.append('estado', formData.estado);
-      formDataToSend.append('cidade', formData.cidade);
-      formDataToSend.append('bairro', formData.bairro);
-      formDataToSend.append('logradouro', formData.logradouro);
-      if (formData.numero) formDataToSend.append('numero', formData.numero);
-      if (formData.complemento) formDataToSend.append('complemento', formData.complemento);
-      
-      // Características
-      if (formData.dormitorios) formDataToSend.append('dormitorios', formData.dormitorios);
-      if (formData.suites) formDataToSend.append('suites', formData.suites);
-      if (formData.banheiros) formDataToSend.append('banheiros', formData.banheiros);
-      if (formData.garagem) formDataToSend.append('garagem', formData.garagem);
-      if (formData.area_total) formDataToSend.append('area_total', parseAreaInput(formData.area_total));
-      if (formData.area_privativa) formDataToSend.append('area_privativa', parseAreaInput(formData.area_privativa));
-      if (formData.area_terreno) formDataToSend.append('area_terreno', parseAreaInput(formData.area_terreno));
-      
-      formDataToSend.append('em_condominio', formData.em_condominio ? '1' : '0');
-      formDataToSend.append('caracteristicas', stringifySelections(formData.caracteristicas));
-      formDataToSend.append('classificacoes', stringifySelections(formData.classificacoes));
-      if (formData.em_condominio && formData.nome_condominio) {
-        formDataToSend.append('nome_condominio', formData.nome_condominio);
-      }
-      
-      if (formData.descricao) formDataToSend.append('descricao', formData.descricao);
-      if (formData.descricao_resumida) formDataToSend.append('descricao_resumida', formData.descricao_resumida);
-      if (formData.local_chaves) formDataToSend.append('local_chaves', formData.local_chaves);
-      if (formData.status_chaves) formDataToSend.append('status_chaves', formData.status_chaves);
-      if (formData.captador_user_id) formDataToSend.append('captador_user_id', formData.captador_user_id);
-      if (formData.construtora_pessoa_id) formDataToSend.append('construtora_pessoa_id', formData.construtora_pessoa_id);
-      if (formData.proprietario_nome) formDataToSend.append('proprietario_nome', formData.proprietario_nome);
-      if (formData.proprietario_telefone) formDataToSend.append('proprietario_telefone', formData.proprietario_telefone);
-      if (formData.proprietario_email) formDataToSend.append('proprietario_email', formData.proprietario_email);
-      if (formData.proprietario_observacoes) formDataToSend.append('proprietario_observacoes', formData.proprietario_observacoes);
-      if (formData.visibilidade_endereco) formDataToSend.append('visibilidade_endereco', formData.visibilidade_endereco);
-      formData.portal_tenant_ids.forEach((tenantId) => {
-        formDataToSend.append('portal_tenant_ids[]', String(tenantId));
-      });
-      
-      formDataToSend.append('active', formData.active ? '1' : '0');
-      formDataToSend.append('exibir_imovel', formData.exibir_imovel ? '1' : '0');
-      formDataToSend.append('exclusividade', formData.exclusividade ? '1' : '0');
+      // Prepara os dados finais atualizados (com 'existing_images' resolvido)
+      const finalFormData = buildFormData(true);
 
-      // Arquivos de mídia — use effectiveMediaFiles (already pre-uploaded in edit mode)
-      const destaqueFile = effectiveMediaFiles.find(m => m.destaque);
-      effectiveMediaFiles.forEach((media, index) => {
-        if (media.file) {
-          formDataToSend.append(`media[]`, media.file);
-          if (media.id === destaqueFile?.id) {
-            formDataToSend.append('destaque_index', String(index));
-          }
-        }
-      });
-
-      // URLs existentes (para modo edição)
-      const existingUrls = effectiveMediaFiles.filter(m => !m.file).map(m => m.url);
-      if (existingUrls.length > 0) {
-        formDataToSend.append('existing_images', JSON.stringify(existingUrls));
-      }
-
-      if (isEditMode && propertyId) {
-        await api.post(`/imoveis/${propertyId}?_method=PUT`, formDataToSend, {
+      // Finaliza o envio
+      if (effectivePropertyId) {
+        await api.post(`/imoveis/${effectivePropertyId}?_method=PUT`, finalFormData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        // Publicar no Meta Ads se marcado
+        
         if (formData.publicar_anuncio) {
           try {
-            await api.post(`/listings/${propertyId}/ads/publish`, { provider: 'meta' });
-            toast.success('Imóvel atualizado e anúncio publicado no Meta Ads!');
+            await api.post(`/listings/${effectivePropertyId}/ads/publish`, { provider: 'meta' });
+            toast.success(isEditMode ? 'Imóvel atualizado e anúncio publicado no Meta Ads!' : 'Imóvel cadastrado, fotos enviadas e anúncio publicado!');
           } catch {
-            toast.success('Imóvel atualizado com sucesso!');
-            toast.warning('Meta Ads: não foi possível publicar automaticamente. Verifique a conexão em Marketing.');
+            toast.success(isEditMode ? 'Imóvel atualizado com sucesso!' : 'Imóvel cadastrado com sucesso!');
+            toast.warning('Meta Ads: não foi possível publicar automaticamente.');
           }
         } else {
-          toast.success('Imóvel atualizado com sucesso!');
+          toast.success(isEditMode ? 'Imóvel atualizado com sucesso!' : 'Imóvel cadastrado com sucesso!');
         }
       } else {
-        const res = await api.post('/imoveis', formDataToSend, {
+        // Fallback: Modo criação SEM NENHUM arquivo (effectivePropertyId == null)
+        const res = await api.post('/imoveis', finalFormData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         const savedId = res.data?.data?.id ?? res.data?.id;
-        // Publicar no Meta Ads se marcado
+        
         if (formData.publicar_anuncio && savedId) {
           try {
             await api.post(`/listings/${savedId}/ads/publish`, { provider: 'meta' });
             toast.success('Imóvel cadastrado e anúncio publicado no Meta Ads!');
           } catch {
             toast.success('Imóvel cadastrado com sucesso!');
-            toast.warning('Meta Ads: não foi possível publicar automaticamente. Verifique a conexão em Marketing.');
+            toast.warning('Meta Ads: não foi possível publicar automaticamente.');
           }
         } else {
           toast.success('Imóvel cadastrado com sucesso!');
