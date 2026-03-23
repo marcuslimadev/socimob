@@ -78,7 +78,7 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
     $router->get('/properties/sync', 'App\Http\Controllers\PropertyController@sync');
 
     // Proxy de mídia do Twilio (usado pelo chat) - relativo a /api
-    $router->get('/conversas/media/proxy', 'App\Http\Controllers\ConversasController@proxyMedia');
+    $router->get('/conversas/media/proxy', ['middleware' => 'throttle:30,1', 'uses' => 'App\Http\Controllers\ConversasController@proxyMedia']);
     
     // Configuração do tenant (público) - para homepage dinâmica
     $router->get('/tenant/config', function () {
@@ -256,14 +256,13 @@ $router->group(['prefix' => 'webhook'], function () use ($router) {
 // ===========================
 // DEPLOY WEBHOOK (SEM AUTENTICAÇÃO, MAS COM SECRET TOKEN)
 // ===========================
-$router->group(['prefix' => 'api/deploy'], function () use ($router) {
-    $router->get('/', 'App\Http\Controllers\DeployController@deploy');   // GET também funciona
+$router->group(['prefix' => 'api/deploy', 'middleware' => ['throttle:5,1']], function () use ($router) {
     $router->post('/', 'App\Http\Controllers\DeployController@deploy');
     $router->get('/info', 'App\Http\Controllers\DeployController@info');
 });
 
 // Proxy público para mídias do Twilio (usado no chat via <img src>)
-$router->get('/conversas/media/proxy', 'App\Http\Controllers\ConversasController@proxyMedia');
+$router->get('/conversas/media/proxy', ['middleware' => 'throttle:30,1', 'uses' => 'App\Http\Controllers\ConversasController@proxyMedia']);
 
 // ===========================
 // Autenticação (sem middleware)

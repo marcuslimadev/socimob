@@ -9,16 +9,45 @@ use Illuminate\Support\Facades\Log;
  */
 class DeployController extends Controller
 {
+    private const DEFAULT_SECRET_PLACEHOLDER = 'change-me-in-production';
+
     /**
      * Secret token para validar requisições
      * Configure no .env: DEPLOY_SECRET=seu-token-secreto
      */
     private function validateSecret(Request $request): bool
     {
-        $secret = $request->header('X-Deploy-Secret') ?? $request->input('secret');
-        $expectedSecret = env('DEPLOY_SECRET', 'change-me-in-production');
-        
+        $expectedSecret = $this->configuredSecret();
+        if ($expectedSecret === null) {
+            return false;
+        }
+
+        $secret = $request->header('X-Deploy-Secret');
+        if ($secret === null && $request->isMethod('post')) {
+            $secret = $request->input('secret');
+        }
+
         return hash_equals($expectedSecret, $secret);
+    }
+
+    private function configuredSecret(): ?string
+    {
+        $secret = trim((string) env('DEPLOY_SECRET', ''));
+        if ($secret === '' || $secret === self::DEFAULT_SECRET_PLACEHOLDER) {
+            return null;
+        }
+
+        return $secret;
+    }
+
+    private function missingSecretResponse(): \Illuminate\Http\JsonResponse
+    {
+        Log::critical('Deploy endpoint desabilitado: DEPLOY_SECRET ausente ou inseguro.');
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Deploy endpoint is disabled until DEPLOY_SECRET is configured.',
+        ], 503);
     }
 
     /**
@@ -35,6 +64,10 @@ class DeployController extends Controller
      */
     public function deploy(Request $request)
     {
+        if ($this->configuredSecret() === null) {
+            return $this->missingSecretResponse();
+        }
+
         Log::info('═══════════════════════════════════════════════');
         Log::info('🚀 DEPLOY WEBHOOK RECEBIDO');
         Log::info('═══════════════════════════════════════════════');
@@ -495,6 +528,10 @@ class DeployController extends Controller
      */
     public function info(Request $request)
     {
+        if ($this->configuredSecret() === null) {
+            return $this->missingSecretResponse();
+        }
+
         if (!$this->validateSecret($request)) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }

@@ -361,6 +361,7 @@ export default function ImovelForm() {
                 <option value="apartamento">Apartamento</option>
                 <option value="casa">Casa</option>
                 <option value="terreno">Terreno</option>
+                <option value="lote">Lote</option>
                 <option value="sala_comercial">Sala Comercial</option>
                 <option value="loja">Loja</option>
                 <option value="galpao">Galpão</option>

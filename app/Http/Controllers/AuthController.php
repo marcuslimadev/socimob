@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Tenant;
 use App\Services\DomainService;
+use App\Support\SimpleAuthToken;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -102,9 +103,7 @@ class AuthController extends Controller
             }
         }
         
-        // Gerar token simples
-        $secret = config('app.key', env('JWT_SECRET', 'default-secret-key'));
-        $token = base64_encode($user->id . '|' . time() . '|' . $secret);
+        $token = SimpleAuthToken::issue($user->id);
 
         return response()->json([
             'success' => true,
@@ -284,9 +283,7 @@ class AuthController extends Controller
                 ], 403);
             }
 
-            // Gerar token
-            $secret = config('app.key', env('JWT_SECRET', 'default-secret-key'));
-            $token = base64_encode($user->id . '|' . time() . '|' . $secret);
+            $token = SimpleAuthToken::issue($user->id);
 
             return response()->json([
                 'success' => true,

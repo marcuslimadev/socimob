@@ -73,6 +73,7 @@ const PROPERTY_TYPE_OPTIONS = [
   { value: 'flat', label: 'Flat' },
   { value: 'barracao', label: 'Barracão' },
   { value: 'terreno', label: 'Terreno' },
+  { value: 'lote', label: 'Lote' },
   { value: 'sala_comercial', label: 'Sala Comercial' },
   { value: 'loja', label: 'Loja' },
   { value: 'galpao', label: 'Galpão' },

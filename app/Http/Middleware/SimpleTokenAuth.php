@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\SimpleAuthToken;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -18,13 +19,13 @@ class SimpleTokenAuth
         }
 
         $token = trim(substr($authHeader, 7));
-        $decoded = base64_decode($token, true);
-        if (!$decoded || !str_contains($decoded, '|')) {
+        $claims = SimpleAuthToken::decode($token);
+        if (!$claims) {
             Log::warning('SimpleTokenAuth: Invalid token format', ['token' => substr($token, 0, 20)]);
             return response()->json(['error' => 'Invalid token'], 401);
         }
 
-        [$userId] = explode('|', $decoded, 3);
+        $userId = $claims['user_id'];
         $user = User::with('tenant')->find($userId);
 
         if (!$user) {
