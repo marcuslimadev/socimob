@@ -52,8 +52,9 @@ class WatermarkService
             // ── Load watermark ─────────────────────────────────────────────
             $wmPath = self::resolveLocalPath($watermarkUrl);
             if (!$wmPath || !file_exists($wmPath)) {
-                // Try downloading via HTTP
-                $wmContent = @file_get_contents($watermarkUrl);
+                // Try downloading via HTTP (5 s timeout to avoid hanging on loopback)
+                $ctx = stream_context_create(['http' => ['timeout' => 5], 'https' => ['timeout' => 5]]);
+                $wmContent = @file_get_contents($watermarkUrl, false, $ctx);
                 if (!$wmContent) {
                     imagedestroy($src);
                     Log::warning('WatermarkService: não foi possível carregar a marca d\'água', ['url' => $watermarkUrl]);

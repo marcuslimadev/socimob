@@ -1,6 +1,12 @@
 # Use PHP 8.3 for this domain
 AddHandler application/x-httpd-php83 .php
 
+# PHP limits for file uploads and image processing
+php_value memory_limit 512M
+php_value max_execution_time 180
+php_value upload_max_filesize 100M
+php_value post_max_size 110M
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
