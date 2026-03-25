@@ -1709,7 +1709,7 @@ export default function ImovelFormWizard() {
                   type="text"
                   inputMode="numeric"
                   value={formData.garagem}
-                  onChange={(e) => setFormData({ ...formData, garagem: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+                  onChange={(e) => setFormData({ ...formData, garagem: e.target.value.replace(/\D/g, '') })}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-center"
                   placeholder="0"
                 />
