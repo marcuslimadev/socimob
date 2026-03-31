@@ -53,7 +53,7 @@ class SyncPropertiesCommand extends Command
         
         foreach ($tenants as $tenant) {
             $this->line('');
-            $this->info("📍 Tenant: {$tenant->nome} (ID: {$tenant->id})");
+            $this->info("📍 Tenant: {$tenant->name} (ID: {$tenant->id})");
             
             $result = $this->syncTenant($tenant->id);
             
@@ -102,10 +102,14 @@ class SyncPropertiesCommand extends Command
             }
             
             $stats = $result['stats'] ?? [];
+            $dedupe = $this->service->deduplicateProperties($tenant->id);
             $this->info('   ✅ Sincronização concluída');
             $this->line('      Encontrados: ' . ($stats['found'] ?? 0));
             $this->line('      Novos: ' . ($stats['new'] ?? 0));
             $this->line('      Atualizados: ' . ($stats['updated'] ?? 0));
+            if (($dedupe['removed'] ?? 0) > 0) {
+                $this->line('      Duplicatas removidas: ' . ($dedupe['removed'] ?? 0));
+            }
             
             if (($stats['errors'] ?? 0) > 0) {
                 $this->warn('      ⚠️  Erros: ' . $stats['errors']);
@@ -115,6 +119,8 @@ class SyncPropertiesCommand extends Command
         } catch (\Exception $e) {
             $this->error('   ❌ Erro: ' . $e->getMessage());
             return 1;
+        } finally {
+            app()->forgetInstance('tenant');
         }
     }
 }

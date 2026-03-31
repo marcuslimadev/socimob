@@ -51,8 +51,8 @@ $router->group(['prefix' => 'api/portal', 'middleware' => 'resolve-tenant'], fun
     // Lookup de CPF para pré-preenchimento do formulário (autenticado)
     $router->get('/lookup-cpf', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\PortalController@lookupCpf']);
 
-    // Solicitar colocação de imóvel à venda (autenticado)
-    $router->post('/imoveis/solicitar', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\PortalController@solicitarVenda']);
+    // Solicitar colocação de imóvel à venda (publico)
+    $router->post('/imoveis/solicitar', 'App\Http\Controllers\Portal\PortalController@solicitarVenda');
 
     // Portal da Pessoa - Contratos / Cobranças / Fiscal
     $router->get('/meus-imoveis', ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\\PessoaFinanceiroController@meusImoveis']);
@@ -76,4 +76,3 @@ $router->group(['prefix' => 'api/portal', 'middleware' => 'resolve-tenant'], fun
     $router->get('/proprietario/repasses',       ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\PortalProprietarioController@repasses']);
     $router->get('/proprietario/cobrancas',      ['middleware' => ['simple-auth', 'validate-tenant-auth'], 'uses' => 'App\Http\Controllers\Portal\PortalProprietarioController@cobrancas']);
 });
-

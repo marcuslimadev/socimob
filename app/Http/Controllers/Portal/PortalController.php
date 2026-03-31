@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Models\Property;
 use App\Models\Pessoa;
 use App\Models\PropertyEvaluation;
+use App\Models\VistoriaSolicitacao;
 use App\Services\PropertyLikesTablesManager;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -253,6 +254,7 @@ class PortalController extends Controller
 
         $imoveisQuery = Property::withoutTenant()
             ->with('fotos')
+            ->publiclyVisible()
             ->portalInventory()
             ->orderBy('created_at', 'desc');
         if ($hasTenantId) {
@@ -323,6 +325,7 @@ class PortalController extends Controller
         if ($imoveis->isEmpty() && $allowShared && $hasTenantId) {
             $sharedQuery = Property::withoutTenant()
                 ->with('fotos')
+                ->publiclyVisible()
                 ->portalInventory()
                 ->whereNull('tenant_id')
                 ->orderBy('created_at', 'desc');
@@ -463,7 +466,11 @@ class PortalController extends Controller
                 ->toArray();
         }
 
-        $imovelQuery = Property::withoutTenant()->with('fotos')->portalInventory()->where('id', $id);
+        $imovelQuery = Property::withoutTenant()
+            ->with('fotos')
+            ->publiclyVisible()
+            ->portalInventory()
+            ->where('id', $id);
         if ($hasTenantId) {
             $imovelQuery->where(function ($query) use ($tenantId, $sharedPropertyIds) {
                 $query->where('tenant_id', $tenantId);
@@ -739,6 +746,29 @@ class PortalController extends Controller
                 ]);
             }
 
+            if (Schema::hasTable('vistoria_solicitacoes')) {
+                $observacoes = $this->buildPortalEvaluationNotes(
+                    $request->tipo_imovel,
+                    $request->endereco,
+                    $request->bairro,
+                    $request->cidade,
+                    $request->observacoes
+                );
+
+                VistoriaSolicitacao::create([
+                    'tenant_id' => $tenantId,
+                    'status' => 'solicitada',
+                    'cliente_nome' => $request->nome,
+                    'tipo' => 'avaliacao de imovel',
+                    'observacoes' => $observacoes,
+                    'historico' => [[
+                        'evento' => 'solicitada',
+                        'descricao' => 'Solicitacao criada via portal para avaliacao do imovel',
+                        'data' => now()->toDateTimeString(),
+                    ]],
+                ]);
+            }
+
             // Get tenant WhatsApp number
             $tenant = Tenant::find($tenantId);
             $config = $tenant ? $tenant->config : null;
@@ -930,10 +960,10 @@ class PortalController extends Controller
             }
 
             if ($lead) {
-                $lead->observacoes = ($lead->observacoes ? $lead->observacoes . '' : '') . $obsLead;
+                $lead->observacoes = trim(($lead->observacoes ? $lead->observacoes . PHP_EOL : '') . $obsLead);
                 $lead->save();
             } else {
-                \App\Models\Lead::create([
+                $lead = \App\Models\Lead::create([
                     'tenant_id'    => $tenantId,
                     'nome'         => $request->nome_contato,
                     'telefone'     => $telefone,
@@ -942,6 +972,40 @@ class PortalController extends Controller
                     'status'       => 'novo',
                     'classificacao' => 'quente',
                     'observacoes'  => $obsLead,
+                ]);
+            }
+
+            $portalRequestNotes = $this->buildPortalPropertyRequestNotes($request, $property, $valorPretendido);
+
+            if (Schema::hasTable('property_evaluations')) {
+                PropertyEvaluation::create([
+                    'tenant_id' => $tenantId,
+                    'nome' => $request->nome_contato,
+                    'telefone' => $telefone,
+                    'email' => $request->email_contato,
+                    'tipo_imovel' => $request->tipo_imovel,
+                    'endereco' => null,
+                    'bairro' => $request->bairro,
+                    'cidade' => $request->cidade,
+                    'observacoes' => $portalRequestNotes,
+                    'status' => 'pendente',
+                    'lead_id' => $lead?->id,
+                ]);
+            }
+
+            if (Schema::hasTable('vistoria_solicitacoes')) {
+                VistoriaSolicitacao::create([
+                    'tenant_id' => $tenantId,
+                    'status' => 'solicitada',
+                    'cliente_nome' => $request->nome_contato,
+                    'tipo' => 'avaliacao de imovel',
+                    'imovel_id' => $property->id,
+                    'observacoes' => $portalRequestNotes,
+                    'historico' => [[
+                        'evento' => 'solicitada',
+                        'descricao' => 'Solicitacao criada via portal para avaliacao e cadastro do imovel',
+                        'data' => now()->toDateTimeString(),
+                    ]],
                 ]);
             }
 
@@ -961,5 +1025,71 @@ class PortalController extends Controller
                 'error'   => 'Erro ao registrar sua solicitação. Tente novamente.',
             ], 500);
         }
+    }
+
+    private function buildPortalEvaluationNotes(
+        ?string $tipoImovel,
+        ?string $endereco,
+        ?string $bairro,
+        ?string $cidade,
+        ?string $observacoes
+    ): string {
+        $parts = ['Solicitacao recebida pelo portal para avaliacao do imovel.'];
+
+        if ($tipoImovel) {
+            $parts[] = 'Tipo: ' . $tipoImovel;
+        }
+
+        $location = array_values(array_filter([$endereco, $bairro, $cidade]));
+        if (!empty($location)) {
+            $parts[] = 'Localizacao: ' . implode(', ', $location);
+        }
+
+        if ($observacoes) {
+            $parts[] = 'Observacoes: ' . $observacoes;
+        }
+
+        return implode(PHP_EOL, $parts);
+    }
+
+    private function buildPortalPropertyRequestNotes(Request $request, Property $property, float $valorPretendido): string
+    {
+        $parts = [
+            'Solicitacao recebida pelo portal para avaliacao e cadastro do imovel.',
+            'Imovel interno #' . $property->id,
+            'Finalidade: ' . $request->finalidade,
+            'Tipo: ' . $request->tipo_imovel,
+        ];
+
+        $location = array_values(array_filter([$request->bairro, $request->cidade, $request->cep]));
+        if (!empty($location)) {
+            $parts[] = 'Localizacao: ' . implode(', ', $location);
+        }
+
+        if ($request->area) {
+            $parts[] = 'Area: ' . $request->area . ' m2';
+        }
+
+        if ($request->dormitorios) {
+            $parts[] = 'Dormitorios: ' . $request->dormitorios;
+        }
+
+        if ($valorPretendido > 0) {
+            $parts[] = 'Valor pretendido: R$ ' . number_format($valorPretendido, 0, ',', '.');
+        }
+
+        if ($request->observacoes) {
+            $parts[] = 'Observacoes: ' . $request->observacoes;
+        }
+
+        if ($request->hasFile('photos')) {
+            $parts[] = 'Fotos anexadas pelo proprietario.';
+        }
+
+        if ($request->hasFile('videos')) {
+            $parts[] = 'Videos anexados pelo proprietario.';
+        }
+
+        return implode(PHP_EOL, $parts);
     }
 }

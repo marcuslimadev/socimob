@@ -39,6 +39,9 @@ class PropertySyncService
         Log::info('🏠 Iniciando sincronização de imóveis...');
         
         try {
+            $tenant = $this->resolveSyncTenant();
+            $preferImobiBrasil = $tenant && ImobiBrasilService::isEnabled($tenant);
+
             $stats = [
                 'found' => 0,
                 'new' => 0,
@@ -54,41 +57,85 @@ class PropertySyncService
             $totalPages = 1;
             
             $perPage = 50;
+            $pageSignatures = [];
+
+            if ($preferImobiBrasil) {
+                Log::info('Usando Imobi Brasil como fonte principal da sincronização', [
+                    'tenant_id' => $tenant->id,
+                ]);
+            }
 
             // Loop por todas as páginas
             do {
                 Log::info("📄 Buscando página {$page}...");
-                
-                // Montar query string para paginação
-                $queryString = http_build_query([
-                    'pagina' => $page,
-                    'limite' => $perPage
-                ]);
-                
-                // Buscar lista de imóveis (com paginação) - tentando GET primeiro
-                try {
-                    $lista = $this->callApi("/lista?{$queryString}");
-                } catch (\Exception $e) {
-                    // Se falhar, tentar POST
-                    Log::info("GET /lista falhou, tentando POST...");
-                    $lista = $this->callApiPost("/lista", [
+
+                if ($preferImobiBrasil) {
+                    $lista = ImobiBrasilService::listProperties($tenant, [
+                        'page' => $page,
+                        'limit' => $perPage,
+                    ]);
+
+                    if (!($lista['success'] ?? false) || !isset($lista['result_set']['data'])) {
+                        throw new \Exception('Resposta da Imobi Brasil inválida: estrutura esperada não encontrada');
+                    }
+
+                    $resultSet = $lista['result_set'];
+                } else {
+                    // Montar query string para paginação
+                    $queryString = http_build_query([
                         'pagina' => $page,
                         'limite' => $perPage
                     ]);
+                    
+                    // Buscar lista de imóveis (com paginação) - tentando GET primeiro
+                    try {
+                        $lista = $this->callApi("/lista?{$queryString}");
+                    } catch (\Exception $e) {
+                        // Se falhar, tentar POST
+                        Log::info("GET /lista falhou, tentando POST...");
+                        $lista = $this->callApiPost("/lista", [
+                            'pagina' => $page,
+                            'limite' => $perPage
+                        ]);
+                    }
+                    
+                    if (!isset($lista['resultSet']['data'])) {
+                        throw new \Exception('Resposta da API inválida: estrutura esperada não encontrada');
+                    }
+
+                    $resultSet = $lista['resultSet'];
                 }
-                
-                if (!isset($lista['resultSet']['data'])) {
-                    throw new \Exception('Resposta da API inválida: estrutura esperada não encontrada');
-                }
-                
-                $resultSet = $lista['resultSet'];
+
                 $imoveis = $resultSet['data'];
-                $totalPages = $resultSet['total_pages'] ?? 1;
-                $totalItems = $resultSet['total_items'] ?? 0;
+                $totalPages = max(1, (int) ($resultSet['total_pages'] ?? 1));
+                $totalItems = (int) ($resultSet['total_items'] ?? count($imoveis));
+                $apiPage = (int) ($resultSet['page'] ?? $page);
+
+                $pageCodes = array_values(array_filter(array_map(function ($item) {
+                    $codigo = $item['codigoImovel'] ?? null;
+                    return $codigo === null || $codigo === '' ? null : (string) $codigo;
+                }, $imoveis)));
+
+                if (!empty($pageCodes)) {
+                    $signature = md5(json_encode($pageCodes));
+                    if (isset($pageSignatures[$signature])) {
+                        Log::warning('Página repetida detectada durante sincronização de imóveis', [
+                            'tenant_id' => $tenant?->id,
+                            'requested_page' => $page,
+                            'api_page' => $apiPage,
+                            'first_seen_page' => $pageSignatures[$signature],
+                            'source' => $preferImobiBrasil ? 'imobi_brasil' : 'api_externa',
+                        ]);
+                        break;
+                    }
+
+                    $pageSignatures[$signature] = $page;
+                }
                 
                 Log::info("📊 Página {$page}/{$totalPages} - " . count($imoveis) . " imóveis", [
                     'total_items' => $totalItems,
-                    'per_page' => $resultSet['per_page'] ?? 50
+                    'per_page' => $resultSet['per_page'] ?? 50,
+                    'api_page' => $apiPage,
                 ]);
                 
                 $stats['found'] += count($imoveis);
@@ -104,16 +151,26 @@ class PropertySyncService
                     $sourceCodes[] = (string) $codigo;
 
                     try {
-                        // Buscar dados completos do imóvel (GET ainda funciona)
-                        $response = $this->callApi("/dados/{$codigo}");
-                        
-                        if (!isset($response['resultSet'])) {
-                            throw new \Exception("Dados não encontrados para imóvel {$codigo}");
-                        }
-                        
-                        $imovel = $response['resultSet'];
+                        if ($preferImobiBrasil) {
+                            $response = ImobiBrasilService::getPropertyData((int) $codigo, $tenant);
 
-                        $data = $this->mapPropertyData($imovel);
+                            if (!($response['success'] ?? false) || !isset($response['result_set'])) {
+                                throw new \Exception("Dados não encontrados na Imobi Brasil para imóvel {$codigo}");
+                            }
+
+                            $imovel = $response['result_set'];
+                            $data = $this->mapPropertyData($imovel, true);
+                        } else {
+                            // Buscar dados completos do imóvel (GET ainda funciona)
+                            $response = $this->callApi("/dados/{$codigo}");
+                            
+                            if (!isset($response['resultSet'])) {
+                                throw new \Exception("Dados não encontrados para imóvel {$codigo}");
+                            }
+                            
+                            $imovel = $response['resultSet'];
+                            $data = $this->mapPropertyData($imovel);
+                        }
                         
                         // Contar imagens para logging
                         $numImagens = 0;
@@ -157,7 +214,19 @@ class PropertySyncService
                 
             } while ($page <= $totalPages);
 
-            $imobiBackfill = $this->importMissingImobiProperties();
+            if ($preferImobiBrasil) {
+                $availableCodes = array_values(array_unique(array_filter(array_map('strval', $sourceCodes))));
+                $imobiBackfill = [
+                    'success' => true,
+                    'available' => count($availableCodes),
+                    'available_codes' => $availableCodes,
+                    'imported' => 0,
+                    'restored' => 0,
+                    'errors' => 0,
+                ];
+            } else {
+                $imobiBackfill = $this->importMissingImobiProperties($tenant);
+            }
 
             $stats['imobi_available'] = $imobiBackfill['available'] ?? 0;
             $stats['imobi_imported'] = $imobiBackfill['imported'] ?? 0;
@@ -503,12 +572,15 @@ class PropertySyncService
 
     private function findExistingProperty(string $codigo, ?string $authorityCode = null): ?Property
     {
-        $query = Property::withTrashed()->where('codigo', $codigo);
+        $query = Property::withTrashed()
+            ->where(function ($builder) use ($codigo, $authorityCode) {
+                $builder->where('codigo', $codigo);
 
-        if ($authorityCode) {
-            $query->orWhere('imobi_brasil_external_id', $authorityCode)
-                ->orWhere('external_id', $authorityCode);
-        }
+                if ($authorityCode) {
+                    $builder->orWhere('imobi_brasil_external_id', $authorityCode)
+                        ->orWhere('external_id', $authorityCode);
+                }
+            });
 
         if (app()->bound('tenant')) {
             $tenantId = app('tenant')->id;
@@ -1354,6 +1426,25 @@ class PropertySyncService
                         // Transferir matches antes de deletar
                         \App\Models\LeadPropertyMatch::where('property_id', $dupId)
                             ->update(['property_id' => $duplicate['master_id']]);
+
+                        $duplicateTenantIds = \App\Models\PropertyPortalTenant::where('property_id', $dupId)
+                            ->pluck('tenant_id')
+                            ->filter()
+                            ->values()
+                            ->all();
+
+                        if (!empty($duplicateTenantIds)) {
+                            $conflictingTenantIds = \App\Models\PropertyPortalTenant::where('property_id', $duplicate['master_id'])
+                                ->whereIn('tenant_id', $duplicateTenantIds)
+                                ->pluck('tenant_id')
+                                ->all();
+
+                            if (!empty($conflictingTenantIds)) {
+                                \App\Models\PropertyPortalTenant::where('property_id', $dupId)
+                                    ->whereIn('tenant_id', $conflictingTenantIds)
+                                    ->delete();
+                            }
+                        }
 
                         \App\Models\PropertyPortalTenant::where('property_id', $dupId)
                             ->update(['property_id' => $duplicate['master_id']]);

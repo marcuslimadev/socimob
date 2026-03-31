@@ -431,6 +431,7 @@ export default function ClientPortalRefined() {
   const closePropertyWhatsAppModal = () => {
     setLeadModalError('');
     setLeadSubmitting(false);
+    setLeadModalSource('card');
     setLeadModalProperty(null);
   };
 
@@ -1268,7 +1269,7 @@ export default function ClientPortalRefined() {
         </div>
       ) : null}
 
-      {leadModalProperty && (
+      {(leadModalProperty || leadModalSource === 'mascot') && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.28)]">
             <div className="flex items-start justify-between gap-4">

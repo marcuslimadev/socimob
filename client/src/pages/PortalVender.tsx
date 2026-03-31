@@ -6,8 +6,6 @@ import {
   ArrowLeft,
   Building2,
   CheckCircle2,
-  Lock,
-  LogIn,
   Search,
   User,
   Home,
@@ -361,42 +359,8 @@ export default function PortalVender() {
             </div>
           </div>
 
-          {/* NOT AUTHENTICATED */}
-          {!isAuthenticated && (
-            <div className="p-6 py-10 text-center">
-              <div
-                className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl"
-                style={{ backgroundColor: `${primary}15` }}
-              >
-                <Lock className="h-7 w-7" style={{ color: primary }} />
-              </div>
-              <h2 className="text-xl font-semibold text-slate-900">Acesso necessário</h2>
-              <p className="mt-2 text-sm text-slate-500">
-                Para cadastrar seu imóvel gratuitamente, faça login ou registre-se no portal.
-              </p>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                <button
-                  type="button"
-                  onClick={() => navigate('/portal/login?redirect=/portal/vender')}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white"
-                  style={{ backgroundColor: primary }}
-                >
-                  <LogIn className="h-4 w-4" />
-                  Entrar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/portal/register?redirect=/portal/vender')}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Criar conta gratuita
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* SUCCESS */}
-          {isAuthenticated && submitted && (
+          {submitted && (
             <div className="p-6 py-10 text-center">
               <div
                 className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl"
@@ -421,8 +385,33 @@ export default function PortalVender() {
           )}
 
           {/* WIZARD */}
-          {isAuthenticated && !submitted && (
+          {!submitted && (
             <>
+              {!isAuthenticated && (
+                <div className="mx-6 mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs text-slate-600">
+                    O envio do imovel e publico. Se preferir, entre no portal para tentar preencher seus dados automaticamente pelo CPF.
+                  </p>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/portal/login?redirect=/portal/vender')}
+                      className="inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white"
+                      style={{ backgroundColor: primary }}
+                    >
+                      Entrar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/portal/register?redirect=/portal/vender')}
+                      className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Criar conta gratuita
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Step indicator */}
               <div className="px-6">
                 <div className="flex items-center gap-0 mb-6">
@@ -519,7 +508,7 @@ export default function PortalVender() {
                             <button
                               type="button"
                               onClick={handleCpfLookup}
-                              disabled={cpfLookupLoading}
+                              disabled={!isAuthenticated || cpfLookupLoading}
                               className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60 transition-opacity whitespace-nowrap"
                               style={{ backgroundColor: secondary, color: '#111827' }}
                             >
@@ -532,7 +521,9 @@ export default function PortalVender() {
                             </button>
                           </div>
                           <p className="mt-1 text-[11px] text-slate-400">
-                            Seus dados são pré-preenchidos mas você pode editar livremente.
+                            {isAuthenticated
+                              ? 'Seus dados sao pre-preenchidos mas voce pode editar livremente.'
+                              : 'O envio funciona sem login. Para usar a busca por CPF, entre no portal.'}
                           </p>
                         </div>
 

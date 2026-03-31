@@ -222,4 +222,9 @@ class Property extends Model
                 ->orWhereNotNull('imobi_brasil_external_id');
         });
     }
+
+    public function scopePubliclyVisible($query)
+    {
+        return $query->where('active', true)->where('exibir_imovel', true);
+    }
 }

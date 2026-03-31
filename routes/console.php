@@ -10,11 +10,11 @@ Artisan::command('inspire', function () {
 
 // Migrated schedules from Lumen Console/Kernel.php
 Schedule::command('properties:sync')
-    ->everyFourHours()
+    ->dailyAt('03:00')
     ->withoutOverlapping();
 
 Schedule::command('properties:ensure')
-    ->hourly()
+    ->dailyAt('03:30')
     ->withoutOverlapping();
 
 Schedule::command('analytics:prune')
