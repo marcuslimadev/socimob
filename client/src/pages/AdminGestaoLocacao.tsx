@@ -370,7 +370,7 @@ export default function AdminGestaoLocacao() {
   const [showReajusteModal, setShowReajusteModal] = useState(false);
   const [showRenovacaoModal, setShowRenovacaoModal] = useState(false);
   const [showVistoriaGaleria, setShowVistoriaGaleria] = useState(false);
-  const [showPessoaForm, setShowPessoaForm] = useState(false);
+  const [showPessoaForm, setShowPessoaForm] = useState<null | { nome?: string; tipo?: string; papeis?: string[] }>(null);
   const [selectedCobranca, setSelectedCobranca] = useState<CobrancaItem | null>(null);
   const [repasses, setRepasses] = useState<RepasseItem[]>([]);
   const [isLoadingRepasses, setIsLoadingRepasses] = useState(false);
@@ -785,7 +785,16 @@ export default function AdminGestaoLocacao() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs text-muted-foreground mb-1">Locador (Senhorio) <span className="text-red-500">*</span></label>
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <label className="block text-xs text-muted-foreground">Locador (Senhorio) <span className="text-red-500">*</span></label>
+                            <button
+                              type="button"
+                              onClick={() => setShowPessoaForm({ tipo: 'fisica', papeis: ['proprietario'] })}
+                              className="text-[11px] text-primary hover:underline"
+                            >
+                              + cadastro rápido
+                            </button>
+                          </div>
                           <PessoaCombobox
                             value={novoContrato.locador_pessoa_id}
                             onChange={(v) => setNovoContrato((p) => ({ ...p, locador_pessoa_id: v }))}
@@ -795,7 +804,16 @@ export default function AdminGestaoLocacao() {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-muted-foreground mb-1">Locatário (Inquilino) <span className="text-red-500">*</span></label>
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <label className="block text-xs text-muted-foreground">Locatário (Inquilino) <span className="text-red-500">*</span></label>
+                            <button
+                              type="button"
+                              onClick={() => setShowPessoaForm({ tipo: 'fisica', papeis: ['inquilino'] })}
+                              className="text-[11px] text-primary hover:underline"
+                            >
+                              + cadastro rápido
+                            </button>
+                          </div>
                           <PessoaCombobox
                             value={novoContrato.locatario_pessoa_id}
                             onChange={(v) => setNovoContrato((p) => ({ ...p, locatario_pessoa_id: v }))}
@@ -1773,8 +1791,9 @@ export default function AdminGestaoLocacao() {
 
     {showPessoaForm && (
       <PessoaFormModal
-        onClose={() => setShowPessoaForm(false)}
-        onSuccess={() => { setShowPessoaForm(false); loadAll(); }}
+        pessoaInicial={showPessoaForm}
+        onClose={() => setShowPessoaForm(null)}
+        onSuccess={() => { setShowPessoaForm(null); loadAll(); }}
       />
     )}
   </>);

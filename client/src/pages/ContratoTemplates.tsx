@@ -22,6 +22,7 @@ interface Template {
 
 const TIPOS = [
   { value: 'contrato',  label: 'Contrato de Locação',     desc: 'Contrato principal entre locador e locatário' },
+  { value: 'compra_venda', label: 'Compra e Venda',       desc: 'Promessa de compra e venda de imóvel' },
   { value: 'aditivo',   label: 'Aditivo Contratual',       desc: 'Alterações ao contrato em vigor' },
   { value: 'rescisao',  label: 'Termo de Rescisão',        desc: 'Encerramento antecipado do contrato' },
   { value: 'renovacao', label: 'Termo de Renovação',       desc: 'Renovação e prorrogação do contrato' },

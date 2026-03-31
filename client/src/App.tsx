@@ -27,6 +27,7 @@ const Agenda = lazy(() => import("./pages/Agenda"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
 const FinanceiroNotaDetalhe = lazy(() => import("./pages/FinanceiroNotaDetalhe"));
 const AdminGestaoLocacao = lazy(() => import("./pages/AdminGestaoLocacao"));
+const AdminGestaoCompraVenda = lazy(() => import("./pages/AdminGestaoCompraVenda"));
 const ContasFinanceiras = lazy(() => import("./pages/ContasFinanceiras"));
 const PortalPessoaFinanceiro = lazy(() => import("./pages/PortalPessoaFinanceiro"));
 const PortalRegister = lazy(() => import("./pages/PortalRegister"));
@@ -84,6 +85,7 @@ function Router() {
       <Route path="/leads" component={Leads} />
       <Route path="/leads/:id" component={LeadProfile} />
       <Route path="/properties" component={Properties} />
+      <Route path="/properties/propaganda" component={PropertyAds} />
       <Route path="/properties/novo" component={ImovelFormWizard} />
       <Route path="/properties/:id/editar" component={ImovelFormWizard} />
       <Route path="/chat" component={Chat} />
@@ -105,6 +107,7 @@ function Router() {
       <Route path="/financeiro/notas/:registroTipo/:id" component={AdminFinanceiroNotaDetalheGate} />
       <Route path="/financeiro" component={AdminFinanceiroGate} />
       <Route path="/financeiro/locacao" component={AdminGestaoLocacaoGate} />
+      <Route path="/financeiro/compra-venda" component={AdminGestaoCompraVendaGate} />
       <Route path="/financeiro/contas" component={AdminContasFinanceirasGate} />
       <Route path="/portal/meu-financeiro" component={PortalFinanceiroGate} />
       <Route path="/vistorias" component={Vistorias} />
@@ -182,6 +185,10 @@ function AdminFinanceiroNotaDetalheGate() {
 
 function AdminGestaoLocacaoGate() {
   return <AdminOnlyPage component={AdminGestaoLocacao} />;
+}
+
+function AdminGestaoCompraVendaGate() {
+  return <AdminOnlyPage component={AdminGestaoCompraVenda} />;
 }
 
 function AdminContasFinanceirasGate() {

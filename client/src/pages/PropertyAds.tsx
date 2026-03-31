@@ -125,7 +125,6 @@ const getSuites = (property: Property) => property.suites || 0;
 const getBathrooms = (property: Property) => property.bathrooms || property.banheiros || 0;
 const getGarageSpots = (property: Property) => property.garages || property.vagas_garagem || 0;
 const getArea = (property: Property) => property.area || property.area_util || property.area_privativa || property.area_total || 0;
-const getPropertyCode = (property: Property) => property.codigo || property.referencia || '';
 const getPrice = (property: Property) => {
   const transactionType = getTransactionType(property);
   if (transactionType === 'aluguel') {
@@ -156,17 +155,6 @@ const formatPhone = (value?: string | null) => {
 
 const getTransactionLabel = (type: string) => (type === 'aluguel' ? 'Aluguel' : 'Venda');
 
-const getDetailTags = (property: Property) => {
-  const tags = [getPropertyType(property)];
-  const code = getPropertyCode(property);
-
-  if (code) tags.push(`Cód. ${code}`);
-  if (getSuites(property) > 0) tags.push(`${getSuites(property)} suíte${getSuites(property) === 1 ? '' : 's'}`);
-  if (getGarageSpots(property) > 0) tags.push(`${getGarageSpots(property)} vaga${getGarageSpots(property) === 1 ? '' : 's'}`);
-
-  return tags;
-};
-
 const getPrimarySpecs = (property: Property) => [
   getBedrooms(property) > 0 ? `${getBedrooms(property)} quartos` : null,
   getBathrooms(property) > 0 ? `${getBathrooms(property)} banheiros` : null,
@@ -174,9 +162,9 @@ const getPrimarySpecs = (property: Property) => [
 ].filter(Boolean) as string[];
 
 const getSecondarySpecs = (property: Property) => [
+  getPropertyType(property),
   getSuites(property) > 0 ? `${getSuites(property)} suíte${getSuites(property) === 1 ? '' : 's'}` : null,
   getGarageSpots(property) > 0 ? `${getGarageSpots(property)} vaga${getGarageSpots(property) === 1 ? '' : 's'}` : null,
-  getPropertyCode(property) ? `Ref. ${getPropertyCode(property)}` : null,
 ].filter(Boolean) as string[];
 
 const getLocationText = (property: Property) =>
@@ -323,9 +311,8 @@ function StoryPreviewCard({ property, tenant, photos, storyRef, className }: Sto
   const [renderablePhotos, setRenderablePhotos] = useState<string[]>(photos);
   const [showLogo, setShowLogo] = useState(true);
   const photoSignature = photos.join('||');
-  const thumbPhotos = renderablePhotos.slice(1, 7);
+  const thumbPhotos = renderablePhotos.slice(1, 3);
   const transactionType = getTransactionType(property);
-  const detailTags = getDetailTags(property);
   const primarySpecs = getPrimarySpecs(property);
   const secondarySpecs = getSecondarySpecs(property);
   const logoSrc = tenant?.logo_url || tenant?.logo;
@@ -404,15 +391,6 @@ function StoryPreviewCard({ property, tenant, photos, storyRef, className }: Sto
         <p className="mt-2 line-clamp-2 text-sm text-white/72">
           {getLocationText(property) || 'Localização sob consulta'}
         </p>
-        {detailTags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-white/62">
-            {detailTags.map((tag) => (
-              <span key={tag} className="rounded-full bg-white/8 px-2 py-1">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
         <p className="mt-3 text-[1.7rem] font-bold leading-none text-white">
           {formatCurrency(getPrice(property))}
         </p>
@@ -427,7 +405,7 @@ function StoryPreviewCard({ property, tenant, photos, storyRef, className }: Sto
           </div>
         )}
         {thumbPhotos.length > 0 && (
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className={`mt-3 grid gap-2 ${thumbPhotos.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
             {thumbPhotos.map((photo, index) => (
               <div
                 key={`${property.id}-${photo}-${index}`}
@@ -490,9 +468,8 @@ export default function PropertyAds() {
 
     const photos = normalizePhotos(property);
     const mainPhotoUrl = photos[0];
-    const thumbUrls = photos.slice(1, 7);
+    const thumbUrls = photos.slice(1, 3);
     const transactionType = getTransactionType(property);
-    const detailTags = getDetailTags(property);
     const primarySpecs = getPrimarySpecs(property);
     const secondarySpecs = getSecondarySpecs(property);
     const primaryColor = tenant?.primary_color || '#0f172a';
@@ -672,19 +649,18 @@ export default function PropertyAds() {
       }
 
       const infoMaxWidth = panelWidth - 88;
-      const thumbSize = 176;
+      const thumbSize = 230;
       const thumbGap = 18;
-      const thumbsPerRow = 3;
-      const maxThumbs = 6;
+      const thumbsPerRow = Math.min(Math.max(thumbUrls.length, 1), 2);
+      const maxThumbs = 2;
       const visibleThumbs = thumbUrls.slice(0, maxThumbs);
-      const totalThumbsWidth = thumbSize * thumbsPerRow + thumbGap * (thumbsPerRow - 1);
+      const totalThumbsWidth = thumbSize * thumbsPerRow + thumbGap * Math.max(thumbsPerRow - 1, 0);
       const thumbStartX = panelX + (panelWidth - totalThumbsWidth) / 2;
-      const thumbStartY = panelY + panelHeight - thumbSize * 2 - thumbGap - 38;
+      const thumbStartY = panelY + panelHeight - thumbSize - 46;
       const textTopY = panelY + 150;
       const textBottomLimit = thumbStartY - 28;
       const titleText = getPropertyTitle(property);
       const locationText = getLocationText(property) || 'Localização sob consulta';
-      const detailText = detailTags.join('   •   ');
       const priceText = formatCurrency(getPrice(property));
       const primaryText = primarySpecs.join('   •   ');
       const secondaryText = secondarySpecs.join('   •   ');
@@ -692,22 +668,18 @@ export default function PropertyAds() {
       let layoutScale = 1;
       let titleLines: string[] = [];
       let locationLines: string[] = [];
-      let detailLines: string[] = [];
       let primaryLines: string[] = [];
       let secondaryLines: string[] = [];
       let titleFontSize = 74;
       let locationFontSize = 42;
-      let detailFontSize = 31;
       let priceFontSize = 86;
       let primaryFontSize = 34;
       let secondaryFontSize = 30;
       let titleLineHeight = 84;
       let locationLineHeight = 46;
-      let detailLineHeight = 36;
       let primaryLineHeight = 38;
       let secondaryLineHeight = 34;
       let titleBottomSpacing = 22;
-      let detailTopSpacing = 18;
       let priceTopSpacing = 54;
       let primaryTopSpacing = 62;
       let secondaryTopSpacing = 16;
@@ -715,16 +687,13 @@ export default function PropertyAds() {
       while (layoutScale >= 0.72) {
         titleFontSize = Math.round(74 * layoutScale);
         locationFontSize = Math.round(42 * layoutScale);
-        detailFontSize = Math.round(31 * layoutScale);
         primaryFontSize = Math.round(34 * layoutScale);
         secondaryFontSize = Math.round(30 * layoutScale);
         titleLineHeight = Math.round(84 * layoutScale);
         locationLineHeight = Math.round(46 * layoutScale);
-        detailLineHeight = Math.round(36 * layoutScale);
         primaryLineHeight = Math.round(38 * layoutScale);
         secondaryLineHeight = Math.round(34 * layoutScale);
         titleBottomSpacing = Math.round(22 * layoutScale);
-        detailTopSpacing = Math.round(18 * layoutScale);
         priceTopSpacing = Math.round(54 * layoutScale);
         primaryTopSpacing = Math.round(62 * layoutScale);
         secondaryTopSpacing = Math.round(16 * layoutScale);
@@ -734,9 +703,6 @@ export default function PropertyAds() {
 
         ctx.font = `500 ${locationFontSize}px sans-serif`;
         locationLines = wrapCanvasText(ctx, locationText, infoMaxWidth, 2);
-
-        ctx.font = `600 ${detailFontSize}px sans-serif`;
-        detailLines = detailText ? wrapCanvasText(ctx, detailText, infoMaxWidth, 2) : [];
 
         priceFontSize = fitCanvasFontSize(ctx, priceText, Math.round(86 * layoutScale), Math.round(60 * layoutScale), infoMaxWidth, '700');
 
@@ -750,7 +716,6 @@ export default function PropertyAds() {
           measureTextBlockHeight(titleLines.length, titleLineHeight) +
           titleBottomSpacing +
           measureTextBlockHeight(locationLines.length, locationLineHeight) +
-          (detailLines.length > 0 ? detailTopSpacing + measureTextBlockHeight(detailLines.length, detailLineHeight) : 0) +
           priceTopSpacing +
           priceFontSize +
           (primaryLines.length > 0 ? primaryTopSpacing + measureTextBlockHeight(primaryLines.length, primaryLineHeight) : 0) +
@@ -778,16 +743,6 @@ export default function PropertyAds() {
         ctx.fillText(line, panelX + 44, currentY + index * locationLineHeight);
       });
       currentY += measureTextBlockHeight(locationLines.length, locationLineHeight);
-
-      if (detailLines.length > 0) {
-        currentY += detailTopSpacing;
-        ctx.fillStyle = 'rgba(255,255,255,0.74)';
-        ctx.font = `600 ${detailFontSize}px sans-serif`;
-        detailLines.forEach((line, index) => {
-          ctx.fillText(line, panelX + 44, currentY + index * detailLineHeight);
-        });
-        currentY += measureTextBlockHeight(detailLines.length, detailLineHeight);
-      }
 
       currentY += priceTopSpacing;
       ctx.fillStyle = '#ffffff';
@@ -887,7 +842,7 @@ export default function PropertyAds() {
       cleanupExportAssets();
 
       const objectUrls: string[] = [];
-      const normalizedPhotos = normalizePhotos(property).slice(0, 7);
+      const normalizedPhotos = normalizePhotos(property).slice(0, 3);
       const resolvedPhotos = await Promise.all(
         normalizedPhotos.map((photo) => resolveAssetUrl(photo, objectUrls)),
       );
@@ -956,7 +911,7 @@ export default function PropertyAds() {
           <div className="page-header mb-8">
             <div>
               <h1 className="page-title mb-2">Propaganda de Imóveis</h1>
-              <p className="page-subtitle">Gere um status vertical por imóvel com texto, logo e fotos prontas para baixar</p>
+              <p className="page-subtitle">Gere uma peça vertical com visual mais limpo e focado no cliente final</p>
             </div>
           </div>
 

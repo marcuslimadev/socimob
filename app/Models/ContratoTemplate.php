@@ -33,6 +33,7 @@ class ContratoTemplate extends Model
     {
         return match ($tipo) {
             'contrato'  => 'Contrato de Locação Residencial',
+            'compra_venda' => 'Contrato Particular de Promessa de Compra e Venda',
             'aditivo'   => 'Aditivo Contratual',
             'rescisao'  => 'Termo de Rescisão Contratual',
             'renovacao' => 'Termo de Renovação de Contrato',

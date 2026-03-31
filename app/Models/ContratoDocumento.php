@@ -14,6 +14,7 @@ class ContratoDocumento extends Model
     protected $fillable = [
         'tenant_id',
         'contrato_id',
+        'contrato_compra_venda_id',
         'cobranca_id',
         'tipo',
         'categoria',
@@ -53,6 +54,11 @@ class ContratoDocumento extends Model
     public function contrato()
     {
         return $this->belongsTo(ContratoLocacao::class, 'contrato_id');
+    }
+
+    public function contratoCompraVenda()
+    {
+        return $this->belongsTo(ContratoCompraVenda::class, 'contrato_compra_venda_id');
     }
 
     public function cobranca()

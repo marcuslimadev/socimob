@@ -309,6 +309,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       href: '/properties',
       items: [
         { icon: <Home size={16} />, label: 'Imóveis', href: '/properties' },
+        { icon: <Image size={16} />, label: 'Propaganda', href: '/properties/propaganda' },
         { icon: <KeyRound size={16} />, label: 'Controle de Chaves', href: '/controle-chaves' },
         { icon: <Building2 size={16} />, label: 'ImobiBrasil', href: '/imobi-brasil' },
       ],
@@ -322,6 +323,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         { icon: <ClipboardCheck size={16} />, label: 'Vistorias', href: '/vistorias' },
         { icon: <FileSignature size={16} />, label: 'Assinaturas', href: '/assinaturas' },
         { icon: <FileSpreadsheet size={16} />, label: 'Locação / Operação', href: '/financeiro/locacao' },
+        { icon: <FileSignature size={16} />, label: 'Compra e Venda', href: '/financeiro/compra-venda' },
         { icon: <FileText size={16} />, label: 'Templates de Contrato', href: '/contrato-templates' },
       ],
     },
@@ -345,7 +347,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             items: [
               { icon: <LineChart size={16} />, label: 'Estatísticas', href: '/analytics' },
               { icon: <Shield size={16} />, label: 'Usuários', href: '/admin/users' },
-              { icon: <Image size={16} />, label: 'Propaganda', href: '/admin/property-ads' },
               { icon: <FileText size={16} />, label: 'Logs do Sistema', href: '/system-logs' },
             ],
           } as SidebarSection,

@@ -361,7 +361,11 @@ class NfseCommissionService
 
         $codigoMunicipio = $endereco['codigoMunicipio'] ?? $endereco['city_code'] ?? null;
 
-        if (!$codigoMunicipio) {
+        if (
+            !$codigoMunicipio
+            && empty($endereco['cidade'])
+            && empty($endereco['city'])
+        ) {
             $cep = $this->somenteDigitos($endereco['cep'] ?? null);
             if ($cep && strlen($cep) === 8) {
                 $codigoMunicipio = $this->buscarCodigoMunicipioPorCep($cep);

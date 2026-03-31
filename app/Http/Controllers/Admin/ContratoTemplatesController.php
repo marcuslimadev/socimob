@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Validator;
 
 class ContratoTemplatesController extends Controller
 {
-    private const TIPOS_VALIDOS = ['contrato', 'aditivo', 'rescisao', 'renovacao', 'recibo'];
+    private const TIPOS_VALIDOS = ['contrato', 'compra_venda', 'aditivo', 'rescisao', 'renovacao', 'recibo'];
 
     /** GET /admin/financeiro/contrato-templates */
     public function index()

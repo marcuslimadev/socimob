@@ -48,6 +48,10 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->post('/financeiro/contratos', 'App\Http\Controllers\Admin\ContratosLocacaoController@store');
     $router->get('/financeiro/contratos/{id}', 'App\Http\Controllers\Admin\ContratosLocacaoController@show');
     $router->put('/financeiro/contratos/{id}', 'App\Http\Controllers\Admin\ContratosLocacaoController@update');
+    $router->get('/financeiro/compra-venda', 'App\Http\Controllers\Admin\ContratosCompraVendaController@index');
+    $router->post('/financeiro/compra-venda', 'App\Http\Controllers\Admin\ContratosCompraVendaController@store');
+    $router->get('/financeiro/compra-venda/{id}', 'App\Http\Controllers\Admin\ContratosCompraVendaController@show');
+    $router->put('/financeiro/compra-venda/{id}', 'App\Http\Controllers\Admin\ContratosCompraVendaController@update');
     $router->get('/financeiro/contratos/{contratoId}/vistorias',        'App\Http\Controllers\Admin\VistoriasContratoController@index');
     $router->post('/financeiro/contratos/{contratoId}/vistorias',       'App\Http\Controllers\Admin\VistoriasContratoController@store');
     $router->patch('/financeiro/contratos/{contratoId}/vistorias/{id}', 'App\Http\Controllers\Admin\VistoriasContratoController@update');
@@ -249,6 +253,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->delete('/financeiro/contratos/{id}',            'App\Http\Controllers\Admin\ContratosLocacaoController@destroy');
     $router->post('/financeiro/contratos/{id}/encerrar',     'App\Http\Controllers\Admin\ContratosLocacaoController@encerrar');
     $router->post('/financeiro/contratos/{id}/renovar',      'App\Http\Controllers\Admin\ContratosLocacaoController@renovar');
+    $router->delete('/financeiro/compra-venda/{id}',         'App\Http\Controllers\Admin\ContratosCompraVendaController@destroy');
 
     // Cobrancas - extended actions
     $router->get('/financeiro/cobrancas-contrato/{id}',          'App\Http\Controllers\Admin\CobrancasContratoController@show');
@@ -277,6 +282,11 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->post('/financeiro/contratos/{contratoId}/documentos/{id}/enviar-assinatura',     'App\Http\Controllers\Admin\ContratoDocumentosController@enviarParaAssinatura');
     $router->post('/financeiro/contratos/{contratoId}/documentos/{id}/upload-assinado',       'App\Http\Controllers\Admin\ContratoDocumentosController@uploadAssinado');
     $router->delete('/financeiro/contratos/{contratoId}/documentos/{id}',                     'App\Http\Controllers\Admin\ContratoDocumentosController@destroy');
+    $router->get('/financeiro/compra-venda/{contratoId}/documentos',                          'App\Http\Controllers\Admin\ContratoCompraVendaDocumentosController@index');
+    $router->post('/financeiro/compra-venda/{contratoId}/documentos/gerar-pdf',               'App\Http\Controllers\Admin\ContratoCompraVendaDocumentosController@gerarPdf');
+    $router->post('/financeiro/compra-venda/{contratoId}/documentos/{id}/enviar-assinatura',  'App\Http\Controllers\Admin\ContratoCompraVendaDocumentosController@enviarParaAssinatura');
+    $router->post('/financeiro/compra-venda/{contratoId}/documentos/{id}/upload-assinado',    'App\Http\Controllers\Admin\ContratoCompraVendaDocumentosController@uploadAssinado');
+    $router->delete('/financeiro/compra-venda/{contratoId}/documentos/{id}',                  'App\Http\Controllers\Admin\ContratoCompraVendaDocumentosController@destroy');
 
     // Templates de contrato (personalização por tenant)
     $router->get('/financeiro/contrato-templates',              'App\Http\Controllers\Admin\ContratoTemplatesController@index');
@@ -291,10 +301,9 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->delete('/vistorias/{vistoriaId}/fotos/{id}',  'App\Http\Controllers\Admin\VistoriaFotoController@destroy');
 
     // Pessoas (inquilinos e proprietários)
-    $router->get('/pessoas',         'App\Http\Controllers\Admin\PessoasController@index');
-    $router->post('/pessoas',        'App\Http\Controllers\Admin\PessoasController@store');
-    $router->get('/pessoas/{id}',    'App\Http\Controllers\Admin\PessoasController@show');
-    $router->put('/pessoas/{id}',    'App\Http\Controllers\Admin\PessoasController@update');
-    $router->delete('/pessoas/{id}', 'App\Http\Controllers\Admin\PessoasController@destroy');
+    $router->get('/pessoas',         'App\Http\Controllers\PessoasController@index');
+    $router->post('/pessoas',        'App\Http\Controllers\PessoasController@store');
+    $router->get('/pessoas/{id}',    'App\Http\Controllers\PessoasController@show');
+    $router->put('/pessoas/{id}',    'App\Http\Controllers\PessoasController@update');
+    $router->delete('/pessoas/{id}', 'App\Http\Controllers\PessoasController@destroy');
 });
-

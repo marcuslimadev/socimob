@@ -21,6 +21,8 @@ interface Props {
 const PAPEIS_OPTIONS = [
   { value: 'proprietario', label: 'Proprietário' },
   { value: 'inquilino', label: 'Inquilino' },
+  { value: 'vendedor', label: 'Vendedor' },
+  { value: 'comprador', label: 'Comprador' },
   { value: 'fiador', label: 'Fiador' },
   { value: 'cliente', label: 'Cliente' },
 ];
@@ -58,11 +60,22 @@ export default function PessoaFormModal({ pessoaId, pessoaInicial, onClose, onSu
     }
     setLoading(true);
     try {
+      const payload = {
+        nome: form.nome,
+        email: form.email || undefined,
+        telefone: form.telefone || undefined,
+        celular: form.telefone || undefined,
+        tipo: form.tipo,
+        cpf: form.tipo === 'fisica' ? (form.cpf_cnpj || undefined) : undefined,
+        cnpj: form.tipo === 'juridica' ? (form.cpf_cnpj || undefined) : undefined,
+        papeis: form.papeis,
+      };
+
       if (isEditing) {
-        await api.put(`/admin/pessoas/${pessoaId}`, form);
+        await api.put(`/pessoas/${pessoaId}`, payload);
         toast.success('Pessoa atualizada com sucesso.');
       } else {
-        await api.post('/admin/pessoas', form);
+        await api.post('/pessoas', payload);
         toast.success('Pessoa cadastrada com sucesso.');
       }
       onSuccess();
