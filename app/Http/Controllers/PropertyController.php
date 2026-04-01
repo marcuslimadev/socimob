@@ -349,6 +349,31 @@ class PropertyController extends Controller
         return $data;
     }
 
+    private function applyPropertyNumericDefaults(array $data): array
+    {
+        $numericDefaults = [
+            'valor_venda' => 0,
+            'valor_aluguel' => 0,
+            'valor_condominio' => 0,
+            'valor_iptu' => 0,
+            'dormitorios' => 0,
+            'suites' => 0,
+            'banheiros' => 0,
+            'garagem' => 0,
+            'area_total' => 0,
+            'area_privativa' => 0,
+            'area_terreno' => 0,
+        ];
+
+        foreach ($numericDefaults as $field => $defaultValue) {
+            if (!array_key_exists($field, $data) || $data[$field] === null || $data[$field] === '') {
+                $data[$field] = $defaultValue;
+            }
+        }
+
+        return $data;
+    }
+
     private function appendPropertyBusinessRulesValidation(\Illuminate\Validation\Validator $validator, Request $request, bool $isUpdate = false): void
     {
         $validator->after(function ($validator) use ($request, $isUpdate) {
@@ -1133,7 +1158,9 @@ class PropertyController extends Controller
             ]);
 
             // ========== PREPARAR DADOS ==========
-            $data = $this->normalizeStructuredPropertyData($validator->validated());
+            $data = $this->applyPropertyNumericDefaults(
+                $this->normalizeStructuredPropertyData($validator->validated())
+            );
             [$captadorUserId, $captadorNome] = $this->resolveCaptadorData($tenantId, $data['captador_user_id'] ?? null);
             $data['captador_user_id'] = $captadorUserId;
             $data['captador_nome'] = $captadorNome;
