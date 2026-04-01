@@ -352,19 +352,34 @@ export default function ImovelFormWizard() {
         setIsLoadingConstrutoras(true);
         const response = await api.get('/pessoas', {
           params: {
-            per_page: 200,
+            per_page: 'all',
             ativo: 1,
             tipo: 'juridica',
           },
         });
 
         const allPeople = Array.isArray(response.data?.data) ? response.data.data : [];
-        setConstrutoras(
-          allPeople.filter((pessoa: ConstrutoraOption) => {
-            const papeis = pessoa.papeis || [];
-            return papeis.includes('construtora') || papeis.includes('construtor');
-          })
-        );
+        const normalizedPeople = allPeople.filter((pessoa: ConstrutoraOption) => {
+          const nome = String(pessoa.razao_social || pessoa.nome || '').trim();
+          return nome !== '';
+        });
+
+        normalizedPeople.sort((left: ConstrutoraOption, right: ConstrutoraOption) => {
+          const leftRoles = left.papeis || [];
+          const rightRoles = right.papeis || [];
+          const leftIsBuilder = leftRoles.includes('construtora') || leftRoles.includes('construtor');
+          const rightIsBuilder = rightRoles.includes('construtora') || rightRoles.includes('construtor');
+
+          if (leftIsBuilder !== rightIsBuilder) {
+            return leftIsBuilder ? -1 : 1;
+          }
+
+          const leftName = String(left.razao_social || left.nome || '').toLowerCase();
+          const rightName = String(right.razao_social || right.nome || '').toLowerCase();
+          return leftName.localeCompare(rightName, 'pt-BR');
+        });
+
+        setConstrutoras(normalizedPeople);
       } catch (error) {
         console.error('Erro ao carregar construtoras:', error);
         setConstrutoras([]);
@@ -1903,7 +1918,7 @@ export default function ImovelFormWizard() {
                   )}
                   {!isLoadingConstrutoras && construtoras.length === 0 && (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Nenhuma construtora cadastrada com esse papel. Cadastre em Pessoas para vincular ao imóvel.
+                      Nenhuma empresa jurídica ativa encontrada. Cadastre em Pessoas para vincular ao imóvel.
                     </p>
                   )}
                 </div>
