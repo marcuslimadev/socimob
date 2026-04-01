@@ -134,6 +134,56 @@ if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   });
 }
 
+if (typeof window !== "undefined") {
+  const chunkReloadFlag = "socimob:chunk-reload";
+
+  const reloadOnceForChunkError = () => {
+    try {
+      if (sessionStorage.getItem(chunkReloadFlag) === "1") {
+        return;
+      }
+
+      sessionStorage.setItem(chunkReloadFlag, "1");
+      window.location.reload();
+    } catch {
+      window.location.reload();
+    }
+  };
+
+  window.addEventListener("load", () => {
+    try {
+      sessionStorage.removeItem(chunkReloadFlag);
+    } catch {
+      // ignore sessionStorage failures
+    }
+  });
+
+  window.addEventListener("vite:preloadError", (event) => {
+    event.preventDefault();
+    reloadOnceForChunkError();
+  });
+
+  window.addEventListener("error", (event) => {
+    const target = event.target as HTMLScriptElement | null;
+    const message = event.message || "";
+    const isModuleAssetError =
+      !!target &&
+      target.tagName === "SCRIPT" &&
+      target.src.includes("/assets/");
+
+    if (isModuleAssetError || message.includes("Failed to load module script")) {
+      reloadOnceForChunkError();
+    }
+  }, true);
+
+  window.addEventListener("unhandledrejection", (event) => {
+    const reasonMessage = String((event.reason as Error | undefined)?.message || event.reason || "");
+    if (reasonMessage.includes("Failed to fetch dynamically imported module")) {
+      reloadOnceForChunkError();
+    }
+  });
+}
+
 const bootstrap = async () => {
   const tenantBootstrapTimeoutMs = 2500;
 
