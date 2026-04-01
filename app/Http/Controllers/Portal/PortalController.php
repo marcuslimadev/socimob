@@ -845,17 +845,25 @@ class PortalController extends Controller
                 return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 404);
             }
 
+            $normalizedPhone = preg_replace('/\D+/', '', (string) $request->input('telefone_contato', ''));
+            $normalizedCep = preg_replace('/\D+/', '', (string) $request->input('cep', ''));
+
+            $request->merge([
+                'telefone_contato' => $normalizedPhone,
+                'cep' => $normalizedCep !== '' ? $normalizedCep : null,
+            ]);
+
             $validator = Validator::make($request->all(), [
                 'tipo_imovel'       => 'required|string|max:80',
                 'finalidade'        => 'required|in:venda,aluguel,venda_aluguel',
-                'cep'               => 'nullable|string|max:9',
+                'cep'               => 'nullable|string|size:8',
                 'cidade'            => 'required|string|max:100',
                 'bairro'            => 'nullable|string|max:100',
                 'area'              => 'nullable|numeric|min:0',
                 'dormitorios'       => 'nullable|integer|min:0|max:20',
                 'valor_pretendido'  => 'nullable|numeric|min:0',
                 'nome_contato'      => 'required|string|max:160',
-                'telefone_contato'  => 'required|string|max:20',
+                'telefone_contato'  => 'required|string|min:10|max:15',
                 'email_contato'     => 'nullable|email|max:255',
                 'observacoes'       => 'nullable|string|max:2000',
                 'photos'            => 'nullable|array|max:20',
@@ -872,7 +880,7 @@ class PortalController extends Controller
                 ], 422);
             }
 
-            $telefone = preg_replace('/\D/', '', $request->telefone_contato);
+            $telefone = $request->telefone_contato;
             $now = now()->format('d/m/Y H:i');
 
             // Criar imóvel inativo em análise

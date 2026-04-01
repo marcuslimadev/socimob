@@ -101,6 +101,10 @@ function formatPhone(value: string) {
   return d.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
 }
 
+function normalizeDigits(value: string) {
+  return value.replace(/\D/g, '');
+}
+
 function formatCurrency(value: string) {
   const digits = value.replace(/\D/g, '');
   if (!digits) return '';
@@ -248,7 +252,7 @@ export default function PortalVender() {
       if (form.dormitorios) fd.append('dormitorios', form.dormitorios);
       if (form.valor_pretendido) fd.append('valor_pretendido', String(Number(form.valor_pretendido.replace(/\D/g, ''))));
       fd.append('nome_contato', form.nome_contato);
-      fd.append('telefone_contato', form.telefone_contato);
+      fd.append('telefone_contato', normalizeDigits(form.telefone_contato));
       if (form.email_contato) fd.append('email_contato', form.email_contato);
       if (form.observacoes) fd.append('observacoes', form.observacoes);
       photoItems.forEach(item => fd.append('photos[]', item.file));
