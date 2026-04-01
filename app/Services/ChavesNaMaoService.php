@@ -126,7 +126,7 @@ class ChavesNaMaoService
                 'trace' => $e->getTraceAsString()
             ]);
 
-            $lead->update([
+            $lead->updateQuietly([
                 'chaves_na_mao_status' => 'error',
                 'chaves_na_mao_error' => $e->getMessage()
             ]);
@@ -221,7 +221,7 @@ class ChavesNaMaoService
                 : substr($response, 0, 500);
         }
 
-        $lead->update($updateData);
+        $lead->updateQuietly($updateData);
     }
 
     /**
@@ -314,7 +314,7 @@ class ChavesNaMaoService
                 $results['success']++;
             } else {
                 $results['failed']++;
-                $lead->update([
+                $lead->updateQuietly([
                     'chaves_na_mao_retries' => $retries + 1
                 ]);
             }
