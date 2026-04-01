@@ -942,7 +942,6 @@ class PortalController extends Controller
                 'telefone_contato'  => [
                     'required',
                     'string',
-                    'max:30',
                     function ($attribute, $value, $fail) {
                         $digits = preg_replace('/\D+/', '', (string) $value);
                         if (strlen($digits) < 10 || strlen($digits) > 15) {
