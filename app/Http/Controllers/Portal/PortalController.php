@@ -923,11 +923,9 @@ class PortalController extends Controller
                 return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 404);
             }
 
-            $normalizedPhone = preg_replace('/\D+/', '', (string) $request->input('telefone_contato', ''));
             $normalizedCep = preg_replace('/\D+/', '', (string) $request->input('cep', ''));
 
             $request->merge([
-                'telefone_contato' => $normalizedPhone,
                 'cep' => $normalizedCep !== '' ? $normalizedCep : null,
             ]);
 
@@ -941,7 +939,17 @@ class PortalController extends Controller
                 'dormitorios'       => 'nullable|integer|min:0|max:20',
                 'valor_pretendido'  => 'nullable|numeric|min:0',
                 'nome_contato'      => 'required|string|max:160',
-                'telefone_contato'  => 'required|string|min:10|max:15',
+                'telefone_contato'  => [
+                    'required',
+                    'string',
+                    'max:30',
+                    function ($attribute, $value, $fail) {
+                        $digits = preg_replace('/\D+/', '', (string) $value);
+                        if (strlen($digits) < 10 || strlen($digits) > 15) {
+                            $fail('Informe um telefone válido com DDD.');
+                        }
+                    },
+                ],
                 'email_contato'     => 'nullable|email|max:255',
                 'observacoes'       => 'nullable|string|max:2000',
                 'photos'            => 'nullable|array|max:20',
@@ -958,7 +966,7 @@ class PortalController extends Controller
                 ], 422);
             }
 
-            $telefone = $request->telefone_contato;
+            $telefone = preg_replace('/\D+/', '', (string) $request->telefone_contato);
             $now = now()->format('d/m/Y H:i');
             $dormitorios = $request->filled('dormitorios') ? (int) $request->dormitorios : 0;
 
