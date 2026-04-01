@@ -466,27 +466,47 @@ class PortalController extends Controller
                 ->toArray();
         }
 
-        $imovelQuery = Property::withoutTenant()
-            ->with('fotos')
-            ->publiclyVisible()
-            ->portalInventory()
-            ->where('id', $id);
+        $baseQuery = Property::withoutTenant()->where('id', $id);
         if ($hasTenantId) {
-            $imovelQuery->where(function ($query) use ($tenantId, $sharedPropertyIds) {
+            $baseQuery->where(function ($query) use ($tenantId, $sharedPropertyIds) {
                 $query->where('tenant_id', $tenantId);
                 if (!empty($sharedPropertyIds)) {
                     $query->orWhereIn('id', $sharedPropertyIds);
                 }
             });
         }
-        $imovel = $imovelQuery->first();
+
+        $existingProperty = (clone $baseQuery)->first();
+        if (!$existingProperty) {
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        $imovel = (clone $baseQuery)
+            ->with('fotos')
+            ->publiclyVisible()
+            ->portalInventory()
+            ->first();
 
         if (!$imovel) {
-            return response()->json(['error' => 'Property not found'], 404);
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => (int) $existingProperty->id,
+                    'unavailable' => true,
+                    'message' => 'Este imóvel não está disponível no portal no momento.',
+                ],
+            ]);
         }
         if ($hasFinalidade && $normalizedFinalidades && count($normalizedFinalidades) > 0) {
             if (!$this->propertyMatchesPurposeFilters($imovel->finalidade_imovel, $normalizedFinalidades)) {
-                return response()->json(['error' => 'Property not found'], 404);
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'id' => (int) $imovel->id,
+                        'unavailable' => true,
+                        'message' => 'Este imóvel não está disponível no portal no momento.',
+                    ],
+                ]);
             }
         }
 

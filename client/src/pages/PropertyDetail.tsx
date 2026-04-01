@@ -23,6 +23,8 @@ const PORTAL_RETURN_STATE_KEY = 'portal:return-state';
 
 interface Property {
   id: number;
+  unavailable?: boolean;
+  message?: string;
   titulo: string;
   tipo_negocio?: string;
   tipo_imovel: string;
@@ -328,6 +330,25 @@ export default function PropertyDetail() {
           <button
             type="button"
             onClick={() => navigate('/portal')}
+            className="px-4 py-2 rounded-lg text-white"
+            style={{ backgroundColor: brandDark }}
+          >
+            Voltar ao portal
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (property.unavailable) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#f4efe8' }}>
+        <div className="rounded-2xl border border-black/10 bg-white p-8 text-center max-w-md shadow-[0_12px_32px_rgba(15,23,42,0.10)]">
+          <p className="mb-2 text-lg font-semibold text-slate-900">Imóvel indisponível</p>
+          <p className="mb-4 text-slate-600">{property.message || 'Este imóvel não está disponível no portal no momento.'}</p>
+          <button
+            type="button"
+            onClick={handleBackToPortal}
             className="px-4 py-2 rounded-lg text-white"
             style={{ backgroundColor: brandDark }}
           >
