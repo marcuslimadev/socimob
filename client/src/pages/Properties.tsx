@@ -85,6 +85,8 @@ const tipoLabel = (tipo: string) => {
 
 type AdsStatus = 'ACTIVE' | 'PUBLISHING' | 'PAUSED' | 'ERROR' | null;
 
+const canPreviewOnPortal = (property: ImovelRow) => property.ativo && property.exibir;
+
 export default function Properties() {
   const [, setLocation] = useLocation();
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
@@ -158,6 +160,15 @@ export default function Properties() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleOpenPortalPreview = (property: ImovelRow) => {
+    if (!canPreviewOnPortal(property)) {
+      toast.error('Este imóvel ainda não está publicado no portal.');
+      return;
+    }
+
+    setPreviewId(property.id);
   };
 
   useEffect(() => {
@@ -764,7 +775,7 @@ export default function Properties() {
                             <>
                           <button
                             type="button"
-                            onClick={() => setPreviewId(im.id)}
+                            onClick={() => handleOpenPortalPreview(im)}
                             title="Ver no portal"
                             className="p-1.5 rounded-lg hover:bg-accent transition-colors"
                           >
@@ -1106,7 +1117,7 @@ export default function Properties() {
                             )}
                             <button
                               type="button"
-                              onClick={() => setPreviewId(im.id)}
+                              onClick={() => handleOpenPortalPreview(im)}
                               title="Ver no portal"
                               className="p-1.5 rounded-lg hover:bg-accent transition-colors"
                             >
