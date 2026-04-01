@@ -882,6 +882,7 @@ class PortalController extends Controller
 
             $telefone = $request->telefone_contato;
             $now = now()->format('d/m/Y H:i');
+            $dormitorios = $request->filled('dormitorios') ? (int) $request->dormitorios : 0;
 
             // Criar imóvel inativo em análise
             $valorPretendido = $request->valor_pretendido ? (float) $request->valor_pretendido : 0;
@@ -899,7 +900,10 @@ class PortalController extends Controller
                 'cidade'                   => $request->cidade,
                 'bairro'                   => $request->bairro,
                 'area_total'               => $request->area ? (float) $request->area : null,
-                'dormitorios'              => $request->dormitorios ? (int) $request->dormitorios : null,
+                'dormitorios'              => $dormitorios,
+                'suites'                   => 0,
+                'banheiros'                => 0,
+                'garagem'                  => 0,
                 'valor_venda'              => $valorPretendido,
                 'active'                   => false,
                 'exibir_imovel'            => false,
