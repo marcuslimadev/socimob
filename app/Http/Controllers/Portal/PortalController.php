@@ -968,9 +968,12 @@ class PortalController extends Controller
             $telefone = preg_replace('/\D+/', '', (string) $request->telefone_contato);
             $now = now()->format('d/m/Y H:i');
             $dormitorios = $request->filled('dormitorios') ? (int) $request->dormitorios : 0;
+            $finalidade = (string) $request->finalidade;
 
             // Criar imóvel inativo em análise
             $valorPretendido = $request->valor_pretendido ? (float) $request->valor_pretendido : 0;
+            $isSalePurpose = str_contains($finalidade, 'venda');
+            $isRentPurpose = str_contains($finalidade, 'aluguel');
             $obsProperty = "[Solicitação Portal {$now}] Enviado pelo próprio proprietário via portal para análise.";
             if ($request->observacoes) {
                 $obsProperty .= ' ' . $request->observacoes;
@@ -989,7 +992,8 @@ class PortalController extends Controller
                 'suites'                   => 0,
                 'banheiros'                => 0,
                 'garagem'                  => 0,
-                'valor_venda'              => $valorPretendido,
+                'valor_venda'              => $isSalePurpose ? $valorPretendido : 0,
+                'valor_aluguel'            => $isRentPurpose ? $valorPretendido : 0,
                 'active'                   => false,
                 'exibir_imovel'            => false,
                 'proprietario_nome'        => $request->nome_contato,

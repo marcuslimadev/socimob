@@ -73,6 +73,18 @@ const buildAvailabilityCheckMessage = (property: ImovelRow) => {
   ].join(' ');
 };
 
+const resolvePropertyPrice = (item: any) => {
+  const salePrice = parseFloat(item.valor_venda) || 0;
+  const rentPrice = parseFloat(item.valor_aluguel) || 0;
+  const purpose = String(item.finalidade_imovel || '').toLowerCase();
+
+  if (purpose.includes('aluguel')) {
+    return rentPrice || salePrice || 0;
+  }
+
+  return salePrice || rentPrice || 0;
+};
+
 const tipoLabel = (tipo: string) => {
   const map: Record<string, string> = {
     apartamento: 'Apartamento',
@@ -129,7 +141,7 @@ export default function Properties() {
           finalidade: (item.finalidade_imovel || 'venda').toLowerCase().includes('aluguel')
             ? 'aluguel'
             : 'venda',
-          preco: parseFloat(item.valor_venda) || 0,
+          preco: resolvePropertyPrice(item),
           dormitorios: parseInt(item.dormitorios) || 0,
           banheiros: parseInt(item.banheiros) || 0,
           area: parseFloat(item.area_total) || 0,
