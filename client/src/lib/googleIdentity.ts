@@ -15,6 +15,44 @@ type GoogleIdentityState = {
   callback?: (response: GoogleCredentialResponse) => void;
 };
 
+const LOCAL_GOOGLE_IDENTITY_ORIGINS = new Set([
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+]);
+
+const getConfiguredGoogleOrigins = (): string[] => {
+  const rawOrigins = String(import.meta.env.VITE_GOOGLE_ALLOWED_ORIGINS || '').trim();
+  if (!rawOrigins) {
+    return [];
+  }
+
+  return rawOrigins
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+};
+
+export const isGoogleIdentitySupportedOrigin = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const currentOrigin = window.location.origin;
+  const configuredOrigins = getConfiguredGoogleOrigins();
+
+  if (configuredOrigins.length > 0) {
+    return configuredOrigins.includes(currentOrigin);
+  }
+
+  return LOCAL_GOOGLE_IDENTITY_ORIGINS.has(currentOrigin);
+};
+
+export const getGoogleIdentityUnavailableMessage = (): string => {
+  return 'Login com Google indisponível neste domínio no momento.';
+};
+
 declare global {
   interface Window {
     google?: any;
@@ -35,7 +73,12 @@ export const initializeGoogleIdentity = (
   clientId: string,
   callback: (response: GoogleCredentialResponse) => void
 ) => {
-  if (typeof window === 'undefined' || !window.google?.accounts?.id || !clientId) {
+  if (
+    typeof window === 'undefined' ||
+    !window.google?.accounts?.id ||
+    !clientId ||
+    !isGoogleIdentitySupportedOrigin()
+  ) {
     return false;
   }
 
@@ -61,7 +104,11 @@ export const renderGoogleIdentityButton = (
   element: HTMLDivElement,
   options: GoogleButtonOptions
 ) => {
-  if (typeof window === 'undefined' || !window.google?.accounts?.id) {
+  if (
+    typeof window === 'undefined' ||
+    !window.google?.accounts?.id ||
+    !isGoogleIdentitySupportedOrigin()
+  ) {
     return false;
   }
 

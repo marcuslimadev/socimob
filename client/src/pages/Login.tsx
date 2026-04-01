@@ -3,7 +3,12 @@ import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { fetchTenantBranding, hexToRgba, TenantBranding } from '@/lib/tenantBranding';
-import { initializeGoogleIdentity, renderGoogleIdentityButton } from '@/lib/googleIdentity';
+import {
+  getGoogleIdentityUnavailableMessage,
+  initializeGoogleIdentity,
+  isGoogleIdentitySupportedOrigin,
+  renderGoogleIdentityButton,
+} from '@/lib/googleIdentity';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
@@ -36,6 +41,7 @@ export default function Login() {
   const primary = tenant?.primary_color || '#091b42';
   const softBg = hexToRgba(primary, 0.12);
   const googleBtnRef = useRef<HTMLDivElement>(null);
+  const googleAvailable = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID) && isGoogleIdentitySupportedOrigin();
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -266,7 +272,13 @@ export default function Login() {
                 <span className="mx-3 text-xs text-muted-foreground">ou</span>
                 <div className="flex-1 border-t border-white/20" />
               </div>
-              <div ref={googleBtnRef} className="w-full flex justify-center" />
+              {googleAvailable ? (
+                <div ref={googleBtnRef} className="w-full flex justify-center" />
+              ) : (
+                <p className="text-center text-xs text-muted-foreground">
+                  {getGoogleIdentityUnavailableMessage()}
+                </p>
+              )}
             </>
           )}
 

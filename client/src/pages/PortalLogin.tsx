@@ -5,7 +5,12 @@ import { ArrowRight, Lock, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
-import { initializeGoogleIdentity, renderGoogleIdentityButton } from '@/lib/googleIdentity';
+import {
+  getGoogleIdentityUnavailableMessage,
+  initializeGoogleIdentity,
+  isGoogleIdentitySupportedOrigin,
+  renderGoogleIdentityButton,
+} from '@/lib/googleIdentity';
 
 export default function PortalLogin() {
   const [, navigate] = useLocation();
@@ -18,6 +23,7 @@ export default function PortalLogin() {
   const secondary = tenant?.secondary_color || '#b9935a';
   const logoSrc = tenant?.logo_url || tenant?.logo || '';
   const googleBtnRef = useRef<HTMLDivElement>(null);
+  const googleAvailable = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID) && isGoogleIdentitySupportedOrigin();
 
   useEffect(() => {
     fetchTenantBranding().then((data: TenantBranding | null) => setTenant(data));
@@ -168,7 +174,13 @@ export default function PortalLogin() {
                 <span className="mx-3 text-xs text-slate-400">ou</span>
                 <div className="flex-1 border-t border-slate-200" />
               </div>
-              <div ref={googleBtnRef} className="w-full flex justify-center" />
+              {googleAvailable ? (
+                <div ref={googleBtnRef} className="w-full flex justify-center" />
+              ) : (
+                <p className="text-center text-xs text-slate-400">
+                  {getGoogleIdentityUnavailableMessage()}
+                </p>
+              )}
             </>
           )}
 
