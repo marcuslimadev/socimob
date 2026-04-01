@@ -15,6 +15,16 @@ export const api = axios.create({
 // Request interceptor para adicionar token de autenticação
 api.interceptors.request.use(
   (config) => {
+    const headers = config.headers as any;
+
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData && headers) {
+      if (typeof headers.delete === 'function') {
+        headers.delete('Content-Type');
+      } else {
+        delete headers['Content-Type'];
+      }
+    }
+
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

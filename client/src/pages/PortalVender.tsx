@@ -256,7 +256,11 @@ export default function PortalVender() {
       await api.post('/portal/imoveis/solicitar', fd);
       setSubmitted(true);
     } catch (error: any) {
-      const msg = error?.response?.data?.error || 'Erro ao enviar. Tente novamente.';
+      const validationMessages = error?.response?.data?.messages;
+      const firstValidationMessage = validationMessages
+        ? Object.values(validationMessages).flat().find(Boolean)
+        : null;
+      const msg = firstValidationMessage || error?.response?.data?.error || 'Erro ao enviar. Tente novamente.';
       toast.error(msg);
     } finally {
       setLoading(false);

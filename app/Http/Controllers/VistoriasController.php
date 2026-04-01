@@ -220,7 +220,7 @@ class VistoriasController extends Controller
             'assinatura_proprietario_status' => 'nullable|string|max:30',
         ];
 
-        return $this->validate($request, $rules);
+        return app('validator')->make($request->all(), $rules)->validate();
     }
 
     private function preparePayload(array $validated, int $tenantId, ?Vistoria $current = null): array
