@@ -85,8 +85,6 @@ const tipoLabel = (tipo: string) => {
 
 type AdsStatus = 'ACTIVE' | 'PUBLISHING' | 'PAUSED' | 'ERROR' | null;
 
-const canPreviewOnPortal = (property: ImovelRow) => property.ativo && property.exibir;
-
 export default function Properties() {
   const [, setLocation] = useLocation();
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
@@ -163,11 +161,6 @@ export default function Properties() {
   };
 
   const handleOpenPortalPreview = (property: ImovelRow) => {
-    if (!canPreviewOnPortal(property)) {
-      toast.error('Este imóvel ainda não está publicado no portal.');
-      return;
-    }
-
     setPreviewId(property.id);
   };
 

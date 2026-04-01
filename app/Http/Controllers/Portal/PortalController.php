@@ -7,8 +7,10 @@ use App\Models\Tenant;
 use App\Models\Property;
 use App\Models\Pessoa;
 use App\Models\PropertyEvaluation;
+use App\Models\User;
 use App\Models\VistoriaSolicitacao;
 use App\Services\PropertyLikesTablesManager;
+use App\Support\SimpleAuthToken;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +23,35 @@ use Carbon\Carbon;
 
 class PortalController extends Controller
 {
+    private function resolveInternalPreviewUser(Request $request, int $tenantId): ?User
+    {
+        $token = trim((string) $request->bearerToken());
+        if ($token === '') {
+            return null;
+        }
+
+        $claims = SimpleAuthToken::decode($token);
+        if (!$claims) {
+            return null;
+        }
+
+        $user = User::find($claims['user_id']);
+        if (!$user || !$user->is_active) {
+            return null;
+        }
+
+        $allowedRoles = ['admin', 'super_admin', 'corretor', 'trainee'];
+        if (!in_array($user->role, $allowedRoles, true)) {
+            return null;
+        }
+
+        if ($user->role !== 'super_admin' && (int) $user->tenant_id !== $tenantId) {
+            return null;
+        }
+
+        return $user;
+    }
+
     private function normalizePurposeTerms(array $values): array
     {
         return array_values(array_unique(array_filter(array_map(function ($value) {
@@ -481,6 +512,8 @@ class PortalController extends Controller
             return response()->json(['error' => 'Property not found'], 404);
         }
 
+        $previewUser = $this->resolveInternalPreviewUser($request, (int) $tenantId);
+
         $imovel = (clone $baseQuery)
             ->with('fotos')
             ->publiclyVisible()
@@ -488,6 +521,20 @@ class PortalController extends Controller
             ->first();
 
         if (!$imovel) {
+            if ($previewUser) {
+                $previewProperty = (clone $baseQuery)->with('fotos')->first();
+                if ($previewProperty) {
+                    $previewPayload = $this->sanitizePropertyForPortal($previewProperty);
+                    $previewPayload['preview_mode'] = true;
+                    $previewPayload['preview_message'] = 'Pré-visualização interna de imóvel ainda não publicado.';
+
+                    return response()->json([
+                        'success' => true,
+                        'data' => $previewPayload,
+                    ]);
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -499,6 +546,17 @@ class PortalController extends Controller
         }
         if ($hasFinalidade && $normalizedFinalidades && count($normalizedFinalidades) > 0) {
             if (!$this->propertyMatchesPurposeFilters($imovel->finalidade_imovel, $normalizedFinalidades)) {
+                if ($previewUser) {
+                    $previewPayload = $this->sanitizePropertyForPortal($imovel);
+                    $previewPayload['preview_mode'] = true;
+                    $previewPayload['preview_message'] = 'Pré-visualização interna de imóvel fora do filtro público atual.';
+
+                    return response()->json([
+                        'success' => true,
+                        'data' => $previewPayload,
+                    ]);
+                }
+
                 return response()->json([
                     'success' => true,
                     'data' => [
