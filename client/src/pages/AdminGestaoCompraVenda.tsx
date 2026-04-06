@@ -38,6 +38,13 @@ const fmtDate = (v?: string) => v ? `${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slic
 const currencyInput = (v: string) => v.replace(/[^\d,\.]/g, '');
 const parseCurrency = (v: string) => !v?.trim() ? undefined : Number(v.includes(',') ? v.replace(/\./g, '').replace(',', '.') : v);
 
+const statusBadgeClass = (status?: string) => {
+  if (status === 'ativo') return 'bg-emerald-100 text-emerald-800';
+  if (status === 'finalizado') return 'bg-blue-100 text-blue-800';
+  if (status === 'cancelado') return 'bg-red-100 text-red-800';
+  return 'bg-muted text-foreground';
+};
+
 function PersonField({
   label, value, onChange, onQuickCreate, options,
 }: { label: string; value: string; onChange: (v: string) => void; onQuickCreate: () => void; options: PessoaItem[] }) {
@@ -95,6 +102,13 @@ export default function AdminGestaoCompraVenda() {
     return contratos.filter((item) => [item.numero_contrato, item.vendedor?.nome, item.comprador?.nome, item.imovel?.titulo, item.imovel?.codigo]
       .filter(Boolean).join(' ').toLowerCase().includes(term));
   }, [contratos, search]);
+
+  const contratosAtivos = useMemo(() => contratos.filter((item) => item.status === 'ativo').length, [contratos]);
+  const contratosRascunho = useMemo(() => contratos.filter((item) => item.status === 'rascunho').length, [contratos]);
+  const valorTotalCarteira = useMemo(
+    () => contratos.reduce((acc, item) => acc + Number(item.valor_total || 0), 0),
+    [contratos],
+  );
 
   const resetForm = () => {
     setForm(initialForm);
@@ -248,16 +262,35 @@ export default function AdminGestaoCompraVenda() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Compra e Venda</h1>
-              <p className="text-sm text-muted-foreground">Cadastro do negócio, minuta e assinatura.</p>
+              <h1 className="page-title">Compra e Venda</h1>
+              <p className="page-subtitle">Cadastro do negócio, minuta e assinatura.</p>
             </div>
             <div className="flex gap-2">
-              <button type="button" onClick={() => void loadAll()} className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent">
+              <button type="button" onClick={() => void loadAll()} className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm hover:bg-accent transition-colors">
                 <RefreshCcw size={14} /> Atualizar
               </button>
               <button type="button" onClick={() => setShowForm(true)} className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90">
                 <Plus size={14} /> Novo contrato
               </button>
+            </div>
+          </div>
+
+          <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="glass-panel rounded-xl p-4">
+              <p className="text-sm text-muted-foreground">Contratos</p>
+              <p className="text-2xl font-semibold">{contratos.length}</p>
+            </div>
+            <div className="glass-panel rounded-xl p-4">
+              <p className="text-sm text-muted-foreground">Ativos</p>
+              <p className="text-2xl font-semibold">{contratosAtivos}</p>
+            </div>
+            <div className="glass-panel rounded-xl p-4">
+              <p className="text-sm text-muted-foreground">Rascunho</p>
+              <p className="text-2xl font-semibold">{contratosRascunho}</p>
+            </div>
+            <div className="glass-panel rounded-xl p-4">
+              <p className="text-sm text-muted-foreground">Valor em carteira</p>
+              <p className="text-2xl font-semibold">R$ {fmtMoney(valorTotalCarteira)}</p>
             </div>
           </div>
 
@@ -273,9 +306,9 @@ export default function AdminGestaoCompraVenda() {
               <div className="py-12 text-center text-sm text-muted-foreground">Nenhum contrato cadastrado.</div>
             ) : (
               <div className="overflow-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[900px] text-sm">
                   <thead>
-                    <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr className="border-b border-border">
                       <th className="px-3 py-3">Contrato</th>
                       <th className="px-3 py-3">Partes</th>
                       <th className="px-3 py-3">Imóvel</th>
@@ -296,12 +329,18 @@ export default function AdminGestaoCompraVenda() {
                         <td className="px-3 py-3">{item.imovel?.titulo || item.imovel?.codigo || '-'}</td>
                         <td className="px-3 py-3">{fmtDate(item.data_contrato)}</td>
                         <td className="px-3 py-3 font-medium">R$ {fmtMoney(item.valor_total)}</td>
-                        <td className="px-3 py-3"><span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{item.status || 'rascunho'}</span></td>
                         <td className="px-3 py-3">
-                          <div className="flex justify-end gap-2">
-                            <button type="button" onClick={() => setSelectedContratoId(item.id)} className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-accent">Visualizar</button>
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(item.status)}`}>
+                            {item.status || 'rascunho'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex justify-end gap-1.5">
+                            <button type="button" onClick={() => setSelectedContratoId(item.id)} className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-accent">Detalhe</button>
                             <button type="button" onClick={() => openEdit(item.id)} className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-accent">Editar</button>
-                            <button type="button" onClick={() => void removeContrato(item.id)} className="rounded-lg border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10"><Trash2 size={12} className="inline" /></button>
+                            <button type="button" onClick={() => void removeContrato(item.id)} className="rounded-lg border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10">
+                              <Trash2 size={12} className="inline" />
+                            </button>
                           </div>
                         </td>
                       </tr>
