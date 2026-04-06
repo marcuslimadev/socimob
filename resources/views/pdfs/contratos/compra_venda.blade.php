@@ -7,9 +7,9 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #20232a; line-height: 1.65; }
     .sheet { position: relative; }
-    .watermark { position: absolute; top: 42%; left: 50%; width: 34%; transform: translate(-50%, -50%); opacity: .06; z-index: 0; }
+    .watermark { position: absolute; top: 50%; left: 50%; width: 52%; transform: translate(-50%, -50%); opacity: .15; z-index: 0; }
     .watermark img { width: 100%; height: auto; }
-    .shell { position: relative; z-index: 1; border: 1px solid rgba(31, 41, 55, 0.08); border-radius: 12px; padding: 16mm 14mm 14mm; min-height: calc(100vh - 38mm); background: rgba(255,255,255,.94); }
+    .shell { position: relative; z-index: 1; border: 1px solid rgba(31, 41, 55, 0.08); border-radius: 12px; padding: 16mm 14mm 14mm; min-height: calc(100vh - 38mm); background: rgba(255,255,255,.85); }
     .header { border-bottom: 2px solid var(--tenant-primary-color); padding-bottom: 10px; margin-bottom: 16px; }
     .header-brand { width: 100%; display: table; margin-bottom: 10px; }
     .header-brand .left, .header-brand .right { display: table-cell; vertical-align: middle; }
