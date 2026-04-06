@@ -33,6 +33,10 @@ class VistoriaSolicitacoesController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('tipo')) {
+            $query->where('tipo', $request->tipo);
+        }
+
         $perPage = (int) $request->query('per_page', 15);
 
         $solicitacoes = $query->orderBy('created_at', 'desc')

@@ -133,13 +133,16 @@ export default function VistoriaSolicitacaoNova() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-foreground mb-2">Tipo *</label>
-                    <input
-                      type="text"
+                    <select
                       value={form.tipo}
                       onChange={(e) => handleChange('tipo', e.target.value)}
-                      placeholder="Entrada, saida, periodica..."
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all [&>option]:bg-zinc-900 [&>option]:text-white"
+                    >
+                      <option value="" disabled>Selecione...</option>
+                      <option value="entrada">Entrada</option>
+                      <option value="saida">Saída</option>
+                      <option value="periodica">Periódica / Constatação</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-foreground mb-2">Imóvel ID</label>

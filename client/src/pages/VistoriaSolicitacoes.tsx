@@ -16,16 +16,23 @@ interface Solicitacao {
   created_at?: string | null;
 }
 
+const tipoLabels: Record<string, string> = {
+  entrada: 'Entrada',
+  saida: 'Saída',
+  periodica: 'Periódica / Constatação'
+};
+
 export default function VistoriaSolicitacoes() {
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('todos');
+  const [tipoFilter, setTipoFilter] = useState('todos');
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
 
   useEffect(() => {
     fetchSolicitacoes();
-  }, [page, statusFilter]);
+  }, [page, statusFilter, tipoFilter]);
 
   const fetchSolicitacoes = async () => {
     try {
@@ -33,6 +40,9 @@ export default function VistoriaSolicitacoes() {
       const params: Record<string, string | number> = { page, per_page: 10 };
       if (statusFilter !== 'todos') {
         params.status = statusFilter;
+      }
+      if (tipoFilter !== 'todos') {
+        params.tipo = tipoFilter;
       }
       const response = await api.get('/vistorias/solicitacoes', { params });
       setSolicitacoes(response.data.data || []);
@@ -113,6 +123,16 @@ export default function VistoriaSolicitacoes() {
               <option value="concluida">Concluída</option>
               <option value="cancelada">Cancelada</option>
             </select>
+            <select
+              value={tipoFilter}
+              onChange={(e) => setTipoFilter(e.target.value)}
+              className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all [&>option]:bg-zinc-900 [&>option]:text-white"
+            >
+              <option value="todos">Todos os tipos</option>
+              <option value="entrada">Entrada</option>
+              <option value="saida">Saída</option>
+              <option value="periodica">Periódica / Constatação</option>
+            </select>
           </div>
 
           <div className="glass-panel p-6 rounded-2xl">
@@ -152,7 +172,7 @@ export default function VistoriaSolicitacoes() {
                       <tr key={item.id} className="border-t border-white/10">
                         <td className="py-3 text-foreground">{item.codigo || `#${item.id}`}</td>
                         <td className="py-3 text-foreground">{item.cliente_nome}</td>
-                        <td className="py-3 text-foreground">{item.tipo}</td>
+                        <td className="py-3 text-foreground">{item.tipo ? (tipoLabels[item.tipo] || item.tipo) : '-'}</td>
                         <td className="py-3 text-foreground">{item.imovel_id || '-'}</td>
                         <td className="py-3 text-foreground">{item.status}</td>
                         <td className="py-3 text-foreground">{formatDate(item.created_at)}</td>

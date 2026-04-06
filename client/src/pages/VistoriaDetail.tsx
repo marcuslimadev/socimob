@@ -22,6 +22,12 @@ interface VistoriaDetailData {
   created_at?: string | null;
 }
 
+const tipoLabels: Record<string, string> = {
+  entrada: 'Entrada',
+  saida: 'Saída',
+  periodica: 'Periódica / Constatação'
+};
+
 export default function VistoriaDetail() {
   const [, params] = useRoute('/vistorias/:id');
   const [vistoria, setVistoria] = useState<VistoriaDetailData | null>(null);
@@ -111,7 +117,7 @@ export default function VistoriaDetail() {
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Tipo</p>
-                    <p className="text-base text-foreground">{vistoria.tipo || '-'}</p>
+                    <p className="text-base text-foreground">{vistoria.tipo ? (tipoLabels[vistoria.tipo] || vistoria.tipo) : '-'}</p>
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Metragem</p>
