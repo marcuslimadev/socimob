@@ -144,13 +144,39 @@ class ContratosCompraVendaController extends Controller
             return response()->json(['success' => false, 'message' => 'Contrato não encontrado'], 404);
         }
 
-        $validator = Validator::make($request->all(), $this->baseRules);
+        $validator = Validator::make($request->all(), array_merge($this->baseRules, [
+            'vendedor_pessoa_id' => 'nullable|integer',
+            'comprador_pessoa_id' => 'nullable|integer',
+            'vendedor_novo_nome' => 'nullable|string',
+            'comprador_novo_nome' => 'nullable|string',
+            'imovel_novo_titulo' => 'nullable|string',
+        ]));
 
         if ($validator->fails()) {
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $item->update($validator->validated());
+        $data = $validator->validated();
+        $tenantId = $item->tenant_id;
+
+        if (empty($data['vendedor_pessoa_id']) && !empty($data['vendedor_novo_nome'])) {
+            $vend = Pessoa::create(['tenant_id' => $tenantId, 'nome' => $data['vendedor_novo_nome'], 'cpf' => $request->input('vendedor_novo_cpf')]);
+            $data['vendedor_pessoa_id'] = $vend->id;
+        }
+        if (empty($data['comprador_pessoa_id']) && !empty($data['comprador_novo_nome'])) {
+            $comp = Pessoa::create(['tenant_id' => $tenantId, 'nome' => $data['comprador_novo_nome'], 'cpf' => $request->input('comprador_novo_cpf')]);
+            $data['comprador_pessoa_id'] = $comp->id;
+        }
+        if (empty($data['imovel_id']) && !empty($data['imovel_novo_titulo'])) {
+            $imo = \App\Models\Property::create(['tenant_id' => $tenantId, 'titulo' => $data['imovel_novo_titulo'], 'status' => 'ativo']);
+            $data['imovel_id'] = $imo->id;
+        }
+
+        if (empty($data['vendedor_pessoa_id']) || empty($data['comprador_pessoa_id'])) {
+            return response()->json(['success' => false, 'message' => 'Vendedor e Comprador são obrigatórios.'], 422);
+        }
+
+        $item->update($data);
         $this->atualizarPapeisPessoas($item);
 
         return response()->json([

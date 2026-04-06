@@ -62,9 +62,10 @@ export default function AdminGestaoCompraVenda() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState<typeof initialForm>(initialForm);
   const [parcelas, setParcelas] = useState<ParcelaForm[]>([emptyParcela(), emptyParcela()]);
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [showPessoaForm, setShowPessoaForm] = useState<null | { tipo?: string; papeis?: string[] }>(null);
 
   const loadAll = async () => {
@@ -98,6 +99,60 @@ export default function AdminGestaoCompraVenda() {
     setForm(initialForm);
     setParcelas([emptyParcela(), emptyParcela()]);
     setShowForm(false);
+    setEditingId(null);
+  };
+
+  const openEdit = async (id: number) => {
+    resetForm();
+    setLoading(true);
+    try {
+      const { data } = await api.get(`/admin/financeiro/compra-venda/${id}`);
+      const item = data.item || data;
+      if (item) {
+        setEditingId(item.id);
+        const cv = item.vendedores?.filter((p: any) => p.id !== item.vendedor_pessoa_id).map((p: any) => p.id) || [];
+        const cc = item.compradores?.filter((p: any) => p.id !== item.comprador_pessoa_id).map((p: any) => p.id) || [];
+        setForm({
+          numero_contrato: item.numero_contrato || '',
+          vendedor_pessoa_id: String(item.vendedor_pessoa_id || ''),
+          comprador_pessoa_id: String(item.comprador_pessoa_id || ''),
+          segundo_vendedor_id: String(cv[0] || ''),
+          co_vendedores_ids: cv.slice(1).map(String),
+          segundo_comprador_id: String(cc[0] || ''),
+          co_compradores_ids: cc.slice(1).map(String),
+          imovel_id: String(item.imovel_id || ''),
+          status: item.status || 'rascunho',
+          data_contrato: item.data_contrato?.slice(0, 10) || '',
+          data_escritura_prevista: item.data_escritura_prevista?.slice(0, 10) || '',
+          valor_total: item.valor_total ? String(item.valor_total).replace('.', ',') : '',
+          valor_sinal: item.valor_sinal ? String(item.valor_sinal).replace('.', ',') : '',
+          valor_parcela_final: item.valor_parcela_final ? String(item.valor_parcela_final).replace('.', ',') : '',
+          multa_percentual: item.multa_percentual ? String(item.multa_percentual).replace('.', ',') : '',
+          multa_moratoria_percentual: item.multa_moratoria_percentual ? String(item.multa_moratoria_percentual).replace('.', ',') : '',
+          juros_percentual_mes: item.juros_percentual_mes ? String(item.juros_percentual_mes).replace('.', ',') : '',
+          corretagem_valor: item.corretagem_valor ? String(item.corretagem_valor).replace('.', ',') : '',
+          corretagem_responsavel: item.corretagem_responsavel || '',
+          objeto_descricao: item.objeto_descricao || '',
+          matricula_numero: item.matricula_numero || '',
+          cartorio_nome: item.cartorio_nome || '',
+          inscricao_cadastral: item.inscricao_cadastral || '',
+          testemunha_um_nome: item.testemunha_um_nome || '',
+          testemunha_um_email: item.testemunha_um_email || '',
+          testemunha_dois_nome: item.testemunha_dois_nome || '',
+          testemunha_dois_email: item.testemunha_dois_email || '',
+          observacoes: item.observacoes || '',
+          vendedor_novo_nome: '', vendedor_novo_cpf: '', comprador_novo_nome: '', comprador_novo_cpf: '', imovel_novo_titulo: '',
+        });
+        if (item.parcelas_pagamento?.length) {
+          setParcelas(item.parcelas_pagamento.map((p: any) => ({ descricao: p.descricao || '', valor: p.valor ? String(p.valor).replace('.', ',') : '', texto: p.texto || '' })));
+        }
+        setShowForm(true);
+      }
+    } catch {
+      toast.error('Erro ao abrir contrato para edição.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const save = async (event: React.FormEvent) => {
@@ -108,7 +163,7 @@ export default function AdminGestaoCompraVenda() {
     }
     setSaving(true);
     try {
-      await api.post('/admin/financeiro/compra-venda', {
+      const payload = {
         numero_contrato: form.numero_contrato || undefined,
         vendedor_pessoa_id: form.vendedor_pessoa_id ? Number(form.vendedor_pessoa_id) : undefined,
         comprador_pessoa_id: form.comprador_pessoa_id ? Number(form.comprador_pessoa_id) : undefined,
@@ -149,8 +204,15 @@ export default function AdminGestaoCompraVenda() {
         parcelas_pagamento: parcelas
           .map((item) => ({ descricao: item.descricao || undefined, valor: parseCurrency(item.valor), texto: item.texto || undefined }))
           .filter((item) => item.descricao || item.valor || item.texto),
-      });
-      toast.success('Contrato criado.');
+      };
+
+      if (editingId) {
+        await api.put(`/admin/financeiro/compra-venda/${editingId}`, payload);
+        toast.success('Contrato atualizado.');
+      } else {
+        await api.post('/admin/financeiro/compra-venda', payload);
+        toast.success('Contrato criado.');
+      }
       resetForm();
       await loadAll();
     } catch (error: any) {
@@ -230,7 +292,8 @@ export default function AdminGestaoCompraVenda() {
                         <td className="px-3 py-3"><span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{item.status || 'rascunho'}</span></td>
                         <td className="px-3 py-3">
                           <div className="flex justify-end gap-2">
-                            <button type="button" onClick={() => setSelectedContratoId(item.id)} className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-accent">Abrir</button>
+                            <button type="button" onClick={() => setSelectedContratoId(item.id)} className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-accent">Visualizar</button>
+                            <button type="button" onClick={() => openEdit(item.id)} className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-accent">Editar</button>
                             <button type="button" onClick={() => void removeContrato(item.id)} className="rounded-lg border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10"><Trash2 size={12} className="inline" /></button>
                           </div>
                         </td>
@@ -249,8 +312,8 @@ export default function AdminGestaoCompraVenda() {
           <div className="glass-panel max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-2xl p-6">
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Novo contrato de compra e venda</h2>
-                <p className="text-sm text-muted-foreground">Versão inicial com cadastro rápido de vendedor e comprador.</p>
+                <h2 className="text-lg font-semibold">{editingId ? 'Editar contrato' : 'Novo contrato de compra e venda'}</h2>
+                <p className="text-sm text-muted-foreground">{editingId ? 'Altere os dados do negócio.' : 'Versão inicial com cadastro rápido de vendedor e comprador.'}</p>
               </div>
               <button type="button" onClick={resetForm} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
             </div>
