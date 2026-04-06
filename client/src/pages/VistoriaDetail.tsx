@@ -29,7 +29,7 @@ const tipoLabels: Record<string, string> = {
 };
 
 export default function VistoriaDetail() {
-  const [, params] = useRoute('/vistorias/:id');
+  const [, params] = useRoute<{ id: string }>('/vistorias/:id');
   const [vistoria, setVistoria] = useState<VistoriaDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 

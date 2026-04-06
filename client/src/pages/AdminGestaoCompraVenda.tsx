@@ -23,8 +23,10 @@ interface ContratoItem {
 interface ParcelaForm { descricao: string; valor: string; texto: string; }
 
 const initialForm = {
-  numero_contrato: '', vendedor_pessoa_id: '', comprador_pessoa_id: '', co_vendedores_ids: [] as string[], co_compradores_ids: [] as string[], imovel_id: '', status: 'rascunho',
+  numero_contrato: '', vendedor_pessoa_id: '', comprador_pessoa_id: '', segundo_vendedor_id: '', segundo_comprador_id: '', co_vendedores_ids: [] as string[], co_compradores_ids: [] as string[], imovel_id: '', status: 'rascunho',
   data_contrato: '', data_escritura_prevista: '', valor_total: '', valor_sinal: '', valor_parcela_final: '',
+  multa_percentual: '', multa_moratoria_percentual: '', juros_percentual_mes: '', corretagem_valor: '', corretagem_responsavel: '',
+  vendedor_novo_nome: '', vendedor_novo_cpf: '', comprador_novo_nome: '', comprador_novo_cpf: '', imovel_novo_titulo: '',
   objeto_descricao: '', matricula_numero: '', cartorio_nome: '', inscricao_cadastral: '',
   testemunha_um_nome: '', testemunha_um_email: '', testemunha_dois_nome: '', testemunha_dois_email: '', observacoes: '',
 };
@@ -108,10 +110,21 @@ export default function AdminGestaoCompraVenda() {
     try {
       await api.post('/admin/financeiro/compra-venda', {
         numero_contrato: form.numero_contrato || undefined,
-        vendedor_pessoa_id: Number(form.vendedor_pessoa_id),
-        comprador_pessoa_id: Number(form.comprador_pessoa_id),
-        co_vendedores_ids: form.co_vendedores_ids.filter(Boolean).map(Number),
-        co_compradores_ids: form.co_compradores_ids.filter(Boolean).map(Number),
+        vendedor_pessoa_id: form.vendedor_pessoa_id ? Number(form.vendedor_pessoa_id) : undefined,
+        comprador_pessoa_id: form.comprador_pessoa_id ? Number(form.comprador_pessoa_id) : undefined,
+        vendedor_novo_nome: form.vendedor_novo_nome || undefined,
+        vendedor_novo_cpf: form.vendedor_novo_cpf || undefined,
+        comprador_novo_nome: form.comprador_novo_nome || undefined,
+        comprador_novo_cpf: form.comprador_novo_cpf || undefined,
+        imovel_novo_titulo: form.imovel_novo_titulo || undefined,
+        co_vendedores_ids: [
+          ...(form.segundo_vendedor_id ? [Number(form.segundo_vendedor_id)] : []),
+          ...form.co_vendedores_ids.filter(Boolean).map(Number)
+        ],
+        co_compradores_ids: [
+          ...(form.segundo_comprador_id ? [Number(form.segundo_comprador_id)] : []),
+          ...form.co_compradores_ids.filter(Boolean).map(Number)
+        ],
         imovel_id: form.imovel_id ? Number(form.imovel_id) : undefined,
         status: form.status,
         data_contrato: form.data_contrato || undefined,
@@ -119,14 +132,19 @@ export default function AdminGestaoCompraVenda() {
         valor_total: parseCurrency(form.valor_total),
         valor_sinal: parseCurrency(form.valor_sinal),
         valor_parcela_final: parseCurrency(form.valor_parcela_final),
+        multa_percentual: parseCurrency(form.multa_percentual),
+        multa_moratoria_percentual: parseCurrency(form.multa_moratoria_percentual),
+        juros_percentual_mes: parseCurrency(form.juros_percentual_mes),
+        corretagem_valor: parseCurrency(form.corretagem_valor),
+        corretagem_responsavel: form.corretagem_responsavel || undefined,
         objeto_descricao: form.objeto_descricao || undefined,
         matricula_numero: form.matricula_numero || undefined,
         cartorio_nome: form.cartorio_nome || undefined,
         inscricao_cadastral: form.inscricao_cadastral || undefined,
         testemunha_um_nome: form.testemunha_um_nome || undefined,
-        testemunha_um_email: form.testemunha_um_email || undefined,
+        testemunha_um_email: form.testemunha_um_email?.trim() || undefined,
         testemunha_dois_nome: form.testemunha_dois_nome || undefined,
-        testemunha_dois_email: form.testemunha_dois_email || undefined,
+        testemunha_dois_email: form.testemunha_dois_email?.trim() || undefined,
         observacoes: form.observacoes || undefined,
         parcelas_pagamento: parcelas
           .map((item) => ({ descricao: item.descricao || undefined, valor: parseCurrency(item.valor), texto: item.texto || undefined }))
@@ -136,7 +154,8 @@ export default function AdminGestaoCompraVenda() {
       resetForm();
       await loadAll();
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Erro ao criar contrato.');
+      const msgs = error?.response?.data?.errors ? Object.values(error.response.data.errors).flat().join(', ') : null;
+      toast.error(msgs || error?.response?.data?.message || 'Erro ao criar contrato.');
     } finally {
       setSaving(false);
     }
@@ -238,33 +257,79 @@ export default function AdminGestaoCompraVenda() {
 
             <form onSubmit={save} className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <PersonField label="Vendedor principal" value={form.vendedor_pessoa_id} onChange={(v) => setForm((p) => ({ ...p, vendedor_pessoa_id: v }))} onQuickCreate={() => setShowPessoaForm({ tipo: 'fisica', papeis: ['vendedor'] })} options={pessoas.filter((p) => !p.papeis?.length || p.papeis.includes('vendedor') || p.papeis.includes('proprietario'))} />
-                <PersonField label="Comprador principal" value={form.comprador_pessoa_id} onChange={(v) => setForm((p) => ({ ...p, comprador_pessoa_id: v }))} onQuickCreate={() => setShowPessoaForm({ tipo: 'fisica', papeis: ['comprador'] })} options={pessoas.filter((p) => !p.papeis?.length || p.papeis.includes('comprador') || p.papeis.includes('cliente'))} />
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Imóvel</label>
-                  <select value={form.imovel_id} onChange={(e) => setForm((p) => ({ ...p, imovel_id: e.target.value }))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                    <option value="">Selecione...</option>
+                <div className="rounded-xl border border-border p-3 bg-muted/20">
+                  <label className="text-xs font-semibold text-foreground mb-2 block">Vendedor Principal</label>
+                  <select value={form.vendedor_pessoa_id} onChange={(e) => setForm((p) => ({ ...p, vendedor_pessoa_id: e.target.value, vendedor_novo_nome: '', vendedor_novo_cpf: '' }))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm mb-2">
+                    <option value="">+ Criar novo na hora ou selecione...</option>
+                    {pessoas.filter((p) => !p.papeis?.length || p.papeis.includes('vendedor') || p.papeis.includes('proprietario')).map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                  </select>
+                  {!form.vendedor_pessoa_id && (
+                    <div className="flex gap-2">
+                      <input value={form.vendedor_novo_nome} onChange={(e) => setForm((p) => ({ ...p, vendedor_novo_nome: e.target.value }))} placeholder="Nome do Vendedor" className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
+                      <input value={form.vendedor_novo_cpf} onChange={(e) => setForm((p) => ({ ...p, vendedor_novo_cpf: e.target.value }))} placeholder="CPF/CNPJ" className="w-1/3 rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-border p-3 bg-muted/20">
+                  <label className="text-xs font-semibold text-foreground mb-2 block">Comprador Principal</label>
+                  <select value={form.comprador_pessoa_id} onChange={(e) => setForm((p) => ({ ...p, comprador_pessoa_id: e.target.value, comprador_novo_nome: '', comprador_novo_cpf: '' }))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm mb-2">
+                    <option value="">+ Criar novo na hora ou selecione...</option>
+                    {pessoas.filter((p) => !p.papeis?.length || p.papeis.includes('comprador') || p.papeis.includes('cliente')).map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                  </select>
+                  {!form.comprador_pessoa_id && (
+                    <div className="flex gap-2">
+                      <input value={form.comprador_novo_nome} onChange={(e) => setForm((p) => ({ ...p, comprador_novo_nome: e.target.value }))} placeholder="Nome do Comprador" className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
+                      <input value={form.comprador_novo_cpf} onChange={(e) => setForm((p) => ({ ...p, comprador_novo_cpf: e.target.value }))} placeholder="CPF/CNPJ" className="w-1/3 rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-border p-3 bg-muted/20">
+                  <label className="mb-2 block text-xs font-semibold">Imóvel</label>
+                  <select value={form.imovel_id} onChange={(e) => setForm((p) => ({ ...p, imovel_id: e.target.value, imovel_novo_titulo: '' }))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm mb-2">
+                    <option value="">+ Criar rápido (Parceiro) ou selecione...</option>
                     {imoveis.map((item) => <option key={item.id} value={item.id}>{item.titulo || item.codigo || `#${item.id}`}</option>)}
                   </select>
+                  {!form.imovel_id && (
+                    <input value={form.imovel_novo_titulo} onChange={(e) => setForm((p) => ({ ...p, imovel_novo_titulo: e.target.value }))} placeholder="Título do imóvel (Rápido)" className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
+                  )}
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Co-vendedores</label>
-                  <select multiple value={form.co_vendedores_ids} onChange={(e) => setForm((p) => ({ ...p, co_vendedores_ids: Array.from(e.target.selectedOptions).map((option) => option.value) }))} className="min-h-[110px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                    {pessoas.filter((item) => String(item.id) !== form.vendedor_pessoa_id).map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
-                  </select>
+
+                <div className="space-y-4 rounded-xl border border-border p-3 bg-muted/20">
+                  <PersonField label="Segundo Vendedor (Cônjuge)" value={form.segundo_vendedor_id} onChange={(v) => setForm((p) => ({ ...p, segundo_vendedor_id: v }))} onQuickCreate={() => setShowPessoaForm({ tipo: 'fisica', papeis: ['vendedor'] })} options={pessoas.filter((p) => String(p.id) !== form.vendedor_pessoa_id)} />
+                  <div>
+                    <label className="mb-1 block text-xs text-muted-foreground">Outros Co-Vendedores</label>
+                    <select multiple value={form.co_vendedores_ids} onChange={(e) => setForm((p) => ({ ...p, co_vendedores_ids: Array.from(e.target.selectedOptions).map((option) => option.value) }))} className="min-h-[80px] w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs">
+                      {pessoas.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Co-compradores</label>
-                  <select multiple value={form.co_compradores_ids} onChange={(e) => setForm((p) => ({ ...p, co_compradores_ids: Array.from(e.target.selectedOptions).map((option) => option.value) }))} className="min-h-[110px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                    {pessoas.filter((item) => String(item.id) !== form.comprador_pessoa_id).map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
-                  </select>
+                
+                <div className="space-y-4 rounded-xl border border-border p-3 bg-muted/20">
+                  <PersonField label="Segundo Comprador (Cônjuge)" value={form.segundo_comprador_id} onChange={(v) => setForm((p) => ({ ...p, segundo_comprador_id: v }))} onQuickCreate={() => setShowPessoaForm({ tipo: 'fisica', papeis: ['comprador'] })} options={pessoas.filter((p) => String(p.id) !== form.comprador_pessoa_id)} />
+                  <div>
+                    <label className="mb-1 block text-xs text-muted-foreground">Outros Co-Compradores</label>
+                    <select multiple value={form.co_compradores_ids} onChange={(e) => setForm((p) => ({ ...p, co_compradores_ids: Array.from(e.target.selectedOptions).map((option) => option.value) }))} className="min-h-[80px] w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs">
+                      {pessoas.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <input value={form.numero_contrato} onChange={(e) => setForm((p) => ({ ...p, numero_contrato: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Número do contrato" />
-                <input type="date" value={form.data_contrato} onChange={(e) => setForm((p) => ({ ...p, data_contrato: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
-                <input type="date" value={form.data_escritura_prevista} onChange={(e) => setForm((p) => ({ ...p, data_escritura_prevista: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
-                <input value={form.valor_total} onChange={(e) => setForm((p) => ({ ...p, valor_total: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Valor total" />
+                <input type="date" title="Data Assinatura" value={form.data_contrato} onChange={(e) => setForm((p) => ({ ...p, data_contrato: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                <input type="date" title="Data Escritura" value={form.data_escritura_prevista} onChange={(e) => setForm((p) => ({ ...p, data_escritura_prevista: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                <input value={form.valor_total} onChange={(e) => setForm((p) => ({ ...p, valor_total: currencyInput(e.target.value) }))} className="col-span-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Valor total" />
                 <input value={form.valor_sinal} onChange={(e) => setForm((p) => ({ ...p, valor_sinal: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Sinal" />
-                <input value={form.valor_parcela_final} onChange={(e) => setForm((p) => ({ ...p, valor_parcela_final: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Parcela final" />
+                <input value={form.valor_parcela_final} onChange={(e) => setForm((p) => ({ ...p, valor_parcela_final: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Parcela final (Financiamento etc)" />
+                <div className="col-span-full grid grid-cols-3 gap-4">
+                  <input value={form.multa_percentual} onChange={(e) => setForm((p) => ({ ...p, multa_percentual: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Multa Rescisão (%)" />
+                  <input value={form.multa_moratoria_percentual} onChange={(e) => setForm((p) => ({ ...p, multa_moratoria_percentual: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Multa Atraso (%)" />
+                  <input value={form.juros_percentual_mes} onChange={(e) => setForm((p) => ({ ...p, juros_percentual_mes: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Juros Mês (%)" />
+                </div>
+                <div className="col-span-full grid grid-cols-2 gap-4">
+                  <input value={form.corretagem_valor} onChange={(e) => setForm((p) => ({ ...p, corretagem_valor: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Valor Corretagem" />
+                  <input value={form.corretagem_responsavel} onChange={(e) => setForm((p) => ({ ...p, corretagem_responsavel: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Responsável Pagto. Corretagem" />
+                </div>
                 <input value={form.matricula_numero} onChange={(e) => setForm((p) => ({ ...p, matricula_numero: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Matrícula" />
                 <input value={form.cartorio_nome} onChange={(e) => setForm((p) => ({ ...p, cartorio_nome: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Cartório" />
                 <input value={form.inscricao_cadastral} onChange={(e) => setForm((p) => ({ ...p, inscricao_cadastral: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Inscrição cadastral" />
