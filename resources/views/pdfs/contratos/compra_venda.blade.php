@@ -46,25 +46,25 @@
     $vendedores = $contrato->todosVendedores();
     $compradores = $contrato->todosCompradores();
     $parcelas = collect($contrato->parcelas_pagamento ?? []);
-    $cidadeImovel = $imovel->cidade ?? 'Belo Horizonte';
-    $estadoImovel = $imovel->estado ?? 'MG';
+    $cidadeImovel = $imovel?->cidade ?? 'Belo Horizonte';
+    $estadoImovel = $imovel?->estado ?? 'MG';
     $enderecoImovel = trim(implode(', ', array_filter([
-        $imovel->logradouro ?? null,
-        !empty($imovel->numero) ? 'nº ' . $imovel->numero : null,
-        $imovel->complemento ?? null,
-        $imovel->bairro ?? null,
-        (!empty($imovel->cidade) || !empty($imovel->estado)) ? trim(($imovel->cidade ?? '') . '/' . ($imovel->estado ?? '')) : null,
+        $imovel?->logradouro ?? null,
+        !empty($imovel?->numero) ? 'nº ' . $imovel?->numero : null,
+        $imovel?->complemento ?? null,
+        $imovel?->bairro ?? null,
+        (!empty($imovel?->cidade) || !empty($imovel?->estado)) ? trim(($imovel?->cidade ?? '') . '/' . ($imovel?->estado ?? '')) : null,
     ])));
     $objetoDescricao = trim((string) ($contrato->objeto_descricao ?? ''));
     if ($objetoDescricao === '') {
         $objetoDescricao = 'Imóvel situado em ' . ($enderecoImovel ?: 'endereço a complementar') . '.';
-        if (!empty($imovel->area_privativa)) {
-            $objetoDescricao .= ' Área privativa de ' . number_format((float) $imovel->area_privativa, 2, ',', '.') . 'm².';
-        } elseif (!empty($imovel->area_total)) {
-            $objetoDescricao .= ' Área total de ' . number_format((float) $imovel->area_total, 2, ',', '.') . 'm².';
+        if (!empty($imovel?->area_privativa)) {
+            $objetoDescricao .= ' Área privativa de ' . number_format((float) $imovel?->area_privativa, 2, ',', '.') . 'm².';
+        } elseif (!empty($imovel?->area_total)) {
+            $objetoDescricao .= ' Área total de ' . number_format((float) $imovel?->area_total, 2, ',', '.') . 'm².';
         }
-        if (!empty($imovel->garagem)) {
-            $objetoDescricao .= ' Com ' . (int) $imovel->garagem . ' vaga(s) de garagem.';
+        if (!empty($imovel?->garagem)) {
+            $objetoDescricao .= ' Com ' . (int) $imovel?->garagem . ' vaga(s) de garagem.';
         }
     }
 @endphp
