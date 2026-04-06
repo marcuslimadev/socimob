@@ -26,6 +26,7 @@ const initialForm = {
   numero_contrato: '', vendedor_pessoa_id: '', comprador_pessoa_id: '', segundo_vendedor_id: '', segundo_comprador_id: '', co_vendedores_ids: [] as string[], co_compradores_ids: [] as string[], imovel_id: '', status: 'rascunho',
   data_contrato: '', data_escritura_prevista: '', valor_total: '', valor_sinal: '', valor_parcela_final: '',
   multa_percentual: '', multa_moratoria_percentual: '', juros_percentual_mes: '', corretagem_valor: '', corretagem_responsavel: '',
+  intermediadora_nome: '', intermediadora_documento: '', intermediadora_fantasia: '',
   vendedor_novo_nome: '', vendedor_novo_cpf: '', comprador_novo_nome: '', comprador_novo_cpf: '', imovel_novo_titulo: '',
   objeto_descricao: '', matricula_numero: '', cartorio_nome: '', inscricao_cadastral: '',
   testemunha_um_nome: '', testemunha_um_email: '', testemunha_dois_nome: '', testemunha_dois_email: '', observacoes: '',
@@ -132,6 +133,9 @@ export default function AdminGestaoCompraVenda() {
           juros_percentual_mes: item.juros_percentual_mes ? String(item.juros_percentual_mes).replace('.', ',') : '',
           corretagem_valor: item.corretagem_valor ? String(item.corretagem_valor).replace('.', ',') : '',
           corretagem_responsavel: item.corretagem_responsavel || '',
+          intermediadora_nome: item.intermediadora_nome || '',
+          intermediadora_documento: item.intermediadora_documento || '',
+          intermediadora_fantasia: item.intermediadora_fantasia || '',
           objeto_descricao: item.objeto_descricao || '',
           matricula_numero: item.matricula_numero || '',
           cartorio_nome: item.cartorio_nome || '',
@@ -192,6 +196,9 @@ export default function AdminGestaoCompraVenda() {
         juros_percentual_mes: parseCurrency(form.juros_percentual_mes),
         corretagem_valor: parseCurrency(form.corretagem_valor),
         corretagem_responsavel: form.corretagem_responsavel || undefined,
+        intermediadora_nome: form.intermediadora_nome || undefined,
+        intermediadora_documento: form.intermediadora_documento || undefined,
+        intermediadora_fantasia: form.intermediadora_fantasia || undefined,
         objeto_descricao: form.objeto_descricao || undefined,
         matricula_numero: form.matricula_numero || undefined,
         cartorio_nome: form.cartorio_nome || undefined,
@@ -392,6 +399,14 @@ export default function AdminGestaoCompraVenda() {
                 <div className="col-span-full grid grid-cols-2 gap-4">
                   <input value={form.corretagem_valor} onChange={(e) => setForm((p) => ({ ...p, corretagem_valor: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Valor Corretagem" />
                   <input value={form.corretagem_responsavel} onChange={(e) => setForm((p) => ({ ...p, corretagem_responsavel: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Responsável Pagto. Corretagem" />
+                </div>
+                <div className="col-span-full rounded-xl border border-border bg-muted/20 p-3">
+                  <p className="mb-3 text-xs font-semibold text-foreground">Construtora / Intermediadora</p>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <input value={form.intermediadora_nome} onChange={(e) => setForm((p) => ({ ...p, intermediadora_nome: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Nome manual da construtora" />
+                    <input value={form.intermediadora_documento} onChange={(e) => setForm((p) => ({ ...p, intermediadora_documento: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="CPF/CNPJ da construtora" />
+                    <input value={form.intermediadora_fantasia} onChange={(e) => setForm((p) => ({ ...p, intermediadora_fantasia: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Nome fantasia" />
+                  </div>
                 </div>
                 <input value={form.matricula_numero} onChange={(e) => setForm((p) => ({ ...p, matricula_numero: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Matrícula" />
                 <input value={form.cartorio_nome} onChange={(e) => setForm((p) => ({ ...p, cartorio_nome: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Cartório" />
