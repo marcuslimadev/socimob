@@ -6,9 +6,10 @@
     @page { margin: 24mm 16mm 20mm 16mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #20232a; line-height: 1.65; }
-    .watermark { position: fixed; top: 42%; left: 50%; width: 34%; transform: translate(-50%, -50%); opacity: .045; z-index: -1; }
+    .sheet { position: relative; }
+    .watermark { position: absolute; top: 42%; left: 50%; width: 34%; transform: translate(-50%, -50%); opacity: .06; z-index: 0; }
     .watermark img { width: 100%; height: auto; }
-    .shell { border: 1px solid rgba(31, 41, 55, 0.08); border-radius: 12px; padding: 16mm 14mm 14mm; min-height: calc(100vh - 38mm); background: rgba(255,255,255,.94); }
+    .shell { position: relative; z-index: 1; border: 1px solid rgba(31, 41, 55, 0.08); border-radius: 12px; padding: 16mm 14mm 14mm; min-height: calc(100vh - 38mm); background: rgba(255,255,255,.94); }
     .header { border-bottom: 2px solid var(--tenant-primary-color); padding-bottom: 10px; margin-bottom: 16px; }
     .header-brand { width: 100%; display: table; margin-bottom: 10px; }
     .header-brand .left, .header-brand .right { display: table-cell; vertical-align: middle; }
@@ -69,11 +70,12 @@
     }
 @endphp
 
-@if(!empty($tenantWatermarkSrc))
-<div class="watermark">
-    <img src="{{ $tenantWatermarkSrc }}" alt="Marca d'água" />
-</div>
-@endif
+<div class="sheet">
+    @if(!empty($tenantWatermarkSrc))
+    <div class="watermark">
+        <img src="{{ $tenantWatermarkSrc }}" alt="Marca d'água" />
+    </div>
+    @endif
 
 <div class="shell">
     <div class="header">
@@ -298,6 +300,8 @@
             Documento gerado automaticamente em {{ $geradoEm->format('d/m/Y H:i') }} | Contrato Nº {{ $contrato->numero_contrato ?? $contrato->id }}
         @endif
     </div>
+</div>
+
 </div>
 
 </body>

@@ -81,6 +81,12 @@ interface Signatario {
   icp_brasil: boolean;
 }
 
+interface PdfPreviewState {
+  url: string;
+  titulo: string;
+  documento: Documento | null;
+}
+
 interface Props {
   contratoId: number;
   onClose: () => void;
@@ -399,6 +405,75 @@ function UploadAssinadoModal({
   );
 }
 
+function PdfPreviewModal({
+  preview,
+  onClose,
+  onEnviarAssinatura,
+  onAssinarGovBr,
+  onEnviarAssinado,
+}: {
+  preview: PdfPreviewState;
+  onClose: () => void;
+  onEnviarAssinatura: () => void;
+  onAssinarGovBr: () => void;
+  onEnviarAssinado: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80">
+      <div className="glass-panel mx-4 flex h-[90vh] w-full max-w-6xl flex-col rounded-2xl p-4">
+        <div className="mb-3 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-base font-semibold">Pré-visualização: {preview.titulo}</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">Fluxo sugerido: revisar PDF, enviar para assinatura e anexar versão assinada final.</p>
+          </div>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
+        </div>
+
+        <div className="mb-3 flex flex-wrap gap-2 rounded-xl border border-blue-500/20 bg-blue-500/10 p-3 text-xs text-blue-200">
+          <span>1) Revise o conteúdo.</span>
+          <span>2) Assine via D4Sign ou Gov.br externo.</span>
+          <span>3) Envie o PDF final assinado.</span>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-white">
+          <iframe title={preview.titulo} src={preview.url} className="h-full w-full" />
+        </div>
+
+        <div className="mt-3 flex flex-wrap justify-end gap-2">
+          <a
+            href={preview.url}
+            download
+            className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Download size={14} /> Baixar PDF
+          </a>
+          <button
+            type="button"
+            onClick={onEnviarAssinatura}
+            className="flex items-center gap-1 rounded-lg border border-primary/50 px-3 py-2 text-sm text-primary transition-colors hover:bg-primary/5"
+          >
+            <Send size={14} /> Assinar via D4Sign
+          </button>
+          <button
+            type="button"
+            onClick={onAssinarGovBr}
+            className="flex items-center gap-1 rounded-lg border border-sky-500/40 px-3 py-2 text-sm text-sky-600 transition-colors hover:bg-sky-500/5"
+          >
+            <ExternalLink size={14} /> Assinar externamente (Gov.br)
+          </button>
+          <button
+            type="button"
+            onClick={onEnviarAssinado}
+            className="flex items-center gap-1 rounded-lg border border-emerald-500/40 px-3 py-2 text-sm text-emerald-600 transition-colors hover:bg-emerald-500/5"
+          >
+            <CheckCircle2 size={14} /> Enviar assinado final
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ContratoCompraVendaDetalheModal({ contratoId, onClose }: Props) {
   const [contrato, setContrato] = useState<ContratoCompraVendaDetalhes | null>(null);
   const [loading, setLoading] = useState(true);
@@ -406,7 +481,13 @@ export default function ContratoCompraVendaDetalheModal({ contratoId, onClose }:
   const [pdfDropdown, setPdfDropdown] = useState(false);
   const [docParaAssinar, setDocParaAssinar] = useState<Documento | null>(null);
   const [docParaUpload, setDocParaUpload] = useState<Documento | null>(null);
+  const [pdfPreview, setPdfPreview] = useState<PdfPreviewState | null>(null);
   const [deletandoDoc, setDeletandoDoc] = useState<number | null>(null);
+
+  const iniciarAssinaturaExternaGovBr = () => {
+    window.open('https://assinador.iti.br', '_blank', 'noopener,noreferrer');
+    toast.info('Assine externamente no Gov.br/ITI e depois envie o PDF final assinado.');
+  };
 
   const loadContrato = async () => {
     setLoading(true);
@@ -432,9 +513,20 @@ export default function ContratoCompraVendaDetalheModal({ contratoId, onClose }:
         `/admin/financeiro/compra-venda/${contratoId}/documentos/gerar-pdf`,
         { tipo },
       );
-      const url = data.url_documento ?? data.item?.url_documento;
+
+      const documentoGerado: Documento | null = data?.item ?? null;
+      const url = data?.url_documento ?? documentoGerado?.url_documento;
+      const titulo = tiposDocumento.find((item) => item.value === tipo)?.label ?? 'Documento';
+
+      if (url) {
+        setPdfPreview({
+          url,
+          titulo,
+          documento: documentoGerado,
+        });
+      }
+
       toast.success('PDF gerado com sucesso.');
-      if (url) window.open(url, '_blank');
       await loadContrato();
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Erro ao gerar PDF.');
@@ -476,6 +568,7 @@ export default function ContratoCompraVendaDetalheModal({ contratoId, onClose }:
     { nome: contrato.testemunha_dois_nome, email: contrato.testemunha_dois_email },
   ];
   const documentosOrdenados = ordenarDocumentos(contrato.documentos || []);
+  const documentoAssinavelRecente = documentosOrdenados.find((item) => (item.categoria ?? 'original') !== 'assinado') ?? null;
 
   return (
     <>
@@ -665,6 +758,20 @@ export default function ContratoCompraVendaDetalheModal({ contratoId, onClose }:
                           {podeReceberAssinado && (
                             <button
                               type="button"
+                              onClick={() => {
+                                iniciarAssinaturaExternaGovBr();
+                                setDocParaUpload(doc);
+                              }}
+                              className="flex items-center gap-1 rounded-lg border border-sky-500/40 px-2.5 py-1 text-sky-600 transition-colors hover:bg-sky-500/5"
+                            >
+                              <ExternalLink size={13} />
+                              <span>Gov.br externo</span>
+                            </button>
+                          )}
+
+                          {podeReceberAssinado && (
+                            <button
+                              type="button"
                               onClick={() => setDocParaUpload(doc)}
                               className="flex items-center gap-1 rounded-lg border border-emerald-500/40 px-2.5 py-1 text-emerald-600 transition-colors hover:bg-emerald-500/5"
                             >
@@ -721,6 +828,39 @@ export default function ContratoCompraVendaDetalheModal({ contratoId, onClose }:
           onUploaded={async () => {
             setDocParaUpload(null);
             await loadContrato();
+          }}
+        />
+      )}
+
+      {pdfPreview && (
+        <PdfPreviewModal
+          preview={pdfPreview}
+          onClose={() => setPdfPreview(null)}
+          onEnviarAssinatura={() => {
+            const documento = pdfPreview.documento ?? documentoAssinavelRecente;
+            if (!documento) {
+              toast.error('Não foi possível identificar o documento para assinatura. Atualize a lista e tente novamente.');
+              return;
+            }
+            setPdfPreview(null);
+            setDocParaAssinar(documento);
+          }}
+          onAssinarGovBr={() => {
+            iniciarAssinaturaExternaGovBr();
+            const documento = pdfPreview.documento ?? documentoAssinavelRecente;
+            if (documento) {
+              setPdfPreview(null);
+              setDocParaUpload(documento);
+            }
+          }}
+          onEnviarAssinado={() => {
+            const documento = pdfPreview.documento ?? documentoAssinavelRecente;
+            if (!documento) {
+              toast.error('Não foi possível identificar o documento para envio do assinado. Atualize a lista e tente novamente.');
+              return;
+            }
+            setPdfPreview(null);
+            setDocParaUpload(documento);
           }}
         />
       )}
