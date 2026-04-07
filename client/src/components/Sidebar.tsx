@@ -123,10 +123,16 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [notificationCount, setNotificationCount] = useState(0);
   const [leadsCount, setLeadsCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+  const isDarkTheme = theme === 'dark';
   const badgePollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const badgePollingInFlightRef = useRef(false);
   const badgePollingFailureCountRef = useRef(0);
+
+  const handleThemeToggle = () => {
+    const nextTheme = isDarkTheme ? 'light' : 'dark';
+    setTheme(nextTheme);
+  };
 
   const actualIsOpen = onClose ? isOpen : internalIsOpen;
 
@@ -431,7 +437,13 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
   return (
     <>
-      <div className="fixed inset-x-0 top-0 z-40 border-b border-white/8 bg-[linear-gradient(180deg,rgba(8,14,27,0.97),rgba(6,12,22,0.92))] shadow-[0_20px_48px_rgba(2,6,23,0.42)] backdrop-blur-xl">
+      <div
+        className={`fixed inset-x-0 top-0 z-40 border-b backdrop-blur-xl ${
+          isDarkTheme
+            ? 'border-white/8 bg-[linear-gradient(180deg,rgba(8,14,27,0.97),rgba(6,12,22,0.92))] shadow-[0_20px_48px_rgba(2,6,23,0.42)]'
+            : 'border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(248,250,252,0.94))] shadow-[0_20px_48px_rgba(15,23,42,0.08)]'
+        }`}
+      >
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 lg:px-8">
           <div className="flex min-h-[68px] items-center justify-between gap-3 py-2.5 md:min-h-[72px] md:py-3">
             <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
@@ -467,15 +479,23 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             <div className="hidden items-center gap-2 md:flex lg:gap-2.5">
               {user?.role === 'super_admin' && <div className="w-[240px]"><TenantSelector isSuperAdmin={true} /></div>}
               <button
-                onClick={toggleTheme}
-                className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 text-[12px] text-slate-200 transition-colors hover:border-white/16 hover:bg-white/[0.08]"
+                onClick={handleThemeToggle}
+                className={`flex h-10 items-center gap-2 rounded-full border px-3 text-[12px] transition-colors ${
+                  isDarkTheme
+                    ? 'border-white/10 bg-white/[0.035] text-slate-200 hover:border-white/16 hover:bg-white/[0.08]'
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                }`}
               >
                 {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
                 <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
               </button>
               <button
                 onClick={handleLogout}
-                className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 text-[12px] text-slate-200 transition-colors hover:border-white/16 hover:bg-white/[0.08]"
+                className={`flex h-10 items-center gap-2 rounded-full border px-3 text-[12px] transition-colors ${
+                  isDarkTheme
+                    ? 'border-white/10 bg-white/[0.035] text-slate-200 hover:border-white/16 hover:bg-white/[0.08]'
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                }`}
               >
                 <LogOut size={16} />
                 <span>Sair</span>
@@ -638,10 +658,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     <button
                       onClick={() => {
-                        toggleTheme();
+                        handleThemeToggle();
                         closeMobileMenu();
                       }}
-                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 text-sm text-slate-200"
+                      className={`flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border px-3 text-sm ${
+                        isDarkTheme
+                          ? 'border-white/10 bg-white/5 text-slate-200'
+                          : 'border-slate-300 bg-white text-slate-700'
+                      }`}
                     >
                       {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
                       <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
