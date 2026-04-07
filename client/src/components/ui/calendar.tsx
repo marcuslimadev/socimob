@@ -34,8 +34,16 @@ function Calendar({
       )}
       captionLayout={captionLayout}
       formatters={{
+        formatCaption: date => {
+          const label = date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+          return label.charAt(0).toUpperCase() + label.slice(1);
+        },
+        formatWeekdayName: date => {
+          const labels = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+          return labels[date.getDay()];
+        },
         formatMonthDropdown: date =>
-          date.toLocaleString("default", { month: "short" }),
+          date.toLocaleString("pt-BR", { month: "short" }),
         ...formatters,
       }}
       classNames={{
