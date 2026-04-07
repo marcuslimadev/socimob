@@ -20,6 +20,7 @@ interface Visita {
 interface TenantSettingsResponse {
   config?: {
     google_calendar_embed_url?: string | null;
+    microsoft_calendar_embed_url?: string | null;
   } | null;
 }
 
@@ -91,6 +92,30 @@ const buildGoogleCalendarUrl = (visita: Visita) => {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 };
 
+const buildMicrosoftCalendarUrl = (visita: Visita) => {
+  const start = parseVisitaDate(visita.data_hora) ?? new Date();
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const title = visita.property_titulo ? `Visita ao imóvel: ${visita.property_titulo}` : `Visita com ${visita.nome}`;
+  const details = [
+    `Cliente: ${visita.nome}`,
+    visita.email ? `Email: ${visita.email}` : null,
+    visita.telefone ? `Telefone: ${visita.telefone}` : null,
+    visita.observacoes ? `Observações: ${visita.observacoes}` : null,
+  ].filter(Boolean).join('\n');
+
+  const params = new URLSearchParams({
+    path: '/calendar/action/compose',
+    rru: 'addevent',
+    subject: title,
+    startdt: start.toISOString(),
+    enddt: end.toISOString(),
+    body: details,
+    location: visita.property_titulo || 'Imóvel sob consulta',
+  });
+
+  return `https://outlook.office.com/calendar/0/deeplink/compose?${params.toString()}`;
+};
+
 export default function Agenda() {
   const [visitas, setVisitas] = useState<Visita[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -100,6 +125,8 @@ export default function Agenda() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [googleCalendarEmbedUrl, setGoogleCalendarEmbedUrl] = useState('');
   const [googleCalendarDraft, setGoogleCalendarDraft] = useState('');
+  const [microsoftCalendarEmbedUrl, setMicrosoftCalendarEmbedUrl] = useState('');
+  const [microsoftCalendarDraft, setMicrosoftCalendarDraft] = useState('');
   const [isSavingGoogleCalendar, setIsSavingGoogleCalendar] = useState(false);
 
   const filteredVisitas = useMemo(() => {
@@ -156,8 +183,11 @@ export default function Agenda() {
     try {
       const response = await api.get<TenantSettingsResponse>('/admin/settings');
       const embedUrl = response.data?.config?.google_calendar_embed_url?.trim() || '';
+      const microsoftEmbedUrl = response.data?.config?.microsoft_calendar_embed_url?.trim() || '';
       setGoogleCalendarEmbedUrl(embedUrl);
       setGoogleCalendarDraft(embedUrl);
+      setMicrosoftCalendarEmbedUrl(microsoftEmbedUrl);
+      setMicrosoftCalendarDraft(microsoftEmbedUrl);
     } catch (error) {
       console.error('Erro ao carregar configuração do Google Agenda:', error);
     }
@@ -181,17 +211,21 @@ export default function Agenda() {
     try {
       setIsSavingGoogleCalendar(true);
       const embedUrl = googleCalendarDraft.trim();
+      const microsoftEmbedUrl = microsoftCalendarDraft.trim();
       await api.put('/admin/settings', {
         config: {
           google_calendar_embed_url: embedUrl || null,
+          microsoft_calendar_embed_url: microsoftEmbedUrl || null,
         },
       });
       setGoogleCalendarEmbedUrl(embedUrl);
       setGoogleCalendarDraft(embedUrl);
-      toast.success(embedUrl ? 'Google Agenda conectado na tela' : 'Integração do Google Agenda removida');
+      setMicrosoftCalendarEmbedUrl(microsoftEmbedUrl);
+      setMicrosoftCalendarDraft(microsoftEmbedUrl);
+      toast.success('Integrações de agenda atualizadas');
     } catch (error: any) {
       console.error('Erro ao salvar Google Agenda:', error);
-      toast.error(error?.response?.data?.error || 'Não foi possível salvar a integração do Google Agenda');
+      toast.error(error?.response?.data?.error || 'Não foi possível salvar as integrações de agenda');
     } finally {
       setIsSavingGoogleCalendar(false);
     }
@@ -228,6 +262,14 @@ export default function Agenda() {
               >
                 <ExternalLink size={16} />
                 Abrir Google Agenda
+              </button>
+              <button
+                type="button"
+                onClick={() => window.open('https://outlook.office.com/calendar/', '_blank', 'noopener,noreferrer')}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-white/20 sm:w-auto"
+              >
+                <ExternalLink size={16} />
+                Abrir Microsoft Agenda
               </button>
               <button
                 type="button"
@@ -325,20 +367,42 @@ export default function Agenda() {
                 <div>
                   <div className="flex items-center gap-2 text-foreground">
                     <CalendarDays size={18} className="text-sky-300" />
-                    <p className="text-sm font-semibold">Google Agenda</p>
+                    <p className="text-sm font-semibold">Google e Microsoft Agenda</p>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Cole a URL de incorporação do Google Calendar para ver o calendário oficial lado a lado com a agenda interna.
+                    Cole as URLs de incorporação do Google Calendar e do Outlook Calendar para ver as agendas oficiais lado a lado com a agenda interna.
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 md:flex-row">
+              <div className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                <div className="rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
+                  <p className="text-sm font-semibold text-foreground">Onde copiar no Google</p>
+                  <p className="mt-2 text-xs leading-6 text-muted-foreground">
+                    No Google Calendar, abra as configurações do calendário desejado, entre em "Integrar agenda" e copie apenas a URL do atributo <span className="font-semibold text-foreground">src</span> do código de incorporação. Não cole o iframe inteiro.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm font-semibold text-foreground">Onde copiar no Outlook</p>
+                  <p className="mt-2 text-xs leading-6 text-muted-foreground">
+                    No Outlook ou Microsoft 365 Calendar, publique ou incorpore o calendário e copie somente a URL do <span className="font-semibold text-foreground">src</span> do iframe gerado. A tela aceita a URL direta de embed.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_auto]">
                 <input
                   type="url"
                   value={googleCalendarDraft}
                   onChange={(event) => setGoogleCalendarDraft(event.target.value)}
-                  placeholder="https://calendar.google.com/calendar/embed?..."
+                  placeholder="Google: https://calendar.google.com/calendar/embed?..."
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="url"
+                  value={microsoftCalendarDraft}
+                  onChange={(event) => setMicrosoftCalendarDraft(event.target.value)}
+                  placeholder="Microsoft: https://outlook.office.com/calendar/embed?..."
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
@@ -352,24 +416,50 @@ export default function Agenda() {
                 </button>
               </div>
 
-              <div className="mt-4 rounded-2xl border border-white/10 bg-[#07111d]/70 p-3">
-                {googleCalendarEmbedUrl ? (
-                  <iframe
-                    src={googleCalendarEmbedUrl}
-                    title="Google Agenda"
-                    className="h-[420px] w-full rounded-2xl border border-white/10 bg-white"
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
-                ) : (
-                  <div className="flex h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 text-center text-muted-foreground">
-                    <CalendarDays size={28} className="mb-3 text-sky-300" />
-                    <p className="font-medium text-foreground">Google Agenda ainda não configurado</p>
-                    <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                      Use a URL de incorporação do seu calendário do Google para acompanhar a agenda externa sem sair desta tela.
-                    </p>
-                  </div>
-                )}
+              <p className="mt-3 text-xs text-muted-foreground">
+                Dica: se você copiar um código completo de iframe, extraia apenas o valor de <span className="font-semibold text-foreground">src="..."</span> e cole aqui.
+              </p>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 2xl:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-[#07111d]/70 p-3">
+                  {googleCalendarEmbedUrl ? (
+                    <iframe
+                      src={googleCalendarEmbedUrl}
+                      title="Google Agenda"
+                      className="h-[420px] w-full rounded-2xl border border-white/10 bg-white"
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  ) : (
+                    <div className="flex h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 text-center text-muted-foreground">
+                      <CalendarDays size={28} className="mb-3 text-sky-300" />
+                      <p className="font-medium text-foreground">Google Agenda não configurado</p>
+                      <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                        Use a URL de incorporação do seu calendário Google para acompanhar a agenda externa sem sair desta tela.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-[#07111d]/70 p-3">
+                  {microsoftCalendarEmbedUrl ? (
+                    <iframe
+                      src={microsoftCalendarEmbedUrl}
+                      title="Microsoft Agenda"
+                      className="h-[420px] w-full rounded-2xl border border-white/10 bg-white"
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  ) : (
+                    <div className="flex h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 text-center text-muted-foreground">
+                      <CalendarDays size={28} className="mb-3 text-sky-300" />
+                      <p className="font-medium text-foreground">Microsoft Agenda não configurado</p>
+                      <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                        Use a URL de incorporação do Outlook Calendar ou Microsoft 365 para visualizar sua agenda oficial nesta tela.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -419,6 +509,15 @@ export default function Agenda() {
                         >
                           <ExternalLink size={14} />
                           Google Agenda
+                        </a>
+                        <a
+                          href={buildMicrosoftCalendarUrl(visita)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-foreground transition hover:bg-white/20"
+                        >
+                          <ExternalLink size={14} />
+                          Microsoft Agenda
                         </a>
                         <select
                           value={visita.status}

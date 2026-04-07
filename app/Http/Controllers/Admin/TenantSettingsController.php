@@ -48,6 +48,7 @@ class TenantSettingsController extends Controller
 
         if (is_array($configData)) {
             $configData['google_calendar_embed_url'] = $config->metadata['google_calendar_embed_url'] ?? null;
+            $configData['microsoft_calendar_embed_url'] = $config->metadata['microsoft_calendar_embed_url'] ?? null;
         }
 
         return response()->json([
@@ -155,6 +156,7 @@ class TenantSettingsController extends Controller
             'config.twilio_whatsapp_from' => 'nullable|string|max:50',
             'config.whatsapp_number' => 'nullable|string|max:30',
             'config.google_calendar_embed_url' => 'nullable|url|max:2000',
+            'config.microsoft_calendar_embed_url' => 'nullable|url|max:2000',
         ]);
 
         if ($validator->fails()) {
@@ -267,6 +269,19 @@ class TenantSettingsController extends Controller
                     unset($metadata['google_calendar_embed_url']);
                 } else {
                     $metadata['google_calendar_embed_url'] = $googleCalendarEmbedUrl;
+                }
+
+                $configUpdates['metadata'] = $metadata;
+            }
+
+            if (array_key_exists('microsoft_calendar_embed_url', $configData)) {
+                $metadata = $configUpdates['metadata'] ?? ($config->metadata ?? []);
+                $microsoftCalendarEmbedUrl = trim((string) ($configData['microsoft_calendar_embed_url'] ?? ''));
+
+                if ($microsoftCalendarEmbedUrl === '') {
+                    unset($metadata['microsoft_calendar_embed_url']);
+                } else {
+                    $metadata['microsoft_calendar_embed_url'] = $microsoftCalendarEmbedUrl;
                 }
 
                 $configUpdates['metadata'] = $metadata;

@@ -2368,6 +2368,7 @@ class WhatsAppService
                 'type' => 'system_error',
                 'title' => 'Erro Crítico no WhatsApp Service',
                 'message' => "A operação '{$operationName}' falhou: {$exception->getMessage()}",
+                'action_url' => '/notifications',
                 'channel' => 'in_app',
                 'data' => json_encode([
                     'operation' => $operationName,

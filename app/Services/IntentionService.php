@@ -195,7 +195,7 @@ class IntentionService
             'type' => 'property_match',
             'title' => 'Imóvel Encontrado!',
             'message' => "Encontramos um {$property->tipo_imovel} que combina com sua intenção de {$intention->getFormattedType()}!",
-            'action_url' => "/property/{$property->id}",
+            'action_url' => "/portal/imovel/{$property->id}",
             'data' => [
                 'property_id' => $property->id,
                 'property_title' => $property->titulo,

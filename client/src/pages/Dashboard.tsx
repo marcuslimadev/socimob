@@ -1,5 +1,8 @@
 // Dashboard Principal - SOCIMOB v2 - Timeline Real do Sistema
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import Highcharts from 'highcharts';
+import HighchartsReact from 'highcharts-react-official';
 import { api } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -18,6 +21,7 @@ import {
 import PageLayout from '@/components/PageLayout';
 import StatsGrid from '@/components/StatsGrid';
 import TimelineFeed from '@/components/TimelineFeed';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface DashboardStats {
   leads: {
@@ -77,6 +81,7 @@ function clampPercentage(value: number): number {
 }
 
 export default function Dashboard() {
+  const { theme } = useTheme();
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard', 'stats'],
     queryFn: async () => {
@@ -92,6 +97,7 @@ export default function Dashboard() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const firstName = String(user?.name || '').trim().split(' ')[0] || 'Equipe';
+  const isLightTheme = theme === 'light';
 
   const summaryMetrics = stats
     ? {
@@ -171,6 +177,124 @@ export default function Dashboard() {
       ]
     : [];
 
+  const dashboardPulseChart = useMemo<Highcharts.Options>(() => {
+    const categories = ['Novos', 'Atendimento', 'Qualificados', 'Fechados', 'Conversas', 'Assinaturas', 'Vistorias'];
+    const operationalValues = stats
+      ? [
+          stats.leads.novos,
+          stats.leads.em_atendimento,
+          stats.leads.qualificados,
+          stats.leads.fechados_mes,
+          stats.conversas.aguardando,
+          stats.assinaturas.pendentes,
+          stats.vistorias.solicitacoes_pendentes,
+        ]
+      : [0, 0, 0, 0, 0, 0, 0];
+
+    const benchmarkValues = stats
+      ? [
+          stats.leads.total > 0 ? Math.round(stats.leads.total * 0.22) : 0,
+          stats.leads.total > 0 ? Math.round(stats.leads.total * 0.18) : 0,
+          stats.leads.total > 0 ? Math.round(stats.leads.total * 0.12) : 0,
+          stats.leads.total > 0 ? Math.max(stats.leads.fechados_mes, 1) : 0,
+          Math.max(stats.conversas.hoje, 1),
+          Math.max(stats.assinaturas.total - stats.assinaturas.assinados, 1),
+          Math.max(stats.vistorias.em_andamento, 1),
+        ]
+      : [0, 0, 0, 0, 0, 0, 0];
+
+    return {
+      accessibility: { enabled: false },
+      credits: { enabled: false },
+      title: { text: undefined },
+      chart: {
+        backgroundColor: 'transparent',
+        spacing: [8, 0, 0, 0],
+        height: 220,
+        style: {
+          fontFamily: 'var(--font-secondary)',
+        },
+      },
+      legend: {
+        align: 'left',
+        verticalAlign: 'top',
+        x: 0,
+        y: -6,
+        itemStyle: {
+          color: isLightTheme ? '#334155' : '#cbd5e1',
+          fontSize: '11px',
+          fontWeight: '500',
+        },
+      },
+      xAxis: {
+        categories,
+        lineColor: isLightTheme ? 'rgba(148,163,184,0.3)' : 'rgba(255,255,255,0.12)',
+        tickColor: 'transparent',
+        labels: {
+          style: {
+            color: isLightTheme ? '#64748b' : '#94a3b8',
+            fontSize: '11px',
+          },
+        },
+      },
+      yAxis: {
+        title: { text: undefined },
+        gridLineColor: isLightTheme ? 'rgba(148,163,184,0.16)' : 'rgba(255,255,255,0.08)',
+        labels: {
+          style: {
+            color: isLightTheme ? '#64748b' : '#94a3b8',
+            fontSize: '11px',
+          },
+        },
+      },
+      tooltip: {
+        shared: true,
+        backgroundColor: isLightTheme ? 'rgba(255,255,255,0.98)' : 'rgba(8,15,28,0.96)',
+        borderColor: isLightTheme ? 'rgba(148,163,184,0.24)' : 'rgba(125,211,252,0.24)',
+        borderRadius: 14,
+        style: {
+          color: isLightTheme ? '#0f172a' : '#e2e8f0',
+        },
+        shadow: false,
+      },
+      plotOptions: {
+        series: {
+          animation: { duration: 400 },
+          states: {
+            inactive: { opacity: 1 },
+          },
+        },
+        column: {
+          borderRadius: 8,
+          borderWidth: 0,
+          pointPadding: 0.12,
+          groupPadding: 0.12,
+        },
+        spline: {
+          marker: {
+            enabled: true,
+            radius: 3,
+          },
+        },
+      },
+      series: [
+        {
+          type: 'column',
+          name: 'Volume atual',
+          data: operationalValues,
+          color: isLightTheme ? '#2563eb' : '#7dd3fc',
+        },
+        {
+          type: 'spline',
+          name: 'Ritmo esperado',
+          data: benchmarkValues,
+          color: isLightTheme ? '#f59e0b' : '#fbbf24',
+          lineWidth: 2,
+        },
+      ],
+    };
+  }, [isLightTheme, stats]);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -242,6 +366,19 @@ export default function Dashboard() {
                   <div className="text-3xl font-semibold text-white">{summaryMetrics ? `${summaryMetrics.inventoryRate}%` : '0%'}</div>
                   <p className="mt-1 text-xs text-slate-400">{formatNumber(stats?.imoveis.ativos ?? 0)} de {formatNumber(stats?.imoveis.total ?? 0)} imoveis publicados</p>
                 </div>
+              </div>
+
+              <div className="mt-6 rounded-[24px] border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Pulso operacional</p>
+                    <h2 className="mt-1 text-sm font-semibold text-white sm:text-base">Highcharts de ritmo comercial e execucao</h2>
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-slate-300">
+                    leitura dos principais gargalos agora
+                  </div>
+                </div>
+                <HighchartsReact highcharts={Highcharts} options={dashboardPulseChart} />
               </div>
             </div>
           </div>

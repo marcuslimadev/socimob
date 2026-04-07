@@ -91,14 +91,23 @@ class LeadIngestionService
         }
 
         // 6. Notificação in-app
-        $this->notificationService->createNotification(
-            $tenantId,
-            $corretorId ?? null,
-            'Novo lead de anúncio',
-            "Lead recebido via " . strtoupper($meta['provider']) . ": " . ($normalized['nome'] ?? 'Sem nome'),
-            'lead',
-            ['lead_id' => $crmLead->id, 'listing_id' => $meta['listing_id'] ?? null]
-        );
+        $notificationData = [
+            'tenant_id' => $tenantId,
+            'type' => 'new_lead',
+            'title' => 'Novo lead de anúncio',
+            'message' => "Lead recebido via " . strtoupper($meta['provider']) . ": " . ($normalized['nome'] ?? 'Sem nome'),
+            'action_url' => "/leads/{$crmLead->id}",
+            'data' => [
+                'lead_id' => $crmLead->id,
+                'listing_id' => $meta['listing_id'] ?? null,
+            ],
+        ];
+
+        if ($corretorId) {
+            $this->notificationService->sendToUser($corretorId, $notificationData, ['in_app']);
+        } else {
+            $this->notificationService->sendToTenantAdmins($tenantId, $notificationData, ['in_app']);
+        }
 
         // 7. Audit log
         AdsAuditLog::log($tenantId, AdsAuditLog::ACTION_LEAD_INGESTED, AdsAuditLog::STATUS_SUCCESS, [

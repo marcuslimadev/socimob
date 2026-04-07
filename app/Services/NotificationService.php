@@ -162,6 +162,14 @@ class NotificationService
      */
     private function createNotification(int $userId, array $data, string $channel): Notification
     {
+        $payload = is_array($data['data'] ?? null) ? $data['data'] : [];
+        $actionUrl = $data['action_url'] ?? Notification::inferActionUrl(
+            $data['type'] ?? 'general',
+            $data['property_id'] ?? null,
+            $data['intention_id'] ?? null,
+            $payload,
+        );
+
         return Notification::create([
             'tenant_id' => $data['tenant_id'] ?? app('tenant')?->id,
             'user_id' => $userId,
@@ -170,8 +178,8 @@ class NotificationService
             'type' => $data['type'] ?? 'general',
             'title' => $data['title'],
             'message' => $data['message'],
-            'action_url' => $data['action_url'] ?? null,
-            'data' => $data['data'] ?? null,
+            'action_url' => $actionUrl,
+            'data' => $payload,
             'channel' => $channel,
             'is_read' => false,
             'is_sent' => false,
@@ -516,7 +524,7 @@ class NotificationService
             'type' => 'property_interest',
             'title' => 'Interesse em Imóvel',
             'message' => "{$lead->nome} demonstrou interesse no imóvel {$property->titulo}",
-            'action_url' => "/properties/{$propertyId}",
+            'action_url' => "/properties/{$propertyId}/editar",
             'data' => [
                 'property_id' => $propertyId,
                 'lead_id' => $leadId
@@ -625,7 +633,7 @@ class NotificationService
             'type' => 'assinatura_enviada',
             'title' => 'Assinatura solicitada',
             'message' => $context['message'] ?? "Documento #{$documentId} aguardando assinatura",
-            'action_url' => "/assinaturas/{$documentId}",
+            'action_url' => '/assinaturas',
             'data' => array_merge(['documento_id' => $documentId], $context),
         ];
 
@@ -647,7 +655,7 @@ class NotificationService
             'type' => 'assinatura_assinada',
             'title' => 'Assinatura concluida',
             'message' => $context['message'] ?? "Documento #{$documentId} foi assinado",
-            'action_url' => "/assinaturas/{$documentId}",
+            'action_url' => '/assinaturas',
             'data' => array_merge(['documento_id' => $documentId], $context),
         ];
 

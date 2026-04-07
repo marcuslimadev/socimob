@@ -1,14 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { fetchTenantBranding, hexToRgba, TenantBranding } from '@/lib/tenantBranding';
-import {
-  getGoogleIdentityUnavailableMessage,
-  initializeGoogleIdentity,
-  isGoogleIdentitySupportedOrigin,
-  renderGoogleIdentityButton,
-} from '@/lib/googleIdentity';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
@@ -40,49 +34,6 @@ export default function Login() {
 
   const primary = tenant?.primary_color || '#091b42';
   const softBg = hexToRgba(primary, 0.12);
-  const googleBtnRef = useRef<HTMLDivElement>(null);
-  const googleAvailable = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID) && isGoogleIdentitySupportedOrigin();
-
-  useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId || !googleBtnRef.current) return;
-    if (!initializeGoogleIdentity(clientId, handleGoogleCredential)) return;
-
-    renderGoogleIdentityButton(googleBtnRef.current, {
-      theme: 'outline',
-      size: 'large',
-      width: googleBtnRef.current.offsetWidth || 360,
-      text: 'continue_with',
-      locale: 'pt-BR',
-    });
-  }, [tenant]);
-
-  const handleGoogleCredential = async (response: { credential: string }) => {
-    if (!response?.credential) {
-      toast.error('Resposta inválida ao entrar com Google.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const res = await api.post('/auth/google', { token: response.credential });
-      if (res.data.token) {
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('user', JSON.stringify(res.data.user));
-        toast.success('Login com Google realizado!');
-        const role = (res.data.user?.role || '').toLowerCase();
-        if (role === 'admin' || role === 'super_admin' || role === 'corretor') {
-          setLocation('/dashboard');
-        } else {
-          setLocation('/portal/meu-financeiro');
-        }
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erro ao entrar com Google.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,24 +215,6 @@ export default function Login() {
               {!isLoading && <ArrowRight size={20} />}
             </motion.button>
           </form>
-
-          {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-            <>
-              <div className="relative my-4 flex items-center">
-                <div className="flex-1 border-t border-white/20" />
-                <span className="mx-3 text-xs text-muted-foreground">ou</span>
-                <div className="flex-1 border-t border-white/20" />
-              </div>
-              {googleAvailable ? (
-                <div ref={googleBtnRef} className="w-full flex justify-center" />
-              ) : (
-                <p className="text-center text-xs text-muted-foreground">
-                  {getGoogleIdentityUnavailableMessage()}
-                </p>
-              )}
-            </>
-          )}
-
 
         </motion.div>
 

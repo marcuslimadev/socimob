@@ -44,6 +44,22 @@ class Notification extends Model
         'updated_at' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Notification $notification) {
+            $data = self::normalizeDataPayload($notification->data);
+            $notification->data = $data;
+
+            $notification->action_url = self::normalizeActionUrl(
+                $notification->action_url,
+                $notification->type,
+                $notification->property_id,
+                $notification->intention_id,
+                $data,
+            );
+        });
+    }
+
     /**
      * Relacionamentos
      */
@@ -200,5 +216,134 @@ class Notification extends Model
             'in_app' => 'App',
             default => $this->channel,
         };
+    }
+
+    public static function inferActionUrl(?string $type, ?int $propertyId = null, ?int $intentionId = null, array $data = []): ?string
+    {
+        $nestedActionUrl = self::firstString($data, ['action_url']);
+        if ($nestedActionUrl) {
+            return $nestedActionUrl;
+        }
+
+        $leadId = self::firstInt($data, ['lead_id', 'crm_lead_id']);
+        $vistoriaId = self::firstInt($data, ['vistoria_id']);
+        $documentId = self::firstInt($data, ['documento_id', 'document_id']);
+        $resolvedPropertyId = $propertyId ?: self::firstInt($data, ['property_id', 'current_property_id', 'conflicting_property_id']);
+        $registroTipo = self::firstString($data, ['registro_tipo']);
+        $notaId = self::firstInt($data, ['nota_id', 'invoice_id']);
+
+        if (in_array($type, ['new_lead', 'lead', 'lead_created'], true)) {
+            return $leadId ? "/leads/{$leadId}" : '/leads';
+        }
+
+        if (in_array($type, ['message', 'nova_conversa'], true)) {
+            return $leadId ? "/chat?leadId={$leadId}" : '/chat';
+        }
+
+        if (is_string($type) && str_starts_with($type, 'vistoria')) {
+            return $vistoriaId ? "/vistorias/{$vistoriaId}" : '/vistorias';
+        }
+
+        if (is_string($type) && str_starts_with($type, 'assinatura')) {
+            return '/assinaturas';
+        }
+
+        if ($type === 'property_match' && $resolvedPropertyId) {
+            return "/portal/imovel/{$resolvedPropertyId}";
+        }
+
+        if (in_array($type, ['property_interest', 'property_new', 'price_change', 'status_change'], true) && $resolvedPropertyId) {
+            return "/properties/{$resolvedPropertyId}/editar";
+        }
+
+        if ($registroTipo && $notaId) {
+            return "/financeiro/notas/{$registroTipo}/{$notaId}";
+        }
+
+        if ($resolvedPropertyId) {
+            return "/properties/{$resolvedPropertyId}/editar";
+        }
+
+        if ($documentId) {
+            return '/assinaturas';
+        }
+
+        if ($intentionId) {
+            return '/crm';
+        }
+
+        if (in_array($type, ['system_error', 'security_alert', 'system'], true)) {
+            return '/notifications';
+        }
+
+        return null;
+    }
+
+    public static function normalizeActionUrl(
+        ?string $actionUrl,
+        ?string $type,
+        ?int $propertyId = null,
+        ?int $intentionId = null,
+        array $data = [],
+    ): ?string {
+        $normalized = is_string($actionUrl) ? trim($actionUrl) : '';
+
+        if ($normalized === '') {
+            return self::inferActionUrl($type, $propertyId, $intentionId, $data);
+        }
+
+        if (preg_match('#^/property/(\d+)$#', $normalized, $matches)) {
+            return '/portal/imovel/' . $matches[1];
+        }
+
+        if (preg_match('#^/properties/(\d+)$#', $normalized, $matches)) {
+            return '/properties/' . $matches[1] . '/editar';
+        }
+
+        if (preg_match('#^/assinaturas/(\d+)$#', $normalized)) {
+            return '/assinaturas';
+        }
+
+        return $normalized;
+    }
+
+    private static function normalizeDataPayload(mixed $data): array
+    {
+        if (is_array($data)) {
+            return $data;
+        }
+
+        if (is_string($data) && trim($data) !== '') {
+            $decoded = json_decode($data, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        return [];
+    }
+
+    private static function firstInt(array $data, array $keys): ?int
+    {
+        foreach ($keys as $key) {
+            $value = $data[$key] ?? null;
+
+            if (is_numeric($value) && (int) $value > 0) {
+                return (int) $value;
+            }
+        }
+
+        return null;
+    }
+
+    private static function firstString(array $data, array $keys): ?string
+    {
+        foreach ($keys as $key) {
+            $value = $data[$key] ?? null;
+
+            if (is_string($value) && trim($value) !== '') {
+                return trim($value);
+            }
+        }
+
+        return null;
     }
 }

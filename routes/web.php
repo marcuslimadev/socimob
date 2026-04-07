@@ -69,7 +69,6 @@ $router->group(['prefix' => 'api', 'middleware' => 'resolve-tenant'], function (
 
     // ⚡ Rate limiting: 5 tentativas por minuto em login
     $router->post('/auth/login', ['middleware' => 'throttle:5,1', 'uses' => 'App\Http\Controllers\AuthController@login']);
-    $router->post('/auth/google', ['middleware' => 'throttle:5,1', 'uses' => 'App\Http\Controllers\AuthController@googleLogin']);
     $router->post('/auth/logout', 'App\Http\Controllers\AuthController@logout');
     $router->get('/auth/me', ['middleware' => 'simple-auth', 'uses' => 'App\Http\Controllers\AuthController@me']);
     

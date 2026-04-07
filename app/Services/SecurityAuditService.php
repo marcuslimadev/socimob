@@ -260,6 +260,7 @@ class SecurityAuditService
                     'type' => 'security_alert',
                     'title' => 'Alerta de Segurança Crítico',
                     'message' => "Evento crítico detectado: {$event}",
+                    'action_url' => '/notifications',
                     'channel' => 'in_app',
                     'data' => json_encode(array_merge($data, ['event' => $event])),
                     'is_read' => false,
