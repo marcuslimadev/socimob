@@ -48,7 +48,7 @@ class TenantSettingsController extends Controller
 
         if (is_array($configData)) {
             $configData['google_calendar_embed_url'] = $config->metadata['google_calendar_embed_url'] ?? null;
-            $configData['microsoft_calendar_embed_url'] = $config->metadata['microsoft_calendar_embed_url'] ?? null;
+            $configData['hidden_sidebar_keys'] = $config->metadata['hidden_sidebar_keys'] ?? [];
         }
 
         return response()->json([
@@ -156,7 +156,8 @@ class TenantSettingsController extends Controller
             'config.twilio_whatsapp_from' => 'nullable|string|max:50',
             'config.whatsapp_number' => 'nullable|string|max:30',
             'config.google_calendar_embed_url' => 'nullable|url|max:2000',
-            'config.microsoft_calendar_embed_url' => 'nullable|url|max:2000',
+            'config.hidden_sidebar_keys' => 'nullable|array',
+            'config.hidden_sidebar_keys.*' => 'string|max:100',
         ]);
 
         if ($validator->fails()) {
@@ -274,19 +275,21 @@ class TenantSettingsController extends Controller
                 $configUpdates['metadata'] = $metadata;
             }
 
-            if (array_key_exists('microsoft_calendar_embed_url', $configData)) {
+            if (array_key_exists('hidden_sidebar_keys', $configData)) {
                 $metadata = $configUpdates['metadata'] ?? ($config->metadata ?? []);
-                $microsoftCalendarEmbedUrl = trim((string) ($configData['microsoft_calendar_embed_url'] ?? ''));
+                $hiddenSidebarKeys = array_values(array_unique(array_filter(array_map(function ($value) {
+                    return is_string($value) ? trim($value) : null;
+                }, (array) ($configData['hidden_sidebar_keys'] ?? [])))));
 
-                if ($microsoftCalendarEmbedUrl === '') {
-                    unset($metadata['microsoft_calendar_embed_url']);
+                if (empty($hiddenSidebarKeys)) {
+                    unset($metadata['hidden_sidebar_keys']);
                 } else {
-                    $metadata['microsoft_calendar_embed_url'] = $microsoftCalendarEmbedUrl;
+                    $metadata['hidden_sidebar_keys'] = $hiddenSidebarKeys;
                 }
 
                 $configUpdates['metadata'] = $metadata;
             }
-            
+
             if (!empty($configUpdates)) {
                 $config->update($configUpdates);
             }

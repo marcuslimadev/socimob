@@ -17,7 +17,6 @@ const Leads = lazy(() => import("./pages/Leads"));
 const Properties = lazy(() => import("./pages/Properties"));
 const Chat = lazy(() => import("./pages/Chat"));
 const CRM = lazy(() => import("./pages/CRM"));
-const NotificationCenter = lazy(() => import("./pages/NotificationCenter"));
 const Login = lazy(() => import("./pages/Login"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -89,7 +88,7 @@ function Router() {
       <Route path="/properties/novo" component={ImovelFormWizard} />
       <Route path="/properties/:id/editar" component={ImovelFormWizard} />
       <Route path="/chat" component={Chat} />
-      <Route path="/notifications" component={NotificationCenter} />
+      <Route path="/notifications" component={NotificationsRedirect} />
       <Route path="/login" component={Login} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
@@ -240,6 +239,16 @@ function LoginRedirect() {
 
   useEffect(() => {
     setLocation("/login");
+  }, [setLocation]);
+
+  return null;
+}
+
+function NotificationsRedirect() {
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    setLocation('/dashboard');
   }, [setLocation]);
 
   return null;

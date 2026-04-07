@@ -10,6 +10,7 @@ use App\Models\PropertyEvaluation;
 use App\Models\User;
 use App\Models\VistoriaSolicitacao;
 use App\Services\PropertyLikesTablesManager;
+use App\Services\VisitSchedulingService;
 use App\Support\SimpleAuthToken;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -658,6 +659,11 @@ class PortalController extends Controller
                 'whatsapp' => 'required|string|max:20',
                 'email' => 'nullable|email|max:255',
                 'interesse' => 'nullable|string|max:500',
+                'property_id' => 'nullable|integer',
+                'property_titulo' => 'nullable|string|max:255',
+                'visita_data_hora' => 'nullable|string|max:50',
+                'visita_observacoes' => 'nullable|string|max:1000',
+                'origem_agendamento' => 'nullable|string|max:50',
             ]);
 
             if ($validator->fails()) {
@@ -718,10 +724,29 @@ class PortalController extends Controller
                 ? preg_replace('/\D/', '', $config->whatsapp_number)
                 : ($tenant ? preg_replace('/\D/', '', $tenant->contact_phone ?? '') : '');
 
+            $visitId = null;
+            if ($request->filled('visita_data_hora')) {
+                $visit = app(VisitSchedulingService::class)->schedule([
+                    'tenant_id' => $tenantId,
+                    'property_id' => $request->input('property_id'),
+                    'lead_id' => $lead->id,
+                    'property_titulo' => $request->input('property_titulo'),
+                    'nome' => $request->nome,
+                    'email' => $request->email,
+                    'telefone' => $whatsapp,
+                    'data_hora' => $request->input('visita_data_hora'),
+                    'observacoes' => $request->input('visita_observacoes') ?: $request->input('interesse'),
+                    'origem' => $request->input('origem_agendamento') ?: 'portal_chat',
+                ]);
+
+                $visitId = $visit['id'] ?? null;
+            }
+
             return response()->json([
                 'success' => true,
                 'lead_id' => $lead->id,
                 'whatsapp_number' => $tenantWhatsapp,
+                'visita_id' => $visitId,
                 'message' => 'Lead criado com sucesso!',
             ]);
         } catch (\Exception $e) {

@@ -426,7 +426,7 @@ const MascotAvatar = ({ size = 96, mascotUrl, primary, roundedClass = 'rounded-f
 };
 
 // ===== Chat Widget Types =====
-type ChatStep = 'greeting' | 'ask_name' | 'ask_whatsapp' | 'ask_email' | 'ask_interesse' | 'submitting' | 'done';
+type ChatStep = 'greeting' | 'ask_name' | 'ask_whatsapp' | 'ask_email' | 'ask_interesse' | 'ask_visit_datetime' | 'submitting' | 'done';
 interface ChatMessage { from: 'bot' | 'user'; text: string; }
 
 // ===== Chat Widget (per-tenant mascot) =====
@@ -447,6 +447,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
   const [interesse, setInteresse] = useState('');
+  const [visitDateTime, setVisitDateTime] = useState('');
   const [leadWhatsapp, setLeadWhatsapp] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -493,6 +494,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
       setWhatsapp('');
       setEmail('');
       setInteresse('');
+      setVisitDateTime('');
       setLeadWhatsapp('');
     }
   }, [propertyContext]);
@@ -506,6 +508,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
       setWhatsapp('');
       setEmail('');
       setInteresse('');
+      setVisitDateTime('');
       setLeadWhatsapp('');
     }
   }, [serviceContext]);
@@ -540,6 +543,80 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
     return skipTokens.has(normalized);
   };
 
+  const isSkippedVisitInput = (value: string) => {
+    const normalized = value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
+    return new Set(['pular', 'nao', 'nenhum', 'sem horario', 'depois', 'prefiro depois']).has(normalized);
+  };
+
+  const parseVisitInput = (value: string) => {
+    const trimmed = value.trim();
+    const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
+    if (!match) {
+      return null;
+    }
+
+    const [, day, month, year, hour, minute] = match;
+    return `${year}-${month}-${day}T${hour}:${minute}`;
+  };
+
+  const askForVisitDate = () => {
+    setTimeout(() => {
+      addBot('Se quiser, já posso registrar um horário sugerido de visita. Envie no formato DD/MM/AAAA HH:MM ou digite "pular".');
+      setStep('ask_visit_datetime');
+    }, 400);
+  };
+
+  const finalizeLead = async (payloadEmail?: string, payloadVisitDateTime?: string) => {
+    setStep('submitting');
+    setTimeout(async () => {
+      addBot('Registrando seu contato...');
+      try {
+        const resp = await fetch('/api/portal/chat-lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Tenant-Domain': window.location.hostname },
+          body: JSON.stringify({
+            nome,
+            whatsapp,
+            email: payloadEmail || undefined,
+            interesse,
+            property_id: propertyContext?.id,
+            property_titulo: propertyContext?.titulo,
+            visita_data_hora: payloadVisitDateTime || visitDateTime || undefined,
+            origem_agendamento: propertyContext ? 'portal_chat' : 'portal_home',
+          }),
+        });
+        const data = await resp.json();
+        if (data.success) {
+          const wpNum = data.whatsapp_number || (tenantPhone ? tenantPhone.replace(/\D/g, '') : '');
+          setLeadWhatsapp(wpNum);
+          setTimeout(() => {
+            addBot(`Pronto, ${nome}! Seu contato foi registrado!`);
+            setTimeout(() => {
+              addBot(visitDateTime
+                || payloadVisitDateTime
+                ? 'Seu pedido de visita entrou na agenda e um corretor vai confirmar o horário com você. Você pode continuar pelo WhatsApp agora mesmo.'
+                : 'Um corretor vai entrar em contato em breve. Você pode iniciar uma conversa pelo WhatsApp agora mesmo!');
+              setStep('done');
+            }, 600);
+          }, 500);
+        } else {
+          addBot('Ops, tivemos um problema. Tente pelo WhatsApp direto!');
+          setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : '');
+          setStep('done');
+        }
+      } catch {
+        addBot('Ops, algo deu errado. Tente pelo WhatsApp direto!');
+        setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : '');
+        setStep('done');
+      }
+    }, 300);
+  };
+
   const handleSend = async () => {
     const val = input.trim();
     if (!val) return;
@@ -560,30 +637,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
         if (isSkippedEmailInput(val)) {
           addUser('Prefiro não informar');
           if (interesse) {
-            // Se já tem interesse (propertyContext), submeter direto
-            setStep('submitting');
-            setTimeout(async () => {
-              addBot('Registrando seu contato...');
-              try {
-                const resp = await fetch('/api/portal/chat-lead', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'X-Tenant-Domain': window.location.hostname },
-                  body: JSON.stringify({ nome, whatsapp, email: undefined, interesse }),
-                });
-                const data = await resp.json();
-                if (data.success) {
-                  const wpNum = data.whatsapp_number || (tenantPhone ? tenantPhone.replace(/\D/g, '') : '');
-                  setLeadWhatsapp(wpNum);
-                  setTimeout(() => { addBot(`Pronto, ${nome}! Seu contato foi registrado!`); setTimeout(() => { addBot('Um corretor vai entrar em contato em breve. Você pode iniciar uma conversa pelo WhatsApp agora mesmo!'); setStep('done'); }, 600); }, 500);
-                } else {
-                  addBot('Ops, tivemos um problema. Tente pelo WhatsApp direto!');
-                  setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : ''); setStep('done');
-                }
-              } catch {
-                addBot('Ops, algo deu errado. Tente pelo WhatsApp direto!');
-                setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : ''); setStep('done');
-              }
-            }, 300);
+            askForVisitDate();
           } else {
             setTimeout(() => { addBot('Sem problemas! Que tipo de imóvel você procura? (ex: apartamento 2 quartos, casa com quintal...)'); setStep('ask_interesse'); }, 400);
           }
@@ -592,30 +646,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
         } else {
           addUser(val); setEmail(val);
           if (interesse) {
-            // Se já tem interesse (propertyContext), submeter direto
-            setStep('submitting');
-            setTimeout(async () => {
-              addBot('Registrando seu contato...');
-              try {
-                const resp = await fetch('/api/portal/chat-lead', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'X-Tenant-Domain': window.location.hostname },
-                  body: JSON.stringify({ nome, whatsapp, email: val, interesse }),
-                });
-                const data = await resp.json();
-                if (data.success) {
-                  const wpNum = data.whatsapp_number || (tenantPhone ? tenantPhone.replace(/\D/g, '') : '');
-                  setLeadWhatsapp(wpNum);
-                  setTimeout(() => { addBot(`Pronto, ${nome}! Seu contato foi registrado!`); setTimeout(() => { addBot('Um corretor vai entrar em contato em breve. Você pode iniciar uma conversa pelo WhatsApp agora mesmo!'); setStep('done'); }, 600); }, 500);
-                } else {
-                  addBot('Ops, tivemos um problema. Tente pelo WhatsApp direto!');
-                  setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : ''); setStep('done');
-                }
-              } catch {
-                addBot('Ops, algo deu errado. Tente pelo WhatsApp direto!');
-                setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : ''); setStep('done');
-              }
-            }, 300);
+            askForVisitDate();
           } else {
             setTimeout(() => { addBot('Ótimo! Que tipo de imóvel você procura? (ex: apartamento 2 quartos, casa com quintal...)'); setStep('ask_interesse'); }, 400);
           }
@@ -625,29 +656,24 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
         addUser(val); 
         const finalInteresse = interesse || val; // Use pre-set interesse if available
         setInteresse(finalInteresse); 
-        setStep('submitting');
-        setTimeout(async () => {
-          addBot('Registrando seu contato...');
-          try {
-            const resp = await fetch('/api/portal/chat-lead', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'X-Tenant-Domain': window.location.hostname },
-              body: JSON.stringify({ nome, whatsapp, email: email || undefined, interesse: finalInteresse }),
-            });
-            const data = await resp.json();
-            if (data.success) {
-              const wpNum = data.whatsapp_number || (tenantPhone ? tenantPhone.replace(/\D/g, '') : '');
-              setLeadWhatsapp(wpNum);
-              setTimeout(() => { addBot(`Pronto, ${nome}! Seu contato foi registrado!`); setTimeout(() => { addBot('Um corretor vai entrar em contato em breve. Você pode iniciar uma conversa pelo WhatsApp agora mesmo!'); setStep('done'); }, 600); }, 500);
-            } else {
-              addBot('Ops, tivemos um problema. Tente pelo WhatsApp direto!');
-              setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : ''); setStep('done');
-            }
-          } catch {
-            addBot('Ops, algo deu errado. Tente pelo WhatsApp direto!');
-            setLeadWhatsapp(tenantPhone ? tenantPhone.replace(/\D/g, '') : ''); setStep('done');
-          }
-        }, 300);
+        askForVisitDate();
+        break;
+      case 'ask_visit_datetime':
+        if (isSkippedVisitInput(val)) {
+          addUser('Decido depois');
+          await finalizeLead(email || undefined);
+          break;
+        }
+
+        const parsedVisit = parseVisitInput(val);
+        if (!parsedVisit) {
+          addBot('Use o formato DD/MM/AAAA HH:MM ou digite "pular" para seguir sem sugerir horário.');
+          return;
+        }
+
+        addUser(val);
+        setVisitDateTime(parsedVisit);
+        await finalizeLead(email || undefined, parsedVisit);
         break;
     }
   };
@@ -768,7 +794,7 @@ function ChatWidget({ tenantPhone, tenantName, primary, mascotUrl, isOpen, onOpe
                 value={input}
                 onChange={(e) => step === 'ask_whatsapp' ? setInput(fmtWa(e.target.value)) : setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder={step === 'ask_name' ? 'Seu nome...' : step === 'ask_whatsapp' ? '(31) 99999-8888' : step === 'ask_email' ? 'seu@email.com' : 'Ex: apartamento 2 quartos...'}
+                placeholder={step === 'ask_name' ? 'Seu nome...' : step === 'ask_whatsapp' ? '(31) 99999-8888' : step === 'ask_email' ? 'seu@email.com' : step === 'ask_visit_datetime' ? 'Ex: 25/04/2026 15:30' : 'Ex: apartamento 2 quartos...'}
                 className="flex-1 px-3 py-2 rounded-full text-sm focus:outline-none focus:ring-2"
                 style={{ backgroundColor: '#f5f3ee', border: '1px solid #e0dcd5', color: '#333' }}
               />

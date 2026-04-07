@@ -243,6 +243,8 @@ export default function ClientPortalRefined() {
   const [leadModalSource, setLeadModalSource] = useState<'card' | 'mascot'>('card');
   const [leadName, setLeadName] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
+  const [leadVisitDateTime, setLeadVisitDateTime] = useState('');
+  const [leadVisitNotes, setLeadVisitNotes] = useState('');
   const [leadModalError, setLeadModalError] = useState('');
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [floatingActionDragging, setFloatingActionDragging] = useState(false);
@@ -431,6 +433,8 @@ export default function ClientPortalRefined() {
   const closePropertyWhatsAppModal = () => {
     setLeadModalError('');
     setLeadSubmitting(false);
+    setLeadVisitDateTime('');
+    setLeadVisitNotes('');
     setLeadModalSource('card');
     setLeadModalProperty(null);
   };
@@ -504,6 +508,15 @@ export default function ClientPortalRefined() {
           nome: normalizedName,
           whatsapp: formattedPhone,
           interesse,
+          property_id: leadModalProperty?.id,
+          property_titulo: leadModalProperty?.titulo,
+          visita_data_hora: leadVisitDateTime || undefined,
+          visita_observacoes: leadVisitNotes.trim() || undefined,
+          origem_agendamento: leadModalProperty
+            ? leadModalSource === 'mascot'
+              ? 'portal_home'
+              : 'portal_catalogo'
+            : 'portal_home',
         }),
         signal: controller.signal,
       }).finally(() => window.clearTimeout(timeoutId));
@@ -521,15 +534,19 @@ export default function ClientPortalRefined() {
                   `Olá! Sou ${normalizedName}.`,
                   `Meu telefone é ${formattedPhone}.`,
                   `Tenho interesse no imóvel \"${leadModalProperty.titulo}\".`,
+                  leadVisitDateTime ? `Quero sugerir visita em ${new Date(leadVisitDateTime).toLocaleString('pt-BR')}.` : null,
                   `Localização: ${getPublicLocation(leadModalProperty)}.`,
                   `Valor anunciado: ${formatPrice(leadModalProperty)}.`,
+                  leadVisitNotes.trim() ? `Observações: ${leadVisitNotes.trim()}.` : null,
                   `Link do imóvel: ${window.location.origin}/portal/imovel/${leadModalProperty.id}`,
-                ].join(' ')
+                ].filter(Boolean).join(' ')
               : [
                   `Olá! Sou ${normalizedName}.`,
                   `Meu telefone é ${formattedPhone}.`,
                   'Acabei de me cadastrar pelo portal e gostaria de atendimento.',
-                ].join(' ')
+                  leadVisitDateTime ? `Se possível, gostaria de visita em ${new Date(leadVisitDateTime).toLocaleString('pt-BR')}.` : null,
+                  leadVisitNotes.trim() ? `Observações: ${leadVisitNotes.trim()}.` : null,
+                ].filter(Boolean).join(' ')
           )}`
         : fallbackWhatsappUrl;
 
@@ -1321,6 +1338,27 @@ export default function ClientPortalRefined() {
                 />
               </label>
 
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-slate-700">Sugerir data e hora de visita</span>
+                <input
+                  type="datetime-local"
+                  value={leadVisitDateTime}
+                  onChange={(event) => setLeadVisitDateTime(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-slate-700">Observações</span>
+                <textarea
+                  value={leadVisitNotes}
+                  onChange={(event) => setLeadVisitNotes(event.target.value)}
+                  rows={3}
+                  placeholder="Ex: melhor horário no fim da tarde, visita com família, imóvel semelhante ao anúncio"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none"
+                />
+              </label>
+
               {leadModalError && (
                 <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{leadModalError}</p>
               )}
@@ -1342,7 +1380,7 @@ export default function ClientPortalRefined() {
                 style={{ backgroundColor: primary }}
               >
                 <MessageCircle className="h-4 w-4" />
-                {leadSubmitting ? 'Registrando...' : 'Abrir WhatsApp'}
+                {leadSubmitting ? 'Registrando...' : 'Registrar e abrir WhatsApp'}
               </button>
             </div>
           </div>

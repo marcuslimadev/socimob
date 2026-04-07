@@ -93,6 +93,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
 
     // Visitas
     $router->get('/visitas', 'App\Http\Controllers\Admin\\VisitasController@index');
+    $router->post('/visitas', 'App\Http\Controllers\Admin\\VisitasController@store');
     $router->patch('/visitas/{id}', 'App\Http\Controllers\Admin\\VisitasController@update');
 
     // Usuários/Equipe

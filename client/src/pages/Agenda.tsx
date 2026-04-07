@@ -6,6 +6,12 @@ import Sidebar from '@/components/Sidebar';
 import { Calendar } from '@/components/ui/calendar';
 import { api } from '@/lib/api';
 
+interface AgendaUser {
+  id: number;
+  name: string;
+  role?: string;
+}
+
 interface Visita {
   id: number;
   property_titulo?: string | null;
@@ -15,12 +21,23 @@ interface Visita {
   data_hora: string;
   status: 'pendente' | 'confirmada' | 'cancelada' | 'concluida';
   observacoes?: string | null;
+  lead_id?: number | null;
+  assigned_user_id?: number | null;
+  assigned_user_name?: string | null;
+  created_by_user_id?: number | null;
+  created_by_user_name?: string | null;
+  origem?: string | null;
+}
+
+interface CorretorOption {
+  id: number;
+  name: string;
+  role?: string;
 }
 
 interface TenantSettingsResponse {
   config?: {
     google_calendar_embed_url?: string | null;
-    microsoft_calendar_embed_url?: string | null;
   } | null;
 }
 
@@ -68,6 +85,28 @@ const parseVisitaDate = (value: string) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+const toDateTimeLocalValue = (value: Date) => {
+  const timezoneOffset = value.getTimezoneOffset() * 60_000;
+  return new Date(value.getTime() - timezoneOffset).toISOString().slice(0, 16);
+};
+
+const formatVisitOrigin = (value?: string | null) => {
+  switch (value) {
+    case 'agenda_admin':
+      return 'Criada na agenda';
+    case 'portal_chat':
+      return 'Chat do portal';
+    case 'portal_home':
+      return 'Tela inicial do portal';
+    case 'portal_catalogo':
+      return 'Catálogo do portal';
+    case 'portal_publico':
+      return 'Portal público';
+    default:
+      return 'Origem interna';
+  }
+};
+
 const toGoogleCalendarDate = (value: Date) => value.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 
 const buildGoogleCalendarUrl = (visita: Visita) => {
@@ -92,42 +131,31 @@ const buildGoogleCalendarUrl = (visita: Visita) => {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 };
 
-const buildMicrosoftCalendarUrl = (visita: Visita) => {
-  const start = parseVisitaDate(visita.data_hora) ?? new Date();
-  const end = new Date(start.getTime() + 60 * 60 * 1000);
-  const title = visita.property_titulo ? `Visita ao imóvel: ${visita.property_titulo}` : `Visita com ${visita.nome}`;
-  const details = [
-    `Cliente: ${visita.nome}`,
-    visita.email ? `Email: ${visita.email}` : null,
-    visita.telefone ? `Telefone: ${visita.telefone}` : null,
-    visita.observacoes ? `Observações: ${visita.observacoes}` : null,
-  ].filter(Boolean).join('\n');
-
-  const params = new URLSearchParams({
-    path: '/calendar/action/compose',
-    rru: 'addevent',
-    subject: title,
-    startdt: start.toISOString(),
-    enddt: end.toISOString(),
-    body: details,
-    location: visita.property_titulo || 'Imóvel sob consulta',
-  });
-
-  return `https://outlook.office.com/calendar/0/deeplink/compose?${params.toString()}`;
-};
-
 export default function Agenda() {
   const [visitas, setVisitas] = useState<Visita[]>([]);
+  const [currentUser, setCurrentUser] = useState<AgendaUser | null>(null);
+  const [corretores, setCorretores] = useState<CorretorOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [assignedFilter, setAssignedFilter] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [googleCalendarEmbedUrl, setGoogleCalendarEmbedUrl] = useState('');
   const [googleCalendarDraft, setGoogleCalendarDraft] = useState('');
-  const [microsoftCalendarEmbedUrl, setMicrosoftCalendarEmbedUrl] = useState('');
-  const [microsoftCalendarDraft, setMicrosoftCalendarDraft] = useState('');
   const [isSavingGoogleCalendar, setIsSavingGoogleCalendar] = useState(false);
+  const [isCreatingVisit, setIsCreatingVisit] = useState(false);
+  const [newVisit, setNewVisit] = useState({
+    property_titulo: '',
+    nome: '',
+    email: '',
+    telefone: '',
+    data_hora: toDateTimeLocalValue(new Date(Date.now() + 60 * 60 * 1000)),
+    observacoes: '',
+    assigned_user_id: '',
+  });
+
+  const isBrokerUser = currentUser?.role === 'corretor';
 
   const filteredVisitas = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -136,12 +164,14 @@ export default function Agenda() {
       const matchSearch =
         !normalizedSearch ||
         visita.nome.toLowerCase().includes(normalizedSearch) ||
-        visita.property_titulo?.toLowerCase().includes(normalizedSearch);
+        visita.property_titulo?.toLowerCase().includes(normalizedSearch) ||
+        visita.assigned_user_name?.toLowerCase().includes(normalizedSearch);
       const matchStatus = !statusFilter || visita.status === statusFilter;
+      const matchAssigned = !assignedFilter || String(visita.assigned_user_id || '') === assignedFilter;
       const matchDate = !selectedDate || (visitaDate ? sameCalendarDay(visitaDate, selectedDate) : false);
-      return matchSearch && matchStatus && matchDate;
+      return matchSearch && matchStatus && matchAssigned && matchDate;
     });
-  }, [search, selectedDate, statusFilter, visitas]);
+  }, [assignedFilter, search, selectedDate, statusFilter, visitas]);
 
   const visitDays = useMemo(
     () => visitas.map((visita) => parseVisitaDate(visita.data_hora)).filter((value): value is Date => Boolean(value)),
@@ -161,10 +191,17 @@ export default function Agenda() {
     [visitas],
   );
 
+  const assignedToMeCount = useMemo(
+    () => visitas.filter((visita) => currentUser?.id && visita.assigned_user_id === currentUser.id).length,
+    [currentUser?.id, visitas],
+  );
+
   const carregarVisitas = async () => {
     setIsLoading(true);
     try {
-      const response = await api.get('/admin/visitas');
+      const response = await api.get('/admin/visitas', {
+        params: assignedFilter ? { assigned_user_id: assignedFilter } : undefined,
+      });
       if (response.data?.success) {
         setVisitas(response.data.data || []);
         return;
@@ -179,15 +216,23 @@ export default function Agenda() {
     }
   };
 
+  const carregarCorretores = async () => {
+    try {
+      const response = await api.get('/admin/corretores');
+      const list = Array.isArray(response.data?.corretores) ? response.data.corretores : [];
+      setCorretores(list);
+    } catch (error) {
+      console.error('Erro ao carregar responsáveis da agenda:', error);
+      setCorretores([]);
+    }
+  };
+
   const carregarConfiguracaoAgenda = async () => {
     try {
       const response = await api.get<TenantSettingsResponse>('/admin/settings');
       const embedUrl = response.data?.config?.google_calendar_embed_url?.trim() || '';
-      const microsoftEmbedUrl = response.data?.config?.microsoft_calendar_embed_url?.trim() || '';
       setGoogleCalendarEmbedUrl(embedUrl);
       setGoogleCalendarDraft(embedUrl);
-      setMicrosoftCalendarEmbedUrl(microsoftEmbedUrl);
-      setMicrosoftCalendarDraft(microsoftEmbedUrl);
     } catch (error) {
       console.error('Erro ao carregar configuração do Google Agenda:', error);
     }
@@ -207,21 +252,65 @@ export default function Agenda() {
     }
   };
 
+  const criarVisita = async () => {
+    const payload = {
+      property_titulo: newVisit.property_titulo.trim() || null,
+      nome: newVisit.nome.trim(),
+      email: newVisit.email.trim() || null,
+      telefone: newVisit.telefone.trim(),
+      data_hora: newVisit.data_hora,
+      observacoes: newVisit.observacoes.trim() || null,
+      assigned_user_id: newVisit.assigned_user_id ? Number(newVisit.assigned_user_id) : undefined,
+    };
+
+    if (payload.nome.length < 2) {
+      toast.error('Informe o nome do cliente para criar a visita');
+      return;
+    }
+
+    if (payload.telefone.replace(/\D/g, '').length < 10) {
+      toast.error('Informe um telefone válido com DDD');
+      return;
+    }
+
+    if (!payload.data_hora) {
+      toast.error('Escolha a data e o horário da visita');
+      return;
+    }
+
+    try {
+      setIsCreatingVisit(true);
+      await api.post('/admin/visitas', payload);
+      toast.success('Visita criada com sucesso');
+      setNewVisit({
+        property_titulo: '',
+        nome: '',
+        email: '',
+        telefone: '',
+        data_hora: toDateTimeLocalValue(new Date(Date.now() + 60 * 60 * 1000)),
+        observacoes: '',
+        assigned_user_id: isBrokerUser ? String(currentUser?.id || '') : String(currentUser?.id || ''),
+      });
+      await carregarVisitas();
+    } catch (error: any) {
+      console.error('Erro ao criar visita:', error);
+      toast.error(error?.response?.data?.error || 'Não foi possível criar a visita');
+    } finally {
+      setIsCreatingVisit(false);
+    }
+  };
+
   const salvarGoogleCalendar = async () => {
     try {
       setIsSavingGoogleCalendar(true);
       const embedUrl = googleCalendarDraft.trim();
-      const microsoftEmbedUrl = microsoftCalendarDraft.trim();
       await api.put('/admin/settings', {
         config: {
           google_calendar_embed_url: embedUrl || null,
-          microsoft_calendar_embed_url: microsoftEmbedUrl || null,
         },
       });
       setGoogleCalendarEmbedUrl(embedUrl);
       setGoogleCalendarDraft(embedUrl);
-      setMicrosoftCalendarEmbedUrl(microsoftEmbedUrl);
-      setMicrosoftCalendarDraft(microsoftEmbedUrl);
       toast.success('Integrações de agenda atualizadas');
     } catch (error: any) {
       console.error('Erro ao salvar Google Agenda:', error);
@@ -232,9 +321,28 @@ export default function Agenda() {
   };
 
   useEffect(() => {
+    try {
+      const rawUser = localStorage.getItem('user');
+      if (rawUser) {
+        const parsed = JSON.parse(rawUser);
+        setCurrentUser(parsed);
+        setNewVisit((current) => ({
+          ...current,
+          assigned_user_id: parsed?.id ? String(parsed.id) : current.assigned_user_id,
+        }));
+      }
+    } catch (error) {
+      console.error('Erro ao recuperar usuário logado da agenda:', error);
+    }
+
     carregarVisitas();
+    carregarCorretores();
     carregarConfiguracaoAgenda();
   }, []);
+
+  useEffect(() => {
+    carregarVisitas();
+  }, [assignedFilter]);
 
   return (
     <div className="flex">
@@ -265,14 +373,6 @@ export default function Agenda() {
               </button>
               <button
                 type="button"
-                onClick={() => window.open('https://outlook.office.com/calendar/', '_blank', 'noopener,noreferrer')}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-white/20 sm:w-auto"
-              >
-                <ExternalLink size={16} />
-                Abrir Microsoft Agenda
-              </button>
-              <button
-                type="button"
                 onClick={carregarVisitas}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-white/20 sm:w-auto"
               >
@@ -286,7 +386,7 @@ export default function Agenda() {
             {[
               { label: 'Visitas cadastradas', value: visitas.length },
               { label: 'Visitas hoje', value: todayCount },
-              { label: 'Confirmadas', value: confirmedCount },
+              { label: isBrokerUser ? 'Na minha agenda' : 'Confirmadas', value: isBrokerUser ? assignedToMeCount : confirmedCount },
             ].map((item) => (
               <div key={item.label} className="glass-panel rounded-2xl p-5">
                 <p className="text-sm text-muted-foreground">{item.label}</p>
@@ -296,7 +396,7 @@ export default function Agenda() {
           </div>
 
           <div className="glass-panel p-4 rounded-2xl mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_220px_240px]">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                 <input
@@ -318,6 +418,127 @@ export default function Agenda() {
                 <option value="concluida">Concluídas</option>
                 <option value="cancelada">Canceladas</option>
               </select>
+              <select
+                value={assignedFilter}
+                onChange={(event) => setAssignedFilter(event.target.value)}
+                className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isBrokerUser}
+              >
+                <option value="">{isBrokerUser ? 'Minha agenda' : 'Todos os responsáveis'}</option>
+                {corretores.map((corretor) => (
+                  <option key={corretor.id} value={String(corretor.id)}>
+                    {corretor.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mb-6 glass-panel rounded-3xl p-5">
+            <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Nova visita</p>
+                <p className="text-xs text-muted-foreground">
+                  Crie compromissos para sua própria agenda ou distribua para os corretores do time.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-muted-foreground">
+                {isBrokerUser ? 'Como corretor, novas visitas entram automaticamente na sua agenda.' : 'Administradores podem atribuir cada visita ao corretor ou manter na própria agenda.'}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-foreground">Imóvel</span>
+                <input
+                  type="text"
+                  value={newVisit.property_titulo}
+                  onChange={(event) => setNewVisit((current) => ({ ...current, property_titulo: event.target.value }))}
+                  placeholder="Ex: Apartamento 3 quartos no Centro"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-foreground">Cliente</span>
+                <input
+                  type="text"
+                  value={newVisit.nome}
+                  onChange={(event) => setNewVisit((current) => ({ ...current, nome: event.target.value }))}
+                  placeholder="Nome do cliente"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-foreground">Telefone</span>
+                <input
+                  type="tel"
+                  value={newVisit.telefone}
+                  onChange={(event) => setNewVisit((current) => ({ ...current, telefone: event.target.value }))}
+                  placeholder="(31) 99999-9999"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-foreground">E-mail</span>
+                <input
+                  type="email"
+                  value={newVisit.email}
+                  onChange={(event) => setNewVisit((current) => ({ ...current, email: event.target.value }))}
+                  placeholder="cliente@email.com"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-foreground">Data e hora</span>
+                <input
+                  type="datetime-local"
+                  value={newVisit.data_hora}
+                  onChange={(event) => setNewVisit((current) => ({ ...current, data_hora: event.target.value }))}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-foreground">Responsável</span>
+                <select
+                  value={newVisit.assigned_user_id}
+                  onChange={(event) => setNewVisit((current) => ({ ...current, assigned_user_id: event.target.value }))}
+                  disabled={isBrokerUser}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
+                >
+                  {currentUser?.id && <option value={String(currentUser.id)}>Minha agenda</option>}
+                  {corretores
+                    .filter((corretor) => String(corretor.id) !== String(currentUser?.id || ''))
+                    .map((corretor) => (
+                      <option key={corretor.id} value={String(corretor.id)}>
+                        {corretor.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className="block xl:col-span-2">
+                <span className="mb-1.5 block text-sm font-medium text-foreground">Observações</span>
+                <textarea
+                  value={newVisit.observacoes}
+                  onChange={(event) => setNewVisit((current) => ({ ...current, observacoes: event.target.value }))}
+                  placeholder="Detalhes do encontro, ponto de referência, imóvel desejado ou contexto do lead"
+                  rows={3}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground">
+                Novos agendamentos feitos pelo chat e pela tela inicial também entram nesta lista com a origem identificada.
+              </p>
+              <button
+                type="button"
+                onClick={criarVisita}
+                disabled={isCreatingVisit}
+                className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-sky-500 to-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 disabled:opacity-60"
+              >
+                {isCreatingVisit ? 'Criando visita...' : 'Criar visita'}
+              </button>
             </div>
           </div>
 
@@ -367,42 +588,27 @@ export default function Agenda() {
                 <div>
                   <div className="flex items-center gap-2 text-foreground">
                     <CalendarDays size={18} className="text-sky-300" />
-                    <p className="text-sm font-semibold">Google e Microsoft Agenda</p>
+                    <p className="text-sm font-semibold">Google Agenda</p>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Cole as URLs de incorporação do Google Calendar e do Outlook Calendar para ver as agendas oficiais lado a lado com a agenda interna.
+                    Cole a URL de incorporação do Google Calendar para acompanhar a agenda oficial junto da agenda interna.
                   </p>
                 </div>
               </div>
 
-              <div className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-                <div className="rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
-                  <p className="text-sm font-semibold text-foreground">Onde copiar no Google</p>
-                  <p className="mt-2 text-xs leading-6 text-muted-foreground">
-                    No Google Calendar, abra as configurações do calendário desejado, entre em "Integrar agenda" e copie apenas a URL do atributo <span className="font-semibold text-foreground">src</span> do código de incorporação. Não cole o iframe inteiro.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm font-semibold text-foreground">Onde copiar no Outlook</p>
-                  <p className="mt-2 text-xs leading-6 text-muted-foreground">
-                    No Outlook ou Microsoft 365 Calendar, publique ou incorpore o calendário e copie somente a URL do <span className="font-semibold text-foreground">src</span> do iframe gerado. A tela aceita a URL direta de embed.
-                  </p>
-                </div>
+              <div className="mb-4 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
+                <p className="text-sm font-semibold text-foreground">Onde copiar no Google</p>
+                <p className="mt-2 text-xs leading-6 text-muted-foreground">
+                  No Google Calendar, abra as configurações do calendário desejado, entre em "Integrar agenda" e copie apenas a URL do atributo <span className="font-semibold text-foreground">src</span> do código de incorporação. Não cole o iframe inteiro.
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_1fr_auto]">
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_auto]">
                 <input
                   type="url"
                   value={googleCalendarDraft}
                   onChange={(event) => setGoogleCalendarDraft(event.target.value)}
                   placeholder="Google: https://calendar.google.com/calendar/embed?..."
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <input
-                  type="url"
-                  value={microsoftCalendarDraft}
-                  onChange={(event) => setMicrosoftCalendarDraft(event.target.value)}
-                  placeholder="Microsoft: https://outlook.office.com/calendar/embed?..."
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
@@ -420,7 +626,7 @@ export default function Agenda() {
                 Dica: se você copiar um código completo de iframe, extraia apenas o valor de <span className="font-semibold text-foreground">src="..."</span> e cole aqui.
               </p>
 
-              <div className="mt-4 grid grid-cols-1 gap-4 2xl:grid-cols-2">
+              <div className="mt-4">
                 <div className="rounded-2xl border border-white/10 bg-[#07111d]/70 p-3">
                   {googleCalendarEmbedUrl ? (
                     <iframe
@@ -436,26 +642,6 @@ export default function Agenda() {
                       <p className="font-medium text-foreground">Google Agenda não configurado</p>
                       <p className="mt-2 max-w-md text-sm text-muted-foreground">
                         Use a URL de incorporação do seu calendário Google para acompanhar a agenda externa sem sair desta tela.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-[#07111d]/70 p-3">
-                  {microsoftCalendarEmbedUrl ? (
-                    <iframe
-                      src={microsoftCalendarEmbedUrl}
-                      title="Microsoft Agenda"
-                      className="h-[420px] w-full rounded-2xl border border-white/10 bg-white"
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
-                  ) : (
-                    <div className="flex h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 text-center text-muted-foreground">
-                      <CalendarDays size={28} className="mb-3 text-sky-300" />
-                      <p className="font-medium text-foreground">Microsoft Agenda não configurado</p>
-                      <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                        Use a URL de incorporação do Outlook Calendar ou Microsoft 365 para visualizar sua agenda oficial nesta tela.
                       </p>
                     </div>
                   )}
@@ -492,6 +678,13 @@ export default function Agenda() {
                           {visita.email && <span className="ml-2">• {visita.email}</span>}
                           {visita.telefone && <span className="ml-2">• {visita.telefone}</span>}
                         </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-foreground">
+                            {visita.assigned_user_name || 'Sem responsável'}
+                          </span>
+                          <span>{formatVisitOrigin(visita.origem)}</span>
+                          {visita.created_by_user_name && <span>• criado por {visita.created_by_user_name}</span>}
+                        </div>
                         <div className="text-sm text-muted-foreground">{formatDateTime(visita.data_hora)}</div>
                         {visita.observacoes && (
                           <p className="text-sm text-muted-foreground">{visita.observacoes}</p>
@@ -509,15 +702,6 @@ export default function Agenda() {
                         >
                           <ExternalLink size={14} />
                           Google Agenda
-                        </a>
-                        <a
-                          href={buildMicrosoftCalendarUrl(visita)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-foreground transition hover:bg-white/20"
-                        >
-                          <ExternalLink size={14} />
-                          Microsoft Agenda
                         </a>
                         <select
                           value={visita.status}

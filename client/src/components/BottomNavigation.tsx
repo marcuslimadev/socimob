@@ -4,8 +4,6 @@ import {
   BarChart3,
   Users,
   Home,
-  MessageSquare,
-  Bell,
   MoreHorizontal,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -39,12 +37,9 @@ export default function BottomNavigation() {
     { icon: <BarChart3 size={24} />, label: 'Dashboard', href: '/dashboard' },
     { icon: <Users size={24} />, label: 'CRM', href: '/crm' },
     { icon: <Home size={24} />, label: 'Imóveis', href: '/properties' },
-    { icon: <Bell size={24} />, label: 'Alertas', href: '/notifications' },
   ];
 
-  const moreNavItems: NavItem[] = [
-    { icon: <Bell size={24} />, label: 'Notificações', href: '/notifications', badge: 5 },
-  ];
+  const moreNavItems: NavItem[] = [];
 
   const isActive = (href: string) => location === href || (href !== '/dashboard' && location.startsWith(href));
 
@@ -90,49 +85,51 @@ export default function BottomNavigation() {
           })}
 
           {/* More Menu */}
-          <div className="relative">
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setShowMore(!showMore)}
-              className="flex flex-col items-center justify-center px-3 py-2 rounded-xl hover:bg-white/5 transition-all"
-            >
-              <MoreHorizontal size={24} className="text-muted-foreground" />
-              <span className="text-[10px] mt-1 font-medium text-muted-foreground">Mais</span>
-            </motion.button>
-
-            {showMore && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute bottom-full right-0 mb-2 w-48 bg-gray-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
+          {moreNavItems.length > 0 && (
+            <div className="relative">
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setShowMore(!showMore)}
+                className="flex flex-col items-center justify-center px-3 py-2 rounded-xl hover:bg-white/5 transition-all"
               >
-                {moreNavItems.map((item) => {
-                  const active = isActive(item.href);
-                  return (
-                    <Link key={item.label} to={item.href}>
-                      <motion.div
-                        onClick={() => setShowMore(false)}
-                        className={`flex items-center gap-3 px-4 py-3 transition-all ${
-                          active
-                            ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 text-blue-400'
-                            : 'text-muted-foreground hover:bg-white/5'
-                        }`}
-                      >
-                        {item.icon}
-                        <span className="text-sm font-medium">{item.label}</span>
-                        {item.badge && (
-                          <span className="ml-auto bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                            {item.badge}
-                          </span>
-                        )}
-                      </motion.div>
-                    </Link>
-                  );
-                })}
-              </motion.div>
-            )}
-          </div>
+                <MoreHorizontal size={24} className="text-muted-foreground" />
+                <span className="text-[10px] mt-1 font-medium text-muted-foreground">Mais</span>
+              </motion.button>
+
+              {showMore && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute bottom-full right-0 mb-2 w-48 bg-gray-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
+                >
+                  {moreNavItems.map((item) => {
+                    const active = isActive(item.href);
+                    return (
+                      <Link key={item.label} to={item.href}>
+                        <motion.div
+                          onClick={() => setShowMore(false)}
+                          className={`flex items-center gap-3 px-4 py-3 transition-all ${
+                            active
+                              ? 'bg-gradient-to-r from-blue-500/30 to-purple-500/30 text-blue-400'
+                              : 'text-muted-foreground hover:bg-white/5'
+                          }`}
+                        >
+                          {item.icon}
+                          <span className="text-sm font-medium">{item.label}</span>
+                          {item.badge && (
+                            <span className="ml-auto bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                              {item.badge}
+                            </span>
+                          )}
+                        </motion.div>
+                      </Link>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </div>
+          )}
         </div>
       </motion.div>
 

@@ -8,7 +8,6 @@ import {
   LogOut,
   Menu,
   X,
-  Bell,
   CalendarClock,
   Wallet,
   Building2,
@@ -31,6 +30,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { normalizeHiddenSidebarKeys } from '@/lib/sidebarVisibility';
 import { useTheme } from '@/contexts/ThemeContext';
 import TenantSelector from './TenantSelector';
 
@@ -40,6 +40,7 @@ interface SidebarProps {
 }
 
 interface SidebarItem {
+  key: string;
   icon: React.ReactNode;
   label: string;
   href: string;
@@ -120,9 +121,9 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
-  const [notificationCount, setNotificationCount] = useState(0);
   const [leadsCount, setLeadsCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [hiddenSidebarKeys, setHiddenSidebarKeys] = useState<string[]>([]);
   const { theme, setTheme } = useTheme();
   const isDarkTheme = theme === 'dark';
   const badgePollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -193,6 +194,19 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   }, []);
 
   useEffect(() => {
+    const loadHiddenSidebarItems = async () => {
+      try {
+        const response = await api.get('/admin/settings');
+        setHiddenSidebarKeys(normalizeHiddenSidebarKeys(response.data?.config?.hidden_sidebar_keys));
+      } catch {
+        setHiddenSidebarKeys([]);
+      }
+    };
+
+    void loadHiddenSidebarItems();
+  }, []);
+
+  useEffect(() => {
     const clearBadgePollingTimer = () => {
       if (badgePollingTimeoutRef.current) {
         clearTimeout(badgePollingTimeoutRef.current);
@@ -225,11 +239,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       badgePollingInFlightRef.current = true;
 
       try {
-        const notifResult = await api.get('/notifications/unread-count');
-        if (notifResult.data?.unread_count !== undefined) {
-          setNotificationCount(notifResult.data.unread_count);
-        }
-
         const leadsResult = await api.get('/leads/stats');
         if (leadsResult.data?.success && leadsResult.data?.data?.novos !== undefined) {
           setLeadsCount(leadsResult.data.data.novos);
@@ -287,9 +296,8 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       label: 'Principal',
       href: '/dashboard',
       items: [
-        { icon: <BarChart3 size={16} />, label: 'Dashboard', href: '/dashboard' },
-        { icon: <Bell size={16} />, label: 'Notificações', href: '/notifications', badge: notificationCount || undefined },
-        { icon: <CalendarClock size={16} />, label: 'Agenda', href: '/agenda' },
+        { key: 'dashboard', icon: <BarChart3 size={16} />, label: 'Dashboard', href: '/dashboard' },
+        { key: 'agenda', icon: <CalendarClock size={16} />, label: 'Agenda', href: '/agenda' },
       ],
     },
     {
@@ -299,13 +307,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       href: '/crm',
       items: [
         {
+          key: 'crm',
           icon: <Users size={16} />,
           label: 'CRM',
           href: '/crm',
           badge: (leadsCount || 0) + (unreadMessagesCount || 0) || undefined,
         },
-        { icon: <UserRound size={16} />, label: 'Pessoas', href: '/pessoas' },
-        { icon: <Zap size={16} />, label: 'Marketing / Anúncios', href: '/ads' },
+        { key: 'pessoas', icon: <UserRound size={16} />, label: 'Pessoas', href: '/pessoas' },
+        { key: 'ads', icon: <Zap size={16} />, label: 'Marketing / Anúncios', href: '/ads' },
       ],
     },
     {
@@ -314,10 +323,10 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       label: 'Imóveis',
       href: '/properties',
       items: [
-        { icon: <Home size={16} />, label: 'Imóveis', href: '/properties' },
-        { icon: <Image size={16} />, label: 'Propaganda', href: '/properties/propaganda' },
-        { icon: <KeyRound size={16} />, label: 'Controle de Chaves', href: '/controle-chaves' },
-        { icon: <Building2 size={16} />, label: 'ImobiBrasil', href: '/imobi-brasil' },
+        { key: 'properties', icon: <Home size={16} />, label: 'Imóveis', href: '/properties' },
+        { key: 'properties-propaganda', icon: <Image size={16} />, label: 'Propaganda', href: '/properties/propaganda' },
+        { key: 'controle-chaves', icon: <KeyRound size={16} />, label: 'Controle de Chaves', href: '/controle-chaves' },
+        { key: 'imobi-brasil', icon: <Building2 size={16} />, label: 'ImobiBrasil', href: '/imobi-brasil' },
       ],
     },
     {
@@ -326,11 +335,11 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       label: 'Operacional',
       href: '/vistorias',
       items: [
-        { icon: <ClipboardCheck size={16} />, label: 'Vistorias', href: '/vistorias' },
-        { icon: <FileSignature size={16} />, label: 'Assinaturas', href: '/assinaturas' },
-        { icon: <FileSpreadsheet size={16} />, label: 'Locação / Operação', href: '/financeiro/locacao' },
-        { icon: <FileSignature size={16} />, label: 'Compra e Venda', href: '/financeiro/compra-venda' },
-        { icon: <FileText size={16} />, label: 'Templates de Contrato', href: '/contrato-templates' },
+        { key: 'vistorias', icon: <ClipboardCheck size={16} />, label: 'Vistorias', href: '/vistorias' },
+        { key: 'assinaturas', icon: <FileSignature size={16} />, label: 'Assinaturas', href: '/assinaturas' },
+        { key: 'financeiro-locacao', icon: <FileSpreadsheet size={16} />, label: 'Locação / Operação', href: '/financeiro/locacao' },
+        { key: 'financeiro-compra-venda', icon: <FileSignature size={16} />, label: 'Compra e Venda', href: '/financeiro/compra-venda' },
+        { key: 'contrato-templates', icon: <FileText size={16} />, label: 'Templates de Contrato', href: '/contrato-templates' },
       ],
     },
     {
@@ -339,8 +348,8 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       label: 'Financeiro',
       href: '/financeiro',
       items: [
-        { icon: <Wallet size={16} />, label: 'Financeiro', href: '/financeiro' },
-        { icon: <BookOpen size={16} />, label: 'Contas a Pagar/Receber', href: '/financeiro/contas' },
+        { key: 'financeiro', icon: <Wallet size={16} />, label: 'Financeiro', href: '/financeiro' },
+        { key: 'financeiro-contas', icon: <BookOpen size={16} />, label: 'Contas a Pagar/Receber', href: '/financeiro/contas' },
       ],
     },
     ...((user?.role === 'admin' || user?.role === 'super_admin')
@@ -351,9 +360,9 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             label: 'Administração',
             href: '/analytics',
             items: [
-              { icon: <LineChart size={16} />, label: 'Estatísticas', href: '/analytics' },
-              { icon: <Shield size={16} />, label: 'Usuários', href: '/admin/users' },
-              { icon: <FileText size={16} />, label: 'Logs do Sistema', href: '/system-logs' },
+              { key: 'analytics', icon: <LineChart size={16} />, label: 'Estatísticas', href: '/analytics' },
+              { key: 'admin-users', icon: <Shield size={16} />, label: 'Usuários', href: '/admin/users' },
+              { key: 'system-logs', icon: <FileText size={16} />, label: 'Logs do Sistema', href: '/system-logs' },
             ],
           } as SidebarSection,
         ]
@@ -366,16 +375,23 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             label: 'Super Admin',
             href: '/tenants',
             items: [
-              { icon: <Building2 size={16} />, label: 'Tenants', href: '/tenants' },
-              { icon: <Link2 size={16} />, label: 'Assoc. Tenants', href: '/tenants/associacoes' },
+              { key: 'tenants', icon: <Building2 size={16} />, label: 'Tenants', href: '/tenants' },
+              { key: 'tenants-associacoes', icon: <Link2 size={16} />, label: 'Assoc. Tenants', href: '/tenants/associacoes' },
             ],
           } as SidebarSection,
         ]
       : []),
   ];
 
+  const visibleSections = sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !hiddenSidebarKeys.includes(item.key)),
+    }))
+    .filter((section) => section.items.length > 0);
+
   const currentSection =
-    sections.find(
+    visibleSections.find(
       (section) => isRouteMatch(location, section.href) || section.items.some((item) => isRouteMatch(location, item.href)),
     ) || null;
 
@@ -392,7 +408,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     return undefined;
   }, [currentSection]);
 
-  const settingsItem: SidebarItem = { icon: <Settings size={17} />, label: 'Configurações', href: '/settings' };
+  const settingsItem: SidebarItem = { key: 'settings', icon: <Settings size={17} />, label: 'Configurações', href: '/settings' };
   const settingsActive = isRouteMatch(location, settingsItem.href);
 
   const handleLogout = () => {
@@ -422,7 +438,8 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   };
 
   const primaryTabs: SidebarItem[] = [
-    ...sections.map((section) => ({
+    ...visibleSections.map((section) => ({
+      key: section.id,
       icon: section.icon,
       label: section.label,
       href: section.href,
@@ -432,7 +449,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   ];
 
   const secondaryTabs = currentSection?.items || [];
-  const activePrimaryTab = primaryTabs.find((tab) => isPrimaryTabActive(tab, sections, currentSection, settingsActive)) || null;
+  const activePrimaryTab = primaryTabs.find((tab) => isPrimaryTabActive(tab, visibleSections, currentSection, settingsActive)) || null;
   const showFixedSubmenu = secondaryTabs.length > 1;
 
   return (
@@ -514,7 +531,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
           <nav className="hidden border-t border-white/8 py-2 md:block">
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-              {sections.map((section) => {
+              {visibleSections.map((section) => {
                 const isActive = currentSection?.id === section.id;
                 const sectionBadge = getSectionBadge(section);
 
@@ -602,7 +619,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
                   <div className="grid gap-2">
                     {primaryTabs.map((tab) => {
-                      const isActive = isPrimaryTabActive(tab, sections, currentSection, settingsActive);
+                      const isActive = isPrimaryTabActive(tab, visibleSections, currentSection, settingsActive);
 
                       return (
                         <Link key={tab.href} to={tab.href}>

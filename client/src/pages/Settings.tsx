@@ -35,6 +35,7 @@ import {
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
+import { getSidebarVisibilitySections, normalizeHiddenSidebarKeys } from '@/lib/sidebarVisibility';
 
 interface SettingSection {
   id: string;
@@ -229,6 +230,7 @@ export default function Settings() {
     max_leads: 5000,
     auto_assign_leads: false,
     portal_finalidades: [] as string[],
+    hidden_sidebar_keys: [] as string[],
     twilio_account_sid: '',
     twilio_auth_token: '',
     twilio_whatsapp_from: '',
@@ -244,6 +246,7 @@ export default function Settings() {
     }
   })() : undefined;
   const isAdminRole = ['admin', 'super_admin'].includes(profileUser?.role || storedRole || '');
+  const sidebarVisibilitySections = getSidebarVisibilitySections(profileUser?.role || storedRole);
 
   const sections: SettingSection[] = [
     {
@@ -369,6 +372,7 @@ export default function Settings() {
             max_leads: config.max_leads || 5000,
             auto_assign_leads: config.auto_assign_leads ?? false,
             portal_finalidades: config.portal_finalidades || [],
+            hidden_sidebar_keys: normalizeHiddenSidebarKeys(config.hidden_sidebar_keys),
             twilio_account_sid: config.twilio_account_sid || '',
             twilio_auth_token: '',
             twilio_whatsapp_from: config.twilio_whatsapp_from || '',
@@ -581,6 +585,30 @@ export default function Settings() {
   };
 
   const isClient = profileUser?.role === 'client';
+
+  const toggleHiddenSidebarKey = (key: string) => {
+    setTenantConfigForm((current) => {
+      const exists = current.hidden_sidebar_keys.includes(key);
+      return {
+        ...current,
+        hidden_sidebar_keys: exists
+          ? current.hidden_sidebar_keys.filter((item) => item !== key)
+          : [...current.hidden_sidebar_keys, key],
+      };
+    });
+  };
+
+  const toggleHiddenSidebarSection = (itemKeys: string[]) => {
+    setTenantConfigForm((current) => {
+      const everyHidden = itemKeys.every((key) => current.hidden_sidebar_keys.includes(key));
+      return {
+        ...current,
+        hidden_sidebar_keys: everyHidden
+          ? current.hidden_sidebar_keys.filter((key) => !itemKeys.includes(key))
+          : Array.from(new Set([...current.hidden_sidebar_keys, ...itemKeys])),
+      };
+    });
+  };
 
   return (
     <div className="flex">
@@ -1506,6 +1534,76 @@ export default function Settings() {
                             />
                             <span className="text-foreground font-semibold">Aluguel</span>
                           </label>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-6 mt-6">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+                          <div>
+                            <h3 className="text-lg font-bold text-foreground">Menus do Sistema</h3>
+                            <p className="text-sm text-muted-foreground">
+                              Marque o que deve ficar oculto no menu lateral. Configurações continua visível para facilitar ajustes futuros.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setTenantConfigForm({ ...tenantConfigForm, hidden_sidebar_keys: [] })}
+                            className="px-3 py-2 rounded-lg border border-white/15 bg-white/5 text-sm font-semibold text-foreground hover:bg-white/10 transition-colors"
+                          >
+                            Mostrar todos
+                          </button>
+                        </div>
+
+                        <div className="space-y-4">
+                          {sidebarVisibilitySections.map((section) => {
+                            const sectionKeys = section.items.map((item) => item.key);
+                            const hiddenCount = sectionKeys.filter((key) => tenantConfigForm.hidden_sidebar_keys.includes(key)).length;
+                            const sectionHidden = hiddenCount === sectionKeys.length;
+
+                            return (
+                              <div key={section.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-3">
+                                  <div>
+                                    <p className="font-semibold text-foreground">{section.label}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {hiddenCount > 0
+                                        ? `${hiddenCount} menu(s) oculto(s) nesta seção.`
+                                        : 'Todos os menus desta seção estão visíveis.'}
+                                    </p>
+                                  </div>
+                                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={sectionHidden}
+                                      onChange={() => toggleHiddenSidebarSection(sectionKeys)}
+                                      className="w-4 h-4 rounded border-white/20 bg-white/10 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <span>Ocultar seção inteira</span>
+                                  </label>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                  {section.items.map((item) => {
+                                    const hidden = tenantConfigForm.hidden_sidebar_keys.includes(item.key);
+                                    return (
+                                      <label key={item.key} className="flex items-start gap-3 rounded-xl border border-white/8 bg-black/10 px-3 py-3 cursor-pointer hover:bg-white/5 transition-colors">
+                                        <input
+                                          type="checkbox"
+                                          checked={hidden}
+                                          onChange={() => toggleHiddenSidebarKey(item.key)}
+                                          className="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/10 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                                        />
+                                        <div>
+                                          <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                                          <p className="text-xs text-muted-foreground">{item.href}</p>
+                                        </div>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 
