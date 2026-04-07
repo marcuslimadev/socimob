@@ -1063,8 +1063,9 @@ export default function Financeiro() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(340px,0.92fr)_minmax(0,1.08fr)] gap-6 items-start">
-            <div className="space-y-6">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(340px,0.92fr)_minmax(280px,0.48fr)] gap-6 items-start">
+              <div className="space-y-6">
               <div className="glass-panel p-6 rounded-2xl space-y-6">
                 <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                   <FileText size={20} />
@@ -1495,6 +1496,7 @@ export default function Financeiro() {
                   </div>
                 </div>
               </div>
+            </div>
             </div>
 
             <div className="glass-panel p-6 rounded-2xl space-y-5 min-w-0">
