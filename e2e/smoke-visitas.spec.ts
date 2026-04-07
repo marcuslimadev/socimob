@@ -64,7 +64,10 @@ test('smoke end-to-end de agenda, portal inicial e chat', async ({ page, context
   const assigneeOptions = await assigneeSelect.locator('option').allTextContents();
   const preferredAssignee = assigneeOptions.find((option) => /Nelson|Roberto|Joice|Jocineide/i.test(option)) || assigneeOptions[0];
   await assigneeSelect.selectOption({ label: preferredAssignee });
+  const manualCreateResponse = page.waitForResponse((response) => response.url().includes('/api/admin/visitas') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Criar visita' }).click();
+  await manualCreateResponse;
+  await page.goto(`${baseUrl}/agenda`, { waitUntil: 'domcontentloaded' });
   await expect(page.getByText(manualVisitName)).toBeVisible({ timeout: 20_000 });
 
   await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });

@@ -65,6 +65,17 @@ interface DashboardStats {
   };
 }
 
+interface ChartCorretor {
+  corretor_nome?: string;
+  captador_nome?: string;
+  total: number;
+}
+
+interface ChartDiario {
+  data: string;
+  total: number;
+}
+
 const numberFormatter = new Intl.NumberFormat('pt-BR');
 
 function formatNumber(value: number): string {
@@ -92,6 +103,33 @@ export default function Dashboard() {
       return null;
     },
     staleTime: 2 * 60 * 1000,
+  });
+
+  const { data: atendimentosCorretor } = useQuery({
+    queryKey: ['dashboard', 'chart', 'atendimentos-corretor'],
+    queryFn: async () => {
+      const res = await api.get('/dashboard/chart/atendimentos-por-corretor');
+      return res.data.success ? (res.data.data as ChartCorretor[]) : [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: captacoesCorretor } = useQuery({
+    queryKey: ['dashboard', 'chart', 'captacoes-corretor'],
+    queryFn: async () => {
+      const res = await api.get('/dashboard/chart/captacoes-por-corretor');
+      return res.data.success ? (res.data.data as ChartCorretor[]) : [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: acessosPortal } = useQuery({
+    queryKey: ['dashboard', 'chart', 'acessos-portal'],
+    queryFn: async () => {
+      const res = await api.get('/dashboard/chart/acessos-portal-por-dia');
+      return res.data.success ? (res.data.data as ChartDiario[]) : [];
+    },
+    staleTime: 5 * 60 * 1000,
   });
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -294,6 +332,155 @@ export default function Dashboard() {
       ],
     };
   }, [isLightTheme, stats]);
+
+  const baseChartProps: Partial<Highcharts.Options> = {
+    accessibility: { enabled: false },
+    credits: { enabled: false },
+    title: { text: undefined },
+    legend: { enabled: false },
+    tooltip: {
+      backgroundColor: isLightTheme ? 'rgba(255,255,255,0.98)' : 'rgba(8,15,28,0.96)',
+      borderColor: isLightTheme ? 'rgba(148,163,184,0.24)' : 'rgba(125,211,252,0.24)',
+      borderRadius: 12,
+      style: { color: isLightTheme ? '#0f172a' : '#e2e8f0' },
+      shadow: false,
+    },
+  };
+
+  const axisLabelStyle = {
+    color: isLightTheme ? '#64748b' : '#94a3b8',
+    fontSize: '11px',
+  };
+
+  const atendimentosCorretorChart = useMemo<Highcharts.Options>(() => {
+    const cats = atendimentosCorretor?.map(d => d.corretor_nome ?? '') ?? [];
+    const vals = atendimentosCorretor?.map(d => d.total) ?? [];
+    return {
+      ...baseChartProps,
+      chart: {
+        type: 'bar',
+        backgroundColor: 'transparent',
+        height: 260,
+        spacing: [8, 8, 8, 8],
+        style: { fontFamily: 'var(--font-secondary)' },
+      },
+      xAxis: {
+        categories: cats,
+        lineColor: isLightTheme ? 'rgba(148,163,184,0.3)' : 'rgba(255,255,255,0.12)',
+        tickColor: 'transparent',
+        labels: { style: axisLabelStyle },
+      },
+      yAxis: {
+        title: { text: undefined },
+        allowDecimals: false,
+        gridLineColor: isLightTheme ? 'rgba(148,163,184,0.16)' : 'rgba(255,255,255,0.08)',
+        labels: { style: axisLabelStyle },
+      },
+      plotOptions: {
+        bar: {
+          borderRadius: 6,
+          borderWidth: 0,
+          dataLabels: { enabled: true, style: { ...axisLabelStyle, fontWeight: '600' } },
+        },
+      },
+      series: [
+        {
+          type: 'bar',
+          name: 'Atendimentos',
+          data: vals,
+          color: isLightTheme ? '#3b82f6' : '#60a5fa',
+        },
+      ],
+    };
+  }, [isLightTheme, atendimentosCorretor]);
+
+  const captacoesCorretorChart = useMemo<Highcharts.Options>(() => {
+    const cats = captacoesCorretor?.map(d => d.captador_nome ?? '') ?? [];
+    const vals = captacoesCorretor?.map(d => d.total) ?? [];
+    return {
+      ...baseChartProps,
+      chart: {
+        type: 'column',
+        backgroundColor: 'transparent',
+        height: 260,
+        spacing: [8, 8, 8, 8],
+        style: { fontFamily: 'var(--font-secondary)' },
+      },
+      xAxis: {
+        categories: cats,
+        lineColor: isLightTheme ? 'rgba(148,163,184,0.3)' : 'rgba(255,255,255,0.12)',
+        tickColor: 'transparent',
+        labels: { style: axisLabelStyle, rotation: -30 },
+      },
+      yAxis: {
+        title: { text: undefined },
+        allowDecimals: false,
+        gridLineColor: isLightTheme ? 'rgba(148,163,184,0.16)' : 'rgba(255,255,255,0.08)',
+        labels: { style: axisLabelStyle },
+      },
+      plotOptions: {
+        column: {
+          borderRadius: 8,
+          borderWidth: 0,
+          dataLabels: { enabled: true, style: { ...axisLabelStyle, fontWeight: '600' } },
+        },
+      },
+      series: [
+        {
+          type: 'column',
+          name: 'Captações',
+          data: vals,
+          color: isLightTheme ? '#10b981' : '#34d399',
+        },
+      ],
+    };
+  }, [isLightTheme, captacoesCorretor]);
+
+  const acessosPortalChart = useMemo<Highcharts.Options>(() => {
+    const days = acessosPortal?.map(d => d.data.slice(5)) ?? [];
+    const vals = acessosPortal?.map(d => d.total) ?? [];
+    const fillColor = isLightTheme
+      ? { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(139,92,246,0.30)'], [1, 'rgba(139,92,246,0.02)']] as [number, string][] }
+      : { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(167,139,250,0.30)'], [1, 'rgba(167,139,250,0.02)']] as [number, string][] };
+    return {
+      ...baseChartProps,
+      chart: {
+        type: 'areaspline',
+        backgroundColor: 'transparent',
+        height: 200,
+        spacing: [8, 8, 8, 8],
+        style: { fontFamily: 'var(--font-secondary)' },
+      },
+      xAxis: {
+        categories: days,
+        lineColor: isLightTheme ? 'rgba(148,163,184,0.3)' : 'rgba(255,255,255,0.12)',
+        tickColor: 'transparent',
+        tickInterval: Math.max(1, Math.floor((days.length - 1) / 6)),
+        labels: { style: axisLabelStyle },
+      },
+      yAxis: {
+        title: { text: undefined },
+        allowDecimals: false,
+        gridLineColor: isLightTheme ? 'rgba(148,163,184,0.16)' : 'rgba(255,255,255,0.08)',
+        labels: { style: axisLabelStyle },
+      },
+      plotOptions: {
+        areaspline: {
+          marker: { enabled: false, radius: 3, states: { hover: { enabled: true } } },
+          lineWidth: 2,
+          fillColor,
+        },
+      },
+      series: [
+        {
+          type: 'areaspline',
+          name: 'Acessos',
+          data: vals,
+          color: isLightTheme ? '#8b5cf6' : '#a78bfa',
+        },
+      ],
+    };
+  }, [isLightTheme, acessosPortal]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -530,6 +717,61 @@ export default function Dashboard() {
               </div>
             );
           })}
+        </motion.div>
+
+        {/* --- Gráficos analíticos por corretor e portal --- */}
+        <motion.div variants={itemVariants} className="mb-6 grid gap-4 xl:grid-cols-2">
+          <div className="glass-panel rounded-[24px] border border-white/10 p-4 sm:p-5">
+            <div className="mb-3">
+              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">CRM</p>
+              <h2 className="mt-1 text-base font-semibold text-foreground">Atendimentos por corretor</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">Distribuição de leads assumidos por cada corretor</p>
+            </div>
+            {atendimentosCorretor && atendimentosCorretor.length > 0 ? (
+              <HighchartsReact highcharts={Highcharts} options={atendimentosCorretorChart} />
+            ) : (
+              <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+                Nenhum atendimento com corretor atribuido
+              </div>
+            )}
+          </div>
+
+          <div className="glass-panel rounded-[24px] border border-white/10 p-4 sm:p-5">
+            <div className="mb-3">
+              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Inventario</p>
+              <h2 className="mt-1 text-base font-semibold text-foreground">Captações por corretor</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">Imoveis captados por cada corretor no inventario</p>
+            </div>
+            {captacoesCorretor && captacoesCorretor.length > 0 ? (
+              <HighchartsReact highcharts={Highcharts} options={captacoesCorretorChart} />
+            ) : (
+              <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+                Nenhuma captação com corretor registrado
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="mb-6">
+          <div className="glass-panel rounded-[24px] border border-white/10 p-4 sm:p-5">
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Portal do cliente</p>
+                <h2 className="mt-1 text-base font-semibold text-foreground">Acessos ao portal por dia</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">Pageviews registrados nos ultimos 30 dias</p>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-muted-foreground">
+                ultimos 30 dias
+              </div>
+            </div>
+            {acessosPortal && acessosPortal.length > 0 ? (
+              <HighchartsReact highcharts={Highcharts} options={acessosPortalChart} />
+            ) : (
+              <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+                Nenhum acesso registrado neste periodo
+              </div>
+            )}
+          </div>
         </motion.div>
 
         <motion.div variants={itemVariants}>

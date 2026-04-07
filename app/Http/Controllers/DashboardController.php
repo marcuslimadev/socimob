@@ -596,6 +596,115 @@ class DashboardController extends Controller
         return $map[$tipo] ?? 'gray';
     }
 
+    /**
+     * Gráfico de atendimentos por corretor
+     * GET /api/dashboard/chart/atendimentos-por-corretor
+     */
+    public function chartAtendimentosPorCorretor(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $tenantId = $user->tenant_id ?? ($request->attributes->get('tenant_id') ?? null);
+
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
+
+            $db = app('db');
+            $dados = $db->table('leads')
+                ->leftJoin('users', 'leads.corretor_id', '=', 'users.id')
+                ->select(
+                    'leads.corretor_id',
+                    $db->raw('COALESCE(users.name, "Sem corretor") as corretor_nome'),
+                    $db->raw('COUNT(*) as total')
+                )
+                ->where('leads.tenant_id', $tenantId)
+                ->whereNotNull('leads.corretor_id')
+                ->groupBy('leads.corretor_id', 'users.name')
+                ->orderByDesc('total')
+                ->limit(20)
+                ->get();
+
+            return response()->json(['success' => true, 'data' => $dados]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Gráfico de captações por corretor
+     * GET /api/dashboard/chart/captacoes-por-corretor
+     */
+    public function chartCaptacoesPorCorretor(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $tenantId = $user->tenant_id ?? ($request->attributes->get('tenant_id') ?? null);
+
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
+
+            if (!Schema::hasTable('imo_properties')) {
+                return response()->json(['success' => true, 'data' => []]);
+            }
+
+            $db = app('db');
+            $dados = $db->table('imo_properties')
+                ->select(
+                    $db->raw('COALESCE(NULLIF(captador_nome, ""), "Sem captador") as captador_nome'),
+                    $db->raw('COUNT(*) as total')
+                )
+                ->where('tenant_id', $tenantId)
+                ->groupBy('captador_nome')
+                ->orderByDesc('total')
+                ->limit(20)
+                ->get();
+
+            return response()->json(['success' => true, 'data' => $dados]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Gráfico de acessos ao portal por dia (últimos 30 dias)
+     * GET /api/dashboard/chart/acessos-portal-por-dia
+     */
+    public function chartAcessosPortalPorDia(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $tenantId = $user->tenant_id ?? ($request->attributes->get('tenant_id') ?? null);
+
+            if (!$tenantId) {
+                return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+            }
+
+            if (!Schema::hasTable('analytics_events')) {
+                return response()->json(['success' => true, 'data' => []]);
+            }
+
+            $db = app('db');
+            $dataInicio = date('Y-m-d', strtotime('-29 days'));
+            $dados = $db->table('analytics_events')
+                ->select(
+                    $db->raw('DATE(occurred_at) as data'),
+                    $db->raw('COUNT(*) as total')
+                )
+                ->where('tenant_id', $tenantId)
+                ->where('event_name', 'pageview')
+                ->where('occurred_at', '>=', $dataInicio)
+                ->groupBy('data')
+                ->orderBy('data')
+                ->get();
+
+            return response()->json(['success' => true, 'data' => $dados]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
     private function extractLinkFromContext(array $context): ?string
     {
         if (isset($context['lead_id'])) return '/leads';

@@ -296,6 +296,9 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     // Dashboard
     $router->get('/dashboard/stats', 'App\Http\Controllers\DashboardController@stats');
     $router->get('/dashboard/chart/atendimentos', 'App\Http\Controllers\DashboardController@chartAtendimentos');
+    $router->get('/dashboard/chart/atendimentos-por-corretor', 'App\Http\Controllers\DashboardController@chartAtendimentosPorCorretor');
+    $router->get('/dashboard/chart/captacoes-por-corretor', 'App\Http\Controllers\DashboardController@chartCaptacoesPorCorretor');
+    $router->get('/dashboard/chart/acessos-portal-por-dia', 'App\Http\Controllers\DashboardController@chartAcessosPortalPorDia');
     $router->get('/dashboard/atividades', 'App\Http\Controllers\DashboardController@atividades');
     $router->get('/dashboard/timeline', 'App\Http\Controllers\DashboardController@timeline');
 
