@@ -1064,12 +1064,12 @@ export default function Financeiro() {
           </div>
 
           <div className="space-y-6">
-            <div className="grid grid-cols-1 xl:grid-cols-[minmax(340px,0.92fr)_minmax(280px,0.48fr)] gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[1.2fr_0.8fr] gap-6 items-start">
               <div className="space-y-6">
               <div className="glass-panel p-6 rounded-2xl space-y-6">
                 <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                   <FileText size={20} />
-                  Wizard de emissão
+                  Nova Emissão
                 </div>
 
                 <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -1472,8 +1472,8 @@ export default function Financeiro() {
                 </form>
               </div>
 
-              <div className="glass-panel p-6 rounded-2xl">
-                <div className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
+              <div className="glass-panel p-6 rounded-2xl h-fit">
+                <div className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
                   <Banknote size={20} />
                   Resumo da emissão
                 </div>
