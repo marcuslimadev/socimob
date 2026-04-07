@@ -1065,7 +1065,7 @@ export default function Financeiro() {
 
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[1.2fr_0.8fr] gap-6 items-start">
-              <div className="space-y-6">
+                <div className="space-y-6 min-w-0">
               <div className="glass-panel p-6 rounded-2xl space-y-6">
                 <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
                   <FileText size={20} />
@@ -1471,8 +1471,9 @@ export default function Financeiro() {
                   </div>
                 </form>
               </div>
+              </div>
 
-              <div className="glass-panel p-6 rounded-2xl h-fit">
+              <div className="glass-panel h-fit rounded-2xl p-6 xl:sticky xl:top-6">
                 <div className="mb-5 flex items-center gap-2 text-lg font-semibold text-foreground">
                   <Banknote size={20} />
                   Resumo da emissão
@@ -1496,7 +1497,6 @@ export default function Financeiro() {
                   </div>
                 </div>
               </div>
-            </div>
             </div>
 
             <div className="glass-panel p-6 rounded-2xl space-y-5 min-w-0">
@@ -1814,3 +1814,4 @@ export default function Financeiro() {
     </div>
   );
 }
+
