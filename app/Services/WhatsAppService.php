@@ -12,6 +12,7 @@ use App\Models\AppSetting;
 use App\Models\SmsShortLink;
 use App\Services\LeadCustomerService;
 use App\Services\TwilioService;
+use App\Services\EvolutionApiService;
 use App\Services\SmsShortLinkService;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -33,18 +34,26 @@ use Illuminate\Database\Eloquent\Builder;
 class WhatsAppService
 {
     private TwilioService $twilio;
+    private EvolutionApiService $evolution;
     private $openai;
     private $stageDetection;
     private LeadCustomerService $leadCustomerService;
     private SmsShortLinkService $smsShortLinkService;
     
-    public function __construct(TwilioService $twilio, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService, SmsShortLinkService $smsShortLinkService)
+    public function __construct(TwilioService $twilio, EvolutionApiService $evolution, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService, SmsShortLinkService $smsShortLinkService)
     {
         $this->twilio = $twilio;
+        $this->evolution = $evolution;
         $this->openai = $openai;
         $this->stageDetection = $stageDetection;
         $this->leadCustomerService = $leadCustomerService;
         $this->smsShortLinkService = $smsShortLinkService;
+    }
+
+    private function resolveWhatsAppGateway(): TwilioService|EvolutionApiService
+    {
+        $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
+        return $driver === 'evolution' ? $this->evolution : $this->twilio;
     }
     
     /**
@@ -1861,7 +1870,7 @@ class WhatsAppService
         }
 
         // SMS desabilitado — enviar sempre via WhatsApp
-        $result = $this->twilio->sendMessage($telefone, $body);
+        $result = $this->resolveWhatsAppGateway()->sendMessage($telefone, $body);
 
         // Registrar mensagem enviada
         $this->saveMensagem($conversaId, [
@@ -1902,10 +1911,10 @@ class WhatsAppService
         // Meta Cloud API: enviar template por nome (ex: "hello_world") em vez de ContentSid
         // Se contentSid parece um nome de template Meta (sem HX prefix), usar sendTemplate
         if (!str_starts_with($contentSid, 'HX')) {
-            $result = $this->twilio->sendTemplate($telefone, $contentSid, 'pt_BR', array_values($contentVariables));
+            $result = $this->resolveWhatsAppGateway()->sendTemplate($telefone, $contentSid, 'pt_BR', array_values($contentVariables));
         } else {
             // ContentSid do Twilio — enviar como mensagem de texto simples como fallback
-            $result = $this->twilio->sendMessage($telefone, $conteudoRegistro);
+            $result = $this->resolveWhatsAppGateway()->sendMessage($telefone, $conteudoRegistro);
         }
 
         $this->saveMensagem($conversaId, [
@@ -1961,7 +1970,7 @@ class WhatsAppService
             return ['success' => true, 'message_sid' => null];
         }
 
-        $result = $this->twilio->sendMedia($telefone, $body, $mediaUrl);
+        $result = $this->resolveWhatsAppGateway()->sendMedia($telefone, $body, $mediaUrl);
 
         $this->saveMensagem($conversaId, [
             'message_sid' => $result['message_sid'] ?? null,

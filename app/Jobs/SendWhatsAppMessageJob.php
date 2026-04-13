@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Services\EvolutionApiService;
 use App\Services\TwilioService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -54,10 +55,16 @@ class SendWhatsAppMessageJob implements ShouldQueue
         $this->extra = $extra;
     }
 
+    private function resolveWhatsAppGateway(TwilioService $twilioService, EvolutionApiService $evolutionApiService): TwilioService|EvolutionApiService
+    {
+        $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
+        return $driver === 'evolution' ? $evolutionApiService : $twilioService;
+    }
+
     /**
      * Execute the job.
      */
-    public function handle(TwilioService $twilioService): void
+    public function handle(TwilioService $twilioService, EvolutionApiService $evolutionApiService): void
     {
         Log::info('Processing WhatsApp message job', [
             'to' => $this->to,
@@ -66,18 +73,20 @@ class SendWhatsAppMessageJob implements ShouldQueue
         ]);
 
         try {
+            $gateway = $this->resolveWhatsAppGateway($twilioService, $evolutionApiService);
+
             $result = match ($this->type) {
-                'template' => $twilioService->sendTemplate(
+                'template' => $gateway->sendTemplate(
                     $this->to,
                     $this->extra['template_sid'] ?? '',
                     $this->extra['variables'] ?? []
                 ),
-                'media' => $twilioService->sendMedia(
+                'media' => $gateway->sendMedia(
                     $this->to,
                     $this->message,
                     $this->extra['media_url'] ?? ''
                 ),
-                default => $twilioService->sendMessage($this->to, $this->message),
+                default => $gateway->sendMessage($this->to, $this->message),
             };
 
             if (!$result['success']) {

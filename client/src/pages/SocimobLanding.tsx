@@ -277,8 +277,15 @@ export default function SocimobLanding() {
   ].join(" ");
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f4efe7] text-slate-950">
-      <div className="absolute inset-x-0 top-0 -z-10 h-[860px] bg-[radial-gradient(circle_at_top_left,_rgba(217,119,6,0.12),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(15,23,42,0.12),_transparent_30%),linear-gradient(180deg,_#fff7ed_0%,_#f8f1e7_38%,_#f4efe7_100%)]" />
+    <div
+      className="relative min-h-screen overflow-x-hidden text-slate-950"
+      style={{
+        backgroundImage: `linear-gradient(145deg, rgba(255,249,240,0.84) 0%, rgba(248,241,231,0.72) 46%, rgba(245,235,219,0.78) 100%), url(${heroDealImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      <div className="absolute inset-x-0 top-0 -z-10 h-[860px] bg-[radial-gradient(circle_at_top_left,_rgba(217,119,6,0.14),_transparent_32%),radial-gradient(circle_at_top_right,_rgba(15,23,42,0.16),_transparent_34%)]" />
 
       <header className="sticky top-0 z-30 border-b border-white/15 bg-[#0f172a]/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
@@ -315,7 +322,7 @@ export default function SocimobLanding() {
       <main>
         <section className="mx-auto max-w-7xl px-4 pb-12 pt-8 sm:px-6 lg:px-8 lg:pt-10">
           <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-            <div className="rounded-[36px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(255,248,239,0.92)_100%)] p-6 shadow-[0_30px_80px_rgba(41,33,20,0.08)] sm:p-8 lg:p-10">
+            <div className="rounded-[36px] border border-white/70 bg-white/58 p-6 shadow-[0_30px_80px_rgba(41,33,20,0.14)] backdrop-blur-2xl sm:p-8 lg:p-10">
               <div className="inline-flex items-center gap-2 rounded-full border border-[#ead9c2] bg-white px-4 py-2 text-xs uppercase tracking-[0.24em] text-slate-700">
                 <ShieldCheck size={15} />
                 CRM, portal, financeiro e operação em uma base só
@@ -334,7 +341,7 @@ export default function SocimobLanding() {
                 {["A partir de R$ 349/mês", "Planos com 2, 5 ou 10 usuários", "Módulos avulsos para escalar"].map((item) => (
                   <div
                     key={item}
-                    className="inline-flex items-center gap-2 rounded-full border border-[#ead9c2] bg-white px-4 py-2 text-sm text-slate-700"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/52 px-4 py-2 text-sm text-slate-800 backdrop-blur-xl"
                   >
                     <Check size={14} className="text-slate-900" />
                     <span>{item}</span>
@@ -351,7 +358,7 @@ export default function SocimobLanding() {
                 ].map((item) => (
                   <div
                     key={item}
-                    className="flex items-start gap-3 rounded-[22px] border border-[#eadcc8] bg-[#fcf7ef] px-4 py-4 text-sm leading-6 text-slate-700"
+                    className="flex items-start gap-3 rounded-[22px] border border-white/55 bg-white/52 px-4 py-4 text-sm leading-6 text-slate-800 backdrop-blur-xl"
                   >
                     <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white">
                       <Check size={12} />
@@ -382,7 +389,7 @@ export default function SocimobLanding() {
             </div>
 
             <div className="grid gap-6">
-              <article className="relative overflow-hidden rounded-[36px] border border-white/60 bg-slate-900 p-5 shadow-[0_30px_80px_rgba(6,16,28,0.18)]">
+              <article className="relative overflow-hidden rounded-[36px] border border-white/40 bg-slate-900/42 p-5 shadow-[0_30px_80px_rgba(6,16,28,0.28)] backdrop-blur-2xl">
                 <div
                   className="relative min-h-[360px] overflow-hidden rounded-[28px] bg-cover bg-center"
                   style={{
@@ -390,7 +397,7 @@ export default function SocimobLanding() {
                   }}
                 >
                   <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-                    <div className="max-w-md rounded-[24px] border border-white/12 bg-slate-900/72 p-5 text-white backdrop-blur-md">
+                    <div className="max-w-md rounded-[24px] border border-white/30 bg-slate-950/62 p-5 text-white backdrop-blur-xl">
                       <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">Operação completa</p>
                       <p className="mt-2 text-3xl font-semibold leading-tight">
                         Do primeiro lead ao fechamento e ao pós-venda.
@@ -403,7 +410,7 @@ export default function SocimobLanding() {
                 </div>
               </article>
 
-              <article className="rounded-[34px] border border-[#e3d4bf] bg-[#fffaf3] p-6 shadow-[0_18px_40px_rgba(32,23,6,0.06)]">
+              <article className="rounded-[34px] border border-white/60 bg-white/52 p-6 shadow-[0_18px_40px_rgba(32,23,6,0.12)] backdrop-blur-2xl">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Como a cobrança funciona</p>
                 <div className="mt-4 grid gap-3">
                   {[
@@ -413,13 +420,13 @@ export default function SocimobLanding() {
                   ].map((item) => (
                     <div
                       key={item}
-                      className="rounded-[22px] border border-[#eadcc8] bg-white px-4 py-4 text-sm font-semibold text-slate-800"
+                      className="rounded-[22px] border border-white/60 bg-white/60 px-4 py-4 text-sm font-semibold text-slate-800 backdrop-blur-xl"
                     >
                       {item}
                     </div>
                   ))}
                 </div>
-                <div className="mt-6 rounded-[24px] bg-slate-900 px-5 py-5 text-white">
+                <div className="mt-6 rounded-[24px] border border-white/20 bg-slate-950/72 px-5 py-5 text-white backdrop-blur-xl">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">Comece por</p>
                   <p className="mt-2 text-4xl font-semibold tracking-[-0.05em]">R$ 349</p>
                   <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -432,7 +439,7 @@ export default function SocimobLanding() {
         </section>
 
         <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <div className="rounded-[36px] border border-[#d8c6af] bg-[#f8f1e7] p-8 shadow-[0_18px_40px_rgba(32,23,6,0.06)] sm:p-10">
+          <div className="rounded-[36px] border border-white/60 bg-white/50 p-8 shadow-[0_18px_40px_rgba(32,23,6,0.12)] backdrop-blur-2xl sm:p-10">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Frentes do produto</p>
@@ -446,7 +453,7 @@ export default function SocimobLanding() {
             </div>
             <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {pillars.map((pillar) => (
-                <article key={pillar.title} className="rounded-[28px] border border-[#e5d7c3] bg-white p-6">
+                <article key={pillar.title} className="rounded-[28px] border border-white/60 bg-white/58 p-6 backdrop-blur-xl">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-slate-100">
                     {pillar.icon}
                   </div>
@@ -458,7 +465,7 @@ export default function SocimobLanding() {
           </div>
         </section>
 
-        <section id="planos" className="border-y border-[#e7dbc8] bg-[#fbf6ee]">
+        <section id="planos" className="border-y border-white/45 bg-white/26 backdrop-blur-[2px]">
           <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
@@ -481,8 +488,8 @@ export default function SocimobLanding() {
                     key={plan.id}
                     className={`rounded-[34px] border p-7 ${
                       highlighted
-                        ? "border-slate-700 bg-slate-900 text-white shadow-[0_28px_70px_rgba(15,23,42,0.26)]"
-                        : "border-slate-200 bg-white text-slate-950 shadow-[0_18px_40px_rgba(15,23,42,0.06)]"
+                        ? "border-white/30 bg-slate-950/76 text-white shadow-[0_28px_70px_rgba(15,23,42,0.34)] backdrop-blur-2xl"
+                        : "border-white/60 bg-white/58 text-slate-950 shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-2xl"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -502,7 +509,7 @@ export default function SocimobLanding() {
 
                     <p className={`mt-5 text-sm leading-7 ${highlighted ? "text-slate-200" : "text-slate-600"}`}>{plan.subtitle}</p>
 
-                    <div className={`mt-6 rounded-[24px] p-4 ${highlighted ? "bg-white/7" : "bg-[#f8f2e9]"}`}>
+                    <div className={`mt-6 rounded-[24px] border p-4 ${highlighted ? "border-white/16 bg-white/10" : "border-white/60 bg-white/56"}`}>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div>
                           <p className="text-2xl font-semibold">{plan.includedUsers}</p>
@@ -572,7 +579,7 @@ export default function SocimobLanding() {
 
           <div className="mt-10 grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
             {modules.map((moduleItem) => (
-              <article key={moduleItem.id} className="rounded-[30px] border border-[#e1d2bf] bg-white p-6 shadow-[0_18px_40px_rgba(32,23,6,0.06)]">
+              <article key={moduleItem.id} className="rounded-[30px] border border-white/60 bg-white/56 p-6 shadow-[0_18px_40px_rgba(32,23,6,0.12)] backdrop-blur-xl">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-slate-100">
                     {moduleIcons[moduleItem.id]}
@@ -598,7 +605,7 @@ export default function SocimobLanding() {
           </div>
         </section>
 
-        <section id="comparativo" className="border-y border-[#eadcc8] bg-[#fffaf3]">
+        <section id="comparativo" className="border-y border-white/45 bg-white/28 backdrop-blur-[2px]">
           <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
@@ -612,14 +619,14 @@ export default function SocimobLanding() {
               </p>
             </div>
 
-            <div className="mt-10 overflow-hidden rounded-[32px] border border-[#e4d6c2] bg-white shadow-[0_18px_40px_rgba(32,23,6,0.06)]">
-              <div className="grid grid-cols-[1.4fr_repeat(3,minmax(0,1fr))] border-b border-[#efe3d2] bg-[#fcf7ef] px-4 py-4 text-sm font-semibold text-slate-700 sm:px-6">
+            <div className="mt-10 overflow-hidden rounded-[32px] border border-white/60 bg-white/56 shadow-[0_18px_40px_rgba(32,23,6,0.12)] backdrop-blur-xl">
+              <div className="grid grid-cols-[1.4fr_repeat(3,minmax(0,1fr))] border-b border-white/60 bg-white/48 px-4 py-4 text-sm font-semibold text-slate-700 sm:px-6">
                 <div>Frente</div>
                 {plans.map((plan) => <div key={plan.id} className="text-center">{plan.name}</div>)}
               </div>
 
               {compareRows.map((row) => (
-                <div key={row.label} className="grid grid-cols-[1.4fr_repeat(3,minmax(0,1fr))] items-center border-b border-[#f4e8d7] px-4 py-4 text-sm sm:px-6">
+                <div key={row.label} className="grid grid-cols-[1.4fr_repeat(3,minmax(0,1fr))] items-center border-b border-white/50 px-4 py-4 text-sm sm:px-6">
                   <div className="pr-4 text-slate-700">{row.label}</div>
                   {plans.map((plan) => {
                     const included = row.moduleId ? plan.includedModules.includes(row.moduleId) : true;
@@ -733,7 +740,7 @@ export default function SocimobLanding() {
           </div>
         </section>
 
-        <section className="border-y border-[#e8dbc7] bg-[#fbf7f0]">
+        <section className="border-y border-white/45 bg-white/26 backdrop-blur-[2px]">
           <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
@@ -749,7 +756,7 @@ export default function SocimobLanding() {
 
             <div className="mt-10 grid gap-5 lg:grid-cols-2">
               {faqItems.map((item) => (
-                <article key={item.question} className="rounded-[30px] border border-[#e1d2bf] bg-white p-6 shadow-[0_18px_40px_rgba(32,23,6,0.05)]">
+                <article key={item.question} className="rounded-[30px] border border-white/60 bg-white/56 p-6 shadow-[0_18px_40px_rgba(32,23,6,0.12)] backdrop-blur-xl">
                   <h3 className="text-xl font-semibold tracking-[-0.03em] text-slate-950">{item.question}</h3>
                   <p className="mt-3 text-sm leading-7 text-slate-600">{item.answer}</p>
                 </article>
@@ -759,7 +766,7 @@ export default function SocimobLanding() {
         </section>
 
         <section id="contato" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="rounded-[38px] border border-slate-900 bg-slate-900 p-8 text-white shadow-[0_28px_80px_rgba(15,23,42,0.24)] sm:p-10">
+          <div className="rounded-[38px] border border-white/20 bg-slate-950/74 p-8 text-white shadow-[0_28px_80px_rgba(15,23,42,0.34)] backdrop-blur-2xl sm:p-10">
             <div className="grid gap-8 lg:grid-cols-[1fr_0.8fr] lg:items-end">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-300">Fechamento</p>
@@ -771,13 +778,13 @@ export default function SocimobLanding() {
                 </p>
               </div>
 
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.05] p-6">
+              <div className="rounded-[28px] border border-white/18 bg-white/[0.08] p-6 backdrop-blur-xl">
                 <div className="space-y-4">
-                  <div className="rounded-[22px] border border-white/10 bg-black/10 px-4 py-4">
+                  <div className="rounded-[22px] border border-white/20 bg-black/24 px-4 py-4 backdrop-blur-md">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-slate-300">Contato comercial</p>
                     <p className="mt-2 text-2xl font-semibold">wa.me/{whatsappPhone}</p>
                   </div>
-                  <div className="rounded-[22px] border border-white/10 bg-black/10 px-4 py-4">
+                  <div className="rounded-[22px] border border-white/20 bg-black/24 px-4 py-4 backdrop-blur-md">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-slate-300">Acesso ao sistema</p>
                     <p className="mt-2 text-base font-semibold">{appUrl}</p>
                   </div>

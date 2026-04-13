@@ -1,6 +1,8 @@
 <?php
 namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
+use App\Services\EvolutionApiService;
+use App\Services\TwilioService;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -656,10 +658,14 @@ class ConversasController extends Controller
 
             $mensagemId = DB::table('mensagens')->insertGetId($payload);
             
-            // Enviar via Twilio
+            // Enviar via provider configurado (Twilio ou Evolution)
             try {
-                $twilioService = app(\App\Services\TwilioService::class);
-                $resultado = $twilioService->sendMessage(
+                $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
+                $gateway = $driver === 'evolution'
+                    ? app(EvolutionApiService::class)
+                    : app(TwilioService::class);
+
+                $resultado = $gateway->sendMessage(
                     $conversa->telefone,
                     $request->content
                 );
@@ -673,9 +679,10 @@ class ConversasController extends Controller
                             'updated_at' => Carbon::now()
                         ]);
 
-                    \Illuminate\Support\Facades\Log::error('Falha ao enviar via Twilio (resposta)', [
+                    \\Illuminate\Support\Facades\Log::error('Falha ao enviar mensagem via provider WhatsApp (resposta)', [
                         'mensagem_id' => $mensagemId,
                         'to' => $conversa->telefone,
+                        'driver' => $driver,
                         'http_code' => $resultado['http_code'] ?? null,
                         'error' => $resultado['error'] ?? null,
                         'response' => $resultado['response'] ?? null,
@@ -683,8 +690,9 @@ class ConversasController extends Controller
 
                     return response()->json([
                         'success' => false,
-                        'message' => 'Falha ao enviar mensagem via Twilio',
-                        'twilio' => [
+                        'message' => 'Falha ao enviar mensagem via provider de WhatsApp',
+                        'provider' => [
+                            'driver' => $driver,
                             'http_code' => $resultado['http_code'] ?? null,
                             'error' => $resultado['error'] ?? null,
                         ]
@@ -710,14 +718,14 @@ class ConversasController extends Controller
                         'updated_at' => Carbon::now()
                     ]);
                 
-                \Illuminate\Support\Facades\Log::error('Erro ao enviar via Twilio', [
+                \\Illuminate\Support\Facades\Log::error('Erro ao enviar via provider de WhatsApp', [
                     'mensagem_id' => $mensagemId,
                     'erro' => $e->getMessage()
                 ]);
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erro ao enviar mensagem via Twilio'
+                    'message' => 'Erro ao enviar mensagem via provider de WhatsApp'
                 ], 502);
             }
             
