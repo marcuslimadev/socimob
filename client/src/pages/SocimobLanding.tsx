@@ -372,18 +372,18 @@ export default function SocimobLanding() {
   ].join(" ");
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f5f1e8] text-slate-950">
-      <div className="absolute inset-x-0 top-0 -z-10 h-[760px] bg-[radial-gradient(circle_at_top_left,_rgba(48,130,152,0.18),_transparent_32%),radial-gradient(circle_at_top_right,_rgba(214,139,51,0.18),_transparent_28%),linear-gradient(180deg,_#dfe8ea_0%,_#efe5d5_42%,_#f5f1e8_100%)]" />
+    <div className="min-h-screen overflow-x-hidden bg-[#f3f4f6] text-slate-950">
+      <div className="absolute inset-x-0 top-0 -z-10 h-[760px] bg-[radial-gradient(circle_at_top_left,_rgba(148,163,184,0.16),_transparent_32%),radial-gradient(circle_at_top_right,_rgba(71,85,105,0.14),_transparent_28%),linear-gradient(180deg,_#e5e7eb_0%,_#f1f5f9_42%,_#f3f4f6_100%)]" />
 
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#10293a]/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#111827]/92 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <a href="/" className="flex items-center gap-3 text-white">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10 shadow-[0_12px_28px_rgba(2,6,23,0.22)]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/12 shadow-[0_18px_36px_rgba(2,6,23,0.3)] ring-1 ring-white/10">
               <Sparkles size={18} />
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-[0.26em] text-cyan-200/80">SOCIMOB</p>
-              <p className="text-sm font-medium text-white/80">Sistema imobiliário modular</p>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.32em] text-white">SOCIMOB</p>
+              <p className="text-sm font-medium text-slate-300">Sistema imobiliário modular</p>
             </div>
           </a>
 
@@ -405,7 +405,7 @@ export default function SocimobLanding() {
               href={getWhatsappUrl("Olá! Quero apresentar o SOCIMOB para a minha operação.")}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-[#d68b33] px-4 py-2 text-sm font-semibold text-slate-950 shadow-[0_14px_28px_rgba(214,139,51,0.28)] transition hover:bg-[#e79a3e]"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 shadow-[0_14px_28px_rgba(15,23,42,0.16)] transition hover:bg-slate-100"
             >
               Falar no WhatsApp
               <ArrowRight size={16} />
@@ -418,7 +418,7 @@ export default function SocimobLanding() {
         <section className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 lg:px-8 lg:pb-12 lg:pt-10">
           <div className="grid gap-6 lg:min-h-[calc(100vh-112px)] lg:grid-cols-[0.94fr_1.06fr] lg:grid-rows-[auto_auto]">
             <div className="rounded-[34px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(255,248,239,0.92)_100%)] p-6 shadow-[0_30px_80px_rgba(41,33,20,0.08)] sm:p-8 lg:p-8">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#d9c9b0] bg-[#fff8ee] px-4 py-2 text-xs uppercase tracking-[0.22em] text-[#8d5819]">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-xs uppercase tracking-[0.22em] text-slate-700">
               <ShieldCheck size={15} />
               Landing de venda para entender, comparar e fechar rápido
             </div>
@@ -435,23 +435,23 @@ export default function SocimobLanding() {
               {proofPoints.map((item) => (
                 <div
                   key={item}
-                  className="inline-flex items-center gap-2 rounded-full border border-[#e5d6bf] bg-white px-4 py-2 text-sm text-slate-700"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700"
                 >
-                  <Check size={14} className="text-[#d68b33]" />
+                  <Check size={14} className="text-slate-700" />
                   <span>{item}</span>
                 </div>
               ))}
             </div>
 
-            <div className="mt-6 rounded-[28px] border border-[#eadcc8] bg-white p-5">
+            <div className="mt-6 rounded-[28px] border border-slate-200 bg-white p-5">
               <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Personalização e integrações</p>
               <p className="mt-3 text-sm leading-7 text-slate-700">{heroIntegrationCopy}</p>
             </div>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {heroCapabilities.map((item) => (
-                <div key={item} className="flex items-start gap-3 rounded-[20px] border border-[#efe3d2] bg-[#fffaf4] px-4 py-4 text-sm leading-6 text-slate-700">
-                  <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#10293a] text-white">
+                <div key={item} className="flex items-start gap-3 rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700">
+                  <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white">
                     <Check size={12} />
                   </span>
                   <span>{item}</span>
@@ -462,7 +462,7 @@ export default function SocimobLanding() {
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <a
                 href={getWhatsappUrl("Olá! Quero contratar o SOCIMOB e preciso de uma proposta com os 3 planos e integrações." )}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#10293a] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#163447]"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
                 Pedir proposta agora
                 <ArrowRight size={16} />
@@ -471,7 +471,7 @@ export default function SocimobLanding() {
                 href={getWhatsappUrl("Olá! Quero uma demonstração do SOCIMOB para a minha imobiliária.")}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d9c9b0] px-6 py-3 text-sm font-semibold text-slate-800 transition hover:bg-[#fff5e9]"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
               >
                 Falar no WhatsApp
                 <MessageSquareMore size={16} />
@@ -479,21 +479,21 @@ export default function SocimobLanding() {
             </div>
             </div>
 
-            <article className="relative overflow-hidden rounded-[34px] border border-white/60 bg-[#10293a] p-5 shadow-[0_30px_80px_rgba(6,16,28,0.18)] sm:p-6 lg:row-span-1">
+            <article className="relative overflow-hidden rounded-[34px] border border-white/60 bg-slate-900 p-5 shadow-[0_30px_80px_rgba(6,16,28,0.18)] sm:p-6 lg:row-span-1">
               <div
                 className="relative min-h-[420px] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(9,27,39,0.12)_0%,rgba(9,27,39,0.64)_100%),linear-gradient(135deg,#2d4f5d_0%,#173241_100%)] bg-cover bg-center lg:min-h-[100%]"
                 style={{ backgroundImage: `linear-gradient(180deg, rgba(9,27,39,0.08) 0%, rgba(9,27,39,0.58) 100%), url(${heroDealImage})` }}
               >
                 <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 p-6 text-white sm:p-8">
-                  <div className="max-w-md rounded-[24px] border border-white/16 bg-[#10293a]/72 p-5 backdrop-blur-md">
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-100/72">Fechamento comercial</p>
+                  <div className="max-w-md rounded-[24px] border border-white/16 bg-slate-900/72 p-5 backdrop-blur-md">
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">Fechamento comercial</p>
                     <p className="mt-2 text-3xl font-semibold leading-tight">Do lead ao fechamento, tudo em um só sistema.</p>
                     <p className="mt-3 text-sm leading-6 text-slate-200">
                       CRM completo, atendimento IA, nota fiscal, contratos, contas a pagar e a receber, portais e automações sob medida.
                     </p>
                   </div>
 
-                  <div className="inline-flex w-fit items-end gap-4 rounded-[24px] bg-[#f7efe2] px-5 py-4 text-slate-950 shadow-[0_18px_40px_rgba(6,16,28,0.18)]">
+                  <div className="inline-flex w-fit items-end gap-4 rounded-[24px] bg-white px-5 py-4 text-slate-950 shadow-[0_18px_40px_rgba(6,16,28,0.18)]">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">A partir de</p>
                       <p className="mt-1 text-4xl font-semibold tracking-[-0.05em]">R$ 349</p>
@@ -504,7 +504,7 @@ export default function SocimobLanding() {
               </div>
             </article>
 
-            <div className="rounded-[30px] border border-[#e5d5bc] bg-white p-5 shadow-[0_18px_40px_rgba(32,23,6,0.06)] lg:col-span-2">
+            <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] lg:col-span-2">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">3 planos na primeira dobra</p>
@@ -524,8 +524,8 @@ export default function SocimobLanding() {
                       key={plan.id}
                       className={`rounded-[26px] border p-5 ${
                         highlighted
-                          ? "border-[#d68b33] bg-[#10293a] text-white shadow-[0_18px_40px_rgba(16,41,58,0.18)]"
-                          : "border-[#eadcc8] bg-[#fcf7ef] text-slate-950"
+                          ? "border-slate-700 bg-slate-900 text-white shadow-[0_18px_40px_rgba(15,23,42,0.18)]"
+                          : "border-slate-200 bg-slate-50 text-slate-950"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -543,7 +543,7 @@ export default function SocimobLanding() {
 
                       <p className={`mt-4 text-sm leading-6 ${highlighted ? "text-slate-200" : "text-slate-700"}`}>{plan.subtitle}</p>
 
-                      <div className={`mt-4 rounded-[20px] px-4 py-3 ${highlighted ? "bg-white/8" : "bg-white"}`}>
+                        <div className={`mt-4 rounded-[20px] px-4 py-3 ${highlighted ? "bg-white/8" : "bg-white"}`}>
                         <p className="text-sm font-semibold">{plan.includedUsers} usuários inclusos</p>
                         <p className={`mt-1 text-xs ${highlighted ? "text-slate-300" : "text-slate-500"}`}>R$ {plan.extraUserPrice.toLocaleString("pt-BR")} por usuário extra</p>
                       </div>
@@ -551,7 +551,7 @@ export default function SocimobLanding() {
                       <ul className="mt-4 space-y-2">
                         {plan.highlights.slice(0, 3).map((highlight) => (
                           <li key={highlight} className="flex items-start gap-2 text-sm leading-6">
-                            <span className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${highlighted ? "bg-white/12 text-[#f4c98b]" : "bg-[#f1e7d8] text-[#8d5819]"}`}>
+                            <span className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${highlighted ? "bg-white/12 text-slate-200" : "bg-slate-200 text-slate-700"}`}>
                               <Check size={10} />
                             </span>
                             <span className={highlighted ? "text-slate-100" : "text-slate-700"}>{highlight}</span>
@@ -564,7 +564,7 @@ export default function SocimobLanding() {
                         target="_blank"
                         rel="noreferrer"
                         className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold transition ${
-                          highlighted ? "bg-[#d68b33] text-slate-950 hover:bg-[#e79a3e]" : "bg-[#10293a] text-white hover:bg-[#163447]"
+                          highlighted ? "bg-white text-slate-950 hover:bg-slate-100" : "bg-slate-900 text-white hover:bg-slate-800"
                         }`}
                       >
                         Pedir proposta deste plano
@@ -639,7 +639,7 @@ export default function SocimobLanding() {
                 key={pillar.title}
                 className="rounded-[30px] border border-[#e2d4c0] bg-[#fffaf3] p-6 shadow-[0_18px_40px_rgba(32,23,6,0.06)]"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#10293a] text-[#f4efe8]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-slate-100">
                   {pillar.icon}
                 </div>
                 <h3 className="mt-5 text-2xl font-semibold tracking-[-0.035em] text-slate-950">{pillar.title}</h3>
@@ -671,14 +671,14 @@ export default function SocimobLanding() {
                     key={plan.id}
                     className={`rounded-[34px] border p-7 ${
                       highlighted
-                        ? "border-[#d68b33] bg-[#10293a] text-white shadow-[0_28px_70px_rgba(16,41,58,0.26)]"
-                        : "border-[#e1d2bf] bg-white text-slate-950 shadow-[0_18px_40px_rgba(32,23,6,0.06)]"
+                        ? "border-slate-700 bg-slate-900 text-white shadow-[0_28px_70px_rgba(15,23,42,0.26)]"
+                        : "border-slate-200 bg-white text-slate-950 shadow-[0_18px_40px_rgba(15,23,42,0.06)]"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <div className={`inline-flex rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${
-                          highlighted ? "bg-white/10 text-cyan-100" : "bg-[#f1e7d8] text-slate-700"
+                          highlighted ? "bg-white/10 text-slate-200" : "bg-slate-200 text-slate-700"
                         }`}>
                           {plan.name}
                         </div>
@@ -718,7 +718,7 @@ export default function SocimobLanding() {
                       {plan.highlights.map((highlight) => (
                         <li key={highlight} className="flex items-start gap-3">
                           <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                            highlighted ? "bg-white/10 text-[#f4c98b]" : "bg-[#f1e7d8] text-[#8d5819]"
+                            highlighted ? "bg-white/10 text-slate-200" : "bg-slate-200 text-slate-700"
                           }`}>
                             <Check size={14} />
                           </span>
@@ -746,8 +746,8 @@ export default function SocimobLanding() {
                         rel="noreferrer"
                         className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${
                           highlighted
-                            ? "bg-[#d68b33] text-slate-950 hover:bg-[#e79a3e]"
-                            : "bg-[#10293a] text-white hover:bg-[#163447]"
+                            ? "bg-white text-slate-950 hover:bg-slate-100"
+                            : "bg-slate-900 text-white hover:bg-slate-800"
                         }`}
                       >
                         Falar sobre o {plan.name}
@@ -796,7 +796,7 @@ export default function SocimobLanding() {
                 className="rounded-[30px] border border-[#e1d2bf] bg-white p-6 shadow-[0_18px_40px_rgba(32,23,6,0.06)]"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#10293a] text-[#f4efe8]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-slate-100">
                     {moduleItem.id === "locacao_financeiro" && <Wallet size={18} />}
                     {moduleItem.id === "compra_venda" && <FileSignature size={18} />}
                     {moduleItem.id === "vistorias_assinaturas" && <ClipboardCheck size={18} />}
@@ -804,7 +804,7 @@ export default function SocimobLanding() {
                     {moduleItem.id === "portal_proprietario" && <Globe size={18} />}
                     {moduleItem.id === "integracoes_automacoes" && <KeyRound size={18} />}
                   </div>
-                  <div className="rounded-full bg-[#f2e6d6] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8d5819]">
+                  <div className="rounded-full bg-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700">
                     +R$ {moduleItem.monthlyPrice.toLocaleString("pt-BR")}/mês
                   </div>
                 </div>
@@ -815,7 +815,7 @@ export default function SocimobLanding() {
                 <ul className="mt-5 space-y-3">
                   {moduleItem.items.map((item) => (
                     <li key={item} className="flex items-start gap-3 text-sm leading-6 text-slate-700">
-                      <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#d68b33]" />
+                      <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-slate-700" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -825,10 +825,10 @@ export default function SocimobLanding() {
           </div>
         </section>
 
-        <section id="calculadora" className="bg-[#10293a] py-16 text-white">
+        <section id="calculadora" className="bg-slate-900 py-16 text-white">
           <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-100/74">Calculadora comercial</p>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">Calculadora comercial</p>
               <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white">
                 Faça uma simulação enxuta e leve a conversa direto para o fechamento.
               </h2>
@@ -837,7 +837,7 @@ export default function SocimobLanding() {
               </p>
 
               <div className="mt-8 rounded-[28px] border border-white/10 bg-white/[0.05] p-6">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/74">Resumo da simulação</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">Resumo da simulação</p>
                 <div className="mt-5 grid gap-4 sm:grid-cols-3">
                   <div>
                     <p className="text-sm text-slate-300">Plano</p>
@@ -876,7 +876,7 @@ export default function SocimobLanding() {
                   href={getWhatsappUrl(calculatorMessage)}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#d68b33] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-[#e79a3e]"
+                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
                 >
                   Enviar simulação e pedir proposta
                   <ArrowRight size={16} />
@@ -886,7 +886,7 @@ export default function SocimobLanding() {
 
             <div className="rounded-[34px] border border-white/10 bg-white/[0.05] p-6 sm:p-8">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/74">1. Escolha o plano</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">1. Escolha o plano</p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   {plans.map((plan) => (
                     <button
@@ -898,7 +898,7 @@ export default function SocimobLanding() {
                       }}
                       className={`rounded-[24px] border px-4 py-4 text-left transition ${
                         selectedPlanId === plan.id
-                          ? "border-[#d68b33] bg-white/10"
+                          ? "border-slate-400 bg-white/10"
                           : "border-white/10 bg-black/10 hover:bg-white/[0.06]"
                       }`}
                     >
@@ -911,7 +911,7 @@ export default function SocimobLanding() {
               </div>
 
               <div className="mt-8">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/74">2. Defina os usuários</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">2. Defina os usuários</p>
                 <div className="mt-4 rounded-[24px] border border-white/10 bg-black/10 p-5">
                   <div className="flex items-center justify-between gap-4">
                     <div>
@@ -942,7 +942,7 @@ export default function SocimobLanding() {
               </div>
 
               <div className="mt-8">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/74">3. Ligue os módulos adicionais</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">3. Ligue os módulos adicionais</p>
                 <div className="mt-4 grid gap-4">
                   {modules.map((moduleItem) => {
                     const included = includedModules.has(moduleItem.id);
@@ -956,7 +956,7 @@ export default function SocimobLanding() {
                         onClick={() => toggleModule(moduleItem.id)}
                         className={`rounded-[24px] border p-5 text-left transition ${
                           selected
-                            ? "border-[#d68b33] bg-white/10"
+                            ? "border-slate-400 bg-white/10"
                             : "border-white/10 bg-black/10 hover:bg-white/[0.06]"
                         } ${included ? "cursor-default" : ""}`}
                       >
@@ -968,7 +968,7 @@ export default function SocimobLanding() {
                                 included
                                   ? "bg-emerald-400/16 text-emerald-100"
                                   : selected
-                                    ? "bg-[#d68b33] text-slate-950"
+                                    ? "bg-white text-slate-950"
                                     : "bg-white/10 text-slate-200"
                               }`}>
                                 {included ? "Incluído" : selected ? "Selecionado" : "Opcional"}
@@ -1031,8 +1031,8 @@ export default function SocimobLanding() {
                 </p>
               </div>
 
-              <div className="rounded-[30px] bg-[#10293a] p-6 text-white shadow-[0_22px_48px_rgba(16,41,58,0.24)]">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/76">Canal principal</p>
+              <div className="rounded-[30px] bg-slate-900 p-6 text-white shadow-[0_22px_48px_rgba(15,23,42,0.24)]">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-300">Canal principal</p>
                 <p className="mt-3 text-3xl font-semibold tracking-[-0.04em]">wa.me/{whatsappPhone}</p>
                 <p className="mt-3 text-sm leading-7 text-slate-300">
                   Atendimento comercial para demonstração, proposta, implantação e definição do pacote ideal.
@@ -1043,7 +1043,7 @@ export default function SocimobLanding() {
                     href={getWhatsappUrl("Olá! Quero conversar sobre os planos do SOCIMOB.")}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d68b33] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-[#e79a3e]"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
                   >
                     Pedir proposta no WhatsApp
                     <ArrowRight size={16} />
