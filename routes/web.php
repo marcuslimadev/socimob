@@ -234,6 +234,11 @@ $router->group(['prefix' => 'api/ads/webhooks', 'middleware' => 'resolve-tenant'
     $router->post('/{provider}/receive', 'App\Http\Controllers\Ads\AdsWebhookController@receive');
 });
 
+$router->group(['prefix' => 'api/whatsapp/webhook/meta'], function () use ($router) {
+    $router->get('/', 'App\Http\Controllers\WhatsApp\MetaWebhookController@verify');
+    $router->post('/', 'App\Http\Controllers\WhatsApp\MetaWebhookController@receive');
+});
+
 // ===========================
 // OLX OAUTH CALLBACK (SEM AUTENTICAÇÃO — verificado pelo state anti-CSRF)
 // URI registrada no painel OLX Pro: https://app.socimob.com/api/oauth/olx/callback
@@ -542,6 +547,16 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->post('/listings/{id}/ads/publish', 'App\Http\Controllers\Ads\AdsListingController@publish');
     $router->post('/listings/{id}/ads/unpublish', 'App\Http\Controllers\Ads\AdsListingController@unpublish');
     $router->get('/listings/{id}/ads/status', 'App\Http\Controllers\Ads\AdsListingController@listingAdsStatus');
+
+    // WhatsApp Cloud API
+    $router->post('/whatsapp/messages/text', 'App\Http\Controllers\WhatsApp\WhatsAppMessageController@sendText');
+    $router->post('/whatsapp/messages/template', 'App\Http\Controllers\WhatsApp\WhatsAppMessageController@sendTemplate');
+    $router->post('/whatsapp/messages/media', 'App\Http\Controllers\WhatsApp\WhatsAppMessageController@sendMedia');
+    $router->get('/whatsapp/messages/{id}', 'App\Http\Controllers\WhatsApp\WhatsAppMessageController@show');
+    $router->get('/whatsapp/conversations/{id}', 'App\Http\Controllers\WhatsApp\WhatsAppConversationController@show');
+    $router->get('/whatsapp/templates', 'App\Http\Controllers\WhatsApp\WhatsAppTemplateController@index');
+    $router->post('/whatsapp/templates/sync', 'App\Http\Controllers\WhatsApp\WhatsAppTemplateController@sync');
+    $router->post('/whatsapp/tenants/{tenantId}/connect', 'App\Http\Controllers\WhatsApp\WhatsAppTenantConnectionController@connect');
 });
 
 // Additional route files (previously loaded via bootstrap/app.php then() callback)
@@ -551,4 +566,3 @@ require __DIR__ . '/subscriptions.php';
 require __DIR__ . '/themes.php';
 require __DIR__ . '/domains.php';
 require __DIR__ . '/portal.php';
-

@@ -59,6 +59,12 @@ class MetaGraphApiClient
                 $lastException = $exception;
                 $this->sleepAfterRateLimit($exception->retryAfterSeconds(), $attempt);
             } catch (MetaApiException $exception) {
+                if (($exception->statusCode() ?? 0) >= 500 && $attempt < $attempts) {
+                    $lastException = $exception;
+                    $this->sleepBeforeRetry($attempt);
+                    continue;
+                }
+
                 throw $exception;
             } catch (ConnectionException|RequestException $exception) {
                 $lastException = $exception;
@@ -99,6 +105,12 @@ class MetaGraphApiClient
                 $lastException = $exception;
                 $this->sleepAfterRateLimit($exception->retryAfterSeconds(), $attempt);
             } catch (MetaApiException $exception) {
+                if (($exception->statusCode() ?? 0) >= 500 && $attempt < $attempts) {
+                    $lastException = $exception;
+                    $this->sleepBeforeRetry($attempt);
+                    continue;
+                }
+
                 throw $exception;
             } catch (ConnectionException|RequestException $exception) {
                 $lastException = $exception;

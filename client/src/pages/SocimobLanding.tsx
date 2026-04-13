@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -151,7 +151,7 @@ const modules: ModuleDefinition[] = [
   },
 ];
 
-const moduleIcons: Record<ModuleId, JSX.Element> = {
+const moduleIcons: Record<ModuleId, ReactElement> = {
   locacao_financeiro: <Wallet size={18} />,
   compra_venda: <FileSignature size={18} />,
   vistorias_assinaturas: <ClipboardCheck size={18} />,
