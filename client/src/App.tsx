@@ -59,6 +59,9 @@ const AnalyticsTracker = lazy(() => import("./components/AnalyticsTracker"));
 const PortalProprietarioLogin = lazy(() => import('./pages/PortalProprietarioLogin'));
 const PortalProprietarioDashboard = lazy(() => import('./pages/PortalProprietarioDashboard'));
 const ContratoTemplates = lazy(() => import('./pages/ContratoTemplates'));
+const SocimobLanding = lazy(() => import("./pages/SocimobLanding"));
+
+const SOCIMOB_MARKETING_HOSTS = new Set(["socimob.com", "www.socimob.com"]);
 
 // Loading fallback component
 function PageLoader() {
@@ -75,6 +78,24 @@ function PageLoader() {
 }
 
 function Router() {
+  const isSocimobMarketingHost =
+    typeof window !== "undefined" &&
+    SOCIMOB_MARKETING_HOSTS.has(window.location.hostname.toLowerCase());
+
+  if (isSocimobMarketingHost) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <Switch>
+          <Route path="/" component={SocimobLanding} />
+          <Route path="/planos" component={SocimobLanding} />
+          <Route path="/modulos" component={SocimobLanding} />
+          <Route path="/contato" component={SocimobLanding} />
+          <Route component={SocimobLanding} />
+        </Switch>
+      </Suspense>
+    );
+  }
+
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>

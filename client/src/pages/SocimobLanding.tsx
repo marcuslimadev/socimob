@@ -1,0 +1,858 @@
+import { useEffect, useState } from "react";
+import {
+  ArrowRight,
+  BarChart3,
+  Building2,
+  Check,
+  CircleDollarSign,
+  ClipboardCheck,
+  FileSignature,
+  Globe,
+  KeyRound,
+  LineChart,
+  MessageSquareMore,
+  ShieldCheck,
+  Sparkles,
+  Users,
+  Wallet,
+  Zap,
+} from "lucide-react";
+
+type PlanId = "basico" | "gestao" | "pro";
+type ModuleId =
+  | "locacao_financeiro"
+  | "compra_venda"
+  | "vistorias_assinaturas"
+  | "marketing_ads"
+  | "portal_proprietario"
+  | "integracoes_automacoes";
+
+interface PlanDefinition {
+  id: PlanId;
+  name: string;
+  subtitle: string;
+  monthlyPrice: number;
+  includedUsers: number;
+  extraUserPrice: number;
+  spotlight?: boolean;
+  notes: string;
+  includedModules: ModuleId[];
+  highlights: string[];
+}
+
+interface ModuleDefinition {
+  id: ModuleId;
+  name: string;
+  monthlyPrice: number;
+  description: string;
+  items: string[];
+}
+
+const appUrl = "https://app.socimob.com/login";
+const whatsappPhone = "5592992287144";
+
+const plans: PlanDefinition[] = [
+  {
+    id: "basico",
+    name: "Básico",
+    subtitle: "Para estruturar o comercial e publicar com velocidade.",
+    monthlyPrice: 349,
+    includedUsers: 2,
+    extraUserPrice: 59,
+    notes: "Implantação simples para operação comercial enxuta.",
+    includedModules: [],
+    highlights: [
+      "Dashboard, agenda e visão operacional",
+      "CRM, leads, chat e gestão de pessoas",
+      "Cadastro de imóveis, documentos e portal público",
+      "Login por perfil e base pronta para crescer",
+    ],
+  },
+  {
+    id: "gestao",
+    name: "Gestão",
+    subtitle: "Para imobiliárias que já operam venda, locação e pós-venda.",
+    monthlyPrice: 749,
+    includedUsers: 5,
+    extraUserPrice: 49,
+    spotlight: true,
+    notes: "É o melhor ponto entre operação, financeiro e portal.",
+    includedModules: ["locacao_financeiro", "compra_venda", "portal_proprietario"],
+    highlights: [
+      "Tudo do Básico",
+      "Financeiro, contas a pagar/receber e operação de locação",
+      "Compra e venda com templates contratuais",
+      "Portal do cliente e do proprietário",
+    ],
+  },
+  {
+    id: "pro",
+    name: "Pró",
+    subtitle: "Para times que querem centralizar operação, marketing e automação.",
+    monthlyPrice: 1290,
+    includedUsers: 10,
+    extraUserPrice: 39,
+    notes: "Entrega a operação mais completa do SOCIMOB.",
+    includedModules: [
+      "locacao_financeiro",
+      "compra_venda",
+      "vistorias_assinaturas",
+      "marketing_ads",
+      "portal_proprietario",
+      "integracoes_automacoes",
+    ],
+    highlights: [
+      "Tudo do Gestão",
+      "Vistorias, assinaturas e controle de chaves",
+      "Propaganda, anúncios e analytics",
+      "Integrações, automações e operação assistida por IA/WhatsApp",
+    ],
+  },
+];
+
+const modules: ModuleDefinition[] = [
+  {
+    id: "locacao_financeiro",
+    name: "Locação & Financeiro",
+    monthlyPrice: 249,
+    description: "Controle financeiro e administrativo da carteira recorrente.",
+    items: [
+      "Financeiro geral e contas a pagar/receber",
+      "Operação de locação",
+      "Cobranças, repasses e rotinas da carteira",
+    ],
+  },
+  {
+    id: "compra_venda",
+    name: "Compra & Venda",
+    monthlyPrice: 179,
+    description: "Fluxo dedicado para negócios de compra e venda.",
+    items: [
+      "Gestão de compra e venda",
+      "Templates de contrato",
+      "Acompanhamento comercial e documental",
+    ],
+  },
+  {
+    id: "vistorias_assinaturas",
+    name: "Vistorias & Assinaturas",
+    monthlyPrice: 149,
+    description: "Formalização e operação de campo no mesmo sistema.",
+    items: [
+      "Vistorias, solicitações e contestações",
+      "Assinaturas eletrônicas",
+      "Controle de chaves",
+    ],
+  },
+  {
+    id: "marketing_ads",
+    name: "Marketing & Anúncios",
+    monthlyPrice: 199,
+    description: "Distribuição e gestão de captação com mídia e acompanhamento.",
+    items: [
+      "Propaganda de imóveis",
+      "Ads automation e leads captados por anúncios",
+      "Analytics do funil e do portal",
+    ],
+  },
+  {
+    id: "portal_proprietario",
+    name: "Portais de Relacionamento",
+    monthlyPrice: 129,
+    description: "Acesso para cliente e proprietário sem depender do time interno.",
+    items: [
+      "Portal público com catálogo",
+      "Portal financeiro do cliente",
+      "Portal do proprietário com contratos, repasses e cobranças",
+    ],
+  },
+  {
+    id: "integracoes_automacoes",
+    name: "Integrações & Automações",
+    monthlyPrice: 249,
+    description: "Conecta operação, canais e parceiros em um fluxo só.",
+    items: [
+      "WhatsApp, atendimento automático e IA",
+      "ImobiBrasil e integrações de publicação",
+      "Configurações avançadas e automações sob medida",
+    ],
+  },
+];
+
+const solutionPillars = [
+  {
+    icon: <Users size={18} />,
+    title: "CRM e atendimento",
+    description: "Leads, pessoas, chat, agenda e distribuição de atendimento em um fluxo só.",
+  },
+  {
+    icon: <Building2 size={18} />,
+    title: "Imóveis e portal",
+    description: "Cadastro, documentos, catálogo público, captação de interessados e portal do cliente.",
+  },
+  {
+    icon: <Wallet size={18} />,
+    title: "Financeiro imobiliário",
+    description: "Operação de locação, contas, repasses, notas e visão financeira centralizada.",
+  },
+  {
+    icon: <ClipboardCheck size={18} />,
+    title: "Operação e compliance",
+    description: "Vistorias, assinaturas, contratos e controle de chaves sem planilhas paralelas.",
+  },
+  {
+    icon: <Zap size={18} />,
+    title: "Anúncios e automação",
+    description: "Propaganda, automação de anúncios, analytics e captação por campanhas.",
+  },
+  {
+    icon: <Globe size={18} />,
+    title: "Portais e relacionamento",
+    description: "Experiência para comprador, locatário, proprietário e time interno no mesmo ambiente.",
+  },
+];
+
+const getWhatsappUrl = (message: string) =>
+  `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`;
+
+export default function SocimobLanding() {
+  const [selectedPlanId, setSelectedPlanId] = useState<PlanId>("gestao");
+  const [userCount, setUserCount] = useState(5);
+  const [selectedModules, setSelectedModules] = useState<ModuleId[]>([
+    "vistorias_assinaturas",
+    "marketing_ads",
+  ]);
+
+  useEffect(() => {
+    document.title = "SOCIMOB | Sistema imobiliário com CRM, financeiro, portal e operação";
+
+    const description = document.querySelector("meta[name='description']") || document.createElement("meta");
+    description.setAttribute("name", "description");
+    description.setAttribute(
+      "content",
+      "Sistema imobiliário com CRM, imóveis, portal, financeiro, contratos, vistorias, anúncios e automações em planos modulares."
+    );
+
+    if (!description.parentNode) {
+      document.head.appendChild(description);
+    }
+
+    delete document.body.dataset.sidebar;
+    delete document.body.dataset.sectionTabs;
+  }, []);
+
+  const selectedPlan = plans.find((plan) => plan.id === selectedPlanId) || plans[1];
+  const includedModules = new Set(selectedPlan.includedModules);
+  const billableModuleTotal = modules.reduce((sum, moduleItem) => {
+    if (!selectedModules.includes(moduleItem.id) || includedModules.has(moduleItem.id)) {
+      return sum;
+    }
+
+    return sum + moduleItem.monthlyPrice;
+  }, 0);
+  const extraUsers = Math.max(0, userCount - selectedPlan.includedUsers);
+  const extraUsersTotal = extraUsers * selectedPlan.extraUserPrice;
+  const monthlyTotal = selectedPlan.monthlyPrice + billableModuleTotal + extraUsersTotal;
+
+  const toggleModule = (moduleId: ModuleId) => {
+    setSelectedModules((current) =>
+      current.includes(moduleId) ? current.filter((item) => item !== moduleId) : [...current, moduleId]
+    );
+  };
+
+  const calculatorMessage = [
+    `Olá! Quero uma proposta do SOCIMOB.`,
+    `Plano: ${selectedPlan.name}`,
+    `Usuários: ${userCount}`,
+    `Módulos extras: ${
+      modules
+        .filter((moduleItem) => selectedModules.includes(moduleItem.id) && !includedModules.has(moduleItem.id))
+        .map((moduleItem) => moduleItem.name)
+        .join(", ") || "nenhum"
+    }`,
+    `Estimativa mensal: R$ ${monthlyTotal.toLocaleString("pt-BR")}`,
+  ].join(" ");
+
+  return (
+    <div className="min-h-screen bg-[#f5f1e8] text-slate-950">
+      <div className="absolute inset-x-0 top-0 -z-10 h-[640px] bg-[radial-gradient(circle_at_top_left,_rgba(30,95,116,0.28),_transparent_42%),radial-gradient(circle_at_top_right,_rgba(197,124,44,0.22),_transparent_36%),linear-gradient(180deg,_#0e2431_0%,_#163447_34%,_#f5f1e8_92%)]" />
+
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#10293a]/85 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <a href="/" className="flex items-center gap-3 text-white">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10 shadow-[0_12px_28px_rgba(2,6,23,0.22)]">
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.26em] text-cyan-200/80">SOCIMOB</p>
+              <p className="text-sm font-medium text-white/80">Sistema imobiliário modular</p>
+            </div>
+          </a>
+
+          <nav className="hidden items-center gap-6 text-sm text-white/78 md:flex">
+            <a href="#modulos" className="hover:text-white">Módulos</a>
+            <a href="#planos" className="hover:text-white">Planos</a>
+            <a href="#calculadora" className="hover:text-white">Simulação</a>
+            <a href="#contato" className="hover:text-white">Contato</a>
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <a
+              href={appUrl}
+              className="hidden rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 sm:inline-flex"
+            >
+              Entrar no app
+            </a>
+            <a
+              href={getWhatsappUrl("Olá! Quero apresentar o SOCIMOB para a minha operação.")}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-[#d68b33] px-4 py-2 text-sm font-semibold text-slate-950 shadow-[0_14px_28px_rgba(214,139,51,0.28)] transition hover:bg-[#e79a3e]"
+            >
+              Falar no WhatsApp
+              <ArrowRight size={16} />
+            </a>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section className="mx-auto grid max-w-7xl gap-10 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:pb-24 lg:pt-20">
+          <div className="text-white">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-200/18 bg-white/8 px-4 py-2 text-xs uppercase tracking-[0.22em] text-cyan-100/86">
+              <ShieldCheck size={15} />
+              CRM, imóveis, financeiro, portal e operação no mesmo sistema
+            </div>
+
+            <h1 className="max-w-4xl text-5xl font-semibold leading-[0.95] tracking-[-0.05em] text-white sm:text-6xl lg:text-7xl">
+              O SOCIMOB organiza a rotina imobiliária do lead ao repasse.
+            </h1>
+
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200/88 sm:text-xl">
+              Você monta o plano pelo tamanho da equipe e pelos módulos que realmente usa. Sem empilhar ferramentas
+              separadas para CRM, portal, locação, compra e venda, vistorias ou anúncios.
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <a
+                href="#planos"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+              >
+                Ver planos
+                <ArrowRight size={16} />
+              </a>
+              <a
+                href={getWhatsappUrl("Olá! Quero uma demonstração do SOCIMOB para a minha imobiliária.")}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Pedir demonstração
+                <MessageSquareMore size={16} />
+              </a>
+            </div>
+
+            <div className="mt-12 grid gap-4 sm:grid-cols-3">
+              {[
+                { label: "Base comercial", value: "CRM, leads, imóveis e agenda" },
+                { label: "Base operacional", value: "Financeiro, contratos, vistorias e chaves" },
+                { label: "Base de crescimento", value: "Portal, anúncios, analytics e automação" },
+              ].map((item) => (
+                <div key={item.label} className="rounded-[28px] border border-white/12 bg-white/[0.07] p-5 backdrop-blur-sm">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/74">{item.label}</p>
+                  <p className="mt-3 text-sm leading-6 text-white/88">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[34px] border border-[#d4b17d]/18 bg-[#f6efe3] p-6 shadow-[0_30px_80px_rgba(6,16,28,0.28)] sm:p-8">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Como o preço funciona</p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">Plano base + usuários + módulos</h2>
+              </div>
+              <div className="rounded-2xl bg-[#10293a] px-4 py-3 text-white shadow-[0_16px_32px_rgba(16,41,58,0.24)]">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/76">A partir de</p>
+                <p className="mt-1 text-3xl font-semibold">R$ 349</p>
+                <p className="text-xs text-slate-300">por mês</p>
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-4">
+              {[
+                {
+                  icon: <BarChart3 size={18} />,
+                  title: "Base obrigatória",
+                  text: "Todo plano já nasce com CRM, imóveis, agenda, usuários, portal público e estrutura multiusuário.",
+                },
+                {
+                  icon: <CircleDollarSign size={18} />,
+                  title: "Usuários adicionais",
+                  text: "Cada plano já inclui uma quantidade de usuários. Se a equipe crescer, você adiciona só o excedente.",
+                },
+                {
+                  icon: <LineChart size={18} />,
+                  title: "Módulos sob demanda",
+                  text: "Locação, compra e venda, vistorias, marketing, portais e automações podem ser acoplados conforme a operação.",
+                },
+              ].map((item) => (
+                <div key={item.title} className="flex gap-4 rounded-[26px] border border-slate-200 bg-white p-5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eef4f6] text-[#163447]">
+                    {item.icon}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 rounded-[28px] bg-[#10293a] p-6 text-white">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-100/78">Indicados para</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {plans.map((plan) => (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPlanId(plan.id);
+                      setUserCount(plan.includedUsers);
+                    }}
+                    className={`rounded-[24px] border px-4 py-4 text-left transition ${
+                      selectedPlanId === plan.id
+                        ? "border-[#d68b33] bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                        : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold">{plan.name}</p>
+                    <p className="mt-1 text-2xl font-semibold">R$ {plan.monthlyPrice.toLocaleString("pt-BR")}</p>
+                    <p className="mt-2 text-xs text-slate-300">{plan.includedUsers} usuários inclusos</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="modulos" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Mapa do produto</p>
+              <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950">
+                O site de vendas reflete o que já existe no sistema.
+              </h2>
+            </div>
+            <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+              A estrutura abaixo foi montada com base nos módulos, páginas e fluxos já presentes no SOCIMOB: CRM,
+              imóveis, portais, financeiro, operação, vistorias, anúncios, analytics e integrações.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {solutionPillars.map((pillar) => (
+              <article
+                key={pillar.title}
+                className="rounded-[30px] border border-[#e2d4c0] bg-[#fffaf3] p-6 shadow-[0_18px_40px_rgba(32,23,6,0.06)]"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#10293a] text-[#f4efe8]">
+                  {pillar.icon}
+                </div>
+                <h3 className="mt-5 text-2xl font-semibold tracking-[-0.035em] text-slate-950">{pillar.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{pillar.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="planos" className="border-y border-[#e7dbc8] bg-[#fbf6ee]">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Planos mensais</p>
+                <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950">
+                  Do comercial enxuto à operação completa.
+                </h2>
+              </div>
+              <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+                Os planos já vêm organizados por estágio de maturidade. Se quiser, você ainda pode começar menor e
+                habilitar módulos depois.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-6 xl:grid-cols-3">
+              {plans.map((plan) => {
+                const highlighted = Boolean(plan.spotlight);
+                return (
+                  <article
+                    key={plan.id}
+                    className={`rounded-[34px] border p-7 ${
+                      highlighted
+                        ? "border-[#d68b33] bg-[#10293a] text-white shadow-[0_28px_70px_rgba(16,41,58,0.26)]"
+                        : "border-[#e1d2bf] bg-white text-slate-950 shadow-[0_18px_40px_rgba(32,23,6,0.06)]"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className={`inline-flex rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${
+                          highlighted ? "bg-white/10 text-cyan-100" : "bg-[#f1e7d8] text-slate-700"
+                        }`}>
+                          {plan.name}
+                        </div>
+                        <h3 className="mt-4 text-4xl font-semibold tracking-[-0.05em]">
+                          R$ {plan.monthlyPrice.toLocaleString("pt-BR")}
+                        </h3>
+                        <p className={`mt-2 text-sm ${highlighted ? "text-slate-200" : "text-slate-600"}`}>por mês</p>
+                      </div>
+                      {highlighted ? (
+                        <div className="rounded-full border border-white/12 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-white">
+                          Mais procurado
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <p className={`mt-5 text-sm leading-7 ${highlighted ? "text-slate-200" : "text-slate-600"}`}>
+                      {plan.subtitle}
+                    </p>
+
+                    <div className={`mt-6 rounded-[24px] p-4 ${highlighted ? "bg-white/7" : "bg-[#f8f2e9]"}`}>
+                      <p className={`text-[11px] uppercase tracking-[0.18em] ${highlighted ? "text-cyan-100/80" : "text-slate-500"}`}>
+                        Estrutura
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <p className="text-2xl font-semibold">{plan.includedUsers}</p>
+                          <p className={`text-xs ${highlighted ? "text-slate-300" : "text-slate-600"}`}>usuários inclusos</p>
+                        </div>
+                        <div>
+                          <p className="text-2xl font-semibold">R$ {plan.extraUserPrice.toLocaleString("pt-BR")}</p>
+                          <p className={`text-xs ${highlighted ? "text-slate-300" : "text-slate-600"}`}>por usuário extra</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <ul className="mt-6 space-y-3">
+                      {plan.highlights.map((highlight) => (
+                        <li key={highlight} className="flex items-start gap-3">
+                          <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                            highlighted ? "bg-white/10 text-[#f4c98b]" : "bg-[#f1e7d8] text-[#8d5819]"
+                          }`}>
+                            <Check size={14} />
+                          </span>
+                          <span className={`text-sm leading-6 ${highlighted ? "text-slate-100" : "text-slate-700"}`}>
+                            {highlight}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <p className={`mt-6 text-xs uppercase tracking-[0.14em] ${highlighted ? "text-slate-300" : "text-slate-500"}`}>
+                      {plan.notes}
+                    </p>
+
+                    <div className="mt-7 flex flex-col gap-3">
+                      <a
+                        href={getWhatsappUrl(`Olá! Quero contratar ou avaliar o plano ${plan.name} do SOCIMOB.`)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${
+                          highlighted
+                            ? "bg-[#d68b33] text-slate-950 hover:bg-[#e79a3e]"
+                            : "bg-[#10293a] text-white hover:bg-[#163447]"
+                        }`}
+                      >
+                        Falar sobre o {plan.name}
+                        <ArrowRight size={16} />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPlanId(plan.id);
+                          setUserCount(plan.includedUsers);
+                          document.getElementById("calculadora")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }}
+                        className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${
+                          highlighted
+                            ? "border-white/14 text-white hover:bg-white/8"
+                            : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                        }`}
+                      >
+                        Simular este plano
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Módulos mensais</p>
+              <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950">
+                Acople só o que sua operação precisa agora.
+              </h2>
+            </div>
+            <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+              Se você não quiser ir direto para o Pró, o site já deixa claro quanto custa ativar cada frente do produto.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+            {modules.map((moduleItem) => (
+              <article
+                key={moduleItem.id}
+                className="rounded-[30px] border border-[#e1d2bf] bg-white p-6 shadow-[0_18px_40px_rgba(32,23,6,0.06)]"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#10293a] text-[#f4efe8]">
+                    {moduleItem.id === "locacao_financeiro" && <Wallet size={18} />}
+                    {moduleItem.id === "compra_venda" && <FileSignature size={18} />}
+                    {moduleItem.id === "vistorias_assinaturas" && <ClipboardCheck size={18} />}
+                    {moduleItem.id === "marketing_ads" && <Zap size={18} />}
+                    {moduleItem.id === "portal_proprietario" && <Globe size={18} />}
+                    {moduleItem.id === "integracoes_automacoes" && <KeyRound size={18} />}
+                  </div>
+                  <div className="rounded-full bg-[#f2e6d6] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8d5819]">
+                    +R$ {moduleItem.monthlyPrice.toLocaleString("pt-BR")}/mês
+                  </div>
+                </div>
+
+                <h3 className="mt-5 text-2xl font-semibold tracking-[-0.035em] text-slate-950">{moduleItem.name}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{moduleItem.description}</p>
+
+                <ul className="mt-5 space-y-3">
+                  {moduleItem.items.map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-sm leading-6 text-slate-700">
+                      <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#d68b33]" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="calculadora" className="bg-[#10293a] py-16 text-white">
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-100/74">Calculadora comercial</p>
+              <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white">
+                Monte uma estimativa mensal em menos de um minuto.
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300 sm:text-base">
+                A calculadora considera plano base, quantidade de usuários e módulos não inclusos. Implantação,
+                migração e integrações especiais continuam sob avaliação comercial.
+              </p>
+
+              <div className="mt-8 rounded-[28px] border border-white/10 bg-white/[0.05] p-6">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/74">Resumo da simulação</p>
+                <div className="mt-5 grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <p className="text-sm text-slate-300">Plano</p>
+                    <p className="mt-1 text-2xl font-semibold">{selectedPlan.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-300">Usuários</p>
+                    <p className="mt-1 text-2xl font-semibold">{userCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-300">Total estimado</p>
+                    <p className="mt-1 text-2xl font-semibold">R$ {monthlyTotal.toLocaleString("pt-BR")}</p>
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-3 border-t border-white/10 pt-6 text-sm text-slate-300">
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Plano base</span>
+                    <span>R$ {selectedPlan.monthlyPrice.toLocaleString("pt-BR")}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Usuários extras ({extraUsers})</span>
+                    <span>R$ {extraUsersTotal.toLocaleString("pt-BR")}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Módulos adicionais</span>
+                    <span>R$ {billableModuleTotal.toLocaleString("pt-BR")}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-3 text-base font-semibold text-white">
+                    <span>Total mensal estimado</span>
+                    <span>R$ {monthlyTotal.toLocaleString("pt-BR")}</span>
+                  </div>
+                </div>
+
+                <a
+                  href={getWhatsappUrl(calculatorMessage)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#d68b33] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-[#e79a3e]"
+                >
+                  Enviar esta simulação no WhatsApp
+                  <ArrowRight size={16} />
+                </a>
+              </div>
+            </div>
+
+            <div className="rounded-[34px] border border-white/10 bg-white/[0.05] p-6 sm:p-8">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/74">1. Escolha o plano</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  {plans.map((plan) => (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPlanId(plan.id);
+                        setUserCount((current) => Math.max(current, plan.includedUsers));
+                      }}
+                      className={`rounded-[24px] border px-4 py-4 text-left transition ${
+                        selectedPlanId === plan.id
+                          ? "border-[#d68b33] bg-white/10"
+                          : "border-white/10 bg-black/10 hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      <p className="text-sm font-semibold">{plan.name}</p>
+                      <p className="mt-2 text-2xl font-semibold">R$ {plan.monthlyPrice.toLocaleString("pt-BR")}</p>
+                      <p className="mt-1 text-xs text-slate-300">{plan.includedUsers} usuários inclusos</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/74">2. Defina os usuários</p>
+                <div className="mt-4 rounded-[24px] border border-white/10 bg-black/10 p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-lg font-semibold">Equipe ativa</p>
+                      <p className="text-sm text-slate-300">
+                        Este plano já inclui {selectedPlan.includedUsers} usuário(s). Extras custam R$ {selectedPlan.extraUserPrice.toLocaleString("pt-BR")} cada.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setUserCount((current) => Math.max(1, current - 1))}
+                        className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg font-semibold transition hover:bg-white/10"
+                      >
+                        -
+                      </button>
+                      <div className="min-w-[4.5rem] text-center text-2xl font-semibold">{userCount}</div>
+                      <button
+                        type="button"
+                        onClick={() => setUserCount((current) => current + 1)}
+                        className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg font-semibold transition hover:bg-white/10"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/74">3. Ligue os módulos adicionais</p>
+                <div className="mt-4 grid gap-4">
+                  {modules.map((moduleItem) => {
+                    const included = includedModules.has(moduleItem.id);
+                    const selected = included || selectedModules.includes(moduleItem.id);
+
+                    return (
+                      <button
+                        key={moduleItem.id}
+                        type="button"
+                        disabled={included}
+                        onClick={() => toggleModule(moduleItem.id)}
+                        className={`rounded-[24px] border p-5 text-left transition ${
+                          selected
+                            ? "border-[#d68b33] bg-white/10"
+                            : "border-white/10 bg-black/10 hover:bg-white/[0.06]"
+                        } ${included ? "cursor-default" : ""}`}
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <div className="flex items-center gap-3">
+                              <h3 className="text-lg font-semibold">{moduleItem.name}</h3>
+                              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                                included
+                                  ? "bg-emerald-400/16 text-emerald-100"
+                                  : selected
+                                    ? "bg-[#d68b33] text-slate-950"
+                                    : "bg-white/10 text-slate-200"
+                              }`}>
+                                {included ? "Incluído" : selected ? "Selecionado" : "Opcional"}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-sm leading-6 text-slate-300">{moduleItem.description}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-semibold">
+                              {included ? "R$ 0" : `+R$ ${moduleItem.monthlyPrice.toLocaleString("pt-BR")}`}
+                            </p>
+                            <p className="text-xs text-slate-300">{included ? "já dentro do plano" : "por mês"}</p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="contato" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="rounded-[36px] border border-[#e1d2bf] bg-[linear-gradient(135deg,#fff7ea_0%,#f7efe4_55%,#f0e7da_100%)] p-8 shadow-[0_22px_60px_rgba(32,23,6,0.08)] sm:p-10">
+            <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Contato direto</p>
+                <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950">
+                  Quer fechar o desenho ideal para a sua imobiliária?
+                </h2>
+                <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+                  Me chame no WhatsApp e eu ajusto a proposta conforme sua operação, quantidade de usuários, módulos
+                  necessários, implantação e integrações específicas.
+                </p>
+              </div>
+
+              <div className="rounded-[30px] bg-[#10293a] p-6 text-white shadow-[0_22px_48px_rgba(16,41,58,0.24)]">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/76">Canal principal</p>
+                <p className="mt-3 text-3xl font-semibold tracking-[-0.04em]">wa.me/{whatsappPhone}</p>
+                <p className="mt-3 text-sm leading-7 text-slate-300">
+                  Atendimento comercial para demonstração, proposta, implantação e definição do pacote ideal.
+                </p>
+
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                  <a
+                    href={getWhatsappUrl("Olá! Quero conversar sobre os planos do SOCIMOB.")}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d68b33] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-[#e79a3e]"
+                  >
+                    Abrir WhatsApp
+                    <ArrowRight size={16} />
+                  </a>
+                  <a
+                    href={appUrl}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/12 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/8"
+                  >
+                    Entrar no app
+                    <ArrowRight size={16} />
+                  </a>
+                </div>
+
+                <p className="mt-5 text-xs uppercase tracking-[0.14em] text-slate-400">
+                  Valores mensais. Implantação e projetos especiais sob consulta.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
