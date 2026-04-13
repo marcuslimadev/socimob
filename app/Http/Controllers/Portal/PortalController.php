@@ -1040,7 +1040,7 @@ class PortalController extends Controller
                         'public'
                     );
                     if ($stored) {
-                        $imageUrls[] = Storage::disk('public')->url($stored);
+                        $imageUrls[] = asset('storage/' . $stored);
                     }
                 }
                 if (!empty($imageUrls)) {

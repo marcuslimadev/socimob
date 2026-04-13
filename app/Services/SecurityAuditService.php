@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -36,7 +37,7 @@ class SecurityAuditService
                     'data' => json_encode($data),
                     'ip_address' => request()->ip(),
                     'user_agent' => request()->userAgent(),
-                    'user_id' => auth()->id(),
+                    'user_id' => Auth::id(),
                     'tenant_id' => app('tenant')?->id,
                     'created_at' => Carbon::now(),
                 ]);
@@ -125,7 +126,7 @@ class SecurityAuditService
             'model' => $model,
             'model_id' => $modelId,
             'changes' => $changes,
-            'user_id' => auth()->id(),
+            'user_id' => Auth::id(),
         ], 'low');
     }
 
@@ -143,7 +144,7 @@ class SecurityAuditService
             'resource' => $resource,
             'resource_id' => $resourceId,
             'action' => $action,
-            'user_id' => auth()->id(),
+            'user_id' => Auth::id(),
         ], 'medium');
     }
 
