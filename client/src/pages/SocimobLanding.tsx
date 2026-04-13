@@ -1065,6 +1065,19 @@ export default function SocimobLanding() {
           </div>
         </section>
       </main>
+
+      <a
+        href={getWhatsappUrl("Olá! Quero uma proposta do SOCIMOB para a minha operação.")}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Falar no WhatsApp sobre o SOCIMOB"
+        className="fixed bottom-24 right-4 z-40 inline-flex items-center gap-3 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(15,23,42,0.28)] transition hover:bg-slate-800 sm:bottom-6 sm:right-6"
+      >
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-900">
+          <MessageSquareMore size={18} />
+        </span>
+        <span className="pr-1">WhatsApp</span>
+      </a>
     </div>
   );
 }
