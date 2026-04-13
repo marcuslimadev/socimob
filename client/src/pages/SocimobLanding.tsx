@@ -50,20 +50,7 @@ interface ModuleDefinition {
 
 const appUrl = "https://app.socimob.com/login";
 const whatsappPhone = "5592992287144";
-const shutterstockSalesImages = [
-  {
-    src: "/images/socimob-deal-01.jpg",
-    label: "Reuniões que viram proposta",
-  },
-  {
-    src: "/images/socimob-deal-02.jpg",
-    label: "Fechamento com mais confiança",
-  },
-  {
-    src: "/images/socimob-deal-03.jpg",
-    label: "Operação pronta para crescer",
-  },
-];
+const heroDealImage = "/images/socimob-hero-closing.jpg";
 
 const plans: PlanDefinition[] = [
   {
@@ -498,48 +485,33 @@ export default function SocimobLanding() {
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-rows-[1.2fr_0.8fr]">
+          <div className="grid gap-4 lg:grid-rows-[1fr_auto]">
             <article className="relative overflow-hidden rounded-[34px] border border-white/60 bg-[#10293a] p-5 shadow-[0_30px_80px_rgba(6,16,28,0.18)] sm:p-6">
-              <div className="grid gap-4 sm:grid-cols-[1.15fr_0.85fr]">
-                <div
-                  className="relative min-h-[360px] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(9,27,39,0.18)_0%,rgba(9,27,39,0.72)_100%),linear-gradient(135deg,#2d4f5d_0%,#173241_100%)] bg-cover bg-center"
-                  style={{ backgroundImage: `linear-gradient(180deg, rgba(9,27,39,0.12) 0%, rgba(9,27,39,0.72) 100%), url(${shutterstockSalesImages[0].src})` }}
-                >
-                  <div className="absolute inset-x-0 bottom-0 p-6 text-white">
+              <div
+                className="relative min-h-[540px] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(9,27,39,0.1)_0%,rgba(9,27,39,0.6)_100%),linear-gradient(135deg,#2d4f5d_0%,#173241_100%)] bg-cover bg-center"
+                style={{ backgroundImage: `linear-gradient(180deg, rgba(9,27,39,0.08) 0%, rgba(9,27,39,0.58) 100%), url(${heroDealImage})` }}
+              >
+                <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 p-6 text-white sm:p-8">
+                  <div className="max-w-md rounded-[24px] border border-white/16 bg-[#10293a]/72 p-5 backdrop-blur-md">
                     <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-100/72">Fechamento comercial</p>
-                    <p className="mt-2 max-w-xs text-2xl font-semibold leading-tight">{shutterstockSalesImages[0].label}</p>
-                  </div>
-                </div>
-
-                <div className="grid gap-4">
-                  <div className="rounded-[28px] bg-[#f7efe2] p-5">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">A partir de</p>
-                    <p className="mt-2 text-5xl font-semibold tracking-[-0.05em] text-slate-950">R$ 349</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">Plano base, usuários extras e módulos conforme a operação.</p>
+                    <p className="mt-2 text-3xl font-semibold leading-tight">Mais confiança na venda. Mais clareza na proposta.</p>
+                    <p className="mt-3 text-sm leading-6 text-slate-200">
+                      Use a imagem em tamanho grande para transmitir resultado, segurança e decisão concluída logo na primeira dobra.
+                    </p>
                   </div>
 
-                  <div
-                    className="relative min-h-[168px] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(9,27,39,0.18)_0%,rgba(9,27,39,0.72)_100%),linear-gradient(135deg,#9e7c53_0%,#5c4630_100%)] bg-cover bg-center"
-                    style={{ backgroundImage: `linear-gradient(180deg, rgba(9,27,39,0.14) 0%, rgba(9,27,39,0.72) 100%), url(${shutterstockSalesImages[1].src})` }}
-                  >
-                    <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-                      <p className="text-sm font-semibold">{shutterstockSalesImages[1].label}</p>
+                  <div className="inline-flex w-fit items-end gap-4 rounded-[24px] bg-[#f7efe2] px-5 py-4 text-slate-950 shadow-[0_18px_40px_rgba(6,16,28,0.18)]">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">A partir de</p>
+                      <p className="mt-1 text-4xl font-semibold tracking-[-0.05em]">R$ 349</p>
                     </div>
+                    <p className="max-w-[180px] text-sm leading-5 text-slate-600">Plano base, usuários extras e módulos conforme a operação.</p>
                   </div>
                 </div>
               </div>
             </article>
 
-            <div className="grid gap-4 sm:grid-cols-[0.9fr_1.1fr]">
-              <div
-                className="relative min-h-[220px] overflow-hidden rounded-[30px] border border-white/60 bg-[linear-gradient(180deg,rgba(9,27,39,0.2)_0%,rgba(9,27,39,0.72)_100%),linear-gradient(135deg,#7d8f96_0%,#43545a_100%)] bg-cover bg-center"
-                style={{ backgroundImage: `linear-gradient(180deg, rgba(9,27,39,0.14) 0%, rgba(9,27,39,0.72) 100%), url(${shutterstockSalesImages[2].src})` }}
-              >
-                <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-                  <p className="text-sm font-semibold">{shutterstockSalesImages[2].label}</p>
-                </div>
-              </div>
-
+            <div className="grid gap-4">
               <div className="rounded-[30px] border border-[#e5d5bc] bg-white p-6 shadow-[0_18px_40px_rgba(32,23,6,0.06)]">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Oferta direta</p>
                 <div className="mt-4 space-y-3">
