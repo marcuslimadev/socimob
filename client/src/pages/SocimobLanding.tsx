@@ -183,33 +183,63 @@ const solutionPillars = [
   {
     icon: <Users size={18} />,
     title: "CRM e atendimento",
-    description: "Leads, pessoas, chat, agenda e distribuição de atendimento em um fluxo só.",
+    description: "Captação, pré-atendimento, follow-up e agenda comercial sem perder lead no caminho.",
   },
   {
     icon: <Building2 size={18} />,
     title: "Imóveis e portal",
-    description: "Cadastro, documentos, catálogo público, captação de interessados e portal do cliente.",
+    description: "Cadastro, catálogo, documentos e experiência pública prontos para gerar mais oportunidades.",
   },
   {
     icon: <Wallet size={18} />,
     title: "Financeiro imobiliário",
-    description: "Operação de locação, contas, repasses, notas e visão financeira centralizada.",
+    description: "Locação, repasses, contas e visão financeira centralizada para a operação rodar sem ruído.",
   },
   {
     icon: <ClipboardCheck size={18} />,
     title: "Operação e compliance",
-    description: "Vistorias, assinaturas, contratos e controle de chaves sem planilhas paralelas.",
+    description: "Vistorias, contratos, assinaturas e chaves no mesmo fluxo, sem retrabalho manual.",
   },
   {
     icon: <Zap size={18} />,
     title: "Anúncios e automação",
-    description: "Propaganda, automação de anúncios, analytics e captação por campanhas.",
+    description: "Propaganda, automação, analytics e campanhas com leitura clara de resultado.",
   },
   {
     icon: <Globe size={18} />,
     title: "Portais e relacionamento",
-    description: "Experiência para comprador, locatário, proprietário e time interno no mesmo ambiente.",
+    description: "Cliente, proprietário e time interno acessam a mesma operação com contexto e transparência.",
   },
+];
+
+const proofPoints = [
+  "3 planos base para diferentes estágios da operação",
+  "6 módulos acopláveis sem trocar de sistema depois",
+  "CRM, portal, financeiro e operação no mesmo produto",
+];
+
+const conversionBlocks = [
+  {
+    title: "Pare de costurar ferramentas",
+    description:
+      "O SOCIMOB substitui a bagunça de CRM separado, portal isolado, financeiro paralelo e processos manuais dispersos.",
+  },
+  {
+    title: "Venda com clareza comercial",
+    description:
+      "A landing mostra preço base, usuários e módulos de forma simples para acelerar decisão e reduzir atrito na proposta.",
+  },
+  {
+    title: "Cresça sem trocar a base",
+    description:
+      "Você começa no tamanho certo e adiciona locação, compra e venda, vistorias, marketing ou automações quando fizer sentido.",
+  },
+];
+
+const commercialHighlights = [
+  "Plano inicial a partir de R$ 349/mês",
+  "Implantação e desenho comercial sob consulta",
+  "Proposta rápida por WhatsApp com simulação pronta",
 ];
 
 const getWhatsappUrl = (message: string) =>
@@ -274,8 +304,9 @@ export default function SocimobLanding() {
   ].join(" ");
 
   return (
-    <div className="min-h-screen bg-[#f5f1e8] text-slate-950">
-      <div className="absolute inset-x-0 top-0 -z-10 h-[640px] bg-[radial-gradient(circle_at_top_left,_rgba(30,95,116,0.28),_transparent_42%),radial-gradient(circle_at_top_right,_rgba(197,124,44,0.22),_transparent_36%),linear-gradient(180deg,_#0e2431_0%,_#163447_34%,_#f5f1e8_92%)]" />
+    <div className="min-h-screen overflow-x-hidden bg-[#f5f1e8] text-slate-950">
+      <div className="absolute inset-x-0 top-0 -z-10 h-[720px] bg-[radial-gradient(circle_at_top_left,_rgba(48,130,152,0.34),_transparent_38%),radial-gradient(circle_at_top_right,_rgba(214,139,51,0.28),_transparent_34%),linear-gradient(180deg,_#081622_0%,_#10293a_28%,_#1d3f51_52%,_#f5f1e8_92%)]" />
+      <div className="absolute inset-x-0 top-0 -z-10 h-[560px] bg-[linear-gradient(120deg,rgba(255,255,255,0.08)_0%,transparent_22%,transparent_78%,rgba(255,255,255,0.06)_100%)]" />
 
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#10293a]/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
@@ -321,24 +352,36 @@ export default function SocimobLanding() {
           <div className="text-white">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-200/18 bg-white/8 px-4 py-2 text-xs uppercase tracking-[0.22em] text-cyan-100/86">
               <ShieldCheck size={15} />
-              CRM, imóveis, financeiro, portal e operação no mesmo sistema
+              Sistema imobiliário modular para vender, operar e crescer com margem
             </div>
 
             <h1 className="max-w-4xl text-5xl font-semibold leading-[0.95] tracking-[-0.05em] text-white sm:text-6xl lg:text-7xl">
-              O SOCIMOB organiza a rotina imobiliária do lead ao repasse.
+              Um sistema imobiliário que ajuda sua operação a vender mais e depender menos de improviso.
             </h1>
 
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200/88 sm:text-xl">
-              Você monta o plano pelo tamanho da equipe e pelos módulos que realmente usa. Sem empilhar ferramentas
-              separadas para CRM, portal, locação, compra e venda, vistorias ou anúncios.
+              Monte o plano pelo tamanho da equipe e pelos módulos que realmente fazem sentido hoje. CRM, portal,
+              financeiro, locação, compra e venda, vistorias e anúncios dentro da mesma base.
             </p>
+
+            <div className="mt-7 flex flex-wrap gap-3">
+              {proofPoints.map((item) => (
+                <div
+                  key={item}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-4 py-2 text-sm text-white/88 backdrop-blur-sm"
+                >
+                  <Check size={14} className="text-[#f4c98b]" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a
-                href="#planos"
+                href="#calculadora"
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
               >
-                Ver planos
+                Simular investimento
                 <ArrowRight size={16} />
               </a>
               <a
@@ -354,9 +397,9 @@ export default function SocimobLanding() {
 
             <div className="mt-12 grid gap-4 sm:grid-cols-3">
               {[
-                { label: "Base comercial", value: "CRM, leads, imóveis e agenda" },
-                { label: "Base operacional", value: "Financeiro, contratos, vistorias e chaves" },
-                { label: "Base de crescimento", value: "Portal, anúncios, analytics e automação" },
+                { label: "Comercial", value: "Capte, responda e acompanhe leads em uma rotina única." },
+                { label: "Operação", value: "Centralize contratos, locação, repasses e controles críticos." },
+                { label: "Escala", value: "Abra portal, anúncios e automações sem trocar a fundação." },
               ].map((item) => (
                 <div key={item.label} className="rounded-[28px] border border-white/12 bg-white/[0.07] p-5 backdrop-blur-sm">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/74">{item.label}</p>
@@ -369,8 +412,8 @@ export default function SocimobLanding() {
           <div className="rounded-[34px] border border-[#d4b17d]/18 bg-[#f6efe3] p-6 shadow-[0_30px_80px_rgba(6,16,28,0.28)] sm:p-8">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Como o preço funciona</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">Plano base + usuários + módulos</h2>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Oferta comercial clara</p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">Preço simples para facilitar o fechamento</h2>
               </div>
               <div className="rounded-2xl bg-[#10293a] px-4 py-3 text-white shadow-[0_16px_32px_rgba(16,41,58,0.24)]">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/76">A partir de</p>
@@ -383,18 +426,18 @@ export default function SocimobLanding() {
               {[
                 {
                   icon: <BarChart3 size={18} />,
-                  title: "Base obrigatória",
-                  text: "Todo plano já nasce com CRM, imóveis, agenda, usuários, portal público e estrutura multiusuário.",
+                  title: "Plano base pronto para operar",
+                  text: "Todo plano já começa com CRM, imóveis, agenda, usuários, portal público e estrutura multiusuário.",
                 },
                 {
                   icon: <CircleDollarSign size={18} />,
-                  title: "Usuários adicionais",
-                  text: "Cada plano já inclui uma quantidade de usuários. Se a equipe crescer, você adiciona só o excedente.",
+                  title: "Equipe cresce sem travar",
+                  text: "Cada plano já inclui usuários. Se o time crescer, você paga apenas o excedente necessário.",
                 },
                 {
                   icon: <LineChart size={18} />,
-                  title: "Módulos sob demanda",
-                  text: "Locação, compra e venda, vistorias, marketing, portais e automações podem ser acoplados conforme a operação.",
+                  title: "Módulos entram no momento certo",
+                  text: "Locação, compra e venda, vistorias, marketing, portais e automações são ativados conforme a maturidade da operação.",
                 },
               ].map((item) => (
                 <div key={item.title} className="flex gap-4 rounded-[26px] border border-slate-200 bg-white p-5">
@@ -433,20 +476,49 @@ export default function SocimobLanding() {
                 ))}
               </div>
             </div>
+
+            <div className="mt-8 rounded-[28px] border border-[#eadcc8] bg-white p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">O que ajuda a converter</p>
+              <div className="mt-4 space-y-3">
+                {commercialHighlights.map((item) => (
+                  <div key={item} className="flex items-start gap-3 text-sm leading-6 text-slate-700">
+                    <span className="mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#f1e7d8] text-[#8d5819]">
+                      <Check size={12} />
+                    </span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8">
+          <div className="grid gap-5 lg:grid-cols-3">
+            {conversionBlocks.map((block) => (
+              <article
+                key={block.title}
+                className="rounded-[30px] border border-[#dcccb6] bg-[linear-gradient(180deg,#fffaf3_0%,#f7efe3_100%)] p-6 shadow-[0_18px_40px_rgba(32,23,6,0.06)]"
+              >
+                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Porque vende</p>
+                <h2 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-slate-950">{block.title}</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{block.description}</p>
+              </article>
+            ))}
           </div>
         </section>
 
         <section id="modulos" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Mapa do produto</p>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Frentes que destravam crescimento</p>
               <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950">
-                O site de vendas reflete o que já existe no sistema.
+                Tudo que a imobiliária precisa para vender bem e operar melhor.
               </h2>
             </div>
             <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-              A estrutura abaixo foi montada com base nos módulos, páginas e fluxos já presentes no SOCIMOB: CRM,
-              imóveis, portais, financeiro, operação, vistorias, anúncios, analytics e integrações.
+              Em vez de vender uma lista genérica de funcionalidades, o SOCIMOB organiza o produto pelas frentes que mais
+              impactam atendimento, gestão, produtividade e receita.
             </p>
           </div>
 
@@ -472,12 +544,11 @@ export default function SocimobLanding() {
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Planos mensais</p>
                 <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950">
-                  Do comercial enxuto à operação completa.
+                  Três degraus claros para tirar a venda do campo da dúvida.
                 </h2>
               </div>
               <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-                Os planos já vêm organizados por estágio de maturidade. Se quiser, você ainda pode começar menor e
-                habilitar módulos depois.
+                O cliente entende rápido onde entra, o que está incluído e como evolui. Isso encurta negociação e melhora a percepção de valor.
               </p>
             </div>
 
@@ -551,6 +622,12 @@ export default function SocimobLanding() {
                       {plan.notes}
                     </p>
 
+                    <div className={`mt-5 rounded-[22px] border px-4 py-3 text-sm ${highlighted ? "border-white/10 bg-white/7 text-slate-100" : "border-[#eadcc8] bg-[#fcf7ef] text-slate-700"}`}>
+                      {plan.id === "basico" && "Indicado para validar processo comercial, organizar imóveis e começar com uma operação mais previsível."}
+                      {plan.id === "gestao" && "Melhor equilíbrio entre venda, locação, portal e financeiro para quem já roda operação real."}
+                      {plan.id === "pro" && "Pacote para times que querem concentrar comercial, operação, marketing e automações em um ambiente único."}
+                    </div>
+
                     <div className="mt-7 flex flex-col gap-3">
                       <a
                         href={getWhatsappUrl(`Olá! Quero contratar ou avaliar o plano ${plan.name} do SOCIMOB.`)}
@@ -593,11 +670,11 @@ export default function SocimobLanding() {
             <div>
               <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Módulos mensais</p>
               <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950">
-                Acople só o que sua operação precisa agora.
+                  Expanda o sistema por prioridade de negócio.
               </h2>
             </div>
             <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-              Se você não quiser ir direto para o Pró, o site já deixa claro quanto custa ativar cada frente do produto.
+              A proposta fica mais convincente quando o cliente entende exatamente quanto custa ativar cada frente que gera resultado.
             </p>
           </div>
 
@@ -642,11 +719,10 @@ export default function SocimobLanding() {
             <div>
               <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-100/74">Calculadora comercial</p>
               <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white">
-                Monte uma estimativa mensal em menos de um minuto.
+                Faça uma simulação enxuta e leve a conversa direto para o fechamento.
               </h2>
               <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300 sm:text-base">
-                A calculadora considera plano base, quantidade de usuários e módulos não inclusos. Implantação,
-                migração e integrações especiais continuam sob avaliação comercial.
+                A estimativa considera plano, usuários e módulos extras. Depois disso, a negociação pode ir ao WhatsApp já com contexto e valor percebido.
               </p>
 
               <div className="mt-8 rounded-[28px] border border-white/10 bg-white/[0.05] p-6">
@@ -691,7 +767,7 @@ export default function SocimobLanding() {
                   rel="noreferrer"
                   className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#d68b33] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-[#e79a3e]"
                 >
-                  Enviar esta simulação no WhatsApp
+                  Enviar simulação e pedir proposta
                   <ArrowRight size={16} />
                 </a>
               </div>
@@ -811,11 +887,11 @@ export default function SocimobLanding() {
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Contato direto</p>
                 <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950">
-                  Quer fechar o desenho ideal para a sua imobiliária?
+                  Se a ideia fizer sentido, o próximo passo é simples.
                 </h2>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-                  Me chame no WhatsApp e eu ajusto a proposta conforme sua operação, quantidade de usuários, módulos
-                  necessários, implantação e integrações específicas.
+                  Me chame no WhatsApp e eu ajusto a proposta conforme sua operação, quantidade de usuários, módulos,
+                  implantação e integrações específicas. O objetivo é sair com um desenho comercial claro, não com dúvida.
                 </p>
               </div>
 
