@@ -256,6 +256,16 @@ const conciseBenefits = [
   "Anúncios e automações",
 ];
 
+const heroCapabilities = [
+  "CRM completo com funil, leads, agenda e atendimento",
+  "Contas a pagar e a receber, repasses e financeiro imobiliário",
+  "Emissão de nota fiscal, contratos de aluguel e compra e venda",
+  "Atendimento com IA, WhatsApp, portais e integrações sob medida",
+];
+
+const heroIntegrationCopy =
+  "Personalizamos o SOCIMOB com todas as integrações que o negócio precisa, inclusive emissão de nota fiscal, geração de contrato de aluguel e compra e venda, contas a pagar e a receber, CRM completo, atendimento IA e muito mais.";
+
 const trustBlocks = [
   {
     eyebrow: "Percepção de valor",
@@ -405,23 +415,23 @@ export default function SocimobLanding() {
       </header>
 
       <main>
-        <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-12 pt-10 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:pb-16 lg:pt-16">
-          <div className="rounded-[34px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.92)_0%,rgba(255,248,239,0.88)_100%)] p-7 shadow-[0_30px_80px_rgba(41,33,20,0.08)] sm:p-8 lg:p-10">
+        <section className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 lg:px-8 lg:pb-12 lg:pt-10">
+          <div className="grid gap-6 lg:min-h-[calc(100vh-112px)] lg:grid-cols-[0.94fr_1.06fr] lg:grid-rows-[auto_auto]">
+            <div className="rounded-[34px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(255,248,239,0.92)_100%)] p-6 shadow-[0_30px_80px_rgba(41,33,20,0.08)] sm:p-8 lg:p-8">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#d9c9b0] bg-[#fff8ee] px-4 py-2 text-xs uppercase tracking-[0.22em] text-[#8d5819]">
               <ShieldCheck size={15} />
-              Plataforma imobiliária para fechar mais e operar melhor
+              Landing de venda para entender, comparar e fechar rápido
             </div>
 
-            <h1 className="max-w-3xl text-4xl font-semibold leading-[0.96] tracking-[-0.05em] text-slate-950 sm:text-5xl lg:text-6xl">
-              O sistema para imobiliárias que querem vender com mais clareza.
+            <h1 className="max-w-3xl text-4xl font-semibold leading-[0.96] tracking-[-0.05em] text-slate-950 sm:text-5xl lg:text-[3.4rem]">
+              Os 3 planos, o que está incluso e o próximo passo para contratar o SOCIMOB.
             </h1>
 
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-              CRM, portal, imóveis, locação, financeiro e automações em uma única base. Menos ferramenta solta, mais
-              controle da operação e uma proposta comercial mais fácil de defender.
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
+              Plataforma imobiliária completa para operação comercial, locação, compra e venda, financeiro, atendimento com IA e integrações personalizadas.
             </p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-3">
               {proofPoints.map((item) => (
                 <div
                   key={item}
@@ -433,31 +443,28 @@ export default function SocimobLanding() {
               ))}
             </div>
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              {premiumSignals.map((item) => (
-                <div key={item} className="rounded-[22px] border border-[#ebdcc8] bg-[#fffaf4] px-4 py-4 text-sm leading-6 text-slate-600">
-                  {item}
+            <div className="mt-6 rounded-[28px] border border-[#eadcc8] bg-white p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Personalização e integrações</p>
+              <p className="mt-3 text-sm leading-7 text-slate-700">{heroIntegrationCopy}</p>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              {heroCapabilities.map((item) => (
+                <div key={item} className="flex items-start gap-3 rounded-[20px] border border-[#efe3d2] bg-[#fffaf4] px-4 py-4 text-sm leading-6 text-slate-700">
+                  <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#10293a] text-white">
+                    <Check size={12} />
+                  </span>
+                  <span>{item}</span>
                 </div>
               ))}
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-2">
-              {conciseBenefits.map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full bg-[#10293a] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
-
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <a
-                href="#calculadora"
+                href={getWhatsappUrl("Olá! Quero contratar o SOCIMOB e preciso de uma proposta com os 3 planos e integrações." )}
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-[#10293a] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#163447]"
               >
-                Simular investimento
+                Pedir proposta agora
                 <ArrowRight size={16} />
               </a>
               <a
@@ -466,37 +473,23 @@ export default function SocimobLanding() {
                 rel="noreferrer"
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d9c9b0] px-6 py-3 text-sm font-semibold text-slate-800 transition hover:bg-[#fff5e9]"
               >
-                Pedir demonstração
+                Falar no WhatsApp
                 <MessageSquareMore size={16} />
               </a>
             </div>
-
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              {[
-                { label: "Comercial", value: "Leads, agenda e atendimento em um fluxo único." },
-                { label: "Operação", value: "Locação, financeiro e contratos sem planilha paralela." },
-                { label: "Escala", value: "Portal, anúncios e automações no mesmo ambiente." },
-              ].map((item) => (
-                <div key={item.label} className="rounded-[24px] border border-[#eadcc8] bg-white p-5">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{item.label}</p>
-                  <p className="mt-3 text-sm leading-6 text-slate-700">{item.value}</p>
-                </div>
-              ))}
             </div>
-          </div>
 
-          <div className="grid gap-4 lg:grid-rows-[1fr_auto]">
-            <article className="relative overflow-hidden rounded-[34px] border border-white/60 bg-[#10293a] p-5 shadow-[0_30px_80px_rgba(6,16,28,0.18)] sm:p-6">
+            <article className="relative overflow-hidden rounded-[34px] border border-white/60 bg-[#10293a] p-5 shadow-[0_30px_80px_rgba(6,16,28,0.18)] sm:p-6 lg:row-span-1">
               <div
-                className="relative min-h-[540px] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(9,27,39,0.1)_0%,rgba(9,27,39,0.6)_100%),linear-gradient(135deg,#2d4f5d_0%,#173241_100%)] bg-cover bg-center"
+                className="relative min-h-[420px] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(9,27,39,0.12)_0%,rgba(9,27,39,0.64)_100%),linear-gradient(135deg,#2d4f5d_0%,#173241_100%)] bg-cover bg-center lg:min-h-[100%]"
                 style={{ backgroundImage: `linear-gradient(180deg, rgba(9,27,39,0.08) 0%, rgba(9,27,39,0.58) 100%), url(${heroDealImage})` }}
               >
                 <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 p-6 text-white sm:p-8">
                   <div className="max-w-md rounded-[24px] border border-white/16 bg-[#10293a]/72 p-5 backdrop-blur-md">
                     <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-100/72">Fechamento comercial</p>
-                    <p className="mt-2 text-3xl font-semibold leading-tight">Mais confiança na venda. Mais clareza na proposta.</p>
+                    <p className="mt-2 text-3xl font-semibold leading-tight">Do lead ao fechamento, tudo em um só sistema.</p>
                     <p className="mt-3 text-sm leading-6 text-slate-200">
-                      Use a imagem em tamanho grande para transmitir resultado, segurança e decisão concluída logo na primeira dobra.
+                      CRM completo, atendimento IA, nota fiscal, contratos, contas a pagar e a receber, portais e automações sob medida.
                     </p>
                   </div>
 
@@ -511,41 +504,75 @@ export default function SocimobLanding() {
               </div>
             </article>
 
-            <div className="grid gap-4">
-              <div className="rounded-[30px] border border-[#e5d5bc] bg-white p-6 shadow-[0_18px_40px_rgba(32,23,6,0.06)]">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Oferta direta</p>
-                <div className="mt-4 space-y-3">
-                  {commercialHighlights.map((item) => (
-                    <div key={item} className="flex items-start gap-3 text-sm leading-6 text-slate-700">
-                      <span className="mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#f1e7d8] text-[#8d5819]">
-                        <Check size={12} />
-                      </span>
-                      <span>{item}</span>
-                    </div>
-                  ))}
+            <div className="rounded-[30px] border border-[#e5d5bc] bg-white p-5 shadow-[0_18px_40px_rgba(32,23,6,0.06)] lg:col-span-2">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">3 planos na primeira dobra</p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">Escolha o tamanho da operação e avance para a proposta.</h2>
                 </div>
+                <p className="max-w-2xl text-sm leading-6 text-slate-600">
+                  Os três planos aparecem aqui para comparação rápida. A personalização entra depois com os módulos e integrações que sua imobiliária precisa.
+                </p>
+              </div>
 
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  {plans.map((plan) => (
-                    <button
+              <div className="mt-5 grid gap-4 xl:grid-cols-3">
+                {plans.map((plan) => {
+                  const highlighted = Boolean(plan.spotlight);
+
+                  return (
+                    <article
                       key={plan.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedPlanId(plan.id);
-                        setUserCount(plan.includedUsers);
-                      }}
-                      className={`rounded-[22px] border px-4 py-4 text-left transition ${
-                        selectedPlanId === plan.id
-                          ? "border-[#d68b33] bg-[#fff5e9]"
-                          : "border-[#eadcc8] bg-[#fcf7ef] hover:bg-[#faf1e4]"
+                      className={`rounded-[26px] border p-5 ${
+                        highlighted
+                          ? "border-[#d68b33] bg-[#10293a] text-white shadow-[0_18px_40px_rgba(16,41,58,0.18)]"
+                          : "border-[#eadcc8] bg-[#fcf7ef] text-slate-950"
                       }`}
                     >
-                      <p className="text-sm font-semibold text-slate-900">{plan.name}</p>
-                      <p className="mt-2 text-2xl font-semibold text-slate-950">R$ {plan.monthlyPrice.toLocaleString("pt-BR")}</p>
-                      <p className="mt-1 text-xs text-slate-500">{plan.includedUsers} usuários</p>
-                    </button>
-                  ))}
-                </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className={`text-[11px] uppercase tracking-[0.16em] ${highlighted ? "text-cyan-100" : "text-slate-500"}`}>{plan.name}</p>
+                          <p className="mt-2 text-4xl font-semibold tracking-[-0.05em]">R$ {plan.monthlyPrice.toLocaleString("pt-BR")}</p>
+                          <p className={`mt-1 text-sm ${highlighted ? "text-slate-200" : "text-slate-600"}`}>por mês</p>
+                        </div>
+                        {highlighted ? (
+                          <div className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
+                            Mais vendido
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <p className={`mt-4 text-sm leading-6 ${highlighted ? "text-slate-200" : "text-slate-700"}`}>{plan.subtitle}</p>
+
+                      <div className={`mt-4 rounded-[20px] px-4 py-3 ${highlighted ? "bg-white/8" : "bg-white"}`}>
+                        <p className="text-sm font-semibold">{plan.includedUsers} usuários inclusos</p>
+                        <p className={`mt-1 text-xs ${highlighted ? "text-slate-300" : "text-slate-500"}`}>R$ {plan.extraUserPrice.toLocaleString("pt-BR")} por usuário extra</p>
+                      </div>
+
+                      <ul className="mt-4 space-y-2">
+                        {plan.highlights.slice(0, 3).map((highlight) => (
+                          <li key={highlight} className="flex items-start gap-2 text-sm leading-6">
+                            <span className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${highlighted ? "bg-white/12 text-[#f4c98b]" : "bg-[#f1e7d8] text-[#8d5819]"}`}>
+                              <Check size={10} />
+                            </span>
+                            <span className={highlighted ? "text-slate-100" : "text-slate-700"}>{highlight}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <a
+                        href={getWhatsappUrl(`Olá! Quero avaliar o plano ${plan.name} do SOCIMOB com integrações personalizadas para a minha operação.`)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold transition ${
+                          highlighted ? "bg-[#d68b33] text-slate-950 hover:bg-[#e79a3e]" : "bg-[#10293a] text-white hover:bg-[#163447]"
+                        }`}
+                      >
+                        Pedir proposta deste plano
+                        <ArrowRight size={16} />
+                      </a>
+                    </article>
+                  );
+                })}
               </div>
             </div>
           </div>
