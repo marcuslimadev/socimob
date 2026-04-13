@@ -50,7 +50,7 @@ interface ModuleDefinition {
 
 const appUrl = "https://app.socimob.com/login";
 const whatsappPhone = "5592992287144";
-const heroDealImage = "/images/socimob-hero-closing.jpg";
+const heroDealImage = "/images/deal.png";
 
 const plans: PlanDefinition[] = [
   {
