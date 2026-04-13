@@ -242,6 +242,56 @@ const commercialHighlights = [
   "Proposta rápida por WhatsApp com simulação pronta",
 ];
 
+const premiumSignals = [
+  "Posicionamento premium sem complexidade desnecessária",
+  "Tom comercial para imobiliárias que querem mais previsibilidade",
+  "Arquitetura modular para vender hoje e escalar depois",
+];
+
+const trustBlocks = [
+  {
+    eyebrow: "Percepção de valor",
+    title: "Oferta apresentada com clareza executiva",
+    description:
+      "Planos, módulos e estimativa mensal aparecem de forma objetiva para reduzir atrito, comparação confusa e negociação desalinhada.",
+  },
+  {
+    eyebrow: "Aderência operacional",
+    title: "Pensado para rotina imobiliária real",
+    description:
+      "A proposta conversa com operação comercial, locação, financeiro, contratos, vistorias, portais e anúncios no mesmo ambiente.",
+  },
+  {
+    eyebrow: "Crescimento sustentável",
+    title: "Você não precisa trocar de base ao crescer",
+    description:
+      "A estrutura modular ajuda a começar com foco e expandir o sistema quando a operação exigir mais profundidade.",
+  },
+];
+
+const faqItems = [
+  {
+    question: "Preciso contratar tudo de uma vez?",
+    answer:
+      "Não. A lógica da página já comunica uma entrada mais simples, com evolução por módulos conforme sua operação amadurece ou ganha novas frentes.",
+  },
+  {
+    question: "Como funciona a implantação?",
+    answer:
+      "Implantação, migração de dados e integrações especiais entram na avaliação comercial. A ideia é desenhar uma proposta aderente ao seu cenário real, não empurrar um pacote genérico.",
+  },
+  {
+    question: "Serve para foco em vendas e também para locação?",
+    answer:
+      "Sim. A base cobre o comercial e os módulos permitem acrescentar locação, compra e venda, vistorias, relacionamento com proprietário e automações conforme a estratégia da imobiliária.",
+  },
+  {
+    question: "Posso usar como argumento comercial com a minha equipe ou sócio?",
+    answer:
+      "Sim. A calculadora e a apresentação por blocos ajudam a justificar investimento, comparar cenários e levar uma conversa mais racional para decisão interna.",
+  },
+];
+
 const getWhatsappUrl = (message: string) =>
   `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`;
 
@@ -348,20 +398,20 @@ export default function SocimobLanding() {
       </header>
 
       <main>
-        <section className="mx-auto grid max-w-7xl gap-10 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:pb-24 lg:pt-20">
+        <section className="mx-auto grid max-w-7xl gap-10 px-4 pb-12 pt-12 sm:px-6 lg:grid-cols-[1.12fr_0.88fr] lg:px-8 lg:pb-18 lg:pt-20">
           <div className="text-white">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-200/18 bg-white/8 px-4 py-2 text-xs uppercase tracking-[0.22em] text-cyan-100/86">
               <ShieldCheck size={15} />
-              Sistema imobiliário modular para vender, operar e crescer com margem
+              Plataforma imobiliária para operações que querem percepção premium e execução consistente
             </div>
 
             <h1 className="max-w-4xl text-5xl font-semibold leading-[0.95] tracking-[-0.05em] text-white sm:text-6xl lg:text-7xl">
-              Um sistema imobiliário que ajuda sua operação a vender mais e depender menos de improviso.
+              O visual da sua marca melhora. A operação também.
             </h1>
 
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200/88 sm:text-xl">
-              Monte o plano pelo tamanho da equipe e pelos módulos que realmente fazem sentido hoje. CRM, portal,
-              financeiro, locação, compra e venda, vistorias e anúncios dentro da mesma base.
+              O SOCIMOB combina posicionamento, organização comercial e profundidade operacional para imobiliárias que
+              querem crescer com mais controle, mais velocidade e menos remendos entre ferramentas.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -372,6 +422,14 @@ export default function SocimobLanding() {
                 >
                   <Check size={14} className="text-[#f4c98b]" />
                   <span>{item}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              {premiumSignals.map((item) => (
+                <div key={item} className="rounded-[24px] border border-white/10 bg-black/10 px-4 py-4 text-sm leading-6 text-white/82 backdrop-blur-sm">
+                  {item}
                 </div>
               ))}
             </div>
@@ -397,9 +455,9 @@ export default function SocimobLanding() {
 
             <div className="mt-12 grid gap-4 sm:grid-cols-3">
               {[
-                { label: "Comercial", value: "Capte, responda e acompanhe leads em uma rotina única." },
-                { label: "Operação", value: "Centralize contratos, locação, repasses e controles críticos." },
-                { label: "Escala", value: "Abra portal, anúncios e automações sem trocar a fundação." },
+                { label: "Comercial", value: "Capte, responda e acompanhe leads em uma rotina coerente e com imagem mais profissional." },
+                { label: "Operação", value: "Centralize contratos, locação, repasses e controles críticos com menos ruído interno." },
+                { label: "Escala", value: "Abra portal, anúncios e automações sem precisar recomeçar do zero quando crescer." },
               ].map((item) => (
                 <div key={item.label} className="rounded-[28px] border border-white/12 bg-white/[0.07] p-5 backdrop-blur-sm">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/74">{item.label}</p>
@@ -409,7 +467,7 @@ export default function SocimobLanding() {
             </div>
           </div>
 
-          <div className="rounded-[34px] border border-[#d4b17d]/18 bg-[#f6efe3] p-6 shadow-[0_30px_80px_rgba(6,16,28,0.28)] sm:p-8">
+          <div className="rounded-[34px] border border-[#d4b17d]/18 bg-[linear-gradient(180deg,#f7efe2_0%,#f3eadc_100%)] p-6 shadow-[0_30px_80px_rgba(6,16,28,0.28)] sm:p-8">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Oferta comercial clara</p>
@@ -419,6 +477,24 @@ export default function SocimobLanding() {
                 <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/76">A partir de</p>
                 <p className="mt-1 text-3xl font-semibold">R$ 349</p>
                 <p className="text-xs text-slate-300">por mês</p>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-[28px] border border-[#e5d5bc] bg-white/80 p-5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Leitura rápida para decisão</p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="text-2xl font-semibold text-slate-950">Base</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">O cliente entende o ponto de entrada sem ruído.</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-slate-950">Expansão</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">Usuários e módulos evoluem com a operação.</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-slate-950">Fechamento</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">A simulação já leva a conversa pronta para WhatsApp.</p>
+                </div>
               </div>
             </div>
 
@@ -505,6 +581,32 @@ export default function SocimobLanding() {
                 <p className="mt-3 text-sm leading-7 text-slate-600">{block.description}</p>
               </article>
             ))}
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="rounded-[36px] border border-[#d8c6af] bg-[#f8f1e7] p-8 shadow-[0_18px_40px_rgba(32,23,6,0.06)] sm:p-10">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Elementos de confiança</p>
+                <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950">
+                  Uma página que vende melhor porque transmite segurança.
+                </h2>
+              </div>
+              <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+                Sem promessas artificiais. O foco aqui é deixar a oferta mais confiável, mais compreensível e mais fácil de defender comercialmente.
+              </p>
+            </div>
+
+            <div className="mt-8 grid gap-5 lg:grid-cols-3">
+              {trustBlocks.map((block) => (
+                <article key={block.title} className="rounded-[28px] border border-[#e5d7c3] bg-white p-6">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{block.eyebrow}</p>
+                  <h3 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-slate-950">{block.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">{block.description}</p>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -881,13 +983,38 @@ export default function SocimobLanding() {
           </div>
         </section>
 
+        <section className="border-y border-[#e8dbc7] bg-[#fbf7f0]">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Objeções frequentes</p>
+                <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950">
+                  Respostas que ajudam a decisão avançar.
+                </h2>
+              </div>
+              <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+                Essa seção reduz dúvida comercial e ajuda a transformar curiosidade em conversa séria de proposta.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-5 lg:grid-cols-2">
+              {faqItems.map((item) => (
+                <article key={item.question} className="rounded-[30px] border border-[#e1d2bf] bg-white p-6 shadow-[0_18px_40px_rgba(32,23,6,0.05)]">
+                  <h3 className="text-xl font-semibold tracking-[-0.03em] text-slate-950">{item.question}</h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">{item.answer}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section id="contato" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="rounded-[36px] border border-[#e1d2bf] bg-[linear-gradient(135deg,#fff7ea_0%,#f7efe4_55%,#f0e7da_100%)] p-8 shadow-[0_22px_60px_rgba(32,23,6,0.08)] sm:p-10">
             <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Contato direto</p>
                 <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950">
-                  Se a ideia fizer sentido, o próximo passo é simples.
+                  Quando a oferta encaixa, o fechamento fica mais próximo.
                 </h2>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
                   Me chame no WhatsApp e eu ajusto a proposta conforme sua operação, quantidade de usuários, módulos,
@@ -909,7 +1036,7 @@ export default function SocimobLanding() {
                     rel="noreferrer"
                     className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d68b33] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-[#e79a3e]"
                   >
-                    Abrir WhatsApp
+                    Pedir proposta no WhatsApp
                     <ArrowRight size={16} />
                   </a>
                   <a
