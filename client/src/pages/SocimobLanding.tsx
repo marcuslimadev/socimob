@@ -50,6 +50,20 @@ interface ModuleDefinition {
 
 const appUrl = "https://app.socimob.com/login";
 const whatsappPhone = "5592992287144";
+const shutterstockSalesImages = [
+  {
+    src: "/images/socimob-deal-01.jpg",
+    label: "Reuniões que viram proposta",
+  },
+  {
+    src: "/images/socimob-deal-02.jpg",
+    label: "Fechamento com mais confiança",
+  },
+  {
+    src: "/images/socimob-deal-03.jpg",
+    label: "Operação pronta para crescer",
+  },
+];
 
 const plans: PlanDefinition[] = [
   {
@@ -213,9 +227,9 @@ const solutionPillars = [
 ];
 
 const proofPoints = [
-  "3 planos base para diferentes estágios da operação",
-  "6 módulos acopláveis sem trocar de sistema depois",
   "CRM, portal, financeiro e operação no mesmo produto",
+  "Planos simples para acelerar decisão comercial",
+  "Módulos para crescer sem trocar de sistema",
 ];
 
 const conversionBlocks = [
@@ -243,9 +257,16 @@ const commercialHighlights = [
 ];
 
 const premiumSignals = [
-  "Posicionamento premium sem complexidade desnecessária",
-  "Tom comercial para imobiliárias que querem mais previsibilidade",
-  "Arquitetura modular para vender hoje e escalar depois",
+  "Imagem mais profissional para a sua operação",
+  "Mais clareza comercial na hora de vender o sistema",
+  "Escala sem remendo entre ferramentas",
+];
+
+const conciseBenefits = [
+  "Atendimento e CRM",
+  "Portal e imóveis",
+  "Locação e financeiro",
+  "Anúncios e automações",
 ];
 
 const trustBlocks = [
@@ -355,8 +376,7 @@ export default function SocimobLanding() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f5f1e8] text-slate-950">
-      <div className="absolute inset-x-0 top-0 -z-10 h-[720px] bg-[radial-gradient(circle_at_top_left,_rgba(48,130,152,0.34),_transparent_38%),radial-gradient(circle_at_top_right,_rgba(214,139,51,0.28),_transparent_34%),linear-gradient(180deg,_#081622_0%,_#10293a_28%,_#1d3f51_52%,_#f5f1e8_92%)]" />
-      <div className="absolute inset-x-0 top-0 -z-10 h-[560px] bg-[linear-gradient(120deg,rgba(255,255,255,0.08)_0%,transparent_22%,transparent_78%,rgba(255,255,255,0.06)_100%)]" />
+      <div className="absolute inset-x-0 top-0 -z-10 h-[760px] bg-[radial-gradient(circle_at_top_left,_rgba(48,130,152,0.18),_transparent_32%),radial-gradient(circle_at_top_right,_rgba(214,139,51,0.18),_transparent_28%),linear-gradient(180deg,_#dfe8ea_0%,_#efe5d5_42%,_#f5f1e8_100%)]" />
 
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#10293a]/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
@@ -398,29 +418,29 @@ export default function SocimobLanding() {
       </header>
 
       <main>
-        <section className="mx-auto grid max-w-7xl gap-10 px-4 pb-12 pt-12 sm:px-6 lg:grid-cols-[1.12fr_0.88fr] lg:px-8 lg:pb-18 lg:pt-20">
-          <div className="text-white">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-200/18 bg-white/8 px-4 py-2 text-xs uppercase tracking-[0.22em] text-cyan-100/86">
+        <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-12 pt-10 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:pb-16 lg:pt-16">
+          <div className="rounded-[34px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.92)_0%,rgba(255,248,239,0.88)_100%)] p-7 shadow-[0_30px_80px_rgba(41,33,20,0.08)] sm:p-8 lg:p-10">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#d9c9b0] bg-[#fff8ee] px-4 py-2 text-xs uppercase tracking-[0.22em] text-[#8d5819]">
               <ShieldCheck size={15} />
-              Plataforma imobiliária para operações que querem percepção premium e execução consistente
+              Plataforma imobiliária para fechar mais e operar melhor
             </div>
 
-            <h1 className="max-w-4xl text-5xl font-semibold leading-[0.95] tracking-[-0.05em] text-white sm:text-6xl lg:text-7xl">
-              O visual da sua marca melhora. A operação também.
+            <h1 className="max-w-3xl text-4xl font-semibold leading-[0.96] tracking-[-0.05em] text-slate-950 sm:text-5xl lg:text-6xl">
+              O sistema para imobiliárias que querem vender com mais clareza.
             </h1>
 
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200/88 sm:text-xl">
-              O SOCIMOB combina posicionamento, organização comercial e profundidade operacional para imobiliárias que
-              querem crescer com mais controle, mais velocidade e menos remendos entre ferramentas.
+            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+              CRM, portal, imóveis, locação, financeiro e automações em uma única base. Menos ferramenta solta, mais
+              controle da operação e uma proposta comercial mais fácil de defender.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
               {proofPoints.map((item) => (
                 <div
                   key={item}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-4 py-2 text-sm text-white/88 backdrop-blur-sm"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#e5d6bf] bg-white px-4 py-2 text-sm text-slate-700"
                 >
-                  <Check size={14} className="text-[#f4c98b]" />
+                  <Check size={14} className="text-[#d68b33]" />
                   <span>{item}</span>
                 </div>
               ))}
@@ -428,16 +448,27 @@ export default function SocimobLanding() {
 
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
               {premiumSignals.map((item) => (
-                <div key={item} className="rounded-[24px] border border-white/10 bg-black/10 px-4 py-4 text-sm leading-6 text-white/82 backdrop-blur-sm">
+                <div key={item} className="rounded-[22px] border border-[#ebdcc8] bg-[#fffaf4] px-4 py-4 text-sm leading-6 text-slate-600">
                   {item}
                 </div>
+              ))}
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-2">
+              {conciseBenefits.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full bg-[#10293a] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white"
+                >
+                  {item}
+                </span>
               ))}
             </div>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a
                 href="#calculadora"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#10293a] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#163447]"
               >
                 Simular investimento
                 <ArrowRight size={16} />
@@ -446,124 +477,103 @@ export default function SocimobLanding() {
                 href={getWhatsappUrl("Olá! Quero uma demonstração do SOCIMOB para a minha imobiliária.")}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d9c9b0] px-6 py-3 text-sm font-semibold text-slate-800 transition hover:bg-[#fff5e9]"
               >
                 Pedir demonstração
                 <MessageSquareMore size={16} />
               </a>
             </div>
 
-            <div className="mt-12 grid gap-4 sm:grid-cols-3">
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
               {[
-                { label: "Comercial", value: "Capte, responda e acompanhe leads em uma rotina coerente e com imagem mais profissional." },
-                { label: "Operação", value: "Centralize contratos, locação, repasses e controles críticos com menos ruído interno." },
-                { label: "Escala", value: "Abra portal, anúncios e automações sem precisar recomeçar do zero quando crescer." },
+                { label: "Comercial", value: "Leads, agenda e atendimento em um fluxo único." },
+                { label: "Operação", value: "Locação, financeiro e contratos sem planilha paralela." },
+                { label: "Escala", value: "Portal, anúncios e automações no mesmo ambiente." },
               ].map((item) => (
-                <div key={item.label} className="rounded-[28px] border border-white/12 bg-white/[0.07] p-5 backdrop-blur-sm">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/74">{item.label}</p>
-                  <p className="mt-3 text-sm leading-6 text-white/88">{item.value}</p>
+                <div key={item.label} className="rounded-[24px] border border-[#eadcc8] bg-white p-5">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{item.label}</p>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">{item.value}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="rounded-[34px] border border-[#d4b17d]/18 bg-[linear-gradient(180deg,#f7efe2_0%,#f3eadc_100%)] p-6 shadow-[0_30px_80px_rgba(6,16,28,0.28)] sm:p-8">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Oferta comercial clara</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">Preço simples para facilitar o fechamento</h2>
-              </div>
-              <div className="rounded-2xl bg-[#10293a] px-4 py-3 text-white shadow-[0_16px_32px_rgba(16,41,58,0.24)]">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/76">A partir de</p>
-                <p className="mt-1 text-3xl font-semibold">R$ 349</p>
-                <p className="text-xs text-slate-300">por mês</p>
-              </div>
-            </div>
-
-            <div className="mt-6 rounded-[28px] border border-[#e5d5bc] bg-white/80 p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Leitura rápida para decisão</p>
-              <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                <div>
-                  <p className="text-2xl font-semibold text-slate-950">Base</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">O cliente entende o ponto de entrada sem ruído.</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold text-slate-950">Expansão</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">Usuários e módulos evoluem com a operação.</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold text-slate-950">Fechamento</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">A simulação já leva a conversa pronta para WhatsApp.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 space-y-4">
-              {[
-                {
-                  icon: <BarChart3 size={18} />,
-                  title: "Plano base pronto para operar",
-                  text: "Todo plano já começa com CRM, imóveis, agenda, usuários, portal público e estrutura multiusuário.",
-                },
-                {
-                  icon: <CircleDollarSign size={18} />,
-                  title: "Equipe cresce sem travar",
-                  text: "Cada plano já inclui usuários. Se o time crescer, você paga apenas o excedente necessário.",
-                },
-                {
-                  icon: <LineChart size={18} />,
-                  title: "Módulos entram no momento certo",
-                  text: "Locação, compra e venda, vistorias, marketing, portais e automações são ativados conforme a maturidade da operação.",
-                },
-              ].map((item) => (
-                <div key={item.title} className="flex gap-4 rounded-[26px] border border-slate-200 bg-white p-5">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eef4f6] text-[#163447]">
-                    {item.icon}
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.text}</p>
+          <div className="grid gap-4 lg:grid-rows-[1.2fr_0.8fr]">
+            <article className="relative overflow-hidden rounded-[34px] border border-white/60 bg-[#10293a] p-5 shadow-[0_30px_80px_rgba(6,16,28,0.18)] sm:p-6">
+              <div className="grid gap-4 sm:grid-cols-[1.15fr_0.85fr]">
+                <div
+                  className="relative min-h-[360px] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(9,27,39,0.18)_0%,rgba(9,27,39,0.72)_100%),linear-gradient(135deg,#2d4f5d_0%,#173241_100%)] bg-cover bg-center"
+                  style={{ backgroundImage: `linear-gradient(180deg, rgba(9,27,39,0.12) 0%, rgba(9,27,39,0.72) 100%), url(${shutterstockSalesImages[0].src})` }}
+                >
+                  <div className="absolute inset-x-0 bottom-0 p-6 text-white">
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-100/72">Fechamento comercial</p>
+                    <p className="mt-2 max-w-xs text-2xl font-semibold leading-tight">{shutterstockSalesImages[0].label}</p>
                   </div>
                 </div>
-              ))}
-            </div>
 
-            <div className="mt-8 rounded-[28px] bg-[#10293a] p-6 text-white">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-100/78">Indicados para</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                {plans.map((plan) => (
-                  <button
-                    key={plan.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedPlanId(plan.id);
-                      setUserCount(plan.includedUsers);
-                    }}
-                    className={`rounded-[24px] border px-4 py-4 text-left transition ${
-                      selectedPlanId === plan.id
-                        ? "border-[#d68b33] bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                        : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
-                    }`}
+                <div className="grid gap-4">
+                  <div className="rounded-[28px] bg-[#f7efe2] p-5">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">A partir de</p>
+                    <p className="mt-2 text-5xl font-semibold tracking-[-0.05em] text-slate-950">R$ 349</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">Plano base, usuários extras e módulos conforme a operação.</p>
+                  </div>
+
+                  <div
+                    className="relative min-h-[168px] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(9,27,39,0.18)_0%,rgba(9,27,39,0.72)_100%),linear-gradient(135deg,#9e7c53_0%,#5c4630_100%)] bg-cover bg-center"
+                    style={{ backgroundImage: `linear-gradient(180deg, rgba(9,27,39,0.14) 0%, rgba(9,27,39,0.72) 100%), url(${shutterstockSalesImages[1].src})` }}
                   >
-                    <p className="text-sm font-semibold">{plan.name}</p>
-                    <p className="mt-1 text-2xl font-semibold">R$ {plan.monthlyPrice.toLocaleString("pt-BR")}</p>
-                    <p className="mt-2 text-xs text-slate-300">{plan.includedUsers} usuários inclusos</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-8 rounded-[28px] border border-[#eadcc8] bg-white p-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">O que ajuda a converter</p>
-              <div className="mt-4 space-y-3">
-                {commercialHighlights.map((item) => (
-                  <div key={item} className="flex items-start gap-3 text-sm leading-6 text-slate-700">
-                    <span className="mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#f1e7d8] text-[#8d5819]">
-                      <Check size={12} />
-                    </span>
-                    <span>{item}</span>
+                    <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+                      <p className="text-sm font-semibold">{shutterstockSalesImages[1].label}</p>
+                    </div>
                   </div>
-                ))}
+                </div>
+              </div>
+            </article>
+
+            <div className="grid gap-4 sm:grid-cols-[0.9fr_1.1fr]">
+              <div
+                className="relative min-h-[220px] overflow-hidden rounded-[30px] border border-white/60 bg-[linear-gradient(180deg,rgba(9,27,39,0.2)_0%,rgba(9,27,39,0.72)_100%),linear-gradient(135deg,#7d8f96_0%,#43545a_100%)] bg-cover bg-center"
+                style={{ backgroundImage: `linear-gradient(180deg, rgba(9,27,39,0.14) 0%, rgba(9,27,39,0.72) 100%), url(${shutterstockSalesImages[2].src})` }}
+              >
+                <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+                  <p className="text-sm font-semibold">{shutterstockSalesImages[2].label}</p>
+                </div>
+              </div>
+
+              <div className="rounded-[30px] border border-[#e5d5bc] bg-white p-6 shadow-[0_18px_40px_rgba(32,23,6,0.06)]">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Oferta direta</p>
+                <div className="mt-4 space-y-3">
+                  {commercialHighlights.map((item) => (
+                    <div key={item} className="flex items-start gap-3 text-sm leading-6 text-slate-700">
+                      <span className="mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#f1e7d8] text-[#8d5819]">
+                        <Check size={12} />
+                      </span>
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  {plans.map((plan) => (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPlanId(plan.id);
+                        setUserCount(plan.includedUsers);
+                      }}
+                      className={`rounded-[22px] border px-4 py-4 text-left transition ${
+                        selectedPlanId === plan.id
+                          ? "border-[#d68b33] bg-[#fff5e9]"
+                          : "border-[#eadcc8] bg-[#fcf7ef] hover:bg-[#faf1e4]"
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-slate-900">{plan.name}</p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-950">R$ {plan.monthlyPrice.toLocaleString("pt-BR")}</p>
+                      <p className="mt-1 text-xs text-slate-500">{plan.includedUsers} usuários</p>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
