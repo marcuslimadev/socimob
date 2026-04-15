@@ -1121,8 +1121,8 @@ export default function CRM() {
   // ─── Callbacks (stable references) ─────────────────────────────────
 
   const handleSelectClient = useCallback((client: CRMClient) => {
-    setSelectedClient(client);
-    setDrawerCollapsed(false);
+    const chatUrl = client?.id ? `/chat?leadId=${client.id}` : '/chat';
+    window.open(chatUrl, '_blank', 'noopener,noreferrer');
   }, []);
 
   const handleStatusChange = useCallback(async (clientId: number, newStatus: StatusKey) => {
