@@ -650,7 +650,19 @@ Após listar: \"Qual desses te interessou mais?\"
 
     private function currentTenant()
     {
-        return app()->bound('tenant') ? app('tenant') : null;
+        if (!app()->bound('tenant')) {
+            return null;
+        }
+
+        try {
+            return app()->make('tenant');
+        } catch (\Throwable $exception) {
+            Log::warning('[OpenAIService] Tenant indisponivel no container', [
+                'error' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     private function resolveApiKey(): string

@@ -1099,8 +1099,9 @@ class WhatsAppService
             }
         }
 
-        if (app()->bound('tenant') && app('tenant')) {
-            return app('tenant')->id;
+        $tenant = $this->currentTenant();
+        if ($tenant && isset($tenant->id)) {
+            return (int) $tenant->id;
         }
 
         // Se chegou aqui, não conseguiu resolver o tenant
@@ -2461,7 +2462,19 @@ class WhatsAppService
 
     private function currentTenant()
     {
-        return app()->bound('tenant') ? app('tenant') : null;
+        if (!app()->bound('tenant')) {
+            return null;
+        }
+
+        try {
+            return app()->make('tenant');
+        } catch (\Throwable $exception) {
+            Log::warning('[WhatsAppService] Tenant indisponivel no container', [
+                'error' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     /**
