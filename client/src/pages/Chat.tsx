@@ -72,7 +72,6 @@ export default function Chat() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showMobileContacts, setShowMobileContacts] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [contactFilter, setContactFilter] = useState<ContactFilter>('all');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -85,7 +84,7 @@ export default function Chat() {
 
   const pendingScrollRestoreRef = useRef<null | { top: number; height: number; nearBottom: boolean }>(null);
   const chatPatternSvg =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220"><g fill="none" stroke="#d8c9b6" stroke-width="1.2" opacity="0.26"><path d="M28 34h30v30H28z"/><circle cx="164" cy="50" r="12"/><path d="M108 168l18-18 18 18"/><circle cx="54" cy="164" r="8"/><path d="M156 158h28v28h-28z"/><path d="M84 88h18v18H84z"/><circle cx="118" cy="92" r="7"/></g></svg>';
+    '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220"><g fill="none" stroke="#c8d8eb" stroke-width="1.2" opacity="0.34"><path d="M28 34h30v30H28z"/><circle cx="164" cy="50" r="12"/><path d="M108 168l18-18 18 18"/><circle cx="54" cy="164" r="8"/><path d="M156 158h28v28h-28z"/><path d="M84 88h18v18H84z"/><circle cx="118" cy="92" r="7"/></g></svg>';
   const chatPatternDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(chatPatternSvg)}`;
 
   const decodeHtml = (value: string) => {
@@ -107,16 +106,16 @@ export default function Chat() {
     if (normalized === 'quente') {
       return {
         label: 'Quente',
-        badgeClass: 'border-[#f3c2af] bg-[#fff1eb] text-[#a44b2e]',
-        dotClass: 'bg-[#db6b3c]',
+        badgeClass: 'border-[#c9d9ed] bg-[#eef5ff] text-[#24527f]',
+        dotClass: 'bg-[#3c74b5]',
       };
     }
 
     if (normalized === 'morno') {
       return {
         label: 'Morno',
-        badgeClass: 'border-[#ead39c] bg-[#fff7df] text-[#9a6b14]',
-        dotClass: 'bg-[#c9952f]',
+        badgeClass: 'border-[#d8e4f2] bg-[#f4f8fd] text-[#496784]',
+        dotClass: 'bg-[#6a8dad]',
       };
     }
 
@@ -132,8 +131,8 @@ export default function Chat() {
 
     return {
       label: value,
-      badgeClass: 'border-[#ddd4c7] bg-white/80 text-[#665c4b]',
-      dotClass: 'bg-[#8b7b67]',
+      badgeClass: 'border-[#d8e4f2] bg-[#f7faff] text-[#53657d]',
+      dotClass: 'bg-[#7a92ae]',
     };
   };
 
@@ -685,68 +684,230 @@ export default function Chat() {
     };
   };
 
+  const renderChatLayout = () => (
+    <div className="flex min-h-screen overflow-hidden bg-[#edf3fb] text-[#142033]">
+      <Sidebar />
+      <div className="page-shell flex min-h-0 flex-col overflow-hidden !px-0 !pb-0">
+        <div className="flex min-h-0 flex-1 px-3 pb-3 pt-3 md:px-5 md:pb-5" style={{ height: 'calc(100vh - var(--app-header-offset, 0px))' }}>
+          <div className="flex min-h-0 flex-1 overflow-hidden rounded-[28px] border border-[#d8e3f0] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
+            <aside className={cn('min-h-0 w-full flex-shrink-0 flex-col border-r border-[#e2eaf3] bg-[linear-gradient(180deg,#f5f9fe_0%,#eef4fb_100%)] md:flex md:w-[360px] lg:w-[380px]', showMobileContacts ? 'flex' : 'hidden md:flex')}>
+              <div className="border-b border-[#e2eaf3] p-4 md:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#7789a3]">Atendimentos</p>
+                    <h1 className="mt-2 text-[1.8rem] font-semibold leading-none tracking-[-0.05em] text-[#10233d]">Conversas</h1>
+                    <p className="mt-2 text-sm text-[#62748b]">{searchTerm ? `${filteredContacts.length} resultado(s) na fila` : `${contacts.length} leads em acompanhamento`}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-11 w-11 rounded-2xl border border-[#d6e1ee] bg-white text-[#17365d] hover:bg-[#f8fbff]">
+                    <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+                  </Button>
+                </div>
+                <div className="relative mt-4">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#73849c]" />
+                  <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar pessoas ou trechos..." className="h-12 w-full rounded-2xl border border-[#d6e1ee] bg-white py-3 pl-11 pr-4 text-sm text-[#142033] placeholder:text-[#8294ab] outline-none focus:border-[#9fb7d4] focus:ring-4 focus:ring-[#17365d]/10" />
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {contactFilters.map((filter) => {
+                    const isActive = contactFilter === filter.id;
+                    return (
+                      <button key={filter.id} type="button" onClick={() => setContactFilter(filter.id)} className={cn('inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition', isActive ? 'border-[#17365d] bg-[#17365d] text-white' : 'border-[#d7e2ef] bg-white text-[#53657c] hover:border-[#bfd0e3] hover:bg-[#f8fbff]')}>
+                        <span>{filter.label}</span>
+                        <span className={cn('inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px]', isActive ? 'bg-white/18 text-white' : 'bg-[#edf3fb] text-[#17365d]')}>{filter.count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <ScrollArea className="min-h-0 flex-1">
+                {isLoadingContacts ? (
+                  <div className="flex flex-col items-center justify-center gap-3 py-16"><Loader2 className="h-8 w-8 animate-spin text-[#17365d]" /><p className="text-sm text-[#62748b]">Carregando conversas...</p></div>
+                ) : filteredContacts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-4 px-5 py-16"><div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-[#dce6f2] bg-white"><MessageCircle className="h-7 w-7 text-[#7c8ea6]" /></div><div className="text-center"><p className="font-medium text-[#142033]">{searchTerm ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}</p><p className="mt-1 text-sm text-[#71839c]">{searchTerm ? 'Ajuste a busca ou troque o filtro.' : 'Novos atendimentos aparecerão aqui.'}</p></div></div>
+                ) : (
+                  <div className="space-y-1.5 p-2.5">
+                    {filteredContacts.map((contact) => {
+                      const isActive = selectedContactId === contact.id;
+                      const classificationMeta = getClassificationMeta(contact.classificacao);
+                      const isPriority = contact.needsHumanIntervention || contact.classificacao?.trim().toLowerCase() === 'quente';
+                      return (
+                        <button key={contact.id} type="button" onClick={() => { setSelectedContactId(contact.id); setShowMobileContacts(false); }} className={cn('w-full rounded-[22px] border px-3 py-3 text-left transition', isActive ? 'border-[#bdd0e5] bg-white shadow-[0_14px_30px_rgba(15,23,42,0.08)]' : 'border-transparent hover:border-[#dbe6f2] hover:bg-white/72')}>
+                          <div className="flex items-start gap-3">
+                            <div className="relative flex-shrink-0">
+                              <Avatar className="h-11 w-11"><AvatarFallback className="bg-[#17365d]/10 font-semibold text-[#17365d]">{contact.initials}</AvatarFallback></Avatar>
+                              {contact.unread > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#17365d] px-1 text-[10px] font-bold text-white">{contact.unread > 9 ? '9+' : contact.unread}</span>}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold text-[#142033]">{contact.name}</h3>{isPriority && <span className="h-2 w-2 rounded-full bg-[#3c74b5]" />}</div>
+                                  <p className="mt-0.5 truncate text-xs text-[#73849c]">{contact.phone || 'Telefone não informado'}</p>
+                                </div>
+                                <span className="text-[11px] text-[#8a9bb0]">{contact.timestamp}</span>
+                              </div>
+                              <p className="mt-2 line-clamp-2 text-sm leading-5 text-[#5f7188]">{contact.lastMessage}</p>
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                {classificationMeta && <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold', classificationMeta.badgeClass)}><span className={cn('h-1.5 w-1.5 rounded-full', classificationMeta.dotClass)} />{classificationMeta.label}</span>}
+                                {contact.needsHumanIntervention && <span className="inline-flex items-center gap-1 rounded-full border border-[#d8e4f2] bg-[#f4f8fd] px-2 py-1 text-[11px] font-semibold text-[#476784]"><AlertTriangle className="h-3 w-3" />Humano</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </ScrollArea>
+            </aside>
+            <main className={cn('min-h-0 flex-1 flex-col bg-[#f8fbff]', showMobileContacts ? 'hidden md:flex' : 'flex')}>
+              {!selectedContact ? (
+                <div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_top,rgba(23,54,93,0.05),transparent_40%),linear-gradient(180deg,#f8fbff_0%,#f2f7fc_100%)] p-8"><div className="max-w-xl text-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-[#dbe6f2] bg-white text-[#17365d] shadow-[0_12px_28px_rgba(15,23,42,0.06)]"><MessageCircle className="h-7 w-7" /></div><h2 className="mt-6 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-[#10233d]">Selecione uma conversa</h2><p className="mt-3 text-sm leading-7 text-[#62748b] md:text-[15px]">A fila fica na lateral. O histórico abre aqui no centro, com leitura limpa e resposta rápida.</p></div></div>
+              ) : (
+                <>
+                  <header className="border-b border-[#e2eaf3] bg-white px-4 py-4 md:px-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <Button variant="ghost" size="icon" className="mt-0.5 rounded-full text-[#17365d] hover:bg-[#17365d]/8 md:hidden" onClick={() => setShowMobileContacts(true)}><ArrowLeft className="h-5 w-5" /></Button>
+                        <Avatar className="h-11 w-11 flex-shrink-0"><AvatarFallback className="bg-[#17365d]/10 font-semibold text-[#17365d]">{selectedContact.initials}</AvatarFallback></Avatar>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="truncate text-lg font-semibold text-[#10233d] md:text-xl">{selectedContact.name}</h2>
+                            {selectedClassificationMeta && <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold', selectedClassificationMeta.badgeClass)}><Tag className="h-3 w-3" />{selectedClassificationMeta.label}</span>}
+                            {selectedContact.needsHumanIntervention && <span className="inline-flex items-center gap-1 rounded-full border border-[#d8e4f2] bg-[#f4f8fd] px-2.5 py-1 text-[11px] font-semibold text-[#476784]"><AlertTriangle className="h-3 w-3" />Ação humana</span>}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#62748b]"><span>{selectedContact.phone}</span><span>Lead #{selectedContact.leadId}</span><span>{messages.length} mensagens</span><span>Última atividade {selectedContact.timestamp}</span></div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2"><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#d8e3f0] bg-white text-[#17365d] hover:bg-[#f4f8fd]"><Phone className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#d8e3f0] bg-white text-[#17365d] hover:bg-[#f4f8fd]"><MoreVertical className="h-4 w-4" /></Button></div>
+                    </div>
+                    {observacoesText && <div className="mt-4 flex items-start gap-3 rounded-2xl border border-[#d8e4f2] bg-[#f4f8fd] px-4 py-3 text-sm text-[#53657c]"><div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-white text-[#17365d]"><Info className="h-4 w-4" /></div><div><p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6f83a0]">Observações do lead</p><p className="mt-1 whitespace-pre-wrap leading-6">{observacoesText}</p></div></div>}
+                  </header>
+                  <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <div className="absolute inset-0" style={{ backgroundImage: `linear-gradient(180deg, rgba(248,251,255,0.94), rgba(242,247,252,0.98)), url("${chatPatternDataUrl}")`, backgroundSize: 'auto, 220px 220px' }} />
+                    <ScrollArea ref={scrollAreaRef} className="relative min-h-0 flex-1">
+                      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6 md:px-8 md:py-8">
+                        {searchTerm && <div className="flex items-center justify-between gap-3 rounded-full border border-[#d8e4f2] bg-white px-4 py-2 text-xs text-[#5f7188] shadow-[0_8px_20px_rgba(15,23,42,0.05)]"><span>Filtrando por <strong className="font-semibold text-[#17365d]">"{searchTerm}"</strong></span><button type="button" onClick={() => setSearchTerm('')} className="font-semibold text-[#17365d]">Limpar</button></div>}
+                        {isLoadingMessages ? (
+                          <div className="flex justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-[#17365d]" /></div>
+                        ) : filteredMessages.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center gap-4 py-20 text-center"><div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-[#dce6f2] bg-white"><MessageCircle className="h-7 w-7 text-[#7c8ea6]" /></div><div><p className="font-medium text-[#142033]">{searchTerm ? 'Nenhum trecho encontrado' : 'Nenhuma mensagem ainda'}</p><p className="mt-1 text-sm text-[#71839c]">{searchTerm ? 'Tente outro termo para localizar a conversa.' : 'Envie uma mensagem para iniciar o atendimento.'}</p></div></div>
+                        ) : (
+                          groupedFilteredMessages.map((group) => (
+                            <div key={group.date} className="space-y-5">
+                              <div className="flex items-center justify-center"><div className="rounded-full border border-[#d8e4f2] bg-white/92 px-3 py-1 text-xs font-medium text-[#617489]">{group.date}</div></div>
+                              {group.messages.map((message) => {
+                                const isUser = message.sender === 'user';
+                                const senderMeta = getMessageSenderMeta(message);
+                                const messageTextContent = getMessageDisplayText(message);
+                                return (
+                                  <div key={message.id} className={cn('flex gap-3', isUser ? 'justify-end' : 'justify-start')}>
+                                    {!isUser && <div className="mt-8 hidden h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-[#dbe6f2] bg-white text-[#17365d] shadow-[0_8px_18px_rgba(15,23,42,0.05)] md:flex">{message.senderKind === 'assistant' ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}</div>}
+                                    <div className={cn('flex max-w-[92%] flex-col md:max-w-[75%]', isUser && 'items-end')}>
+                                      <div className={cn('mb-2 inline-flex items-center gap-2 px-1 text-[11px] font-semibold', isUser ? 'text-[#5d7493]' : 'text-[#6b7f98]')}>{message.senderKind === 'assistant' && <Bot className="h-3.5 w-3.5" />}<span>{senderMeta.label}</span>{senderMeta.context && <span className="text-[#8ea0b6]">{senderMeta.context}</span>}</div>
+                                      <div className={cn('overflow-hidden rounded-[24px] border px-4 py-3.5 shadow-[0_12px_28px_rgba(15,23,42,0.06)]', isUser ? 'border-[#17365d] bg-[#17365d] text-white' : 'border-[#dbe6f2] bg-white text-[#142033]')}>
+                                        <div className="space-y-2.5">
+                                          {isAudioMessage(message) && message.mediaUrl && <audio controls className="w-full max-w-xs"><source src={getMediaUrl(message.mediaUrl)} /></audio>}
+                                          {isImageMessage(message) && message.mediaUrl && <img src={getMediaUrl(message.mediaUrl)} alt="Imagem enviada" loading="lazy" className={cn('w-full max-w-sm rounded-[18px] border object-contain', isUser ? 'border-white/20 bg-white/10' : 'border-[#dbe6f2] bg-[#f5f9fe]')} />}
+                                          {isVideoMessage(message) && message.mediaUrl && <video controls className={cn('w-full max-w-sm rounded-[18px] border', isUser ? 'border-white/20 bg-black' : 'border-[#dbe6f2] bg-black')} preload="metadata"><source src={getMediaUrl(message.mediaUrl)} />Vídeo não suportado pelo navegador.</video>}
+                                          {(isDocumentMessage(message) || isTwilioGenericMedia(message)) && message.mediaUrl && <a href={getMediaUrl(message.mediaUrl)} target="_blank" rel="noopener noreferrer" className={cn('flex max-w-sm items-center gap-3 rounded-[18px] border p-3 transition-colors', isUser ? 'border-white/20 bg-white/10 hover:bg-white/14' : 'border-[#dbe6f2] bg-[#f5f9fe] hover:bg-[#eef4fb]')}><div className={cn('flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl', isUser ? 'bg-white/14' : 'bg-white text-[#17365d]')}><FileText className="h-5 w-5" /></div><div className="min-w-0 flex-1"><p className={cn('truncate text-sm font-medium', isUser ? 'text-white' : 'text-[#142033]')}>{getDocumentLabel(message)}</p><p className={cn('text-xs', isUser ? 'text-white/70' : 'text-[#71839c]')}>Clique para abrir</p></div><ExternalLink className={cn('h-4 w-4 flex-shrink-0', isUser ? 'text-white/75' : 'text-[#71839c]')} /></a>}
+                                          {messageTextContent && <p className={cn('whitespace-pre-wrap break-words text-[15px] leading-7', isUser ? 'text-white' : 'text-[#142033]')}>{highlightText(messageTextContent, searchTerm)}</p>}
+                                          {message.messageType === 'audio' && message.transcription && <p className={cn('text-xs leading-6', isUser ? 'text-white/78' : 'text-[#5f7188]')}><span className="font-semibold">Transcrição:</span> {highlightText(message.transcription, searchTerm)}</p>}
+                                        </div>
+                                      </div>
+                                      <div className={cn('mt-2 flex items-center gap-1.5 px-1 text-[11px]', isUser ? 'justify-end text-[#7d93af]' : 'justify-start text-[#8ea0b6]')}><span>{message.timestamp}</span>{isUser && <MessageStatus status={message.status} />}</div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))
+                        )}
+                        <div ref={messagesEndRef} />
+                      </div>
+                    </ScrollArea>
+                    <div className="border-t border-[#e2eaf3] bg-white/96 px-4 py-4 md:px-6">
+                      <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#71839c]"><span>{selectedContact.needsHumanIntervention ? 'Conversa marcada para atendimento humano.' : 'Resposta direta e contexto completo.'}</span><span>Enter para enviar</span></div>
+                        <div className="flex items-end gap-3 rounded-[28px] border border-[#d7e2ef] bg-[#f8fbff] p-2 shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+                          <Button variant="ghost" size="icon" className="h-11 w-11 flex-shrink-0 rounded-full text-[#60738b] hover:bg-white hover:text-[#17365d]"><Paperclip className="h-5 w-5" /></Button>
+                          <div className="relative flex-1"><input ref={inputRef} type="text" value={messageText} onChange={(e) => setMessageText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} placeholder="Escreva uma resposta objetiva..." className="h-12 w-full rounded-[20px] border border-transparent bg-transparent px-2 text-sm text-[#142033] placeholder:text-[#8a9bb0] outline-none" disabled={isSending} /></div>
+                          <Button onClick={handleSendMessage} disabled={!messageText.trim() || isSending} size="icon" className="h-11 w-11 flex-shrink-0 rounded-full bg-[#17365d] text-white shadow-[0_12px_24px_rgba(23,54,93,0.28)] hover:bg-[#143150] disabled:shadow-none">{isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </main>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return renderChatLayout();
+  /*
   return (
-    <div className="flex min-h-screen overflow-hidden bg-[#eee6da] text-[#142033]">
+    <div className="flex min-h-screen overflow-hidden bg-[#edf3fb] text-[#142033]">
       <Sidebar />
 
       <div className="page-shell relative flex min-h-0 flex-col overflow-hidden !px-0 !pb-0">
         <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute left-[-8rem] top-[-3rem] h-80 w-80 rounded-full bg-[#183a62]/16 blur-3xl" />
-          <div className="absolute right-[-6rem] top-28 h-96 w-96 rounded-full bg-[#c5874c]/18 blur-3xl" />
+          <div className="absolute right-[-6rem] top-28 h-96 w-96 rounded-full bg-[#4a86cb]/16 blur-3xl" />
           <div className="absolute bottom-[-8rem] left-1/3 h-80 w-80 rounded-full bg-white/45 blur-3xl" />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,252,247,0.56),rgba(238,230,218,0.72))]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(244,248,255,0.42),rgba(237,243,251,0.82))]" />
         </div>
 
         <div className="mx-auto flex w-full max-w-[1420px] flex-1 min-h-0 flex-col gap-5 px-4 pb-5 pt-4 md:px-6 md:pt-6">
-          <section className="relative overflow-hidden rounded-[34px] border border-white/55 bg-[linear-gradient(135deg,rgba(16,35,61,0.98)_0%,rgba(23,54,93,0.98)_37%,rgba(245,237,225,0.96)_37.1%,rgba(251,247,240,0.98)_100%)] p-[1px] shadow-[0_24px_70px_rgba(20,32,51,0.14)]">
-            <div className="relative overflow-hidden rounded-[33px] bg-[#fbf7f0]/96 px-5 py-5 md:px-6 md:py-6">
+          <section className="relative overflow-hidden rounded-[34px] border border-white/55 bg-[linear-gradient(135deg,rgba(16,35,61,0.98)_0%,rgba(23,54,93,0.98)_34%,rgba(240,246,255,0.98)_34.1%,rgba(248,251,255,0.98)_100%)] p-[1px] shadow-[0_24px_70px_rgba(20,32,51,0.14)]">
+            <div className="relative overflow-hidden rounded-[33px] bg-[#f8fbff]/96 px-5 py-5 md:px-6 md:py-6">
               <div className="pointer-events-none absolute inset-0">
                 <div className="absolute left-0 top-0 h-40 w-40 rounded-full bg-white/12 blur-2xl" />
-                <div className="absolute right-12 top-8 h-36 w-36 rounded-full bg-[#d8b38f]/20 blur-3xl" />
+                <div className="absolute right-12 top-8 h-36 w-36 rounded-full bg-[#7fb4ff]/18 blur-3xl" />
                 <div className="absolute inset-y-0 left-[36.8%] w-px bg-gradient-to-b from-transparent via-white/20 to-transparent max-xl:hidden" />
               </div>
 
               <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
                 <div className="max-w-2xl">
-                  <div className="inline-flex items-center rounded-full border border-[#d7c8b8] bg-white/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-[#8b7457]">
+                  <div className="inline-flex items-center rounded-full border border-[#d7e2f0] bg-white/78 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-[#788aa2]">
                     Central de atendimento
                   </div>
                   <h1 className="mt-4 max-w-xl text-3xl font-semibold leading-[1.02] tracking-[-0.04em] text-[#10233d] md:text-[2.7rem]">
                     Chat elegante, rápido e claro para seus leads.
                   </h1>
-                  <p className="mt-3 max-w-2xl text-sm leading-7 text-[#655945] md:text-[15px]">
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-[#5a6b84] md:text-[15px]">
                     Visual mais limpo, foco no que pede ação e contexto do lead sem ruído desnecessário.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:min-w-[430px]">
-                  <div className="rounded-[24px] border border-[#e5d9c9] bg-white/78 p-4 shadow-[0_10px_30px_rgba(20,32,51,0.06)] backdrop-blur">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8d7860]">Conversas</p>
+                  <div className="rounded-[24px] border border-[#dce6f3] bg-white/82 p-4 shadow-[0_10px_30px_rgba(20,32,51,0.06)] backdrop-blur">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7d8fa9]">Conversas</p>
                     <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#10233d]">{contacts.length}</p>
-                    <p className="mt-1 text-xs text-[#6f624e]">fila total em andamento</p>
+                    <p className="mt-1 text-xs text-[#62748b]">fila total em andamento</p>
                   </div>
-                  <div className="rounded-[24px] border border-[#e5d9c9] bg-white/78 p-4 shadow-[0_10px_30px_rgba(20,32,51,0.06)] backdrop-blur">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8d7860]">Pendentes</p>
+                  <div className="rounded-[24px] border border-[#dce6f3] bg-white/82 p-4 shadow-[0_10px_30px_rgba(20,32,51,0.06)] backdrop-blur">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7d8fa9]">Pendentes</p>
                     <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#10233d]">{unreadContactsCount}</p>
-                    <p className="mt-1 text-xs text-[#6f624e]">aguardando resposta</p>
+                    <p className="mt-1 text-xs text-[#62748b]">aguardando resposta</p>
                   </div>
-                  <div className="col-span-2 rounded-[24px] border border-[#e5d9c9] bg-white/78 p-4 shadow-[0_10px_30px_rgba(20,32,51,0.06)] backdrop-blur md:col-span-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8d7860]">Prioridade</p>
+                  <div className="col-span-2 rounded-[24px] border border-[#dce6f3] bg-white/82 p-4 shadow-[0_10px_30px_rgba(20,32,51,0.06)] backdrop-blur md:col-span-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#7d8fa9]">Prioridade</p>
                     <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#10233d]">{priorityContactsCount}</p>
-                    <p className="mt-1 text-xs text-[#6f624e]">quentes ou com ação humana</p>
+                    <p className="mt-1 text-xs text-[#62748b]">quentes ou com ação humana</p>
                   </div>
                 </div>
               </div>
 
               <div className="relative mt-6 flex flex-col gap-3 lg:flex-row lg:items-center">
                 <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7a6d59]" />
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71829a]" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Pesquisar pessoas, conversas e mensagens..."
-                    className="h-14 w-full rounded-[22px] border border-[#dccfbe] bg-white/90 py-3 pl-11 pr-4 text-sm text-[#142033] placeholder:text-[#8d7f6a] shadow-[0_14px_34px_rgba(20,32,51,0.08)] outline-none transition-all focus:border-[#1a446f]/30 focus:ring-4 focus:ring-[#1a446f]/10"
+                    className="h-14 w-full rounded-[22px] border border-[#d6e1ef] bg-white/92 py-3 pl-11 pr-4 text-sm text-[#142033] placeholder:text-[#8092ab] shadow-[0_14px_34px_rgba(20,32,51,0.08)] outline-none transition-all focus:border-[#1a446f]/30 focus:ring-4 focus:ring-[#1a446f]/10"
                   />
                 </div>
 
@@ -755,7 +916,7 @@ export default function Chat() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-11 rounded-full px-4 text-[#6c5e4a] hover:bg-[#17365d]/8 hover:text-[#17365d]"
+                      className="h-11 rounded-full px-4 text-[#5d6f87] hover:bg-[#17365d]/8 hover:text-[#17365d]"
                       onClick={() => setSearchTerm('')}
                     >
                       Limpar
@@ -766,7 +927,7 @@ export default function Chat() {
                     size="sm"
                     onClick={handleRefresh}
                     disabled={isRefreshing}
-                    className="h-11 rounded-full border border-[#d9ccb8] bg-white/72 px-4 text-[#17365d] shadow-[0_8px_24px_rgba(20,32,51,0.06)] hover:bg-white"
+                    className="h-11 rounded-full border border-[#d7e2f0] bg-white/78 px-4 text-[#17365d] shadow-[0_8px_24px_rgba(20,32,51,0.06)] hover:bg-white"
                   >
                     <RefreshCw className={cn('mr-2 h-4 w-4', isRefreshing && 'animate-spin')} />
                     Atualizar
@@ -774,7 +935,7 @@ export default function Chat() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="hidden h-11 rounded-full border border-[#d9ccb8] bg-white/72 px-4 text-[#17365d] shadow-[0_8px_24px_rgba(20,32,51,0.06)] hover:bg-white md:inline-flex"
+                    className="hidden h-11 rounded-full border border-[#d7e2f0] bg-white/78 px-4 text-[#17365d] shadow-[0_8px_24px_rgba(20,32,51,0.06)] hover:bg-white md:inline-flex"
                     onClick={() => setIsChatCollapsed((prev) => !prev)}
                   >
                     {isChatCollapsed ? 'Abrir chat' : 'Minimizar chat'}
@@ -787,14 +948,14 @@ export default function Chat() {
           <div className="flex min-h-0 flex-1 gap-5">
             <div
               className={cn(
-                'relative z-10 flex w-full flex-shrink-0 flex-col overflow-hidden rounded-[30px] border border-white/60 bg-white/68 shadow-[0_24px_60px_rgba(20,32,51,0.12)] backdrop-blur-xl md:w-[390px]',
+                'relative z-10 flex w-full flex-shrink-0 flex-col overflow-hidden rounded-[30px] border border-white/60 bg-white/72 shadow-[0_24px_60px_rgba(20,32,51,0.12)] backdrop-blur-xl md:w-[390px]',
                 'transition-all duration-300 ease-out',
                 isChatCollapsed && 'md:w-full',
                 !showMobileContacts && 'hidden md:flex'
               )}
             >
-              <div className="border-b border-[#eadfce] bg-[linear-gradient(180deg,rgba(255,252,247,0.98),rgba(245,236,224,0.92))] px-5 py-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#8f785b]">
+              <div className="border-b border-[#e4ecf6] bg-[linear-gradient(180deg,rgba(248,251,255,0.98),rgba(238,244,252,0.96))] px-5 py-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#7b8da6]">
                   Fila inteligente
                 </p>
                 <div className="mt-3 flex items-end justify-between gap-3">
@@ -802,14 +963,14 @@ export default function Chat() {
                     <h2 className="text-[1.9rem] font-semibold leading-none tracking-[-0.04em] text-[#142033]">
                       Atendimentos
                     </h2>
-                    <p className="mt-2 text-sm text-[#736751]">
+                    <p className="mt-2 text-sm text-[#677992]">
                       {searchTerm
                         ? `${filteredContacts.length} conversa(s) combinam com a busca atual`
                         : 'Priorize respostas e acompanhe leads sem poluição visual.'}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-[#e3d7c7] bg-white/80 px-3 py-2 text-right shadow-[0_10px_22px_rgba(20,32,51,0.05)]">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#8d7860]">Visíveis</p>
+                  <div className="rounded-2xl border border-[#dbe5f2] bg-white/84 px-3 py-2 text-right shadow-[0_10px_22px_rgba(20,32,51,0.05)]">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#7d8fa9]">Visíveis</p>
                     <p className="mt-1 text-xl font-semibold tracking-[-0.04em] text-[#17365d]">
                       {filteredContacts.length}
                     </p>
@@ -829,7 +990,7 @@ export default function Chat() {
                           'rounded-[22px] border px-3 py-3 text-left transition-all',
                           isActive
                             ? 'border-[#17365d]/20 bg-[#17365d] text-white shadow-[0_16px_28px_rgba(23,54,93,0.22)]'
-                            : 'border-[#e5d8c8] bg-white/76 text-[#4d473f] hover:border-[#d9ccb8] hover:bg-white'
+                            : 'border-[#dce6f3] bg-white/78 text-[#53657c] hover:border-[#d7e2f0] hover:bg-white'
                         )}
                       >
                         <div className="flex items-center justify-between gap-2">
@@ -837,13 +998,13 @@ export default function Chat() {
                           <span
                             className={cn(
                               'inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-bold',
-                              isActive ? 'bg-white/16 text-white' : 'bg-[#efe6d8] text-[#17365d]'
+                              isActive ? 'bg-white/16 text-white' : 'bg-[#e9f0f9] text-[#17365d]'
                             )}
                           >
                             {filter.count}
                           </span>
                         </div>
-                        <p className={cn('mt-1 text-[10px]', isActive ? 'text-white/72' : 'text-[#857964]')}>
+                        <p className={cn('mt-1 text-[10px]', isActive ? 'text-white/72' : 'text-[#7b8da5]')}>
                           {filter.helper}
                         </p>
                       </button>
@@ -860,14 +1021,14 @@ export default function Chat() {
                   </div>
                 ) : filteredContacts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-4 px-5 py-16">
-                    <div className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full border border-[#eadfce] bg-white/84 shadow-[0_12px_28px_rgba(20,32,51,0.08)]">
-                      <MessageCircle className="h-8 w-8 text-[#8e7d67]" />
+                    <div className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full border border-[#e4ecf6] bg-white/88 shadow-[0_12px_28px_rgba(20,32,51,0.08)]">
+                      <MessageCircle className="h-8 w-8 text-[#7f91aa]" />
                     </div>
                     <div className="text-center">
                       <p className="font-medium text-[#142033]">
                         {searchTerm ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
                       </p>
-                      <p className="mt-1 text-sm text-[#7a6f5b]">
+                      <p className="mt-1 text-sm text-[#71839c]">
                         {searchTerm
                           ? 'Refine a busca ou altere o filtro para ampliar os resultados.'
                           : 'Novos leads aparecerão aqui automaticamente.'}
@@ -894,11 +1055,11 @@ export default function Chat() {
                           className={cn(
                             'group relative w-full overflow-hidden rounded-[26px] border p-4 text-left transition-all',
                             isActive
-                              ? 'border-[#17365d]/16 bg-[linear-gradient(180deg,rgba(20,42,72,0.10),rgba(255,255,255,0.95))] shadow-[0_18px_34px_rgba(23,54,93,0.16)]'
-                              : 'border-transparent bg-white/74 shadow-[0_8px_22px_rgba(20,32,51,0.05)] hover:border-[#e4d7c7] hover:bg-white/92'
+                              ? 'border-[#17365d]/16 bg-[linear-gradient(180deg,rgba(20,42,72,0.08),rgba(255,255,255,0.98))] shadow-[0_18px_34px_rgba(23,54,93,0.16)]'
+                              : 'border-transparent bg-white/80 shadow-[0_8px_22px_rgba(20,32,51,0.05)] hover:border-[#dbe5f2] hover:bg-white/94'
                           )}
                         >
-                          <div className="absolute inset-x-0 top-0 h-20 bg-[linear-gradient(180deg,rgba(247,239,228,0.86),transparent)]" />
+                          <div className="absolute inset-x-0 top-0 h-20 bg-[linear-gradient(180deg,rgba(240,246,255,0.9),transparent)]" />
 
                           <div className="relative flex items-start gap-3">
                             <div className="relative flex-shrink-0">
@@ -923,16 +1084,16 @@ export default function Chat() {
                                     </h3>
                                     {isPriority && <span className="h-2 w-2 rounded-full bg-[#c47647]" />}
                                   </div>
-                                  <p className="mt-1 truncate text-xs text-[#7a6d59]">
+                                  <p className="mt-1 truncate text-xs text-[#71829a]">
                                     {contact.phone || 'Telefone não informado'}
                                   </p>
                                 </div>
-                                <span className="text-[11px] font-medium text-[#8d7f6a]">
+                                <span className="text-[11px] font-medium text-[#8092ab]">
                                   {contact.timestamp}
                                 </span>
                               </div>
 
-                              <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#5e5445]">
+                              <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#56687f]">
                                 {contact.lastMessage}
                               </p>
 
@@ -955,7 +1116,7 @@ export default function Chat() {
                                   </span>
                                 )}
                                 {!contact.unread && !contact.needsHumanIntervention && (
-                                  <span className="inline-flex items-center gap-1 rounded-full border border-[#e3d7c7] bg-[#faf6ef] px-2.5 py-1 text-[11px] text-[#7f725e]">
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-[#dbe5f2] bg-[#f7faff] px-2.5 py-1 text-[11px] text-[#7688a1]">
                                     conversa estável
                                   </span>
                                 )}
@@ -1441,4 +1602,5 @@ export default function Chat() {
       </div>
     </div>
   );
+  */
 }

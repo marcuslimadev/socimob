@@ -1,1 +1,0 @@
-import{u as e,r as t}from"./index-B_-9j9-N.js";import{i,a as r}from"./analytics-BboMofUG.js";function c(){const[a]=e();return t.useEffect(()=>{i()},[]),t.useEffect(()=>{r()},[a]),null}export{c as default};
