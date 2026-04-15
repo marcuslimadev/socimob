@@ -303,13 +303,13 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     {
       id: 'crm',
       icon: <Users size={18} />,
-      label: 'CRM & Clientes',
+      label: 'Chat & Clientes',
       href: '/crm',
       items: [
         {
           key: 'crm',
           icon: <Users size={16} />,
-          label: 'CRM',
+          label: 'Chat',
           href: '/crm',
           badge: (leadsCount || 0) + (unreadMessagesCount || 0) || undefined,
         },

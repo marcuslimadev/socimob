@@ -35,9 +35,9 @@ export const SIDEBAR_VISIBILITY_SECTIONS: SidebarVisibilitySectionOption[] = [
   },
   {
     id: 'crm',
-    label: 'CRM & Clientes',
+    label: 'Chat & Clientes',
     items: [
-      { key: 'crm', label: 'CRM', href: '/crm' },
+      { key: 'crm', label: 'Chat', href: '/crm' },
       { key: 'pessoas', label: 'Pessoas', href: '/pessoas' },
       { key: 'ads', label: 'Marketing / Anúncios', href: '/ads' },
     ],

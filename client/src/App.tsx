@@ -16,7 +16,6 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Leads = lazy(() => import("./pages/Leads"));
 const Properties = lazy(() => import("./pages/Properties"));
 const Chat = lazy(() => import("./pages/Chat"));
-const CRM = lazy(() => import("./pages/CRM"));
 const Login = lazy(() => import("./pages/Login"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -101,7 +100,7 @@ function Router() {
       <Switch>
       <Route path={"/"} component={ClientPortalRefined} />
       <Route path="/dashboard" component={Dashboard} />
-      <Route path="/crm" component={CRM} />
+      <Route path="/crm" component={Chat} />
       <Route path="/leads" component={Leads} />
       <Route path="/leads/:id" component={LeadProfile} />
       <Route path="/properties" component={Properties} />

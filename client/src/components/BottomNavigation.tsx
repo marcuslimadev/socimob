@@ -35,7 +35,7 @@ export default function BottomNavigation() {
 
   const mainNavItems: NavItem[] = [
     { icon: <BarChart3 size={24} />, label: 'Dashboard', href: '/dashboard' },
-    { icon: <Users size={24} />, label: 'CRM', href: '/crm' },
+    { icon: <Users size={24} />, label: 'Chat', href: '/crm' },
     { icon: <Home size={24} />, label: 'Imóveis', href: '/properties' },
   ];
 
