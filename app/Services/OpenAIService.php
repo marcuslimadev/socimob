@@ -21,8 +21,8 @@ class OpenAIService
 
     public function __construct()
     {
-        $this->apiKey = env('EXCLUSIVA_OPENAI_API_KEY');
-        $this->model = env('EXCLUSIVA_OPENAI_MODEL', 'gpt-4o-mini');
+        $this->apiKey = $this->resolveApiKey();
+        $this->model = $this->resolveModel();
     }
 
     public function generateLeadDiagnostic($leadProfile, $conversationHistory, $availableProperties = [])
@@ -57,9 +57,20 @@ Use apenas informações confirmadas. Se faltar algum dado relevante, sinalize c
     public function chat(array $messages, $tenantId = null): array
     {
         $url = 'https://api.openai.com/v1/chat/completions';
+        $apiKey = $this->resolveApiKey();
+        $model = $this->resolveModel();
+
+        if ($apiKey === '') {
+            Log::error('OpenAI Chat Error', [
+                'tenant_id' => $tenantId,
+                'error' => 'OpenAI API key not configured',
+            ]);
+
+            throw new \Exception('OpenAI API key not configured');
+        }
         
         $data = [
-            'model' => $this->model,
+            'model' => $model,
             'messages' => $messages,
             'temperature' => 0.7,
             'max_tokens' => 1000
@@ -72,7 +83,7 @@ Use apenas informações confirmadas. Se faltar algum dado relevante, sinalize c
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
-            'Authorization: Bearer ' . $this->apiKey
+            'Authorization: Bearer ' . $apiKey
         ]);
         curl_setopt($ch, CURLOPT_TIMEOUT, 60);
         
@@ -101,12 +112,35 @@ Use apenas informações confirmadas. Se faltar algum dado relevante, sinalize c
      * @param string $audioPath Caminho do arquivo de áudio
      * @return array Resultado da transcrição
      */
-    public function transcribeAudio($audioPath)
+    public function transcribeAudio($audioPath, ?string $contentType = null, ?string $originalFilename = null)
     {
         $url = 'https://api.openai.com/v1/audio/transcriptions';
+        $apiKey = $this->resolveApiKey();
 
-        // Usa MP3 após conversão para melhor compatibilidade
-        $file = new \CURLFile($audioPath, 'audio/mpeg', 'audio.mp3');
+        if ($apiKey === '') {
+            Log::error('OpenAI Transcription Error', [
+                'error' => 'OpenAI API key not configured',
+                'audio_path' => $audioPath,
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'OpenAI API key not configured',
+            ];
+        }
+
+        $normalizedContentType = trim((string) explode(';', (string) $contentType)[0]);
+        if ($normalizedContentType === '' && function_exists('mime_content_type')) {
+            $normalizedContentType = (string) mime_content_type($audioPath);
+        }
+
+        if ($normalizedContentType === '') {
+            $normalizedContentType = 'application/octet-stream';
+        }
+
+        $filename = $originalFilename ?: basename($audioPath);
+
+        $file = new \CURLFile($audioPath, $normalizedContentType, $filename);
 
         $postFields = [
             'file' => $file,
@@ -122,7 +156,7 @@ Use apenas informações confirmadas. Se faltar algum dado relevante, sinalize c
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $this->apiKey
+            'Authorization: Bearer ' . $apiKey
         ]);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30); // ⚡ Timeout de 30s para transcrição
         
@@ -383,6 +417,7 @@ Exemplos de extração:
             $systemPrompt = str_replace('{$companyName}', $companyName, $systemPrompt);
             $systemPrompt = str_replace('{$audioInstruction}', $audioInstruction, $systemPrompt);
             $systemPrompt = str_replace('{$propertiesContext}', $propertiesContext, $systemPrompt);
+            $systemPrompt .= "\n\nREGRA FIXA: responda sempre com no máximo 20 palavras. Nunca ultrapasse 20 palavras.";
         } else {
             // Usa prompt padrão do sistema
             Log::info('[OpenAI] Usando prompt PADRÃO do sistema');
@@ -390,7 +425,7 @@ Exemplos de extração:
             $systemPrompt = "Você é {$assistantName}, assistente imobiliário virtual da {$companyName}.
 
 ⚡ FORMATO DE RESPOSTA:
-- Seja CURTO e OBJETIVO (máximo 300 caracteres por mensagem)
+- Responda sempre com no máximo 20 palavras
 - SEMPRE termine com UMA pergunta para manter o diálogo
 - Tom profissional, cordial e empático
 - Use emojis com moderação
@@ -466,12 +501,13 @@ Após listar: \"Qual desses te interessou mais?\"
         }
 
         $userPrompt = ($context ? "Contexto anterior:\n$context\n\n" : "") . "Cliente: $message\n\nResponda:";
+        $model = $this->resolveModel();
         
         \App\Models\SystemLog::debug(
             \App\Models\SystemLog::CATEGORY_IA,
             'send_to_openai',
             'Enviando prompt para OpenAI',
-            ['model' => $this->model, 'prompt_length' => strlen($userPrompt)]
+            ['model' => $model, 'prompt_length' => strlen($userPrompt)]
         );
         
         $result = $this->chatCompletion($systemPrompt, $userPrompt);
@@ -501,15 +537,28 @@ Após listar: \"Qual desses te interessou mais?\"
     private function chatCompletion($systemPrompt, $userPrompt)
     {
         $url = 'https://api.openai.com/v1/chat/completions';
+        $apiKey = $this->resolveApiKey();
+        $model = $this->resolveModel();
+
+        if ($apiKey === '') {
+            Log::error('OpenAI Chat Completion Error', [
+                'error' => 'OpenAI API key not configured',
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'OpenAI API key not configured'
+            ];
+        }
         
         $data = [
-            'model' => $this->model,
+            'model' => $model,
             'messages' => [
                 ['role' => 'system', 'content' => $systemPrompt],
                 ['role' => 'user', 'content' => $userPrompt]
             ],
             'temperature' => 0.7,
-            'max_tokens' => 150  // Reduzido de 500 para 150 (limite de 200 chars)
+            'max_tokens' => 60
         ];
         
         $ch = curl_init();
@@ -519,7 +568,7 @@ Após listar: \"Qual desses te interessou mais?\"
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
-            'Authorization: Bearer ' . $this->apiKey
+            'Authorization: Bearer ' . $apiKey
         ]);
         curl_setopt($ch, CURLOPT_TIMEOUT, 60);
         
@@ -533,11 +582,11 @@ Após listar: \"Qual desses te interessou mais?\"
             
             return [
                 'success' => true,
-                'content' => trim($content)
+                'content' => $this->limitResponseWords($content, 20)
             ];
         }
         
-        Log::error('OpenAI Transcription Error', [
+        Log::error('OpenAI Chat Completion Error', [
             'http_code' => $httpCode,
             'response' => $response
         ]);
@@ -548,10 +597,27 @@ Após listar: \"Qual desses te interessou mais?\"
         ];
     }
 
+    private function limitResponseWords(string $content, int $maxWords = 20): string
+    {
+        $normalized = trim(preg_replace('/\s+/u', ' ', strip_tags($content)) ?? '');
+
+        if ($normalized === '') {
+            return '';
+        }
+
+        $words = preg_split('/\s+/u', $normalized, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        if (count($words) <= $maxWords) {
+            return $normalized;
+        }
+
+        return implode(' ', array_slice($words, 0, $maxWords));
+    }
+
     private function resolveAssistantName(): string
     {
         // 1. Tentar via tenant
-        $tenant = app('tenant');
+        $tenant = $this->currentTenant();
         if ($tenant) {
             $tenantName = $tenant->getAiAssistantName();
             if (!empty($tenantName)) {
@@ -574,11 +640,66 @@ Após listar: \"Qual desses te interessou mais?\"
 
     private function resolveCompanyName(): string
     {
-        $tenant = app('tenant');
+        $tenant = $this->currentTenant();
         if ($tenant) {
             return $tenant->getCompanyName();
         }
 
         return env('COMPANY_NAME', 'Imobiliária');
+    }
+
+    private function currentTenant()
+    {
+        return app()->bound('tenant') ? app('tenant') : null;
+    }
+
+    private function resolveApiKey(): string
+    {
+        $tenant = $this->currentTenant();
+        if ($tenant) {
+            $tenantApiKey = trim((string) $tenant->getOpenAiApiKey());
+            if ($tenantApiKey !== '') {
+                return $tenantApiKey;
+            }
+        }
+
+        $candidates = [
+            env('EXCLUSIVA_OPENAI_API_KEY'),
+            env('OPENAI_API_KEY'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $value = trim((string) $candidate);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+
+    private function resolveModel(): string
+    {
+        $tenant = $this->currentTenant();
+        if ($tenant) {
+            $tenantModel = trim((string) $tenant->getOpenAiModel());
+            if ($tenantModel !== '') {
+                return $tenantModel;
+            }
+        }
+
+        $candidates = [
+            env('EXCLUSIVA_OPENAI_MODEL'),
+            env('OPENAI_MODEL'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $value = trim((string) $candidate);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return 'gpt-4o-mini';
     }
 }

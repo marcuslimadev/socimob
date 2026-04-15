@@ -1,7 +1,10 @@
 <?php
 namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
+use App\Models\AppSetting;
+use App\Models\Tenant;
 use App\Services\EvolutionApiService;
+use App\Services\MetaCloudGateway;
 use App\Services\TwilioService;
 
 use Illuminate\Http\Request;
@@ -530,16 +533,20 @@ class ConversasController extends Controller
 
             $leadName = $conversa->lead_nome ?: 'Cliente';
             $fallbackOutgoingName = $conversa->corretor_nome ?: 'Atendente';
+            $assistantName = $this->resolveAssistantDisplayName((int) $tenantId);
 
             foreach ($mensagens as $m) {
                 if (($m->direction ?? null) === 'incoming') {
                     $m->sender_name = $leadName;
+                    $m->sender_kind = 'lead';
                 } else {
                     if ($hasUserIdColumn && !empty($m->user_id)) {
                         $m->sender_name = $senderNamesByUserId[(string) $m->user_id] ?? $senderNamesByUserId[(int) $m->user_id] ?? $fallbackOutgoingName;
+                        $m->sender_kind = 'human';
                     } else {
                         // Mensagem sem user_id = enviada por IA ou Sistema
-                        $m->sender_name = 'Assistente IA';
+                        $m->sender_name = $assistantName;
+                        $m->sender_kind = 'assistant';
                     }
                 }
             }
@@ -563,6 +570,33 @@ class ConversasController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    private function resolveAssistantDisplayName(?int $tenantId = null): string
+    {
+        $tenant = app()->bound('tenant') ? app('tenant') : null;
+
+        if ((!$tenant || empty($tenant->id)) && $tenantId) {
+            $tenant = Tenant::query()->find($tenantId);
+        }
+
+        if ($tenant) {
+            $name = trim((string) $tenant->getAiAssistantName());
+            if ($name !== '') {
+                return $name;
+            }
+        }
+
+        $default = env('AI_ASSISTANT_NAME', 'Teresa');
+        $name = AppSetting::getValue('ai_name', $default);
+
+        if (is_array($name)) {
+            $name = $name['value'] ?? reset($name);
+        }
+
+        $name = trim((string) $name);
+
+        return $name !== '' ? $name : $default;
     }
     
     /**
@@ -658,17 +692,25 @@ class ConversasController extends Controller
 
             $mensagemId = DB::table('mensagens')->insertGetId($payload);
             
-            // Enviar via provider configurado (Twilio ou Evolution)
+            // Enviar via provider configurado
             try {
                 $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
-                $gateway = $driver === 'evolution'
-                    ? app(EvolutionApiService::class)
-                    : app(TwilioService::class);
+                if ($driver === 'meta_cloud') {
+                    $resultado = app(MetaCloudGateway::class)->sendMessage(
+                        $conversa->telefone,
+                        $request->content,
+                        (int) $tenantId
+                    );
+                } else {
+                    $gateway = $driver === 'evolution'
+                        ? app(EvolutionApiService::class)
+                        : app(TwilioService::class);
 
-                $resultado = $gateway->sendMessage(
-                    $conversa->telefone,
-                    $request->content
-                );
+                    $resultado = $gateway->sendMessage(
+                        $conversa->telefone,
+                        $request->content
+                    );
+                }
 
                 if (empty($resultado['success'])) {
                     // Twilio respondeu mas não aceitou o envio
@@ -679,7 +721,7 @@ class ConversasController extends Controller
                             'updated_at' => Carbon::now()
                         ]);
 
-                    \\Illuminate\Support\Facades\Log::error('Falha ao enviar mensagem via provider WhatsApp (resposta)', [
+                    Log::error('Falha ao enviar mensagem via provider WhatsApp (resposta)', [
                         'mensagem_id' => $mensagemId,
                         'to' => $conversa->telefone,
                         'driver' => $driver,
@@ -718,7 +760,7 @@ class ConversasController extends Controller
                         'updated_at' => Carbon::now()
                     ]);
                 
-                \\Illuminate\Support\Facades\Log::error('Erro ao enviar via provider de WhatsApp', [
+                Log::error('Erro ao enviar via provider de WhatsApp', [
                     'mensagem_id' => $mensagemId,
                     'erro' => $e->getMessage()
                 ]);

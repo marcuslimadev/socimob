@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\AppSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -9,6 +10,7 @@ use App\Models\Conversa;
 use App\Models\LeadDocument;
 use App\Models\LeadPropertyMatch;
 use App\Models\Mensagem;
+use App\Models\Tenant;
 use App\Services\TwilioService;
 
 /**
@@ -277,21 +279,26 @@ class ConversasController extends Controller
             }
             
             // Formatar mensagens para garantir campos corretos
-            $mensagens = $mensagens->map(function($msg) use ($users, $lead, $leadContext, $conversa) {
+            $assistantName = $this->resolveAssistantDisplayName($tenantId);
+
+            $mensagens = $mensagens->map(function($msg) use ($users, $lead, $leadContext, $conversa, $assistantName) {
                 $senderName = null;
                 $senderContext = null;
+                $senderKind = 'assistant';
                 
                 if ($msg->direction === 'outgoing' && $msg->user_id) {
                     // Mensagem enviada por corretor/admin
                     $user = $users->get($msg->user_id);
                     $senderName = $user ? $user->name : 'Atendente';
+                    $senderKind = 'human';
                 } elseif ($msg->direction === 'incoming') {
                     // Mensagem recebida do lead
                     $senderName = $lead?->nome ?? ($lead?->telefone ?? 'Cliente');
                     $senderContext = $leadContext; // Adicionar contexto do lead
+                    $senderKind = 'lead';
                 } else {
                     // Mensagem do sistema/IA
-                    $senderName = 'Assistente IA';
+                    $senderName = $assistantName;
                 }
                 
                 return [
@@ -309,6 +316,7 @@ class ConversasController extends Controller
                     'created_at' => $msg->created_at ?? null,
                     'sender_name' => $senderName,
                     'sender_context' => $senderContext,
+                    'sender_kind' => $senderKind,
                     'user_id' => $msg->user_id ?? null
                 ];
             });
@@ -855,6 +863,33 @@ class ConversasController extends Controller
         }
 
         return null;
+    }
+
+    private function resolveAssistantDisplayName(?int $tenantId = null): string
+    {
+        $tenant = app()->bound('tenant') ? app('tenant') : null;
+
+        if ((!$tenant || empty($tenant->id)) && $tenantId) {
+            $tenant = Tenant::query()->find($tenantId);
+        }
+
+        if ($tenant) {
+            $name = trim((string) $tenant->getAiAssistantName());
+            if ($name !== '') {
+                return $name;
+            }
+        }
+
+        $default = env('AI_ASSISTANT_NAME', 'Teresa');
+        $name = AppSetting::getValue('ai_name', $default);
+
+        if (is_array($name)) {
+            $name = $name['value'] ?? reset($name);
+        }
+
+        $name = trim((string) $name);
+
+        return $name !== '' ? $name : $default;
     }
 
     private function deleteConversas(array $conversaIds): array

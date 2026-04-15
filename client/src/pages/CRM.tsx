@@ -82,6 +82,7 @@ interface Message {
   transcription?: string | null;
   senderName?: string;
   senderContext?: string;
+  senderKind?: 'assistant' | 'human' | 'lead';
 }
 
 interface ClientDocument {
@@ -917,7 +918,7 @@ export default function CRM() {
 
   // ─── Fetch CRM data ───────────────────────────────────────────────
 
-  const { data: crmData = createEmptyCRMData(), isLoading, refetch } = useQuery<Record<StatusKey, CRMClient[]>>({
+  const { data: crmData = createEmptyCRMData(), isLoading } = useQuery<Record<StatusKey, CRMClient[]>>({
     queryKey: ['crm-clientes', debouncedSearch, corretorFilter, classificacaoFilter],
     queryFn: async () => {
       const params: any = {};
@@ -931,6 +932,7 @@ export default function CRM() {
     refetchInterval: 30000,
     staleTime: 15000,
     initialData: createEmptyCRMData,
+    enabled: !isMobile,
   });
 
   const { data: tableData, isLoading: isLoadingTable, isError: isTableError } = useQuery<CRMTableResponse>({
@@ -980,6 +982,39 @@ export default function CRM() {
       return normalizeFlatClients(raw?.data ?? raw);
     },
     placeholderData: (previousData) => previousData ?? [],
+    enabled: !isMobile,
+  });
+
+  const { data: mobileStatusData, isLoading: isLoadingMobileStatus } = useQuery<CRMTableResponse>({
+    queryKey: ['crm-clientes-mobile-status', debouncedSearch, corretorFilter, classificacaoFilter, mobileStatus],
+    queryFn: async () => {
+      const params: any = {
+        flat: 1,
+        page: 1,
+        per_page: 20,
+        status: mobileStatus,
+        sort_by: 'updated_at',
+        sort_dir: 'desc',
+      };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (corretorFilter) params.corretor_id = corretorFilter;
+      if (classificacaoFilter !== 'all') params.classificacao = classificacaoFilter;
+
+      const res = await api.get('/crm/clientes', { params });
+      const raw = res?.data ?? {};
+      const flat = normalizeFlatClients(raw?.data ?? raw);
+
+      return {
+        total: Number(raw?.total || flat.length || 0),
+        current_page: Number(raw?.current_page || 1),
+        last_page: Number(raw?.last_page || 1),
+        per_page: Number(raw?.per_page || 20),
+        data: flat,
+      };
+    },
+    enabled: isMobile,
+    placeholderData: (previousData) => previousData,
+    staleTime: 15000,
   });
 
   useEffect(() => {
@@ -992,11 +1027,12 @@ export default function CRM() {
   }, [crmData]);
 
   const summaryClients = useMemo(() => {
+    if (isMobile && Array.isArray(mobileStatusData?.data) && mobileStatusData.data.length > 0) return mobileStatusData.data;
     if (originSummaryClients.length > 0) return originSummaryClients;
     if (allClients.length > 0) return allClients;
     if (Array.isArray(tableData?.data)) return tableData.data;
     return [];
-  }, [originSummaryClients, allClients, tableData]);
+  }, [isMobile, mobileStatusData, originSummaryClients, allClients, tableData]);
 
   const scopedSummaryClients = useMemo(() => filterClients(summaryClients, {
     term: tableSearch,
@@ -1030,6 +1066,14 @@ export default function CRM() {
         return a.label.localeCompare(b.label, 'pt-BR');
       });
   }, [scopedSummaryClients]);
+
+  const mobileClients = useMemo(() => {
+    if (Array.isArray(mobileStatusData?.data)) {
+      return mobileStatusData.data;
+    }
+
+    return crmData?.[mobileStatus] || [];
+  }, [mobileStatusData, crmData, mobileStatus]);
 
   const tableClients = useMemo(() => {
     if (!useLocalTableData && Array.isArray(tableData?.data)) {
@@ -1088,6 +1132,9 @@ export default function CRM() {
       await api.patch(`/crm/clientes/${clientId}/status`, { status: newStatus });
       toast.success('Status atualizado');
       queryClient.invalidateQueries({ queryKey: ['crm-clientes'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-clientes-table'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-clientes-origin-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-clientes-mobile-status'] });
       setSelectedClient((prev) => prev?.id === clientId ? { ...prev, status: newStatus } : prev);
     } catch {
       toast.error('Erro ao atualizar status');
@@ -1098,6 +1145,7 @@ export default function CRM() {
     queryClient.invalidateQueries({ queryKey: ['crm-clientes'] });
     queryClient.invalidateQueries({ queryKey: ['crm-clientes-table'] });
     queryClient.invalidateQueries({ queryKey: ['crm-clientes-origin-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['crm-clientes-mobile-status'] });
   }, [queryClient]);
 
   const handleDeleteLead = useCallback(async (client: CRMClient) => {
@@ -1448,6 +1496,7 @@ export default function CRM() {
           transcription: item.transcription ?? null,
           senderName: item.sender_name ?? undefined,
           senderContext: item.sender_context ?? undefined,
+          senderKind: item.sender_kind ?? (item.direction === 'outgoing' ? (item.user_id ? 'human' : 'assistant') : 'lead'),
         }))
         .sort((a: Message, b: Message) => a.rawDate.getTime() - b.rawDate.getTime());
       applyMessagesWithScrollPreserve(mapped);
@@ -1613,7 +1662,7 @@ export default function CRM() {
                           <div className={cn('max-w-[80%]', isUser && 'flex flex-col items-end')}>
                             <div className={cn('px-3 py-2 rounded-2xl shadow-sm text-sm', isUser ? 'bg-primary/10 text-foreground rounded-br-sm border border-primary/20' : 'bg-muted text-foreground rounded-bl-sm border border-border')}>
                               {message.senderName && (
-                                <div className={cn("text-[10px] font-medium opacity-70 mb-1", message.senderName === 'Assistente IA' ? 'text-blue-600 dark:text-blue-400' : 'text-foreground')}>
+                                <div className={cn("text-[10px] font-medium opacity-70 mb-1", message.senderKind === 'assistant' ? 'text-blue-600 dark:text-blue-400' : 'text-foreground')}>
                                   {message.senderName}
                                 </div>
                               )}
@@ -1954,6 +2003,175 @@ export default function CRM() {
   const totalClients = summaryClients.length;
   const totalUnread = summaryClients.reduce((sum, c) => sum + c.unread, 0);
   const selectedClientId = selectedClient?.id ?? null;
+  const renderConversationPanel = (mode: 'desktop' | 'mobile') => {
+    if (!selectedClient) return null;
+
+    const isDesktopPanel = mode === 'desktop';
+
+    return (
+      <div
+        className={cn(
+          'relative bg-background border border-border flex flex-col overflow-hidden',
+          isDesktopPanel
+            ? 'h-full min-h-0 rounded-[28px] border-white/8 bg-[#0b1322]/88 shadow-[0_18px_42px_rgba(2,6,23,0.24)]'
+            : 'ml-auto w-full h-full rounded-none border-l lg:w-[55%] xl:w-[50%]'
+        )}
+      >
+        <div className="flex items-start gap-3 px-4 py-3 border-b border-border bg-card/80">
+          {isMobile ? (
+            <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)} className="flex-shrink-0">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          ) : (
+            <div className="w-9 h-9 flex items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
+              {getInitials(selectedClient.nome)}
+            </div>
+          )}
+
+          <div className="flex-1 min-w-0 pr-2">
+            <h2 className="font-semibold text-foreground truncate">{selectedClient.nome}</h2>
+            <p className="text-xs text-muted-foreground truncate">{formatPhoneDisplay(selectedClient.telefone)}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+              <span>
+                Atendente: <span className="font-semibold text-foreground">{selectedClient.corretor_nome || 'Não designado'}</span>
+              </span>
+            </div>
+            {selectedLeadInterest?.compactSummary && (
+              <p className="text-[11px] text-emerald-400/90 truncate mt-0.5">{selectedLeadInterest.compactSummary}</p>
+            )}
+            {selectedLeadInterest?.propertyLink && (
+              <div className="mt-1.5">
+                <PropertyInterestActions
+                  propertyLink={selectedLeadInterest.propertyLink}
+                  propertyLabel={selectedLeadInterest.displayLabel}
+                  compact
+                  onQuickView={() => handleOpenQuickView(
+                    selectedLeadInterest.propertyLink || '',
+                    selectedLeadInterest.displayLabel || selectedLeadInterest.propertyTitle || 'Imóvel'
+                  )}
+                />
+              </div>
+            )}
+            {(isAdminUser || isBrokerUser) && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={assignmentSubmitting !== null || (!isAdminUser && Boolean(selectedClient.corretor_id && selectedClient.corretor_id !== currentUser.id))}
+                  className="h-8 px-3 text-xs"
+                  onClick={() => handleAssumeAtendimento(selectedClient)}
+                  title={!isAdminUser && selectedClient.corretor_id && selectedClient.corretor_id !== currentUser.id ? 'Este atendimento já está com outro corretor' : 'Assumir atendimento'}
+                >
+                  {assignmentSubmitting === 'assume' ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                  {selectedClient.corretor_id === currentUser.id ? 'Atendimento comigo' : 'Assumir atendimento'}
+                </Button>
+
+                {isAdminUser && (
+                  <>
+                    <select
+                      value={selectedAssigneeId}
+                      onChange={(event) => setSelectedAssigneeId(event.target.value)}
+                      disabled={assignmentSubmitting !== null}
+                      className="h-8 min-w-[180px] rounded-lg border border-border bg-muted/30 px-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    >
+                      <option value="">Selecionar atendente</option>
+                      {assignableUsers.map((item) => (
+                        <option key={item.id} value={item.id}>{item.name}</option>
+                      ))}
+                    </select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={assignmentSubmitting !== null || !selectedAssigneeId}
+                      className="h-8 px-3 text-xs"
+                      onClick={() => handleAssignAtendimento(selectedClient, selectedAssigneeId)}
+                    >
+                      {assignmentSubmitting === 'assign' ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                      Designar atendente
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 flex-shrink-0 self-start">
+            {selectedClientWhatsappUrl && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                onClick={() => window.open(selectedClientWhatsappUrl, '_blank', 'noopener,noreferrer')}
+                title="Abrir conversa no WhatsApp"
+              >
+                <MessageCircle className="w-4 h-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">WhatsApp</span>
+              </Button>
+            )}
+            {!isMobile && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2.5 text-muted-foreground hover:text-foreground"
+                onClick={() => setSelectedClient(null)}
+                title="Fechar conversa"
+              >
+                Fechar
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-8 h-8 text-muted-foreground hover:text-foreground"
+              onClick={() => setDrawerCollapsed((prev) => !prev)}
+              title={drawerCollapsed ? 'Abrir' : 'Minimizar'}
+            >
+              {drawerCollapsed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+            <div className="relative group">
+              <button className={cn('flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border', (STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).bg, (STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).color)}>
+                {(STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).label}
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              <div className="hidden group-hover:block absolute right-0 top-full mt-1 w-40 bg-card border border-border rounded-xl shadow-xl z-10 py-1">
+                {ALL_STATUSES.map((s) => (
+                  <button key={s} onClick={() => handleStatusChange(selectedClient.id, s)} className={cn('w-full text-left px-3 py-2 text-xs hover:bg-muted/50 transition-colors', s === selectedClient.status && 'font-bold')}>
+                    <span className={STATUS_CONFIG[s].color}>{STATUS_CONFIG[s].label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={deletingLeadId === selectedClient.id}
+              className="w-8 h-8 text-muted-foreground hover:text-red-500"
+              onClick={() => handleDeleteLead(selectedClient)}
+              title="Excluir lead"
+            >
+              {deletingLeadId === selectedClient.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            </Button>
+          </div>
+        </div>
+
+        {!drawerCollapsed && (
+          <>
+            <div className="flex border-b border-border bg-card/70">
+              {(['chat', 'perfil'] as const).map((tab) => (
+                <button key={tab} onClick={() => setActiveTab(tab)} className={cn('flex-1 py-2.5 text-sm font-medium transition-colors relative', activeTab === tab ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}>
+                  {tab === 'chat' ? 'Chat' : 'Perfil'}
+                  {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              {activeTab === 'chat' ? renderChatTab() : renderPerfilTab()}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="flex min-h-screen bg-[#050814] text-foreground">
@@ -1982,8 +2200,8 @@ export default function CRM() {
                 className="w-full pl-9 pr-3 py-2 bg-muted/40 border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
-            <Button variant="ghost" size="icon" onClick={() => refetch()} className="text-muted-foreground hover:text-foreground">
-              <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
+            <Button variant="ghost" size="icon" onClick={invalidateCRMQueries} className="text-muted-foreground hover:text-foreground">
+              <RefreshCw className={cn('w-4 h-4', (isLoading || isLoadingTable || isLoadingMobileStatus) && 'animate-spin')} />
             </Button>
             </div>
           </div>
@@ -1998,7 +2216,11 @@ export default function CRM() {
           <>
             {/* Desktop: Kanban */}
             <div className="page-content hidden lg:flex flex-1 min-h-0 pt-4">
-              <div className="flex w-full min-h-0 flex-col gap-3 rounded-[28px] border border-white/8 bg-[#0b1322]/82 p-4 shadow-[0_18px_42px_rgba(2,6,23,0.24)]">
+              <div className="flex w-full min-h-0 gap-4">
+              <div className={cn(
+                'flex min-h-0 flex-col gap-3 rounded-[28px] border border-white/8 bg-[#0b1322]/82 p-4 shadow-[0_18px_42px_rgba(2,6,23,0.24)] transition-all duration-200',
+                selectedClient ? 'flex-[1.15] min-w-0' : 'flex-1'
+              )}>
                 <div className="flex flex-wrap items-center gap-2">
                   {/* Search */}
                   <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -2274,6 +2496,12 @@ export default function CRM() {
                   </div>
                 </div>
               </div>
+              {selectedClient && (
+                <div className="w-[460px] xl:w-[520px] 2xl:w-[580px] min-h-0 shrink-0">
+                  {renderConversationPanel('desktop')}
+                </div>
+              )}
+              </div>
             </div>
 
             {/* Mobile: Tabs + List */}
@@ -2281,7 +2509,9 @@ export default function CRM() {
               <div className="overflow-hidden rounded-[28px] border border-white/8 bg-[#0b1322]/82 shadow-[0_18px_42px_rgba(2,6,23,0.24)]">
               <div className="flex border-b border-border bg-card overflow-x-auto scrollbar-hide">
                 {ALL_STATUSES.map((s) => {
-                  const count = (crmData?.[s] || []).length;
+                  const count = isMobile
+                    ? (s === mobileStatus ? Number(mobileStatusData?.total || mobileClients.length || 0) : null)
+                    : (crmData?.[s] || []).length;
                   const conf = STATUS_CONFIG[s];
                   return (
                     <button
@@ -2292,7 +2522,7 @@ export default function CRM() {
                         mobileStatus === s ? conf.color : 'text-muted-foreground'
                       )}
                     >
-                      {conf.label} ({count})
+                      {count === null ? conf.label : `${conf.label} (${count})`}
                       {mobileStatus === s && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-current" />}
                     </button>
                   );
@@ -2300,13 +2530,18 @@ export default function CRM() {
               </div>
               <ScrollArea className="flex-1 min-h-0">
                 <div className="space-y-2 p-3">
-                  {(crmData?.[mobileStatus] || []).length === 0 ? (
+                  {isLoadingMobileStatus && mobileClients.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 gap-3">
+                      <Loader2 className="w-10 h-10 text-muted-foreground/50 animate-spin" />
+                      <p className="text-sm text-muted-foreground">Carregando clientes...</p>
+                    </div>
+                  ) : mobileClients.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3">
                       <Users className="w-10 h-10 text-muted-foreground/30" />
                       <p className="text-sm text-muted-foreground">Nenhum cliente neste status</p>
                     </div>
                   ) : (
-                    (crmData?.[mobileStatus] || []).map((client) => (
+                    mobileClients.map((client) => (
                       <ClientCard
                         key={client.id}
                         client={client}
@@ -2324,183 +2559,13 @@ export default function CRM() {
         )}
       </div>
 
-      {/* Drawer */}
-      {selectedClient && (
+      {selectedClient && isMobile && (
         <div
-          className={cn(
-            'fixed z-50',
-            drawerDocked || isMobile
-              ? 'inset-0 flex'
-              : 'bottom-4 right-4 w-[440px] max-w-[90vw] h-[80vh] max-h-[820px]'
-          )}
+          className="fixed inset-0 z-50 flex"
         >
-          {(drawerDocked || isMobile) && (
-            <div className="absolute inset-0 bg-black/40 lg:bg-black/20" onClick={() => setSelectedClient(null)} />
-          )}
-
-            <div
-              className={cn(
-              'relative bg-background border border-border flex flex-col overflow-hidden',
-              (drawerDocked || isMobile)
-                ? 'ml-auto w-full h-full lg:w-[55%] xl:w-[50%] rounded-none border-l'
-                : 'shadow-2xl rounded-2xl h-full max-h-[80vh]'
-              )}
-            >
-            {/* Header */}
-            <div className="flex items-start gap-3 px-4 py-3 border-b border-border bg-card">
-              {drawerDocked ? (
-                <Button variant="ghost" size="icon" onClick={() => setSelectedClient(null)} className="flex-shrink-0">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              ) : (
-                <div className="w-9 h-9 flex items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
-                  {getInitials(selectedClient.nome)}
-                </div>
-              )}
-
-              <div className="flex-1 min-w-0 pr-2">
-                <h2 className="font-semibold text-foreground truncate">{selectedClient.nome}</h2>
-                <p className="text-xs text-muted-foreground truncate">{formatPhoneDisplay(selectedClient.telefone)}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <span>
-                    Atendente: <span className="font-semibold text-foreground">{selectedClient.corretor_nome || 'Não designado'}</span>
-                  </span>
-                </div>
-                {selectedLeadInterest?.compactSummary && (
-                  <p className="text-[11px] text-emerald-400/90 truncate mt-0.5">{selectedLeadInterest.compactSummary}</p>
-                )}
-                {selectedLeadInterest?.propertyLink && (
-                  <div className="mt-1.5">
-                    <PropertyInterestActions
-                      propertyLink={selectedLeadInterest.propertyLink}
-                      propertyLabel={selectedLeadInterest.displayLabel}
-                      compact
-                      onQuickView={() => handleOpenQuickView(
-                        selectedLeadInterest.propertyLink || '',
-                        selectedLeadInterest.displayLabel || selectedLeadInterest.propertyTitle || 'Imóvel'
-                      )}
-                    />
-                  </div>
-                )}
-                {(isAdminUser || isBrokerUser) && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={assignmentSubmitting !== null || (!isAdminUser && Boolean(selectedClient.corretor_id && selectedClient.corretor_id !== currentUser.id))}
-                      className="h-8 px-3 text-xs"
-                      onClick={() => handleAssumeAtendimento(selectedClient)}
-                      title={!isAdminUser && selectedClient.corretor_id && selectedClient.corretor_id !== currentUser.id ? 'Este atendimento já está com outro corretor' : 'Assumir atendimento'}
-                    >
-                      {assignmentSubmitting === 'assume' ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
-                      {selectedClient.corretor_id === currentUser.id ? 'Atendimento comigo' : 'Assumir atendimento'}
-                    </Button>
-
-                    {isAdminUser && (
-                      <>
-                        <select
-                          value={selectedAssigneeId}
-                          onChange={(event) => setSelectedAssigneeId(event.target.value)}
-                          disabled={assignmentSubmitting !== null}
-                          className="h-8 min-w-[180px] rounded-lg border border-border bg-muted/30 px-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                        >
-                          <option value="">Selecionar atendente</option>
-                          {assignableUsers.map((item) => (
-                            <option key={item.id} value={item.id}>{item.name}</option>
-                          ))}
-                        </select>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={assignmentSubmitting !== null || !selectedAssigneeId}
-                          className="h-8 px-3 text-xs"
-                          onClick={() => handleAssignAtendimento(selectedClient, selectedAssigneeId)}
-                        >
-                          {assignmentSubmitting === 'assign' ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
-                          Designar atendente
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1 flex-shrink-0 self-start">
-                {selectedClientWhatsappUrl && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-                    onClick={() => window.open(selectedClientWhatsappUrl, '_blank', 'noopener,noreferrer')}
-                    title="Abrir conversa no WhatsApp"
-                  >
-                    <MessageCircle className="w-4 h-4 sm:mr-1.5" />
-                    <span className="hidden sm:inline">WhatsApp</span>
-                  </Button>
-                )}
-                {!isMobile && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-8 h-8 text-muted-foreground hover:text-foreground"
-                    onClick={() => setDrawerDocked((prev) => !prev)}
-                    title={drawerDocked ? 'Flutuar' : 'Encaixar'}
-                  >
-                    {drawerDocked ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-8 h-8 text-muted-foreground hover:text-foreground"
-                  onClick={() => setDrawerCollapsed((prev) => !prev)}
-                  title={drawerCollapsed ? 'Abrir' : 'Minimizar'}
-                >
-                  {drawerCollapsed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </Button>
-                <div className="relative group">
-                  <button className={cn('flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border', (STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).bg, (STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).color)}>
-                    {(STATUS_CONFIG[selectedClient.status as StatusKey] || STATUS_CONFIG.novo).label}
-                    <ChevronDown className="w-3 h-3" />
-                  </button>
-                  <div className="hidden group-hover:block absolute right-0 top-full mt-1 w-40 bg-card border border-border rounded-xl shadow-xl z-10 py-1">
-                    {ALL_STATUSES.map((s) => (
-                      <button key={s} onClick={() => handleStatusChange(selectedClient.id, s)} className={cn('w-full text-left px-3 py-2 text-xs hover:bg-muted/50 transition-colors', s === selectedClient.status && 'font-bold')}>
-                        <span className={STATUS_CONFIG[s].color}>{STATUS_CONFIG[s].label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={deletingLeadId === selectedClient.id}
-                  className="w-8 h-8 text-muted-foreground hover:text-red-500"
-                  onClick={() => handleDeleteLead(selectedClient)}
-                  title="Excluir lead"
-                >
-                  {deletingLeadId === selectedClient.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                </Button>
-              </div>
-            </div>
-
-            {!drawerCollapsed && (
-              <>
-                {/* Tabs */}
-                <div className="flex border-b border-border bg-card">
-                  {(['chat', 'perfil'] as const).map((tab) => (
-                    <button key={tab} onClick={() => setActiveTab(tab)} className={cn('flex-1 py-2.5 text-sm font-medium transition-colors relative', activeTab === tab ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}>
-                      {tab === 'chat' ? 'Chat' : 'Perfil'}
-                      {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
-                    </button>
-                  ))}
-                </div>
-                {/* Tab content */}
-                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                  {activeTab === 'chat' ? renderChatTab() : renderPerfilTab()}
-                </div>
-              </>
-            )}
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSelectedClient(null)} />
+          <div className="relative ml-auto w-full h-full lg:w-[55%] xl:w-[50%]">
+            {renderConversationPanel('mobile')}
           </div>
         </div>
       )}

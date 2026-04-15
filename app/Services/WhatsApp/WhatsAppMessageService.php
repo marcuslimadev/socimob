@@ -41,6 +41,8 @@ class WhatsAppMessageService
 
     public function queueMedia(array $payload, string $correlationId, ?UploadedFile $file = null): WhatsAppMessage
     {
+        unset($payload['file']);
+
         if ($file) {
             $disk = (string) config('whatsapp.storage.disk', 'local');
             $path = $file->store(config('whatsapp.storage.path_prefix', 'whatsapp') . '/outbound', $disk);
@@ -99,7 +101,7 @@ class WhatsAppMessageService
             $contact = $this->firstOrCreateContact($tenantId, $phoneNumber->id, $normalizedRecipient, $payload['contact_name'] ?? null);
             $conversation = $this->firstOrCreateConversation($phoneNumber, $contact);
 
-            if ($type === 'text') {
+            if ($type !== 'template') {
                 $this->assertFreeFormWindow($conversation);
             }
 

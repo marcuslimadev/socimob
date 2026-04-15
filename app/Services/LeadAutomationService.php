@@ -683,7 +683,7 @@ Gere a mensagem de primeiro contato:";
         $saudacao = $this->obterSaudacao();
 
         // Resolver nomes dinâmicos do tenant
-        $tenant = app('tenant');
+        $tenant = app()->bound('tenant') ? app('tenant') : null;
         $assistantName = $tenant ? $tenant->getAiAssistantName() : env('AI_ASSISTANT_NAME', 'Teresa');
         $companyName = $tenant ? $tenant->getCompanyName() : env('COMPANY_NAME', 'Imobiliária');
 

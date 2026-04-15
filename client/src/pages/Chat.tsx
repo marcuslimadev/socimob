@@ -41,6 +41,7 @@ interface Message {
   transcription?: string | null;
   senderName?: string;
   senderContext?: string;
+  senderKind?: 'assistant' | 'human' | 'lead';
 }
 
 interface Contact {
@@ -358,6 +359,7 @@ export default function Chat() {
           transcription: item.transcription ?? null,
           senderName: item.sender_name ?? undefined,
           senderContext: item.sender_context ?? undefined,
+          senderKind: item.sender_kind ?? (item.direction === 'outgoing' ? (item.user_id ? 'human' : 'assistant') : 'lead'),
         }))
         .sort((a: Message, b: Message) => a.rawDate.getTime() - b.rawDate.getTime());
 
@@ -890,7 +892,7 @@ export default function Chat() {
                                         <div className="mb-1.5">
                                           <div className={cn(
                                             "text-[10px] font-medium opacity-70",
-                                            message.senderName === 'Assistente IA' 
+                                            message.senderKind === 'assistant' 
                                               ? 'text-blue-600 dark:text-blue-400' 
                                               : 'text-foreground'
                                           )}>

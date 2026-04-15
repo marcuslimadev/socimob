@@ -96,7 +96,16 @@ class WhatsAppConnectionService
                 ]
             );
 
-            $health = $this->metaCloudApiService->readPhoneNumberStatus($phoneNumber, $correlationId);
+            $health = [];
+
+            try {
+                $health = $this->metaCloudApiService->readPhoneNumberStatus($phoneNumber, $correlationId);
+            } catch (\Throwable $exception) {
+                $health = [
+                    'health_check_error' => $exception->getMessage(),
+                ];
+            }
+
             $phoneNumber->forceFill([
                 'metadata' => $health,
                 'last_health_check_at' => now(),

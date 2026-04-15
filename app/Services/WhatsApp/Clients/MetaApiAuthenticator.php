@@ -28,6 +28,8 @@ class MetaApiAuthenticator
 
     public function verifyToken(): ?string
     {
-        return config('whatsapp.graph.webhook_verify_token');
+        return config('whatsapp.graph.webhook_verify_token')
+            ?: env('META_WEBHOOK_VERIFY_TOKEN')
+            ?: env('META_WHATSAPP_VERIFY_TOKEN');
     }
 }

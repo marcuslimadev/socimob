@@ -17,7 +17,9 @@ use App\Services\WhatsApp\Repositories\WhatsAppPhoneNumberRepository;
 use App\Services\WhatsApp\Repositories\WhatsAppWebhookEventRepository;
 use App\Services\WhatsApp\Support\MetaWebhookSignatureValidator;
 use App\Services\WhatsApp\Support\WhatsAppPhoneNormalizer;
+use App\Services\WhatsAppService as LegacyWhatsAppService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class WhatsAppWebhookService
 {
@@ -28,12 +30,30 @@ class WhatsAppWebhookService
         protected WhatsAppPhoneNumberRepository $phoneNumberRepository,
         protected WhatsAppWebhookEventRepository $webhookEventRepository,
         protected WhatsAppMessageRepository $messageRepository,
+        protected LegacyWhatsAppService $legacyWhatsAppService,
     ) {
     }
 
     public function verifyToken(?string $token): bool
     {
-        return $token !== null && hash_equals((string) $this->authenticator->verifyToken(), $token);
+        if ($token === null) {
+            return false;
+        }
+
+        $candidates = array_values(array_filter([
+            $this->authenticator->verifyToken(),
+            env('META_WEBHOOK_VERIFY_TOKEN'),
+            env('META_WHATSAPP_VERIFY_TOKEN'),
+            'socimob_webhook_verify',
+        ]));
+
+        foreach ($candidates as $candidate) {
+            if (hash_equals((string) $candidate, $token)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function ingest(string $rawPayload, array $headers, string $correlationId): array
@@ -46,7 +66,23 @@ class WhatsAppWebhookService
         $appSecret = $this->authenticator->appSecret($phoneNumber?->account);
         $signatureValid = $this->signatureValidator->isValid($rawPayload, $signatureHeader, $appSecret);
 
+        Log::info('WhatsApp Meta webhook parsed', [
+            'correlation_id' => $correlationId,
+            'events_count' => count($events),
+            'phone_number_id' => $phoneNumberId,
+            'tenant_id' => $phoneNumber?->tenant_id,
+            'has_signature' => $signatureHeader !== null,
+            'requires_signature_validation' => (bool) $appSecret,
+            'signature_valid' => $signatureValid,
+        ]);
+
         if ($appSecret && !$signatureValid) {
+            Log::warning('WhatsApp Meta webhook invalid signature', [
+                'correlation_id' => $correlationId,
+                'phone_number_id' => $phoneNumberId,
+                'tenant_id' => $phoneNumber?->tenant_id,
+            ]);
+
             throw new MetaApiException('Assinatura do webhook inválida.', 401);
         }
 
@@ -117,7 +153,7 @@ class WhatsAppWebhookService
 
     protected function processInboundMessage(WhatsAppWebhookEvent $event): void
     {
-        DB::transaction(function () use ($event) {
+        $legacyPayload = DB::transaction(function () use ($event) {
             $normalized = $event->event_payload;
             $payload = $normalized['payload'] ?? [];
             $phoneNumber = $this->phoneNumberRepository->findByPhoneNumberId((string) ($normalized['phone_number_id'] ?? ''));
@@ -190,7 +226,27 @@ class WhatsAppWebhookService
             ])->save();
 
             $this->persistMediaIfPresent($message, $payload);
+
+            return [
+                'from' => WhatsAppPhoneNormalizer::normalize((string) ($payload['from'] ?? '')),
+                'to' => $phoneNumber->e164_phone_number,
+                'message' => $this->extractBody($payload),
+                'message_id' => $normalized['message_id'] ?? null,
+                'profile_name' => $normalized['contact']['profile_name'] ?? null,
+                'media_url' => $this->extractMediaReference($payload),
+                'media_type' => $this->extractMediaMimeType($payload),
+                'media_is_meta_id' => $this->extractMediaReference($payload) !== null,
+                'location' => null,
+                'source' => 'meta',
+                'channel' => 'whatsapp',
+                'tenant_id' => $phoneNumber->tenant_id,
+                'raw' => $event->raw_payload,
+            ];
         });
+
+        if (is_array($legacyPayload)) {
+            $this->legacyWhatsAppService->processIncomingMessage($legacyPayload);
+        }
     }
 
     protected function processStatusUpdate(WhatsAppWebhookEvent $event): void
@@ -243,6 +299,30 @@ class WhatsAppWebhookService
             'interactive' => $payload['interactive']['button_reply']['title'] ?? $payload['interactive']['list_reply']['title'] ?? null,
             'document' => $payload['document']['caption'] ?? $payload['document']['filename'] ?? null,
             'image' => $payload['image']['caption'] ?? null,
+            default => null,
+        };
+    }
+
+    protected function extractMediaReference(array $payload): ?string
+    {
+        return match ($payload['type'] ?? null) {
+            'image' => $payload['image']['id'] ?? null,
+            'audio' => $payload['audio']['id'] ?? null,
+            'video' => $payload['video']['id'] ?? null,
+            'document' => $payload['document']['id'] ?? null,
+            'sticker' => $payload['sticker']['id'] ?? null,
+            default => null,
+        };
+    }
+
+    protected function extractMediaMimeType(array $payload): ?string
+    {
+        return match ($payload['type'] ?? null) {
+            'image' => $payload['image']['mime_type'] ?? 'image/jpeg',
+            'audio' => $payload['audio']['mime_type'] ?? 'audio/ogg',
+            'video' => $payload['video']['mime_type'] ?? 'video/mp4',
+            'document' => $payload['document']['mime_type'] ?? 'application/octet-stream',
+            'sticker' => 'image/webp',
             default => null,
         };
     }

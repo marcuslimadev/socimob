@@ -11,6 +11,7 @@ use App\Models\LeadDocument;
 use App\Models\AppSetting;
 use App\Models\SmsShortLink;
 use App\Services\LeadCustomerService;
+use App\Services\MetaCloudGateway;
 use App\Services\TwilioService;
 use App\Services\EvolutionApiService;
 use App\Services\SmsShortLinkService;
@@ -35,25 +36,32 @@ class WhatsAppService
 {
     private TwilioService $twilio;
     private EvolutionApiService $evolution;
+    private MetaCloudGateway $metaCloud;
     private $openai;
     private $stageDetection;
     private LeadCustomerService $leadCustomerService;
     private SmsShortLinkService $smsShortLinkService;
     
-    public function __construct(TwilioService $twilio, EvolutionApiService $evolution, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService, SmsShortLinkService $smsShortLinkService)
+    public function __construct(TwilioService $twilio, EvolutionApiService $evolution, MetaCloudGateway $metaCloud, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService, SmsShortLinkService $smsShortLinkService)
     {
         $this->twilio = $twilio;
         $this->evolution = $evolution;
+        $this->metaCloud = $metaCloud;
         $this->openai = $openai;
         $this->stageDetection = $stageDetection;
         $this->leadCustomerService = $leadCustomerService;
         $this->smsShortLinkService = $smsShortLinkService;
     }
 
-    private function resolveWhatsAppGateway(): TwilioService|EvolutionApiService
+    private function resolveWhatsAppGateway(): TwilioService|EvolutionApiService|MetaCloudGateway
     {
         $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
-        return $driver === 'evolution' ? $this->evolution : $this->twilio;
+
+        return match ($driver) {
+            'meta_cloud' => $this->metaCloud,
+            'evolution' => $this->evolution,
+            default => $this->twilio,
+        };
     }
     
     /**
@@ -275,22 +283,20 @@ class WhatsAppService
                 return $this->handleFirstMessage($conversa, $telefone, $conversaData, $body);
             }
             
-            // 7. Processar com IA de forma assíncrona para não bloquear o webhook do Twilio
-            // O Twilio tem timeout de 15s — despachar job evita timeouts e retentativas
-            dispatch(new \App\Jobs\ProcessWhatsAppAIResponse(
+            \Illuminate\Support\Facades\Bus::dispatchSync(new \App\Jobs\ProcessWhatsAppAIResponse(
                 $conversa->id,
                 $body,
                 $messageType === 'audio'
             ));
 
-            Log::info('📬 Job de IA despachado para a fila', [
+            Log::info('📬 Job de IA processado em linha', [
                 'conversa_id' => $conversa->id,
                 'queue_connection' => config('queue.default', 'sync'),
             ]);
 
             return [
                 'success' => true,
-                'message' => 'Mensagem recebida, processando resposta da IA',
+                'message' => 'Mensagem recebida e respondida pela IA',
                 'conversa_id' => $conversa->id,
             ];
             
@@ -548,7 +554,7 @@ class WhatsAppService
     private function getAssistantName(): string
     {
         // 1. Tentar via tenant
-        $tenant = app('tenant');
+        $tenant = $this->currentTenant();
         if ($tenant) {
             $tenantName = $tenant->getAiAssistantName();
             if (!empty($tenantName)) {
@@ -571,7 +577,7 @@ class WhatsAppService
 
     private function getCompanyName(): string
     {
-        $tenant = app('tenant');
+        $tenant = $this->currentTenant();
         if ($tenant) {
             return $tenant->getCompanyName();
         }
@@ -1126,6 +1132,7 @@ class WhatsAppService
 
             $rawSize = strlen($audioData['data']);
             $maxSize = 25 * 1024 * 1024; // 25MB
+            $contentType = trim((string) ($audioData['contentType'] ?? 'application/octet-stream'));
             Log::info('✅ Áudio baixado', ['size' => $rawSize . ' bytes']);
 
             if ($rawSize > $maxSize) {
@@ -1139,14 +1146,17 @@ class WhatsAppService
                 Log::info('📁 Diretório temp criado', ['path' => $tempDir]);
             }
 
-            $audioPath = $tempDir . '/audio_' . time() . '_' . uniqid() . '.ogg';
+            $audioExtension = $this->guessAudioExtension($contentType);
+            $audioPath = $tempDir . '/audio_' . time() . '_' . uniqid() . '.' . $audioExtension;
             file_put_contents($audioPath, $audioData['data']);
-            Log::info('💾 Áudio salvo temporariamente', ['path' => $audioPath]);
+            Log::info('💾 Áudio salvo temporariamente', ['path' => $audioPath, 'content_type' => $contentType]);
 
-            // OpenAI Whisper aceita OGG diretamente - sem necessidade de conversão!
-            Log::info('🎤 Transcrevendo áudio OGG diretamente (sem conversão)');
+            Log::info('🎤 Transcrevendo áudio diretamente (sem conversão)', [
+                'content_type' => $contentType,
+                'path' => $audioPath,
+            ]);
             
-            $transcription = $this->openai->transcribeAudio($audioPath);
+            $transcription = $this->openai->transcribeAudio($audioPath, $contentType, basename($audioPath));
             @unlink($audioPath);
 
             if ($transcription['success']) {
@@ -1186,6 +1196,19 @@ class WhatsAppService
             ]);
             return '[Erro ao processar áudio]';
         }
+    }
+
+    private function guessAudioExtension(string $contentType): string
+    {
+        return match (strtolower(trim(explode(';', $contentType)[0]))) {
+            'audio/mpeg', 'audio/mp3' => 'mp3',
+            'audio/mp4', 'audio/x-m4a' => 'm4a',
+            'audio/aac' => 'aac',
+            'audio/wav', 'audio/x-wav', 'audio/wave' => 'wav',
+            'audio/webm' => 'webm',
+            'audio/ogg', 'audio/opus', 'application/ogg' => 'ogg',
+            default => 'ogg',
+        };
     }
 
     private function convertOggToMp3(string $audioPath): ?string
@@ -1870,7 +1893,11 @@ class WhatsAppService
         }
 
         // SMS desabilitado — enviar sempre via WhatsApp
-        $result = $this->resolveWhatsAppGateway()->sendMessage($telefone, $body);
+        $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
+        $gateway = $this->resolveWhatsAppGateway();
+        $result = $driver === 'meta_cloud'
+            ? $gateway->sendMessage($telefone, $body, $conversa?->tenant_id)
+            : $gateway->sendMessage($telefone, $body);
 
         // Registrar mensagem enviada
         $this->saveMensagem($conversaId, [
@@ -1908,13 +1935,20 @@ class WhatsAppService
             return $this->sendMessage($conversaId, $telefone, $conteudoRegistro, $channel);
         }
 
+        $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
+        $gateway = $this->resolveWhatsAppGateway();
+
         // Meta Cloud API: enviar template por nome (ex: "hello_world") em vez de ContentSid
         // Se contentSid parece um nome de template Meta (sem HX prefix), usar sendTemplate
         if (!str_starts_with($contentSid, 'HX')) {
-            $result = $this->resolveWhatsAppGateway()->sendTemplate($telefone, $contentSid, 'pt_BR', array_values($contentVariables));
+            $result = $driver === 'meta_cloud'
+                ? $gateway->sendTemplate($telefone, $contentSid, 'pt_BR', array_values($contentVariables), $conversa?->tenant_id)
+                : $gateway->sendTemplate($telefone, $contentSid, 'pt_BR', array_values($contentVariables));
         } else {
             // ContentSid do Twilio — enviar como mensagem de texto simples como fallback
-            $result = $this->resolveWhatsAppGateway()->sendMessage($telefone, $conteudoRegistro);
+            $result = $driver === 'meta_cloud'
+                ? $gateway->sendMessage($telefone, $conteudoRegistro, $conversa?->tenant_id)
+                : $gateway->sendMessage($telefone, $conteudoRegistro);
         }
 
         $this->saveMensagem($conversaId, [
@@ -1970,7 +2004,11 @@ class WhatsAppService
             return ['success' => true, 'message_sid' => null];
         }
 
-        $result = $this->resolveWhatsAppGateway()->sendMedia($telefone, $body, $mediaUrl);
+        $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
+        $gateway = $this->resolveWhatsAppGateway();
+        $result = $driver === 'meta_cloud'
+            ? $gateway->sendMedia($telefone, $body, $mediaUrl, $conversa?->tenant_id)
+            : $gateway->sendMedia($telefone, $body, $mediaUrl);
 
         $this->saveMensagem($conversaId, [
             'message_sid' => $result['message_sid'] ?? null,
@@ -2351,7 +2389,7 @@ class WhatsAppService
     private function notifyAdminOfFailure(string $operationName, \Exception $exception): void
     {
         try {
-            $tenantId = app('tenant')?->id;
+            $tenantId = $this->currentTenant()?->id;
             if (!$tenantId) {
                 Log::warning('notifyAdminOfFailure: sem tenant context');
                 return;
@@ -2415,10 +2453,15 @@ class WhatsAppService
         $structuredContext = array_merge([
             'timestamp' => Carbon::now()->toIso8601String(),
             'service' => 'WhatsAppService',
-            'tenant_id' => app('tenant')?->id ?? null,
+            'tenant_id' => $this->currentTenant()?->id ?? null,
         ], $context);
 
         Log::{$level}($message, $structuredContext);
+    }
+
+    private function currentTenant()
+    {
+        return app()->bound('tenant') ? app('tenant') : null;
     }
 
     /**
