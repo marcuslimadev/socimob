@@ -323,8 +323,8 @@ export default function SocimobLanding() {
       <header className="sticky top-0 z-30 border-b border-white/15 backdrop-blur-xl" style={{ backgroundColor: "rgba(5, 3, 8, 0.88)" }}>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <a href="/" className="flex items-center gap-3 text-white">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20" style={{ backgroundColor: "rgba(47, 110, 168, 0.4)" }}>
-              <Sparkles size={18} />
+            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/20" style={{ backgroundColor: "rgba(47, 110, 168, 0.4)" }}>
+              <img src="/favicon.ico" alt="Logo SOCIMOB" className="h-8 w-8 object-contain" />
             </div>
             <div>
               <p className="text-[12px] font-semibold uppercase tracking-[0.32em] text-white">SOCIMOB</p>
