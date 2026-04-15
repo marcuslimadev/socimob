@@ -686,10 +686,12 @@ export default function Chat() {
   };
 
   const renderChatLayout = () => (
-    <div className="flex min-h-screen overflow-hidden bg-[#132b4c] text-[#f3f4f6]">
+    <div className="flex h-[100dvh] overflow-hidden bg-[#132b4c] text-[#f3f4f6]">
       <Sidebar />
-      <div className="page-shell flex min-h-0 flex-col overflow-hidden !px-0 !pb-0">
-        <div className="flex min-h-0 flex-1 px-3 pb-3 pt-3 md:px-5 md:pb-5" style={{ height: 'calc(100vh - var(--app-header-offset, 0px))' }}>
+      <div className="page-shell flex h-full min-h-0 flex-col overflow-hidden !px-0 !pb-0">
+        <div
+          className="box-border flex h-[calc(100dvh-var(--app-header-offset,0px))] min-h-0 flex-1 overflow-hidden p-3 md:p-5"
+        >
           <div className="flex min-h-0 flex-1 overflow-hidden rounded-[24px] border border-[#24456f] bg-[#f2f2f0] shadow-[0_28px_70px_rgba(0,0,0,0.28)]">
             <aside className={cn('min-h-0 w-full flex-shrink-0 flex-col border-r border-[#274d7b] bg-[linear-gradient(180deg,#132b4c_0%,#0d2038_100%)] md:flex md:w-[360px] lg:w-[380px]', showMobileContacts ? 'flex' : 'hidden md:flex')}>
               <div className="border-b border-[#274d7b] p-4 md:p-5">
