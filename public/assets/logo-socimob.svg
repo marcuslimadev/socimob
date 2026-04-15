@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Socimob logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d2950"/>
+      <stop offset="100%" stop-color="#2f6ea8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="84" y="84" width="52" height="344" rx="18" fill="#f1132b"/>
+  <rect x="144" y="84" width="74" height="344" rx="18" fill="#2f6ea8"/>
+  <rect x="224" y="248" width="62" height="180" rx="18" fill="#f9bf0a"/>
+  <rect x="300" y="84" width="70" height="244" rx="18" fill="#050308"/>
+  <rect x="378" y="84" width="68" height="344" rx="18" fill="#f2f2f2"/>
+  <rect x="454" y="248" width="42" height="180" rx="16" fill="#8c8c8c"/>
+</svg>
