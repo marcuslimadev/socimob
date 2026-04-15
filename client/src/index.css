@@ -231,20 +231,18 @@
     margin-left: 0;
     padding-top: var(--app-header-offset);
     background-color: var(--shell-bg);
-    background-image: linear-gradient(180deg, var(--shell-top-bg) 0, var(--shell-top-bg) 5.25rem, transparent 5.25rem);
-    background-repeat: no-repeat;
+    background-image: none;
   }
 
   body[data-section-tabs='active'] .page-shell {
     background-color: var(--shell-bg);
-    background-image: linear-gradient(180deg, var(--shell-top-bg) 0, var(--shell-top-bg) 5.25rem, transparent 5.25rem);
-    background-repeat: no-repeat;
+    background-image: none;
     padding-top: var(--app-header-offset);
   }
 
   body[data-sidebar='topnav'][data-section-tabs='active'] .page-shell {
     padding-top: var(--app-header-offset);
-    background-image: linear-gradient(180deg, var(--shell-top-bg) 0, var(--shell-top-bg) 5.25rem, transparent 5.25rem);
+    background-image: none;
   }
 
   body[data-sidebar="collapsed"] .page-shell {
@@ -259,8 +257,7 @@
   body[data-sidebar='topnav'] .md\:ml-80 {
     margin-left: 0 !important;
     padding-top: var(--app-header-offset);
-    background-image: linear-gradient(180deg, var(--shell-top-bg) 0, var(--shell-top-bg) 5.25rem, transparent 5.25rem);
-    background-repeat: no-repeat;
+    background-image: none;
   }
 
   body[data-sidebar='topnav'] .topnav-offset-shell,
@@ -271,56 +268,56 @@
 
   @media (max-width: 767px) {
     body[data-sidebar='topnav'] {
-      --app-header-offset: 5.75rem;
+      --app-header-offset: 4.75rem;
     }
 
     body[data-sidebar='topnav'] .page-shell {
       padding-top: var(--app-header-offset);
-      background-image: linear-gradient(180deg, var(--shell-top-bg) 0, var(--shell-top-bg) 5.25rem, transparent 5.25rem);
+      background-image: none;
     }
 
     body[data-sidebar='topnav'][data-section-tabs='active'] .page-shell {
       padding-top: var(--app-header-offset);
-      background-image: linear-gradient(180deg, var(--shell-top-bg) 0, var(--shell-top-bg) 5.25rem, transparent 5.25rem);
+      background-image: none;
     }
 
     body[data-sidebar='topnav'] .md\:ml-80 {
       padding-top: var(--app-header-offset);
-      background-image: linear-gradient(180deg, var(--shell-top-bg) 0, var(--shell-top-bg) 5.25rem, transparent 5.25rem);
+      background-image: none;
     }
   }
 
   body[data-section-tabs='active'] .md\:ml-80 {
-    padding-top: 5.75rem;
+    padding-top: 4.75rem;
   }
 
   @media (min-width: 768px) {
     body[data-sidebar='topnav'] {
-      --app-header-offset: 6.25rem;
+      --app-header-offset: 5rem;
     }
 
     body[data-sidebar='topnav'][data-section-tabs='active'] {
-      --app-header-offset: 6.25rem;
+      --app-header-offset: 5rem;
     }
 
     body[data-sidebar='topnav'] .page-shell {
       padding-top: var(--app-header-offset);
-      background-image: linear-gradient(180deg, var(--shell-top-bg) 0, var(--shell-top-bg) 6.25rem, transparent 6.25rem);
+      background-image: none;
     }
 
     body[data-section-tabs='active'] .page-shell {
-      background-image: linear-gradient(180deg, var(--shell-top-bg) 0, var(--shell-top-bg) 6.25rem, transparent 6.25rem);
+      background-image: none;
       padding-top: var(--app-header-offset);
     }
 
     body[data-sidebar='topnav'][data-section-tabs='active'] .page-shell {
       padding-top: var(--app-header-offset);
-      background-image: linear-gradient(180deg, var(--shell-top-bg) 0, var(--shell-top-bg) 6.25rem, transparent 6.25rem);
+      background-image: none;
     }
 
     body[data-sidebar='topnav'] .md\:ml-80 {
       padding-top: var(--app-header-offset);
-      background-image: linear-gradient(180deg, var(--shell-top-bg) 0, var(--shell-top-bg) 6.25rem, transparent 6.25rem);
+      background-image: none;
     }
 
     body[data-section-tabs='active'] .md\:ml-80 {
@@ -329,7 +326,7 @@
 
     body[data-sidebar='topnav'][data-section-tabs='active'] .md\:ml-80 {
       padding-top: var(--app-header-offset);
-      background-image: linear-gradient(180deg, var(--shell-top-bg) 0, var(--shell-top-bg) 6.25rem, transparent 6.25rem);
+      background-image: none;
     }
   }
 
