@@ -342,6 +342,13 @@ class PropertySyncService
      */
     private function mapPropertyData($imovel, bool $fromImobiBrasil = false)
     {
+        $referenceCode = trim((string) (
+            $imovel['referenciaImovel']
+            ?? $imovel['referencia']
+            ?? $imovel['codigoReferencia']
+            ?? ''
+        ));
+
         // Converter áreas - nova estrutura da API
         $areaPrivativa = isset($imovel['area']['privativa']['valor']) ? 
             $this->parseArea($imovel['area']['privativa']['valor']) : null;
@@ -395,6 +402,8 @@ class PropertySyncService
         $data = [
             'codigo' => $imovel['codigoImovel'],
             'external_id' => strval($imovel['codigoImovel']),
+            'codigo_imovel' => $referenceCode !== '' ? $referenceCode : null,
+            'referencia_imovel' => $referenceCode !== '' ? $referenceCode : null,
             'titulo' => $titulo,
             'finalidade_imovel' => $this->mapearFinalidade($imovel['finalidadeImovel'] ?? 'Venda'),
             'tipo_imovel' => $this->mapearTipo($imovel['descricaoTipoImovel'] ?? 'Casa'),
@@ -542,7 +551,8 @@ class PropertySyncService
     private function persistPropertyData(string $codigo, array $data, ?string $authorityCode = null): array
     {
         $authorityCode = $authorityCode ?: ($data['imobi_brasil_external_id'] ?? null);
-        $existing = $this->findExistingProperty($codigo, $authorityCode);
+        $referenceCode = trim((string) ($data['referencia_imovel'] ?? $data['codigo_imovel'] ?? ''));
+        $existing = $this->findExistingProperty($codigo, $authorityCode, $referenceCode !== '' ? $referenceCode : null);
         $restored = false;
 
         if ($existing) {
@@ -570,15 +580,20 @@ class PropertySyncService
         ];
     }
 
-    private function findExistingProperty(string $codigo, ?string $authorityCode = null): ?Property
+    private function findExistingProperty(string $codigo, ?string $authorityCode = null, ?string $referenceCode = null): ?Property
     {
         $query = Property::withTrashed()
-            ->where(function ($builder) use ($codigo, $authorityCode) {
+            ->where(function ($builder) use ($codigo, $authorityCode, $referenceCode) {
                 $builder->where('codigo', $codigo);
 
                 if ($authorityCode) {
                     $builder->orWhere('imobi_brasil_external_id', $authorityCode)
                         ->orWhere('external_id', $authorityCode);
+                }
+
+                if ($referenceCode) {
+                    $builder->orWhere('codigo_imovel', $referenceCode)
+                        ->orWhere('referencia_imovel', $referenceCode);
                 }
             });
 
@@ -587,7 +602,17 @@ class PropertySyncService
             $query->where('tenant_id', $tenantId);
         }
 
-        return $query->orderByDesc('updated_at')->first();
+        if ($referenceCode) {
+            $query->orderByRaw(
+                "CASE WHEN codigo_imovel = ? OR referencia_imovel = ? THEN 0 ELSE 1 END",
+                [$referenceCode, $referenceCode]
+            );
+        }
+
+        return $query
+            ->orderByRaw('CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END')
+            ->orderByDesc('updated_at')
+            ->first();
     }
 
     private function resolveAuthorityCode(Property $property): ?string

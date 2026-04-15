@@ -97,7 +97,11 @@ class PublicPropertyController extends Controller
      */
     public function show($codigo)
     {
-        $property = Property::where('codigo', $codigo)->first();
+        $property = Property::where(function ($query) use ($codigo) {
+            $query->where('codigo', $codigo)
+                ->orWhere('codigo_imovel', $codigo)
+                ->orWhere('referencia_imovel', $codigo);
+        })->first();
         
         if (!$property) {
             return response()->json([
