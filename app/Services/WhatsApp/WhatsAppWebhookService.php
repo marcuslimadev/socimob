@@ -4,6 +4,7 @@ namespace App\Services\WhatsApp;
 
 use App\Events\WhatsApp\WhatsAppMessageStatusUpdated;
 use App\Jobs\WhatsApp\ProcessMetaWebhookJob;
+use App\Models\Tenant;
 use App\Models\WhatsApp\WhatsAppContact;
 use App\Models\WhatsApp\WhatsAppConversation;
 use App\Models\WhatsApp\WhatsAppMedia;
@@ -18,6 +19,7 @@ use App\Services\WhatsApp\Repositories\WhatsAppWebhookEventRepository;
 use App\Services\WhatsApp\Support\MetaWebhookSignatureValidator;
 use App\Services\WhatsApp\Support\WhatsAppPhoneNormalizer;
 use App\Services\WhatsAppService as LegacyWhatsAppService;
+use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -113,7 +115,12 @@ class WhatsAppWebhookService
                 continue;
             }
 
-            ProcessMetaWebhookJob::dispatch($record->id)->onQueue(config('whatsapp.queue.webhook'));
+            if ($this->shouldProcessSynchronously((string) $event['event_type'])) {
+                $this->process($record->id);
+            } else {
+                ProcessMetaWebhookJob::dispatch($record->id)->onQueue(config('whatsapp.queue.webhook'));
+            }
+
             $accepted++;
         }
 
@@ -245,7 +252,43 @@ class WhatsAppWebhookService
         });
 
         if (is_array($legacyPayload)) {
-            $this->legacyWhatsAppService->processIncomingMessage($legacyPayload);
+            $this->runWithinTenantContext(
+                (int) ($legacyPayload['tenant_id'] ?? 0),
+                fn () => $this->legacyWhatsAppService->processIncomingMessage($legacyPayload)
+            );
+        }
+    }
+
+    protected function shouldProcessSynchronously(string $eventType): bool
+    {
+        if ($eventType !== 'message') {
+            return false;
+        }
+
+        return (bool) config('whatsapp.webhook.process_inbound_sync', true);
+    }
+
+    protected function runWithinTenantContext(int $tenantId, Closure $callback): mixed
+    {
+        $hadTenant = app()->bound('tenant');
+        $previousTenant = $hadTenant ? app('tenant') : null;
+
+        try {
+            if ($tenantId > 0) {
+                $tenant = Tenant::query()->find($tenantId);
+
+                if ($tenant) {
+                    app()->instance('tenant', $tenant);
+                }
+            }
+
+            return $callback();
+        } finally {
+            if ($hadTenant && $previousTenant) {
+                app()->instance('tenant', $previousTenant);
+            } else {
+                app()->forgetInstance('tenant');
+            }
         }
     }
 

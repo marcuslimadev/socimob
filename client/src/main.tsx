@@ -50,9 +50,15 @@ const applyBrandingToDocument = (data: any) => {
   if (data?.primary_color) {
     root.style.setProperty("--primary", data.primary_color);
     root.style.setProperty("--sidebar-primary", data.primary_color);
+    root.style.setProperty("--ring", data.primary_color);
+    root.style.setProperty("--chart-3", data.primary_color);
+    root.style.setProperty("--chart-4", data.primary_color);
   }
   if (data?.secondary_color) {
     root.style.setProperty("--secondary", data.secondary_color);
+    root.style.setProperty("--accent", data.secondary_color);
+    root.style.setProperty("--chart-1", data.secondary_color);
+    root.style.setProperty("--chart-2", data.secondary_color);
   }
 
   if (data?.font_primary) {

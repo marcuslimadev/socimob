@@ -26,6 +26,7 @@ return [
         'max_batch_size' => 1000,
         'dedup_ttl_hours' => (int) env('META_WEBHOOK_DEDUP_TTL_HOURS', 72),
         'queue' => env('WHATSAPP_WEBHOOK_QUEUE', 'whatsapp-webhooks'),
+        'process_inbound_sync' => filter_var(env('WHATSAPP_PROCESS_INBOUND_SYNC', true), FILTER_VALIDATE_BOOL),
     ],
     'queue' => [
         'outbound' => env('WHATSAPP_OUTBOUND_QUEUE', 'whatsapp-outbound'),

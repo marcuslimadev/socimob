@@ -898,6 +898,21 @@ class WhatsAppService
             // Enviar resposta
             $sendResult = $this->sendMessage($conversa->id, $conversa->telefone, $aiResponse['content']);
             Log::info('📤 Mensagem enviada', ['success' => $sendResult['success'] ?? false]);
+
+            if (!($sendResult['success'] ?? false)) {
+                Log::error('❌ Falha ao enviar resposta da IA via WhatsApp', [
+                    'conversa_id' => $conversa->id,
+                    'tenant_id' => $conversa->tenant_id,
+                    'error' => $sendResult['error'] ?? 'Erro desconhecido',
+                    'http_code' => $sendResult['http_code'] ?? null,
+                ]);
+
+                return [
+                    'success' => false,
+                    'message' => 'Falha ao enviar resposta da IA',
+                    'current_stage' => $conversa->stage,
+                ];
+            }
             
             // Detectar mudança de nome explícita
             $this->detectAndUpdateName($conversa, $message);
@@ -937,7 +952,29 @@ class WhatsAppService
             ]);
 
             $fallbackMessage = 'Desculpe, tive um problema para responder agora. Pode repetir ou detalhar um pouco mais?';
-            $this->sendMessage($conversa->id, $conversa->telefone, $fallbackMessage);
+            $fallbackResult = $this->sendMessage($conversa->id, $conversa->telefone, $fallbackMessage);
+
+            if (!($fallbackResult['success'] ?? false)) {
+                Log::error('❌ Falha ao enviar fallback após erro da IA', [
+                    'conversa_id' => $conversa->id,
+                    'tenant_id' => $conversa->tenant_id,
+                    'ai_error' => $aiResponse['error'] ?? 'Erro desconhecido',
+                    'send_error' => $fallbackResult['error'] ?? 'Erro desconhecido',
+                    'http_code' => $fallbackResult['http_code'] ?? null,
+                ]);
+
+                return [
+                    'success' => false,
+                    'message' => 'IA falhou e o fallback não pôde ser enviado',
+                    'current_stage' => $conversa->stage,
+                ];
+            }
+
+            Log::warning('⚠️ Fallback enviado após indisponibilidade da IA', [
+                'conversa_id' => $conversa->id,
+                'tenant_id' => $conversa->tenant_id,
+                'ai_error' => $aiResponse['error'] ?? 'Erro desconhecido',
+            ]);
         }
         
         return [
