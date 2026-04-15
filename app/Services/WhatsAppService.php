@@ -12,6 +12,7 @@ use App\Models\AppSetting;
 use App\Models\SmsShortLink;
 use App\Services\LeadCustomerService;
 use App\Services\MetaCloudGateway;
+use App\Services\MetaWhatsAppService;
 use App\Services\TwilioService;
 use App\Services\EvolutionApiService;
 use App\Services\SmsShortLinkService;
@@ -174,7 +175,7 @@ class WhatsAppService
                 $this->sendMessage($conversa->id, $telefone, $feedbackMsg, $channel);
                 
                 // Transcrever áudio
-                $transcriptionResult = $this->transcribeAudio($mediaUrl, $conversa->id, $mensagem->id);
+                $transcriptionResult = $this->transcribeAudio($mediaUrl, $conversa->id, $mensagem->id, $source);
                 
                 Log::info('🎤 Resultado da transcrição', [
                     'conversa_id' => $conversa->id,
@@ -224,7 +225,7 @@ class WhatsAppService
                     'mediaUrl' => $mediaUrl,
                     'mensagem_id' => $mensagem->id ?? 'null'
                 ]);
-                $this->handleIncomingDocument($conversa, $mensagem, $messageType, $mediaUrl, $mediaType, $body);
+                $this->handleIncomingDocument($conversa, $mensagem, $messageType, $mediaUrl, $mediaType, $body, $source);
             } else {
                 Log::warning('⚠️ leadModel é null, handleIncomingDocument NÃO será chamado!');
             }
@@ -1114,7 +1115,7 @@ class WhatsAppService
     /**
      * Transcrever áudio
      */
-    private function transcribeAudio($mediaUrl, $conversaId, $mensagemId)
+    private function transcribeAudio($mediaUrl, $conversaId, $mensagemId, ?string $source = null)
     {
         try {
             Log::info('🎤 Iniciando transcrição de áudio', [
@@ -1123,8 +1124,7 @@ class WhatsAppService
                 'mensagem_id' => $mensagemId
             ]);
 
-            // Meta: media_url pode ser um Media ID (não URL) — MetaWhatsAppService resolve
-            $audioData = $this->twilio->downloadMedia($mediaUrl);
+            $audioData = $this->downloadIncomingMedia((string) $mediaUrl, $source);
 
             if (!$audioData['success']) {
                 Log::error('❌ Falha ao baixar áudio', ['error' => $audioData['error'] ?? 'Unknown']);
@@ -1610,7 +1610,7 @@ class WhatsAppService
         }
     }
 
-    private function handleIncomingDocument($conversa, $mensagem, $messageType, $mediaUrl, $mediaType, $messageBody): void
+    private function handleIncomingDocument($conversa, $mensagem, $messageType, $mediaUrl, $mediaType, $messageBody, ?string $source = null): void
     {
         Log::info('handleIncomingDocument chamado', [
             'messageType' => $messageType,
@@ -1628,15 +1628,13 @@ class WhatsAppService
             return;
         }
 
-        // 1. Baixar e salvar localmente QUALQUER mídia recebida (Meta media_id ou URL Twilio)
+        // 1. Baixar e salvar localmente QUALQUER mídia recebida
         $localMediaUrl = $mediaUrl;
-        $isMetaMediaId = !str_starts_with($mediaUrl, 'http');
-        $isTwilioUrl   = str_contains($mediaUrl, 'api.twilio.com');
+        $isRemoteMedia = !str_starts_with((string) $mediaUrl, '/storage/');
 
-        if ($isMetaMediaId || $isTwilioUrl) {
+        if ($isRemoteMedia) {
             try {
-                // MetaWhatsAppService resolve tanto meta_id quanto URL autenticada
-                $mediaData = $this->twilio->downloadMedia($mediaUrl);
+            $mediaData = $this->downloadIncomingMedia((string) $mediaUrl, $source);
 
                 if ($mediaData['success'] ?? false) {
                     $contentType = $mediaData['contentType'] ?? 'application/octet-stream';
@@ -1693,6 +1691,87 @@ class WhatsAppService
                 'status' => 'pendente',
             ]);
         }
+    }
+
+    private function downloadIncomingMedia(string $mediaUrl, ?string $source = null): array
+    {
+        $source = strtolower(trim((string) $source));
+        $isHttpUrl = str_starts_with($mediaUrl, 'http://') || str_starts_with($mediaUrl, 'https://');
+
+        $attempts = [];
+
+        if ($source === 'evolution' || str_starts_with($mediaUrl, 'evo://')) {
+            $attempts[] = ['provider' => 'evolution', 'callback' => fn () => $this->evolution->downloadMedia($mediaUrl)];
+        }
+
+        if ($source === 'meta' || !$isHttpUrl) {
+            $attempts[] = ['provider' => 'meta', 'callback' => fn () => app(MetaWhatsAppService::class)->downloadMedia($mediaUrl)];
+        }
+
+        if ($source === 'twilio' || ($isHttpUrl && str_contains($mediaUrl, 'api.twilio.com'))) {
+            $attempts[] = ['provider' => 'twilio', 'callback' => fn () => $this->twilio->downloadMedia($mediaUrl)];
+        }
+
+        if (empty($attempts)) {
+            $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
+
+            if ($driver === 'meta_cloud') {
+                $attempts[] = ['provider' => 'meta', 'callback' => fn () => app(MetaWhatsAppService::class)->downloadMedia($mediaUrl)];
+                $attempts[] = ['provider' => 'evolution', 'callback' => fn () => $this->evolution->downloadMedia($mediaUrl)];
+                $attempts[] = ['provider' => 'twilio', 'callback' => fn () => $this->twilio->downloadMedia($mediaUrl)];
+            } elseif ($driver === 'evolution') {
+                $attempts[] = ['provider' => 'evolution', 'callback' => fn () => $this->evolution->downloadMedia($mediaUrl)];
+                $attempts[] = ['provider' => 'meta', 'callback' => fn () => app(MetaWhatsAppService::class)->downloadMedia($mediaUrl)];
+                $attempts[] = ['provider' => 'twilio', 'callback' => fn () => $this->twilio->downloadMedia($mediaUrl)];
+            } else {
+                $attempts[] = ['provider' => 'twilio', 'callback' => fn () => $this->twilio->downloadMedia($mediaUrl)];
+                $attempts[] = ['provider' => 'meta', 'callback' => fn () => app(MetaWhatsAppService::class)->downloadMedia($mediaUrl)];
+                $attempts[] = ['provider' => 'evolution', 'callback' => fn () => $this->evolution->downloadMedia($mediaUrl)];
+            }
+        }
+
+        $errors = [];
+
+        foreach ($attempts as $attempt) {
+            $provider = $attempt['provider'];
+
+            try {
+                $result = $attempt['callback']();
+
+                if (($result['success'] ?? false) === true) {
+                    Log::info('Mídia baixada com sucesso', [
+                        'provider' => $provider,
+                        'source' => $source,
+                        'media_ref_preview' => substr($mediaUrl, 0, 120),
+                    ]);
+
+                    return $result;
+                }
+
+                $errors[] = [
+                    'provider' => $provider,
+                    'error' => $result['error'] ?? 'unknown error',
+                    'http_code' => $result['http_code'] ?? null,
+                ];
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'provider' => $provider,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        Log::error('Falha ao baixar mídia em todos os providers', [
+            'source' => $source,
+            'media_ref_preview' => substr($mediaUrl, 0, 120),
+            'errors' => $errors,
+        ]);
+
+        return [
+            'success' => false,
+            'error' => 'Falha ao baixar mídia em todos os providers',
+            'details' => $errors,
+        ];
     }
 
     private function guessDocumentType(?string $message): string
