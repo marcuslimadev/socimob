@@ -4,6 +4,7 @@ import {
   BarChart3,
   Users,
   Home,
+  ChevronDown,
   Settings,
   LogOut,
   Menu,
@@ -119,6 +120,7 @@ const isTransientNetworkError = (error: unknown) => {
 const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [location] = useLocation();
   const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [openDesktopSectionId, setOpenDesktopSectionId] = useState<string | null>(null);
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
   const [leadsCount, setLeadsCount] = useState(0);
@@ -129,6 +131,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const badgePollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const badgePollingInFlightRef = useRef(false);
   const badgePollingFailureCountRef = useRef(0);
+  const desktopNavRef = useRef<HTMLDivElement | null>(null);
 
   const handleThemeToggle = () => {
     const nextTheme = isDarkTheme ? 'light' : 'dark';
@@ -396,17 +399,36 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     ) || null;
 
   useEffect(() => {
-    if (currentSection && currentSection.items.length > 1) {
-      document.body.dataset.sectionTabs = 'active';
-
-      return () => {
-        delete document.body.dataset.sectionTabs;
-      };
-    }
-
     delete document.body.dataset.sectionTabs;
-    return undefined;
-  }, [currentSection]);
+
+    return () => {
+      delete document.body.dataset.sectionTabs;
+    };
+  }, []);
+
+  useEffect(() => {
+    setOpenDesktopSectionId(null);
+  }, [location]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!desktopNavRef.current) {
+        return;
+      }
+
+      if (desktopNavRef.current.contains(event.target as Node)) {
+        return;
+      }
+
+      setOpenDesktopSectionId(null);
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, []);
 
   const settingsItem: SidebarItem = { key: 'settings', icon: <Settings size={17} />, label: 'Configurações', href: '/settings' };
   const settingsActive = isRouteMatch(location, settingsItem.href);
@@ -463,7 +485,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       >
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 lg:px-8">
           <div className="flex min-h-[68px] items-center justify-between gap-3 py-2.5 md:min-h-[72px] md:py-3">
-            <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
+            <div className="flex min-w-0 items-center gap-3 md:flex-1 md:gap-4">
               {tenant?.logo_url || tenant?.logo ? (
                 <img
                   src={tenant.logo_url || tenant.logo}
@@ -476,20 +498,88 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 </div>
               )}
 
-              <div className="min-w-0">
+              <div className="min-w-0 shrink-0">
                 <p className="truncate font-serif text-[1rem] font-semibold leading-tight tracking-[0.01em] text-white md:text-[1.12rem]">
                   {tenant?.name || 'SOCIMOB'}
                 </p>
-                <div className="flex min-w-0 items-center gap-2">
-                  <p className="truncate text-[9px] uppercase tracking-[0.2em] text-slate-400 md:text-[10px]">
-                    {currentSection?.label || 'Navegação'}
-                  </p>
-                  {activePrimaryTab?.badge ? (
-                    <span className="hidden rounded-full border border-cyan-400/18 bg-cyan-400/12 px-2 py-0.5 text-[10px] font-semibold text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] md:inline-flex">
-                      {activePrimaryTab.badge}
-                    </span>
-                  ) : null}
-                </div>
+              </div>
+
+              <div ref={desktopNavRef} className="hidden min-w-0 flex-1 items-center gap-2 md:flex">
+                {visibleSections.map((section) => {
+                  const isActive = currentSection?.id === section.id;
+                  const isOpen = openDesktopSectionId === section.id;
+                  const sectionBadge = getSectionBadge(section);
+
+                  return (
+                    <div key={section.id} className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setOpenDesktopSectionId((current) => (current === section.id ? null : section.id))}
+                        className={`flex items-center gap-2 rounded-full border px-3.5 py-2 text-[12px] transition-all ${
+                          isActive || isOpen
+                            ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(32,54,73,0.95),rgba(16,31,49,0.95))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_24px_rgba(2,6,23,0.18)]'
+                            : 'border-transparent bg-white/[0.03] text-slate-300 hover:border-white/10 hover:bg-white/[0.07] hover:text-white'
+                        }`}
+                      >
+                        <span className="shrink-0">{section.icon}</span>
+                        <span className="font-medium tracking-[0.01em]">{section.label}</span>
+                        {sectionBadge ? (
+                          <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive || isOpen ? 'bg-cyan-300/14 text-cyan-100' : 'bg-white/10 text-slate-200'}`}>
+                            {sectionBadge}
+                          </span>
+                        ) : null}
+                        <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {isOpen ? (
+                        <div className="absolute left-0 top-full z-50 mt-2 w-[280px] rounded-3xl border border-white/10 bg-[#0b1627] p-2 shadow-[0_18px_40px_rgba(2,6,23,0.45)] backdrop-blur-xl">
+                          <div className="mb-2 px-3 py-2">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">{section.label}</p>
+                          </div>
+                          <div className="grid gap-1">
+                            {section.items.map((item) => {
+                              const itemIsActive = isRouteMatch(location, item.href);
+
+                              return (
+                                <Link key={item.href} to={item.href}>
+                                  <div
+                                    onClick={() => setOpenDesktopSectionId(null)}
+                                    className={`flex items-center gap-2 rounded-2xl px-3 py-3 text-sm transition-all ${
+                                      itemIsActive
+                                        ? 'border border-cyan-400/20 bg-cyan-400/10 text-white'
+                                        : 'border border-transparent bg-white/5 text-slate-200 hover:border-white/10 hover:bg-white/10'
+                                    }`}
+                                  >
+                                    <div className="shrink-0">{item.icon}</div>
+                                    <span className="font-medium">{item.label}</span>
+                                    {item.badge ? (
+                                      <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${itemIsActive ? 'bg-white/15 text-white' : 'bg-white/10 text-slate-200'}`}>
+                                        {item.badge}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+
+                <Link to={settingsItem.href}>
+                  <div
+                    className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[12px] transition-all ${
+                      settingsActive
+                        ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(32,54,73,0.95),rgba(16,31,49,0.95))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_24px_rgba(2,6,23,0.18)]'
+                        : 'border-transparent bg-white/[0.03] text-slate-300 hover:border-white/10 hover:bg-white/[0.07] hover:text-white'
+                    }`}
+                  >
+                    <div className="shrink-0">{settingsItem.icon}</div>
+                    <span className="font-medium">{settingsItem.label}</span>
+                  </div>
+                </Link>
               </div>
             </div>
 
@@ -528,80 +618,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
               {actualIsOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
-
-          <nav className="hidden border-t border-white/8 py-2 md:block">
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-              {visibleSections.map((section) => {
-                const isActive = currentSection?.id === section.id;
-                const sectionBadge = getSectionBadge(section);
-
-                return (
-                  <Link key={section.id} to={section.href}>
-                    <div
-                      className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[12px] transition-all ${
-                        isActive
-                          ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(32,54,73,0.95),rgba(16,31,49,0.95))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_24px_rgba(2,6,23,0.18)]'
-                          : 'border-transparent bg-white/[0.03] text-slate-300 hover:border-white/10 hover:bg-white/[0.07] hover:text-white'
-                      }`}
-                    >
-                      <div className="shrink-0">{section.icon}</div>
-                      <span className="font-medium tracking-[0.01em]">{section.label}</span>
-                      {sectionBadge ? (
-                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-cyan-300/14 text-cyan-100' : 'bg-white/10 text-slate-200'}`}>
-                          {sectionBadge}
-                        </span>
-                      ) : null}
-                    </div>
-                  </Link>
-                );
-              })}
-
-              <div className="mx-1 h-6 w-px shrink-0 bg-white/10" />
-
-              <Link to={settingsItem.href}>
-                <div
-                  className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[12px] transition-all ${
-                    settingsActive
-                      ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(32,54,73,0.95),rgba(16,31,49,0.95))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_24px_rgba(2,6,23,0.18)]'
-                      : 'border-transparent bg-white/[0.03] text-slate-300 hover:border-white/10 hover:bg-white/[0.07] hover:text-white'
-                  }`}
-                >
-                  <div className="shrink-0">{settingsItem.icon}</div>
-                  <span className="font-medium">{settingsItem.label}</span>
-                </div>
-              </Link>
-            </div>
-          </nav>
-
-          {showFixedSubmenu && (
-            <div className="hidden border-t border-white/8 py-2 md:block">
-              <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                <div className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  {currentSection?.label}
-                </div>
-
-                {secondaryTabs.map((item) => {
-                  const isActive = isRouteMatch(location, item.href);
-
-                  return (
-                    <Link key={item.href} to={item.href}>
-                      <div
-                        className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] transition-all ${
-                          isActive
-                            ? 'border-cyan-400/18 bg-cyan-400/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
-                            : 'border-transparent bg-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.05] hover:text-white'
-                        }`}
-                      >
-                        <div className="shrink-0">{item.icon}</div>
-                        <span className="font-medium tracking-[0.01em]">{item.label}</span>
-                        {item.badge ? <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-white/15 text-white' : 'bg-white/10 text-slate-200'}`}>{item.badge}</span> : null}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           <div className="pb-3 md:hidden">
             {actualIsOpen && (
