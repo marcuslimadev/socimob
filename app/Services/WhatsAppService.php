@@ -10,6 +10,7 @@ use App\Models\LeadPropertyMatch;
 use App\Models\LeadDocument;
 use App\Models\AppSetting;
 use App\Models\SmsShortLink;
+use App\Models\WhatsApp\WhatsAppPhoneNumber;
 use App\Services\LeadCustomerService;
 use App\Services\MetaCloudGateway;
 use App\Services\MetaWhatsAppService;
@@ -17,6 +18,7 @@ use App\Services\TwilioService;
 use App\Services\EvolutionApiService;
 use App\Services\SmsShortLinkService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Builder;
@@ -1742,7 +1744,7 @@ class WhatsAppService
         }
 
         if ($source === 'meta' || !$isHttpUrl) {
-            $attempts[] = ['provider' => 'meta', 'callback' => fn () => app(MetaWhatsAppService::class)->downloadMedia($mediaUrl)];
+            $attempts[] = ['provider' => 'meta', 'callback' => fn () => $this->downloadMetaIncomingMedia($mediaUrl)];
         }
 
         if ($source === 'twilio' || ($isHttpUrl && str_contains($mediaUrl, 'api.twilio.com'))) {
@@ -1753,16 +1755,16 @@ class WhatsAppService
             $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
 
             if ($driver === 'meta_cloud') {
-                $attempts[] = ['provider' => 'meta', 'callback' => fn () => app(MetaWhatsAppService::class)->downloadMedia($mediaUrl)];
+                $attempts[] = ['provider' => 'meta', 'callback' => fn () => $this->downloadMetaIncomingMedia($mediaUrl)];
                 $attempts[] = ['provider' => 'evolution', 'callback' => fn () => $this->evolution->downloadMedia($mediaUrl)];
                 $attempts[] = ['provider' => 'twilio', 'callback' => fn () => $this->twilio->downloadMedia($mediaUrl)];
             } elseif ($driver === 'evolution') {
                 $attempts[] = ['provider' => 'evolution', 'callback' => fn () => $this->evolution->downloadMedia($mediaUrl)];
-                $attempts[] = ['provider' => 'meta', 'callback' => fn () => app(MetaWhatsAppService::class)->downloadMedia($mediaUrl)];
+                $attempts[] = ['provider' => 'meta', 'callback' => fn () => $this->downloadMetaIncomingMedia($mediaUrl)];
                 $attempts[] = ['provider' => 'twilio', 'callback' => fn () => $this->twilio->downloadMedia($mediaUrl)];
             } else {
                 $attempts[] = ['provider' => 'twilio', 'callback' => fn () => $this->twilio->downloadMedia($mediaUrl)];
-                $attempts[] = ['provider' => 'meta', 'callback' => fn () => app(MetaWhatsAppService::class)->downloadMedia($mediaUrl)];
+                $attempts[] = ['provider' => 'meta', 'callback' => fn () => $this->downloadMetaIncomingMedia($mediaUrl)];
                 $attempts[] = ['provider' => 'evolution', 'callback' => fn () => $this->evolution->downloadMedia($mediaUrl)];
             }
         }
@@ -1809,6 +1811,89 @@ class WhatsAppService
             'error' => 'Falha ao baixar mídia em todos os providers',
             'details' => $errors,
         ];
+    }
+
+    private function downloadMetaIncomingMedia(string $mediaIdOrUrl): array
+    {
+        $phoneNumber = $this->resolveMetaPhoneNumberForMedia();
+
+        if (!$phoneNumber || !$phoneNumber->account) {
+            return [
+                'success' => false,
+                'error' => 'Conta Meta ativa não encontrada para baixar mídia',
+            ];
+        }
+
+        $accessToken = (string) $phoneNumber->account->access_token;
+        if ($accessToken === '') {
+            return [
+                'success' => false,
+                'error' => 'Token Meta da conta ativa não configurado',
+            ];
+        }
+
+        $mediaUrl = $mediaIdOrUrl;
+        if (!str_starts_with($mediaIdOrUrl, 'http://') && !str_starts_with($mediaIdOrUrl, 'https://')) {
+            $baseUrl = rtrim((string) config('whatsapp.graph.base_url', 'https://graph.facebook.com'), '/');
+            $version = trim((string) config('whatsapp.graph.version', 'v23.0'), '/');
+            $metadataResponse = Http::withToken($accessToken)
+                ->acceptJson()
+                ->timeout((int) config('whatsapp.graph.timeout_seconds', 30))
+                ->connectTimeout((int) config('whatsapp.graph.connect_timeout_seconds', 10))
+                ->get("{$baseUrl}/{$version}/{$mediaIdOrUrl}");
+
+            if (!$metadataResponse->successful()) {
+                return [
+                    'success' => false,
+                    'error' => 'Falha ao resolver media_id da Meta',
+                    'http_code' => $metadataResponse->status(),
+                    'response' => $metadataResponse->body(),
+                ];
+            }
+
+            $mediaUrl = (string) $metadataResponse->json('url');
+            if ($mediaUrl === '') {
+                return [
+                    'success' => false,
+                    'error' => 'Resposta da Meta não trouxe URL da mídia',
+                    'http_code' => $metadataResponse->status(),
+                ];
+            }
+        }
+
+        $downloadResponse = Http::withToken($accessToken)
+            ->timeout(60)
+            ->withOptions(['allow_redirects' => ['max' => 5]])
+            ->get($mediaUrl);
+
+        if (!$downloadResponse->successful() || $downloadResponse->body() === '') {
+            return [
+                'success' => false,
+                'error' => 'Falha ao baixar mídia da Meta',
+                'http_code' => $downloadResponse->status(),
+                'response' => $downloadResponse->body(),
+            ];
+        }
+
+        return [
+            'success' => true,
+            'data' => $downloadResponse->body(),
+            'contentType' => $downloadResponse->header('Content-Type') ?: 'application/octet-stream',
+            'http_code' => $downloadResponse->status(),
+        ];
+    }
+
+    private function resolveMetaPhoneNumberForMedia(): ?WhatsAppPhoneNumber
+    {
+        $tenantId = $this->resolveTenantId();
+
+        return WhatsAppPhoneNumber::query()
+            ->with('account')
+            ->when($tenantId, fn ($query) => $query->where('tenant_id', $tenantId))
+            ->where('is_active', true)
+            ->orderByDesc('is_default')
+            ->orderByDesc('id')
+            ->first();
     }
 
     private function guessDocumentType(?string $message): string
