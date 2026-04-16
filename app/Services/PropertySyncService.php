@@ -342,7 +342,7 @@ class PropertySyncService
                 'errors_detail' => $errorDetails
             ];
             
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('❌ Erro na sincronização de imóveis', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()

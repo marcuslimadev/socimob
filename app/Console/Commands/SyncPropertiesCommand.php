@@ -6,6 +6,7 @@ use App\Models\PropertySyncRun;
 use App\Services\PropertySyncService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class SyncPropertiesCommand extends Command
 {
@@ -102,7 +103,34 @@ class SyncPropertiesCommand extends Command
                 ->where('id', $runId)
                 ->where('tenant_id', $tenantId)
                 ->first();
+
+            if ($run) {
+                $run->update([
+                    'result_payload' => [
+                        'stats' => [
+                            'found' => 0,
+                            'new' => 0,
+                            'updated' => 0,
+                            'errors' => 0,
+                        ],
+                        'progress' => [
+                            'phase' => 'bootstrapping',
+                            'processed' => 0,
+                            'total' => 0,
+                            'percent' => 0,
+                            'done' => false,
+                            'updated_at' => now()->toDateTimeString(),
+                        ],
+                    ],
+                ]);
+            }
         }
+
+        Log::info('Iniciando syncTenant via comando', [
+            'tenant_id' => $tenantId,
+            'run_id' => $runId,
+            'run_found' => (bool) $run,
+        ]);
 
         $progressUpdater = function (array $progress) use (&$run, &$lastProgressPersist): void {
             if (!$run) {
@@ -188,7 +216,7 @@ class SyncPropertiesCommand extends Command
             }
             
             return 0;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if ($run) {
                 $durationMs = (int) round((microtime(true) - $start) * 1000);
                 $existingPayload = is_array($run->result_payload) ? $run->result_payload : [];
@@ -212,6 +240,12 @@ class SyncPropertiesCommand extends Command
             }
 
             $this->error('   ❌ Erro: ' . $e->getMessage());
+            Log::error('Falha fatal em syncTenant', [
+                'tenant_id' => $tenantId,
+                'run_id' => $runId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return 1;
         } finally {
             app()->forgetInstance('tenant');

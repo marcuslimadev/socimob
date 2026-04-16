@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
 
 class PropertySyncController extends Controller
 {
-    private const RUN_STALE_MINUTES = 120;
+    private const RUN_STALE_MINUTES = 20;
 
     public function __construct(private PropertySyncService $syncService)
     {
