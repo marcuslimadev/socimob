@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, GripVertical, Mail, MapPin, MessageCircle, Phone, Search, Shield, Square, TrendingUp, UserRound } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, GripVertical, Mail, MapPin, MessageCircle, Minus, Phone, Plus, Search, Shield, Square, TrendingUp, UserRound } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
 const PORTAL_RETURN_STATE_KEY = 'portal:return-state';
 const PROPERTIES_PER_PAGE = 9;
+const MASCOT_SCALE_STORAGE_KEY = 'portal_mascot_scale';
+const MASCOT_MIN_SCALE = 0.55;
+const MASCOT_MAX_SCALE = 1;
+const MASCOT_SCALE_STEP = 0.15;
 
 const EXCLUSIVA_DEFAULT_ABOUT_TEXT = 'A imobiliária Exclusiva Lar Imóveis iniciou suas atividades visando construir sua história no mercado imobiliário de Belo Horizonte de forma sólida, confiável e duradoura. Trata-se de uma imobiliária atuante no mercado, com histórico íntegro e ótimas negociações. Ética profissional, transparência, dinamismo e atendimento personalizado são pilares que garantem segurança em todos os negócios realizados e fazem da Exclusiva Lar Imóveis uma das empresas mais eficientes do mercado imobiliário regional. Venha conosco e faça parte desta família você também!';
 
@@ -264,9 +268,14 @@ function buildGenericWhatsAppLink(tenant: TenantConfig | null, leadName: string,
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
-function getFloatingActionMetrics(viewportWidth: number, hasMascot: boolean) {
+function clampMascotScale(scale: number): number {
+  return Math.max(MASCOT_MIN_SCALE, Math.min(MASCOT_MAX_SCALE, Number(scale.toFixed(2))));
+}
+
+function getFloatingActionMetrics(viewportWidth: number, hasMascot: boolean, mascotScale = 1) {
   if (hasMascot) {
-    const size = viewportWidth >= 640 ? 320 : 256;
+    const baseSize = viewportWidth >= 640 ? 320 : 256;
+    const size = Math.round(baseSize * clampMascotScale(mascotScale));
     return { width: size, height: size };
   }
 
@@ -279,11 +288,12 @@ function clampFloatingActionPosition(
   viewportWidth: number,
   viewportHeight: number,
   hasMascot: boolean,
+  mascotScale = 1,
 ) {
   const sideInset = 12;
   const topInset = viewportWidth >= 1024 ? 12 : 92;
   const bottomInset = 12;
-  const { width, height } = getFloatingActionMetrics(viewportWidth, hasMascot);
+  const { width, height } = getFloatingActionMetrics(viewportWidth, hasMascot, mascotScale);
 
   return {
     x: Math.max(sideInset, Math.min(viewportWidth - width - sideInset, x)),
@@ -291,9 +301,9 @@ function clampFloatingActionPosition(
   };
 }
 
-function getFloatingActionDefaultPosition(viewportWidth: number, viewportHeight: number, hasMascot: boolean) {
-  const { width, height } = getFloatingActionMetrics(viewportWidth, hasMascot);
-  return clampFloatingActionPosition(viewportWidth - width - 16, viewportHeight - height - 16, viewportWidth, viewportHeight, hasMascot);
+function getFloatingActionDefaultPosition(viewportWidth: number, viewportHeight: number, hasMascot: boolean, mascotScale = 1) {
+  const { width, height } = getFloatingActionMetrics(viewportWidth, hasMascot, mascotScale);
+  return clampFloatingActionPosition(viewportWidth - width - 16, viewportHeight - height - 16, viewportWidth, viewportHeight, hasMascot, mascotScale);
 }
 
 export default function ClientPortalRefined() {
@@ -318,6 +328,7 @@ export default function ClientPortalRefined() {
   const [leadModalError, setLeadModalError] = useState('');
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [floatingActionDragging, setFloatingActionDragging] = useState(false);
+  const [floatingActionScale, setFloatingActionScale] = useState(1);
   const [floatingActionPos, setFloatingActionPos] = useState<{ x: number; y: number }>(() => {
     if (typeof window === 'undefined') return { x: 16, y: 16 };
     return getFloatingActionDefaultPosition(window.innerWidth, window.innerHeight, false);
@@ -462,6 +473,28 @@ export default function ClientPortalRefined() {
     const start = (currentPage - 1) * PROPERTIES_PER_PAGE;
     return filteredProperties.slice(start, start + PROPERTIES_PER_PAGE);
   }, [currentPage, filteredProperties]);
+  const cityCount = useMemo(
+    () => new Set(properties.map((property) => property.cidade).filter(Boolean)).size,
+    [properties],
+  );
+  const heroStats = useMemo(() => ([
+    {
+      label: 'Imóveis no catálogo',
+      value: properties.length > 0 ? `+${properties.length}` : 'Catálogo',
+    },
+    {
+      label: 'Cidades atendidas',
+      value: cityCount > 0 ? String(cityCount) : '14',
+    },
+    {
+      label: 'Satisfação',
+      value: '5★',
+    },
+    {
+      label: 'Anos no mercado',
+      value: '+15',
+    },
+  ]), [cityCount, properties.length]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -639,13 +672,24 @@ export default function ClientPortalRefined() {
 
   const hasMascot = Boolean(tenant?.mascot_url);
   const floatingActionMetrics = useMemo(() => {
-    if (typeof window === 'undefined') return getFloatingActionMetrics(1280, hasMascot);
-    return getFloatingActionMetrics(window.innerWidth, hasMascot);
-  }, [hasMascot]);
+    if (typeof window === 'undefined') return getFloatingActionMetrics(1280, hasMascot, floatingActionScale);
+    return getFloatingActionMetrics(window.innerWidth, hasMascot, floatingActionScale);
+  }, [floatingActionScale, hasMascot]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const defaultPos = getFloatingActionDefaultPosition(window.innerWidth, window.innerHeight, hasMascot);
+
+    try {
+      const savedScale = Number(localStorage.getItem(MASCOT_SCALE_STORAGE_KEY));
+      if (Number.isFinite(savedScale) && savedScale > 0) {
+        setFloatingActionScale(clampMascotScale(savedScale));
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const defaultPos = getFloatingActionDefaultPosition(window.innerWidth, window.innerHeight, hasMascot, floatingActionScale);
 
     try {
       const saved = localStorage.getItem('portal_mascot_pos');
@@ -658,20 +702,50 @@ export default function ClientPortalRefined() {
         setFloatingActionPos(defaultPos);
         return;
       }
-      setFloatingActionPos(clampFloatingActionPosition(parsed.x, parsed.y, window.innerWidth, window.innerHeight, hasMascot));
+      setFloatingActionPos(clampFloatingActionPosition(parsed.x, parsed.y, window.innerWidth, window.innerHeight, hasMascot, floatingActionScale));
     } catch {
       setFloatingActionPos(defaultPos);
     }
   }, [hasMascot]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    setFloatingActionPos((current) => clampFloatingActionPosition(
+      current.x,
+      current.y,
+      window.innerWidth,
+      window.innerHeight,
+      hasMascot,
+      floatingActionScale,
+    ));
+
+    try {
+      localStorage.setItem(MASCOT_SCALE_STORAGE_KEY, String(floatingActionScale));
+    } catch {}
+  }, [floatingActionScale, hasMascot]);
+
+  useEffect(() => {
     const onResize = () => {
-      setFloatingActionPos((current) => clampFloatingActionPosition(current.x, current.y, window.innerWidth, window.innerHeight, hasMascot));
+      setFloatingActionPos((current) => clampFloatingActionPosition(
+        current.x,
+        current.y,
+        window.innerWidth,
+        window.innerHeight,
+        hasMascot,
+        floatingActionScale,
+      ));
     };
 
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [hasMascot]);
+  }, [floatingActionScale, hasMascot]);
+
+  const handleFloatingActionScale = (direction: 'down' | 'up') => {
+    setFloatingActionScale((current) => clampMascotScale(
+      current + (direction === 'down' ? -MASCOT_SCALE_STEP : MASCOT_SCALE_STEP),
+    ));
+  };
 
   const handleFloatingActionPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     const startX = e.clientX;
@@ -687,6 +761,7 @@ export default function ClientPortalRefined() {
         window.innerWidth,
         window.innerHeight,
         hasMascot,
+        floatingActionScale,
       );
 
       if (!dragged && Math.hypot(event.clientX - startX, event.clientY - startY) > 8) {
@@ -711,7 +786,14 @@ export default function ClientPortalRefined() {
         const snappedX = floatingActionPosRef.current.x + (floatingActionMetrics.width / 2) >= (window.innerWidth / 2)
           ? window.innerWidth - floatingActionMetrics.width - sideInset
           : sideInset;
-        const finalPos = clampFloatingActionPosition(snappedX, floatingActionPosRef.current.y, window.innerWidth, window.innerHeight, hasMascot);
+        const finalPos = clampFloatingActionPosition(
+          snappedX,
+          floatingActionPosRef.current.y,
+          window.innerWidth,
+          window.innerHeight,
+          hasMascot,
+          floatingActionScale,
+        );
         setFloatingActionPos(finalPos);
         try {
           localStorage.setItem('portal_mascot_pos', JSON.stringify(finalPos));
@@ -848,11 +930,28 @@ export default function ClientPortalRefined() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/46 via-black/24 to-black/30" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(255,255,255,0.16),transparent_36%)]" />
 
-        <div className="relative mx-auto max-w-7xl px-4 lg:px-8 py-10 lg:py-20 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-10">
-          <div className="max-w-2xl rounded-3xl border border-white/30 bg-black/25 p-6 md:p-8 backdrop-blur-[6px] shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-white/85 mb-4">Signature Real Estate</p>
-            <h1 className="text-3xl md:text-6xl leading-[1.05] text-white">Imóveis extraordinários para estilos de vida únicos</h1>
+        <div className="relative mx-auto max-w-7xl px-4 lg:px-8 py-10 lg:py-20 grid lg:grid-cols-[1.08fr_0.92fr] gap-8 lg:gap-10 items-stretch">
+          <div className="max-w-2xl rounded-[2rem] border border-white/30 bg-black/28 p-6 md:p-8 backdrop-blur-[8px] shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-white/85">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: secondary }} />
+              Curadoria imobiliária premium
+            </div>
+            <h1 className="mt-5 text-3xl md:text-6xl leading-[1.02] text-white">Imóveis extraordinários para estilos de vida únicos</h1>
             <p className="mt-4 text-sm md:text-base text-white/85 max-w-2xl">{tenant?.slogan || 'Curadoria de residências e investimentos em localizações de alto potencial.'}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {[
+                'Compra, venda e locação',
+                'Atendimento consultivo',
+                'Avaliação gratuita',
+              ].map((item) => (
+                <span
+                  key={item}
+                  className="inline-flex items-center rounded-full border border-white/18 bg-white/8 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-white/78"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
             <div className="mt-6 flex flex-wrap gap-2.5">
               <button
                 type="button"
@@ -872,119 +971,35 @@ export default function ClientPortalRefined() {
                 Quero vender
               </button>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2.5 md:gap-3">
-            {[
-              { label: 'Negócios fechados', value: '+5.000' },
-              { label: 'Satisfação', value: '5★' },
-              { label: 'Cidades', value: new Set(properties.map((property) => property.cidade)).size || '10+' },
-              { label: 'Anos no mercado', value: '+15' },
-            ].map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-white/35 bg-black/22 p-4 md:p-5 text-white backdrop-blur-md shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
-                <p className="text-2xl md:text-3xl font-light">{stat.value}</p>
-                <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/75">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── QUERO VENDER ─── */}
-      <section id="como-vender" className="mx-auto max-w-7xl px-4 lg:px-8 pt-10 pb-4">
-        <div className="rounded-3xl overflow-hidden border border-black/10 shadow-[0_16px_52px_rgba(15,23,42,0.12)] grid lg:grid-cols-2">
-          {/* Photo side */}
-          <div className="relative h-64 lg:h-auto">
-            <img
-              src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=900&q=80"
-              alt="Venda seu imóvel"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
-            <div className="absolute bottom-6 left-6 right-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm px-3 py-1.5 mb-3">
-                <BadgeCheck className="w-4 h-4 text-white" />
-                <span className="text-xs text-white font-semibold uppercase tracking-[0.14em]">Avaliação gratuita</span>
-              </div>
-              <p className="text-white text-xl font-light leading-snug">
-                Sua casa pode valer mais<br />do que você imagina.
-              </p>
-            </div>
-          </div>
-
-          {/* Content side */}
-          <div className="bg-white p-7 lg:p-10 flex flex-col justify-center">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 mb-2">Anuncie com a gente</p>
-            <h2 className="text-3xl lg:text-4xl text-slate-900 leading-tight">
-              Venda seu imóvel<br />
-              <span style={{ color: secondary }}>pelo melhor preço</span>.
-            </h2>
-            <p className="mt-3 text-sm text-slate-600 max-w-md">
-              Nossa equipe cuida de tudo: avaliação de mercado, fotografia profissional, anúncios segmentados e
-              acompanhamento jurídico — tudo sem custo antecipado.
-            </p>
-
-            {/* Benefits */}
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <div className="mt-7 grid gap-3 sm:grid-cols-3">
               {[
-                { icon: Clock, label: 'Avaliação em 48h', sub: 'Resposta garantida' },
-                { icon: Shield, label: 'Sem taxas iniciais', sub: 'Só pagou se vender' },
-                { icon: TrendingUp, label: 'Mais compradores', sub: 'Rede qualificada' },
-              ].map((benefit) => (
-                <div
-                  key={benefit.label}
-                  className="rounded-2xl border border-slate-100 bg-slate-50 p-3 flex flex-col items-start gap-1"
-                >
-                  <benefit.icon className="w-5 h-5 mb-0.5" style={{ color: secondary }} />
-                  <p className="text-xs font-semibold text-slate-800">{benefit.label}</p>
-                  <p className="text-[11px] text-slate-500">{benefit.sub}</p>
+                { value: properties.length > 0 ? `${properties.length}+` : 'Catálogo', label: 'imóveis com fotos e detalhes' },
+                { value: cityCount > 0 ? String(cityCount) : '14', label: 'cidades com operação ativa' },
+                { value: '48h', label: 'para retorno da avaliação' },
+              ].map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/15 bg-white/8 px-4 py-3 backdrop-blur-sm">
+                  <p className="text-lg font-semibold text-white">{item.value}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-white/68">{item.label}</p>
                 </div>
               ))}
             </div>
+          </div>
 
-            {/* Process steps */}
-            <div className="mt-7">
-              <p className="text-[11px] uppercase tracking-[0.15em] text-slate-400 mb-3">Como funciona</p>
-              <div className="space-y-2.5">
-                {[
-                  'Cadastre seu imóvel em minutos',
-                  'Receba a avaliação gratuita em até 48h',
-                  'Fotografia e anúncios profissionais',
-                  'Nós cuidamos da negociação e documentos',
-                ].map((step, i) => (
-                  <div key={step} className="flex items-center gap-3">
-                    <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white"
-                      style={{ backgroundColor: i < 2 ? primary : '#cbd5e1' }}
-                    >
-                      {i + 1}
-                    </div>
-                    <p className="text-sm text-slate-700">{step}</p>
-                  </div>
-                ))}
+          <div className="grid grid-cols-2 gap-2.5 md:gap-3 content-start">
+            {heroStats.map((stat, index) => (
+              <div
+                key={stat.label}
+                className={`rounded-[1.75rem] border p-4 md:p-5 text-white backdrop-blur-md shadow-[0_12px_32px_rgba(0,0,0,0.24)] ${index === 0 ? 'bg-white/18 border-white/35 col-span-2' : 'bg-black/22 border-white/25'}`}
+              >
+                <p className={`${index === 0 ? 'text-3xl md:text-4xl' : 'text-2xl md:text-3xl'} font-light`}>{stat.value}</p>
+                <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/75">{stat.label}</p>
+                {index === 0 && (
+                  <p className="mt-3 max-w-sm text-sm text-white/78">
+                    Explore imóveis com fotos, localização pública e contato imediato por WhatsApp.
+                  </p>
+                )}
               </div>
-            </div>
-
-            {/* CTA */}
-            <div className="mt-7 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => navigate('/portal/vender')}
-                className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
-                style={{ backgroundColor: primary, color: '#fff' }}
-              >
-                Anunciar meu imóvel
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/portal/vender')}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                <BadgeCheck className="w-4 h-4" style={{ color: secondary }} />
-                Avaliação gratuita
-              </button>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -1185,6 +1200,100 @@ export default function ClientPortalRefined() {
         )}
       </section>
 
+      {/* ─── QUERO VENDER ─── */}
+      <section id="como-vender" className="mx-auto max-w-7xl px-4 lg:px-8 pb-8">
+        <div className="rounded-3xl overflow-hidden border border-black/10 shadow-[0_16px_52px_rgba(15,23,42,0.12)] grid lg:grid-cols-2">
+          <div className="relative h-64 lg:h-auto">
+            <img
+              src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=900&q=80"
+              alt="Venda seu imóvel"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/10" />
+            <div className="absolute bottom-6 left-6 right-6">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1.5 backdrop-blur-sm">
+                <BadgeCheck className="w-4 h-4 text-white" />
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-white">Avaliação gratuita</span>
+              </div>
+              <p className="text-xl font-light leading-snug text-white">
+                Sua casa pode valer mais<br />do que você imagina.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-center bg-white p-7 lg:p-10">
+            <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-slate-500">Anuncie com a gente</p>
+            <h2 className="text-3xl leading-tight text-slate-900 lg:text-4xl">
+              Venda seu imóvel<br />
+              <span style={{ color: secondary }}>pelo melhor preço</span>.
+            </h2>
+            <p className="mt-3 max-w-md text-sm text-slate-600">
+              Nossa equipe cuida de tudo: avaliação de mercado, fotografia profissional, anúncios segmentados e
+              acompanhamento jurídico sem custo antecipado.
+            </p>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {[
+                { icon: Clock, label: 'Avaliação em 48h', sub: 'Resposta garantida' },
+                { icon: Shield, label: 'Sem taxas iniciais', sub: 'Só pagou se vender' },
+                { icon: TrendingUp, label: 'Mais compradores', sub: 'Rede qualificada' },
+              ].map((benefit) => (
+                <div
+                  key={benefit.label}
+                  className="flex flex-col items-start gap-1 rounded-2xl border border-slate-100 bg-slate-50 p-3"
+                >
+                  <benefit.icon className="mb-0.5 h-5 w-5" style={{ color: secondary }} />
+                  <p className="text-xs font-semibold text-slate-800">{benefit.label}</p>
+                  <p className="text-[11px] text-slate-500">{benefit.sub}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-7">
+              <p className="mb-3 text-[11px] uppercase tracking-[0.15em] text-slate-400">Como funciona</p>
+              <div className="space-y-2.5">
+                {[
+                  'Cadastre seu imóvel em minutos',
+                  'Receba a avaliação gratuita em até 48h',
+                  'Fotografia e anúncios profissionais',
+                  'Nós cuidamos da negociação e documentos',
+                ].map((step, i) => (
+                  <div key={step} className="flex items-center gap-3">
+                    <div
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                      style={{ backgroundColor: i < 2 ? primary : '#cbd5e1' }}
+                    >
+                      {i + 1}
+                    </div>
+                    <p className="text-sm text-slate-700">{step}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-7 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/portal/vender')}
+                className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
+                style={{ backgroundColor: primary, color: '#fff' }}
+              >
+                Anunciar meu imóvel
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/portal/vender')}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <BadgeCheck className="w-4 h-4" style={{ color: secondary }} />
+                Avaliação gratuita
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Simulação de Financiamento — banner promocional */}
       <section className="mx-auto max-w-7xl px-4 lg:px-8 pb-8">
         <div
@@ -1301,7 +1410,7 @@ export default function ClientPortalRefined() {
             width: floatingActionMetrics.width,
             height: floatingActionMetrics.height,
             transform: floatingActionDragging ? 'scale(1.03)' : 'scale(1)',
-            transition: floatingActionDragging ? 'none' : 'transform 0.2s ease',
+            transition: floatingActionDragging ? 'none' : 'transform 0.2s ease, width 0.2s ease, height 0.2s ease',
           }}
         >
           <button
@@ -1318,6 +1427,35 @@ export default function ClientPortalRefined() {
               className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
             />
           </button>
+          <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border border-black/10 bg-white/92 px-1.5 py-1 text-slate-700 shadow-lg backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleFloatingActionScale('down');
+              }}
+              disabled={floatingActionScale <= MASCOT_MIN_SCALE}
+              aria-label="Diminuir mascote"
+              className="flex h-7 w-7 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <span className="min-w-[3rem] text-center text-[11px] font-semibold uppercase tracking-[0.08em]">
+              {Math.round(floatingActionScale * 100)}%
+            </span>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleFloatingActionScale('up');
+              }}
+              disabled={floatingActionScale >= MASCOT_MAX_SCALE}
+              aria-label="Aumentar mascote"
+              className="flex h-7 w-7 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
           <button
             type="button"
             onPointerDown={handleFloatingActionPointerDown}
