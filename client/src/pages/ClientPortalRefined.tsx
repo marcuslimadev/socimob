@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, GripVertical, Mail, MapPin, MessageCircle, Minus, Phone, Plus, Search, Shield, Square, TrendingUp, UserRound } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Mail, MapPin, MessageCircle, Minus, Phone, Plus, Search, Shield, Square, TrendingUp, UserRound } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
@@ -336,6 +336,7 @@ export default function ClientPortalRefined() {
 
   const heroRef = useRef<HTMLElement>(null);
   const floatingActionPosRef = useRef(floatingActionPos);
+  const suppressFloatingActionClickRef = useRef(false);
   const restoredReturnStateRef = useRef(false);
 
   floatingActionPosRef.current = floatingActionPos;
@@ -531,6 +532,17 @@ export default function ClientPortalRefined() {
     setLeadModalError('');
     setLeadModalSource('mascot');
     setLeadModalProperty(null);
+  };
+
+  const handleFloatingActionClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (suppressFloatingActionClickRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      suppressFloatingActionClickRef.current = false;
+      return;
+    }
+
+    openMascotWhatsAppModal();
   };
 
   const closePropertyWhatsAppModal = () => {
@@ -753,6 +765,7 @@ export default function ClientPortalRefined() {
     const offsetX = e.clientX - floatingActionPosRef.current.x;
     const offsetY = e.clientY - floatingActionPosRef.current.y;
     let dragged = false;
+    suppressFloatingActionClickRef.current = false;
 
     const onMove = (event: PointerEvent) => {
       const nextPos = clampFloatingActionPosition(
@@ -782,6 +795,7 @@ export default function ClientPortalRefined() {
       setFloatingActionDragging(false);
 
       if (dragged) {
+        suppressFloatingActionClickRef.current = true;
         const sideInset = 12;
         const snappedX = floatingActionPosRef.current.x + (floatingActionMetrics.width / 2) >= (window.innerWidth / 2)
           ? window.innerWidth - floatingActionMetrics.width - sideInset
@@ -804,7 +818,6 @@ export default function ClientPortalRefined() {
     window.addEventListener('pointermove', onMove, { passive: false });
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
-    e.preventDefault();
   };
 
   if (loading) {
@@ -1408,63 +1421,61 @@ export default function ClientPortalRefined() {
             left: floatingActionPos.x,
             top: floatingActionPos.y,
             width: floatingActionMetrics.width,
-            height: floatingActionMetrics.height,
+            height: floatingActionMetrics.height + 52,
             transform: floatingActionDragging ? 'scale(1.03)' : 'scale(1)',
             transition: floatingActionDragging ? 'none' : 'transform 0.2s ease, width 0.2s ease, height 0.2s ease',
           }}
         >
-          <button
-            type="button"
-            onClick={openMascotWhatsAppModal}
-            className="block h-full w-full"
-            aria-label="Abrir atendimento no WhatsApp"
-            style={{ cursor: 'pointer' }}
-          >
-            <img
-              src={tenant.mascot_url}
-              alt="Mascote"
-              draggable={false}
-              className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
-            />
-          </button>
-          <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border border-black/10 bg-white/92 px-1.5 py-1 text-slate-700 shadow-lg backdrop-blur-sm">
+          <div className="relative h-full w-full">
             <button
               type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleFloatingActionScale('down');
+              onClick={handleFloatingActionClick}
+              onPointerDown={handleFloatingActionPointerDown}
+              className="block w-full"
+              aria-label="Abrir atendimento no WhatsApp"
+              style={{
+                cursor: floatingActionDragging ? 'grabbing' : 'grab',
+                height: floatingActionMetrics.height,
+                touchAction: 'none',
               }}
-              disabled={floatingActionScale <= MASCOT_MIN_SCALE}
-              aria-label="Diminuir mascote"
-              className="flex h-7 w-7 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-45"
             >
-              <Minus className="h-3.5 w-3.5" />
+              <img
+                src={tenant.mascot_url}
+                alt="Mascote"
+                draggable={false}
+                className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
+              />
             </button>
-            <span className="min-w-[3rem] text-center text-[11px] font-semibold uppercase tracking-[0.08em]">
-              {Math.round(floatingActionScale * 100)}%
-            </span>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleFloatingActionScale('up');
-              }}
-              disabled={floatingActionScale >= MASCOT_MAX_SCALE}
-              aria-label="Aumentar mascote"
-              className="flex h-7 w-7 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </button>
+            <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/55 bg-white/88 px-2 py-1.5 text-slate-700 shadow-[0_10px_28px_rgba(15,23,42,0.18)] backdrop-blur-md">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleFloatingActionScale('down');
+                }}
+                disabled={floatingActionScale <= MASCOT_MIN_SCALE}
+                aria-label="Diminuir mascote"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-900/6 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <span className="min-w-[3.25rem] text-center text-[11px] font-semibold tracking-[0.14em] text-slate-600">
+                {Math.round(floatingActionScale * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleFloatingActionScale('up');
+                }}
+                disabled={floatingActionScale >= MASCOT_MAX_SCALE}
+                aria-label="Aumentar mascote"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-900/6 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
-          <button
-            type="button"
-            onPointerDown={handleFloatingActionPointerDown}
-            aria-label="Arrastar mascote"
-            className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white/92 text-slate-700 shadow-lg"
-            style={{ cursor: floatingActionDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
-          >
-            <GripVertical className="h-4 w-4 pointer-events-none" />
-          </button>
         </div>
       ) : whatsappLink ? (
         <div
@@ -1480,20 +1491,13 @@ export default function ClientPortalRefined() {
         >
           <button
             type="button"
-            onClick={openMascotWhatsAppModal}
+            onClick={handleFloatingActionClick}
+            onPointerDown={handleFloatingActionPointerDown}
             className="flex h-full w-full items-center justify-center rounded-2xl border border-white/30 bg-[#0f172a] text-white shadow-[0_8px_24px_rgba(15,23,42,0.35)]"
             aria-label="Abrir WhatsApp"
-          >
-            <MessageCircle className="w-6 h-6 pointer-events-none" />
-          </button>
-          <button
-            type="button"
-            onPointerDown={handleFloatingActionPointerDown}
-            aria-label="Arrastar atalho do WhatsApp"
-            className="absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white/92 text-slate-700 shadow-lg"
             style={{ cursor: floatingActionDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
           >
-            <GripVertical className="h-4 w-4 pointer-events-none" />
+            <MessageCircle className="w-6 h-6 pointer-events-none" />
           </button>
         </div>
       ) : null}
