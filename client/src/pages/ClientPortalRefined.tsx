@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
 const PORTAL_RETURN_STATE_KEY = 'portal:return-state';
-const PROPERTIES_PER_PAGE = 6;
+const PROPERTIES_PER_PAGE = 9;
 
 const EXCLUSIVA_DEFAULT_ABOUT_TEXT = 'A imobiliária Exclusiva Lar Imóveis iniciou suas atividades visando construir sua história no mercado imobiliário de Belo Horizonte de forma sólida, confiável e duradoura. Trata-se de uma imobiliária atuante no mercado, com histórico íntegro e ótimas negociações. Ética profissional, transparência, dinamismo e atendimento personalizado são pilares que garantem segurança em todos os negócios realizados e fazem da Exclusiva Lar Imóveis uma das empresas mais eficientes do mercado imobiliário regional. Venha conosco e faça parte desta família você também!';
 
