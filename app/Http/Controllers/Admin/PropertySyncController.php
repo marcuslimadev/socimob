@@ -69,7 +69,7 @@ class PropertySyncController extends Controller
             'triggered_by_user_id' => $userId,
             'trigger_type' => 'manual',
             'status' => 'running',
-            'started_at' => now(),
+            'started_at' => now('UTC'),
             'result_payload' => [
                 'stats' => [
                     'found' => 0,
@@ -86,7 +86,7 @@ class PropertySyncController extends Controller
                     'total_pages' => 1,
                     'current_code' => null,
                     'done' => false,
-                    'updated_at' => now()->toDateTimeString(),
+                    'updated_at' => now('UTC')->toDateTimeString(),
                 ],
             ],
         ]);
@@ -110,7 +110,7 @@ class PropertySyncController extends Controller
 
             $run->update([
                 'status' => ($result['success'] ?? false) ? 'success' : 'failed',
-                'finished_at' => now(),
+                'finished_at' => now('UTC'),
                 'duration_ms' => $durationMs,
                 'result_payload' => $result,
                 'error_message' => $result['success'] ?? false ? null : ($result['error'] ?? 'Falha na sincronização'),
@@ -125,7 +125,7 @@ class PropertySyncController extends Controller
         } catch (\Throwable $e) {
             $run->update([
                 'status' => 'failed',
-                'finished_at' => now(),
+                'finished_at' => now('UTC'),
                 'error_message' => $e->getMessage(),
                 'result_payload' => [
                     'success' => false,
@@ -203,18 +203,18 @@ class PropertySyncController extends Controller
         $staleRuns = PropertySyncRun::query()
             ->where('tenant_id', $tenantId)
             ->where('status', 'running')
-            ->where('started_at', '<=', now()->subMinutes(self::RUN_STALE_MINUTES))
+            ->where('started_at', '<=', now('UTC')->subMinutes(self::RUN_STALE_MINUTES))
             ->get();
 
         foreach ($staleRuns as $run) {
             $durationMs = null;
             if ($run->started_at) {
-                $durationMs = (int) $run->started_at->diffInMilliseconds(now());
+                $durationMs = (int) $run->started_at->diffInMilliseconds(now('UTC'));
             }
 
             $run->update([
                 'status' => 'failed',
-                'finished_at' => now(),
+                'finished_at' => now('UTC'),
                 'duration_ms' => $durationMs,
                 'error_message' => 'Execução interrompida por timeout/conexão. Inicie uma nova sincronização manual.',
                 'result_payload' => [

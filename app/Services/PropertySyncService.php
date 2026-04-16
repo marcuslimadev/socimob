@@ -317,12 +317,34 @@ class PropertySyncService
             $elapsed = round((microtime(true) - $startTime) * 1000, 2);
             
             // Contar quantos imóveis têm imagens
-            $comImagens = Property::whereNotNull('imagens')
+            $propertiesQuery = Property::query();
+            if (app()->bound('tenant')) {
+                $propertiesQuery->where('tenant_id', app('tenant')->id);
+            }
+
+            $comImagens = (clone $propertiesQuery)
+                ->whereNotNull('imagens')
                 ->where('imagens', '!=', '[]')
                 ->where('imagens', '!=', '')
                 ->count();
+
+            $ativos = (clone $propertiesQuery)
+                ->where('active', true)
+                ->count();
+
+            $exibiveis = (clone $propertiesQuery)
+                ->where('exibir_imovel', true)
+                ->count();
+
+            $publicados = (clone $propertiesQuery)
+                ->where('active', true)
+                ->where('exibir_imovel', true)
+                ->count();
             
             $stats['with_images'] = $comImagens;
+            $stats['active'] = $ativos;
+            $stats['displayable'] = $exibiveis;
+            $stats['published'] = $publicados;
             
             Log::info('✅ Sincronização concluída', [
                 'stats' => $stats,

@@ -119,7 +119,7 @@ class SyncPropertiesCommand extends Command
                             'total' => 0,
                             'percent' => 0,
                             'done' => false,
-                            'updated_at' => now()->toDateTimeString(),
+                            'updated_at' => now('UTC')->toDateTimeString(),
                         ],
                     ],
                 ]);
@@ -154,7 +154,7 @@ class SyncPropertiesCommand extends Command
                 'total_pages' => isset($progress['total_pages']) ? (int) $progress['total_pages'] : null,
                 'current_code' => $progress['current_code'] ?? null,
                 'done' => (bool) ($progress['done'] ?? false),
-                'updated_at' => now()->toDateTimeString(),
+                'updated_at' => now('UTC')->toDateTimeString(),
             ];
 
             if (isset($progress['stats']) && is_array($progress['stats'])) {
@@ -176,7 +176,7 @@ class SyncPropertiesCommand extends Command
                 $progress['phase'] = ($result['success'] ?? false) ? 'done' : 'failed';
                 $progress['done'] = true;
                 $progress['percent'] = ($result['success'] ?? false) ? 100 : ($progress['percent'] ?? 0);
-                $progress['updated_at'] = now()->toDateTimeString();
+                $progress['updated_at'] = now('UTC')->toDateTimeString();
 
                 $payload = array_merge($result, [
                     'progress' => $progress,
@@ -184,7 +184,7 @@ class SyncPropertiesCommand extends Command
 
                 $run->update([
                     'status' => ($result['success'] ?? false) ? 'success' : 'failed',
-                    'finished_at' => now(),
+                    'finished_at' => now('UTC'),
                     'duration_ms' => $durationMs,
                     'result_payload' => $payload,
                     'error_message' => ($result['success'] ?? false) ? null : ($result['error'] ?? 'Falha na sincronização'),
@@ -223,11 +223,11 @@ class SyncPropertiesCommand extends Command
                 $progress = $existingPayload['progress'] ?? [];
                 $progress['phase'] = 'failed';
                 $progress['done'] = true;
-                $progress['updated_at'] = now()->toDateTimeString();
+                $progress['updated_at'] = now('UTC')->toDateTimeString();
 
                 $run->update([
                     'status' => 'failed',
-                    'finished_at' => now(),
+                    'finished_at' => now('UTC'),
                     'duration_ms' => $durationMs,
                     'error_message' => $e->getMessage(),
                     'result_payload' => [

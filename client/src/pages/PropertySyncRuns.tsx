@@ -270,6 +270,7 @@ export default function PropertySyncRuns() {
                         `Novos: ${stats.new ?? 0}`,
                         `Atualizados: ${stats.updated ?? 0}`,
                         `Erros: ${stats.errors ?? 0}`,
+                        `Publicados: ${stats.published ?? 0}`,
                       ].join(' | ');
 
                       const runningSummary = run.status === 'running'
