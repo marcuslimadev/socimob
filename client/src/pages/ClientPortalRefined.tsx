@@ -931,7 +931,7 @@ export default function ClientPortalRefined() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(255,255,255,0.16),transparent_36%)]" />
 
         <div className="relative mx-auto max-w-7xl px-4 lg:px-8 py-10 lg:py-20 grid lg:grid-cols-[1.08fr_0.92fr] gap-8 lg:gap-10 items-stretch">
-          <div className="max-w-2xl rounded-[2rem] border border-white/30 bg-black/28 p-6 md:p-8 backdrop-blur-[8px] shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+          <div className="max-w-2xl rounded-[2rem] border border-white/30 bg-[#000000c2] p-6 md:p-8 backdrop-blur-[8px] shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-white/85">
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: secondary }} />
               Curadoria imobiliária premium
@@ -977,7 +977,7 @@ export default function ClientPortalRefined() {
                 { value: cityCount > 0 ? String(cityCount) : '14', label: 'cidades com operação ativa' },
                 { value: '48h', label: 'para retorno da avaliação' },
               ].map((item) => (
-                <div key={item.label} className="rounded-2xl border border-white/15 bg-white/8 px-4 py-3 backdrop-blur-sm">
+                <div key={item.label} className="rounded-2xl border border-white/15 bg-[#000000c2] px-4 py-3 backdrop-blur-sm">
                   <p className="text-lg font-semibold text-white">{item.value}</p>
                   <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-white/68">{item.label}</p>
                 </div>
@@ -989,7 +989,7 @@ export default function ClientPortalRefined() {
             {heroStats.map((stat, index) => (
               <div
                 key={stat.label}
-                className={`rounded-[1.75rem] border p-4 md:p-5 text-white backdrop-blur-md shadow-[0_12px_32px_rgba(0,0,0,0.24)] ${index === 0 ? 'bg-white/18 border-white/35 col-span-2' : 'bg-black/22 border-white/25'}`}
+                className={`rounded-[1.75rem] border p-4 md:p-5 text-white backdrop-blur-md shadow-[0_12px_32px_rgba(0,0,0,0.24)] ${index === 0 ? 'bg-[#000000c2] border-white/35 col-span-2' : 'bg-[#000000c2] border-white/25'}`}
               >
                 <p className={`${index === 0 ? 'text-3xl md:text-4xl' : 'text-2xl md:text-3xl'} font-light`}>{stat.value}</p>
                 <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/75">{stat.label}</p>
