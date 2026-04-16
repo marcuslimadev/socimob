@@ -143,6 +143,7 @@ export default function PropertySyncRuns() {
   }, [activeRun, page]);
 
   const activeProgress = activeRun?.result_payload?.progress;
+  const activeStats = activeRun?.result_payload?.stats || {};
   const activePercent = getProgressPercent(activeRun);
 
   return (
@@ -221,6 +222,14 @@ export default function PropertySyncRuns() {
                 {activeProgress?.total_pages ? `/${activeProgress.total_pages}` : ''}
                 {activeProgress?.current_code ? ` | Código atual: ${activeProgress.current_code}` : ''}
               </p>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-1 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  Inseridos: {activeStats.new ?? 0}
+                </span>
+                <span className="rounded-full border border-cyan-300 bg-cyan-50 px-2 py-1 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-300">
+                  Atualizados: {activeStats.updated ?? 0}
+                </span>
+              </div>
             </section>
           )}
 
@@ -264,7 +273,7 @@ export default function PropertySyncRuns() {
                       ].join(' | ');
 
                       const runningSummary = run.status === 'running'
-                        ? `Processados: ${progress?.processed ?? 0}${progress?.total ? `/${progress.total}` : ''} (${percent}%)`
+                        ? `Processados: ${progress?.processed ?? 0}${progress?.total ? `/${progress.total}` : ''} (${percent}%) | Inseridos: ${stats.new ?? 0} | Atualizados: ${stats.updated ?? 0}`
                         : summary;
 
                       return (
