@@ -47,6 +47,8 @@ interface Property {
   banheiros?: number;
   area_total?: number;
   area_util?: number;
+  area_privativa?: number | string;
+  area_terreno?: number | string;
   garagem?: number | string;
   vagas?: number | string;
   descricao?: string;
@@ -169,18 +171,34 @@ function parseAreaValue(value: number | string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function getDisplayArea(property: Property): number | null {
-  const areaUtil = parseAreaValue(property.area_util);
-  const areaTotal = parseAreaValue(property.area_total);
+function normalizeAreaScale(area: number, property: Property): number {
+  if (area <= 0) return 0;
+  if (area >= 20) return area;
 
-  if (areaUtil > 0 && areaTotal > 0) {
-    // Quando a área útil vier em escala baixa (ex.: 5), usar a área total.
-    if (areaUtil < 20 && areaTotal >= 20) return areaTotal;
-    return areaUtil;
+  const privativaSignal = parseAreaValue(property.area_privativa);
+  const terrenoSignal = parseAreaValue(property.area_terreno);
+  const hasLargeCompanionArea = privativaSignal >= 120 || terrenoSignal >= 120;
+  const hasLargeHomeProfile = Number(property.dormitorios || property.quartos || 0) >= 3 && Number(property.banheiros || 0) >= 3;
+
+  // Alguns imóveis chegam com área em formato reduzido (5 => 5.000 m², 1,2 => 1.200 m²).
+  if (hasLargeCompanionArea || hasLargeHomeProfile) {
+    return area * 1000;
   }
 
+  return area;
+}
+
+function getDisplayArea(property: Property): number | null {
+  const areaUtil = normalizeAreaScale(parseAreaValue(property.area_util), property);
+  const areaTotal = normalizeAreaScale(parseAreaValue(property.area_total), property);
+  const areaPrivativa = normalizeAreaScale(parseAreaValue(property.area_privativa), property);
+  const areaTerreno = normalizeAreaScale(parseAreaValue(property.area_terreno), property);
+
   if (areaTotal > 0) return areaTotal;
+  if (areaTerreno > 0) return areaTerreno;
+  if (areaPrivativa > 0) return areaPrivativa;
   if (areaUtil > 0) return areaUtil;
+
   return null;
 }
 
