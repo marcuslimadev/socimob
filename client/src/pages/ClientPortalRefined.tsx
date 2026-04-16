@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Mail, MapPin, MessageCircle, Minus, Phone, Plus, Search, Shield, Square, TrendingUp, UserRound } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Mail, MapPin, MessageCircle, Minus, Phone, Plus, Search, Shield, Square, TrendingUp } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
@@ -236,7 +236,7 @@ function formatPhoneInput(value: string): string {
 }
 
 function buildPropertyWhatsAppLink(property: Property, tenant: TenantConfig | null, leadName: string, leadPhone: string): string {
-  const phone = tenant?.contact_phone?.replace(/\D/g, '');
+  const phone = (tenant?.tenant_phone || tenant?.contact_phone || '').replace(/\D/g, '');
   if (!phone) return '';
 
   const propertyUrl = typeof window !== 'undefined'
@@ -255,8 +255,12 @@ function buildPropertyWhatsAppLink(property: Property, tenant: TenantConfig | nu
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
+function getMascotPhoneDigits(tenant: TenantConfig | null): string {
+  return (tenant?.mascot_whatsapp_phone || tenant?.whatsapp_phone || tenant?.contact_phone || '').replace(/\D/g, '');
+}
+
 function buildGenericWhatsAppLink(tenant: TenantConfig | null, leadName: string, leadPhone: string): string {
-  const phone = tenant?.contact_phone?.replace(/\D/g, '');
+  const phone = getMascotPhoneDigits(tenant);
   if (!phone) return '';
 
   const message = [
@@ -274,7 +278,7 @@ function clampMascotScale(scale: number): number {
 
 function getFloatingActionMetrics(viewportWidth: number, hasMascot: boolean, mascotScale = 1) {
   if (hasMascot) {
-    const baseSize = viewportWidth >= 640 ? 320 : 256;
+    const baseSize = viewportWidth >= 640 ? 320 : 220;
     const size = Math.round(baseSize * clampMascotScale(mascotScale));
     return { width: size, height: size };
   }
@@ -291,8 +295,8 @@ function clampFloatingActionPosition(
   mascotScale = 1,
 ) {
   const sideInset = 12;
-  const topInset = viewportWidth >= 1024 ? 12 : 92;
-  const bottomInset = 12;
+  const topInset = viewportWidth >= 1024 ? 12 : 88;
+  const bottomInset = viewportWidth >= 640 ? 12 : 20;
   const { width, height } = getFloatingActionMetrics(viewportWidth, hasMascot, mascotScale);
 
   return {
@@ -516,11 +520,11 @@ export default function ClientPortalRefined() {
   }, [tenant?.about_text, tenant?.name]);
 
   const whatsappLink = useMemo(() => {
-    const phone = tenant?.contact_phone?.replace(/\D/g, '');
+    const phone = getMascotPhoneDigits(tenant);
     if (!phone) return '';
     const message = encodeURIComponent(`Olá! Vim pelo portal da ${tenant?.name || 'imobiliária'} e quero atendimento.`);
     return `https://wa.me/${phone}?text=${message}`;
-  }, [tenant?.contact_phone, tenant?.name]);
+  }, [tenant?.contact_phone, tenant?.mascot_whatsapp_phone, tenant?.name, tenant?.whatsapp_phone]);
 
   const openPropertyWhatsAppModal = (property: Property) => {
     setLeadModalError('');
@@ -836,18 +840,19 @@ export default function ClientPortalRefined() {
   return (
     <div className="portal-public min-h-screen" style={{ backgroundColor: '#f4efe8' }}>
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b111f]/92 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 lg:px-8 py-3 flex items-center justify-between">
+        <div className="mx-auto max-w-7xl px-4 py-3.5 lg:px-8">
+          <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             {tenant?.logo_url || tenant?.logo ? (
-              <img src={tenant.logo_url || tenant.logo} alt={tenant?.name || 'Logo'} className="h-20 w-20 rounded-full bg-white object-contain p-1.5 md:h-22 md:w-22" />
+              <img src={tenant.logo_url || tenant.logo} alt={tenant?.name || 'Logo'} className="h-14 w-14 rounded-full bg-white object-contain p-1.5 sm:h-16 sm:w-16 md:h-20 md:w-20" />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/30 bg-white/10 text-lg font-semibold text-white md:h-22 md:w-22">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/30 bg-white/10 text-sm font-semibold text-white sm:h-16 sm:w-16 md:h-20 md:w-20 md:text-lg">
                 {(tenant?.name || 'IM').slice(0, 2).toUpperCase()}
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm tracking-[0.15em] uppercase text-white truncate">{tenant?.name || 'Imobiliária'}</p>
-              <p className="text-[11px] text-white/65 uppercase tracking-[0.12em] truncate">Private Estates</p>
+              <p className="truncate text-xs uppercase tracking-[0.15em] text-white sm:text-sm">{tenant?.name || 'Imobiliária'}</p>
+              <p className="truncate text-[10px] uppercase tracking-[0.12em] text-white/65 sm:text-[11px]">Private Estates</p>
             </div>
           </div>
           <div className="hidden lg:flex items-center gap-6">
@@ -909,22 +914,36 @@ export default function ClientPortalRefined() {
               Explorar
             </button>
           </div>
-          <div className="flex lg:hidden items-center gap-2">
+        </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:hidden">
+            <button
+              type="button"
+              onClick={() => document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' })}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/15 bg-white/8 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-white"
+            >
+              Explorar
+            </button>
             <button
               type="button"
               onClick={() => navigate('/portal/simulacao')}
-              className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-white/30 text-white"
-              aria-label="Simular financiamento"
+              className="inline-flex min-h-11 items-center justify-center rounded-full px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em]"
+              style={{ backgroundColor: secondary, color: '#111827' }}
             >
-              <Calculator className="w-4 h-4" />
+              Simular
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/portal/vender')}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/15 bg-white/8 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-white"
+            >
+              Vender
             </button>
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-white/30 text-white"
-              aria-label="Entrar no portal"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/15 bg-white/8 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-white"
             >
-              <UserRound className="w-4 h-4" />
+              Entrar
             </button>
           </div>
         </div>
@@ -943,15 +962,15 @@ export default function ClientPortalRefined() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/46 via-black/24 to-black/30" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(255,255,255,0.16),transparent_36%)]" />
 
-        <div className="relative mx-auto max-w-7xl px-4 lg:px-8 py-10 lg:py-20 grid lg:grid-cols-[1.08fr_0.92fr] gap-8 lg:gap-10 items-stretch">
-          <div className="max-w-2xl rounded-[2rem] border border-white/30 bg-[#000000c2] p-6 md:p-8 backdrop-blur-[8px] shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-white/85">
+        <div className="relative mx-auto grid max-w-7xl items-stretch gap-6 px-4 py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-10 lg:px-8 lg:py-20">
+          <div className="max-w-2xl rounded-[1.75rem] border border-white/30 bg-[#000000c2] p-5 backdrop-blur-[8px] shadow-[0_20px_60px_rgba(0,0,0,0.28)] md:p-8">
+            <div className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-white/85 sm:w-auto sm:justify-start sm:text-[11px] sm:tracking-[0.22em]">
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: secondary }} />
               Curadoria imobiliária premium
             </div>
-            <h1 className="mt-5 text-3xl md:text-6xl leading-[1.02] text-white">Imóveis extraordinários para estilos de vida únicos</h1>
-            <p className="mt-4 text-sm md:text-base text-white/85 max-w-2xl">{tenant?.slogan || 'Curadoria de residências e investimentos em localizações de alto potencial.'}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <h1 className="mt-5 text-[2.15rem] leading-[1] tracking-[-0.03em] text-white sm:text-5xl md:text-6xl">Imóveis extraordinários para estilos de vida únicos</h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-white/85 md:text-base">{tenant?.slogan || 'Curadoria de residências e investimentos em localizações de alto potencial.'}</p>
+            <div className="mt-4 flex flex-wrap gap-2.5">
               {[
                 'Compra, venda e locação',
                 'Atendimento consultivo',
@@ -959,17 +978,17 @@ export default function ClientPortalRefined() {
               ].map((item) => (
                 <span
                   key={item}
-                  className="inline-flex items-center rounded-full border border-white/18 bg-white/8 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-white/78"
+                  className="inline-flex items-center rounded-full border border-white/18 bg-white/8 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-white/78 sm:text-[11px] sm:tracking-[0.14em]"
                 >
                   {item}
                 </span>
               ))}
             </div>
-            <div className="mt-6 flex flex-wrap gap-2.5">
+            <div className="mt-6 grid gap-2.5 sm:flex sm:flex-wrap">
               <button
                 type="button"
                 onClick={() => document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' })}
-                className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold sm:min-h-0 sm:w-auto"
                 style={{ backgroundColor: secondary, color: '#111827' }}
               >
                 Ver coleção
@@ -978,13 +997,13 @@ export default function ClientPortalRefined() {
               <button
                 type="button"
                 onClick={() => navigate('/portal/vender')}
-                className="inline-flex items-center gap-2 rounded-full border border-white/55 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/18 transition-colors"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-white/55 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/18 sm:min-h-0 sm:w-auto"
               >
                 <TrendingUp className="w-4 h-4" />
                 Quero vender
               </button>
             </div>
-            <div className="mt-7 grid gap-3 sm:grid-cols-3">
+            <div className="mt-7 grid gap-2.5 sm:grid-cols-3">
               {[
                 { value: properties.length > 0 ? `${properties.length}+` : 'Catálogo', label: 'imóveis com fotos e detalhes' },
                 { value: cityCount > 0 ? String(cityCount) : '14', label: 'cidades com operação ativa' },
@@ -998,7 +1017,7 @@ export default function ClientPortalRefined() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 md:gap-3 content-start">
+          <div className="hidden content-start grid-cols-2 gap-2.5 md:gap-3 lg:grid">
             {heroStats.map((stat, index) => (
               <div
                 key={stat.label}
@@ -1017,43 +1036,43 @@ export default function ClientPortalRefined() {
         </div>
       </section>
 
-      <section id="catalogo" className="mx-auto max-w-7xl px-4 lg:px-8 py-10">
-        <div className="rounded-3xl border border-black/10 bg-white/80 p-4 lg:p-5 backdrop-blur-md shadow-[0_16px_42px_rgba(15,23,42,0.10)]">
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_180px_190px_170px]">
-            <div className="relative sm:col-span-2 md:col-span-1">
+      <section id="catalogo" className="mx-auto max-w-7xl px-4 py-8 lg:px-8 lg:py-10">
+        <div className="rounded-3xl border border-black/10 bg-white/80 p-4 backdrop-blur-md shadow-[0_16px_42px_rgba(15,23,42,0.10)] lg:p-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_180px_190px_170px]">
+            <div className="relative sm:col-span-2 lg:col-span-1">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Buscar por bairro, cidade ou tipo"
-                className="w-full h-11 rounded-xl border border-black/10 bg-white pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-500 outline-none"
+                className="h-12 w-full rounded-xl border border-black/10 bg-white pl-10 pr-3 text-base text-slate-900 placeholder:text-slate-500 outline-none sm:text-sm"
               />
             </div>
 
-            <select value={businessType} onChange={(event) => setBusinessType(event.target.value)} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-slate-900">
+            <select value={businessType} onChange={(event) => setBusinessType(event.target.value)} className="h-12 rounded-xl border border-black/10 bg-white px-3 text-base text-slate-900 sm:text-sm">
               {BUSINESS_TYPES.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
 
-            <select value={propertyType} onChange={(event) => setPropertyType(event.target.value)} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-slate-900">
+            <select value={propertyType} onChange={(event) => setPropertyType(event.target.value)} className="h-12 rounded-xl border border-black/10 bg-white px-3 text-base text-slate-900 sm:text-sm">
               {PROPERTY_TYPES.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
 
-            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-slate-900">
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="h-12 rounded-xl border border-black/10 bg-white px-3 text-base text-slate-900 sm:text-sm">
               <option value="preco_asc">Menor preço</option>
               <option value="preco_desc">Maior preço</option>
             </select>
           </div>
         </div>
 
-        <div className="mt-8 mb-2 flex items-end justify-between">
+        <div className="mt-8 mb-2 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Catálogo</p>
-            <h2 className="mt-1 text-2xl text-slate-900">
+            <h2 className="mt-1 text-xl text-slate-900 sm:text-2xl">
               {filteredProperties.length > 0
                 ? `${filteredProperties.length} ${filteredProperties.length !== 1 ? 'imóveis' : 'imóvel'} encontrado${filteredProperties.length !== 1 ? 's' : ''}`
                 : 'Imóveis disponíveis'}
@@ -1081,7 +1100,7 @@ export default function ClientPortalRefined() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.2) }}
               >
-                <div className="h-56 sm:h-52 relative">
+                <div className="relative h-60 sm:h-52">
                   <img src={activeImage} alt={property.titulo} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" loading="lazy" />
                   <span className="absolute left-3 top-3 rounded-full border border-white/30 bg-black/35 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-white">
                     {getPurpose(property)}
@@ -1092,7 +1111,7 @@ export default function ClientPortalRefined() {
                         type="button"
                         aria-label="Foto anterior"
                         onClick={() => handleCatalogPhotoChange(property.id, 'prev', images.length)}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/88 text-slate-700 shadow-sm backdrop-blur-sm"
+                        className="absolute left-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-white/88 text-slate-700 shadow-sm backdrop-blur-sm sm:h-8 sm:w-8"
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </button>
@@ -1100,7 +1119,7 @@ export default function ClientPortalRefined() {
                         type="button"
                         aria-label="Próxima foto"
                         onClick={() => handleCatalogPhotoChange(property.id, 'next', images.length)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/88 text-slate-700 shadow-sm backdrop-blur-sm"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-white/88 text-slate-700 shadow-sm backdrop-blur-sm sm:h-8 sm:w-8"
                       >
                         <ChevronRight className="h-4 w-4" />
                       </button>
@@ -1120,11 +1139,11 @@ export default function ClientPortalRefined() {
                     </>
                   )}
                 </div>
-                <div className="p-4">
-                  <h3 className="text-base sm:text-lg text-slate-900 line-clamp-1">{property.titulo}</h3>
-                  <p className="mt-1 text-xs text-slate-500 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{getPublicLocation(property)}</p>
+                <div className="p-4 sm:p-5">
+                  <h3 className="line-clamp-2 text-base font-medium leading-snug text-slate-900 sm:line-clamp-1 sm:text-lg">{property.titulo}</h3>
+                  <p className="mt-1 flex items-start gap-1.5 text-xs text-slate-500"><MapPin className="mt-0.5 w-3.5 h-3.5 shrink-0" /><span className="line-clamp-2">{getPublicLocation(property)}</span></p>
                   <p className="mt-3 text-xl sm:text-2xl" style={{ color: primary }}>{formatPrice(property)}</p>
-                  <div className="mt-3 grid grid-cols-4 gap-2 text-[11px] text-slate-600">
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-slate-600 sm:grid-cols-4 sm:text-[11px]">
                     <p className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" />{property.quartos || property.dormitorios || '--'}</p>
                     <p className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{property.banheiros || '--'}</p>
                     <p className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{formatArea(displayArea)}m²</p>
@@ -1134,7 +1153,7 @@ export default function ClientPortalRefined() {
                     <button
                       type="button"
                       onClick={() => handleOpenPropertyDetail(property.id)}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-900/15 px-4 py-2 text-sm font-semibold text-slate-800"
+                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-900/15 px-4 py-3 text-sm font-semibold text-slate-800"
                     >
                       Ver detalhes
                       <ArrowUpRight className="w-4 h-4" />
@@ -1142,8 +1161,8 @@ export default function ClientPortalRefined() {
                     <button
                       type="button"
                       onClick={() => openPropertyWhatsAppModal(property)}
-                      disabled={!tenant?.contact_phone}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={!(tenant?.tenant_phone || tenant?.contact_phone)}
+                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                       style={{ backgroundColor: primary }}
                     >
                       <MessageCircle className="h-4 w-4" />
@@ -1163,21 +1182,21 @@ export default function ClientPortalRefined() {
         )}
 
         {filteredProperties.length > PROPERTIES_PER_PAGE && (
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-            <p className="text-sm text-slate-500">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-center text-sm text-slate-500 sm:text-left">
               Exibindo {(currentPage - 1) * PROPERTIES_PER_PAGE + 1} a {Math.min(currentPage * PROPERTIES_PER_PAGE, filteredProperties.length)} de {filteredProperties.length} imóveis
             </p>
-            <div className="flex items-center gap-2">
+            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end">
               <button
                 type="button"
                 onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                 disabled={currentPage === 1}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronLeft className="h-4 w-4" />
                 Anterior
               </button>
-              <div className="flex items-center gap-1">
+              <div className="col-span-2 flex max-w-full items-center justify-center gap-1 overflow-x-auto pb-1 sm:col-span-1">
                 {Array.from({ length: totalPages }, (_, index) => index + 1)
                   .filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
                   .map((page, index, pages) => {
@@ -1190,7 +1209,7 @@ export default function ClientPortalRefined() {
                         <button
                           type="button"
                           onClick={() => setCurrentPage(page)}
-                          className={`h-10 w-10 rounded-full text-sm font-semibold transition ${page === currentPage ? 'text-white' : 'border border-slate-200 bg-white text-slate-700'}`}
+                          className={`h-11 w-11 rounded-full text-sm font-semibold transition ${page === currentPage ? 'text-white' : 'border border-slate-200 bg-white text-slate-700'}`}
                           style={page === currentPage ? { backgroundColor: primary } : undefined}
                         >
                           {page}
@@ -1203,7 +1222,7 @@ export default function ClientPortalRefined() {
                 type="button"
                 onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                 disabled={currentPage === totalPages}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Próxima
                 <ChevronRight className="h-4 w-4" />
@@ -1214,9 +1233,9 @@ export default function ClientPortalRefined() {
       </section>
 
       {/* ─── QUERO VENDER ─── */}
-      <section id="como-vender" className="mx-auto max-w-7xl px-4 lg:px-8 pb-8">
+      <section id="como-vender" className="mx-auto max-w-7xl px-4 pb-8 lg:px-8">
         <div className="rounded-3xl overflow-hidden border border-black/10 shadow-[0_16px_52px_rgba(15,23,42,0.12)] grid lg:grid-cols-2">
-          <div className="relative h-64 lg:h-auto">
+          <div className="relative h-56 sm:h-64 lg:h-auto">
             <img
               src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=900&q=80"
               alt="Venda seu imóvel"
@@ -1234,9 +1253,9 @@ export default function ClientPortalRefined() {
             </div>
           </div>
 
-          <div className="flex flex-col justify-center bg-white p-7 lg:p-10">
+          <div className="flex flex-col justify-center bg-white p-5 sm:p-7 lg:p-10">
             <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-slate-500">Anuncie com a gente</p>
-            <h2 className="text-3xl leading-tight text-slate-900 lg:text-4xl">
+            <h2 className="text-2xl leading-tight text-slate-900 sm:text-3xl lg:text-4xl">
               Venda seu imóvel<br />
               <span style={{ color: secondary }}>pelo melhor preço</span>.
             </h2>
@@ -1284,11 +1303,11 @@ export default function ClientPortalRefined() {
               </div>
             </div>
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-7 grid gap-3 sm:flex sm:flex-wrap">
               <button
                 type="button"
                 onClick={() => navigate('/portal/vender')}
-                className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold sm:min-h-0 sm:w-auto"
                 style={{ backgroundColor: primary, color: '#fff' }}
               >
                 Anunciar meu imóvel
@@ -1297,7 +1316,7 @@ export default function ClientPortalRefined() {
               <button
                 type="button"
                 onClick={() => navigate('/portal/vender')}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:min-h-0 sm:w-auto"
               >
                 <BadgeCheck className="w-4 h-4" style={{ color: secondary }} />
                 Avaliação gratuita
@@ -1308,9 +1327,9 @@ export default function ClientPortalRefined() {
       </section>
 
       {/* Simulação de Financiamento — banner promocional */}
-      <section className="mx-auto max-w-7xl px-4 lg:px-8 pb-8">
+      <section className="mx-auto max-w-7xl px-4 pb-8 lg:px-8">
         <div
-          className="rounded-3xl p-6 lg:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5"
+          className="flex flex-col items-start justify-between gap-5 rounded-3xl p-5 sm:flex-row sm:items-center lg:p-8"
           style={{ background: `linear-gradient(135deg, ${primary}f5 0%, #0a0d16 100%)` }}
         >
           <div>
@@ -1326,7 +1345,7 @@ export default function ClientPortalRefined() {
           <button
             type="button"
             onClick={() => navigate('/portal/simulacao')}
-            className="flex-shrink-0 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold sm:min-h-0 sm:w-auto"
             style={{ backgroundColor: secondary, color: '#111827' }}
           >
             <Calculator className="w-4 h-4" />
@@ -1335,70 +1354,56 @@ export default function ClientPortalRefined() {
         </div>
       </section>
 
-      <section id="servicos" className="mx-auto max-w-7xl px-4 lg:px-8 pb-16">
+      <section id="servicos" className="mx-auto max-w-7xl px-4 pb-16 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-2">
-          <article className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_10px_34px_rgba(15,23,42,0.08)]">
+          <article className="rounded-3xl border border-black/10 bg-white p-5 shadow-[0_10px_34px_rgba(15,23,42,0.08)] sm:p-6">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Serviços</p>
-            <h3 className="mt-2 text-2xl text-slate-900">Atendimento completo para compra, venda e locação</h3>
+            <h3 className="mt-2 text-xl text-slate-900 sm:text-2xl">Atendimento completo para compra, venda e locação</h3>
             <div className="mt-6 grid gap-2 sm:grid-cols-2">
               {(tenant?.services?.length
                 ? tenant.services
                 : ['Consultoria imobiliária', 'Avaliação de mercado', 'Curadoria de investimentos', 'Acompanhamento documental'])
                 .map((service) => (
-                  <div key={service} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{service}</div>
+                  <div key={service} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">{service}</div>
                 ))}
             </div>
           </article>
 
-          <article id="contato" className="rounded-3xl border border-black/10 p-6 text-white shadow-[0_14px_40px_rgba(15,23,42,0.22)]" style={{ backgroundColor: primary }}>
+          <article id="contato" className="rounded-3xl border border-black/10 p-5 text-white shadow-[0_14px_40px_rgba(15,23,42,0.22)] sm:p-6" style={{ backgroundColor: primary }}>
             <p className="text-xs uppercase tracking-[0.2em] text-white/70">Contato</p>
-            <h3 className="mt-2 text-2xl">Converse com nossa equipe</h3>
+            <h3 className="mt-2 text-xl sm:text-2xl">Converse com nossa equipe</h3>
             <div className="mt-5 space-y-3 text-sm">
-              {tenant?.contact_phone && <a className="flex items-center gap-2 text-white/90" href={`tel:${tenant.contact_phone}`}><Phone className="w-4 h-4" />{tenant.contact_phone}</a>}
-              {tenant?.contact_email && <a className="flex items-center gap-2 text-white/90" href={`mailto:${tenant.contact_email}`}><Mail className="w-4 h-4" />{tenant.contact_email}</a>}
-              {tenant?.endereco && <p className="flex items-center gap-2 text-white/80"><MapPin className="w-4 h-4" />{tenant.endereco}</p>}
+              {(tenant?.tenant_phone || tenant?.contact_phone) && <a className="flex items-start gap-2 text-white/90 break-all" href={`tel:${tenant?.tenant_phone || tenant?.contact_phone}`}><Phone className="mt-0.5 w-4 h-4 shrink-0" />{tenant?.tenant_phone || tenant?.contact_phone}</a>}
+              {tenant?.contact_email && <a className="flex items-start gap-2 text-white/90 break-all" href={`mailto:${tenant.contact_email}`}><Mail className="mt-0.5 w-4 h-4 shrink-0" />{tenant.contact_email}</a>}
+              {tenant?.endereco && <p className="flex items-start gap-2 text-white/80"><MapPin className="mt-0.5 w-4 h-4 shrink-0" />{tenant.endereco}</p>}
             </div>
           </article>
         </div>
       </section>
 
       {tenantAboutText && (
-        <section id="empresa" className="mx-auto max-w-7xl px-4 lg:px-8 pb-16">
-          <div className="rounded-3xl border border-black/10 bg-white px-6 py-8 text-center shadow-[0_12px_36px_rgba(15,23,42,0.08)] lg:px-12 lg:py-12">
+        <section id="empresa" className="mx-auto max-w-7xl px-4 pb-16 lg:px-8">
+          <div className="rounded-3xl border border-black/10 bg-white px-5 py-7 text-left shadow-[0_12px_36px_rgba(15,23,42,0.08)] sm:px-6 sm:py-8 sm:text-center lg:px-12 lg:py-12">
             {(tenant?.logo_url || tenant?.logo) && (
-              <div className="mb-5 flex justify-center">
+              <div className="mb-5 flex justify-start sm:justify-center">
                 <img src={tenant.logo_url || tenant.logo} alt={tenant?.name || 'Logo'} className="h-12 w-auto object-contain" />
               </div>
             )}
             <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">A Empresa</p>
-            <h3 className="mt-2 text-3xl text-slate-900">{tenant?.name || 'Nossa imobiliária'}</h3>
+            <h3 className="mt-2 text-2xl text-slate-900 sm:text-3xl">{tenant?.name || 'Nossa imobiliária'}</h3>
             {tenant?.creci && <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: secondary }}>CRECI {tenant.creci}</p>}
             <p className="mx-auto mt-5 max-w-4xl whitespace-pre-line text-sm leading-7 text-slate-600">
               {tenantAboutText}
             </p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-600">
+            <div className="mt-6 flex flex-col items-start gap-3 text-sm text-slate-600 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-4">
               {tenant?.endereco && <span className="inline-flex items-center gap-2"><MapPin className="h-4 w-4" />{tenant.endereco}</span>}
-              {tenant?.contact_phone && <a className="inline-flex items-center gap-2 hover:text-slate-900" href={`tel:${tenant.contact_phone}`}><Phone className="h-4 w-4" />{tenant.contact_phone}</a>}
+              {(tenant?.tenant_phone || tenant?.contact_phone) && <a className="inline-flex items-center gap-2 hover:text-slate-900" href={`tel:${tenant?.tenant_phone || tenant?.contact_phone}`}><Phone className="h-4 w-4" />{tenant?.tenant_phone || tenant?.contact_phone}</a>}
               {tenant?.contact_email && <a className="inline-flex items-center gap-2 hover:text-slate-900" href={`mailto:${tenant.contact_email}`}><Mail className="h-4 w-4" />{tenant.contact_email}</a>}
             </div>
             {tenant?.office_hours && <p className="mt-3 text-xs uppercase tracking-[0.14em] text-slate-400">{tenant.office_hours}</p>}
           </div>
         </section>
       )}
-
-      {/* Botão flutuante de Simulação — desktop: lateral direita | mobile: barra no topo */}
-      {/* Mobile: barra fixa logo abaixo do header */}
-      <div className="lg:hidden fixed top-[68px] left-0 right-0 z-30">
-        <button
-          type="button"
-          onClick={() => navigate('/portal/simulacao')}
-          className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] shadow-md"
-          style={{ backgroundColor: secondary, color: '#111827' }}
-        >
-          <Calculator className="w-3.5 h-3.5" />
-          Simular financiamento — Caixa e bancos
-        </button>
-      </div>
 
       {/* Desktop: tab vertical fixo na lateral direita */}
       <button
@@ -1446,7 +1451,7 @@ export default function ClientPortalRefined() {
                 className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
               />
             </button>
-            <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/55 bg-white/88 px-2 py-1.5 text-slate-700 shadow-[0_10px_28px_rgba(15,23,42,0.18)] backdrop-blur-md">
+            <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/55 bg-white/88 px-1.5 py-1 text-slate-700 shadow-[0_10px_28px_rgba(15,23,42,0.18)] backdrop-blur-md sm:gap-1.5 sm:px-2 sm:py-1.5">
               <button
                 type="button"
                 onClick={(event) => {
@@ -1455,11 +1460,11 @@ export default function ClientPortalRefined() {
                 }}
                 disabled={floatingActionScale <= MASCOT_MIN_SCALE}
                 aria-label="Diminuir mascote"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-900/6 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-900/6 disabled:cursor-not-allowed disabled:opacity-40 sm:h-8 sm:w-8"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
-              <span className="min-w-[3.25rem] text-center text-[11px] font-semibold tracking-[0.14em] text-slate-600">
+              <span className="min-w-[2.85rem] text-center text-[10px] font-semibold tracking-[0.12em] text-slate-600 sm:min-w-[3.25rem] sm:text-[11px] sm:tracking-[0.14em]">
                 {Math.round(floatingActionScale * 100)}%
               </span>
               <button
@@ -1470,7 +1475,7 @@ export default function ClientPortalRefined() {
                 }}
                 disabled={floatingActionScale >= MASCOT_MAX_SCALE}
                 aria-label="Aumentar mascote"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-900/6 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-900/6 disabled:cursor-not-allowed disabled:opacity-40 sm:h-8 sm:w-8"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
@@ -1503,17 +1508,17 @@ export default function ClientPortalRefined() {
       ) : null}
 
       {(leadModalProperty || leadModalSource === 'mascot') && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.28)]">
+        <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/55 px-3 py-3 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6">
+          <div className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-[1.75rem] bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.28)] sm:rounded-3xl sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Atendimento via WhatsApp</p>
-                <h3 className="mt-2 text-xl text-slate-900">{leadModalProperty ? 'Receber atendimento sobre este imóvel' : 'Falar com nossa equipe'}</h3>
+                <h3 className="mt-2 text-lg text-slate-900 sm:text-xl">{leadModalProperty ? 'Receber atendimento sobre este imóvel' : 'Falar com nossa equipe'}</h3>
               </div>
               <button
                 type="button"
                 onClick={closePropertyWhatsAppModal}
-                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600"
+                className="min-h-10 rounded-full border border-slate-200 px-3 py-2 text-[11px] font-semibold text-slate-600 sm:min-h-0 sm:py-1.5 sm:text-xs"
               >
                 Fechar
               </button>
@@ -1539,7 +1544,7 @@ export default function ClientPortalRefined() {
                   value={leadName}
                   onChange={(event) => setLeadName(event.target.value)}
                   placeholder="Como você se chama?"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none"
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-900 outline-none sm:h-11 sm:text-sm"
                 />
               </label>
 
@@ -1550,7 +1555,7 @@ export default function ClientPortalRefined() {
                   value={leadPhone}
                   onChange={(event) => setLeadPhone(formatPhoneInput(event.target.value))}
                   placeholder="(31) 99999-9999"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none"
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-900 outline-none sm:h-11 sm:text-sm"
                 />
               </label>
 
@@ -1560,7 +1565,7 @@ export default function ClientPortalRefined() {
                   type="datetime-local"
                   value={leadVisitDateTime}
                   onChange={(event) => setLeadVisitDateTime(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none"
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-900 outline-none sm:h-11 sm:text-sm"
                 />
               </label>
 
@@ -1571,7 +1576,7 @@ export default function ClientPortalRefined() {
                   onChange={(event) => setLeadVisitNotes(event.target.value)}
                   rows={3}
                   placeholder="Ex: melhor horário no fim da tarde, visita com família, imóvel semelhante ao anúncio"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-base text-slate-900 outline-none sm:py-2 sm:text-sm"
                 />
               </label>
 
@@ -1584,7 +1589,7 @@ export default function ClientPortalRefined() {
               <button
                 type="button"
                 onClick={closePropertyWhatsAppModal}
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
               >
                 Cancelar
               </button>
@@ -1592,7 +1597,7 @@ export default function ClientPortalRefined() {
                 type="button"
                 onClick={handleLeadModalSubmit}
                 disabled={leadSubmitting}
-                className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white"
                 style={{ backgroundColor: primary }}
               >
                 <MessageCircle className="h-4 w-4" />

@@ -64,6 +64,31 @@ class PortalController extends Controller
         }, $values))));
     }
 
+    private function normalizePhone(?string $phone): string
+    {
+        return preg_replace('/\D/', '', $phone ?? '');
+    }
+
+    private function resolveMascotWhatsappNumber(?Tenant $tenant): string
+    {
+        $config = $tenant?->config;
+        $configuredMascotPhone = $this->normalizePhone($config->whatsapp_number ?? null);
+        if ($configuredMascotPhone !== '') {
+            return $configuredMascotPhone;
+        }
+
+        if ((int) ($tenant?->id ?? 0) === 1) {
+            return '5531997483827';
+        }
+
+        return $this->normalizePhone($tenant?->contact_phone);
+    }
+
+    private function resolvePrimaryWhatsappNumber(?Tenant $tenant): string
+    {
+        return $this->normalizePhone($tenant?->contact_phone);
+    }
+
     private function applyPurposeFilterToQuery($query, array $purposes): void
     {
         $normalized = $this->normalizePurposeTerms($purposes);
@@ -189,18 +214,21 @@ class PortalController extends Controller
             $portalFinalidades = $config->portal_finalidades;
         }
 
-        // Mantem o numero configurado para WhatsApp sem perder o telefone real do tenant.
+        // Mantem compatibilidade com o portal legado e expõe um numero dedicado para o mascote.
         $whatsappNumber = $config && $config->whatsapp_number 
             ? $config->whatsapp_number 
             : $tenant->contact_phone;
+        $mascotWhatsappNumber = $this->resolveMascotWhatsappNumber($tenant);
 
         return response()->json([
             'success' => true,
             'data' => [
+                'tenant_id' => $tenant->id,
                 'name' => $tenant->name,
                 'contact_phone' => $whatsappNumber,
                 'tenant_phone' => $tenant->contact_phone,
                 'whatsapp_phone' => $whatsappNumber,
+                'mascot_whatsapp_phone' => $mascotWhatsappNumber,
                 'contact_email' => $tenant->contact_email,
                 'domain' => $tenant->domain,
                 'slogan' => $tenant->slogan ?? 'Encontre o Imóvel dos Seus Sonhos',
@@ -720,9 +748,10 @@ class PortalController extends Controller
             // Get tenant WhatsApp number
             $tenant = \App\Models\Tenant::find($tenantId);
             $config = $tenant ? $tenant->config : null;
-            $tenantWhatsapp = $config && $config->whatsapp_number
-                ? preg_replace('/\D/', '', $config->whatsapp_number)
-                : ($tenant ? preg_replace('/\D/', '', $tenant->contact_phone ?? '') : '');
+            $origemAgendamento = (string) $request->input('origem_agendamento', '');
+            $tenantWhatsapp = $origemAgendamento === 'portal_home'
+                ? $this->resolveMascotWhatsappNumber($tenant)
+                : $this->resolvePrimaryWhatsappNumber($tenant);
 
             $visitId = null;
             if ($request->filled('visita_data_hora')) {
