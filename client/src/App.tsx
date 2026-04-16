@@ -53,6 +53,7 @@ const PropertyAds = lazy(() => import("./pages/PropertyAds"));
 const AdsAutomation = lazy(() => import("./pages/AdsAutomation"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const ControleChaves = lazy(() => import("./pages/ControleChaves"));
+const PropertySyncRuns = lazy(() => import("./pages/PropertySyncRuns"));
 const SimulacaoFinanciamento = lazy(() => import("./pages/SimulacaoFinanciamento"));const ImobiBrasilPage = lazy(() => import('./pages/ImobiBrasil'));const AnalyticsConsentBanner = lazy(() => import("./components/AnalyticsConsentBanner"));
 const AnalyticsTracker = lazy(() => import("./components/AnalyticsTracker"));
 const PortalProprietarioLogin = lazy(() => import('./pages/PortalProprietarioLogin'));
@@ -104,6 +105,7 @@ function Router() {
       <Route path="/leads" component={Leads} />
       <Route path="/leads/:id" component={LeadProfile} />
       <Route path="/properties" component={Properties} />
+      <Route path="/properties/sincronizacoes" component={PropertySyncRuns} />
       <Route path="/properties/propaganda" component={PropertyAds} />
       <Route path="/properties/novo" component={ImovelFormWizard} />
       <Route path="/properties/:id/editar" component={ImovelFormWizard} />

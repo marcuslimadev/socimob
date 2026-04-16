@@ -86,6 +86,8 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->post('/imoveis/importar', 'App\Http\Controllers\Admin\ImportacaoController@importar');
     $router->get('/imoveis/importar/{jobId}', 'App\Http\Controllers\Admin\ImportacaoController@status');
     $router->post('/importacao/teste-api', 'App\Http\Controllers\Admin\ImportacaoController@testarAPI');
+    $router->get('/imoveis/sincronizacoes', 'App\Http\Controllers\Admin\PropertySyncController@index');
+    $router->post('/imoveis/sincronizacoes/executar', 'App\Http\Controllers\Admin\PropertySyncController@runManual');
 
     // System Logs
     $router->get('/system-logs', 'App\Http\Controllers\Admin\SystemLogsController@index');

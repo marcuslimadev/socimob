@@ -330,6 +330,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       href: '/properties',
       items: [
         { key: 'properties', icon: <Home size={16} />, label: 'Imóveis', href: '/properties' },
+        { key: 'properties-sync-runs', icon: <FileText size={16} />, label: 'Sincronizações', href: '/properties/sincronizacoes' },
         { key: 'properties-propaganda', icon: <Image size={16} />, label: 'Propaganda', href: '/properties/propaganda' },
         { key: 'controle-chaves', icon: <KeyRound size={16} />, label: 'Controle de Chaves', href: '/controle-chaves' },
         { key: 'imobi-brasil', icon: <Building2 size={16} />, label: 'ImobiBrasil', href: '/imobi-brasil' },
