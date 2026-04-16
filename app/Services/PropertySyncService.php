@@ -337,8 +337,8 @@ class PropertySyncService
                 ->count();
 
             $publicados = (clone $propertiesQuery)
-                ->where('active', true)
-                ->where('exibir_imovel', true)
+                ->publiclyVisible()
+                ->portalInventory()
                 ->count();
             
             $stats['with_images'] = $comImagens;

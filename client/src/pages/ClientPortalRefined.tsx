@@ -1026,7 +1026,7 @@ export default function ClientPortalRefined() {
             <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Catálogo</p>
             <h2 className="mt-1 text-2xl text-slate-900">
               {filteredProperties.length > 0
-                ? `${filteredProperties.length} imóvel${filteredProperties.length !== 1 ? 's' : ''} encontrado${filteredProperties.length !== 1 ? 's' : ''}`
+                ? `${filteredProperties.length} ${filteredProperties.length !== 1 ? 'imóveis' : 'imóvel'} encontrado${filteredProperties.length !== 1 ? 's' : ''}`
                 : 'Imóveis disponíveis'}
             </h2>
             {filteredProperties.length > 0 && (
