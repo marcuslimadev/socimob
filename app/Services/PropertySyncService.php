@@ -32,9 +32,36 @@ class PropertySyncService
     /**
      * Sincronizar todos os imóveis
      */
-    public function syncAll()
+    public function syncAll(?callable $progressCallback = null)
     {
         $startTime = microtime(true);
+        $processedItems = 0;
+        $knownTotalItems = 0;
+
+        $emitProgress = function (array $payload) use (&$progressCallback, &$stats, &$processedItems, &$knownTotalItems): void {
+            if (!$progressCallback) {
+                return;
+            }
+
+            $processed = (int) ($payload['processed'] ?? $processedItems);
+            $total = (int) ($payload['total'] ?? $knownTotalItems);
+            $percent = 0;
+            if ($total > 0) {
+                $percent = (int) min(100, floor(($processed / $total) * 100));
+            }
+
+            $progressCallback(array_merge([
+                'phase' => 'running',
+                'processed' => $processed,
+                'total' => $total,
+                'percent' => $percent,
+                'current_page' => null,
+                'total_pages' => null,
+                'current_code' => null,
+                'stats' => $stats,
+                'done' => false,
+            ], $payload));
+        };
         
         Log::info('🏠 Iniciando sincronização de imóveis...');
         
@@ -64,6 +91,14 @@ class PropertySyncService
                     'tenant_id' => $tenant->id,
                 ]);
             }
+
+            $emitProgress([
+                'phase' => 'starting',
+                'processed' => 0,
+                'total' => 0,
+                'current_page' => 1,
+                'total_pages' => 1,
+            ]);
 
             // Loop por todas as páginas
             do {
@@ -110,6 +145,15 @@ class PropertySyncService
                 $totalPages = max(1, (int) ($resultSet['total_pages'] ?? 1));
                 $totalItems = (int) ($resultSet['total_items'] ?? count($imoveis));
                 $apiPage = (int) ($resultSet['page'] ?? $page);
+                $knownTotalItems = max($knownTotalItems, $totalItems, count($imoveis));
+
+                $emitProgress([
+                    'phase' => 'fetching_page',
+                    'processed' => $processedItems,
+                    'total' => $knownTotalItems,
+                    'current_page' => $page,
+                    'total_pages' => $totalPages,
+                ]);
 
                 $pageCodes = array_values(array_filter(array_map(function ($item) {
                     $codigo = $item['codigoImovel'] ?? null;
@@ -142,9 +186,19 @@ class PropertySyncService
                 
                 foreach ($imoveis as $item) {
                     $codigo = $item['codigoImovel'] ?? null;
+
+                    $emitProgress([
+                        'phase' => 'processing_property',
+                        'processed' => $processedItems,
+                        'total' => $knownTotalItems,
+                        'current_page' => $page,
+                        'total_pages' => $totalPages,
+                        'current_code' => $codigo ? (string) $codigo : null,
+                    ]);
                     
                     if (!$codigo) {
                         $stats['errors']++;
+                        $processedItems++;
                         continue;
                     }
 
@@ -207,6 +261,16 @@ class PropertySyncService
                         Log::error("❌ Erro ao processar imóvel {$codigo}", [
                             'error' => $errorMessage
                         ]);
+                    } finally {
+                        $processedItems++;
+                        $emitProgress([
+                            'phase' => 'processing_property',
+                            'processed' => $processedItems,
+                            'total' => $knownTotalItems,
+                            'current_page' => $page,
+                            'total_pages' => $totalPages,
+                            'current_code' => $codigo ? (string) $codigo : null,
+                        ]);
                     }
                 }
                 
@@ -261,6 +325,15 @@ class PropertySyncService
                 'stats' => $stats,
                 'time_ms' => $elapsed
             ]);
+
+            $emitProgress([
+                'phase' => 'done',
+                'processed' => max($processedItems, $knownTotalItems),
+                'total' => max($knownTotalItems, $processedItems),
+                'percent' => 100,
+                'done' => true,
+                'current_code' => null,
+            ]);
             
             return [
                 'success' => true,
@@ -273,6 +346,14 @@ class PropertySyncService
             Log::error('❌ Erro na sincronização de imóveis', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
+            ]);
+
+            $emitProgress([
+                'phase' => 'failed',
+                'processed' => $processedItems,
+                'total' => max($knownTotalItems, $processedItems),
+                'current_code' => null,
+                'done' => true,
             ]);
             
             return [

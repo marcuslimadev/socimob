@@ -94,26 +94,73 @@ class SyncPropertiesCommand extends Command
         // Bind tenant no container
         app()->instance('tenant', $tenant);
         $start = microtime(true);
+        $run = null;
+        $lastProgressPersist = 0.0;
+
+        if ($runId) {
+            $run = PropertySyncRun::query()
+                ->where('id', $runId)
+                ->where('tenant_id', $tenantId)
+                ->first();
+        }
+
+        $progressUpdater = function (array $progress) use (&$run, &$lastProgressPersist): void {
+            if (!$run) {
+                return;
+            }
+
+            $now = microtime(true);
+            $forcePersist = (bool) ($progress['done'] ?? false);
+
+            if (!$forcePersist && ($now - $lastProgressPersist) < 1.5) {
+                return;
+            }
+
+            $payload = is_array($run->result_payload) ? $run->result_payload : [];
+            $payload['progress'] = [
+                'phase' => $progress['phase'] ?? 'running',
+                'processed' => (int) ($progress['processed'] ?? 0),
+                'total' => (int) ($progress['total'] ?? 0),
+                'percent' => (int) ($progress['percent'] ?? 0),
+                'current_page' => isset($progress['current_page']) ? (int) $progress['current_page'] : null,
+                'total_pages' => isset($progress['total_pages']) ? (int) $progress['total_pages'] : null,
+                'current_code' => $progress['current_code'] ?? null,
+                'done' => (bool) ($progress['done'] ?? false),
+                'updated_at' => now()->toDateTimeString(),
+            ];
+
+            if (isset($progress['stats']) && is_array($progress['stats'])) {
+                $payload['stats'] = $progress['stats'];
+            }
+
+            $run->update(['result_payload' => $payload]);
+            $run = $run->fresh();
+            $lastProgressPersist = $now;
+        };
         
         try {
-            $result = $this->service->syncAll();
+            $result = $this->service->syncAll($progressUpdater);
             $durationMs = (int) round((microtime(true) - $start) * 1000);
 
-            if ($runId) {
-                $run = PropertySyncRun::query()
-                    ->where('id', $runId)
-                    ->where('tenant_id', $tenantId)
-                    ->first();
+            if ($run) {
+                $existingPayload = is_array($run->result_payload) ? $run->result_payload : [];
+                $progress = $existingPayload['progress'] ?? [];
+                $progress['phase'] = ($result['success'] ?? false) ? 'done' : 'failed';
+                $progress['done'] = true;
+                $progress['percent'] = ($result['success'] ?? false) ? 100 : ($progress['percent'] ?? 0);
+                $progress['updated_at'] = now()->toDateTimeString();
 
-                if ($run) {
-                    $run->update([
-                        'status' => ($result['success'] ?? false) ? 'success' : 'failed',
-                        'finished_at' => now(),
-                        'duration_ms' => $durationMs,
-                        'result_payload' => $result,
-                        'error_message' => ($result['success'] ?? false) ? null : ($result['error'] ?? 'Falha na sincronização'),
-                    ]);
-                }
+                $payload = array_merge($result, [
+                    'progress' => $progress,
+                ]);
+
+                $run->update([
+                    'status' => ($result['success'] ?? false) ? 'success' : 'failed',
+                    'finished_at' => now(),
+                    'duration_ms' => $durationMs,
+                    'result_payload' => $payload,
+                    'error_message' => ($result['success'] ?? false) ? null : ($result['error'] ?? 'Falha na sincronização'),
+                ]);
             }
 
             Cache::forget("portal_imoveis_tenant_{$tenantId}");
@@ -142,25 +189,26 @@ class SyncPropertiesCommand extends Command
             
             return 0;
         } catch (\Exception $e) {
-            if ($runId) {
-                $run = PropertySyncRun::query()
-                    ->where('id', $runId)
-                    ->where('tenant_id', $tenantId)
-                    ->first();
+            if ($run) {
+                $durationMs = (int) round((microtime(true) - $start) * 1000);
+                $existingPayload = is_array($run->result_payload) ? $run->result_payload : [];
+                $progress = $existingPayload['progress'] ?? [];
+                $progress['phase'] = 'failed';
+                $progress['done'] = true;
+                $progress['updated_at'] = now()->toDateTimeString();
 
-                if ($run) {
-                    $durationMs = (int) round((microtime(true) - $start) * 1000);
-                    $run->update([
-                        'status' => 'failed',
-                        'finished_at' => now(),
-                        'duration_ms' => $durationMs,
-                        'error_message' => $e->getMessage(),
-                        'result_payload' => [
-                            'success' => false,
-                            'error' => $e->getMessage(),
-                        ],
-                    ]);
-                }
+                $run->update([
+                    'status' => 'failed',
+                    'finished_at' => now(),
+                    'duration_ms' => $durationMs,
+                    'error_message' => $e->getMessage(),
+                    'result_payload' => [
+                        'success' => false,
+                        'error' => $e->getMessage(),
+                        'stats' => $existingPayload['stats'] ?? [],
+                        'progress' => $progress,
+                    ],
+                ]);
             }
 
             $this->error('   ❌ Erro: ' . $e->getMessage());

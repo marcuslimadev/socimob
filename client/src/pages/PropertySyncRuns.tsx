@@ -18,6 +18,17 @@ interface SyncRun {
   result_payload: {
     success?: boolean;
     stats?: Record<string, number>;
+    progress?: {
+      phase?: string;
+      processed?: number;
+      total?: number;
+      percent?: number;
+      current_page?: number | null;
+      total_pages?: number | null;
+      current_code?: string | null;
+      done?: boolean;
+      updated_at?: string;
+    };
     error?: string;
   } | null;
   error_message: string | null;
@@ -44,6 +55,13 @@ function formatDuration(ms?: number | null) {
   return `${(ms / 1000).toFixed(1)} s`;
 }
 
+function getProgressPercent(run?: SyncRun | null) {
+  if (!run?.result_payload?.progress) return 0;
+  const raw = Number(run.result_payload.progress.percent ?? 0);
+  if (Number.isNaN(raw)) return 0;
+  return Math.max(0, Math.min(100, Math.round(raw)));
+}
+
 export default function PropertySyncRuns() {
   const [runs, setRuns] = useState<SyncRun[]>([]);
   const [page, setPage] = useState(1);
@@ -54,8 +72,10 @@ export default function PropertySyncRuns() {
 
   const activeRun = useMemo(() => runs.find((run) => run.status === 'running') || null, [runs]);
 
-  const fetchRuns = async (targetPage = page) => {
-    setLoading(true);
+  const fetchRuns = async (targetPage = page, silent = false) => {
+    if (!silent) {
+      setLoading(true);
+    }
     try {
       const response = await api.get<PaginatedResponse>('/admin/imoveis/sincronizacoes', {
         params: { page: targetPage, per_page: 15 },
@@ -66,9 +86,13 @@ export default function PropertySyncRuns() {
       setLastPage(response.data.last_page || 1);
       setTotal(response.data.total || 0);
     } catch (error) {
-      toast.error('Erro ao carregar histórico de sincronizações');
+      if (!silent) {
+        toast.error('Erro ao carregar histórico de sincronizações');
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -94,6 +118,19 @@ export default function PropertySyncRuns() {
   useEffect(() => {
     fetchRuns(1);
   }, []);
+
+  useEffect(() => {
+    if (!activeRun) return;
+
+    const interval = setInterval(() => {
+      fetchRuns(page, true);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [activeRun, page]);
+
+  const activeProgress = activeRun?.result_payload?.progress;
+  const activePercent = getProgressPercent(activeRun);
 
   return (
     <div className="flex min-h-screen bg-white text-gray-900 dark:bg-[#0f0f0f] dark:text-gray-100">
@@ -152,6 +189,28 @@ export default function PropertySyncRuns() {
             </div>
           </section>
 
+          {activeRun && (
+            <section className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 shadow-sm dark:border-blue-900/40 dark:bg-blue-950/20 dark:shadow-none">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-blue-800 dark:text-blue-300">
+                <span>Progresso da execução #{activeRun.id}</span>
+                <span>{activePercent}%</span>
+              </div>
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-blue-100 dark:bg-blue-900/50">
+                <div
+                  className="h-full rounded-full bg-blue-600 transition-all duration-500"
+                  style={{ width: `${activePercent}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-blue-900 dark:text-blue-200">
+                Processados: {activeProgress?.processed ?? 0}
+                {activeProgress?.total ? ` de ${activeProgress.total}` : ''}
+                {activeProgress?.current_page ? ` | Página ${activeProgress.current_page}` : ''}
+                {activeProgress?.total_pages ? `/${activeProgress.total_pages}` : ''}
+                {activeProgress?.current_code ? ` | Código atual: ${activeProgress.current_code}` : ''}
+              </p>
+            </section>
+          )}
+
           <section className="overflow-hidden rounded-xl border border-gray-300 bg-white shadow-sm dark:border-gray-800 dark:bg-[#141414] dark:shadow-none">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] border-collapse">
@@ -182,12 +241,18 @@ export default function PropertySyncRuns() {
                   ) : (
                     runs.map((run) => {
                       const stats = run.result_payload?.stats || {};
+                      const progress = run.result_payload?.progress;
+                      const percent = getProgressPercent(run);
                       const summary = [
                         `Encontrados: ${stats.found ?? 0}`,
                         `Novos: ${stats.new ?? 0}`,
                         `Atualizados: ${stats.updated ?? 0}`,
                         `Erros: ${stats.errors ?? 0}`,
                       ].join(' | ');
+
+                      const runningSummary = run.status === 'running'
+                        ? `Processados: ${progress?.processed ?? 0}${progress?.total ? `/${progress.total}` : ''} (${percent}%)`
+                        : summary;
 
                       return (
                         <tr key={run.id} className="border-t border-gray-200 text-sm text-gray-700 dark:border-gray-800 dark:text-gray-200">
@@ -216,7 +281,17 @@ export default function PropertySyncRuns() {
                               <Timer size={13} /> {formatDuration(run.duration_ms)}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{summary}</td>
+                          <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
+                            <div>{runningSummary}</div>
+                            {run.status === 'running' && (
+                              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
+                                <div
+                                  className="h-full rounded-full bg-blue-600 transition-all duration-500"
+                                  style={{ width: `${percent}%` }}
+                                />
+                              </div>
+                            )}
+                          </td>
                           <td className="max-w-[280px] px-4 py-3 text-xs text-gray-700 dark:text-rose-300">
                             {run.error_message || run.result_payload?.error || '-'}
                           </td>

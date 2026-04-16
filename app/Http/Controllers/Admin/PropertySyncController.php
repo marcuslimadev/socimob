@@ -70,6 +70,25 @@ class PropertySyncController extends Controller
             'trigger_type' => 'manual',
             'status' => 'running',
             'started_at' => now(),
+            'result_payload' => [
+                'stats' => [
+                    'found' => 0,
+                    'new' => 0,
+                    'updated' => 0,
+                    'errors' => 0,
+                ],
+                'progress' => [
+                    'phase' => 'starting',
+                    'processed' => 0,
+                    'total' => 0,
+                    'percent' => 0,
+                    'current_page' => 1,
+                    'total_pages' => 1,
+                    'current_code' => null,
+                    'done' => false,
+                    'updated_at' => now()->toDateTimeString(),
+                ],
+            ],
         ]);
 
         try {
