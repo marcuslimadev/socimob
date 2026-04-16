@@ -143,9 +143,35 @@ function getPriceValue(property: Property): number {
   return Number(property.valor_venda || property.valor_aluguel || 0) || 0;
 }
 
+function parseAreaValue(value: number | string | null | undefined): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (value === null || value === undefined) return 0;
+
+  const raw = String(value).trim();
+  if (!raw) return 0;
+
+  const normalized = raw.replace(/[^\d.,-]/g, '');
+  if (!normalized) return 0;
+
+  // Formato pt-BR com milhar em ponto: 5.000 ou 12.345,67
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(normalized)) {
+    const parsed = Number(normalized.replace(/\./g, '').replace(',', '.'));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  // Formato decimal com vírgula: 123,45
+  if (/^\d+,\d+$/.test(normalized)) {
+    const parsed = Number(normalized.replace(',', '.'));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function getDisplayArea(property: Property): number | null {
-  const areaUtil = Number(property.area_util || 0);
-  const areaTotal = Number(property.area_total || 0);
+  const areaUtil = parseAreaValue(property.area_util);
+  const areaTotal = parseAreaValue(property.area_total);
 
   if (areaUtil > 0 && areaTotal > 0) {
     // Quando a área útil vier em escala baixa (ex.: 5), usar a área total.
