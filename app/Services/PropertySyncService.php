@@ -342,7 +342,7 @@ class PropertySyncService
      */
     private function mapPropertyData($imovel, bool $fromImobiBrasil = false)
     {
-r        // Converter áreas - nova estrutura da API
+        // Converter áreas - nova estrutura da API
         $areaPrivativa = isset($imovel['area']['privativa']['valor']) ? 
             $this->parseArea($imovel['area']['privativa']['valor']) : null;
         $areaTotal = isset($imovel['area']['total']['valor']) ? 
@@ -391,6 +391,8 @@ r        // Converter áreas - nova estrutura da API
             $endereco['cidade'] ?? '',
             $endereco['estado'] ?? ''
         ])) ?: 'Endereço não informado';
+
+        $referenceCode = trim((string) ($imovel['referenciaImovel'] ?? $imovel['codigoImovel'] ?? ''));
         
         $data = [
             'codigo' => $imovel['codigoImovel'],
