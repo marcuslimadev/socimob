@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
 
 class PropertySyncController extends Controller
 {
-    private const RUN_STALE_MINUTES = 20;
+    private const RUN_STALE_MINUTES = 120;
 
     public function __construct(private PropertySyncService $syncService)
     {
@@ -73,6 +73,16 @@ class PropertySyncController extends Controller
         ]);
 
         try {
+            if ($this->startBackgroundSync($tenantId, $run->id)) {
+                return response()->json([
+                    'success' => true,
+                    'run_id' => $run->id,
+                    'status' => 'running',
+                    'message' => 'Sincronização iniciada em background.',
+                ], 202);
+            }
+
+            // Fallback para ambientes sem suporte a execução em background.
             $start = microtime(true);
             $result = $this->syncService->syncAll();
             $durationMs = (int) round((microtime(true) - $start) * 1000);
@@ -113,6 +123,50 @@ class PropertySyncController extends Controller
         }
     }
 
+    private function startBackgroundSync(int $tenantId, int $runId): bool
+    {
+        if (DIRECTORY_SEPARATOR !== '/' || !function_exists('exec')) {
+            return false;
+        }
+
+        $artisan = base_path('artisan');
+        if (!is_file($artisan)) {
+            return false;
+        }
+
+        $phpBinary = env('PHP_CLI_BINARY');
+        if (!$phpBinary || !is_file($phpBinary)) {
+            $candidates = [
+                '/opt/alt/php83/usr/bin/php',
+                PHP_BINARY,
+                '/usr/bin/php',
+            ];
+
+            foreach ($candidates as $candidate) {
+                if ($candidate && is_file($candidate)) {
+                    $phpBinary = $candidate;
+                    break;
+                }
+            }
+        }
+
+        if (!$phpBinary) {
+            return false;
+        }
+
+        $command = sprintf(
+            'nohup %s %s properties:sync --tenant-id=%d --run-id=%d > /dev/null 2>&1 &',
+            escapeshellarg($phpBinary),
+            escapeshellarg($artisan),
+            $tenantId,
+            $runId
+        );
+
+        exec($command, $output, $exitCode);
+
+        return $exitCode === 0;
+    }
+
     private function resolveTenantId(Request $request): ?int
     {
         $tenantId = $request->attributes->get('tenant_id')
@@ -134,9 +188,15 @@ class PropertySyncController extends Controller
             ->get();
 
         foreach ($staleRuns as $run) {
+            $durationMs = null;
+            if ($run->started_at) {
+                $durationMs = (int) $run->started_at->diffInMilliseconds(now());
+            }
+
             $run->update([
                 'status' => 'failed',
                 'finished_at' => now(),
+                'duration_ms' => $durationMs,
                 'error_message' => 'Execução interrompida por timeout/conexão. Inicie uma nova sincronização manual.',
                 'result_payload' => [
                     'success' => false,

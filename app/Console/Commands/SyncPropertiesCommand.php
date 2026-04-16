@@ -2,8 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Models\PropertySyncRun;
 use App\Services\PropertySyncService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 class SyncPropertiesCommand extends Command
 {
@@ -12,7 +14,7 @@ class SyncPropertiesCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'properties:sync {--tenant-id= : ID específico do tenant (opcional)}';
+    protected $signature = 'properties:sync {--tenant-id= : ID específico do tenant (opcional)} {--run-id= : ID de property_sync_runs para atualizar status (opcional)}';
 
     /**
      * The console command description.
@@ -32,10 +34,12 @@ class SyncPropertiesCommand extends Command
     public function handle(): int
     {
         $specificTenantId = $this->option('tenant-id');
+        $runId = $this->option('run-id');
+        $runId = $runId ? (int) $runId : null;
         
         if ($specificTenantId) {
             // Sincronizar apenas um tenant específico
-            return $this->syncTenant($specificTenantId);
+            return $this->syncTenant((int) $specificTenantId, $runId);
         }
         
         // Sincronizar todos os tenants
@@ -78,7 +82,7 @@ class SyncPropertiesCommand extends Command
     /**
      * Sincronizar um tenant específico
      */
-    private function syncTenant(int $tenantId): int
+    private function syncTenant(int $tenantId, ?int $runId = null): int
     {
         $tenant = \App\Models\Tenant::find($tenantId);
         
@@ -89,9 +93,30 @@ class SyncPropertiesCommand extends Command
         
         // Bind tenant no container
         app()->instance('tenant', $tenant);
+        $start = microtime(true);
         
         try {
             $result = $this->service->syncAll();
+            $durationMs = (int) round((microtime(true) - $start) * 1000);
+
+            if ($runId) {
+                $run = PropertySyncRun::query()
+                    ->where('id', $runId)
+                    ->where('tenant_id', $tenantId)
+                    ->first();
+
+                if ($run) {
+                    $run->update([
+                        'status' => ($result['success'] ?? false) ? 'success' : 'failed',
+                        'finished_at' => now(),
+                        'duration_ms' => $durationMs,
+                        'result_payload' => $result,
+                        'error_message' => ($result['success'] ?? false) ? null : ($result['error'] ?? 'Falha na sincronização'),
+                    ]);
+                }
+            }
+
+            Cache::forget("portal_imoveis_tenant_{$tenantId}");
             
             if (!($result['success'] ?? false)) {
                 $this->error('   ❌ Falha na sincronização.');
@@ -117,6 +142,27 @@ class SyncPropertiesCommand extends Command
             
             return 0;
         } catch (\Exception $e) {
+            if ($runId) {
+                $run = PropertySyncRun::query()
+                    ->where('id', $runId)
+                    ->where('tenant_id', $tenantId)
+                    ->first();
+
+                if ($run) {
+                    $durationMs = (int) round((microtime(true) - $start) * 1000);
+                    $run->update([
+                        'status' => 'failed',
+                        'finished_at' => now(),
+                        'duration_ms' => $durationMs,
+                        'error_message' => $e->getMessage(),
+                        'result_payload' => [
+                            'success' => false,
+                            'error' => $e->getMessage(),
+                        ],
+                    ]);
+                }
+            }
+
             $this->error('   ❌ Erro: ' . $e->getMessage());
             return 1;
         } finally {
