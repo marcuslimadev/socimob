@@ -672,6 +672,10 @@ class PropertySyncService
             ];
         }
 
+        // Regra de negócio: todo imóvel novo da sincronização deve entrar publicado.
+        $data['active'] = true;
+        $data['exibir_imovel'] = true;
+
         $property = Property::create($data);
 
         return [
