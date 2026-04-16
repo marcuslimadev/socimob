@@ -839,9 +839,9 @@ export default function ClientPortalRefined() {
         <div className="mx-auto max-w-7xl px-4 lg:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             {tenant?.logo_url || tenant?.logo ? (
-              <img src={tenant.logo_url || tenant.logo} alt={tenant?.name || 'Logo'} className="w-11 h-11 rounded-full bg-white object-contain p-1" />
+              <img src={tenant.logo_url || tenant.logo} alt={tenant?.name || 'Logo'} className="h-20 w-20 rounded-full bg-white object-contain p-1.5 md:h-22 md:w-22" />
             ) : (
-              <div className="w-11 h-11 rounded-full bg-white/10 border border-white/30 flex items-center justify-center text-white text-sm font-semibold">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/30 bg-white/10 text-lg font-semibold text-white md:h-22 md:w-22">
                 {(tenant?.name || 'IM').slice(0, 2).toUpperCase()}
               </div>
             )}
