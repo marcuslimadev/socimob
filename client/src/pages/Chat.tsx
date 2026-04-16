@@ -958,7 +958,7 @@ export default function Chat() {
 
   const renderCalendarPanel = () => (
     <div className="flex min-h-0 flex-1 flex-col bg-[radial-gradient(circle_at_top,rgba(61,120,180,0.10),transparent_34%),linear-gradient(180deg,#f2f2f0_0%,#e4e6e8_100%)]">
-      <div className="border-b border-[#d5d7d8] bg-[#f7f7f4] px-4 py-4 md:px-5">
+      <div className="border-b border-[#ffc51a] bg-[#f7f7f4] px-4 py-4 md:px-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#617489]">Atendimentos por data</p>
@@ -968,15 +968,15 @@ export default function Chat() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-[#5a646f]">
-            <span className="rounded-full border border-[#bfc4c9] bg-white px-3 py-1.5">{calendarEvents.length} atendimento(s)</span>
-            <span className="rounded-full border border-[#bfc4c9] bg-white px-3 py-1.5">Filtro atual: {contactFilters.find((filter) => filter.id === contactFilter)?.label || 'Todas'}</span>
+            <span className="rounded-full border border-[#ffc51a] bg-white px-3 py-1.5">{calendarEvents.length} atendimento(s)</span>
+            <span className="rounded-full border border-[#ffc51a] bg-white px-3 py-1.5">Filtro atual: {contactFilters.find((filter) => filter.id === contactFilter)?.label || 'Todas'}</span>
           </div>
         </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden p-3 md:p-4">
         <div className="grid h-full min-h-0 gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="chat-atendimentos-calendar min-h-0 overflow-hidden rounded-[22px] border border-[#bfc4c9] bg-white shadow-[0_16px_36px_rgba(0,0,0,0.08)]">
+          <div className="chat-atendimentos-calendar min-h-0 overflow-hidden rounded-[22px] border border-[#ffc51a] bg-white shadow-[0_16px_36px_rgba(0,0,0,0.08)]">
             {calendarEvents.length > 0 ? (
               <FullCalendar
                 plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
@@ -1007,7 +1007,7 @@ export default function Chat() {
               />
             ) : (
               <div className="flex h-full min-h-[420px] flex-col items-center justify-center gap-4 px-6 py-12 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-[22px] border border-[#bfc4c9] bg-[#132b4c] text-white shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
+                <div className="flex h-16 w-16 items-center justify-center rounded-[22px] border border-[#ffc51a] bg-[#132b4c] text-white shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
                   <Clock className="h-7 w-7" />
                 </div>
                 <div>
@@ -1020,8 +1020,8 @@ export default function Chat() {
             )}
           </div>
 
-          <aside className="flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-[#bfc4c9] bg-white shadow-[0_16px_36px_rgba(0,0,0,0.08)]">
-            <div className="border-b border-[#d5d7d8] px-4 py-4">
+          <aside className="flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-[#ffc51a] bg-white shadow-[0_16px_36px_rgba(0,0,0,0.08)]">
+            <div className="border-b border-[#ffc51a] px-4 py-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#617489]">Abrir chat</p>
               <h3 className="mt-1 text-lg font-semibold text-[#132b4c]">Atendimentos recentes</h3>
               <p className="mt-1 text-sm leading-6 text-[#5a646f]">Selecione um atendimento para ir direto à conversa.</p>
@@ -1038,14 +1038,14 @@ export default function Chat() {
                         key={`calendar-link-${contact.id}`}
                         type="button"
                         onClick={() => openConversation(contact.id)}
-                        className="w-full rounded-[18px] border border-[#d5d7d8] bg-[#f8fafc] px-3 py-3 text-left transition hover:border-[#4c83bc] hover:bg-[#eef5fb]"
+                        className="w-full rounded-[18px] border border-[#ffc51a] bg-[#f8fafc] px-3 py-3 text-left transition hover:border-[#ff9f0a] hover:bg-[#eef5fb]"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-[#132b4c]">{contact.name}</p>
                             <p className="mt-0.5 truncate text-[12px] text-[#5a646f]">{contact.phone || 'Telefone não informado'}</p>
                           </div>
-                          <span className="rounded-full border border-[#cdd8e6] bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2d6fab]">
+                          <span className="rounded-full border border-[#ffc51a] bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2d6fab]">
                             Abrir
                           </span>
                         </div>
@@ -1331,10 +1331,10 @@ export default function Chat() {
             </aside>
             <main className={cn('min-h-0 flex-1 flex-col bg-[#f2f2f0]', showMobileContacts ? 'hidden md:flex' : 'flex')}>
               {activeView === 'calendar' ? renderCalendarPanel() : !selectedContact ? (
-                <div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_top,rgba(61,120,180,0.14),transparent_40%),linear-gradient(180deg,#f2f2f0_0%,#e4e6e8_100%)] p-8"><div className="max-w-xl text-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-[#9b9b98]/40 bg-[#132b4c] text-white shadow-[0_12px_28px_rgba(0,0,0,0.16)]"><MessageCircle className="h-7 w-7" /></div><h2 className="mt-6 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-[#132b4c]">Selecione uma conversa</h2><p className="mt-3 text-sm leading-7 text-[#4d5560] md:text-[15px]">A fila fica na lateral. O histórico abre aqui no centro, com leitura limpa e resposta rápida.</p></div></div>
+                <div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_top,rgba(61,120,180,0.14),transparent_40%),linear-gradient(180deg,#f2f2f0_0%,#e4e6e8_100%)] p-8"><div className="max-w-xl text-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-[#ffc51a]/55 bg-[#132b4c] text-white shadow-[0_12px_28px_rgba(0,0,0,0.16)]"><MessageCircle className="h-7 w-7" /></div><h2 className="mt-6 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-[#132b4c]">Selecione uma conversa</h2><p className="mt-3 text-sm leading-7 text-[#4d5560] md:text-[15px]">A fila fica na lateral. O histórico abre aqui no centro, com leitura limpa e resposta rápida.</p></div></div>
               ) : (
                 <>
-                  <header className="border-b border-[#d5d7d8] bg-[#f7f7f4] px-4 py-3 md:px-5">
+                  <header className="border-b border-[#ffc51a] bg-[#f7f7f4] px-4 py-3 md:px-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 items-start gap-3">
                         <Button variant="ghost" size="icon" className="mt-0.5 rounded-full text-[#132b4c] hover:bg-[#132b4c]/8 md:hidden" onClick={() => setShowMobileContacts(true)}><ArrowLeft className="h-5 w-5" /></Button>
@@ -1356,7 +1356,7 @@ export default function Chat() {
                                 disabled={isUpdatingLeadStatus}
                                 className={cn(
                                   'h-10 rounded-xl border px-3 text-sm font-semibold outline-none transition disabled:cursor-not-allowed disabled:opacity-70',
-                                  selectedLeadStatusMeta?.selectClass || 'border-[#bfc4c9] bg-white text-[#132b4c] focus:border-[#2d6fab] focus:ring-4 focus:ring-[#2d6fab]/15'
+                                  selectedLeadStatusMeta?.selectClass || 'border-[#ffc51a] bg-white text-[#132b4c] focus:border-[#ff9f0a] focus:ring-4 focus:ring-[#ffc51a]/20'
                                 )}
                               >
                                 {LEAD_STATUS_OPTIONS.map((option) => (
@@ -1366,42 +1366,42 @@ export default function Chat() {
                                 ))}
                               </select>
                             </label>
-                            {isUpdatingLeadStatus && <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#bfc4c9] bg-white px-3 text-sm text-[#5a646f]"><Loader2 className="h-4 w-4 animate-spin" />Salvando etapa...</span>}
+                            {isUpdatingLeadStatus && <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#ffc51a] bg-white px-3 text-sm text-[#5a646f]"><Loader2 className="h-4 w-4 animate-spin" />Salvando etapa...</span>}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2"><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#bfc4c9] bg-white text-[#132b4c] hover:bg-[#ececea]"><Phone className="h-4 w-4" /></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#bfc4c9] bg-white text-[#132b4c] hover:bg-[#ececea]"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><DropdownMenuItem disabled={!canDeleteConversation || isDeletingConversation} variant="destructive" onSelect={(event) => { event.preventDefault(); if (!canDeleteConversation || isDeletingConversation) return; setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" />Excluir conversa</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
+                      <div className="flex items-center gap-2"><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#ffc51a] bg-white text-[#132b4c] hover:bg-[#ececea]"><Phone className="h-4 w-4" /></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#ffc51a] bg-white text-[#132b4c] hover:bg-[#ececea]"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><DropdownMenuItem disabled={!canDeleteConversation || isDeletingConversation} variant="destructive" onSelect={(event) => { event.preventDefault(); if (!canDeleteConversation || isDeletingConversation) return; setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" />Excluir conversa</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
                     </div>
-                    {observacoesText && <div className="mt-3 flex items-start gap-3 rounded-2xl border border-[#bfc4c9] bg-white px-3.5 py-2.5 text-sm text-[#4d5560]"><div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[#132b4c] text-white"><Info className="h-4 w-4" /></div><div><p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#617489]">Observações do lead</p><p className="mt-1 whitespace-pre-wrap leading-6">{observacoesText}</p></div></div>}
+                    {observacoesText && <div className="mt-3 flex items-start gap-3 rounded-2xl border border-[#ffc51a] bg-white px-3.5 py-2.5 text-sm text-[#4d5560]"><div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[#132b4c] text-white"><Info className="h-4 w-4" /></div><div><p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#617489]">Observações do lead</p><p className="mt-1 whitespace-pre-wrap leading-6">{observacoesText}</p></div></div>}
                   </header>
                   <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
                     <div className="absolute inset-0" style={{ backgroundImage: `linear-gradient(180deg, rgba(242,242,240,0.96), rgba(229,231,232,0.98)), url("${chatPatternDataUrl}")`, backgroundSize: 'auto, 220px 220px' }} />
                     <ScrollArea ref={scrollAreaRef} className="relative min-h-0 flex-1">
                       <div className="mx-auto flex h-full w-full max-w-[calc(100%-1rem)] flex-col gap-4 px-3 py-4 md:max-w-[calc(100%-2rem)] md:px-5 md:py-5">
-                        {searchTerm && <div className="flex items-center justify-between gap-3 rounded-full border border-[#bfc4c9] bg-white px-4 py-1.5 text-xs text-[#4d5560] shadow-[0_8px_20px_rgba(0,0,0,0.05)]"><span>Filtrando por <strong className="font-semibold text-[#132b4c]">"{searchTerm}"</strong></span><button type="button" onClick={() => setSearchTerm('')} className="font-semibold text-[#ff1d2d]">Limpar</button></div>}
+                        {searchTerm && <div className="flex items-center justify-between gap-3 rounded-full border border-[#ffc51a] bg-white px-4 py-1.5 text-xs text-[#4d5560] shadow-[0_8px_20px_rgba(0,0,0,0.05)]"><span>Filtrando por <strong className="font-semibold text-[#132b4c]">"{searchTerm}"</strong></span><button type="button" onClick={() => setSearchTerm('')} className="font-semibold text-[#ff1d2d]">Limpar</button></div>}
                         {isLoadingMessages ? (
                           <div className="flex justify-center py-12"><Loader2 className="h-7 w-7 animate-spin text-[#2d6fab]" /></div>
                         ) : filteredMessages.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center gap-4 py-14 text-center"><div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-[#bfc4c9] bg-white"><MessageCircle className="h-7 w-7 text-[#2d6fab]" /></div><div><p className="font-medium text-[#132b4c]">{searchTerm ? 'Nenhum trecho encontrado' : 'Nenhuma mensagem ainda'}</p><p className="mt-1 text-sm text-[#5a646f]">{searchTerm ? 'Tente outro termo para localizar a conversa.' : 'Envie uma mensagem para iniciar o atendimento.'}</p></div></div>
+                          <div className="flex flex-col items-center justify-center gap-4 py-14 text-center"><div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-[#ffc51a] bg-white"><MessageCircle className="h-7 w-7 text-[#2d6fab]" /></div><div><p className="font-medium text-[#132b4c]">{searchTerm ? 'Nenhum trecho encontrado' : 'Nenhuma mensagem ainda'}</p><p className="mt-1 text-sm text-[#5a646f]">{searchTerm ? 'Tente outro termo para localizar a conversa.' : 'Envie uma mensagem para iniciar o atendimento.'}</p></div></div>
                         ) : (
                           groupedFilteredMessages.map((group) => (
                             <div key={group.date} className="space-y-4">
-                              <div className="flex items-center justify-center"><div className="rounded-full border border-[#bfc4c9] bg-white/92 px-3 py-1 text-[11px] font-medium text-[#4d5560]">{group.date}</div></div>
+                              <div className="flex items-center justify-center"><div className="rounded-full border border-[#ffc51a] bg-white/92 px-3 py-1 text-[11px] font-medium text-[#4d5560]">{group.date}</div></div>
                               {group.messages.map((message) => {
                                 const isUser = message.sender === 'user';
                                 const senderMeta = getMessageSenderMeta(message);
                                 const messageTextContent = getMessageDisplayText(message);
                                 return (
                                   <div key={message.id} className={cn('flex gap-2.5', isUser ? 'justify-end' : 'justify-start')}>
-                                    {!isUser && <div className="mt-7 hidden h-8 w-8 flex-shrink-0 items-center justify-center rounded-2xl border border-[#bfc4c9] bg-white text-[#132b4c] shadow-[0_8px_18px_rgba(0,0,0,0.05)] md:flex">{message.senderKind === 'assistant' ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}</div>}
+                                    {!isUser && <div className="mt-7 hidden h-8 w-8 flex-shrink-0 items-center justify-center rounded-2xl border border-[#ffc51a] bg-white text-[#132b4c] shadow-[0_8px_18px_rgba(0,0,0,0.05)] md:flex">{message.senderKind === 'assistant' ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}</div>}
                                     <div className={cn('flex max-w-[92%] flex-col md:max-w-[75%]', isUser && 'items-end')}>
                                       <div className={cn('mb-1.5 inline-flex items-center gap-2 px-1 text-[11px] font-semibold', isUser ? 'text-[#2d6fab]' : 'text-[#4d5560]')}>{message.senderKind === 'assistant' && <Bot className="h-3.5 w-3.5" />}<span>{senderMeta.label}</span>{senderMeta.context && <span className="text-[#8a8e93]">{senderMeta.context}</span>}</div>
-                                      <div className={cn('overflow-hidden rounded-[22px] border px-3.5 py-3 shadow-[0_12px_24px_rgba(0,0,0,0.06)]', isUser ? 'border-[#2d6fab] bg-[#2d6fab] text-white' : 'border-[#bfc4c9] bg-white text-[#0a0a12]')}>
+                                      <div className={cn('overflow-hidden rounded-[22px] border px-3.5 py-3 shadow-[0_12px_24px_rgba(0,0,0,0.06)]', isUser ? 'border-[#2d6fab] bg-[#2d6fab] text-white' : 'border-[#ffc51a] bg-white text-[#0a0a12]')}>
                                         <div className="space-y-2">
                                           {isAudioMessage(message) && message.mediaUrl && <audio controls className="w-full max-w-xs"><source src={getMediaUrl(message.mediaUrl)} /></audio>}
-                                          {isImageMessage(message) && message.mediaUrl && <img src={getMediaUrl(message.mediaUrl)} alt="Imagem enviada" loading="lazy" className={cn('w-full max-w-sm rounded-[18px] border object-contain', isUser ? 'border-white/20 bg-white/10' : 'border-[#d5d7d8] bg-[#ececea]')} />}
-                                          {isVideoMessage(message) && message.mediaUrl && <video controls className={cn('w-full max-w-sm rounded-[18px] border', isUser ? 'border-white/20 bg-black' : 'border-[#d5d7d8] bg-black')} preload="metadata"><source src={getMediaUrl(message.mediaUrl)} />Vídeo não suportado pelo navegador.</video>}
-                                          {(isDocumentMessage(message) || isTwilioGenericMedia(message)) && message.mediaUrl && <a href={getMediaUrl(message.mediaUrl)} target="_blank" rel="noopener noreferrer" className={cn('flex max-w-sm items-center gap-3 rounded-[18px] border p-3 transition-colors', isUser ? 'border-white/20 bg-white/10 hover:bg-white/14' : 'border-[#d5d7d8] bg-[#ececea] hover:bg-[#e0e0dd]')}><div className={cn('flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl', isUser ? 'bg-white/14' : 'bg-white text-[#132b4c]')}><FileText className="h-5 w-5" /></div><div className="min-w-0 flex-1"><p className={cn('truncate text-sm font-medium', isUser ? 'text-white' : 'text-[#0a0a12]')}>{getDocumentLabel(message)}</p><p className={cn('text-xs', isUser ? 'text-white/70' : 'text-[#5a646f]')}>Clique para abrir</p></div><ExternalLink className={cn('h-4 w-4 flex-shrink-0', isUser ? 'text-white/75' : 'text-[#5a646f]')} /></a>}
+                                          {isImageMessage(message) && message.mediaUrl && <img src={getMediaUrl(message.mediaUrl)} alt="Imagem enviada" loading="lazy" className={cn('w-full max-w-sm rounded-[18px] border object-contain', isUser ? 'border-white/20 bg-white/10' : 'border-[#ffc51a] bg-[#ececea]')} />}
+                                          {isVideoMessage(message) && message.mediaUrl && <video controls className={cn('w-full max-w-sm rounded-[18px] border', isUser ? 'border-white/20 bg-black' : 'border-[#ffc51a] bg-black')} preload="metadata"><source src={getMediaUrl(message.mediaUrl)} />Vídeo não suportado pelo navegador.</video>}
+                                          {(isDocumentMessage(message) || isTwilioGenericMedia(message)) && message.mediaUrl && <a href={getMediaUrl(message.mediaUrl)} target="_blank" rel="noopener noreferrer" className={cn('flex max-w-sm items-center gap-3 rounded-[18px] border p-3 transition-colors', isUser ? 'border-white/20 bg-white/10 hover:bg-white/14' : 'border-[#ffc51a] bg-[#ececea] hover:bg-[#e0e0dd]')}><div className={cn('flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl', isUser ? 'bg-white/14' : 'bg-white text-[#132b4c]')}><FileText className="h-5 w-5" /></div><div className="min-w-0 flex-1"><p className={cn('truncate text-sm font-medium', isUser ? 'text-white' : 'text-[#0a0a12]')}>{getDocumentLabel(message)}</p><p className={cn('text-xs', isUser ? 'text-white/70' : 'text-[#5a646f]')}>Clique para abrir</p></div><ExternalLink className={cn('h-4 w-4 flex-shrink-0', isUser ? 'text-white/75' : 'text-[#5a646f]')} /></a>}
                                           {messageTextContent && <p className={cn('whitespace-pre-wrap break-words text-[14px] leading-6', isUser ? 'text-white' : 'text-[#0a0a12]')}>{highlightText(messageTextContent, searchTerm)}</p>}
                                           {message.messageType === 'audio' && message.transcription && <p className={cn('text-xs leading-5', isUser ? 'text-white/78' : 'text-[#4d5560]')}><span className="font-semibold">Transcrição:</span> {highlightText(message.transcription, searchTerm)}</p>}
                                         </div>
@@ -1417,12 +1417,12 @@ export default function Chat() {
                         <div ref={messagesEndRef} />
                       </div>
                     </ScrollArea>
-                    <div className="border-t border-[#d5d7d8] bg-[#f7f7f4] px-4 py-3 md:px-5">
+                    <div className="border-t border-[#ffc51a] bg-[#f7f7f4] px-4 py-3 md:px-5">
                       <div className="mx-auto flex w-full max-w-[calc(100%-1rem)] flex-col gap-1.5 md:max-w-[calc(100%-2rem)]">
                         <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#5a646f]"><span>{selectedContact.needsHumanIntervention ? 'Conversa marcada para atendimento humano.' : 'Resposta direta e contexto completo.'}</span><span>Enter para enviar</span></div>
-                        <div className="flex items-end gap-2.5 rounded-[24px] border border-[#aeb6bf] bg-white p-1.5 shadow-[0_14px_30px_rgba(0,0,0,0.06)]">
+                        <div className="flex items-end gap-2.5 rounded-[24px] border border-[#ffc51a] bg-white p-1.5 shadow-[0_14px_30px_rgba(0,0,0,0.06)]">
                           <Button variant="ghost" size="icon" className="h-10 w-10 flex-shrink-0 rounded-full text-[#617489] hover:bg-[#ececea] hover:text-[#132b4c]"><Paperclip className="h-5 w-5" /></Button>
-                          <div className="relative flex-1 rounded-[18px] border border-[#d7dbe0] bg-[#f8fafc] px-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]"><input ref={inputRef} type="text" value={messageText} onChange={(e) => setMessageText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} placeholder="Escreva uma resposta objetiva..." className="h-10 w-full rounded-[18px] border-0 bg-transparent px-3 text-sm text-[#0a0a12] placeholder:text-[#8a8e93] outline-none" disabled={isSending} /></div>
+                          <div className="relative flex-1 rounded-[18px] border border-[#ffc51a] bg-[#f8fafc] px-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]"><input ref={inputRef} type="text" value={messageText} onChange={(e) => setMessageText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} placeholder="Escreva uma resposta objetiva..." className="h-10 w-full rounded-[18px] border-0 bg-transparent px-3 text-sm text-[#0a0a12] placeholder:text-[#8a8e93] outline-none" disabled={isSending} /></div>
                           <Button onClick={handleSendMessage} disabled={!messageText.trim() || isSending} size="icon" className="h-10 w-10 flex-shrink-0 rounded-full bg-[#ff1d2d] text-white shadow-[0_12px_24px_rgba(255,29,45,0.24)] hover:bg-[#e31626] disabled:shadow-none">{isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
                         </div>
                       </div>
