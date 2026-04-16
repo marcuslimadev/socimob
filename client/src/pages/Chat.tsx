@@ -115,11 +115,30 @@ export default function Chat() {
     return doc.body.textContent || '';
   };
 
+  const escapeRegExpForNotes = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   const normalizeObservacoes = (value?: string | null) => {
     if (!value) return '';
     const withBreaks = value.replace(/<\s*br\s*\/?>/gi, '\n');
     const withoutTags = withBreaks.replace(/<\/?[^>]+(>|$)/g, '');
-    return decodeHtml(withoutTags).trim();
+    let normalized = decodeHtml(withoutTags).replace(/\r\n?/g, '\n').trim();
+
+    // Legacy payloads were stored in one line; force visual sections for better readability.
+    const sectionMarkers = [
+      '💬 Mensagem:',
+      '🔗 Origem:',
+      '🏠 Imóvel:',
+      '🚗 Veículo:',
+      '📋 Referência:',
+      '📝 Anúncio:',
+    ];
+
+    sectionMarkers.forEach((marker) => {
+      const markerRegex = new RegExp(`\\s*${escapeRegExpForNotes(marker)}`, 'g');
+      normalized = normalized.replace(markerRegex, (match, offset) => (offset === 0 ? marker : `\n${marker}`));
+    });
+
+    return normalized.replace(/\n{3,}/g, '\n\n').trim();
   };
 
   const getClassificationMeta = (value?: string | null) => {
