@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Cache;
 
 class PropertySyncController extends Controller
 {
+    private const RUN_STALE_MINUTES = 20;
+
     public function __construct(private PropertySyncService $syncService)
     {
     }
@@ -21,6 +23,8 @@ class PropertySyncController extends Controller
         if (!$tenantId) {
             return response()->json(['message' => 'Tenant não identificado'], 400);
         }
+
+        $this->markStaleRunningRunsAsFailed($tenantId);
 
         $perPage = (int) $request->query('per_page', 20);
         $perPage = max(5, min(100, $perPage));
@@ -38,6 +42,23 @@ class PropertySyncController extends Controller
         $tenantId = $this->resolveTenantId($request);
         if (!$tenantId) {
             return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 400);
+        }
+
+        $this->markStaleRunningRunsAsFailed($tenantId);
+
+        $runningRun = PropertySyncRun::query()
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'running')
+            ->latest('id')
+            ->first();
+
+        if ($runningRun) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Já existe uma sincronização em andamento. Aguarde a conclusão para iniciar outra.',
+                'run_id' => $runningRun->id,
+                'status' => 'running',
+            ], 409);
         }
 
         $user = $request->user();
@@ -102,5 +123,26 @@ class PropertySyncController extends Controller
         }
 
         return (int) $tenantId;
+    }
+
+    private function markStaleRunningRunsAsFailed(int $tenantId): void
+    {
+        $staleRuns = PropertySyncRun::query()
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'running')
+            ->where('started_at', '<=', now()->subMinutes(self::RUN_STALE_MINUTES))
+            ->get();
+
+        foreach ($staleRuns as $run) {
+            $run->update([
+                'status' => 'failed',
+                'finished_at' => now(),
+                'error_message' => 'Execução interrompida por timeout/conexão. Inicie uma nova sincronização manual.',
+                'result_payload' => [
+                    'success' => false,
+                    'error' => 'Execução interrompida por timeout/conexão.',
+                ],
+            ]);
+        }
     }
 }
