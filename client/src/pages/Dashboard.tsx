@@ -169,14 +169,14 @@ export default function Dashboard() {
         {
           label: 'Assinaturas pendentes',
           value: stats.assinaturas.pendentes,
-          helper: `${formatNumber(stats.assinaturas.assinados)} concluidas`,
+          helper: `${formatNumber(stats.assinaturas.assinados)} concluídas`,
           tone: stats.assinaturas.pendentes > 0 ? 'alert' : 'good',
           icon: FileSignature,
         },
         {
-          label: 'Contestacoes apontadas',
+          label: 'Contestações apontadas',
           value: stats.contestacoes.apontadas,
-          helper: `${formatNumber(stats.contestacoes.total)} registros no periodo`,
+          helper: `${formatNumber(stats.contestacoes.total)} registros no período`,
           tone: stats.contestacoes.apontadas > 0 ? 'alert' : 'good',
           icon: CircleAlert,
         },
@@ -195,7 +195,7 @@ export default function Dashboard() {
           icon: Target,
         },
         {
-          label: 'Imoveis ativos',
+          label: 'Imóveis ativos',
           value: stats.imoveis.ativos,
           total: stats.imoveis.total,
           percent: summaryMetrics?.inventoryRate ?? 0,
@@ -204,7 +204,7 @@ export default function Dashboard() {
           icon: Home,
         },
         {
-          label: 'Assinaturas concluidas',
+          label: 'Assinaturas concluídas',
           value: stats.assinaturas.assinados,
           total: stats.assinaturas.total,
           percent: summaryMetrics?.signatureRate ?? 0,
@@ -517,12 +517,12 @@ export default function Dashboard() {
 
               <div className="max-w-3xl">
                 <h1 className="mb-2 text-2xl font-semibold leading-tight text-white sm:text-3xl md:text-4xl">
-                  {isAdmin ? 'Painel de comando da operacao' : `Bom trabalho, ${firstName}`}
+                  {isAdmin ? 'Painel de comando da operação' : `Bom trabalho, ${firstName}`}
                 </h1>
                 <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
                   {isAdmin
-                    ? 'Visao executiva do pipeline comercial, gargalos operacionais e atividade recente do tenant em um unico fluxo.'
-                    : 'Acompanhe o ritmo da sua carteira, o que exige resposta imediata e o historico mais recente da operacao.'}
+                    ? 'Visão executiva do pipeline comercial, gargalos operacionais e atividade recente do tenant em um único fluxo.'
+                    : 'Acompanhe o ritmo da sua carteira, o que exige resposta imediata e o histórico mais recente da operação.'}
                 </p>
               </div>
 
@@ -538,20 +538,20 @@ export default function Dashboard() {
 
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs uppercase tracking-[0.2em] text-slate-400">Fechamento do mes</span>
+                    <span className="text-xs uppercase tracking-[0.2em] text-slate-400">Fechamento do mês</span>
                     <TrendingUp size={16} className="text-emerald-300" />
                   </div>
                   <div className="text-3xl font-semibold text-white">{summaryMetrics ? `${summaryMetrics.performanceRate}%` : '0%'}</div>
-                  <p className="mt-1 text-xs text-slate-400">{formatNumber(stats?.leads.fechados_mes ?? 0)} leads fechados neste mes</p>
+                  <p className="mt-1 text-xs text-slate-400">{formatNumber(stats?.leads.fechados_mes ?? 0)} leads fechados neste mês</p>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs uppercase tracking-[0.2em] text-slate-400">Inventario ativo</span>
+                    <span className="text-xs uppercase tracking-[0.2em] text-slate-400">Inventário ativo</span>
                     <Building2 size={16} className="text-amber-300" />
                   </div>
                   <div className="text-3xl font-semibold text-white">{summaryMetrics ? `${summaryMetrics.inventoryRate}%` : '0%'}</div>
-                  <p className="mt-1 text-xs text-slate-400">{formatNumber(stats?.imoveis.ativos ?? 0)} de {formatNumber(stats?.imoveis.total ?? 0)} imoveis publicados</p>
+                  <p className="mt-1 text-xs text-slate-400">{formatNumber(stats?.imoveis.ativos ?? 0)} de {formatNumber(stats?.imoveis.total ?? 0)} imóveis publicados</p>
                 </div>
               </div>
 
@@ -559,7 +559,7 @@ export default function Dashboard() {
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Pulso operacional</p>
-                    <h2 className="mt-1 text-sm font-semibold text-white sm:text-base">Highcharts de ritmo comercial e execucao</h2>
+                    <h2 className="mt-1 text-sm font-semibold text-white sm:text-base">Highcharts de ritmo comercial e execução</h2>
                   </div>
                   <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-slate-300">
                     leitura dos principais gargalos agora
@@ -574,7 +574,7 @@ export default function Dashboard() {
             <div className="glass-panel rounded-[24px] border border-white/10 p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Saude comercial</p>
+                  <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Saúde comercial</p>
                   <h2 className="mt-1 text-lg font-semibold text-foreground">Indicadores-chave</h2>
                 </div>
                 <ArrowUpRight size={18} className="text-muted-foreground" />
@@ -618,18 +618,18 @@ export default function Dashboard() {
 
             <div className="glass-panel rounded-[24px] border border-white/10 p-5">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Base ativa</p>
-              <h2 className="mt-1 text-lg font-semibold text-foreground">Composicao do cadastro</h2>
+              <h2 className="mt-1 text-lg font-semibold text-foreground">Composição do cadastro</h2>
               <div className="mt-4 space-y-3">
                 <div className="rounded-2xl bg-white/5 p-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">Pessoas fisicas</span>
+                    <span className="text-sm text-foreground">Pessoas físicas</span>
                     <span className="text-sm font-medium text-foreground">{summaryMetrics ? `${summaryMetrics.peopleMixRate}%` : '0%'}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{formatNumber(stats?.pessoas.fisicas ?? 0)} de {formatNumber(stats?.pessoas.total ?? 0)} cadastros ativos</p>
                 </div>
                 <div className="rounded-2xl bg-white/5 p-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">Pessoas juridicas</span>
+                    <span className="text-sm text-foreground">Pessoas jurídicas</span>
                     <span className="text-sm font-medium text-foreground">{formatNumber(stats?.pessoas.juridicas ?? 0)}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">carteira empresarial e parceiros cadastrados</p>
@@ -644,7 +644,7 @@ export default function Dashboard() {
             <div className="mb-4 flex items-end justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Panorama operacional</p>
-                <h2 className="mt-1 text-lg font-semibold text-foreground">Leitura rapida do tenant</h2>
+                <h2 className="mt-1 text-lg font-semibold text-foreground">Leitura rápida do tenant</h2>
               </div>
               <p className="text-xs text-muted-foreground">Atualizado em tempo real</p>
             </div>
@@ -654,7 +654,7 @@ export default function Dashboard() {
           <div className="glass-panel rounded-[24px] border border-white/10 p-4 sm:p-5">
             <div className="mb-4">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Foco agora</p>
-              <h2 className="mt-1 text-lg font-semibold text-foreground">O que pede atencao imediata</h2>
+              <h2 className="mt-1 text-lg font-semibold text-foreground">O que pede atenção imediata</h2>
             </div>
 
             <div className="space-y-3">
@@ -731,16 +731,16 @@ export default function Dashboard() {
               <HighchartsReact highcharts={Highcharts} options={atendimentosCorretorChart} />
             ) : (
               <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
-                Nenhum atendimento com corretor atribuido
+                Nenhum atendimento com corretor atribuído
               </div>
             )}
           </div>
 
           <div className="glass-panel rounded-[24px] border border-white/10 p-4 sm:p-5">
             <div className="mb-3">
-              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Inventario</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Inventário</p>
               <h2 className="mt-1 text-base font-semibold text-foreground">Captações por corretor</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">Imoveis captados por cada corretor no inventario</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Imóveis captados por cada corretor no inventário</p>
             </div>
             {captacoesCorretor && captacoesCorretor.length > 0 ? (
               <HighchartsReact highcharts={Highcharts} options={captacoesCorretorChart} />
@@ -758,17 +758,17 @@ export default function Dashboard() {
               <div>
                 <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Portal do cliente</p>
                 <h2 className="mt-1 text-base font-semibold text-foreground">Acessos ao portal por dia</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">Pageviews registrados nos ultimos 30 dias</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Pageviews registrados nos últimos 30 dias</p>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-muted-foreground">
-                ultimos 30 dias
+                últimos 30 dias
               </div>
             </div>
             {acessosPortal && acessosPortal.length > 0 ? (
               <HighchartsReact highcharts={Highcharts} options={acessosPortalChart} />
             ) : (
               <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
-                Nenhum acesso registrado neste periodo
+                Nenhum acesso registrado neste período
               </div>
             )}
           </div>
@@ -787,7 +787,7 @@ export default function Dashboard() {
                 </p>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground">
-                leitura em fluxo continuo
+                leitura em fluxo contínuo
               </div>
             </div>
             <TimelineFeed />

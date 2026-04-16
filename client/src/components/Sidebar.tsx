@@ -123,7 +123,6 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [openDesktopSectionId, setOpenDesktopSectionId] = useState<string | null>(null);
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
-  const [leadsCount, setLeadsCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [hiddenSidebarKeys, setHiddenSidebarKeys] = useState<string[]>([]);
   const { theme, setTheme } = useTheme();
@@ -230,30 +229,28 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       }
 
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        scheduleNextBadgePoll(120000);
+        scheduleNextBadgePoll(60000);
         return;
       }
 
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
-        scheduleNextBadgePoll(120000);
+        scheduleNextBadgePoll(60000);
         return;
       }
 
       badgePollingInFlightRef.current = true;
 
       try {
-        const leadsResult = await api.get('/leads/stats');
-        if (leadsResult.data?.success && leadsResult.data?.data?.novos !== undefined) {
-          setLeadsCount(leadsResult.data.data.novos);
-        }
-
         const messagesResult = await api.get('/admin/conversas/fila/estatisticas');
-        if (messagesResult.data?.success && messagesResult.data?.data?.aguardando !== undefined) {
+        if (messagesResult.data?.success && messagesResult.data?.data?.mensagens_nao_lidas !== undefined) {
+          setUnreadMessagesCount(messagesResult.data.data.mensagens_nao_lidas);
+        } else if (messagesResult.data?.success && messagesResult.data?.data?.aguardando !== undefined) {
+          // Compatibilidade com payload antigo.
           setUnreadMessagesCount(messagesResult.data.data.aguardando);
         }
 
         badgePollingFailureCountRef.current = 0;
-        scheduleNextBadgePoll(60000);
+        scheduleNextBadgePoll(15000);
       } catch (error) {
         const failureCount = badgePollingFailureCountRef.current + 1;
         badgePollingFailureCountRef.current = failureCount;
@@ -262,7 +259,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           const delayMs = Math.min(60000 * Math.max(failureCount, 1), 5 * 60 * 1000);
           scheduleNextBadgePoll(delayMs);
         } else {
-          scheduleNextBadgePoll(120000);
+          scheduleNextBadgePoll(60000);
         }
       } finally {
         badgePollingInFlightRef.current = false;
@@ -282,13 +279,19 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       }
     };
 
+    const handleChatUnreadChanged = () => {
+      void loadBadgeCounts();
+    };
+
     window.addEventListener('online', handleOnline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('socimob:chat-unread-changed', handleChatUnreadChanged);
 
     return () => {
       clearBadgePollingTimer();
       window.removeEventListener('online', handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('socimob:chat-unread-changed', handleChatUnreadChanged);
     };
   }, []);
 
@@ -314,7 +317,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           icon: <Users size={16} />,
           label: 'Chat',
           href: '/crm',
-          badge: (leadsCount || 0) + (unreadMessagesCount || 0) || undefined,
+          badge: unreadMessagesCount || undefined,
         },
         { key: 'pessoas', icon: <UserRound size={16} />, label: 'Pessoas', href: '/pessoas' },
         { key: 'ads', icon: <Zap size={16} />, label: 'Marketing / Anúncios', href: '/ads' },

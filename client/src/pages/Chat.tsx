@@ -1,4 +1,11 @@
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import listPlugin from '@fullcalendar/list';
+import interactionPlugin from '@fullcalendar/interaction';
+import ptBrLocale from '@fullcalendar/core/locales/pt-br';
+import type { EventClickArg, EventContentArg } from '@fullcalendar/core';
 import {
   Send,
   Phone,
@@ -44,6 +51,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import './chat-calendar.css';
 
 interface Message {
   id: string;
@@ -74,10 +82,25 @@ interface Contact {
   needsHumanIntervention?: boolean;
   observacoes?: string | null;
   classificacao?: string | null;
+  leadStatus?: LeadStatus | null;
+  startedAt?: string | null;
+  lastActivityAt?: string | null;
+  createdAt?: string | null;
+  status?: string | null;
 }
 
+type LeadStatus = 'novo' | 'em_atendimento' | 'qualificado' | 'proposta' | 'fechado' | 'perdido';
 type ContactFilter = 'all' | 'unread' | 'priority';
 const CONTACTS_BATCH_SIZE = 40;
+type ChatViewMode = 'chat' | 'calendar';
+const LEAD_STATUS_OPTIONS: Array<{ value: LeadStatus; label: string }> = [
+  { value: 'novo', label: 'Novo' },
+  { value: 'em_atendimento', label: 'Em atendimento' },
+  { value: 'qualificado', label: 'Qualificado' },
+  { value: 'proposta', label: 'Proposta' },
+  { value: 'fechado', label: 'Fechado' },
+  { value: 'perdido', label: 'Perdido' },
+];
 
 export default function Chat() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
@@ -91,9 +114,11 @@ export default function Chat() {
   const [showMobileContacts, setShowMobileContacts] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [contactFilter, setContactFilter] = useState<ContactFilter>('all');
+  const [activeView, setActiveView] = useState<ChatViewMode>('chat');
   const [contactsRenderLimit, setContactsRenderLimit] = useState(CONTACTS_BATCH_SIZE);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
+  const [isUpdatingLeadStatus, setIsUpdatingLeadStatus] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -177,6 +202,81 @@ export default function Chat() {
     };
   };
 
+  const getLeadStatusMeta = (value?: string | null) => {
+    const normalized = value?.trim().toLowerCase() as LeadStatus | undefined;
+
+    switch (normalized) {
+      case 'novo':
+        return {
+          value: 'novo' as LeadStatus,
+          label: 'Novo',
+          badgeClass: 'border-[#85b8ff]/55 bg-[#dbeafe] text-[#1d4ed8]',
+          dotClass: 'bg-[#2563eb]',
+          selectClass: 'border-[#85b8ff] bg-[#dbeafe] text-[#1d4ed8] focus:border-[#2563eb] focus:ring-[#2563eb]/20',
+          calendarBackground: '#2563eb',
+          calendarBorder: '#1d4ed8',
+          calendarText: '#ffffff',
+        };
+      case 'em_atendimento':
+        return {
+          value: 'em_atendimento' as LeadStatus,
+          label: 'Em atendimento',
+          badgeClass: 'border-[#ffd27a]/55 bg-[#fff4d6] text-[#b45309]',
+          dotClass: 'bg-[#d97706]',
+          selectClass: 'border-[#ffd27a] bg-[#fff4d6] text-[#b45309] focus:border-[#d97706] focus:ring-[#d97706]/20',
+          calendarBackground: '#f59e0b',
+          calendarBorder: '#b45309',
+          calendarText: '#050308',
+        };
+      case 'qualificado':
+        return {
+          value: 'qualificado' as LeadStatus,
+          label: 'Qualificado',
+          badgeClass: 'border-[#d3b5ff]/55 bg-[#f3e8ff] text-[#7e22ce]',
+          dotClass: 'bg-[#9333ea]',
+          selectClass: 'border-[#d3b5ff] bg-[#f3e8ff] text-[#7e22ce] focus:border-[#9333ea] focus:ring-[#9333ea]/20',
+          calendarBackground: '#9333ea',
+          calendarBorder: '#7e22ce',
+          calendarText: '#ffffff',
+        };
+      case 'proposta':
+        return {
+          value: 'proposta' as LeadStatus,
+          label: 'Proposta',
+          badgeClass: 'border-[#8ee3ef]/55 bg-[#d9fbff] text-[#0f766e]',
+          dotClass: 'bg-[#06b6d4]',
+          selectClass: 'border-[#8ee3ef] bg-[#d9fbff] text-[#0f766e] focus:border-[#0891b2] focus:ring-[#0891b2]/20',
+          calendarBackground: '#06b6d4',
+          calendarBorder: '#0f766e',
+          calendarText: '#ffffff',
+        };
+      case 'fechado':
+        return {
+          value: 'fechado' as LeadStatus,
+          label: 'Fechado',
+          badgeClass: 'border-[#f3a6af]/55 bg-[#ffe1e6] text-[#c1121f]',
+          dotClass: 'bg-[#e11d48]',
+          selectClass: 'border-[#f3a6af] bg-[#ffe1e6] text-[#c1121f] focus:border-[#e11d48] focus:ring-[#e11d48]/20',
+          calendarBackground: '#e11d48',
+          calendarBorder: '#be123c',
+          calendarText: '#ffffff',
+        };
+      case 'perdido':
+        return {
+          value: 'perdido' as LeadStatus,
+          label: 'Perdido',
+          badgeClass: 'border-[#cfcfd4]/55 bg-[#ececee] text-[#4b5563]',
+          dotClass: 'bg-[#6b7280]',
+          selectClass: 'border-[#cfcfd4] bg-[#ececee] text-[#4b5563] focus:border-[#6b7280] focus:ring-[#6b7280]/20',
+          calendarBackground: '#6b7280',
+          calendarBorder: '#4b5563',
+          calendarText: '#ffffff',
+        };
+      default:
+        return null;
+    }
+  };
+
   const selectedContact = contacts.find((c) => c.id === selectedContactId);
   const currentUserRole = useMemo(() => {
     if (typeof window === 'undefined') return null;
@@ -195,6 +295,10 @@ export default function Chat() {
   const selectedClassificationMeta = useMemo(
     () => getClassificationMeta(selectedContact?.classificacao),
     [selectedContact?.classificacao]
+  );
+  const selectedLeadStatusMeta = useMemo(
+    () => getLeadStatusMeta(selectedContact?.leadStatus),
+    [selectedContact?.leadStatus]
   );
 
   const observacoesText = useMemo(
@@ -240,6 +344,15 @@ export default function Chat() {
 
   useEffect(() => {
     if (!selectedContactId) return;
+
+    // Reflexo imediato no UI enquanto o backend marca como lida.
+    setContacts((prev) =>
+      prev.map((contact) =>
+        contact.id === selectedContactId && contact.unread > 0
+          ? { ...contact, unread: 0 }
+          : contact
+      )
+    );
 
     if (intervalRef.current) {
       window.clearInterval(intervalRef.current);
@@ -302,6 +415,25 @@ export default function Chat() {
     if (messageDate.getTime() === yesterday.getTime()) return 'Ontem';
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   };
+
+  const formatCalendarDateTime = (dateString?: string | null) => {
+    if (!dateString) return 'Sem data';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return 'Sem data';
+
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const openConversation = useCallback((contactId: string) => {
+    setSelectedContactId(contactId);
+    setActiveView('chat');
+    setShowMobileContacts(false);
+  }, []);
 
   const applyMessagesWithScrollPreserve = (incoming: Message[], seq: number) => {
     const vp = getScrollViewport();
@@ -386,6 +518,11 @@ export default function Chat() {
               needsHumanIntervention: item.needs_human_intervention || false,
               observacoes: item.lead_observacoes || null,
               classificacao: item.lead_classificacao || null,
+              leadStatus: item.lead_status || null,
+              startedAt: item.iniciada_em || item.created_at || null,
+              lastActivityAt: item.ultima_atividade || item.created_at || null,
+              createdAt: item.created_at || null,
+              status: item.status || null,
             };
           });
 
@@ -400,7 +537,8 @@ export default function Chat() {
               o.id !== n.id ||
               o.lastMessage !== n.lastMessage ||
               o.unread !== n.unread ||
-              o.needsHumanIntervention !== n.needsHumanIntervention
+              o.needsHumanIntervention !== n.needsHumanIntervention ||
+              o.leadStatus !== n.leadStatus
             );
           });
 
@@ -460,6 +598,19 @@ export default function Chat() {
         .sort((a: Message, b: Message) => a.rawDate.getTime() - b.rawDate.getTime());
 
       applyMessagesWithScrollPreserve(mappedMessages, seq);
+
+      // Após abrir a conversa, o backend marca incoming como lida.
+      // Zera a badge local da conversa e sincroniza a badge do topo.
+      setContacts((prev) =>
+        prev.map((contact) =>
+          contact.id === contactId && contact.unread > 0
+            ? { ...contact, unread: 0 }
+            : contact
+        )
+      );
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('socimob:chat-unread-changed'));
+      }
 
       if (isFirstLoad) hasLoadedMessagesRef.current = true;
     } catch (e) {
@@ -679,6 +830,255 @@ export default function Chat() {
     }
   };
 
+  const handleLeadStatusChange = async (newStatus: LeadStatus) => {
+    if (!selectedContact || isUpdatingLeadStatus || selectedContact.leadStatus === newStatus) return;
+
+    const previousStatus = selectedContact.leadStatus || null;
+
+    setIsUpdatingLeadStatus(true);
+    setContacts((prev) =>
+      prev.map((contact) =>
+        contact.id === selectedContact.id ? { ...contact, leadStatus: newStatus } : contact
+      )
+    );
+
+    try {
+      await api.patch(`/leads/${selectedContact.leadId}/status`, { status: newStatus });
+      toast.success(`Etapa do lead atualizada para ${getLeadStatusMeta(newStatus)?.label || newStatus}`);
+    } catch (error: any) {
+      setContacts((prev) =>
+        prev.map((contact) =>
+          contact.id === selectedContact.id ? { ...contact, leadStatus: previousStatus } : contact
+        )
+      );
+      const message = error?.response?.data?.error || 'Erro ao atualizar etapa do lead';
+      toast.error(message);
+    } finally {
+      setIsUpdatingLeadStatus(false);
+    }
+  };
+
+  const calendarEvents = useMemo(() => {
+    return filteredContacts
+      .map((contact) => {
+        const startSource = contact.startedAt || contact.createdAt || contact.lastActivityAt;
+        if (!startSource) return null;
+
+        const startDate = new Date(startSource);
+        if (Number.isNaN(startDate.getTime())) return null;
+
+        const endSource = contact.lastActivityAt || contact.createdAt || startSource;
+        const parsedEndDate = endSource ? new Date(endSource) : new Date(startDate.getTime());
+        const endDate = !Number.isNaN(parsedEndDate.getTime()) ? parsedEndDate : new Date(startDate.getTime());
+
+        if (endDate.getTime() <= startDate.getTime()) {
+          endDate.setTime(startDate.getTime() + 30 * 60 * 1000);
+        }
+
+        const normalizedClassificacao = contact.classificacao?.trim().toLowerCase();
+        const leadStatusMeta = getLeadStatusMeta(contact.leadStatus);
+        let backgroundColor = leadStatusMeta?.calendarBackground || '#2d6fab';
+        let borderColor = leadStatusMeta?.calendarBorder || '#17365d';
+        let textColor = leadStatusMeta?.calendarText || '#ffffff';
+
+        if (!leadStatusMeta && contact.needsHumanIntervention) {
+          backgroundColor = '#f1132b';
+          borderColor = '#b90c21';
+        } else if (!leadStatusMeta && normalizedClassificacao === 'quente') {
+          backgroundColor = '#f9bf0a';
+          borderColor = '#d99f00';
+          textColor = '#050308';
+        } else if (!leadStatusMeta && normalizedClassificacao === 'frio') {
+          backgroundColor = '#467fc2';
+          borderColor = '#2d6fab';
+        }
+
+        return {
+          id: contact.id,
+          title: contact.name,
+          start: startDate.toISOString(),
+          end: endDate.toISOString(),
+          backgroundColor,
+          borderColor,
+          textColor,
+          extendedProps: {
+            phone: contact.phone,
+            leadId: contact.leadId,
+            lastMessage: contact.lastMessage,
+            startedAt: startSource,
+            lastActivityAt: contact.lastActivityAt,
+            classificacao: contact.classificacao,
+            leadStatus: contact.leadStatus,
+            needsHumanIntervention: contact.needsHumanIntervention,
+          },
+        };
+      })
+      .filter(Boolean);
+  }, [filteredContacts]);
+
+  const timelineContacts = useMemo(() => {
+    return [...filteredContacts]
+      .sort((a, b) => {
+        const aStart = new Date(a.startedAt || a.createdAt || a.lastActivityAt || 0).getTime();
+        const bStart = new Date(b.startedAt || b.createdAt || b.lastActivityAt || 0).getTime();
+        return bStart - aStart;
+      })
+      .slice(0, 10);
+  }, [filteredContacts]);
+
+  const handleCalendarEventClick = useCallback(
+    (info: EventClickArg) => {
+      openConversation(info.event.id);
+    },
+    [openConversation]
+  );
+
+  const renderCalendarEventContent = useCallback((eventInfo: EventContentArg) => {
+    return (
+      <div className="min-w-0 px-0.5 py-0.5">
+        <div className="truncate text-[11px] font-semibold leading-4">{eventInfo.event.title}</div>
+        <div className="truncate text-[10px] leading-4 opacity-85">{eventInfo.timeText || 'Atendimento'}</div>
+      </div>
+    );
+  }, []);
+
+  const renderCalendarPanel = () => (
+    <div className="flex min-h-0 flex-1 flex-col bg-[radial-gradient(circle_at_top,rgba(61,120,180,0.10),transparent_34%),linear-gradient(180deg,#f2f2f0_0%,#e4e6e8_100%)]">
+      <div className="border-b border-[#d5d7d8] bg-[#f7f7f4] px-4 py-4 md:px-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#617489]">Atendimentos por data</p>
+            <h2 className="mt-1 text-[1.7rem] font-semibold leading-none tracking-[-0.05em] text-[#132b4c]">Calendário de conversas</h2>
+            <p className="mt-2 text-sm leading-6 text-[#5a646f]">
+              Cada faixa mostra do início do atendimento até a última atividade registrada. Clique em um atendimento para abrir o chat.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-[#5a646f]">
+            <span className="rounded-full border border-[#bfc4c9] bg-white px-3 py-1.5">{calendarEvents.length} atendimento(s)</span>
+            <span className="rounded-full border border-[#bfc4c9] bg-white px-3 py-1.5">Filtro atual: {contactFilters.find((filter) => filter.id === contactFilter)?.label || 'Todas'}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-hidden p-3 md:p-4">
+        <div className="grid h-full min-h-0 gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="chat-atendimentos-calendar min-h-0 overflow-hidden rounded-[22px] border border-[#bfc4c9] bg-white shadow-[0_16px_36px_rgba(0,0,0,0.08)]">
+            {calendarEvents.length > 0 ? (
+              <FullCalendar
+                plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+                locale={ptBrLocale}
+                initialView="timeGridWeek"
+                headerToolbar={{
+                  left: 'prev,next today',
+                  center: 'title',
+                  right: 'dayGridMonth,timeGridWeek,listMonth',
+                }}
+                buttonText={{
+                  today: 'Hoje',
+                  month: 'Mês',
+                  week: 'Semana',
+                  list: 'Lista',
+                }}
+                events={calendarEvents}
+                eventClick={handleCalendarEventClick}
+                eventContent={renderCalendarEventContent}
+                height="100%"
+                nowIndicator
+                editable={false}
+                selectable={false}
+                dayMaxEvents={3}
+                slotMinTime="06:00:00"
+                slotMaxTime="22:00:00"
+                expandRows
+              />
+            ) : (
+              <div className="flex h-full min-h-[420px] flex-col items-center justify-center gap-4 px-6 py-12 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-[22px] border border-[#bfc4c9] bg-[#132b4c] text-white shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
+                  <Clock className="h-7 w-7" />
+                </div>
+                <div>
+                  <p className="font-medium text-[#132b4c]">Nenhum atendimento para exibir</p>
+                  <p className="mt-2 text-sm leading-6 text-[#5a646f]">
+                    Ajuste a busca ou o filtro lateral para montar esta visão do calendário.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <aside className="flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-[#bfc4c9] bg-white shadow-[0_16px_36px_rgba(0,0,0,0.08)]">
+            <div className="border-b border-[#d5d7d8] px-4 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#617489]">Abrir chat</p>
+              <h3 className="mt-1 text-lg font-semibold text-[#132b4c]">Atendimentos recentes</h3>
+              <p className="mt-1 text-sm leading-6 text-[#5a646f]">Selecione um atendimento para ir direto à conversa.</p>
+            </div>
+
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="space-y-2 p-3">
+                {timelineContacts.length > 0 ? (
+                  timelineContacts.map((contact) => {
+                    const classificationMeta = getClassificationMeta(contact.classificacao);
+                    const leadStatusMeta = getLeadStatusMeta(contact.leadStatus);
+                    return (
+                      <button
+                        key={`calendar-link-${contact.id}`}
+                        type="button"
+                        onClick={() => openConversation(contact.id)}
+                        className="w-full rounded-[18px] border border-[#d5d7d8] bg-[#f8fafc] px-3 py-3 text-left transition hover:border-[#4c83bc] hover:bg-[#eef5fb]"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[#132b4c]">{contact.name}</p>
+                            <p className="mt-0.5 truncate text-[12px] text-[#5a646f]">{contact.phone || 'Telefone não informado'}</p>
+                          </div>
+                          <span className="rounded-full border border-[#cdd8e6] bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2d6fab]">
+                            Abrir
+                          </span>
+                        </div>
+
+                        <div className="mt-2 space-y-1 text-[12px] leading-5 text-[#4d5560]">
+                          <p><strong className="font-semibold text-[#132b4c]">Início:</strong> {formatCalendarDateTime(contact.startedAt || contact.createdAt || contact.lastActivityAt)}</p>
+                          <p><strong className="font-semibold text-[#132b4c]">Fim:</strong> {formatCalendarDateTime(contact.lastActivityAt || contact.createdAt || contact.startedAt)}</p>
+                        </div>
+
+                        <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-[#5a646f]">{contact.lastMessage || 'Sem mensagens registradas.'}</p>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          {leadStatusMeta && (
+                            <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold', leadStatusMeta.badgeClass)}>
+                              <span className={cn('h-1.5 w-1.5 rounded-full', leadStatusMeta.dotClass)} />
+                              {leadStatusMeta.label}
+                            </span>
+                          )}
+                          {classificationMeta && (
+                            <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold', classificationMeta.badgeClass)}>
+                              <span className={cn('h-1.5 w-1.5 rounded-full', classificationMeta.dotClass)} />
+                              {classificationMeta.label}
+                            </span>
+                          )}
+                          {contact.needsHumanIntervention && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[#ffd04a]/45 bg-[#ffc51a]/18 px-2 py-1 text-[11px] font-semibold text-[#7a5b00]">
+                              <AlertTriangle className="h-3 w-3" />
+                              Humano
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="px-3 py-8 text-center text-sm text-[#5a646f]">
+                    Nenhum atendimento recente com o filtro atual.
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+
   const MessageStatus = ({
     status,
     tone = 'default',
@@ -813,6 +1213,31 @@ export default function Chat() {
                     <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
                   </Button>
                 </div>
+                <div className="mt-3 flex items-center gap-2 rounded-2xl border border-[#274d7b] bg-[#102744] p-1">
+                  <button
+                    type="button"
+                    onClick={() => setActiveView('chat')}
+                    className={cn(
+                      'flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition',
+                      activeView === 'chat' ? 'bg-[#ffc51a] text-[#0a0a12]' : 'text-[#dbe4ef] hover:bg-[#173153]'
+                    )}
+                  >
+                    Chat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveView('calendar');
+                      setShowMobileContacts(false);
+                    }}
+                    className={cn(
+                      'flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition',
+                      activeView === 'calendar' ? 'bg-[#ffc51a] text-[#0a0a12]' : 'text-[#dbe4ef] hover:bg-[#173153]'
+                    )}
+                  >
+                    Calendário
+                  </button>
+                </div>
                 <div className="mt-3 flex items-center justify-between rounded-2xl border border-[#274d7b] bg-[#0a0a12] px-3 py-1.5 text-[11px]">
                   <span className="text-[#f2f2f0]">Exibindo {visibleContacts.length} de {filteredContacts.length}</span>
                   <span className="rounded-full bg-[#ff1d2d] px-2 py-0.5 font-semibold text-white">{filteredContacts.length}</span>
@@ -843,9 +1268,10 @@ export default function Chat() {
                     {visibleContacts.map((contact) => {
                       const isActive = selectedContactId === contact.id;
                       const classificationMeta = getClassificationMeta(contact.classificacao);
+                      const leadStatusMeta = getLeadStatusMeta(contact.leadStatus);
                       const isPriority = contact.needsHumanIntervention || contact.classificacao?.trim().toLowerCase() === 'quente';
                       return (
-                        <button key={contact.id} type="button" onClick={() => { setSelectedContactId(contact.id); setShowMobileContacts(false); }} className={cn('w-full rounded-[20px] border px-3 py-2.5 text-left transition', isActive ? 'border-[#4c83bc] bg-[#f2f2f0] shadow-[0_12px_24px_rgba(0,0,0,0.22)]' : 'border-transparent bg-transparent hover:border-[#274d7b] hover:bg-[#173153]')}>
+                        <button key={contact.id} type="button" onClick={() => openConversation(contact.id)} className={cn('w-full rounded-[20px] border px-3 py-2.5 text-left transition', isActive && activeView === 'chat' ? 'border-[#4c83bc] bg-[#f2f2f0] shadow-[0_12px_24px_rgba(0,0,0,0.22)]' : 'border-transparent bg-transparent hover:border-[#274d7b] hover:bg-[#173153]')}>
                           <div className="flex items-start gap-3">
                             <div className="relative flex-shrink-0">
                               <Avatar className="h-10 w-10"><AvatarFallback className={cn('font-semibold', isActive ? 'bg-[#2d6fab]/18 text-[#173153]' : 'bg-[#2d6fab] text-white')}>{contact.initials}</AvatarFallback></Avatar>
@@ -861,6 +1287,7 @@ export default function Chat() {
                               </div>
                               <p className={cn('mt-1.5 line-clamp-2 text-[13px] leading-5', isActive ? 'text-[#4d5560]' : 'text-[#dbe4ef]')}>{contact.lastMessage}</p>
                               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                {leadStatusMeta && <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold', leadStatusMeta.badgeClass)}><span className={cn('h-1.5 w-1.5 rounded-full', leadStatusMeta.dotClass)} />{leadStatusMeta.label}</span>}
                                 {classificationMeta && <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold', classificationMeta.badgeClass)}><span className={cn('h-1.5 w-1.5 rounded-full', classificationMeta.dotClass)} />{classificationMeta.label}</span>}
                                 {contact.needsHumanIntervention && <span className="inline-flex items-center gap-1 rounded-full border border-[#ffd04a]/45 bg-[#ffc51a]/18 px-2 py-1 text-[11px] font-semibold text-[#7a5b00]"><AlertTriangle className="h-3 w-3" />Humano</span>}
                               </div>
@@ -886,7 +1313,7 @@ export default function Chat() {
               </ScrollArea>
             </aside>
             <main className={cn('min-h-0 flex-1 flex-col bg-[#f2f2f0]', showMobileContacts ? 'hidden md:flex' : 'flex')}>
-              {!selectedContact ? (
+              {activeView === 'calendar' ? renderCalendarPanel() : !selectedContact ? (
                 <div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_top,rgba(61,120,180,0.14),transparent_40%),linear-gradient(180deg,#f2f2f0_0%,#e4e6e8_100%)] p-8"><div className="max-w-xl text-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-[#9b9b98]/40 bg-[#132b4c] text-white shadow-[0_12px_28px_rgba(0,0,0,0.16)]"><MessageCircle className="h-7 w-7" /></div><h2 className="mt-6 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-[#132b4c]">Selecione uma conversa</h2><p className="mt-3 text-sm leading-7 text-[#4d5560] md:text-[15px]">A fila fica na lateral. O histórico abre aqui no centro, com leitura limpa e resposta rápida.</p></div></div>
               ) : (
                 <>
@@ -898,10 +1325,32 @@ export default function Chat() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <h2 className="truncate text-lg font-semibold text-[#132b4c] md:text-xl">{selectedContact.name}</h2>
+                            {selectedLeadStatusMeta && <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold', selectedLeadStatusMeta.badgeClass)}><Tag className="h-3 w-3" />{selectedLeadStatusMeta.label}</span>}
                             {selectedClassificationMeta && <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold', selectedClassificationMeta.badgeClass)}><Tag className="h-3 w-3" />{selectedClassificationMeta.label}</span>}
                             {selectedContact.needsHumanIntervention && <span className="inline-flex items-center gap-1 rounded-full border border-[#ffd04a]/45 bg-[#ffc51a]/18 px-2.5 py-1 text-[11px] font-semibold text-[#7a5b00]"><AlertTriangle className="h-3 w-3" />Ação humana</span>}
                           </div>
                           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-[#5a646f]"><span>{selectedContact.phone}</span><span>Lead #{selectedContact.leadId}</span><span>{messages.length} mensagens</span><span>Última atividade {selectedContact.timestamp}</span></div>
+                          <div className="mt-3 flex flex-wrap items-end gap-2.5">
+                            <label className="flex min-w-[220px] flex-col gap-1">
+                              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#617489]">Etapa do lead</span>
+                              <select
+                                value={selectedContact.leadStatus || 'novo'}
+                                onChange={(e) => handleLeadStatusChange(e.target.value as LeadStatus)}
+                                disabled={isUpdatingLeadStatus}
+                                className={cn(
+                                  'h-10 rounded-xl border px-3 text-sm font-semibold outline-none transition disabled:cursor-not-allowed disabled:opacity-70',
+                                  selectedLeadStatusMeta?.selectClass || 'border-[#bfc4c9] bg-white text-[#132b4c] focus:border-[#2d6fab] focus:ring-4 focus:ring-[#2d6fab]/15'
+                                )}
+                              >
+                                {LEAD_STATUS_OPTIONS.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            {isUpdatingLeadStatus && <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#bfc4c9] bg-white px-3 text-sm text-[#5a646f]"><Loader2 className="h-4 w-4 animate-spin" />Salvando etapa...</span>}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2"><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#bfc4c9] bg-white text-[#132b4c] hover:bg-[#ececea]"><Phone className="h-4 w-4" /></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#bfc4c9] bg-white text-[#132b4c] hover:bg-[#ececea]"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><DropdownMenuItem disabled={!canDeleteConversation || isDeletingConversation} variant="destructive" onSelect={(event) => { event.preventDefault(); if (!canDeleteConversation || isDeletingConversation) return; setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" />Excluir conversa</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
@@ -974,8 +1423,8 @@ export default function Chat() {
             <AlertDialogTitle>Excluir conversa</AlertDialogTitle>
             <AlertDialogDescription className="text-[#c6d2e2]">
               {selectedContact
-                ? `A conversa com ${selectedContact.name} sera removida junto com o historico de mensagens relacionado.`
-                : 'Esta conversa sera removida junto com o historico de mensagens relacionado.'}
+                ? `A conversa com ${selectedContact.name} será removida junto com o histórico de mensagens relacionado.`
+                : 'Esta conversa será removida junto com o histórico de mensagens relacionado.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

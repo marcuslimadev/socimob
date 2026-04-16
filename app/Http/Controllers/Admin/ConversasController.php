@@ -44,6 +44,7 @@ class ConversasController extends Controller
                     'leads.email as lead_email',
                     'leads.observacoes as lead_observacoes',
                     'leads.classificacao as lead_classificacao',
+                    'leads.status as lead_status',
                     'corretor.name as corretor_nome'
                 )
                 ->where(function ($q) use ($tenantId) {
@@ -63,6 +64,9 @@ class ConversasController extends Controller
                         'leads.nome as lead_nome',
                         'leads.telefone as lead_telefone',
                         'leads.email as lead_email',
+                        'leads.observacoes as lead_observacoes',
+                        'leads.classificacao as lead_classificacao',
+                        'leads.status as lead_status',
                         'corretor.name as corretor_nome'
                     )
                     ->where(function ($q) use ($tenantId) {
@@ -88,6 +92,9 @@ class ConversasController extends Controller
                             'leads.nome as lead_nome',
                             'leads.telefone as lead_telefone',
                             'leads.email as lead_email',
+                            'leads.observacoes as lead_observacoes',
+                            'leads.classificacao as lead_classificacao',
+                            'leads.status as lead_status',
                             'corretor.name as corretor_nome'
                         )
                         ->where(function ($q) use ($tenantId) {
@@ -115,6 +122,9 @@ class ConversasController extends Controller
                             'leads.nome as lead_nome',
                             'leads.telefone as lead_telefone',
                             'leads.email as lead_email',
+                            'leads.observacoes as lead_observacoes',
+                            'leads.classificacao as lead_classificacao',
+                            'leads.status as lead_status',
                             'corretor.name as corretor_nome'
                         )
                         ->where(function ($q) use ($tenantId) {
@@ -426,6 +436,38 @@ class ConversasController extends Controller
     {
         try {
             $tenantId = $request->attributes->get('tenant_id');
+            $user = $request->user();
+
+            $scopeConversas = DB::table('conversas')
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'ativa');
+
+            if ($this->isBrokerRole($user->role ?? null)) {
+                $scopeConversas->where(function ($q) use ($user) {
+                    $q->where('corretor_id', $user->id)
+                      ->orWhereNull('corretor_id');
+                });
+            }
+
+            $scopedConversationIds = (clone $scopeConversas)->pluck('id');
+
+            $mensagensNaoLidasQuery = DB::table('mensagens')
+                ->where('direction', 'incoming')
+                ->whereNull('read_at');
+
+            if ($scopedConversationIds->isEmpty()) {
+                $mensagensNaoLidas = 0;
+                $conversasComNaoLidas = 0;
+            } else {
+                $mensagensNaoLidas = (clone $mensagensNaoLidasQuery)
+                    ->whereIn('conversa_id', $scopedConversationIds)
+                    ->count();
+
+                $conversasComNaoLidas = (clone $mensagensNaoLidasQuery)
+                    ->whereIn('conversa_id', $scopedConversationIds)
+                    ->distinct('conversa_id')
+                    ->count('conversa_id');
+            }
             
             $stats = [
                 'em_fila' => DB::table('conversas')
@@ -452,7 +494,13 @@ class ConversasController extends Controller
                     ->whereNotNull('conversas.corretor_id')
                     ->select('users.name', DB::raw('COUNT(*) as total'))
                     ->groupBy('users.id', 'users.name')
-                    ->get()
+                    ->get(),
+
+                // Total real de mensagens incoming não lidas no escopo do usuário.
+                'mensagens_nao_lidas' => $mensagensNaoLidas,
+
+                // Quantidade de conversas com pelo menos uma não lida.
+                'conversas_com_nao_lidas' => $conversasComNaoLidas,
             ];
             
             return response()->json([

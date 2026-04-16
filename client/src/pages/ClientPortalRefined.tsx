@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, ChevronDown, ChevronLeft, ChevronRight, Clock, GripVertical, Mail, MapPin, MessageCircle, Phone, Search, Shield, Square, TrendingUp, UserRound } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, GripVertical, Mail, MapPin, MessageCircle, Phone, Search, Shield, Square, TrendingUp, UserRound } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
@@ -47,6 +47,8 @@ interface Property {
   banheiros?: number;
   area_total?: number;
   area_util?: number;
+  garagem?: number | string;
+  vagas?: number | string;
   descricao?: string;
   destaque?: boolean;
   active?: boolean;
@@ -139,6 +141,30 @@ function getPriceValue(property: Property): number {
   }
 
   return Number(property.valor_venda || property.valor_aluguel || 0) || 0;
+}
+
+function getDisplayArea(property: Property): number | null {
+  const areaUtil = Number(property.area_util || 0);
+  const areaTotal = Number(property.area_total || 0);
+
+  if (areaUtil > 0 && areaTotal > 0) {
+    // Quando a área útil vier em escala baixa (ex.: 5), usar a área total.
+    if (areaUtil < 20 && areaTotal >= 20) return areaTotal;
+    return areaUtil;
+  }
+
+  if (areaTotal > 0) return areaTotal;
+  if (areaUtil > 0) return areaUtil;
+  return null;
+}
+
+function formatArea(area: number | null): string {
+  if (!area) return '--';
+
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(area);
 }
 
 function getPurpose(property: Property): 'Venda' | 'Aluguel' | 'Venda ou Aluguel' | 'Imóvel' {
@@ -972,6 +998,8 @@ export default function ClientPortalRefined() {
             const images = normalizeImages(property);
             const activePhotoIndex = Math.min(catalogPhotoIndexes[property.id] ?? 0, Math.max(0, images.length - 1));
             const activeImage = images[activePhotoIndex] || images[0];
+            const displayArea = getDisplayArea(property);
+            const parkingSpots = property.garagem ?? property.vagas ?? '--';
             return (
               <motion.article
                 key={property.id}
@@ -1023,10 +1051,11 @@ export default function ClientPortalRefined() {
                   <h3 className="text-base sm:text-lg text-slate-900 line-clamp-1">{property.titulo}</h3>
                   <p className="mt-1 text-xs text-slate-500 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{getPublicLocation(property)}</p>
                   <p className="mt-3 text-xl sm:text-2xl" style={{ color: primary }}>{formatPrice(property)}</p>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-slate-600">
+                  <div className="mt-3 grid grid-cols-4 gap-2 text-[11px] text-slate-600">
                     <p className="flex items-center gap-1"><BedDouble className="w-3.5 h-3.5" />{property.quartos || property.dormitorios || '--'}</p>
                     <p className="flex items-center gap-1"><Bath className="w-3.5 h-3.5" />{property.banheiros || '--'}</p>
-                    <p className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{property.area_util || property.area_total || '--'}m²</p>
+                    <p className="flex items-center gap-1"><Square className="w-3.5 h-3.5" />{formatArea(displayArea)}m²</p>
+                    <p className="flex items-center gap-1"><Car className="w-3.5 h-3.5" />{parkingSpots}</p>
                   </div>
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     <button

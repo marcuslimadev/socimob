@@ -56,39 +56,39 @@
   --chart-4: #003f78;
   --chart-5: #022746;
   --radius: 0.65rem;
-  --background: #f4f8fc;
-  --foreground: #102033;
-  --card: #ffffff;
-  --card-foreground: #102033;
-  --popover: #ffffff;
-  --popover-foreground: #102033;
+  --background: #cecece;
+  --foreground: #000000;
+  --card: #cecece;
+  --card-foreground: #000000;
+  --popover: #cecece;
+  --popover-foreground: #000000;
   --secondary: #0f7fcb;
   --secondary-foreground: #ffffff;
-  --muted: #e8f0f7;
-  --muted-foreground: #597086;
+  --muted: #cecece;
+  --muted-foreground: #000000;
   --accent: #59c2ff;
-  --accent-foreground: #06213a;
+  --accent-foreground: #000000;
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: #d7e5f2;
-  --input: #d7e5f2;
+  --border: #cecaca;
+  --input: #cecaca;
   --ring: #1f9cf0;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #102033;
-  --sidebar-accent: #e8f0f7;
-  --sidebar-accent-foreground: #06213a;
-  --sidebar-border: #d7e5f2;
+  --sidebar: #cecece;
+  --sidebar-foreground: #000000;
+  --sidebar-accent: #cecece;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #cecaca;
   --sidebar-ring: #1f9cf0;
   --base-font-size: 18px;
   
   /* Portal Public Specific Colors */
-  --portal-border: #d7e5f2;
-  --portal-bg-subtle: #f6fafd;
-  --portal-bg-muted: #ebf3fa;
-  --portal-text-main: #102033;
-  --portal-text-muted: #597086;
-  --shell-bg: #f4f8fc;
-  --shell-top-bg: #edf5fb;
+  --portal-border: #cecaca;
+  --portal-bg-subtle: #cecece;
+  --portal-bg-muted: #cecece;
+  --portal-text-main: #000000;
+  --portal-text-muted: #000000;
+  --shell-bg: #cecece;
+  --shell-top-bg: #cecece;
 }
 
 .dark {
@@ -558,24 +558,26 @@
 
 /* Light mode hardening for top navigation/sidebar shell */
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 {
-  color: #0f172a;
+  color: #000000;
+  background: #cecece !important;
+  border-color: #cecaca !important;
 }
 
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='text-white'] {
-  color: #0f172a !important;
+  color: #000000 !important;
 }
 
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='text-slate-200'],
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='text-slate-300'],
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='text-slate-400'] {
-  color: #475569 !important;
+  color: #000000 !important;
 }
 
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='border-white/8'],
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='border-white/10'],
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='border-white/15'],
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='border-white/16'] {
-  border-color: rgb(148 163 184 / 35%) !important;
+  border-color: #cecaca !important;
 }
 
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='bg-white/[0.03]'],
@@ -583,16 +585,16 @@ body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='bg-white/[0.04]'],
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='bg-white/5'],
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='bg-white/10'] {
-  background-color: rgb(255 255 255 / 92%) !important;
+  background-color: #cecece !important;
 }
 
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='bg-[#0b1627]'] {
-  background-color: #ffffff !important;
+  background-color: #cecece !important;
 }
 
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='bg-[linear-gradient('] {
   background-image: none !important;
-  background-color: #e2e8f0 !important;
+  background-color: #cecece !important;
 }
 
 body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='shadow-[0_18px_40px_rgba(2,6,23,0.45)]'],
@@ -601,7 +603,8 @@ body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='
 }
 
 body[data-theme='light'] .page-shell {
-  color: #0f172a;
+  color: #000000;
+  background: #cecece !important;
 }
 
 body[data-theme='light'] .page-shell .glass-panel,
@@ -610,8 +613,8 @@ body[data-theme='light'] .page-shell [class*='bg-[#07111d]'],
 body[data-theme='light'] .page-shell [class*='bg-[#07111f]'],
 body[data-theme='light'] .page-shell [class*='bg-[#0d0f14]'],
 body[data-theme='light'] .page-shell [class*='bg-[#0b1627]'] {
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98)) !important;
-  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: #cecece !important;
+  border-color: #cecaca !important;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08) !important;
 }
 
@@ -622,7 +625,7 @@ body[data-theme='light'] .page-shell [class*='bg-white/6'],
 body[data-theme='light'] .page-shell [class*='bg-white/8'],
 body[data-theme='light'] .page-shell [class*='bg-white/10'],
 body[data-theme='light'] .page-shell [class*='bg-white/12'] {
-  background-color: rgba(255, 255, 255, 0.88) !important;
+  background-color: #cecece !important;
 }
 
 body[data-theme='light'] .page-shell [class*='border-white/5'],
@@ -630,11 +633,11 @@ body[data-theme='light'] .page-shell [class*='border-white/8'],
 body[data-theme='light'] .page-shell [class*='border-white/10'],
 body[data-theme='light'] .page-shell [class*='border-white/15'],
 body[data-theme='light'] .page-shell [class*='border-white/20'] {
-  border-color: rgba(148, 163, 184, 0.3) !important;
+  border-color: #cecaca !important;
 }
 
 body[data-theme='light'] .page-shell [class*='text-white'] {
-  color: #0f172a !important;
+  color: #000000 !important;
 }
 
 body[data-theme='light'] .page-shell [class*='text-slate-100'],
@@ -642,21 +645,22 @@ body[data-theme='light'] .page-shell [class*='text-slate-200'],
 body[data-theme='light'] .page-shell [class*='text-slate-300'],
 body[data-theme='light'] .page-shell [class*='text-gray-300'],
 body[data-theme='light'] .page-shell [class*='text-gray-400'] {
-  color: #475569 !important;
+  color: #000000 !important;
 }
 
 body[data-theme='light'] .page-shell [class*='placeholder:text-muted-foreground']::placeholder,
 body[data-theme='light'] .page-shell input::placeholder,
 body[data-theme='light'] .page-shell textarea::placeholder {
-  color: #64748b !important;
+  color: #000000 !important;
+  opacity: 0.75;
 }
 
 body[data-theme='light'] .page-shell input:not([type='checkbox']):not([type='radio']):not([type='range']),
 body[data-theme='light'] .page-shell select,
 body[data-theme='light'] .page-shell textarea {
-  background-color: rgba(255, 255, 255, 0.94) !important;
-  border-color: rgba(148, 163, 184, 0.38) !important;
-  color: #0f172a !important;
+  background-color: #cecece !important;
+  border-color: #cecaca !important;
+  color: #000000 !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
@@ -674,9 +678,9 @@ body[data-theme='light'] .page-shell [role='button'] {
 
 body[data-theme='light'] .page-shell button[class*='bg-white'],
 body[data-theme='light'] .page-shell [role='button'][class*='bg-white'] {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  border-color: rgba(148, 163, 184, 0.35) !important;
+  background: #cecece !important;
+  color: #000000 !important;
+  border-color: #cecaca !important;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
 }
 
@@ -701,30 +705,30 @@ body[data-theme='light'] .page-shell [role='button'][class*='bg-emerald-600'] {
 
 body[data-theme='light'] .page-shell table thead,
 body[data-theme='light'] .page-shell table thead tr {
-  background: rgba(248, 250, 252, 0.92) !important;
-  color: #475569 !important;
+  background: #cecece !important;
+  color: #000000 !important;
 }
 
 body[data-theme='light'] .page-shell table tbody tr {
-  border-color: rgba(226, 232, 240, 0.95) !important;
+  border-color: #cecaca !important;
 }
 
 body[data-theme='light'] .page-shell table tbody tr:hover {
-  background: rgba(241, 245, 249, 0.8) !important;
+  background: #cecece !important;
 }
 
 body[data-theme='light'] .page-shell [role='dialog'],
 body[data-theme='light'] .page-shell [class*='DialogContent'],
 body[data-theme='light'] .page-shell [class*='AlertDialogContent'] {
-  background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
-  border-color: rgba(148, 163, 184, 0.28) !important;
-  color: #0f172a !important;
+  background: #cecece !important;
+  border-color: #cecaca !important;
+  color: #000000 !important;
 }
 
 body[data-theme='light'] .page-shell .blur-divider,
 body[data-theme='light'] .page-shell hr {
-  background-color: rgba(226, 232, 240, 1) !important;
-  border-color: rgba(226, 232, 240, 1) !important;
+  background-color: #cecaca !important;
+  border-color: #cecaca !important;
 }
 
 body[data-theme='light'] .page-shell :is([class*='bg-blue-'], [class*='bg-indigo-'], [class*='bg-purple-']) {
@@ -734,6 +738,86 @@ body[data-theme='light'] .page-shell :is([class*='bg-blue-'], [class*='bg-indigo
 
 body[data-theme='light'] .page-shell :is(button, [role='button']):is([class*='bg-blue-'], [class*='bg-indigo-'], [class*='bg-purple-']):hover {
   background-color: color-mix(in srgb, var(--primary) 88%, black 12%) !important;
+}
+
+body[data-theme='light'],
+body[data-theme='light'] #root,
+body[data-theme='light'] main,
+body[data-theme='light'] section,
+body[data-theme='light'] article,
+body[data-theme='light'] aside,
+body[data-theme='light'] header,
+body[data-theme='light'] footer,
+body[data-theme='light'] nav {
+  background-color: #cecece;
+  color: #000000;
+}
+
+body[data-theme='light'] :is(
+  [role='dialog'],
+  [data-slot='dialog-content'],
+  [data-slot='drawer-content'],
+  [data-slot='sheet-content'],
+  [data-slot='popover-content'],
+  [data-slot='dropdown-menu-content'],
+  [data-slot='dropdown-menu-sub-content'],
+  [data-slot='select-content'],
+  [data-slot='tooltip-content'],
+  [data-radix-popper-content-wrapper] > *
+) {
+  background: #cecece !important;
+  color: #000000 !important;
+  border-color: #cecaca !important;
+}
+
+body[data-theme='light'] :is(
+  .page-shell *,
+  [role='dialog'] *,
+  [data-slot='dialog-content'] *,
+  [data-slot='drawer-content'] *,
+  [data-slot='sheet-content'] *,
+  [data-slot='popover-content'] *,
+  [data-slot='dropdown-menu-content'] *,
+  [data-slot='dropdown-menu-sub-content'] *,
+  [data-slot='select-content'] *,
+  [data-slot='tooltip-content'] *
+):not(svg):not(path) {
+  border-color: #cecaca;
+}
+
+body[data-theme='light'] :is(
+  .page-shell *,
+  [role='dialog'] *,
+  [data-slot='dialog-content'] *,
+  [data-slot='drawer-content'] *,
+  [data-slot='sheet-content'] *,
+  [data-slot='popover-content'] *,
+  [data-slot='dropdown-menu-content'] *,
+  [data-slot='dropdown-menu-sub-content'] *,
+  [data-slot='select-content'] *,
+  [data-slot='tooltip-content'] *
+):not(svg):not(path):not([class*='bg-blue-']):not([class*='bg-indigo-']):not([class*='bg-purple-']):not([class*='bg-emerald-']):not([class*='bg-green-']):not([class*='bg-red-']):not([class*='bg-yellow-']):not([class*='bg-orange-']) {
+  color: #000000;
+}
+
+body[data-theme='light'] :is(
+  .page-shell [class*='bg-'],
+  [role='dialog'] [class*='bg-'],
+  [data-slot='dialog-content'] [class*='bg-'],
+  [data-slot='drawer-content'] [class*='bg-'],
+  [data-slot='sheet-content'] [class*='bg-'],
+  [data-slot='popover-content'] [class*='bg-'],
+  [data-slot='dropdown-menu-content'] [class*='bg-'],
+  [data-slot='dropdown-menu-sub-content'] [class*='bg-'],
+  [data-slot='select-content'] [class*='bg-']
+):not([class*='bg-blue-']):not([class*='bg-indigo-']):not([class*='bg-purple-']):not([class*='bg-emerald-']):not([class*='bg-green-']):not([class*='bg-red-']):not([class*='bg-yellow-']):not([class*='bg-orange-']) {
+  background-color: #cecece !important;
+}
+
+body[data-theme='light'] :is(input, textarea, select) {
+  background-color: #cecece !important;
+  color: #000000 !important;
+  border-color: #cecaca !important;
 }
 
 .page-shell :is([class*='text-blue-'], [class*='text-indigo-'], [class*='text-purple-']) {

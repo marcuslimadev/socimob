@@ -397,10 +397,10 @@ export default function Analytics() {
                   Intelligence Console
                 </div>
                 <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                  Analytics com leitura executiva, não so numeros soltos.
+                  Analytics com leitura executiva, não só números soltos.
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-                  Visao unificada de trafego, comportamento e desempenho do periodo selecionado, com foco em prioridade, origem e concentracao de volume.
+                  Visão unificada de tráfego, comportamento e desempenho do período selecionado, com foco em prioridade, origem e concentração de volume.
                 </p>
               </div>
 
@@ -436,7 +436,7 @@ export default function Analytics() {
           {loading && (
             <div className="mt-8 flex items-center gap-3 rounded-[24px] border border-white/10 bg-[#07111f]/82 px-5 py-4 text-slate-300">
               <Loader2 className="h-5 w-5 animate-spin" />
-              Carregando visao analitica...
+              Carregando visão analítica...
             </div>
           )}
 
@@ -452,28 +452,28 @@ export default function Analytics() {
                 <MetricCard
                   title="Tenants monitorados"
                   value={formatNumber(tenants.length)}
-                  detail="Contas com trafego no periodo selecionado"
+                  detail="Contas com tráfego no período selecionado"
                   icon={<Building2 className="h-5 w-5" />}
                   tone="cyan"
                 />
                 <MetricCard
                   title="Pageviews agregados"
                   value={formatCompact(totalTenantPageviews)}
-                  detail="Volume total de paginas vistas"
+                  detail="Volume total de páginas vistas"
                   icon={<MousePointerClick className="h-5 w-5" />}
                   tone="amber"
                 />
                 <MetricCard
-                  title="Sessoes"
+                  title="Sessões"
                   value={formatCompact(totalTenantSessions)}
-                  detail="Trafego consolidado entre portais"
+                  detail="Tráfego consolidado entre portais"
                   icon={<Users className="h-5 w-5" />}
                   tone="violet"
                 />
                 <MetricCard
                   title="Eventos"
                   value={formatCompact(totalTenantEvents)}
-                  detail="Interacoes coletadas pelo produto"
+                  detail="Interações coletadas pelo produto"
                   icon={<Activity className="h-5 w-5" />}
                   tone="emerald"
                 />
@@ -483,15 +483,15 @@ export default function Analytics() {
                 <ChartShell
                   eyebrow="Comparativo"
                   title="Desempenho entre tenants"
-                  subtitle="Leitura cruzada entre pageviews, sessoes e eventos para identificar concentracao e dispersao de trafego."
+                  subtitle="Leitura cruzada entre pageviews, sessões e eventos para identificar concentração e dispersão de tráfego."
                 >
                   <HighchartsReact highcharts={Highcharts} options={tenantPerformanceChart} />
                 </ChartShell>
 
                 <div className="space-y-6">
                   <ChartShell
-                    eyebrow="Participacao"
-                    title="Share de audiencia"
+                    eyebrow="Participação"
+                    title="Share de audiência"
                     subtitle="Quanto cada tenant representa dentro do volume total de pageviews."
                   >
                     <HighchartsReact highcharts={Highcharts} options={tenantShareChart} />
@@ -500,23 +500,23 @@ export default function Analytics() {
                   <section className="rounded-[30px] border border-white/8 bg-[#07111f]/88 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.42)]">
                     <div className="mb-4 flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-amber-100/70">
                       <ArrowUpRight className="h-3.5 w-3.5" />
-                      Destaques do periodo
+                      Destaques do período
                     </div>
                     <div className="space-y-3">
                       <InsightRow
-                        label="Tenant lider"
+                        label="Tenant líder"
                         value={leadTenant ? leadTenant.tenant_name : 'Sem dados'}
-                        helper={leadTenant ? `${formatNumber(leadTenant.pageviews)} pageviews e ${formatNumber(leadTenant.sessions)} sessoes.` : 'Ainda nao ha trafego consolidado.'}
+                        helper={leadTenant ? `${formatNumber(leadTenant.pageviews)} pageviews e ${formatNumber(leadTenant.sessions)} sessões.` : 'Ainda não há tráfego consolidado.'}
                       />
                       <InsightRow
-                        label="Media por tenant"
+                        label="Média por tenant"
                         value={tenants.length ? formatNumber(Math.round(totalTenantPageviews / tenants.length)) : '0'}
-                        helper="Pageviews medios por tenant no intervalo atual."
+                        helper="Pageviews médios por tenant no intervalo atual."
                       />
                       <InsightRow
                         label="Intensidade de eventos"
                         value={totalTenantSessions ? formatPercent((totalTenantEvents / totalTenantSessions) * 100) : '0,0%'}
-                        helper="Relacao entre eventos coletados e sessoes registradas."
+                        helper="Relação entre eventos coletados e sessões registradas."
                       />
                     </div>
                   </section>
@@ -527,7 +527,7 @@ export default function Analytics() {
                 <ChartShell
                   eyebrow="Ranking"
                   title="Eventos por tenant"
-                  subtitle="Corte direto para ver quem concentra mais atividade operacional e interacoes."
+                  subtitle="Corte direto para ver quem concentra mais atividade operacional e interações."
                 >
                   <HighchartsReact highcharts={Highcharts} options={tenantEventsChart} />
                 </ChartShell>
@@ -536,7 +536,7 @@ export default function Analytics() {
                   <div className="mb-4 flex flex-col gap-1">
                     <span className="text-[10px] uppercase tracking-[0.24em] text-cyan-100/70">Leaderboard</span>
                     <h3 className="text-xl font-semibold text-white">Tenants mais fortes</h3>
-                    <p className="text-sm text-slate-400">Classificacao rapida por volume de pageviews e sessoes.</p>
+                    <p className="text-sm text-slate-400">Classificação rápida por volume de pageviews e sessões.</p>
                   </div>
                   <div className="space-y-3">
                     {tenants.map((tenant, index) => (
@@ -548,12 +548,12 @@ export default function Analytics() {
                             </span>
                             <div>
                               <p className="text-sm font-semibold text-white">{tenant.tenant_name}</p>
-                              <p className="text-xs text-slate-400">{normalizeLabel(tenant.tenant_domain, 'Sem dominio')}</p>
+                              <p className="text-xs text-slate-400">{normalizeLabel(tenant.tenant_domain, 'Sem domínio')}</p>
                             </div>
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-semibold text-cyan-200">{formatNumber(tenant.pageviews)} views</p>
-                            <p className="text-xs text-slate-400">{formatNumber(tenant.sessions)} sessoes • {formatNumber(tenant.events)} eventos</p>
+                            <p className="text-xs text-slate-400">{formatNumber(tenant.sessions)} sessões • {formatNumber(tenant.events)} eventos</p>
                           </div>
                         </div>
                       </div>
@@ -570,28 +570,28 @@ export default function Analytics() {
                 <MetricCard
                   title="Pageviews"
                   value={formatCompact(summary.pageviews)}
-                  detail="Volume bruto de navegacao no periodo"
+                  detail="Volume bruto de navegação no período"
                   icon={<MousePointerClick className="h-5 w-5" />}
                   tone="cyan"
                 />
                 <MetricCard
-                  title="Sessoes"
+                  title="Sessões"
                   value={formatCompact(summary.sessions)}
                   detail="Entradas ativas registradas"
                   icon={<Users className="h-5 w-5" />}
                   tone="violet"
                 />
                 <MetricCard
-                  title="Visitantes unicos"
+                  title="Visitantes únicos"
                   value={formatCompact(summary.unique_visitors)}
-                  detail="Base aproximada de audiencia distinta"
+                  detail="Base aproximada de audiência distinta"
                   icon={<Building2 className="h-5 w-5" />}
                   tone="amber"
                 />
                 <MetricCard
-                  title="Views por sessao"
+                  title="Views por sessão"
                   value={pageviewsPerSession ? formatDecimal(pageviewsPerSession) : '0,00'}
-                  detail="Profundidade media da navegacao antes da saida"
+                  detail="Profundidade média da navegação antes da saída"
                   icon={<Activity className="h-5 w-5" />}
                   tone="emerald"
                 />
@@ -599,39 +599,39 @@ export default function Analytics() {
 
               <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.95fr]">
                 <ChartShell
-                  eyebrow="Paginas"
-                  title="Top paginas por tracao"
-                  subtitle="Onde o trafego realmente se concentra dentro da navegacao do portal."
+                  eyebrow="Páginas"
+                  title="Top páginas por tração"
+                  subtitle="Onde o tráfego realmente se concentra dentro da navegação do portal."
                 >
                   <HighchartsReact highcharts={Highcharts} options={topPagesChart} />
                 </ChartShell>
 
                 <section className="rounded-[30px] border border-white/8 bg-[#07111f]/88 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.42)]">
                   <div className="mb-4 flex flex-col gap-1">
-                    <span className="text-[10px] uppercase tracking-[0.24em] text-cyan-100/70">Leitura rapida</span>
+                    <span className="text-[10px] uppercase tracking-[0.24em] text-cyan-100/70">Leitura rápida</span>
                     <h3 className="text-xl font-semibold text-white">Sinais-chave</h3>
-                    <p className="text-sm text-slate-400">Resumo acionavel para bater o olho e entender o estado do portal.</p>
+                    <p className="text-sm text-slate-400">Resumo acionável para bater o olho e entender o estado do portal.</p>
                   </div>
                   <div className="space-y-3">
                     <InsightRow
-                      label="Pagina lider"
+                      label="Página líder"
                       value={topPage ? shorten(topPage.path) : 'Sem dados'}
-                      helper={topPage ? `${formatNumber(topPage.total)} pageviews no periodo.` : 'Nenhuma pagina com trafego suficiente ainda.'}
+                      helper={topPage ? `${formatNumber(topPage.total)} pageviews no período.` : 'Nenhuma página com tráfego suficiente ainda.'}
                     />
                     <InsightRow
                       label="Evento dominante"
                       value={topEvent ? normalizeLabel(topEvent.event_name, 'Evento') : 'Sem dados'}
-                      helper={topEvent ? `${formatNumber(topEvent.total)} ocorrencias registradas.` : 'Nao houve eventos coletados no periodo.'}
+                      helper={topEvent ? `${formatNumber(topEvent.total)} ocorrências registradas.` : 'Não houve eventos coletados no período.'}
                     />
                     <InsightRow
-                      label="Sessoes por visitante"
+                      label="Sessões por visitante"
                       value={sessionsPerVisitor ? formatDecimal(sessionsPerVisitor) : '0,00'}
-                      helper="Quanto a mesma audiencia retorna dentro da janela analisada."
+                      helper="Quanto a mesma audiência retorna dentro da janela analisada."
                     />
                     <InsightRow
                       label="Mobile share"
                       value={summary.pageviews ? formatPercent((mobileCount / summary.pageviews) * 100) : '0,0%'}
-                      helper="Participacao de trafego mobile dentro do total de pageviews."
+                      helper="Participação de tráfego mobile dentro do total de pageviews."
                     />
                   </div>
                 </section>
@@ -641,14 +641,14 @@ export default function Analytics() {
                 <ChartShell
                   eyebrow="Eventos"
                   title="Mistura de eventos"
-                  subtitle="Distribuicao dos principais sinais de comportamento e conversao coletados pelo sistema."
+                  subtitle="Distribuição dos principais sinais de comportamento e conversão coletados pelo sistema."
                 >
                   <HighchartsReact highcharts={Highcharts} options={eventsChart} />
                 </ChartShell>
 
                 <ChartShell
                   eyebrow="Origem"
-                  title="Fontes de trafego"
+                  title="Fontes de tráfego"
                   subtitle="Quem mais empurra visitas para dentro do portal e com que peso relativo."
                 >
                   <HighchartsReact highcharts={Highcharts} options={referrersChart} />
@@ -659,7 +659,7 @@ export default function Analytics() {
                 <ChartShell
                   eyebrow="Dispositivos"
                   title="Mix de dispositivos"
-                  subtitle="Entenda se o uso esta concentrado em mobile, desktop ou tablet."
+                  subtitle="Entenda se o uso está concentrado em mobile, desktop ou tablet."
                 >
                   <HighchartsReact highcharts={Highcharts} options={devicesChart} />
                 </ChartShell>
@@ -667,7 +667,7 @@ export default function Analytics() {
                 <ChartShell
                   eyebrow="Browsers"
                   title="Navegadores ativos"
-                  subtitle="Mapeamento de compatibilidade real baseado no trafego observado."
+                  subtitle="Mapeamento de compatibilidade real baseado no tráfego observado."
                 >
                   <HighchartsReact highcharts={Highcharts} options={browsersChart} />
                 </ChartShell>
@@ -676,7 +676,7 @@ export default function Analytics() {
                   <div className="mb-4 flex flex-col gap-1">
                     <span className="text-[10px] uppercase tracking-[0.24em] text-amber-100/70">Radar operacional</span>
                     <h3 className="text-xl font-semibold text-white">Top linhas brutas</h3>
-                    <p className="text-sm text-slate-400">As paginas mais fortes em lista corrida para leitura rapida e priorizacao.</p>
+                    <p className="text-sm text-slate-400">As páginas mais fortes em lista corrida para leitura rápida e priorização.</p>
                   </div>
                   <div className="space-y-3">
                     {topPages.map((item, index) => (
