@@ -77,6 +77,7 @@ interface Contact {
 }
 
 type ContactFilter = 'all' | 'unread' | 'priority';
+const CONTACTS_BATCH_SIZE = 40;
 
 export default function Chat() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
@@ -90,12 +91,14 @@ export default function Chat() {
   const [showMobileContacts, setShowMobileContacts] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [contactFilter, setContactFilter] = useState<ContactFilter>('all');
+  const [contactsRenderLimit, setContactsRenderLimit] = useState(CONTACTS_BATCH_SIZE);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const sidebarScrollAreaRef = useRef<HTMLDivElement>(null);
 
   const fetchSeqRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
@@ -594,7 +597,34 @@ export default function Chat() {
     { id: 'unread', label: 'Não lidas', count: unreadContactsCount, helper: 'pedindo resposta' },
     { id: 'priority', label: 'Prioridade', count: priorityContactsCount, helper: 'quentes ou humanas' },
   ];
-  const visibleContacts = filteredContacts;
+  const visibleContacts = useMemo(
+    () => filteredContacts.slice(0, contactsRenderLimit),
+    [filteredContacts, contactsRenderLimit]
+  );
+  const hasMoreContacts = visibleContacts.length < filteredContacts.length;
+
+  useEffect(() => {
+    setContactsRenderLimit(CONTACTS_BATCH_SIZE);
+  }, [searchTerm, contactFilter, contacts.length]);
+
+  const loadMoreContacts = useCallback(() => {
+    setContactsRenderLimit((current) => current + CONTACTS_BATCH_SIZE);
+  }, []);
+
+  const handleSidebarScroll = useCallback(() => {
+    if (!hasMoreContacts || !sidebarScrollAreaRef.current) return;
+
+    const viewport = sidebarScrollAreaRef.current.querySelector(
+      '[data-radix-scroll-area-viewport]'
+    ) as HTMLDivElement | null;
+
+    if (!viewport) return;
+
+    const distanceToBottom = viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight);
+    if (distanceToBottom < 180) {
+      loadMoreContacts();
+    }
+  }, [hasMoreContacts, loadMoreContacts]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -758,15 +788,15 @@ export default function Chat() {
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#9fb2c9]">Atendimentos</p>
                     <h1 className="mt-1.5 text-[1.65rem] font-semibold leading-none tracking-[-0.05em] text-white">Conversas</h1>
-                    <p className="mt-1.5 text-[13px] text-[#c6d2e2]">{searchTerm ? `${filteredContacts.length} resultado(s) na fila` : `${contacts.length} leads em acompanhamento`}</p>
+                    <p className="mt-1.5 text-[13px] text-[#c6d2e2]">{searchTerm ? `${filteredContacts.length} resultado(s) na busca` : `${contacts.length} conversa(s) na fila total`}</p>
                   </div>
                   <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-10 w-10 rounded-2xl border border-[#365e8f] bg-[#1d3f69] text-white hover:bg-[#2d6fab]">
                     <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
                   </Button>
                 </div>
                 <div className="mt-3 flex items-center justify-between rounded-2xl border border-[#274d7b] bg-[#0a0a12] px-3 py-1.5 text-[11px]">
-                  <span className="text-[#f2f2f0]">Exibindo toda a fila</span>
-                  <span className="rounded-full bg-[#ff1d2d] px-2 py-0.5 font-semibold text-white">{visibleContacts.length}</span>
+                  <span className="text-[#f2f2f0]">Exibindo {visibleContacts.length} de {filteredContacts.length}</span>
+                  <span className="rounded-full bg-[#ff1d2d] px-2 py-0.5 font-semibold text-white">{filteredContacts.length}</span>
                 </div>
                 <div className="relative mt-3">
                   <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#b8c7d8]" />
@@ -784,7 +814,7 @@ export default function Chat() {
                   })}
                 </div>
               </div>
-              <ScrollArea className="min-h-0 flex-1">
+              <ScrollArea ref={sidebarScrollAreaRef} className="min-h-0 flex-1" onScrollCapture={handleSidebarScroll}>
                 {isLoadingContacts ? (
                   <div className="flex flex-col items-center justify-center gap-3 py-12"><Loader2 className="h-8 w-8 animate-spin text-[#ffc51a]" /><p className="text-sm text-[#c6d2e2]">Carregando conversas...</p></div>
                 ) : visibleContacts.length === 0 ? (
@@ -820,6 +850,18 @@ export default function Chat() {
                         </button>
                       );
                     })}
+                    {hasMoreContacts && (
+                      <div className="px-2 pt-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={loadMoreContacts}
+                          className="h-9 w-full rounded-xl border border-[#365e8f] bg-[#173153] text-xs font-semibold text-[#dbe4ef] hover:bg-[#1d3f69]"
+                        >
+                          Carregar mais conversas
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </ScrollArea>
