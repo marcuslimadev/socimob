@@ -50,6 +50,9 @@ interface ContratoCompraVendaDetalhes {
   data_contrato?: string;
   data_escritura_prevista?: string;
   data_entrega_chaves?: string;
+  prazo_documentacao_dias?: number;
+  prazo_escritura_dias?: number;
+  prazo_registro_dias?: number;
   valor_total?: number;
   valor_sinal?: number;
   valor_parcela_final?: number;
@@ -63,8 +66,10 @@ interface ContratoCompraVendaDetalhes {
   cartorio_nome?: string;
   inscricao_cadastral?: string;
   testemunha_um_nome?: string;
+  testemunha_um_documento?: string;
   testemunha_um_email?: string;
   testemunha_dois_nome?: string;
+  testemunha_dois_documento?: string;
   testemunha_dois_email?: string;
   observacoes?: string;
   parcelas_pagamento?: ParcelaPagamento[];
@@ -430,7 +435,7 @@ function PdfPreviewModal({
         </div>
 
         <div className="mb-3 flex flex-wrap gap-2 rounded-xl border border-blue-500/20 bg-blue-500/10 p-3 text-xs text-blue-200">
-          <span>1) Revise o conteúdo.</span>
+          <span>1) Revise o contrato no padrão do documento de referência.</span>
           <span>2) Assine via D4Sign ou Gov.br externo.</span>
           <span>3) Envie o PDF final assinado.</span>
         </div>
@@ -569,6 +574,24 @@ export default function ContratoCompraVendaDetalheModal({ contratoId, onClose }:
   ];
   const documentosOrdenados = ordenarDocumentos(contrato.documentos || []);
   const documentoAssinavelRecente = documentosOrdenados.find((item) => (item.categoria ?? 'original') !== 'assinado') ?? null;
+  const pendenciasGeracao = [
+    !contrato.matricula_numero ? 'Matrícula do imóvel' : null,
+    !contrato.cartorio_nome ? 'Cartório do registro' : null,
+    !contrato.valor_total ? 'Valor total da negociação' : null,
+    !(contrato.parcelas_pagamento?.length || contrato.valor_sinal || contrato.valor_parcela_final) ? 'Forma de pagamento detalhada' : null,
+    !contrato.data_contrato ? 'Data do contrato' : null,
+    !contrato.prazo_documentacao_dias ? 'Prazo para documentação' : null,
+    !contrato.prazo_escritura_dias ? 'Prazo para escritura/financiamento' : null,
+    !contrato.prazo_registro_dias ? 'Prazo para registro' : null,
+    !contrato.testemunha_um_nome || !contrato.testemunha_dois_nome ? 'Duas testemunhas identificadas' : null,
+  ].filter(Boolean) as string[];
+  const pendenciasAssinatura = [
+    compradores.some((item) => !item.email) ? 'Há comprador sem e-mail para assinatura' : null,
+    vendedores.some((item) => !item.email) ? 'Há vendedor sem e-mail para assinatura' : null,
+    (contrato.testemunha_um_nome && !contrato.testemunha_um_email) || (contrato.testemunha_dois_nome && !contrato.testemunha_dois_email)
+      ? 'Há testemunha sem e-mail para D4Sign'
+      : null,
+  ].filter(Boolean) as string[];
 
   return (
     <>
@@ -616,6 +639,24 @@ export default function ContratoCompraVendaDetalheModal({ contratoId, onClose }:
                 )}
               </div>
             </div>
+
+            <div className={`mb-4 rounded-xl border p-3 text-xs ${pendenciasGeracao.length === 0 ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200' : 'border-amber-500/20 bg-amber-500/10 text-amber-100'}`}>
+              {pendenciasGeracao.length === 0 ? (
+                <p>Contrato pronto para gerar no fluxo do modelo de referência.</p>
+              ) : (
+                <div className="space-y-1">
+                  <p className="font-medium">Antes de gerar, ainda faltam campos importantes:</p>
+                  {pendenciasGeracao.map((item) => <p key={item}>• {item}</p>)}
+                </div>
+              )}
+            </div>
+
+            {pendenciasAssinatura.length > 0 && (
+              <div className="mb-4 rounded-xl border border-sky-500/20 bg-sky-500/10 p-3 text-xs text-sky-100">
+                <p className="font-medium">Atenção para assinatura eletrônica:</p>
+                {pendenciasAssinatura.map((item) => <p key={item}>• {item}</p>)}
+              </div>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 pb-6">
@@ -657,6 +698,9 @@ export default function ContratoCompraVendaDetalheModal({ contratoId, onClose }:
                   { label: 'Data do contrato', value: fmt(contrato.data_contrato) },
                   { label: 'Escritura prevista', value: fmt(contrato.data_escritura_prevista) },
                   { label: 'Entrega das chaves', value: fmt(contrato.data_entrega_chaves) },
+                  { label: 'Prazo documentação', value: contrato.prazo_documentacao_dias != null ? `${contrato.prazo_documentacao_dias} dias` : '-' },
+                  { label: 'Prazo escritura', value: contrato.prazo_escritura_dias != null ? `${contrato.prazo_escritura_dias} dias` : '-' },
+                  { label: 'Prazo registro', value: contrato.prazo_registro_dias != null ? `${contrato.prazo_registro_dias} dias` : '-' },
                   { label: 'Valor total', value: `R$ ${fmtMoney(contrato.valor_total)}`, bold: true },
                   { label: 'Sinal', value: `R$ ${fmtMoney(contrato.valor_sinal)}` },
                   { label: 'Parcela final', value: `R$ ${fmtMoney(contrato.valor_parcela_final)}` },
@@ -700,6 +744,24 @@ export default function ContratoCompraVendaDetalheModal({ contratoId, onClose }:
               <div className="mb-5">
                 <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Observações</h3>
                 <div className="whitespace-pre-line rounded-xl bg-muted/50 p-3 text-sm">{contrato.observacoes}</div>
+              </div>
+            )}
+
+            {(contrato.testemunha_um_nome || contrato.testemunha_dois_nome) && (
+              <div className="mb-5">
+                <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Testemunhas</h3>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="rounded-xl bg-muted/50 p-3 text-sm">
+                    <p className="font-medium">{contrato.testemunha_um_nome || 'Testemunha 1'}</p>
+                    <p className="text-xs text-muted-foreground">{contrato.testemunha_um_documento || '-'}</p>
+                    {contrato.testemunha_um_email && <p className="mt-1 text-xs text-muted-foreground">{contrato.testemunha_um_email}</p>}
+                  </div>
+                  <div className="rounded-xl bg-muted/50 p-3 text-sm">
+                    <p className="font-medium">{contrato.testemunha_dois_nome || 'Testemunha 2'}</p>
+                    <p className="text-xs text-muted-foreground">{contrato.testemunha_dois_documento || '-'}</p>
+                    {contrato.testemunha_dois_email && <p className="mt-1 text-xs text-muted-foreground">{contrato.testemunha_dois_email}</p>}
+                  </div>
+                </div>
               </div>
             )}
 

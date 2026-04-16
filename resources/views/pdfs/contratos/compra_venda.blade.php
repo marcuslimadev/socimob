@@ -68,6 +68,16 @@
             $objetoDescricao .= ' Com ' . (int) $imovel?->garagem . ' vaga(s) de garagem.';
         }
     }
+    $prazoDocumentacao = $contrato->prazo_documentacao_dias ?? 5;
+    $prazoEscritura = $contrato->prazo_escritura_dias ?? 30;
+    $prazoRegistro = $contrato->prazo_registro_dias ?? 5;
+    $parcelasTexto = $parcelas->map(function ($parcela) {
+        return mb_strtolower(trim((string) (($parcela['descricao'] ?? '') . ' ' . ($parcela['texto'] ?? ''))));
+    })->implode(' ');
+    $temFinanciamento = str_contains($parcelasTexto, 'financi') || str_contains($parcelasTexto, 'fgts');
+    $temSaldoFinal = !empty($contrato->valor_parcela_final) || $temFinanciamento;
+    $foroCidade = $cidadeImovel ?: 'Belo Horizonte';
+    $foroEstado = $estadoImovel ?: 'MG';
 @endphp
 
 <div class="sheet">
@@ -158,19 +168,20 @@
         <div class="clause-body">{!! nl2br(e($clausula)) !!}</div>
         @endforeach
     @else
-    <div class="clause-title">Cláusula Primeira: Do Objeto e da Promessa de Compra e Venda</div>
+    <div class="clause-title">Cláusula Primeira: Do Objeto</div>
     <div class="clause-body">
         Constitui objeto deste contrato o imóvel descrito a seguir: {{ $objetoDescricao }}
         @if($contrato->matricula_numero) O imóvel está matriculado sob o nº {{ $contrato->matricula_numero }}@if($contrato->cartorio_nome), no {{ $contrato->cartorio_nome }}@endif. @endif
         @if($contrato->inscricao_cadastral) Índice cadastral nº {{ $contrato->inscricao_cadastral }}. @endif
     </div>
     <div class="clause-paragraph"><strong>Parágrafo Primeiro:</strong> Os PROMITENTES VENDEDORES prometem vender o imóvel livre e desembaraçado de ônus reais, fiscais, judiciais e extrajudiciais, respondendo pela evicção de direito, na forma da lei.</div>
-    <div class="clause-paragraph"><strong>Parágrafo Segundo:</strong> Os PROMISSÁRIOS COMPRADORES declaram ter visitado e vistoriado o imóvel, conhecendo suas características, benfeitorias, dimensões e estado de conservação, aceitando-o no estado em que se encontra.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Segundo:</strong> Os PROMITENTES VENDEDORES declaram, sob responsabilidade civil e penal, inexistirem débitos pretéritos ou gravames não informados neste instrumento.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Terceiro:</strong> Os PROMISSÁRIOS COMPRADORES declaram ter visitado e vistoriado o imóvel, conhecendo suas características, benfeitorias, dimensões, localização e estado de conservação aparente.</div>
 
-    <div class="clause-title">Cláusula Segunda: Do Preço e Forma de Pagamento</div>
+    <div class="clause-title">Cláusula Segunda: Da Forma de Pagamento</div>
     <div class="clause-body">
         O preço certo e ajustado para esta negociação é de <strong>R$ {{ number_format($contrato->valor_total ?? 0, 2, ',', '.') }}</strong>,
-        a ser pago conforme condições abaixo.
+        a ser pago conforme as condições abaixo, valendo o sinal, quando previsto, como arras confirmatórias.
     </div>
     @if($parcelas->isNotEmpty())
         @foreach($parcelas as $indice => $parcela)
@@ -196,29 +207,46 @@
         </div>
         @endif
     @endif
-    <div class="clause-paragraph"><strong>Parágrafo Primeiro:</strong> Em caso de atraso tolerado pelos PROMITENTES VENDEDORES, incidirão multa de {{ number_format($contrato->multa_moratoria_percentual ?? 2, 2, ',', '.') }}% e juros de {{ number_format($contrato->juros_percentual_mes ?? 1, 2, ',', '.') }}% ao mês, calculados pro rata die.</div>
-    <div class="clause-paragraph"><strong>Parágrafo Segundo:</strong> Ultrapassado o prazo de tolerância, poderá ocorrer rescisão de pleno direito, com aplicação das penalidades deste contrato.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Primeiro:</strong> Os pagamentos somente serão considerados quitados após a compensação bancária e a efetiva disponibilidade dos valores em favor dos PROMITENTES VENDEDORES.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Segundo:</strong> Em caso de atraso, incidirão multa moratória de {{ number_format($contrato->multa_moratoria_percentual ?? 2, 2, ',', '.') }}% e juros de {{ number_format($contrato->juros_percentual_mes ?? 1, 2, ',', '.') }}% ao mês, calculados pro rata die, sem prejuízo das demais consequências contratuais e legais.</div>
 
-    <div class="clause-title">Cláusula Terceira: Da Posse</div>
-    <div class="clause-body">A posse direta do imóvel será transmitida aos PROMISSÁRIOS COMPRADORES mediante o pagamento integral do preço e a assinatura da escritura definitiva, com entrega das chaves na data ajustada entre as partes.</div>
-    <div class="clause-paragraph"><strong>Parágrafo Primeiro:</strong> Na entrega das chaves, os PROMITENTES VENDEDORES apresentarão comprovantes de quitação de condomínio, IPTU, energia e demais encargos incidentes até a imissão da posse.</div>
-    <div class="clause-paragraph"><strong>Parágrafo Segundo:</strong> Débitos cujo fato gerador seja anterior à posse permanecerão sob responsabilidade dos PROMITENTES VENDEDORES.</div>
+    <div class="clause-title">Cláusula Terceira: Da Posse e da Escritura</div>
+    <div class="clause-body">A posse direta do imóvel e a entrega das chaves ficarão vinculadas à quitação integral do preço, à liberação definitiva dos valores e à formalização do instrumento hábil para transferência da propriedade.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Primeiro:</strong> Na entrega das chaves, os PROMITENTES VENDEDORES deverão apresentar comprovantes de quitação de condomínio, IPTU e demais encargos incidentes até a data da posse.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Segundo:</strong> Havendo financiamento bancário, as partes obrigam-se a assinar o contrato bancário, escritura ou termo equivalente tão logo sejam convocadas pelo agente financeiro, despachante ou cartório competente.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Terceiro:</strong> @if($contrato->data_entrega_chaves)A entrega das chaves está prevista para {{ $contrato->data_entrega_chaves->format('d/m/Y') }}, ressalvada a necessidade de quitação integral e cumprimento das etapas registrais.@else A entrega das chaves observará a data ajustada entre as partes, sempre condicionada à quitação integral do negócio e à regular formalização do título.@endif</div>
 
-    <div class="clause-title">Cláusula Quarta: Das Despesas</div>
-    <div class="clause-body">Correrão por conta dos PROMISSÁRIOS COMPRADORES as despesas com ITBI, escritura, registro, despachante e demais custos inerentes à transferência da propriedade, salvo ajuste diverso expresso neste instrumento.</div>
+    <div class="clause-title">Cláusula Quarta: Da Condição Suspensiva de Financiamento e Avaliação</div>
+    <div class="clause-body">
+        @if($temSaldoFinal)
+            Caso a operação dependa, total ou parcialmente, de financiamento imobiliário, FGTS ou avaliação bancária, a conclusão do negócio ficará condicionada à aprovação do crédito do(s) PROMISSÁRIO(S) COMPRADOR(ES), à aprovação jurídica do imóvel e à avaliação suficiente para viabilizar a compra nas condições pactuadas.
+        @else
+            Não havendo financiamento bancário, eventual formalização por instituição financeira ou exigência registral superveniente dependerá de ajuste entre as partes, preservado o preço e as condições essenciais já pactuadas.
+        @endif
+    </div>
+    <div class="clause-paragraph"><strong>Parágrafo Primeiro:</strong> Se o financiamento não for aprovado por motivo não imputável ao(s) PROMISSÁRIO(S) COMPRADOR(ES), ou se a avaliação inviabilizar a operação nos termos ajustados, as partes poderão renegociar a forma de pagamento ou resolver o contrato sem multa.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Segundo:</strong> Na hipótese de resolução sem culpa do(s) PROMISSÁRIO(S) COMPRADOR(ES), os valores pagos deverão ser restituídos em até 3 (três) dias úteis, salvo retenções legalmente admissíveis e expressamente previstas.</div>
 
-    <div class="clause-title">Cláusula Quinta: Da Transferência</div>
-    <div class="clause-body">Os PROMITENTES VENDEDORES obrigam-se a transferir o domínio e o direito que possuem sobre o imóvel, livre de ônus e tributos vencidos, no ato da outorga da escritura pública de compra e venda.</div>
-    <div class="clause-paragraph"><strong>Parágrafo Primeiro:</strong> Os PROMITENTES VENDEDORES deverão entregar a documentação necessária para a transferência no prazo de {{ $contrato->prazo_documentacao_dias ?? 10 }} dias contados da assinatura deste contrato.</div>
-    <div class="clause-paragraph"><strong>Parágrafo Segundo:</strong> A escritura deverá ser providenciada em até {{ $contrato->prazo_escritura_dias ?? 30 }} dias, ressalvadas hipóteses de força maior e fatos alheios à vontade das partes.</div>
+    <div class="clause-title">Cláusula Quinta: Do Registro do Imóvel e da Documentação</div>
+    <div class="clause-body">Os documentos necessários à formalização do negócio deverão ser apresentados e assinados pelas partes nos prazos abaixo, observadas as exigências do banco, do cartório e da legislação aplicável.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Primeiro:</strong> Os PROMITENTES VENDEDORES deverão disponibilizar a documentação do imóvel e das pessoas envolvidas no prazo de até {{ $prazoDocumentacao }} dia(s) úteis, contado da solicitação formal ou da assinatura deste instrumento.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Segundo:</strong> A escritura, contrato bancário ou instrumento equivalente deverá ser providenciado em até {{ $prazoEscritura }} dia(s), admitida prorrogação quando houver pendência operacional, bancária, cadastral ou registral não causada por culpa da parte interessada.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Terceiro:</strong> Após a assinatura do título apto à transferência, o protocolo para registro no cartório competente deverá ocorrer em até {{ $prazoRegistro }} dia(s) úteis, cabendo ao(s) PROMISSÁRIO(S) COMPRADOR(ES) acompanhar o procedimento.</div>
 
-    <div class="clause-title">Cláusula Sexta: Do Registro</div>
-    <div class="clause-body">Os PROMISSÁRIOS COMPRADORES comprometem-se a protocolizar a escritura pública para registro no cartório competente no prazo máximo de {{ $contrato->prazo_registro_dias ?? 5 }} dias úteis contados da assinatura da escritura.</div>
+    <div class="clause-title">Cláusula Sexta: Dos Encargos e Despesas</div>
+    <div class="clause-body">Correrão por conta dos PROMISSÁRIOS COMPRADORES as despesas de ITBI, escritura, emolumentos, registro, despachante, tarifas e custos bancários da transferência, salvo ajuste escrito em contrário.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Primeiro:</strong> Permanecerão sob responsabilidade dos PROMITENTES VENDEDORES os débitos e encargos cujo fato gerador seja anterior à imissão de posse do(s) PROMISSÁRIO(S) COMPRADOR(ES).</div>
+    <div class="clause-paragraph"><strong>Parágrafo Segundo:</strong> Após a posse, os encargos ordinários, consumos e tributos correntes passarão a ser suportados pelo(s) PROMISSÁRIO(S) COMPRADOR(ES), observado eventual rateio proporcional.</div>
 
-    <div class="clause-title">Cláusula Sétima: Da Multa Penal Contratual</div>
-    <div class="clause-body">O descumprimento de qualquer obrigação deste contrato poderá ensejar rescisão de pleno direito, independentemente de notificação, e aplicação de multa penal equivalente a {{ number_format($contrato->multa_percentual ?? 10, 2, ',', '.') }}% sobre o valor total da negociação, sem prejuízo das perdas e danos comprovados.</div>
+    <div class="clause-title">Cláusula Sétima: Das Penalidades</div>
+    <div class="clause-body">O inadimplemento de obrigação essencial poderá ensejar a resolução do contrato e a aplicação de multa contratual equivalente a {{ number_format($contrato->multa_percentual ?? 10, 2, ',', '.') }}% sobre o valor total do negócio, sem prejuízo de perdas e danos comprovados, quando cabíveis.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Primeiro:</strong> Antes da resolução por inadimplemento sanável, a parte inadimplente deverá ser notificada para purgar a mora em prazo razoável, salvo hipótese de urgência, impossibilidade de cura ou descumprimento definitivo.</div>
+    <div class="clause-paragraph"><strong>Parágrafo Segundo:</strong> Se a inexecução decorrer da parte que deu as arras, poderá a outra tê-las por retidas; se decorrer da parte que as recebeu, poderá quem as pagou exigir sua devolução mais o equivalente, na forma da lei.</div>
 
-    <div class="clause-title">Cláusula Oitava: Da Intermediação</div>
+    <div class="clause-title">Cláusula Oitava: Da Boa-fé e Cooperação</div>
+    <div class="clause-body">As partes comprometem-se a agir com boa-fé, transparência e cooperação, fornecendo as informações, certidões, assinaturas e documentos necessários para a regular conclusão do negócio.</div>
+
+    <div class="clause-title">Cláusula Nona: Da Intermediação</div>
     <div class="clause-body">
         A intermediação desta negociação foi realizada por
         <strong>{{ $contrato->intermediadora_nome ?: ($tenant?->name ?? 'imobiliária intermediadora') }}</strong>
@@ -230,11 +258,11 @@
         @endif
     </div>
 
-    <div class="clause-title">Cláusula Nona: Da Irretratabilidade e Irrevogabilidade</div>
+    <div class="clause-title">Cláusula Décima: Da Irretratabilidade e Irrevogabilidade</div>
     <div class="clause-body">O presente contrato é celebrado em caráter irretratável, irrevogável e inarrependível, obrigando as partes, seus herdeiros e sucessores, ao fiel cumprimento de todas as cláusulas aqui pactuadas.</div>
 
-    <div class="clause-title">Cláusula Décima: Do Foro</div>
-    <div class="clause-body">Fica eleito o foro da comarca de {{ $cidadeImovel }}/{{ $estadoImovel }}, com renúncia expressa a qualquer outro, por mais privilegiado que seja, para dirimir quaisquer questões oriundas deste contrato.</div>
+    <div class="clause-title">Cláusula Décima Primeira: Do Foro</div>
+    <div class="clause-body">Fica eleito o foro da comarca de {{ $foroCidade }}/{{ $foroEstado }}, com renúncia expressa a qualquer outro, por mais privilegiado que seja, para dirimir quaisquer questões oriundas deste contrato.</div>
     @endif
 
     @if($contrato->clausulas && count($contrato->clausulas) > 0)

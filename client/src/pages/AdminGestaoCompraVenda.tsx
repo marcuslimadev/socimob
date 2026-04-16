@@ -24,12 +24,12 @@ interface ParcelaForm { descricao: string; valor: string; texto: string; }
 
 const initialForm = {
   numero_contrato: '', vendedor_pessoa_id: '', comprador_pessoa_id: '', segundo_vendedor_id: '', segundo_comprador_id: '', co_vendedores_ids: [] as string[], co_compradores_ids: [] as string[], imovel_id: '', status: 'rascunho',
-  data_contrato: '', data_escritura_prevista: '', valor_total: '', valor_sinal: '', valor_parcela_final: '',
+  data_contrato: '', data_escritura_prevista: '', data_entrega_chaves: '', prazo_documentacao_dias: '', prazo_escritura_dias: '', prazo_registro_dias: '', valor_total: '', valor_sinal: '', valor_parcela_final: '',
   multa_percentual: '', multa_moratoria_percentual: '', juros_percentual_mes: '', corretagem_valor: '', corretagem_responsavel: '',
   intermediadora_nome: '', intermediadora_documento: '', intermediadora_fantasia: '',
   vendedor_novo_nome: '', vendedor_novo_cpf: '', comprador_novo_nome: '', comprador_novo_cpf: '', imovel_novo_titulo: '',
   objeto_descricao: '', matricula_numero: '', cartorio_nome: '', inscricao_cadastral: '',
-  testemunha_um_nome: '', testemunha_um_email: '', testemunha_dois_nome: '', testemunha_dois_email: '', observacoes: '',
+  testemunha_um_nome: '', testemunha_um_documento: '', testemunha_um_email: '', testemunha_dois_nome: '', testemunha_dois_documento: '', testemunha_dois_email: '', observacoes: '',
 };
 
 const emptyParcela = (): ParcelaForm => ({ descricao: '', valor: '', texto: '' });
@@ -37,6 +37,22 @@ const fmtMoney = (v?: number) => Number(v || 0).toLocaleString('pt-BR', { minimu
 const fmtDate = (v?: string) => v ? `${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slice(0, 4)}` : '-';
 const currencyInput = (v: string) => v.replace(/[^\d,\.]/g, '');
 const parseCurrency = (v: string) => !v?.trim() ? undefined : Number(v.includes(',') ? v.replace(/\./g, '').replace(',', '.') : v);
+const integerInput = (v: string) => v.replace(/\D/g, '');
+
+function buildReferenceParcelas(valorSinal = '', valorParcelaFinal = ''): ParcelaForm[] {
+  return [
+    {
+      descricao: 'a)',
+      valor: valorSinal,
+      texto: 'Pago no ato da assinatura deste contrato, a título de sinal e princípio de pagamento, por transferência, depósito ou PIX em conta indicada pelo(s) promitente(s) vendedor(es).',
+    },
+    {
+      descricao: 'b)',
+      valor: valorParcelaFinal,
+      texto: 'Saldo remanescente a ser quitado por financiamento habitacional, FGTS e/ou recursos próprios, dentro do prazo contratual, com liberação final vinculada ao registro e aos procedimentos do agente financeiro.',
+    },
+  ];
+}
 
 const statusBadgeClass = (status?: string) => {
   if (status === 'ativo') return 'bg-emerald-100 text-emerald-800';
@@ -117,6 +133,26 @@ export default function AdminGestaoCompraVenda() {
     setEditingId(null);
   };
 
+  const applyReferenceFlowDefaults = () => {
+    setForm((current) => ({
+      ...current,
+      prazo_documentacao_dias: current.prazo_documentacao_dias || '5',
+      prazo_escritura_dias: current.prazo_escritura_dias || '30',
+      prazo_registro_dias: current.prazo_registro_dias || '5',
+      multa_percentual: current.multa_percentual || '10',
+      multa_moratoria_percentual: current.multa_moratoria_percentual || '2',
+      juros_percentual_mes: current.juros_percentual_mes || '1',
+    }));
+
+    setParcelas((current) => {
+      const meaningful = current.filter((item) => item.descricao || item.valor || item.texto);
+      if (meaningful.length > 0) return current;
+      return buildReferenceParcelas(form.valor_sinal, form.valor_parcela_final);
+    });
+
+    toast.success('Fluxo padrão de compra e venda aplicado.');
+  };
+
   const openEdit = async (id: number) => {
     resetForm();
     setLoading(true);
@@ -139,6 +175,10 @@ export default function AdminGestaoCompraVenda() {
           status: item.status || 'rascunho',
           data_contrato: item.data_contrato?.slice(0, 10) || '',
           data_escritura_prevista: item.data_escritura_prevista?.slice(0, 10) || '',
+          data_entrega_chaves: item.data_entrega_chaves?.slice(0, 10) || '',
+          prazo_documentacao_dias: item.prazo_documentacao_dias ? String(item.prazo_documentacao_dias) : '',
+          prazo_escritura_dias: item.prazo_escritura_dias ? String(item.prazo_escritura_dias) : '',
+          prazo_registro_dias: item.prazo_registro_dias ? String(item.prazo_registro_dias) : '',
           valor_total: item.valor_total ? String(item.valor_total).replace('.', ',') : '',
           valor_sinal: item.valor_sinal ? String(item.valor_sinal).replace('.', ',') : '',
           valor_parcela_final: item.valor_parcela_final ? String(item.valor_parcela_final).replace('.', ',') : '',
@@ -155,8 +195,10 @@ export default function AdminGestaoCompraVenda() {
           cartorio_nome: item.cartorio_nome || '',
           inscricao_cadastral: item.inscricao_cadastral || '',
           testemunha_um_nome: item.testemunha_um_nome || '',
+          testemunha_um_documento: item.testemunha_um_documento || '',
           testemunha_um_email: item.testemunha_um_email || '',
           testemunha_dois_nome: item.testemunha_dois_nome || '',
+          testemunha_dois_documento: item.testemunha_dois_documento || '',
           testemunha_dois_email: item.testemunha_dois_email || '',
           observacoes: item.observacoes || '',
           vendedor_novo_nome: '', vendedor_novo_cpf: '', comprador_novo_nome: '', comprador_novo_cpf: '', imovel_novo_titulo: '',
@@ -202,6 +244,10 @@ export default function AdminGestaoCompraVenda() {
         status: form.status,
         data_contrato: form.data_contrato || undefined,
         data_escritura_prevista: form.data_escritura_prevista || undefined,
+        data_entrega_chaves: form.data_entrega_chaves || undefined,
+        prazo_documentacao_dias: form.prazo_documentacao_dias ? Number(form.prazo_documentacao_dias) : undefined,
+        prazo_escritura_dias: form.prazo_escritura_dias ? Number(form.prazo_escritura_dias) : undefined,
+        prazo_registro_dias: form.prazo_registro_dias ? Number(form.prazo_registro_dias) : undefined,
         valor_total: parseCurrency(form.valor_total),
         valor_sinal: parseCurrency(form.valor_sinal),
         valor_parcela_final: parseCurrency(form.valor_parcela_final),
@@ -218,8 +264,10 @@ export default function AdminGestaoCompraVenda() {
         cartorio_nome: form.cartorio_nome || undefined,
         inscricao_cadastral: form.inscricao_cadastral || undefined,
         testemunha_um_nome: form.testemunha_um_nome || undefined,
+        testemunha_um_documento: form.testemunha_um_documento || undefined,
         testemunha_um_email: form.testemunha_um_email?.trim() || undefined,
         testemunha_dois_nome: form.testemunha_dois_nome || undefined,
+        testemunha_dois_documento: form.testemunha_dois_documento || undefined,
         testemunha_dois_email: form.testemunha_dois_email?.trim() || undefined,
         observacoes: form.observacoes || undefined,
         parcelas_pagamento: parcelas
@@ -359,12 +407,21 @@ export default function AdminGestaoCompraVenda() {
             <div className="mb-5 flex items-start justify-between">
               <div>
                 <h2 className="text-lg font-semibold">{editingId ? 'Editar contrato' : 'Novo contrato de compra e venda'}</h2>
-                <p className="text-sm text-muted-foreground">{editingId ? 'Altere os dados do negócio.' : 'Versão inicial com cadastro rápido de vendedor e comprador.'}</p>
+                <p className="text-sm text-muted-foreground">{editingId ? 'Altere os dados do negócio.' : 'Fluxo guiado com base no contrato de referência: partes, pagamento, prazos, testemunhas e geração do PDF.'}</p>
               </div>
-              <button type="button" onClick={resetForm} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={applyReferenceFlowDefaults} className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-accent">
+                  Aplicar fluxo padrão
+                </button>
+                <button type="button" onClick={resetForm} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+              </div>
             </div>
 
             <form onSubmit={save} className="space-y-4">
+              <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-3 text-sm text-blue-200">
+                Este fluxo agora segue a lógica do contrato de referência: qualificação das partes, objeto com matrícula/cartório, arras, saldo, prazos de documentação, escritura, registro, encargos, penalidades e testemunhas.
+              </div>
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="rounded-xl border border-border p-3 bg-muted/20">
                   <label className="text-xs font-semibold text-foreground mb-2 block">Vendedor Principal</label>
@@ -427,9 +484,15 @@ export default function AdminGestaoCompraVenda() {
                 <input value={form.numero_contrato} onChange={(e) => setForm((p) => ({ ...p, numero_contrato: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Número do contrato" />
                 <input type="date" title="Data Assinatura" value={form.data_contrato} onChange={(e) => setForm((p) => ({ ...p, data_contrato: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                 <input type="date" title="Data Escritura" value={form.data_escritura_prevista} onChange={(e) => setForm((p) => ({ ...p, data_escritura_prevista: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                <input type="date" title="Entrega das Chaves" value={form.data_entrega_chaves} onChange={(e) => setForm((p) => ({ ...p, data_entrega_chaves: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                 <input value={form.valor_total} onChange={(e) => setForm((p) => ({ ...p, valor_total: currencyInput(e.target.value) }))} className="col-span-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Valor total" />
                 <input value={form.valor_sinal} onChange={(e) => setForm((p) => ({ ...p, valor_sinal: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Sinal" />
                 <input value={form.valor_parcela_final} onChange={(e) => setForm((p) => ({ ...p, valor_parcela_final: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Parcela final (Financiamento etc)" />
+                <div className="col-span-full grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <input value={form.prazo_documentacao_dias} onChange={(e) => setForm((p) => ({ ...p, prazo_documentacao_dias: integerInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Prazo documentação (dias)" />
+                  <input value={form.prazo_escritura_dias} onChange={(e) => setForm((p) => ({ ...p, prazo_escritura_dias: integerInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Prazo escritura/financiamento (dias)" />
+                  <input value={form.prazo_registro_dias} onChange={(e) => setForm((p) => ({ ...p, prazo_registro_dias: integerInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Prazo registro (dias)" />
+                </div>
                 <div className="col-span-full grid grid-cols-3 gap-4">
                   <input value={form.multa_percentual} onChange={(e) => setForm((p) => ({ ...p, multa_percentual: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Multa Rescisão (%)" />
                   <input value={form.multa_moratoria_percentual} onChange={(e) => setForm((p) => ({ ...p, multa_moratoria_percentual: currencyInput(e.target.value) }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Multa Atraso (%)" />
@@ -452,7 +515,7 @@ export default function AdminGestaoCompraVenda() {
                 <input value={form.inscricao_cadastral} onChange={(e) => setForm((p) => ({ ...p, inscricao_cadastral: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Inscrição cadastral" />
               </div>
 
-              <textarea value={form.objeto_descricao} onChange={(e) => setForm((p) => ({ ...p, objeto_descricao: e.target.value }))} className="min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Descrição do imóvel e do objeto da negociação." />
+              <textarea value={form.objeto_descricao} onChange={(e) => setForm((p) => ({ ...p, objeto_descricao: e.target.value }))} className="min-h-[120px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Descrição do imóvel e do objeto da negociação. Ex.: apartamento na Rua X, matrícula Y, livre de ônus, visitado pelas partes." />
 
               <div className="space-y-3">
                 {parcelas.map((item, index) => (
@@ -468,13 +531,20 @@ export default function AdminGestaoCompraVenda() {
                     <textarea value={item.texto} onChange={(e) => setParcelas((current) => current.map((p, i) => i === index ? { ...p, texto: e.target.value } : p))} className="mt-3 min-h-[80px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Texto completo dessa parcela." />
                   </div>
                 ))}
-                <button type="button" onClick={() => setParcelas((current) => [...current, emptyParcela()])} className="text-xs text-primary hover:underline">+ adicionar parcela</button>
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" onClick={() => setParcelas((current) => [...current, emptyParcela()])} className="text-xs text-primary hover:underline">+ adicionar parcela</button>
+                  <button type="button" onClick={() => setParcelas(buildReferenceParcelas(form.valor_sinal, form.valor_parcela_final))} className="text-xs text-primary hover:underline">
+                    usar parcelas do modelo de referência
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <input value={form.testemunha_um_nome} onChange={(e) => setForm((p) => ({ ...p, testemunha_um_nome: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Testemunha 1" />
+                <input value={form.testemunha_um_documento} onChange={(e) => setForm((p) => ({ ...p, testemunha_um_documento: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Documento testemunha 1" />
                 <input value={form.testemunha_um_email} onChange={(e) => setForm((p) => ({ ...p, testemunha_um_email: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="E-mail testemunha 1" />
                 <input value={form.testemunha_dois_nome} onChange={(e) => setForm((p) => ({ ...p, testemunha_dois_nome: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Testemunha 2" />
+                <input value={form.testemunha_dois_documento} onChange={(e) => setForm((p) => ({ ...p, testemunha_dois_documento: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Documento testemunha 2" />
                 <input value={form.testemunha_dois_email} onChange={(e) => setForm((p) => ({ ...p, testemunha_dois_email: e.target.value }))} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="E-mail testemunha 2" />
               </div>
 
