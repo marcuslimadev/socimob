@@ -243,8 +243,8 @@ const faqItems = [
     answer: "Não. Você entra com a base certa e ativa módulos conforme a operação amadurece.",
   },
   {
-    question: "Implantação e integração estão inclusas nesses valores?",
-    answer: "Os valores desta página são mensais. Implantação, migração e integrações especiais entram na proposta comercial.",
+    question: "Implantação e integrações estão incluídas nesses valores?",
+    answer: "Não. Os valores desta página são mensais. Implantação, migração e integrações especiais entram na proposta comercial.",
   },
   {
     question: "Serve para venda e para locação?",
@@ -819,7 +819,7 @@ export default function SocimobLanding() {
                   Se a sua operação precisa de um sistema mais completo, o próximo passo é montar a proposta certa.
                 </h2>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-                  Me chame no WhatsApp para alinhar número de usuários, módulos, implantação e integrações especiais.
+                  Me chame no WhatsApp para alinharmos número de usuários, módulos, implantação e integrações especiais.
                 </p>
               </div>
 

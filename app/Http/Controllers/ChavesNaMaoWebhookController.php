@@ -317,7 +317,7 @@ class ChavesNaMaoWebhookController extends Controller
             }
         }
 
-        return implode("", $obs);
+        return implode("\n", $obs);
     }
 
     /**
