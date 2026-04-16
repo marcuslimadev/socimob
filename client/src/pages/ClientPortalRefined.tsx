@@ -845,13 +845,13 @@ export default function ClientPortalRefined() {
             style={{ height: '160%', top: '-30%', willChange: 'transform' }}
           />
         </div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_35%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(0,0,0,0.08),transparent_35%)]" />
 
         <div className="relative mx-auto max-w-7xl px-4 lg:px-8 py-10 lg:py-20 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-10">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.24em] text-white/80 mb-4">Signature Real Estate</p>
-            <h1 className="text-3xl md:text-6xl leading-[1.05] text-white">Imóveis extraordinários para estilos de vida únicos</h1>
-            <p className="mt-4 text-sm md:text-base text-white/75 max-w-2xl">{tenant?.slogan || 'Curadoria de residências e investimentos em localizações de alto potencial.'}</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-black mb-4">Signature Real Estate</p>
+            <h1 className="text-3xl md:text-6xl leading-[1.05] text-black">Imóveis extraordinários para estilos de vida únicos</h1>
+            <p className="mt-4 text-sm md:text-base text-black max-w-2xl">{tenant?.slogan || 'Curadoria de residências e investimentos em localizações de alto potencial.'}</p>
             <div className="mt-6 flex flex-wrap gap-2.5">
               <button
                 type="button"
@@ -865,7 +865,7 @@ export default function ClientPortalRefined() {
               <button
                 type="button"
                 onClick={() => navigate('/portal/vender')}
-                className="inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full border border-black px-4 py-2.5 text-sm font-semibold text-black hover:bg-black/10 transition-colors"
               >
                 <TrendingUp className="w-4 h-4" />
                 Quero vender
@@ -880,9 +880,9 @@ export default function ClientPortalRefined() {
               { label: 'Cidades', value: new Set(properties.map((property) => property.cidade)).size || '10+' },
               { label: 'Anos no mercado', value: '+15' },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-white/20 bg-white/10 p-4 md:p-5 text-white">
+              <div key={stat.label} className="rounded-2xl border border-black/20 bg-black/10 p-4 md:p-5 text-black">
                 <p className="text-2xl md:text-3xl font-light">{stat.value}</p>
-                <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/70">{stat.label}</p>
+                <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-black">{stat.label}</p>
               </div>
             ))}
           </div>
