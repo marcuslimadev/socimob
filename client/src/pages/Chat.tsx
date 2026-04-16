@@ -957,8 +957,8 @@ export default function Chat() {
   }, []);
 
   const renderCalendarPanel = () => (
-    <div className="flex min-h-0 flex-1 flex-col bg-[radial-gradient(circle_at_top,rgba(61,120,180,0.10),transparent_34%),linear-gradient(180deg,#f2f2f0_0%,#e4e6e8_100%)]">
-      <div className="border-b border-[#ffc51a] bg-[#f7f7f4] px-4 py-4 md:px-5">
+    <div className="flex min-h-0 flex-1 flex-col bg-[radial-gradient(circle_at_14%_12%,rgba(45,111,171,0.12),transparent_26%),radial-gradient(circle_at_86%_14%,rgba(255,29,45,0.10),transparent_24%),radial-gradient(circle_at_52%_100%,rgba(255,197,26,0.12),transparent_30%),linear-gradient(180deg,#ffffff_0%,#fffdf7_100%)]">
+      <div className="border-b border-[#ffc51a] bg-[#ffffff] px-4 py-4 md:px-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#617489]">Atendimentos por data</p>
@@ -968,15 +968,15 @@ export default function Chat() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-[#5a646f]">
-            <span className="rounded-full border border-[#ffc51a] bg-white px-3 py-1.5">{calendarEvents.length} atendimento(s)</span>
-            <span className="rounded-full border border-[#ffc51a] bg-white px-3 py-1.5">Filtro atual: {contactFilters.find((filter) => filter.id === contactFilter)?.label || 'Todas'}</span>
+            <span className="rounded-full border border-[#ffc51a] bg-[#ffffff] px-3 py-1.5">{calendarEvents.length} atendimento(s)</span>
+            <span className="rounded-full border border-[#2d6fab] bg-[#ffffff] px-3 py-1.5">Filtro atual: {contactFilters.find((filter) => filter.id === contactFilter)?.label || 'Todas'}</span>
           </div>
         </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden p-3 md:p-4">
         <div className="grid h-full min-h-0 gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="chat-atendimentos-calendar min-h-0 overflow-hidden rounded-[22px] border border-[#ffc51a] bg-white shadow-[0_16px_36px_rgba(0,0,0,0.08)]">
+          <div className="chat-atendimentos-calendar min-h-0 overflow-hidden rounded-[22px] border border-[#2d6fab] bg-[#ffffff] shadow-[0_16px_36px_rgba(0,0,0,0.08)]">
             {calendarEvents.length > 0 ? (
               <FullCalendar
                 plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
@@ -1020,8 +1020,8 @@ export default function Chat() {
             )}
           </div>
 
-          <aside className="flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-[#ffc51a] bg-white shadow-[0_16px_36px_rgba(0,0,0,0.08)]">
-            <div className="border-b border-[#ffc51a] px-4 py-4">
+          <aside className="flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-[#ff1d2d] bg-[#ffffff] shadow-[0_16px_36px_rgba(0,0,0,0.08)]">
+            <div className="border-b border-[#ffc51a] bg-[#ffffff] px-4 py-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#617489]">Abrir chat</p>
               <h3 className="mt-1 text-lg font-semibold text-[#132b4c]">Atendimentos recentes</h3>
               <p className="mt-1 text-sm leading-6 text-[#5a646f]">Selecione um atendimento para ir direto à conversa.</p>
@@ -1038,7 +1038,7 @@ export default function Chat() {
                         key={`calendar-link-${contact.id}`}
                         type="button"
                         onClick={() => openConversation(contact.id)}
-                        className="w-full rounded-[18px] border border-[#ffc51a] bg-[#f8fafc] px-3 py-3 text-left transition hover:border-[#ff9f0a] hover:bg-[#eef5fb]"
+                        className="w-full rounded-[18px] border border-[#ffc51a] bg-[#ffffff] px-3 py-3 text-left transition hover:border-[#2d6fab] hover:bg-[#f8fbff]"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -1208,13 +1208,13 @@ export default function Chat() {
   };
 
   const renderChatLayout = () => (
-    <div className="flex h-[100dvh] overflow-hidden bg-[#132b4c] text-[#f3f4f6]">
+    <div className="flex h-[100dvh] overflow-hidden bg-[radial-gradient(circle_at_12%_10%,rgba(45,111,171,0.10),transparent_28%),radial-gradient(circle_at_92%_16%,rgba(255,29,45,0.09),transparent_24%),radial-gradient(circle_at_66%_96%,rgba(255,197,26,0.12),transparent_30%),linear-gradient(180deg,#ffffff_0%,#fffdf8_100%)] text-[#f3f4f6]">
       <Sidebar />
       <div className="page-shell flex h-full min-h-0 flex-col overflow-hidden !px-0 !pb-0">
         <div
           className="box-border flex h-[calc(100dvh-var(--app-header-offset,0px))] min-h-0 flex-1 overflow-hidden p-2 md:p-3"
         >
-          <div className="flex min-h-0 flex-1 overflow-hidden rounded-[20px] border border-[#24456f] bg-[#f2f2f0] shadow-[0_24px_60px_rgba(0,0,0,0.28)]">
+          <div className="flex min-h-0 flex-1 overflow-hidden rounded-[20px] border border-[#ffc51a] bg-[#ffffff] shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
             <aside className={cn('min-h-0 w-full flex-shrink-0 flex-col border-r border-[#274d7b] bg-[linear-gradient(180deg,#132b4c_0%,#0d2038_100%)] md:flex md:w-[360px] lg:w-[380px]', showMobileContacts ? 'flex' : 'hidden md:flex')}>
               <div className="border-b border-[#274d7b] p-3.5 md:p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -1329,12 +1329,12 @@ export default function Chat() {
                 )}
               </ScrollArea>
             </aside>
-            <main className={cn('min-h-0 flex-1 flex-col bg-[#f2f2f0]', showMobileContacts ? 'hidden md:flex' : 'flex')}>
+            <main className={cn('min-h-0 flex-1 flex-col bg-[#ffffff]', showMobileContacts ? 'hidden md:flex' : 'flex')}>
               {activeView === 'calendar' ? renderCalendarPanel() : !selectedContact ? (
-                <div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_top,rgba(61,120,180,0.14),transparent_40%),linear-gradient(180deg,#f2f2f0_0%,#e4e6e8_100%)] p-8"><div className="max-w-xl text-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-[#ffc51a]/55 bg-[#132b4c] text-white shadow-[0_12px_28px_rgba(0,0,0,0.16)]"><MessageCircle className="h-7 w-7" /></div><h2 className="mt-6 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-[#132b4c]">Selecione uma conversa</h2><p className="mt-3 text-sm leading-7 text-[#4d5560] md:text-[15px]">A fila fica na lateral. O histórico abre aqui no centro, com leitura limpa e resposta rápida.</p></div></div>
+                <div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_14%_12%,rgba(45,111,171,0.12),transparent_26%),radial-gradient(circle_at_86%_14%,rgba(255,29,45,0.10),transparent_24%),radial-gradient(circle_at_52%_100%,rgba(255,197,26,0.12),transparent_30%),linear-gradient(180deg,#ffffff_0%,#fffdf8_100%)] p-8"><div className="max-w-xl text-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-[#ffc51a]/70 bg-[#132b4c] text-white shadow-[0_12px_28px_rgba(0,0,0,0.16)]"><MessageCircle className="h-7 w-7" /></div><h2 className="mt-6 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-[#132b4c]">Selecione uma conversa</h2><p className="mt-3 text-sm leading-7 text-[#4d5560] md:text-[15px]">A fila fica na lateral. O histórico abre aqui no centro, com leitura limpa e resposta rápida.</p></div></div>
               ) : (
                 <>
-                  <header className="border-b border-[#ffc51a] bg-[#f7f7f4] px-4 py-3 md:px-5">
+                  <header className="border-b border-[#ffc51a] bg-[#ffffff] px-4 py-3 md:px-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 items-start gap-3">
                         <Button variant="ghost" size="icon" className="mt-0.5 rounded-full text-[#132b4c] hover:bg-[#132b4c]/8 md:hidden" onClick={() => setShowMobileContacts(true)}><ArrowLeft className="h-5 w-5" /></Button>
@@ -1375,7 +1375,7 @@ export default function Chat() {
                     {observacoesText && <div className="mt-3 flex items-start gap-3 rounded-2xl border border-[#ffc51a] bg-white px-3.5 py-2.5 text-sm text-[#4d5560]"><div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[#132b4c] text-white"><Info className="h-4 w-4" /></div><div><p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#617489]">Observações do lead</p><p className="mt-1 whitespace-pre-wrap leading-6">{observacoesText}</p></div></div>}
                   </header>
                   <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-                    <div className="absolute inset-0" style={{ backgroundImage: `linear-gradient(180deg, rgba(242,242,240,0.96), rgba(229,231,232,0.98)), url("${chatPatternDataUrl}")`, backgroundSize: 'auto, 220px 220px' }} />
+                    <div className="absolute inset-0" style={{ backgroundImage: `radial-gradient(circle at 14% 12%, rgba(45,111,171,0.10), transparent 26%), radial-gradient(circle at 86% 14%, rgba(255,29,45,0.09), transparent 24%), radial-gradient(circle at 52% 100%, rgba(255,197,26,0.11), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,253,248,0.98)), url("${chatPatternDataUrl}")`, backgroundSize: 'auto, auto, auto, auto, 220px 220px' }} />
                     <ScrollArea ref={scrollAreaRef} className="relative min-h-0 flex-1">
                       <div className="mx-auto flex h-full w-full max-w-[calc(100%-1rem)] flex-col gap-4 px-3 py-4 md:max-w-[calc(100%-2rem)] md:px-5 md:py-5">
                         {searchTerm && <div className="flex items-center justify-between gap-3 rounded-full border border-[#ffc51a] bg-white px-4 py-1.5 text-xs text-[#4d5560] shadow-[0_8px_20px_rgba(0,0,0,0.05)]"><span>Filtrando por <strong className="font-semibold text-[#132b4c]">"{searchTerm}"</strong></span><button type="button" onClick={() => setSearchTerm('')} className="font-semibold text-[#ff1d2d]">Limpar</button></div>}
@@ -1417,7 +1417,7 @@ export default function Chat() {
                         <div ref={messagesEndRef} />
                       </div>
                     </ScrollArea>
-                    <div className="border-t border-[#ffc51a] bg-[#f7f7f4] px-4 py-3 md:px-5">
+                    <div className="border-t border-[#ffc51a] bg-[#ffffff] px-4 py-3 md:px-5">
                       <div className="mx-auto flex w-full max-w-[calc(100%-1rem)] flex-col gap-1.5 md:max-w-[calc(100%-2rem)]">
                         <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#5a646f]"><span>{selectedContact.needsHumanIntervention ? 'Conversa marcada para atendimento humano.' : 'Resposta direta e contexto completo.'}</span><span>Enter para enviar</span></div>
                         <div className="flex items-end gap-2.5 rounded-[24px] border border-[#ffc51a] bg-white p-1.5 shadow-[0_14px_30px_rgba(0,0,0,0.06)]">
