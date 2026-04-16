@@ -835,17 +835,17 @@ export default function ClientPortalRefined() {
         </div>
       </header>
 
-      <section ref={heroRef} className="relative overflow-hidden" style={{ background: `linear-gradient(115deg, ${primary}f0 0%, #0a0d16 100%)` }}>
+      <section ref={heroRef} className="relative overflow-hidden" style={{ background: `linear-gradient(115deg, ${primary}b3 0%, #0a0d1690 100%)` }}>
         {/* Parallax background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <img
             src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1920&q=80"
             alt="Imóveis de alto padrão"
-            className="parallax-bg absolute left-0 w-full object-cover opacity-20"
+            className="parallax-bg absolute left-0 w-full object-cover opacity-45"
             style={{ height: '160%', top: '-30%', willChange: 'transform' }}
           />
         </div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_35%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_35%)]" />
 
         <div className="relative mx-auto max-w-7xl px-4 lg:px-8 py-10 lg:py-20 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-10">
           <div>
