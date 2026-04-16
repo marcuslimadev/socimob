@@ -4,6 +4,7 @@ import {
   Phone,
   Search,
   MoreVertical,
+  Trash2,
   Paperclip,
   ArrowLeft,
   Check,
@@ -26,6 +27,22 @@ import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -73,6 +90,8 @@ export default function Chat() {
   const [showMobileContacts, setShowMobileContacts] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [contactFilter, setContactFilter] = useState<ContactFilter>('all');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeletingConversation, setIsDeletingConversation] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -137,6 +156,20 @@ export default function Chat() {
   };
 
   const selectedContact = contacts.find((c) => c.id === selectedContactId);
+  const currentUserRole = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+
+    try {
+      const rawUser = localStorage.getItem('user');
+      if (!rawUser) return null;
+
+      const parsedUser = JSON.parse(rawUser);
+      return typeof parsedUser?.role === 'string' ? parsedUser.role : null;
+    } catch {
+      return null;
+    }
+  }, []);
+  const canDeleteConversation = currentUserRole === 'admin' || currentUserRole === 'super_admin';
   const selectedClassificationMeta = useMemo(
     () => getClassificationMeta(selectedContact?.classificacao),
     [selectedContact?.classificacao]
@@ -571,6 +604,32 @@ export default function Chat() {
     }
   };
 
+  const handleDeleteConversation = async () => {
+    if (!selectedContact) return;
+
+    const conversationId = selectedContact.id;
+    const contactName = selectedContact.name;
+
+    try {
+      setIsDeletingConversation(true);
+      await api.delete(`/admin/conversas/${conversationId}`);
+
+      setContacts((prev) => prev.filter((contact) => contact.id !== conversationId));
+      setSelectedContactId((current) => (current === conversationId ? null : current));
+      setMessages([]);
+      setShowMobileContacts(true);
+      setIsDeleteDialogOpen(false);
+
+      toast.success(`Conversa com ${contactName} excluida com sucesso`);
+      await fetchContacts();
+    } catch (error: any) {
+      const message = error?.response?.data?.error || 'Erro ao excluir conversa';
+      toast.error(message);
+    } finally {
+      setIsDeletingConversation(false);
+    }
+  };
+
   const MessageStatus = ({
     status,
     tone = 'default',
@@ -784,7 +843,7 @@ export default function Chat() {
                           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-[#5a646f]"><span>{selectedContact.phone}</span><span>Lead #{selectedContact.leadId}</span><span>{messages.length} mensagens</span><span>Última atividade {selectedContact.timestamp}</span></div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2"><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#bfc4c9] bg-white text-[#132b4c] hover:bg-[#ececea]"><Phone className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#bfc4c9] bg-white text-[#132b4c] hover:bg-[#ececea]"><MoreVertical className="h-4 w-4" /></Button></div>
+                      <div className="flex items-center gap-2"><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#bfc4c9] bg-white text-[#132b4c] hover:bg-[#ececea]"><Phone className="h-4 w-4" /></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#bfc4c9] bg-white text-[#132b4c] hover:bg-[#ececea]"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><DropdownMenuItem disabled={!canDeleteConversation || isDeletingConversation} variant="destructive" onSelect={(event) => { event.preventDefault(); if (!canDeleteConversation || isDeletingConversation) return; setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" />Excluir conversa</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
                     </div>
                     {observacoesText && <div className="mt-3 flex items-start gap-3 rounded-2xl border border-[#bfc4c9] bg-white px-3.5 py-2.5 text-sm text-[#4d5560]"><div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[#132b4c] text-white"><Info className="h-4 w-4" /></div><div><p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#617489]">Observações do lead</p><p className="mt-1 whitespace-pre-wrap leading-6">{observacoesText}</p></div></div>}
                   </header>
@@ -848,6 +907,33 @@ export default function Chat() {
           </div>
         </div>
       </div>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="border border-[#24456f] bg-[#132b4c] text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conversa</AlertDialogTitle>
+            <AlertDialogDescription className="text-[#c6d2e2]">
+              {selectedContact
+                ? `A conversa com ${selectedContact.name} sera removida junto com o historico de mensagens relacionado.`
+                : 'Esta conversa sera removida junto com o historico de mensagens relacionado.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-[#365e8f] bg-transparent text-white hover:bg-white/10 hover:text-white">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteConversation();
+              }}
+              className="bg-[#ff1d2d] text-white hover:bg-[#e31626]"
+              disabled={isDeletingConversation}
+            >
+              {isDeletingConversation ? 'Excluindo...' : 'Excluir conversa'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 

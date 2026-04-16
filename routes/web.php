@@ -485,6 +485,7 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
         $router->post('/conversas/fila/pegar-proxima', 'App\Http\Controllers\Admin\ConversasController@pegarProxima');
         $router->post('/conversas/{id}/devolver-fila', 'App\Http\Controllers\Admin\ConversasController@devolverParaFila');
         $router->post('/conversas/{id}/atribuir', 'App\Http\Controllers\Admin\ConversasController@atribuirCorretor');
+        $router->delete('/conversas/{id}', 'App\Http\Controllers\ConversasController@destroy');
         $router->get('/conversas/tempo-real', 'App\Http\Controllers\ConversasController@tempoReal');
         $router->get('/conversas/por-telefone/{telefone}', 'App\Http\Controllers\ConversasController@porTelefone');
         $router->get('/conversas/{id}', 'App\Http\Controllers\Admin\ConversasController@show');
