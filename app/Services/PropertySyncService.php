@@ -48,6 +48,9 @@ class PropertySyncService
             $percent = 0;
             if ($total > 0) {
                 $percent = (int) min(100, floor(($processed / $total) * 100));
+                if ($processed > 0 && $percent === 0) {
+                    $percent = 1;
+                }
             }
 
             $progressCallback(array_merge([

@@ -57,9 +57,22 @@ function formatDuration(ms?: number | null) {
 
 function getProgressPercent(run?: SyncRun | null) {
   if (!run?.result_payload?.progress) return 0;
-  const raw = Number(run.result_payload.progress.percent ?? 0);
+  const progress = run.result_payload.progress;
+  const raw = Number(progress.percent ?? 0);
   if (Number.isNaN(raw)) return 0;
-  return Math.max(0, Math.min(100, Math.round(raw)));
+  const normalized = Math.max(0, Math.min(100, Math.round(raw)));
+
+  if (normalized > 0) {
+    return normalized;
+  }
+
+  const processed = Number(progress.processed ?? 0);
+  const total = Number(progress.total ?? 0);
+  if (processed > 0 && total > 0) {
+    return 1;
+  }
+
+  return normalized;
 }
 
 export default function PropertySyncRuns() {
