@@ -594,7 +594,7 @@ export default function Chat() {
     { id: 'unread', label: 'Não lidas', count: unreadContactsCount, helper: 'pedindo resposta' },
     { id: 'priority', label: 'Prioridade', count: priorityContactsCount, helper: 'quentes ou humanas' },
   ];
-  const visibleContacts = useMemo(() => filteredContacts.slice(0, 10), [filteredContacts]);
+  const visibleContacts = filteredContacts;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -765,8 +765,8 @@ export default function Chat() {
                   </Button>
                 </div>
                 <div className="mt-3 flex items-center justify-between rounded-2xl border border-[#274d7b] bg-[#0a0a12] px-3 py-1.5 text-[11px]">
-                  <span className="text-[#f2f2f0]">Exibindo 10 pessoas</span>
-                  <span className="rounded-full bg-[#ff1d2d] px-2 py-0.5 font-semibold text-white">{visibleContacts.length}/10</span>
+                  <span className="text-[#f2f2f0]">Exibindo toda a fila</span>
+                  <span className="rounded-full bg-[#ff1d2d] px-2 py-0.5 font-semibold text-white">{visibleContacts.length}</span>
                 </div>
                 <div className="relative mt-3">
                   <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#b8c7d8]" />

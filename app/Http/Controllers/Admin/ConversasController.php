@@ -70,7 +70,8 @@ class ConversasController extends Controller
                           ->orWhere('leads.tenant_id', $tenantId);
                     })
                     ->where('conversas.corretor_id', $user->id)
-                    ->orderBy('conversas.ultima_atividade', 'desc')
+                    ->orderByRaw('COALESCE(conversas.ultima_atividade, conversas.created_at) DESC')
+                    ->orderBy('conversas.created_at', 'desc')
                     ->get();
 
                 // Conversas disponíveis para todos os corretores: ainda não atendidas por humano (e nem pela IA)
@@ -140,8 +141,8 @@ class ConversasController extends Controller
             } else {
                 // Admin vê todas as conversas do tenant.
                 $conversas = $query
-                    ->orderBy('conversas.ultima_atividade', 'desc')
-                    ->orderBy('conversas.created_at', 'asc')
+                    ->orderByRaw('COALESCE(conversas.ultima_atividade, conversas.created_at) DESC')
+                    ->orderBy('conversas.created_at', 'desc')
                     ->get();
             }
             

@@ -407,11 +407,15 @@ class LeadAutomationService
      */
     private function criarConversa(Lead $lead, $telefone)
     {
+        $agora = now();
+
         $conversa = new Conversa();
         $conversa->tenant_id = $lead->tenant_id;
         $conversa->lead_id = $lead->id;
         $conversa->telefone = $this->formatarTelefone($telefone);
         $conversa->status = 'ativa';
+        $conversa->iniciada_em = $agora;
+        $conversa->ultima_atividade = $agora;
         $conversa->save();
 
         Log::info('[LeadAutomation] Conversa criada', [
