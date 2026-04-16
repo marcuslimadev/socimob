@@ -429,6 +429,20 @@ export default function Chat() {
     });
   };
 
+  const formatCardDateLabel = (contact: Contact) => {
+    const source = contact.lastActivityAt || contact.createdAt || contact.startedAt;
+    if (!source) return 'Sem data';
+
+    const date = new Date(source);
+    if (Number.isNaN(date.getTime())) return 'Sem data';
+
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
   const openConversation = useCallback((contactId: string) => {
     setSelectedContactId(contactId);
     setActiveView('chat');
@@ -1287,6 +1301,9 @@ export default function Chat() {
                               </div>
                               <p className={cn('mt-1.5 line-clamp-2 text-[13px] leading-5', isActive ? 'text-[#4d5560]' : 'text-[#dbe4ef]')}>{contact.lastMessage}</p>
                               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                <span className={cn('inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold', isActive ? 'border-[#c6ccd3] bg-white text-[#4d5560]' : 'border-[#365e8f] bg-[#112b4a] text-[#dbe4ef]')}>
+                                  Data {formatCardDateLabel(contact)}
+                                </span>
                                 {leadStatusMeta && <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold', leadStatusMeta.badgeClass)}><span className={cn('h-1.5 w-1.5 rounded-full', leadStatusMeta.dotClass)} />{leadStatusMeta.label}</span>}
                                 {classificationMeta && <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold', classificationMeta.badgeClass)}><span className={cn('h-1.5 w-1.5 rounded-full', classificationMeta.dotClass)} />{classificationMeta.label}</span>}
                                 {contact.needsHumanIntervention && <span className="inline-flex items-center gap-1 rounded-full border border-[#ffd04a]/45 bg-[#ffc51a]/18 px-2 py-1 text-[11px] font-semibold text-[#7a5b00]"><AlertTriangle className="h-3 w-3" />Humano</span>}
