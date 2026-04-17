@@ -270,7 +270,8 @@ export default function SocimobLeadChatbot({
 
   const flow: Flow = {
     start: {
-      message: "Oi! Eu sou o mascote comercial do SOCIMOB. Em 2 minutos eu entendo sua operação e já preparo um lead qualificado. Primeiro: como você se chama?",
+      message:
+        "Sua operação ainda perde lead, tempo e dinheiro em planilha, atendimento quebrado e retrabalho? Eu resolvo isso em 2 minutos. Me diga seu nome e eu já qualifico sua demanda para o comercial entrar no ponto certo.",
       function: (params) => updateLead({ name: params.userInput.trim() }),
       path: (params) => (isValidName(params.userInput) ? "ask_company" : "retry_name"),
     },
@@ -429,6 +430,7 @@ export default function SocimobLeadChatbot({
       primaryColor: "#0d2950",
       secondaryColor: "#f9bf0a",
       fontFamily: "Roboto, sans-serif",
+      flowStartTrigger: "ON_LOAD",
     },
     chatWindow: {
       showTypingIndicator: true,
@@ -546,11 +548,11 @@ export default function SocimobLeadChatbot({
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
             <Bot size={22} />
           </div>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">Mascote Comercial</p>
-            <h3 className="text-2xl font-semibold tracking-[-0.03em] text-white">Boas-vindas que qualificam</h3>
-          </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">Mascote Comercial</p>
+            <h3 className="text-2xl font-semibold tracking-[-0.03em] text-white">Captação ativa desde o primeiro segundo</h3>
         </div>
+      </div>
 
         <div className="mt-6 overflow-hidden rounded-[28px] border border-white/12 bg-white/5 p-4">
           <img
@@ -562,7 +564,7 @@ export default function SocimobLeadChatbot({
 
         <div className="mt-6 space-y-3">
           {[
-            "Abre a conversa de forma ativa e guiada, sem depender de formulário frio.",
+            "Aborda o visitante com urgência comercial em vez de esperar clique tímido em formulário.",
             "Captura nome, WhatsApp, contexto comercial e urgência do contato.",
             "Resume a intenção do cliente e entrega um lead mais pronto para o time.",
           ].map((item) => (
@@ -599,7 +601,7 @@ export default function SocimobLeadChatbot({
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Triagem Conversacional</p>
             <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
-              O mascote recebe, qualifica e conduz.
+              O mascote entra forte, qualifica rápido e empurra a conversa adiante.
             </h3>
           </div>
 

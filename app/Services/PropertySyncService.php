@@ -113,11 +113,27 @@ class PropertySyncService
                         'limit' => $perPage,
                     ]);
 
-                    if (!($lista['success'] ?? false) || !isset($lista['result_set']['data'])) {
+                    if (!($lista['success'] ?? false)) {
+                        $lista = ImobiBrasilService::listProperties($tenant, [
+                            'pagina' => $page,
+                            'limite' => $perPage,
+                        ]);
+                    }
+
+                    if (!($lista['success'] ?? false) || !isset($lista['result_set']) || !is_array($lista['result_set'])) {
                         throw new \Exception('Resposta da Imobi Brasil inválida: estrutura esperada não encontrada');
                     }
 
                     $resultSet = $lista['result_set'];
+                    if (!isset($resultSet['data']) || !is_array($resultSet['data'])) {
+                        if (array_is_list($resultSet)) {
+                            $resultSet = ['data' => $resultSet];
+                        } elseif (isset($resultSet['imoveis']) && is_array($resultSet['imoveis'])) {
+                            $resultSet['data'] = $resultSet['imoveis'];
+                        } else {
+                            throw new \Exception('Resposta da Imobi Brasil inválida: estrutura esperada não encontrada');
+                        }
+                    }
                 } else {
                     // Montar query string para paginação
                     $queryString = http_build_query([
@@ -145,9 +161,15 @@ class PropertySyncService
                 }
 
                 $imoveis = $resultSet['data'];
-                $totalPages = max(1, (int) ($resultSet['total_pages'] ?? 1));
-                $totalItems = (int) ($resultSet['total_items'] ?? count($imoveis));
-                $apiPage = (int) ($resultSet['page'] ?? $page);
+                $totalPages = max(1, (int) ($resultSet['total_pages']
+                    ?? $resultSet['totalPages']
+                    ?? ($resultSet['pagination']['total_pages'] ?? 1)));
+                $totalItems = (int) ($resultSet['total_items']
+                    ?? $resultSet['total']
+                    ?? count($imoveis));
+                $apiPage = (int) ($resultSet['page']
+                    ?? $resultSet['pagina']
+                    ?? ($resultSet['pagination']['current_page'] ?? $page));
                 $knownTotalItems = max($knownTotalItems, $totalItems, count($imoveis));
 
                 $emitProgress([
@@ -181,7 +203,7 @@ class PropertySyncService
                 
                 Log::info("📊 Página {$page}/{$totalPages} - " . count($imoveis) . " imóveis", [
                     'total_items' => $totalItems,
-                    'per_page' => $resultSet['per_page'] ?? 50,
+                    'per_page' => $resultSet['per_page'] ?? $resultSet['limite'] ?? $resultSet['limit'] ?? 50,
                     'api_page' => $apiPage,
                 ]);
                 

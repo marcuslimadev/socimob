@@ -1287,9 +1287,50 @@ class ImobiBrasilService
 
             $data = json_decode($response->getBody()->getContents(), true) ?: [];
 
+            $rawResultSet = $data['resultSet'] ?? $data['result_set'] ?? [];
+            if (!is_array($rawResultSet)) {
+                $rawResultSet = [];
+            }
+
+            $normalizedResultSet = $rawResultSet;
+            if (!isset($normalizedResultSet['data']) || !is_array($normalizedResultSet['data'])) {
+                if (array_is_list($rawResultSet)) {
+                    $normalizedResultSet = ['data' => $rawResultSet];
+                } elseif (isset($rawResultSet['imoveis']) && is_array($rawResultSet['imoveis'])) {
+                    $normalizedResultSet['data'] = $rawResultSet['imoveis'];
+                } else {
+                    $normalizedResultSet['data'] = [];
+                }
+            }
+
+            if (!isset($normalizedResultSet['total_pages'])) {
+                $normalizedResultSet['total_pages'] = $rawResultSet['total_pages']
+                    ?? $rawResultSet['totalPages']
+                    ?? ($rawResultSet['pagination']['total_pages'] ?? 1);
+            }
+
+            if (!isset($normalizedResultSet['total_items'])) {
+                $normalizedResultSet['total_items'] = $rawResultSet['total_items']
+                    ?? $rawResultSet['total']
+                    ?? count($normalizedResultSet['data']);
+            }
+
+            if (!isset($normalizedResultSet['page'])) {
+                $normalizedResultSet['page'] = $rawResultSet['page']
+                    ?? $rawResultSet['pagina']
+                    ?? ($rawResultSet['pagination']['current_page'] ?? ($params['page'] ?? $params['pagina'] ?? 1));
+            }
+
+            if (!isset($normalizedResultSet['per_page'])) {
+                $normalizedResultSet['per_page'] = $rawResultSet['per_page']
+                    ?? $rawResultSet['limite']
+                    ?? $rawResultSet['limit']
+                    ?? ($params['limit'] ?? $params['limite'] ?? count($normalizedResultSet['data']));
+            }
+
             return [
                 'success'    => !empty($data['status']),
-                'result_set' => $data['resultSet'] ?? [],
+                'result_set' => $normalizedResultSet,
             ];
         } catch (\Exception $e) {
             Log::error('Erro ao listar imóveis no Imobi Brasil', ['error' => $e->getMessage()]);
@@ -1319,9 +1360,23 @@ class ImobiBrasilService
 
             $data = json_decode($response->getBody()->getContents(), true) ?: [];
 
+            $rawResultSet = $data['resultSet'] ?? $data['result_set'] ?? [];
+            if (is_array($rawResultSet) && isset($rawResultSet['data'])) {
+                $dataField = $rawResultSet['data'];
+                if (is_array($dataField) && !array_is_list($dataField)) {
+                    $rawResultSet = $dataField;
+                } elseif (is_array($dataField) && array_is_list($dataField)) {
+                    $rawResultSet = $dataField[0] ?? [];
+                }
+            }
+
+            if (!is_array($rawResultSet)) {
+                $rawResultSet = [];
+            }
+
             return [
                 'success'    => !empty($data['status']),
-                'result_set' => $data['resultSet'] ?? [],
+                'result_set' => $rawResultSet,
             ];
         } catch (\Exception $e) {
             Log::error('Erro ao buscar dados do imóvel no Imobi Brasil', ['codigo' => $codigoImovel, 'error' => $e->getMessage()]);
