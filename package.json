@@ -72,6 +72,7 @@
         "next-themes": "^0.4.6",
         "nprogress": "^0.2.0",
         "react": "^19.2.4",
+        "react-chatbotify": "^2.5.0",
         "react-day-picker": "^9.14.0",
         "react-dom": "^19.2.4",
         "react-leaflet": "^5.0.0",

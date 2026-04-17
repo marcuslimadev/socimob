@@ -15,6 +15,7 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
+import SocimobLeadChatbot from "@/components/SocimobLeadChatbot";
 
 type PlanId = "basico" | "gestao" | "pro";
 type ModuleId =
@@ -425,26 +426,7 @@ export default function SocimobLanding() {
             </div>
 
             <div className="grid gap-6">
-              <article className="relative overflow-hidden rounded-[36px] border border-white/40 p-5 shadow-[0_30px_80px_rgba(5,3,8,0.38)] backdrop-blur-2xl" style={{ backgroundColor: "rgba(13, 41, 80, 0.72)" }}>
-                <div
-                  className="relative min-h-[360px] overflow-hidden rounded-[28px] bg-cover bg-center"
-                  style={{
-                    backgroundImage: `linear-gradient(180deg, rgba(47,110,168,0.20) 0%, rgba(5,3,8,0.82) 100%), url(${heroDealImage})`,
-                  }}
-                >
-                  <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-                    <div className="max-w-md rounded-[24px] border border-white/30 p-5 text-white backdrop-blur-xl" style={{ backgroundColor: "rgba(5, 3, 8, 0.72)" }}>
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300">Operação completa</p>
-                      <p className="mt-2 text-3xl font-semibold leading-tight">
-                        Do primeiro lead ao fechamento e ao pós-venda.
-                      </p>
-                      <p className="mt-3 text-sm leading-6 text-slate-200">
-                        CRM, contratos, financeiro, anúncios, portais, WhatsApp e automações em um mesmo fluxo.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </article>
+              <SocimobLeadChatbot whatsappPhone={whatsappPhone} />
 
               <article className="rounded-[34px] border border-white/60 bg-white/52 p-6 shadow-[0_18px_40px_rgba(32,23,6,0.12)] backdrop-blur-2xl">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Como a cobrança funciona</p>
