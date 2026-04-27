@@ -551,6 +551,8 @@ Gere a mensagem de primeiro contato:";
             $telefoneFormatado = $this->formatarTelefone($telefone);
             $contentSid = $this->getTemplateSidForTenant($lead->tenant_id);
             $variaveis = $this->obterVariaveisTemplate($lead);
+            $creds = $this->resolveTenantTwilioCredentials($lead);
+            $whatsappFrom = $creds['whatsapp_from'] ?? null;
             
             if (!empty($contentSid)) {
                 Log::info('[LeadAutomation] Enviando template aprovado via ContentSid', [
@@ -559,7 +561,14 @@ Gere a mensagem de primeiro contato:";
                     'content_sid' => $contentSid
                 ]);
 
-                $resultado = $this->twilioService->sendTemplate($telefoneFormatado, $contentSid, $variaveis);
+                $resultado = $this->twilioService->sendTemplate(
+                    $telefoneFormatado, 
+                    $contentSid, 
+                    $variaveis, 
+                    $whatsappFrom, 
+                    $creds['account_sid'], 
+                    $creds['auth_token']
+                );
 
                 if (empty($resultado['success'])) {
                     Log::error('[LeadAutomation] Falha ao enviar template (ContentSid)', [
@@ -594,7 +603,13 @@ Gere a mensagem de primeiro contato:";
                     'telefone' => $telefoneFormatado
                 ]);
 
-                $resultado = $this->twilioService->sendMessage($telefoneFormatado, $mensagemTemplate);
+                $resultado = $this->twilioService->sendMessage(
+                    $telefoneFormatado, 
+                    $mensagemTemplate, 
+                    $whatsappFrom, 
+                    $creds['account_sid'], 
+                    $creds['auth_token']
+                );
 
                 if (empty($resultado['success'])) {
                     Log::error('[LeadAutomation] Falha ao enviar template (texto exato fallback)', [
@@ -991,12 +1006,16 @@ Gere a mensagem de primeiro contato:";
 
             $accountSid = $config?->twilio_account_sid ?: null;
             $authToken = $config?->twilio_auth_token ?: null;
+            $whatsappFrom = $config?->twilio_whatsapp_from ?: null;
 
             if (!$accountSid) {
                 $accountSid = $tenant->getIntegrationValue('twilio_account_sid');
             }
             if (!$authToken) {
                 $authToken = $tenant->getIntegrationValue('twilio_auth_token');
+            }
+            if (!$whatsappFrom) {
+                $whatsappFrom = $tenant->getIntegrationValue('twilio_whatsapp_from');
             }
 
             if (!$accountSid || !$authToken) {
@@ -1010,6 +1029,7 @@ Gere a mensagem de primeiro contato:";
             return [
                 'account_sid' => $accountSid ?: null,
                 'auth_token' => $authToken ?: null,
+                'whatsapp_from' => $whatsappFrom ?: null,
             ];
         } catch (\Throwable $e) {
             Log::error('[LeadAutomation] Erro ao resolver credenciais Twilio do tenant', [
@@ -1017,7 +1037,7 @@ Gere a mensagem de primeiro contato:";
                 'error' => $e->getMessage(),
             ]);
 
-            return ['account_sid' => null, 'auth_token' => null];
+            return ['account_sid' => null, 'auth_token' => null, 'whatsapp_from' => null];
         }
     }
 

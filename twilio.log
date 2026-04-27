@@ -1,0 +1,107 @@
+[
+    {
+        "id": 253288,
+        "tenant_id": 1,
+        "user_id": 6,
+        "level": "error",
+        "category": "twilio",
+        "action": "envio_falhou",
+        "message": "Falha ao enviar mensagem de primeiro contato",
+        "context": {
+            "lead_id": 404
+        },
+        "ip_address": "2804:14c:5bc5:49f1:59a0:f412:99a0:a32e",
+        "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/146.0.0.0 Safari\/537.36",
+        "stack_trace": null,
+        "created_at": "2026-04-27T21:22:18.000000Z"
+    },
+    {
+        "id": 253287,
+        "tenant_id": 1,
+        "user_id": 6,
+        "level": "error",
+        "category": "twilio",
+        "action": "send_template_error",
+        "message": "Erro ao enviar template - Detalhes completos",
+        "context": {
+            "to": "whatsapp:+5592992287155",
+            "content_sid": "HX4f61c2b07ceef4afc402a9c4753300df",
+            "http_code": 401,
+            "curl_error": "",
+            "twilio_error_code": 20003,
+            "twilio_error_message": "Authenticate",
+            "twilio_more_info": "https:\/\/www.twilio.com\/docs\/errors\/20003",
+            "response_full": {
+                "code": 20003,
+                "message": "Authenticate",
+                "more_info": "https:\/\/www.twilio.com\/docs\/errors\/20003",
+                "status": 401
+            },
+            "sent_variables": {
+                "1": "Marcelo Teste",
+                "2": "im\u00f3veis"
+            }
+        },
+        "ip_address": "2804:14c:5bc5:49f1:59a0:f412:99a0:a32e",
+        "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/146.0.0.0 Safari\/537.36",
+        "stack_trace": null,
+        "created_at": "2026-04-27T21:22:18.000000Z"
+    },
+    {
+        "id": 253286,
+        "tenant_id": 1,
+        "user_id": 6,
+        "level": "info",
+        "category": "twilio",
+        "action": "send_template_payload",
+        "message": "Payload completo do template",
+        "context": {
+            "From": "whatsapp:+553173341150",
+            "To": "whatsapp:+5592992287155",
+            "ContentSid": "HX4f61c2b07ceef4afc402a9c4753300df",
+            "ContentVariables_RAW": {
+                "1": "Marcelo Teste",
+                "2": "im\u00f3veis"
+            },
+            "ContentVariables_JSON": "{\"1\":\"Marcelo Teste\",\"2\":\"im\\u00f3veis\"}",
+            "Payload_URLEncoded": "From=whatsapp%3A%2B553173341150&To=whatsapp%3A%2B5592992287155&ContentSid=HX4f61c2b07ceef4afc402a9c4753300df&ContentVariables=%7B%221%22%3A%22Marcelo+Teste%22%2C%222%22%3A%22im%5Cu00f3veis%22%7D"
+        },
+        "ip_address": "2804:14c:5bc5:49f1:59a0:f412:99a0:a32e",
+        "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/146.0.0.0 Safari\/537.36",
+        "stack_trace": null,
+        "created_at": "2026-04-27T21:22:18.000000Z"
+    },
+    {
+        "id": 253285,
+        "tenant_id": 1,
+        "user_id": 6,
+        "level": "info",
+        "category": "twilio",
+        "action": "send_template_start",
+        "message": "Iniciando envio de template WhatsApp",
+        "context": {
+            "to": "whatsapp:+5592992287155",
+            "content_sid": "HX4f61c2b07ceef4afc402a9c4753300df"
+        },
+        "ip_address": "2804:14c:5bc5:49f1:59a0:f412:99a0:a32e",
+        "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/146.0.0.0 Safari\/537.36",
+        "stack_trace": null,
+        "created_at": "2026-04-27T21:22:18.000000Z"
+    },
+    {
+        "id": 253281,
+        "tenant_id": 1,
+        "user_id": 6,
+        "level": "error",
+        "category": "twilio",
+        "action": "envio_falhou",
+        "message": "Falha ao enviar mensagem de primeiro contato",
+        "context": {
+            "lead_id": 397
+        },
+        "ip_address": "2804:14c:5bc5:49f1:59a0:f412:99a0:a32e",
+        "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/146.0.0.0 Safari\/537.36",
+        "stack_trace": null,
+        "created_at": "2026-04-27T21:22:18.000000Z"
+    }
+]

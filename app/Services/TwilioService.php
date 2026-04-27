@@ -115,9 +115,11 @@ class TwilioService
      * @param string $body Texto da mensagem
      * @return array Resultado do envio
      */
-    public function sendMessage($to, $body)
+    public function sendMessage($to, $body, ?string $fromOverride = null, ?string $accountSidOverride = null, ?string $authTokenOverride = null)
     {
-        if (empty($this->accountSid) || empty($this->authToken)) {
+        [$accountSid, $authToken] = $this->resolveCredentials($accountSidOverride, $authTokenOverride);
+
+        if (empty($accountSid) || empty($authToken)) {
             Log::error('Twilio Send Message - Credenciais não configuradas');
             return [
                 'success' => false,
@@ -135,7 +137,7 @@ class TwilioService
             ['to' => $to, 'body_length' => strlen($body)]
         );
         
-        $url = "https://api.twilio.com/2010-04-01/Accounts/{$this->accountSid}/Messages.json";
+        $url = "https://api.twilio.com/2010-04-01/Accounts/{$accountSid}/Messages.json";
         
         // Normalizar número e garantir formato correto do canal
         $to = $this->normalizeTo((string) $to);
@@ -143,7 +145,8 @@ class TwilioService
             $to = 'whatsapp:' . $to;
         }
         
-        if (empty($this->whatsappFrom)) {
+        $fromToUse = $fromOverride ?: $this->whatsappFrom;
+        if (empty($fromToUse)) {
             Log::error('Twilio Send Message - Remetente não configurado');
             
             \App\Models\SystemLog::error(
@@ -164,7 +167,7 @@ class TwilioService
         }
 
         $data = [
-            'From' => $this->whatsappFrom,
+            'From' => $fromToUse,
             'To' => $to,
             'Body' => $body
         ];
@@ -174,7 +177,7 @@ class TwilioService
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_setopt($ch, CURLOPT_USERPWD, "{$this->accountSid}:{$this->authToken}");
+        curl_setopt($ch, CURLOPT_USERPWD, "{$accountSid}:{$authToken}");
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         
         $response = curl_exec($ch);
@@ -229,16 +232,19 @@ class TwilioService
     /**
      * Enviar mídia (imagem, PDF, etc)
      */
-    public function sendMedia($to, $body, $mediaUrl)
+    public function sendMedia($to, $body, $mediaUrl, ?string $fromOverride = null, ?string $accountSidOverride = null, ?string $authTokenOverride = null)
     {
-        $url = "https://api.twilio.com/2010-04-01/Accounts/{$this->accountSid}/Messages.json";
+        [$accountSid, $authToken] = $this->resolveCredentials($accountSidOverride, $authTokenOverride);
+
+        $url = "https://api.twilio.com/2010-04-01/Accounts/{$accountSid}/Messages.json";
 
         $to = $this->normalizeTo((string) $to);
         if (strpos($to, 'whatsapp:') === false) {
             $to = 'whatsapp:' . $to;
         }
 
-        if (empty($this->whatsappFrom)) {
+        $fromToUse = $fromOverride ?: $this->whatsappFrom;
+        if (empty($fromToUse)) {
             Log::error('Twilio Send Media - Remetente não configurado');
             return [
                 'success' => false,
@@ -261,7 +267,7 @@ class TwilioService
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_setopt($ch, CURLOPT_USERPWD, "{$this->accountSid}:{$this->authToken}");
+        curl_setopt($ch, CURLOPT_USERPWD, "{$accountSid}:{$authToken}");
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         
         $response = curl_exec($ch);
@@ -286,8 +292,9 @@ class TwilioService
      * @param array $contentVariables Variáveis do template (opcional)
      * @return array Resultado do envio
      */
-    public function sendTemplate($to, $contentSid, $contentVariables = [])
+    public function sendTemplate($to, $contentSid, $contentVariables = [], ?string $fromOverride = null, ?string $accountSidOverride = null, ?string $authTokenOverride = null)
     {
+        [$accountSid, $authToken] = $this->resolveCredentials($accountSidOverride, $authTokenOverride);
         \App\Models\SystemLog::info(
             \App\Models\SystemLog::CATEGORY_TWILIO,
             'send_template_start',
@@ -295,7 +302,7 @@ class TwilioService
             ['to' => $to, 'content_sid' => $contentSid]
         );
         
-        $url = "https://api.twilio.com/2010-04-01/Accounts/{$this->accountSid}/Messages.json";
+        $url = "https://api.twilio.com/2010-04-01/Accounts/{$accountSid}/Messages.json";
         
         // Normalizar número
         $to = $this->normalizeTo((string) $to);
@@ -303,7 +310,8 @@ class TwilioService
             $to = 'whatsapp:' . $to;
         }
         
-        if (empty($this->whatsappFrom)) {
+        $fromToUse = $fromOverride ?: $this->whatsappFrom;
+        if (empty($fromToUse)) {
             Log::error('Twilio Send Template - Remetente não configurado');
             return [
                 'success' => false,
@@ -330,7 +338,7 @@ class TwilioService
             'send_template_payload',
             'Payload completo do template',
             [
-                'From' => $this->whatsappFrom,
+                'From' => $fromToUse,
                 'To' => $to,
                 'ContentSid' => $contentSid,
                 'ContentVariables_RAW' => $contentVariables,
@@ -344,7 +352,7 @@ class TwilioService
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-        curl_setopt($ch, CURLOPT_USERPWD, "{$this->accountSid}:{$this->authToken}");
+        curl_setopt($ch, CURLOPT_USERPWD, "{$accountSid}:{$authToken}");
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         
         $response = curl_exec($ch);
