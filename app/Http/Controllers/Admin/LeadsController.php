@@ -183,4 +183,57 @@ class LeadsController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Reprocessar todos os leads pendentes que não possuem conversas iniciadas
+     * 
+     * POST /api/admin/leads/reprocessar-pendentes
+     */
+    public function reprocessarPendentes(Request $request)
+    {
+        try {
+            $tenantId = $request->get('tenant_id');
+
+            // Find leads with no relation 'conversas' attached
+            $leadsPendentes = Lead::where('tenant_id', $tenantId)
+                ->whereDoesntHave('conversas')
+                ->where(function($q) {
+                    $q->whereNull('status')
+                      ->orWhere('status', 'novo');
+                })
+                ->pluck('id')
+                ->toArray();
+
+            if (empty($leadsPendentes)) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Nenhum lead pendente de reprocessamento',
+                    'data' => ['total' => 0]
+                ]);
+            }
+
+            Log::info('[LeadsController] Reprocessando leads pendentes em lote', [
+                'total_leads' => count($leadsPendentes),
+                'admin_user' => $request->user()->name ?? 'N/A'
+            ]);
+
+            $resultados = $this->leadAutomationService->iniciarAtendimentoEmLote($leadsPendentes);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Processados {$resultados['total']} leads pendentes",
+                'data' => $resultados
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('[LeadsController] Erro ao reprocessar leads pendentes', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Erro ao reprocessar leads pendentes'
+            ], 500);
+        }
+    }
 }

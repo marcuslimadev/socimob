@@ -80,6 +80,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     // Leads - Automação IA
     $router->post('/leads/{id}/iniciar-atendimento', 'App\Http\Controllers\Admin\LeadsController@iniciarAtendimento');
     $router->post('/leads/iniciar-atendimento-lote', 'App\Http\Controllers\Admin\LeadsController@iniciarAtendimentoLote');
+    $router->post('/leads/reprocessar-pendentes', 'App\Http\Controllers\Admin\LeadsController@reprocessarPendentes');
 
     // Importação de Imóveis
     $router->get('/imoveis', 'App\Http\Controllers\Admin\ImportacaoController@listar');

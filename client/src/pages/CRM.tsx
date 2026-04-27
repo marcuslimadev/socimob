@@ -896,6 +896,22 @@ export default function CRM() {
   const [flatTableError, setFlatTableError] = useState(false);
   const [deletingLeadId, setDeletingLeadId] = useState<number | null>(null);
   const [quickViewProperty, setQuickViewProperty] = useState<{ url: string; title: string } | null>(null);
+  const [isReprocessando, setIsReprocessando] = useState(false);
+
+  const handleReprocessarPendentes = async () => {
+    try {
+      setIsReprocessando(true);
+      const res = await api.post('/admin/leads/reprocessar-pendentes');
+      toast.success(res.data.message || 'Leads reprocessados com sucesso');
+      queryClient.invalidateQueries({ queryKey: ['crm-clientes'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-clientes-table'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-clientes-mobile-status'] });
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Erro ao reprocessar leads');
+    } finally {
+      setIsReprocessando(false);
+    }
+  };
 
   // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -2062,9 +2078,27 @@ export default function CRM() {
                 className="w-full pl-9 pr-3 py-2 bg-muted/40 border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
-            <Button variant="ghost" size="icon" onClick={invalidateCRMQueries} className="text-muted-foreground hover:text-foreground">
-              <RefreshCw className={cn('w-4 h-4', (isLoading || isLoadingTable || isLoadingMobileStatus) && 'animate-spin')} />
-            </Button>
+            <div className="flex items-center gap-2">
+              {isAdminUser && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleReprocessarPendentes} 
+                  disabled={isReprocessando}
+                  className="bg-card text-foreground hover:bg-muted font-medium text-xs hidden sm:flex"
+                >
+                  {isReprocessando ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" />}
+                  Reprocessar Pendentes
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['crm-clientes'] });
+                queryClient.invalidateQueries({ queryKey: ['crm-clientes-table'] });
+                queryClient.invalidateQueries({ queryKey: ['crm-clientes-mobile-status'] });
+              }} className="text-muted-foreground hover:text-foreground">
+                <RefreshCw className={cn('w-4 h-4', (isLoading || isLoadingTable) && 'animate-spin')} />
+              </Button>
+            </div>
             </div>
           </div>
         </div>
