@@ -119,6 +119,20 @@ export default function Chat() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
   const [isUpdatingLeadStatus, setIsUpdatingLeadStatus] = useState(false);
+  const [isReprocessando, setIsReprocessando] = useState(false);
+
+  const handleReprocessarPendentes = async () => {
+    try {
+      setIsReprocessando(true);
+      const res = await api.post('/admin/leads/reprocessar-pendentes');
+      toast.success(res.data.message || 'Leads reprocessados com sucesso');
+      handleRefresh();
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Erro ao reprocessar leads');
+    } finally {
+      setIsReprocessando(false);
+    }
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -1223,9 +1237,17 @@ export default function Chat() {
                     <h1 className="mt-1.5 text-[1.65rem] font-semibold leading-none tracking-[-0.05em] text-white">Conversas</h1>
                     <p className="mt-1.5 text-[13px] text-[#c6d2e2]">{searchTerm ? `${filteredContacts.length} resultado(s) na busca` : `${contacts.length} conversa(s) na fila total`}</p>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-10 w-10 rounded-2xl border border-[#365e8f] bg-[#1d3f69] text-white hover:bg-[#2d6fab]">
-                    <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
-                  </Button>
+                  <div className="flex gap-2 items-center">
+                    {(currentUserRole === 'admin' || currentUserRole === 'super_admin') && (
+                      <Button variant="outline" size="sm" onClick={handleReprocessarPendentes} disabled={isReprocessando} className="rounded-2xl border border-[#365e8f] bg-[#1d3f69] text-white hover:bg-[#2d6fab] hover:text-white h-10">
+                        {isReprocessando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                        <span className="hidden xl:inline">Reprocessar Pendentes</span>
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-10 w-10 rounded-2xl border border-[#365e8f] bg-[#1d3f69] text-white hover:bg-[#2d6fab]">
+                      <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+                    </Button>
+                  </div>
                 </div>
                 <div className="mt-3 flex items-center gap-2 rounded-2xl border border-[#274d7b] bg-[#102744] p-1">
                   <button
