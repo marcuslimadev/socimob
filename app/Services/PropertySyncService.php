@@ -6,6 +6,7 @@ use App\Models\Property;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\QueryException;
 
 /**
  * Serviço de sincronização de imóveis
@@ -678,33 +679,91 @@ class PropertySyncService
         $existing = $this->findExistingProperty($codigo, $authorityCode, $referenceCode !== '' ? $referenceCode : null);
         $restored = false;
 
-        if ($existing) {
-            if ($existing->trashed()) {
-                $this->trashService->restoreFromTrash($existing);
-                $existing = $existing->fresh();
+        try {
+            if ($existing) {
+                if ($existing->trashed()) {
+                    $this->trashService->restoreFromTrash($existing);
+                    $existing = $existing->fresh();
+                    $restored = true;
+                }
+
+                $existing->update($data);
+
+                return [
+                    'action' => 'updated',
+                    'restored' => $restored,
+                    'property_id' => $existing->id,
+                ];
+            }
+
+            // Regra de negócio: todo imóvel novo da sincronização deve entrar publicado.
+            $data['active'] = true;
+            $data['exibir_imovel'] = true;
+
+            $property = Property::create($data);
+
+            return [
+                'action' => 'created',
+                'restored' => false,
+                'property_id' => $property->id,
+            ];
+        } catch (QueryException $e) {
+            if (!$this->isImobiExternalIdDuplicateViolation($e)) {
+                throw $e;
+            }
+
+            $imobiExternalId = trim((string) ($data['imobi_brasil_external_id'] ?? ''));
+            if ($imobiExternalId === '') {
+                throw $e;
+            }
+
+            $conflicting = Property::withTrashed()
+                ->where('imobi_brasil_external_id', $imobiExternalId)
+                ->when(app()->bound('tenant'), function ($query) {
+                    $query->where('tenant_id', app('tenant')->id);
+                })
+                ->orderByRaw('CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END')
+                ->orderByDesc('updated_at')
+                ->first();
+
+            if (!$conflicting) {
+                throw $e;
+            }
+
+            if ($conflicting->trashed()) {
+                $this->trashService->restoreFromTrash($conflicting);
+                $conflicting = $conflicting->fresh();
                 $restored = true;
             }
 
-            $existing->update($data);
+            $conflicting->update($data);
+
+            Log::warning('Conflito de imobi_brasil_external_id resolvido reutilizando imóvel existente', [
+                'codigo' => $codigo,
+                'imobi_brasil_external_id' => $imobiExternalId,
+                'property_id' => $conflicting->id,
+                'tenant_id' => app()->bound('tenant') ? app('tenant')->id : null,
+            ]);
 
             return [
                 'action' => 'updated',
                 'restored' => $restored,
-                'property_id' => $existing->id,
+                'property_id' => $conflicting->id,
+                'resolved_duplicate_external_id' => true,
             ];
         }
+    }
 
-        // Regra de negócio: todo imóvel novo da sincronização deve entrar publicado.
-        $data['active'] = true;
-        $data['exibir_imovel'] = true;
+    private function isImobiExternalIdDuplicateViolation(QueryException $e): bool
+    {
+        $message = strtolower($e->getMessage());
 
-        $property = Property::create($data);
+        if (strpos($message, 'imobi_brasil_external_id_unique') !== false) {
+            return true;
+        }
 
-        return [
-            'action' => 'created',
-            'restored' => false,
-            'property_id' => $property->id,
-        ];
+        return strpos($message, 'duplicate entry') !== false
+            && strpos($message, 'imobi_brasil_external_id') !== false;
     }
 
     private function findExistingProperty(string $codigo, ?string $authorityCode = null, ?string $referenceCode = null): ?Property

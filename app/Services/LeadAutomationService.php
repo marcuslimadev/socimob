@@ -134,35 +134,36 @@ class LeadAutomationService
                     }
                 }
             } else {
-                // Cliente iniciou contato via WhatsApp - não enviar SMS
-                Log::info('[LeadAutomation] Cliente já iniciou contato via WhatsApp - pulando envio de SMS', [
-                    'lead_id' => $lead->id,
-                    'conversa_id' => $conversa->id
-                ]);
+                // Enviar primeiro contato por WhatsApp usando o template ou mensagem IA
+                $resultadoEnvio = null;
+                if ($this->deveUsarTemplateInicial($lead)) {
+                    $resultadoEnvio = $this->enviarTemplateWhatsApp($lead, $telefone);
+                    $mensagemRegistrada = $this->mensagemTemplateRegistro($lead);
+                } else {
+                    $mensagemIA = $this->gerarMensagemInicial($lead);
+                    $resultadoEnvio = $this->enviarMensagemWhatsApp($lead, $mensagemIA, $conversa, $telefone);
+                    $mensagemRegistrada = $mensagemIA;
+                }
                 
-                return [
-                    'success' => true,
-                    'message' => 'Atendimento já iniciado pelo cliente via WhatsApp',
-                    'lead_id' => $lead->id,
-                    'conversa_id' => $conversa->id,
-                    'via' => 'whatsapp'
-                ];
+                if ($resultadoEnvio && !empty($resultadoEnvio['success'])) {
+                    $messageSid = $resultadoEnvio['message_sid'] ?? null;
+                }
             }
 
-            if (!$resultadoEnvio || !$resultadoEnvio['success']) {
-                Log::error('[LeadAutomation] Falha ao enviar SMS', [
+            if (!$resultadoEnvio || empty($resultadoEnvio['success'])) {
+                Log::error('[LeadAutomation] Falha ao enviar primeira mensagem', [
                     'tenant_id' => $lead->tenant_id,
                     'lead_id' => $lead->id
                 ]);
                 \App\Models\SystemLog::error(
                     \App\Models\SystemLog::CATEGORY_TWILIO,
                     'envio_falhou',
-                    'Falha ao enviar mensagem SMS',
-                    ['lead_id' => $lead->id, 'mensagem' => substr($mensagemIA, 0, 100)]
+                    'Falha ao enviar mensagem de primeiro contato',
+                    ['lead_id' => $lead->id]
                 );
                 return [
                     'success' => false,
-                    'error' => 'Falha ao enviar mensagem via SMS',
+                    'error' => 'Falha ao enviar mensagem inicial',
                     'lead_id' => $lead->id
                 ];
             }
