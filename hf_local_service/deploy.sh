@@ -7,23 +7,55 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_NAME="hf-local-embeddings"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
-PYTHON_BIN="/usr/bin/python3"
+PYTHON_BIN="${PYTHON_BIN:-}"
 VENV_PATH="${SCRIPT_DIR}/.venv"
 USE_SYSTEMD=0
 
 echo "=== Instalando serviço de embeddings local ==="
 
-# Validar Python
-if ! command -v "$PYTHON_BIN" &> /dev/null; then
-  echo "ERROR: Python 3 não encontrado em $PYTHON_BIN"
+# Validar Python. Em hospedagens compartilhadas, /usr/bin/python3 pode ser antigo.
+if [ -z "$PYTHON_BIN" ]; then
+  for candidate in \
+    /opt/alt/python312/bin/python3 \
+    /opt/alt/python311/bin/python3 \
+    /opt/alt/python310/bin/python3 \
+    /opt/alt/python39/bin/python3 \
+    python3.12 python3.11 python3.10 python3.9 python3
+  do
+    if command -v "$candidate" >/dev/null 2>&1 || [ -x "$candidate" ]; then
+      PYTHON_BIN="$candidate"
+      break
+    fi
+  done
+fi
+
+if [ -z "$PYTHON_BIN" ] || ! "$PYTHON_BIN" --version >/dev/null 2>&1; then
+  echo "ERROR: Python 3.9+ não encontrado."
   exit 1
 fi
 
 echo "Python encontrado: $($PYTHON_BIN --version)"
 
+PYTHON_VERSION="$("$PYTHON_BIN" - <<'PY'
+import sys
+print(f"{sys.version_info.major}.{sys.version_info.minor}")
+PY
+)"
+
+case "$PYTHON_VERSION" in
+  3.9|3.10|3.11|3.12|3.13) ;;
+  *)
+    echo "ERROR: Python $PYTHON_VERSION encontrado, mas o serviço exige Python 3.9+."
+    exit 1
+    ;;
+esac
+
 # Criar virtualenv
 echo "Criando ambiente virtual..."
-$PYTHON_BIN -m venv "$VENV_PATH"
+if [ -d "$VENV_PATH" ] && [ ! -x "$VENV_PATH/bin/python" ]; then
+  rm -rf "$VENV_PATH"
+fi
+"$PYTHON_BIN" -m venv "$VENV_PATH"
 
 # Ativar e instalar dependências
 echo "Instalando dependências..."
