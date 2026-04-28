@@ -1630,7 +1630,8 @@ class WhatsAppService
     private function cleanExtractedPhrase(string $value): string
     {
         $value = trim($value);
-        $value = preg_split('/\s+(?:e|com|até|ate|para|por|quero|pretendo)\s+/iu', $value)[0] ?? $value;
+        $value = preg_split('/\s+(?:e|com|at[ée]|ate|para|por|quero|pretendo)(?:\s+|$)/iu', $value)[0] ?? $value;
+        $value = preg_replace('/\s+(?:e|com|at[ée]|ate|para|por|quero|pretendo)\s*$/iu', '', $value) ?? $value;
         $value = preg_split('/[,.;!?]/u', $value)[0] ?? $value;
 
         return trim($value);
