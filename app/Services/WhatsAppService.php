@@ -44,8 +44,9 @@ class WhatsAppService
     private $stageDetection;
     private LeadCustomerService $leadCustomerService;
     private SmsShortLinkService $smsShortLinkService;
+    private LocalEmbeddingService $localEmbeddingService;
     
-    public function __construct(TwilioService $twilio, EvolutionApiService $evolution, MetaCloudGateway $metaCloud, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService, SmsShortLinkService $smsShortLinkService)
+    public function __construct(TwilioService $twilio, EvolutionApiService $evolution, MetaCloudGateway $metaCloud, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService, SmsShortLinkService $smsShortLinkService, LocalEmbeddingService $localEmbeddingService)
     {
         $this->twilio = $twilio;
         $this->evolution = $evolution;
@@ -54,6 +55,7 @@ class WhatsAppService
         $this->stageDetection = $stageDetection;
         $this->leadCustomerService = $leadCustomerService;
         $this->smsShortLinkService = $smsShortLinkService;
+        $this->localEmbeddingService = $localEmbeddingService;
     }
 
     private function resolveWhatsAppGateway(): TwilioService|EvolutionApiService|MetaCloudGateway
@@ -1928,28 +1930,41 @@ class WhatsAppService
      */
     private function performPropertyMatching($lead, $conversa)
     {
-        // Buscar imóveis compatíveis
-        $properties = Property::where('active', 1)
+        $candidateQuery = Property::where('active', 1)
             ->where('exibir_imovel', 1)
-            ->where('dormitorios', '>=', $lead->quartos)
+            ->where('dormitorios', '>=', max(1, (int) $lead->quartos))
             ->where(function($q) use ($lead) {
                 if ($lead->budget_min && $lead->budget_max) {
                     $q->whereBetween('valor_venda', [$lead->budget_min, $lead->budget_max]);
                 }
-            })
-            ->limit(5)
+            });
+
+        if (!empty($lead->tenant_id)) {
+            $candidateQuery->where('tenant_id', $lead->tenant_id);
+        }
+
+        $candidates = $candidateQuery
+            ->orderByDesc('destaque')
+            ->orderByDesc('updated_at')
+            ->limit((int) env('LOCAL_EMBEDDING_MATCH_CANDIDATES', 40))
             ->get();
+
+        $properties = $this->rankPropertiesForLead($lead, $candidates)->take(5);
         
         if ($properties->count() > 0) {
             // ENCONTROU IMÓVEIS!
             foreach ($properties as $property) {
-                LeadPropertyMatch::create([
-                    'tenant_id' => $conversa->tenant_id ?? $lead->tenant_id ?? null,
-                    'lead_id' => $lead->id,
-                    'property_id' => $property->id,
-                    'conversa_id' => $conversa->id,
-                    'match_score' => 80.0 // Simplificado por enquanto
-                ]);
+                LeadPropertyMatch::updateOrCreate(
+                    [
+                        'lead_id' => $lead->id,
+                        'property_id' => $property->id,
+                        'conversa_id' => $conversa->id,
+                    ],
+                    [
+                        'tenant_id' => $conversa->tenant_id ?? $lead->tenant_id ?? null,
+                        'match_score' => $property->semantic_match_score ?? 80.0,
+                    ]
+                );
             }
 
             // Enviar mensagem com imóveis encontrados
@@ -2002,6 +2017,116 @@ class WhatsAppService
             Log::info('💡 Ação: Oferecendo refinamento de critérios');
             Log::info('─────────────────────────────────────────────────────────────────');
         }
+    }
+
+    private function rankPropertiesForLead($lead, $properties)
+    {
+        if ($properties->isEmpty()) {
+            return $properties;
+        }
+
+        $leadText = $this->buildLeadMatchingText($lead);
+        $propertyTexts = $properties
+            ->map(fn ($property) => $this->buildPropertyMatchingText($property))
+            ->all();
+
+        $leadEmbedding = $this->localEmbeddingService->embedTextBatch([$leadText], 'search_query');
+        $propertyEmbeddings = $this->localEmbeddingService->embedTextBatch($propertyTexts, 'search_document');
+
+        if (!($leadEmbedding['success'] ?? false) || !($propertyEmbeddings['success'] ?? false)) {
+            Log::warning('Semantic property matching unavailable, using database ordering', [
+                'lead_id' => $lead->id ?? null,
+                'lead_embedding_error' => $leadEmbedding['error'] ?? null,
+                'property_embedding_error' => $propertyEmbeddings['error'] ?? null,
+            ]);
+
+            return $properties->values()->map(function ($property, $index) {
+                $property->semantic_match_score = max(50, 80 - ($index * 5));
+                return $property;
+            });
+        }
+
+        $queryVector = $leadEmbedding['embeddings'][0] ?? null;
+        $documentVectors = $propertyEmbeddings['embeddings'] ?? [];
+
+        if (!$queryVector || count($documentVectors) !== $properties->count()) {
+            return $properties->values();
+        }
+
+        return $properties
+            ->values()
+            ->map(function ($property, $index) use ($queryVector, $documentVectors) {
+                $similarity = $this->cosineSimilarity($queryVector, $documentVectors[$index] ?? []);
+                $property->semantic_match_score = round(max(0, min(100, $similarity * 100)), 2);
+                return $property;
+            })
+            ->sortByDesc(fn ($property) => $property->semantic_match_score)
+            ->values();
+    }
+
+    private function buildLeadMatchingText($lead): string
+    {
+        return trim(implode('. ', array_filter([
+            'Cliente procura imóvel',
+            $lead->preferencia_tipo_imovel ? 'Tipo desejado: ' . $lead->preferencia_tipo_imovel : null,
+            $lead->localizacao ? 'Localização desejada: ' . $lead->localizacao : null,
+            $lead->preferencia_bairro ? 'Bairro preferido: ' . $lead->preferencia_bairro : null,
+            $lead->quartos ? 'Quartos: ' . $lead->quartos : null,
+            $lead->suites ? 'Suítes: ' . $lead->suites : null,
+            $lead->garagem ? 'Vagas: ' . $lead->garagem : null,
+            $lead->budget_min || $lead->budget_max ? 'Orçamento: R$ ' . number_format((float) ($lead->budget_min ?? 0), 0, ',', '.') . ' até R$ ' . number_format((float) ($lead->budget_max ?? 0), 0, ',', '.') : null,
+            $lead->objetivo_compra ? 'Objetivo: ' . $lead->objetivo_compra : null,
+            $lead->preferencia_lazer ? 'Lazer desejado: ' . $lead->preferencia_lazer : null,
+            $lead->preferencia_seguranca ? 'Segurança desejada: ' . $lead->preferencia_seguranca : null,
+            $lead->caracteristicas_desejadas ? 'Características desejadas: ' . $lead->caracteristicas_desejadas : null,
+            $lead->observacoes_cliente ? 'Observações: ' . $lead->observacoes_cliente : null,
+        ])));
+    }
+
+    private function buildPropertyMatchingText($property): string
+    {
+        $caracteristicas = is_array($property->caracteristicas)
+            ? implode(', ', $property->caracteristicas)
+            : (string) ($property->caracteristicas ?? '');
+
+        return trim(implode('. ', array_filter([
+            $property->titulo,
+            $property->tipo_imovel ? 'Tipo: ' . $property->tipo_imovel : null,
+            $property->finalidade_imovel ? 'Finalidade: ' . $property->finalidade_imovel : null,
+            $property->bairro || $property->cidade ? 'Localização: ' . trim(($property->bairro ?? '') . ', ' . ($property->cidade ?? ''), ' ,') : null,
+            $property->dormitorios ? 'Quartos: ' . $property->dormitorios : null,
+            $property->suites ? 'Suítes: ' . $property->suites : null,
+            $property->banheiros ? 'Banheiros: ' . $property->banheiros : null,
+            $property->garagem ? 'Vagas: ' . $property->garagem : null,
+            $property->area_total ? 'Área total: ' . $property->area_total . ' m2' : null,
+            $property->valor_venda ? 'Valor de venda: R$ ' . number_format((float) $property->valor_venda, 0, ',', '.') : null,
+            $property->valor_aluguel ? 'Valor de aluguel: R$ ' . number_format((float) $property->valor_aluguel, 0, ',', '.') : null,
+            $property->nome_condominio ? 'Condomínio: ' . $property->nome_condominio : null,
+            $caracteristicas !== '' ? 'Características: ' . $caracteristicas : null,
+            $property->descricao_resumida ?: $property->descricao,
+        ])));
+    }
+
+    private function cosineSimilarity(array $left, array $right): float
+    {
+        $dot = 0.0;
+        $leftNorm = 0.0;
+        $rightNorm = 0.0;
+        $count = min(count($left), count($right));
+
+        for ($index = 0; $index < $count; $index++) {
+            $leftValue = (float) $left[$index];
+            $rightValue = (float) $right[$index];
+            $dot += $leftValue * $rightValue;
+            $leftNorm += $leftValue * $leftValue;
+            $rightNorm += $rightValue * $rightValue;
+        }
+
+        if ($leftNorm <= 0.0 || $rightNorm <= 0.0) {
+            return 0.0;
+        }
+
+        return $dot / (sqrt($leftNorm) * sqrt($rightNorm));
     }
 
     private function sendPropertyPreview($conversa, $property): void
