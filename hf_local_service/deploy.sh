@@ -71,8 +71,32 @@ HF_LOCAL_TRUST_REMOTE_CODE=true
 HF_LOCAL_MAX_TEXTS=64
 HF_LOCAL_HOST=127.0.0.1
 HF_LOCAL_PORT=8000
+HF_HUB_DISABLE_XET=1
+HF_HUB_DISABLE_PROGRESS_BARS=1
+TOKENIZERS_PARALLELISM=false
+OMP_NUM_THREADS=1
+MKL_NUM_THREADS=1
+NUMEXPR_NUM_THREADS=1
 EOF
 fi
+
+ensure_env() {
+  local key="$1"
+  local value="$2"
+
+  if grep -q "^${key}=" "$SCRIPT_DIR/.env"; then
+    return
+  fi
+
+  printf "%s=%s\n" "$key" "$value" >> "$SCRIPT_DIR/.env"
+}
+
+ensure_env HF_HUB_DISABLE_XET 1
+ensure_env HF_HUB_DISABLE_PROGRESS_BARS 1
+ensure_env TOKENIZERS_PARALLELISM false
+ensure_env OMP_NUM_THREADS 1
+ensure_env MKL_NUM_THREADS 1
+ensure_env NUMEXPR_NUM_THREADS 1
 
 if command -v systemctl >/dev/null 2>&1 && command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
   USE_SYSTEMD=1

@@ -8,6 +8,13 @@ import logging
 
 load_dotenv()
 
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
+
 MODEL_NAME = os.getenv("HF_LOCAL_MODEL", "nomic-ai/nomic-embed-text-v1.5")
 CACHE_DIR = os.getenv("HF_LOCAL_CACHE_DIR", os.path.expanduser("~/.cache/hf_local_model"))
 DEVICE = os.getenv("HF_LOCAL_DEVICE") or None
