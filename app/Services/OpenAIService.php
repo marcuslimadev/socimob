@@ -234,21 +234,27 @@ Exemplos de extração:
 
         $userPrompt = "Conversa:\n\n" . $conversationHistory . "\n\nResponda apenas com o JSON solicitado. FOQUE NAS ÚLTIMAS MENSAGENS!";
         
-        $result = $this->chatCompletion($systemPrompt, $userPrompt);
+        $result = $this->chatCompletion($systemPrompt, $userPrompt, null, 400);
         
         if ($result['success']) {
-            try {
-                $extracted = json_decode($result['content'], true);
+            $extracted = $this->decodeJsonObject($result['content'] ?? '');
+
+            if (is_array($extracted)) {
                 return [
                     'success' => true,
                     'data' => $extracted
                 ];
-            } catch (\Exception $e) {
-                return [
-                    'success' => false,
-                    'error' => 'Failed to parse JSON response'
-                ];
             }
+
+            Log::warning('OpenAI Lead Extraction Error', [
+                'error' => 'Failed to parse JSON response',
+                'content_preview' => substr((string) ($result['content'] ?? ''), 0, 300),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to parse JSON response'
+            ];
         }
         
         return $result;
@@ -377,8 +383,7 @@ Exemplos de extração:
                     }
                     
                     if (!empty($validImages)) {
-                        // Pegar primeiras 5 imagens para enviar à IA
-                        $imageLinks = implode("\n  ", array_slice($validImages, 0, 5));
+                        $imageLinks = implode("\n  ", array_slice($validImages, 0, 1));
                     }
                 }
                 
@@ -510,7 +515,7 @@ Após listar: \"Qual desses te interessou mais?\"
             ['model' => $model, 'prompt_length' => strlen($userPrompt)]
         );
         
-        $result = $this->chatCompletion($systemPrompt, $userPrompt);
+        $result = $this->chatCompletion($systemPrompt, $userPrompt, 20, 60);
         
         if ($result['success']) {
             \App\Models\SystemLog::info(
@@ -534,7 +539,7 @@ Após listar: \"Qual desses te interessou mais?\"
     /**
      * Fazer chamada à API de Chat Completion
      */
-    private function chatCompletion($systemPrompt, $userPrompt)
+    private function chatCompletion($systemPrompt, $userPrompt, ?int $maxWords = 20, int $maxTokens = 60)
     {
         $url = 'https://api.openai.com/v1/chat/completions';
         $apiKey = $this->resolveApiKey();
@@ -558,7 +563,7 @@ Após listar: \"Qual desses te interessou mais?\"
                 ['role' => 'user', 'content' => $userPrompt]
             ],
             'temperature' => 0.7,
-            'max_tokens' => 60
+            'max_tokens' => $maxTokens
         ];
         
         $ch = curl_init();
@@ -582,7 +587,7 @@ Após listar: \"Qual desses te interessou mais?\"
             
             return [
                 'success' => true,
-                'content' => $this->limitResponseWords($content, 20)
+                'content' => $maxWords === null ? trim($content) : $this->limitResponseWords($content, $maxWords)
             ];
         }
         
@@ -612,6 +617,35 @@ Após listar: \"Qual desses te interessou mais?\"
         }
 
         return implode(' ', array_slice($words, 0, $maxWords));
+    }
+
+    private function decodeJsonObject(string $content): ?array
+    {
+        $content = trim($content);
+
+        if ($content === '') {
+            return null;
+        }
+
+        $content = preg_replace('/^```(?:json)?\s*/i', '', $content) ?? $content;
+        $content = preg_replace('/\s*```$/', '', $content) ?? $content;
+        $content = trim($content);
+
+        $decoded = json_decode($content, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        $start = strpos($content, '{');
+        $end = strrpos($content, '}');
+
+        if ($start === false || $end === false || $end <= $start) {
+            return null;
+        }
+
+        $decoded = json_decode(substr($content, $start, $end - $start + 1), true);
+
+        return is_array($decoded) ? $decoded : null;
     }
 
     private function resolveAssistantName(): string

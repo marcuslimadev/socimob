@@ -100,30 +100,32 @@ class StageDetectionService
      */
     private function stageHasEnoughInfo($stage, $context)
     {
-        if (empty($context)) {
+        $messages = $this->normalizeContextMessages($context);
+
+        if (empty($messages)) {
             return false;
         }
 
         switch ($stage) {
             case 'boas_vindas':
                 // Avança se já saudou
-                return count($context) >= 1;
+                return count($messages) >= 1;
 
             case 'coleta_dados':
                 // Avança se coletou nome
-                return $this->hasCollectedName($context);
+                return $this->hasCollectedName($messages);
 
             case 'orcamento':
                 // Avança se detectou orçamento em alguma mensagem
-                return $this->hasCollectedBudget($context);
+                return $this->hasCollectedBudget($messages);
 
             case 'localizacao':
                 // Avança se detectou localização
-                return $this->hasCollectedLocation($context);
+                return $this->hasCollectedLocation($messages);
 
             case 'preferencias':
                 // Avança se detectou preferências (quartos, suites, etc)
-                return $this->hasCollectedPreferences($context);
+                return $this->hasCollectedPreferences($messages);
 
             case 'busca_imoveis':
                 // Avança se fez busca (geralmente automático)
@@ -131,11 +133,57 @@ class StageDetectionService
 
             case 'apresentacao':
                 // Avança se apresentou imóveis
-                return $this->hasPresentedProperties($context);
+                return $this->hasPresentedProperties($messages);
 
             default:
                 return false;
         }
+    }
+
+    private function normalizeContextMessages($context): array
+    {
+        if (is_string($context)) {
+            return $this->historyStringToMessages($context);
+        }
+
+        if (!is_array($context)) {
+            return [];
+        }
+
+        if (isset($context['history']) && is_string($context['history'])) {
+            return $this->historyStringToMessages($context['history']);
+        }
+
+        return array_values(array_filter(array_map(function ($message) {
+            if (is_array($message)) {
+                return ['content' => (string) ($message['content'] ?? '')];
+            }
+
+            if (is_string($message)) {
+                return ['content' => $message];
+            }
+
+            return null;
+        }, $context)));
+    }
+
+    private function historyStringToMessages(string $history): array
+    {
+        $messages = [];
+
+        foreach (preg_split('/\R/u', $history) ?: [] as $line) {
+            $line = trim($line);
+
+            if ($line === '') {
+                continue;
+            }
+
+            $messages[] = [
+                'content' => preg_replace('/^(Cliente|Atendente):\s*/iu', '', $line) ?? $line,
+            ];
+        }
+
+        return $messages;
     }
     
     /**

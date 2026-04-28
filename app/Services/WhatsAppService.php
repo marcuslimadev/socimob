@@ -840,8 +840,12 @@ class WhatsAppService
         $historico = $this->getConversationHistory($conversa->id);
 
         // BUSCAR IMÓVEIS DISPONÍVEIS para contexto da IA
+        $propertyContextLimit = max(1, (int) env('AI_PROPERTY_CONTEXT_LIMIT', 25));
         $properties = $this->buildAvailablePropertyQuery($conversa->tenant_id ?? null)
             ->select('codigo_imovel', 'tipo_imovel', 'bairro', 'cidade', 'valor_venda', 'dormitorios', 'suites', 'descricao', 'imagem_destaque', 'imagens')
+            ->orderByDesc('destaque')
+            ->orderByDesc('updated_at')
+            ->limit($propertyContextLimit)
             ->get()
             ->toArray();
         
@@ -1922,7 +1926,10 @@ class WhatsAppService
      */
     private function hasEnoughDataForMatching($lead)
     {
-        return $lead->budget_min && $lead->localizacao && $lead->quartos;
+        $hasBudget = $lead->budget_min || $lead->budget_max;
+        $hasLocation = !empty($lead->localizacao) || !empty($lead->preferencia_bairro);
+
+        return $hasBudget && $hasLocation && $lead->quartos;
     }
     
     /**
@@ -1936,6 +1943,10 @@ class WhatsAppService
             ->where(function($q) use ($lead) {
                 if ($lead->budget_min && $lead->budget_max) {
                     $q->whereBetween('valor_venda', [$lead->budget_min, $lead->budget_max]);
+                } elseif ($lead->budget_max) {
+                    $q->where('valor_venda', '<=', $lead->budget_max);
+                } elseif ($lead->budget_min) {
+                    $q->where('valor_venda', '>=', $lead->budget_min);
                 }
             });
 
@@ -1946,7 +1957,7 @@ class WhatsAppService
         $candidates = $candidateQuery
             ->orderByDesc('destaque')
             ->orderByDesc('updated_at')
-            ->limit((int) env('LOCAL_EMBEDDING_MATCH_CANDIDATES', 40))
+            ->limit((int) env('LOCAL_EMBEDDING_MATCH_CANDIDATES', 60))
             ->get();
 
         $properties = $this->rankPropertiesForLead($lead, $candidates)->take(5);
