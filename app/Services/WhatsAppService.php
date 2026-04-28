@@ -45,9 +45,21 @@ class WhatsAppService
     private LeadCustomerService $leadCustomerService;
     private SmsShortLinkService $smsShortLinkService;
     private LocalEmbeddingService $localEmbeddingService;
+    private HuggingFaceService $huggingFaceService;
+    private AiAtendimentoProviderService $aiProviderService;
     
-    public function __construct(TwilioService $twilio, EvolutionApiService $evolution, MetaCloudGateway $metaCloud, OpenAIService $openai, StageDetectionService $stageDetection, LeadCustomerService $leadCustomerService, SmsShortLinkService $smsShortLinkService, LocalEmbeddingService $localEmbeddingService)
-    {
+    public function __construct(
+        TwilioService $twilio,
+        EvolutionApiService $evolution,
+        MetaCloudGateway $metaCloud,
+        OpenAIService $openai,
+        StageDetectionService $stageDetection,
+        LeadCustomerService $leadCustomerService,
+        SmsShortLinkService $smsShortLinkService,
+        LocalEmbeddingService $localEmbeddingService,
+        HuggingFaceService $huggingFaceService,
+        AiAtendimentoProviderService $aiProviderService
+    ) {
         $this->twilio = $twilio;
         $this->evolution = $evolution;
         $this->metaCloud = $metaCloud;
@@ -56,6 +68,8 @@ class WhatsAppService
         $this->leadCustomerService = $leadCustomerService;
         $this->smsShortLinkService = $smsShortLinkService;
         $this->localEmbeddingService = $localEmbeddingService;
+        $this->huggingFaceService = $huggingFaceService;
+        $this->aiProviderService = $aiProviderService;
     }
 
     private function resolveWhatsAppGateway(): TwilioService|EvolutionApiService|MetaCloudGateway
@@ -804,8 +818,9 @@ class WhatsAppService
 
         $conversa->loadMissing('lead');
 
-        // Classificar lead automaticamente
         if ($conversa->lead) {
+            $this->hydrateLeadFromMessage($conversa->lead, $message);
+            $conversa->lead->refresh();
             $this->classifyLead($conversa->lead);
         }
 
@@ -815,7 +830,7 @@ class WhatsAppService
         $temOrcamento = $lead && ($lead->budget_min || $lead->budget_max);
         $temPrazo = $lead && !empty($lead->prazo_compra);
 
-        if ($temBairro && $temOrcamento && $temPrazo) {
+        if ($temBairro && $temOrcamento && $temPrazo && !$this->hasEnoughDataForMatching($lead)) {
             $companyName = $this->getCompanyName();
             $handoffMessage = "Perfeito! Vou repassar suas informações para um corretor especializado da {$companyName}. Ele vai te contatar em breve com as melhores opções. 👍";
 
@@ -885,14 +900,30 @@ class WhatsAppService
                 'fonte_renda' => $conversa->lead->fonte_renda,
                 'localizacao' => $conversa->lead->localizacao,
                 'quartos' => $conversa->lead->quartos,
+                'suites' => $conversa->lead->suites,
+                'garagem' => $conversa->lead->garagem,
+                'prazo_compra' => $conversa->lead->prazo_compra,
                 'objetivo_compra' => $conversa->lead->objetivo_compra,
                 'preferencia_tipo_imovel' => $conversa->lead->preferencia_tipo_imovel,
                 'preferencia_bairro' => $conversa->lead->preferencia_bairro
             ];
         }
         
-        // Processar com IA (informando se veio de áudio + imóveis disponíveis + dados do lead)
-        $aiResponse = $this->openai->processMessage($message, $historico, $isFromAudio, $properties, $leadData);
+        $aiProvider = $this->aiProviderService->resolve($conversa->tenant_id ?? $conversa->lead?->tenant_id ?? null);
+
+        Log::info('🤖 Provedor IA selecionado para atendimento', [
+            'conversa_id' => $conversa->id,
+            'tenant_id' => $conversa->tenant_id ?? null,
+            'provider' => $aiProvider,
+            'huggingface_model' => $aiProvider === AiAtendimentoProviderService::HUGGINGFACE
+                ? $this->huggingFaceService->getModel()
+                : null,
+        ]);
+
+        // Processar com IA (OpenAI ou Hugging Face, conforme configuração do admin)
+        $aiResponse = $aiProvider === AiAtendimentoProviderService::HUGGINGFACE
+            ? $this->huggingFaceService->processMessage($message, $historico, $isFromAudio, $properties, $leadData)
+            : $this->openai->processMessage($message, $historico, $isFromAudio, $properties, $leadData);
         
         Log::info('🤖 Resposta da IA', [
             'success' => $aiResponse['success'] ?? false,
@@ -902,7 +933,7 @@ class WhatsAppService
         
         $fallbackMessage = null;
 
-        if ($aiResponse['success']) {
+        if (($aiResponse['success'] ?? false)) {
             // Enviar resposta
             $sendResult = $this->sendMessage($conversa->id, $conversa->telefone, $aiResponse['content']);
             Log::info('📤 Mensagem enviada', ['success' => $sendResult['success'] ?? false]);
@@ -932,14 +963,13 @@ class WhatsAppService
                     'message_preview' => substr($message, 0, 50)
                 ]);
                 
-                $this->hydrateLeadProfileFromSnippet($conversa->lead, $message);
-                $this->extractRendaMensalFromMessage($conversa->lead, $message);
-                $this->extractEmailFromMessage($conversa->lead, $message);
-                $this->extractOrcamentoFromMessage($conversa->lead, $message);
+                $this->hydrateLeadFromMessage($conversa->lead, $message);
             }
             
-            // Tentar extrair dados do lead via IA
-            $this->extractAndUpdateLeadData($conversa);
+            // A extração estruturada usa OpenAI. No modo Hugging Face, a coleta fica nos extratores locais.
+            if ($aiProvider === AiAtendimentoProviderService::OPENAI) {
+                $this->extractAndUpdateLeadData($conversa);
+            }
             
             // Recarregar lead com dados atualizados
             $conversa->load('lead');
@@ -959,7 +989,25 @@ class WhatsAppService
                 'error' => $aiResponse['error'] ?? 'Erro desconhecido'
             ]);
 
-            $fallbackMessage = 'Desculpe, tive um problema para responder agora. Pode repetir ou detalhar um pouco mais?';
+            if ($conversa->lead) {
+                $this->hydrateLeadFromMessage($conversa->lead, $message);
+                $conversa->load('lead');
+                $this->progressStage($conversa);
+
+                if ($conversa->lead && $this->hasEnoughDataForMatching($conversa->lead)) {
+                    $this->performPropertyMatching($conversa->lead, $conversa);
+
+                    return [
+                        'success' => true,
+                        'message' => 'Mensagem processada com fallback local e matching',
+                        'ai_response' => 'Fallback local: critérios coletados e matching executado',
+                        'current_stage' => $conversa->fresh()->stage,
+                        'ai_provider' => $aiProvider,
+                    ];
+                }
+            }
+
+            $fallbackMessage = $this->buildLocalFallbackMessage($conversa->lead ?? null);
             $fallbackResult = $this->sendMessage($conversa->id, $conversa->telefone, $fallbackMessage);
 
             if (!($fallbackResult['success'] ?? false)) {
@@ -989,7 +1037,8 @@ class WhatsAppService
             'success' => true,
             'message' => 'Mensagem processada',
             'ai_response' => $aiResponse['content'] ?? $fallbackMessage,
-            'current_stage' => $conversa->stage
+            'current_stage' => $conversa->stage,
+            'ai_provider' => $aiProvider,
         ];
     }
     
@@ -1421,6 +1470,19 @@ class WhatsAppService
         return strlen($digits) === 11 ? $digits : null;
     }
 
+    private function hydrateLeadFromMessage(Lead $lead, ?string $message): void
+    {
+        if (!$message) {
+            return;
+        }
+
+        $this->hydrateLeadProfileFromSnippet($lead, $message);
+        $this->extractRendaMensalFromMessage($lead, $message);
+        $this->extractEmailFromMessage($lead, $message);
+        $this->extractOrcamentoFromMessage($lead, $message);
+        $this->extractPropertyPreferencesFromMessage($lead, $message);
+    }
+
     private function hydrateLeadProfileFromSnippet(Lead $lead, ?string $message): void
     {
         if (!$message) {
@@ -1448,6 +1510,129 @@ class WhatsAppService
         }
 
         return null;
+    }
+
+    private function extractPropertyPreferencesFromMessage(Lead $lead, string $message): void
+    {
+        $updates = [];
+        $messageLower = mb_strtolower($message);
+
+        if (empty($lead->quartos) && preg_match('/(\d+)\s*(quarto|quartos|dormit[óo]rio|dormit[óo]rios)/iu', $message, $matches)) {
+            $updates['quartos'] = (int) $matches[1];
+        }
+
+        if (empty($lead->suites) && preg_match('/(\d+)\s*(su[íi]te|su[íi]tes|suite|suites)/iu', $message, $matches)) {
+            $updates['suites'] = (int) $matches[1];
+        }
+
+        if (empty($lead->garagem) && preg_match('/(\d+)\s*(vaga|vagas|garagem|garagens)/iu', $message, $matches)) {
+            $updates['garagem'] = (int) $matches[1];
+        }
+
+        if (empty($lead->preferencia_tipo_imovel)) {
+            $tipo = $this->extractPropertyTypeFromText($messageLower);
+            if ($tipo) {
+                $updates['preferencia_tipo_imovel'] = $tipo;
+            }
+        }
+
+        if (empty($lead->localizacao) && empty($lead->preferencia_bairro)) {
+            $location = $this->extractLocationFromText($message);
+            if ($location) {
+                $updates['localizacao'] = $location;
+                $updates['preferencia_bairro'] = $location;
+            }
+        }
+
+        if (empty($lead->prazo_compra)) {
+            $prazo = $this->extractPurchaseTimelineFromText($messageLower);
+            if ($prazo) {
+                $updates['prazo_compra'] = $prazo;
+            }
+        }
+
+        if (!empty($updates)) {
+            $lead->fill($updates);
+            $lead->save();
+
+            Log::info('Preferências do imóvel detectadas automaticamente', [
+                'lead_id' => $lead->id,
+                'data' => $updates,
+            ]);
+        }
+    }
+
+    private function extractPropertyTypeFromText(string $messageLower): ?string
+    {
+        $types = [
+            'apartamento' => 'Apartamento',
+            'apto' => 'Apartamento',
+            'cobertura' => 'Cobertura',
+            'casa' => 'Casa',
+            'terreno' => 'Terreno',
+            'lote' => 'Terreno',
+            'sala' => 'Sala',
+            'loja' => 'Loja',
+        ];
+
+        foreach ($types as $needle => $label) {
+            if (str_contains($messageLower, $needle)) {
+                return $label;
+            }
+        }
+
+        return null;
+    }
+
+    private function extractLocationFromText(string $message): ?string
+    {
+        $patterns = [
+            '/\b(?:bairro|regi[ãa]o)\s+(?:de|da|do)?\s*([a-záàâãéèêíïóôõöúçñ\s\'-]{2,50})/iu',
+            '/\b(?:na|no)\s+([a-záàâãéèêíïóôõöúçñ\s\'-]{2,50})/iu',
+            '/\bem\s+(?!at[ée]\b|torno\b)([a-záàâãéèêíïóôõöúçñ\s\'-]{2,50})/iu',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $message, $matches)) {
+                $location = $this->cleanExtractedPhrase($matches[1]);
+
+                if ($location !== '') {
+                    return mb_convert_case($location, MB_CASE_TITLE, 'UTF-8');
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function extractPurchaseTimelineFromText(string $messageLower): ?string
+    {
+        if (preg_match('/(?:at[ée]|em|nos|nos pr[óo]ximos)\s+(\d+)\s*(m[eê]s|mes|meses)/iu', $messageLower, $matches)) {
+            return 'até ' . $matches[1] . ' ' . (str_starts_with($matches[2], 'mês') ? 'mês' : 'meses');
+        }
+
+        if (str_contains($messageLower, 'urgente') || str_contains($messageLower, 'imediato')) {
+            return 'imediato';
+        }
+
+        if (str_contains($messageLower, 'próximos meses') || str_contains($messageLower, 'proximos meses')) {
+            return 'próximos meses';
+        }
+
+        if (str_contains($messageLower, 'pesquisa inicial') || str_contains($messageLower, 'só pesquisando')) {
+            return 'pesquisa inicial';
+        }
+
+        return null;
+    }
+
+    private function cleanExtractedPhrase(string $value): string
+    {
+        $value = trim($value);
+        $value = preg_split('/\s+(?:e|com|até|ate|para|por|quero|pretendo)\s+/iu', $value)[0] ?? $value;
+        $value = preg_split('/[,.;!?]/u', $value)[0] ?? $value;
+
+        return trim($value);
     }
 
     /**
@@ -2189,6 +2374,31 @@ class WhatsAppService
         $cleaned = array_values(array_filter(array_map('trim', $highlights)));
 
         return array_slice($cleaned, 0, 3);
+    }
+
+    private function buildLocalFallbackMessage(?Lead $lead): string
+    {
+        if (!$lead) {
+            return 'Certo, vou te ajudar. Em qual bairro ou região você está buscando?';
+        }
+
+        if (empty($lead->localizacao) && empty($lead->preferencia_bairro)) {
+            return 'Anotei. Em qual bairro ou região você está buscando?';
+        }
+
+        if (!$lead->budget_min && !$lead->budget_max) {
+            return 'Perfeito. Qual faixa de valor você está considerando?';
+        }
+
+        if (empty($lead->quartos)) {
+            return 'Entendi. Quantos quartos você precisa?';
+        }
+
+        if (empty($lead->prazo_compra)) {
+            return 'Ótimo. Busca para os próximos meses ou é pesquisa inicial?';
+        }
+
+        return 'Perfeito, anotei seus critérios. Vou buscar opções compatíveis para você.';
     }
     
     /**

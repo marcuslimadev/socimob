@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
+import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { getSidebarVisibilitySections, normalizeHiddenSidebarKeys } from '@/lib/sidebarVisibility';
 
@@ -64,6 +65,8 @@ interface LeadProfile {
   caracteristicas_desejadas?: string | null;
   observacoes_cliente?: string | null;
 }
+
+type AiProvider = 'openai' | 'huggingface';
 
 // ── Watermark upload helper component ────────────────────────────────────────
 function WatermarkUploadSection({
@@ -178,6 +181,10 @@ export default function Settings() {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isSavingTenant, setIsSavingTenant] = useState(false);
+  const [aiProvider, setAiProvider] = useState<AiProvider>('openai');
+  const [isLoadingAiProvider, setIsLoadingAiProvider] = useState(false);
+  const [isSavingAiProvider, setIsSavingAiProvider] = useState(false);
+  const [aiProviderStatus, setAiProviderStatus] = useState<any>(null);
   const [tenantForm, setTenantForm] = useState({
     name: '',
     contact_email: '',
@@ -297,6 +304,7 @@ export default function Settings() {
   useEffect(() => {
     fetchProfile();
     fetchTenantConfig();
+    fetchAiProvider();
   }, []);
 
   useEffect(() => {
@@ -386,6 +394,48 @@ export default function Settings() {
       setTenantError(error?.response?.data?.message || 'Erro ao carregar informações da empresa.');
     } finally {
       setIsLoadingTenant(false);
+    }
+  };
+
+  const getTenantParams = () => {
+    const viewAsTenantId = localStorage.getItem('superadmin_view_as_tenant');
+    return viewAsTenantId ? { tenant_id: viewAsTenantId } : {};
+  };
+
+  const fetchAiProvider = async () => {
+    try {
+      setIsLoadingAiProvider(true);
+      const response = await api.get('/admin/settings/ai-provider', { params: getTenantParams() });
+      const provider = response.data?.provider === 'huggingface' ? 'huggingface' : 'openai';
+      setAiProvider(provider);
+      setAiProviderStatus(response.data || null);
+    } catch (error) {
+      console.error('Erro ao carregar provedor de IA:', error);
+    } finally {
+      setIsLoadingAiProvider(false);
+    }
+  };
+
+  const handleAiProviderChange = async (provider: AiProvider) => {
+    const previous = aiProvider;
+    setAiProvider(provider);
+    setIsSavingAiProvider(true);
+
+    try {
+      const response = await api.post('/admin/settings/ai-provider', {
+        provider,
+        ...getTenantParams(),
+      });
+
+      const savedProvider = response.data?.provider === 'huggingface' ? 'huggingface' : 'openai';
+      setAiProvider(savedProvider);
+      toast.success(response.data?.message || 'Provedor de IA atualizado');
+      fetchAiProvider();
+    } catch (error: any) {
+      setAiProvider(previous);
+      toast.error(error?.response?.data?.message || 'Erro ao atualizar provedor de IA');
+    } finally {
+      setIsSavingAiProvider(false);
     }
   };
 
@@ -565,11 +615,6 @@ export default function Settings() {
       setIsSavingTenant(false);
     }
   };
-
-  useEffect(() => {
-    fetchProfile();
-    fetchTenantConfig();
-  }, []);
 
   const getRoleLabel = (role?: string) => {
     const roles: Record<string, string> = {
@@ -987,9 +1032,41 @@ export default function Settings() {
                       />
 
                       <div className="border-t border-white/10 pt-6 mt-6">
-                        <h3 className="text-lg font-bold text-foreground mb-4">Integração com IA (OpenAI)</h3>
+                        <h3 className="text-lg font-bold text-foreground mb-4">Atendimento via IA</h3>
                         
                         <div className="space-y-4">
+                          <div className="flex flex-col gap-4 rounded-lg border border-white/10 bg-white/[0.04] p-4 md:flex-row md:items-center md:justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">Provedor do atendimento automático</p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {aiProvider === 'huggingface'
+                                  ? `Hugging Face com ${aiProviderStatus?.huggingface?.model || 'meta-llama/Llama-3.1-8B-Instruct'} para respostas e embeddings locais para matching.`
+                                  : 'OpenAI para respostas, extração de dados e condução do atendimento.'}
+                              </p>
+                              {aiProvider === 'huggingface' && aiProviderStatus?.huggingface?.configured === false && (
+                                <p className="mt-2 text-xs text-amber-300">
+                                  Configure HUGGINGFACE_API_KEY em produção para usar o Llama; sem isso o fluxo usa fallback guiado.
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <span className={`text-sm font-semibold ${aiProvider === 'openai' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                OpenAI
+                              </span>
+                              <Switch
+                                checked={aiProvider === 'huggingface'}
+                                disabled={isLoadingAiProvider || isSavingAiProvider}
+                                onCheckedChange={(checked) => handleAiProviderChange(checked ? 'huggingface' : 'openai')}
+                                aria-label="Selecionar provedor do atendimento IA"
+                              />
+                              <span className={`text-sm font-semibold ${aiProvider === 'huggingface' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                Hugging Face
+                              </span>
+                              {(isLoadingAiProvider || isSavingAiProvider) && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+                            </div>
+                          </div>
+
                           <div>
                             <label className="block text-sm font-semibold text-foreground mb-2">
                               API Key OpenAI

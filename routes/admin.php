@@ -31,6 +31,8 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->get('/settings/ai-prompt', 'App\Http\Controllers\Admin\TenantSettingsController@getAiPrompt');
     $router->post('/settings/ai-prompt', 'App\Http\Controllers\Admin\TenantSettingsController@saveAiPrompt');
     $router->delete('/settings/ai-prompt', 'App\Http\Controllers\Admin\TenantSettingsController@deleteAiPrompt');
+    $router->get('/settings/ai-provider', 'App\Http\Controllers\Admin\TenantSettingsController@getAiProvider');
+    $router->post('/settings/ai-provider', 'App\Http\Controllers\Admin\TenantSettingsController@setAiProvider');
 
     // Atendimento Automático Settings
     $router->get('/settings/atendimento-automatico', 'App\Http\Controllers\Admin\TenantSettingsController@getAtendimentoAutomatico');

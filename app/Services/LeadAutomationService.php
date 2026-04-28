@@ -19,17 +19,23 @@ class LeadAutomationService
     private $whatsappService;
     private $twilioService;
     private $openAIService;
+    private HuggingFaceService $huggingFaceService;
+    private AiAtendimentoProviderService $aiProviderService;
     private SmsShortLinkService $smsShortLinkService;
 
     public function __construct(
         WhatsAppService $whatsappService,
         TwilioService $twilioService,
         OpenAIService $openAIService,
+        HuggingFaceService $huggingFaceService,
+        AiAtendimentoProviderService $aiProviderService,
         SmsShortLinkService $smsShortLinkService
     ) {
         $this->whatsappService = $whatsappService;
         $this->twilioService = $twilioService;
         $this->openAIService = $openAIService;
+        $this->huggingFaceService = $huggingFaceService;
+        $this->aiProviderService = $aiProviderService;
         $this->smsShortLinkService = $smsShortLinkService;
     }
 
@@ -454,10 +460,16 @@ INSTRUÇÕES:
 
 Gere a mensagem de primeiro contato:";
 
-            $mensagem = $this->openAIService->generateSimpleMessage(
-                "Você é um assistente imobiliário profissional e cordial.",
-                $prompt
-            );
+            $provider = $this->aiProviderService->resolve($lead->tenant_id);
+            $mensagem = $provider === AiAtendimentoProviderService::HUGGINGFACE
+                ? $this->huggingFaceService->generateSimpleMessage(
+                    "Você é um assistente imobiliário profissional e cordial.",
+                    $prompt
+                )
+                : $this->openAIService->generateSimpleMessage(
+                    "Você é um assistente imobiliário profissional e cordial.",
+                    $prompt
+                );
 
             // Fallback caso OpenAI falhe
             if (empty($mensagem)) {

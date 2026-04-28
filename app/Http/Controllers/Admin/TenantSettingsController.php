@@ -5,6 +5,9 @@ use App\Http\Controllers\Controller;
 
 use App\Models\Tenant;
 use App\Models\TenantConfig;
+use App\Services\AiAtendimentoProviderService;
+use App\Services\HuggingFaceService;
+use App\Services\LocalEmbeddingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -867,6 +870,77 @@ class TenantSettingsController extends Controller
     }
 
     /**
+     * Obter provedor da IA do atendimento
+     * GET /api/admin/settings/ai-provider
+     */
+    public function getAiProvider(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        $tenantId = $this->resolveSettingsTenantId($request, $user);
+        $tenant = Tenant::find($tenantId);
+        $providerService = app(AiAtendimentoProviderService::class);
+        $huggingFaceService = app(HuggingFaceService::class);
+        $embeddingHealth = app(LocalEmbeddingService::class)->health();
+
+        $provider = $providerService->resolve($tenantId);
+
+        return response()->json([
+            'success' => true,
+            'provider' => $provider,
+            'options' => $providerService->options(),
+            'openai' => [
+                'configured' => $tenant ? trim((string) $tenant->getOpenAiApiKey()) !== '' : trim((string) env('OPENAI_API_KEY', '')) !== '',
+                'model' => $tenant ? $tenant->getOpenAiModel() : env('OPENAI_MODEL', 'gpt-4o-mini'),
+            ],
+            'huggingface' => [
+                'configured' => $huggingFaceService->isConfigured(),
+                'model' => $huggingFaceService->getModel(),
+                'chat_endpoint' => 'Hugging Face Router',
+                'embedding_service_available' => (bool) ($embeddingHealth['success'] ?? false),
+                'embedding_model' => $embeddingHealth['model'] ?? null,
+            ],
+        ]);
+    }
+
+    /**
+     * Definir provedor da IA do atendimento
+     * POST /api/admin/settings/ai-provider
+     */
+    public function setAiProvider(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'provider' => 'required|string|in:openai,huggingface,hf,hugging-face,hugginface,huggin-face',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        $tenantId = $this->resolveSettingsTenantId($request, $user);
+        $providerService = app(AiAtendimentoProviderService::class);
+        $provider = $providerService->save((string) $request->input('provider'), $tenantId);
+
+        return response()->json([
+            'success' => true,
+            'provider' => $provider,
+            'message' => $provider === AiAtendimentoProviderService::HUGGINGFACE
+                ? 'Atendimento configurado para Hugging Face'
+                : 'Atendimento configurado para OpenAI',
+        ]);
+    }
+
+    /**
      * Obter status do atendimento automático
      * GET /api/admin/settings/atendimento-automatico
      */
@@ -1158,5 +1232,13 @@ class TenantSettingsController extends Controller
             'message' => 'Configurações de Pagamento atualizadas com sucesso',
         ]);
     }
-}
 
+    private function resolveSettingsTenantId(Request $request, $user): int
+    {
+        if (($user->role ?? null) === 'super_admin') {
+            return (int) ($request->input('tenant_id') ?: $request->query('tenant_id') ?: $user->tenant_id);
+        }
+
+        return (int) $user->tenant_id;
+    }
+}
