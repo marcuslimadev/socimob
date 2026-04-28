@@ -19,6 +19,7 @@ use App\Services\EvolutionApiService;
 use App\Services\SmsShortLinkService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Builder;
@@ -2146,6 +2147,7 @@ class WhatsAppService
             ->get();
 
         $properties = $this->rankPropertiesForLead($lead, $candidates)->take(5);
+        $this->refreshDatabaseConnectionAfterExternalWork();
         
         if ($properties->count() > 0) {
             // ENCONTROU IMÓVEIS!
@@ -2323,6 +2325,17 @@ class WhatsAppService
         }
 
         return $dot / (sqrt($leftNorm) * sqrt($rightNorm));
+    }
+
+    private function refreshDatabaseConnectionAfterExternalWork(): void
+    {
+        try {
+            DB::reconnect();
+        } catch (\Throwable $exception) {
+            Log::warning('Falha ao reconectar banco apos trabalho externo de IA', [
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
     private function sendPropertyPreview($conversa, $property): void
