@@ -1066,16 +1066,35 @@ class WhatsAppService
         }
 
         if (empty($lead->renda_mensal)) {
-            return $afterMatching
-                ? 'Para deixar o corretor bem situado: qual sua renda mensal aproximada?'
-                : 'Qual sua renda mensal aproximada? Isso ajuda o corretor a orientar melhor.';
+            return 'Qual sua renda mensal aproximada?';
         }
 
         if (empty($lead->fonte_renda)) {
-            return 'Sua renda é CLT, autônoma, empresário ou outra fonte?';
+            return 'Sua renda vem de CLT, autônomo, empresa/PJ ou outra fonte?';
         }
 
         return null;
+    }
+
+    private function buildQualificationCompleteMessage(Lead $lead): string
+    {
+        $summary = [];
+
+        if (!empty($lead->financiamento_status)) {
+            $summary[] = $lead->financiamento_status;
+        }
+
+        if (!empty($lead->renda_mensal)) {
+            $summary[] = 'renda aproximada ' . $this->formatCurrencyValue($lead->renda_mensal);
+        }
+
+        if (!empty($lead->fonte_renda)) {
+            $summary[] = 'renda ' . $lead->fonte_renda;
+        }
+
+        $details = $summary ? "\nAnotei: " . implode(', ', $summary) . '.' : '';
+
+        return "Perfeito, obrigado.{$details}\nSe algum dos imóveis fizer sentido, me diga o código ou posso chamar um corretor para seguir com você.";
     }
 
     private function hasAnyQualificationData(Lead $lead): bool
@@ -1130,6 +1149,7 @@ class WhatsAppService
 
         if ($conversa->lead) {
             $this->hydrateLeadFromMessage($conversa->lead, $message);
+            $this->hydrateLeadFromConversationContext($conversa, $conversa->lead, $message);
             $conversa->lead->refresh();
             $this->classifyLead($conversa->lead);
         }
@@ -1211,11 +1231,27 @@ class WhatsAppService
                     'current_stage' => $conversa->fresh()->stage,
                 ];
             }
+
+            $completeMessage = $this->buildQualificationCompleteMessage($lead);
+            $conversa->update([
+                'stage' => 'atendimento_humano',
+                'status' => 'aguardando_corretor',
+                'ultima_atividade' => Carbon::now(),
+            ]);
+            $this->updateLeadStatusFromStage($lead, 'atendimento_humano');
+            $this->sendMessage($conversa->id, $conversa->telefone, $completeMessage);
+
+            return [
+                'success' => true,
+                'message' => 'Qualificação local concluída',
+                'ai_response' => $completeMessage,
+                'current_stage' => $conversa->fresh()->stage,
+            ];
         }
 
         if ($temBairro && $temOrcamento && $temPrazo && !$this->hasEnoughDataForMatching($lead)) {
             $companyName = $this->getCompanyName();
-            $handoffMessage = "Perfeito! Vou repassar suas informações para um corretor especializado da {$companyName}. Ele vai te contatar em breve com as melhores opções. 👍";
+            $handoffMessage = "Perfeito. Vou acionar um corretor da {$companyName} para seguir com você.";
 
             $conversa->update([
                 'stage' => 'atendimento_humano',
@@ -1884,6 +1920,202 @@ class WhatsAppService
         $this->inferLeadIntentFromBudget($lead);
     }
 
+    private function hydrateLeadFromConversationContext(Conversa $conversa, Lead $lead, ?string $message): void
+    {
+        if (!$message) {
+            return;
+        }
+
+        $lastOutgoing = Mensagem::where('conversa_id', $conversa->id)
+            ->where('direction', 'outgoing')
+            ->where(function ($query) {
+                $query->whereNull('content')
+                    ->orWhere(function ($messageQuery) {
+                        $messageQuery->where('content', 'not like', '%Recebi seu áudio%')
+                            ->where('content', 'not like', '%Vou ouvir%');
+                    });
+            })
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$lastOutgoing || empty($lastOutgoing->content)) {
+            return;
+        }
+
+        $question = $this->normalizeIntentText($lastOutgoing->content);
+        $answer = trim((string) $message);
+        $answerText = $this->normalizeIntentText($answer);
+        $updates = [];
+
+        if (empty($lead->objetivo_compra) && str_contains($question, 'compra ou aluguel')) {
+            if ($this->isRentAnswer($answerText)) {
+                $updates['objetivo_compra'] = 'Aluguel';
+            } elseif ($this->isSaleAnswer($answerText)) {
+                $updates['objetivo_compra'] = 'Compra';
+            }
+        }
+
+        if (!$lead->budget_min && !$lead->budget_max && Str::contains($question, [
+            'faixa de investimento',
+            'faixa de aluguel',
+            'faixa de valor',
+        ])) {
+            $amount = $this->extractDirectMoneyAmount($answer);
+            if ($amount && $amount > 0) {
+                $updates['budget_max'] = $amount;
+            }
+        }
+
+        if (empty($lead->localizacao) && empty($lead->preferencia_bairro) && Str::contains($question, ['bairro', 'regiao'])) {
+            $location = $this->extractDirectLocationAnswer($answer);
+            if ($location) {
+                $updates['localizacao'] = $location;
+                $updates['preferencia_bairro'] = $location;
+            }
+        }
+
+        if (empty($lead->preferencia_tipo_imovel) && Str::contains($question, ['apartamento', 'casa', 'tipo de imovel'])) {
+            $type = $this->extractPropertyTypeFromText($answerText);
+            if ($type) {
+                $updates['preferencia_tipo_imovel'] = $type;
+            }
+        }
+
+        if (empty($lead->quartos) && str_contains($question, 'quartos')) {
+            if (preg_match('/\b(\d{1,2})\b/u', $answer, $matches)) {
+                $updates['quartos'] = max(1, (int) $matches[1]);
+            }
+        }
+
+        if (empty($lead->prazo_compra) && Str::contains($question, ['prazo', 'mudar', 'mudanca'])) {
+            $timeline = $this->extractPurchaseTimelineFromText($answerText);
+            if ($timeline) {
+                $updates['prazo_compra'] = $timeline;
+            }
+        }
+
+        if (empty($lead->financiamento_status) && Str::contains($question, ['vista', 'financiamento'])) {
+            $financingStatus = $this->extractFinancingStatusFromText($answerText);
+            if ($financingStatus) {
+                $updates['financiamento_status'] = $financingStatus;
+            }
+        }
+
+        if (empty($lead->renda_mensal) && str_contains($question, 'renda mensal')) {
+            $amount = $this->extractDirectMoneyAmount($answer);
+            if ($amount && $amount >= 500 && $amount <= 1000000) {
+                $updates['renda_mensal'] = $amount;
+            }
+        }
+
+        if (empty($lead->fonte_renda) && Str::contains($question, ['clt', 'autonomo', 'empresa/pj', 'fonte'])) {
+            $incomeSource = $this->extractIncomeSourceFromText($answerText);
+            if ($incomeSource) {
+                $updates['fonte_renda'] = $incomeSource;
+            }
+        }
+
+        if (!empty($updates)) {
+            $lead->fill($updates);
+            $lead->save();
+
+            Log::info('Dados do lead detectados pelo contexto da pergunta anterior', [
+                'lead_id' => $lead->id,
+                'conversa_id' => $conversa->id,
+                'data' => $updates,
+            ]);
+        }
+    }
+
+    private function extractDirectMoneyAmount(string $message): ?float
+    {
+        if (!preg_match('/(?:r\$)?\s*([0-9]+(?:[.,][0-9]{1,3})*)\s*(milh(?:ao|oes)|mil|k)?/iu', $message, $matches)) {
+            return null;
+        }
+
+        $number = $matches[1];
+        $suffix = $this->normalizeIntentText($matches[2] ?? '');
+        $amount = $this->normalizeNumericValue($number);
+
+        if (!$amount) {
+            return null;
+        }
+
+        if (str_starts_with($suffix, 'milh')) {
+            return $amount * 1000000;
+        }
+
+        if ($suffix === 'mil' || $suffix === 'k') {
+            return $amount * 1000;
+        }
+
+        return $amount;
+    }
+
+    private function extractDirectLocationAnswer(string $message): ?string
+    {
+        $value = $this->cleanExtractedPhrase($message);
+        $normalized = $this->normalizeIntentText($value);
+
+        if ($normalized === '' || mb_strlen($value) > 60) {
+            return null;
+        }
+
+        if (preg_match('/\d/u', $value) || preg_match('/^(sim|nao|ok|pode|tanto faz)$/u', $normalized)) {
+            return null;
+        }
+
+        return mb_convert_case($value, MB_CASE_TITLE, 'UTF-8');
+    }
+
+    private function extractFinancingStatusFromText(string $text): ?string
+    {
+        if (preg_match('/\b(a vista|avista|sem financiamento|sem financiar|recurso proprio|recursos proprios)\b/u', $text)) {
+            return 'à vista';
+        }
+
+        if (preg_match('/\b(financiamento|financiar|financiado|financiada|caixa|banco|fgts|carta de credito|credito aprovado|aprovado)\b/u', $text)) {
+            return 'pretende financiar';
+        }
+
+        return null;
+    }
+
+    private function extractIncomeSourceFromText(string $text): ?string
+    {
+        if (preg_match('/\b(clt|carteira assinada|registrado|registrada)\b/u', $text)) {
+            return 'CLT';
+        }
+
+        if (preg_match('/\b(autonomo|autonoma|freelancer|por conta|informal|diarista)\b/u', $text)) {
+            return 'autônomo';
+        }
+
+        if (preg_match('/\b(empresario|empresaria|empresa|mei|pj|pro labore|comercio|loja)\b/u', $text)) {
+            return 'empresa/PJ';
+        }
+
+        if (preg_match('/\b(aposentado|aposentada|aposentadoria|pensionista)\b/u', $text)) {
+            return 'aposentadoria/pensão';
+        }
+
+        if (preg_match('/\b(servidor|servidora|funcionario publico|funcionaria publica|concursado|concursada)\b/u', $text)) {
+            return 'servidor público';
+        }
+
+        return null;
+    }
+
+    private function isRentAnswer(string $text): bool
+    {
+        return preg_match('/\b(aluguel|alugar|locacao|locar)\b/u', $text) === 1;
+    }
+
+    private function isSaleAnswer(string $text): bool
+    {
+        return preg_match('/\b(compra|comprar|venda|financiar|financiamento|a vista|avista)\b/u', $text) === 1;
+    }
+
     private function extractLeadIntentFromMessage(Lead $lead, string $message): void
     {
         $text = $this->normalizeIntentText($message);
@@ -2071,6 +2303,14 @@ class WhatsAppService
 
     private function extractPurchaseTimelineFromText(string $messageLower): ?string
     {
+        if (preg_match('/^\s*(\d+)\s*(dia|dias)\s*$/iu', $messageLower, $matches)) {
+            return 'até ' . $matches[1] . ' ' . ((int) $matches[1] === 1 ? 'dia' : 'dias');
+        }
+
+        if (preg_match('/^\s*(\d+)\s*(semana|semanas)\s*$/iu', $messageLower, $matches)) {
+            return 'até ' . $matches[1] . ' ' . ((int) $matches[1] === 1 ? 'semana' : 'semanas');
+        }
+
         if (preg_match('/(?:mudan[çc]a|mudar|mudo|preciso mudar|entrada|entrar|ir para|at[ée]|em)\s+(?:em\s+)?(\d+)\s*(dia|dias)/iu', $messageLower, $matches)) {
             return 'até ' . $matches[1] . ' ' . ((int) $matches[1] === 1 ? 'dia' : 'dias');
         }
