@@ -450,11 +450,17 @@ class WhatsAppService
 
             if ($property) {
                 $mensagemBoasVindas = $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property);
+            } elseif ($this->hasEnoughDataForMatching($lead)) {
+                $mensagemBoasVindas = $this->buildCriteriaWelcomeMessage($assistantName, $nomePreferido, $lead);
             } else {
                 $mensagemBoasVindas = $this->buildGenericWelcomeMessage($assistantName, $nomePreferido);
             }
 
             $this->sendMessage($conversa->id, $telefone, $mensagemBoasVindas);
+
+            if (!$property && $this->hasEnoughDataForMatching($lead)) {
+                $this->performPropertyMatching($lead, $conversa);
+            }
 
             return [
                 'success' => true,
@@ -568,11 +574,17 @@ class WhatsAppService
 
         if ($property) {
             $mensagemBoasVindas = $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property, $companyName);
+        } elseif ($this->hasEnoughDataForMatching($lead)) {
+            $mensagemBoasVindas = $this->buildCriteriaWelcomeMessage($assistantName, $nomePreferido, $lead, $companyName);
         } else {
             $mensagemBoasVindas = $this->buildGenericWelcomeMessage($assistantName, $nomePreferido, $companyName);
         }
 
         $this->sendMessage($conversa->id, $telefone, $mensagemBoasVindas);
+
+        if (!$property && $this->hasEnoughDataForMatching($lead)) {
+            $this->performPropertyMatching($lead, $conversa);
+        }
 
         return [
             'success' => true,
@@ -688,6 +700,25 @@ class WhatsAppService
         }
 
         return 'Como posso te chamar para registrar direitinho no nosso atendimento?';
+    }
+
+    private function buildCriteriaWelcomeMessage(string $assistantName, ?string $preferredName, Lead $lead, ?string $companyName = null): string
+    {
+        $companyName = $companyName ?: $this->getCompanyName();
+        $nome = $preferredName ? ", *{$preferredName}*" : '';
+        $location = $lead->localizacao ?: $lead->preferencia_bairro;
+        $budget = $lead->budget_max
+            ? 'até ' . $this->formatCurrencyValue($lead->budget_max)
+            : ($lead->budget_min ? 'a partir de ' . $this->formatCurrencyValue($lead->budget_min) : null);
+        $rooms = $lead->quartos ? "{$lead->quartos} quartos" : null;
+
+        $criteria = array_filter([$location, $budget, $rooms]);
+
+        $message = "Oi{$nome}! Eu sou {$assistantName}, da *{$companyName}*.\n";
+        $message .= 'Entendi sua busca: ' . implode(', ', $criteria) . ".\n";
+        $message .= 'Vou te mostrar opções compatíveis agora.';
+
+        return $message;
     }
 
     private function findPropertyFromMessage(?string $mensagem): ?Property
