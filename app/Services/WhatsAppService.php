@@ -752,17 +752,12 @@ class WhatsAppService
         $bairro = $this->extractBairroFromMessage($texto);
         $tipo = $this->extractTipoFromMessage($texto);
 
-        if ($bairro || $tipo) {
+        if ($bairro && $tipo) {
             $query = Property::where('active', true)
                 ->where('exibir_imovel', true);
 
-            if ($bairro) {
-                $query->whereRaw('LOWER(bairro) LIKE ?', ['%' . Str::lower($bairro) . '%']);
-            }
-
-            if ($tipo) {
-                $query->whereRaw('LOWER(tipo_imovel) LIKE ?', ['%' . Str::lower($tipo) . '%']);
-            }
+            $query->whereRaw('LOWER(bairro) LIKE ?', ['%' . Str::lower($bairro) . '%']);
+            $query->whereRaw('LOWER(tipo_imovel) LIKE ?', ['%' . Str::lower($tipo) . '%']);
 
             return $query->first();
         }
