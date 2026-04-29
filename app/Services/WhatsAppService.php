@@ -2035,7 +2035,9 @@ class WhatsAppService
 
         $number = $matches[1];
         $suffix = $this->normalizeIntentText($matches[2] ?? '');
-        $amount = $this->normalizeNumericValue($number);
+        $normalizedNumber = str_replace('.', '', $number);
+        $normalizedNumber = str_replace(',', '.', $normalizedNumber);
+        $amount = is_numeric($normalizedNumber) ? (float) $normalizedNumber : null;
 
         if (!$amount) {
             return null;
