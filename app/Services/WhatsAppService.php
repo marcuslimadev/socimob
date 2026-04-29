@@ -10,6 +10,7 @@ use App\Models\LeadPropertyMatch;
 use App\Models\LeadDocument;
 use App\Models\AppSetting;
 use App\Models\SmsShortLink;
+use App\Models\Tenant;
 use App\Models\WhatsApp\WhatsAppPhoneNumber;
 use App\Services\LeadCustomerService;
 use App\Services\MetaCloudGateway;
@@ -444,7 +445,9 @@ class WhatsAppService
             $lead->refresh();
             $this->classifyLead($lead);
 
-            $assistantName = $this->getAssistantName();
+            $contextTenantId = $conversa->tenant_id ?: $lead->tenant_id;
+            $assistantName = $this->getAssistantName($contextTenantId);
+            $companyName = $this->getCompanyName($contextTenantId);
             $nomePreferido = $this->extractPreferredName($lead->nome ?? null);
             $property = $this->findPropertyFromMessage($body);
             if ($property) {
@@ -454,14 +457,14 @@ class WhatsAppService
             }
 
             if ($property) {
-                $mensagemBoasVindas = $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property);
+                $mensagemBoasVindas = $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property, $companyName);
             } elseif ($this->hasEnoughDataForMatching($lead)) {
-                $mensagemBoasVindas = $this->buildCriteriaWelcomeMessage($assistantName, $nomePreferido, $lead);
+                $mensagemBoasVindas = $this->buildCriteriaWelcomeMessage($assistantName, $nomePreferido, $lead, $companyName);
             } elseif ($this->hasAnyQualificationData($lead)) {
                 $mensagemBoasVindas = $this->buildNextQualificationMessage($lead)
-                    ?: $this->buildGenericWelcomeMessage($assistantName, $nomePreferido);
+                    ?: $this->buildGenericWelcomeMessage($assistantName, $nomePreferido, $companyName);
             } else {
-                $mensagemBoasVindas = $this->buildGenericWelcomeMessage($assistantName, $nomePreferido);
+                $mensagemBoasVindas = $this->buildGenericWelcomeMessage($assistantName, $nomePreferido, $companyName);
             }
 
             $this->sendMessage($conversa->id, $telefone, $mensagemBoasVindas);
@@ -575,8 +578,9 @@ class WhatsAppService
         ]);
         $this->updateLeadStatusFromStage($lead, 'coleta_dados');
 
-        $assistantName = $this->getAssistantName();
-        $companyName = $this->getCompanyName();
+        $contextTenantId = $conversa->tenant_id ?: $lead->tenant_id;
+        $assistantName = $this->getAssistantName($contextTenantId);
+        $companyName = $this->getCompanyName($contextTenantId);
         $nomePreferido = $this->extractPreferredName($lead->nome ?? $dados['profile_name'] ?? null);
         $property = $this->findPropertyFromMessage($mensagemOriginal);
         if ($property) {
@@ -609,10 +613,10 @@ class WhatsAppService
         ];
     }
 
-    private function getAssistantName(): string
+    private function getAssistantName(?int $tenantId = null): string
     {
         // 1. Tentar via tenant
-        $tenant = $this->currentTenant();
+        $tenant = $this->currentTenant() ?: ($tenantId ? Tenant::find($tenantId) : null);
         if ($tenant) {
             $tenantName = $tenant->getAiAssistantName();
             if (!empty($tenantName)) {
@@ -633,9 +637,9 @@ class WhatsAppService
         return $name !== '' ? $name : $default;
     }
 
-    private function getCompanyName(): string
+    private function getCompanyName(?int $tenantId = null): string
     {
-        $tenant = $this->currentTenant();
+        $tenant = $this->currentTenant() ?: ($tenantId ? Tenant::find($tenantId) : null);
         if ($tenant) {
             return $tenant->getCompanyName();
         }
@@ -1513,7 +1517,7 @@ class WhatsAppService
             'interesse' => 'qualificado',
             'agendamento' => 'proposta',
             'atendimento_humano' => 'em_atendimento',
-            'sem_match' => 'perdido',
+            'sem_match' => 'qualificado',
             'refinamento' => 'em_atendimento'
         ];
 
@@ -1541,7 +1545,10 @@ class WhatsAppService
 
         if (!empty($lead->prazo_compra)) {
             $prazo = mb_strtolower($lead->prazo_compra);
-            $prazoCurto = Str::contains($prazo, ['urgente', 'imediato', '1 m', '2 m', '3 m', 'este mês', 'próximo mês', 'logo', 'rápido']);
+            $prazoCurto = Str::contains($prazo, [
+                'urgente', 'imediato', 'dia', 'semana', '1 m', '2 m', '3 m',
+                'este mês', 'próximo mês', 'logo', 'rápido',
+            ]);
         }
 
         $score = 0;
@@ -2064,6 +2071,14 @@ class WhatsAppService
 
     private function extractPurchaseTimelineFromText(string $messageLower): ?string
     {
+        if (preg_match('/(?:mudan[çc]a|mudar|mudo|preciso mudar|entrada|entrar|ir para|at[ée]|em)\s+(?:em\s+)?(\d+)\s*(dia|dias)/iu', $messageLower, $matches)) {
+            return 'até ' . $matches[1] . ' ' . ((int) $matches[1] === 1 ? 'dia' : 'dias');
+        }
+
+        if (preg_match('/(?:mudan[çc]a|mudar|mudo|preciso mudar|entrada|entrar|ir para|at[ée]|em)\s+(?:em\s+)?(\d+)\s*(semana|semanas)/iu', $messageLower, $matches)) {
+            return 'até ' . $matches[1] . ' ' . ((int) $matches[1] === 1 ? 'semana' : 'semanas');
+        }
+
         if (preg_match('/(?:at[ée]|em|nos|nos pr[óo]ximos)\s+(\d+)\s*(m[eê]s|mes|meses)/iu', $messageLower, $matches)) {
             return 'até ' . $matches[1] . ' ' . (str_starts_with($matches[2], 'mês') ? 'mês' : 'meses');
         }
