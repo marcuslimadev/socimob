@@ -224,6 +224,13 @@ class ChavesNaMaoWebhookController extends Controller
             if (isset($ad['type'])) {
                 $leadData['preferencia_tipo_imovel'] = $ad['type'];
             }
+
+            if (isset($ad['purpose'])) {
+                $purpose = $this->normalizePurpose($ad['purpose']);
+                if ($purpose) {
+                    $leadData['objetivo_compra'] = $purpose;
+                }
+            }
             
             // Bairro
             if (isset($ad['neighborhood'])) {
@@ -332,6 +339,14 @@ class ChavesNaMaoWebhookController extends Controller
 
         $messageLower = mb_strtolower($message);
 
+        if (empty($leadData['objetivo_compra'])) {
+            if (preg_match('/\b(aluguel|alugar|loca[çc][aã]o|locar)\b/iu', $messageLower)) {
+                $leadData['objetivo_compra'] = 'Aluguel';
+            } elseif (preg_match('/\b(compra|comprar|venda|financiar|financiamento|à vista|a vista)\b/iu', $messageLower)) {
+                $leadData['objetivo_compra'] = 'Compra';
+            }
+        }
+
         // Detectar tipo de imóvel na mensagem
         $tiposImovel = [
             'casa' => 'Casa',
@@ -407,6 +422,28 @@ class ChavesNaMaoWebhookController extends Controller
                 $leadData['budget_max'] = (float) $valor;
             }
         }
+
+        if (empty($leadData['objetivo_compra']) && !empty($leadData['budget_max']) && (float) $leadData['budget_max'] >= 50000) {
+            $leadData['objetivo_compra'] = 'Compra';
+        }
+    }
+
+    private function normalizePurpose(?string $purpose): ?string
+    {
+        $value = mb_strtolower(trim((string) $purpose));
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/alug|loca/u', $value)) {
+            return 'Aluguel';
+        }
+
+        if (preg_match('/vend|compr/u', $value)) {
+            return 'Compra';
+        }
+
+        return null;
     }
 
     /**

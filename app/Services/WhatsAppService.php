@@ -447,6 +447,11 @@ class WhatsAppService
             $assistantName = $this->getAssistantName();
             $nomePreferido = $this->extractPreferredName($lead->nome ?? null);
             $property = $this->findPropertyFromMessage($body);
+            if ($property) {
+                $this->hydrateLeadFromPropertyInterest($lead, $property);
+                $lead->refresh();
+                $this->classifyLead($lead);
+            }
 
             if ($property) {
                 $mensagemBoasVindas = $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property);
@@ -571,6 +576,11 @@ class WhatsAppService
         $companyName = $this->getCompanyName();
         $nomePreferido = $this->extractPreferredName($lead->nome ?? $dados['profile_name'] ?? null);
         $property = $this->findPropertyFromMessage($mensagemOriginal);
+        if ($property) {
+            $this->hydrateLeadFromPropertyInterest($lead, $property);
+            $lead->refresh();
+            $this->classifyLead($lead);
+        }
 
         if ($property) {
             $mensagemBoasVindas = $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property, $companyName);
@@ -645,15 +655,15 @@ class WhatsAppService
     private function buildGenericWelcomeMessage(string $assistantName, ?string $preferredName, string $companyName = 'Imobiliária'): string
     {
         $saudacao = $preferredName ? "Oi, *{$preferredName}*!" : 'Olá!';
-        $nomePergunta = $this->buildNameConfirmation($preferredName);
+        $nomePergunta = $preferredName ? '' : "\nComo posso te chamar?";
 
-        return $saudacao . " Eu sou a {$assistantName}, da *{$companyName}*. Vou te ajudar a encontrar o imóvel ideal. " .
-            $nomePergunta . "\n\n" .
-            "Me conta um pouco sobre o que você procura:\n" .
-            "• Qual o valor que você tem em mente?\n" .
-            "• Qual região você prefere?\n" .
-            "• Quantos quartos você precisa?\n\n" .
-            "Pode mandar texto ou áudio, como preferir.";
+        return $saudacao . " Sou {$assistantName}, da *{$companyName}*.\n" .
+            "Para te ajudar melhor, me diga em uma frase:\n" .
+            "• compra ou aluguel\n" .
+            "• região\n" .
+            "• faixa de valor\n" .
+            "• quartos" .
+            $nomePergunta;
     }
 
     private function buildPropertyWelcomeMessage(string $assistantName, ?string $preferredName, Property $property, string $companyName = 'Imobiliária'): string
@@ -661,7 +671,9 @@ class WhatsAppService
         $saudacao = $preferredName ? "Oi, *{$preferredName}*!" : 'Olá!';
         $referencia = $property->referencia_imovel ?: $property->codigo_imovel;
         $localizacao = trim(collect([$property->bairro, $property->cidade])->filter()->implode(', '));
-        $valor = $this->formatCurrencyValue($property->valor_venda) ?: 'Sob consulta';
+        $isRent = preg_match('/\b(aluguel|locacao|locar)\b/u', $this->normalizeIntentText($property->finalidade_imovel)) === 1;
+        $valor = $this->formatCurrencyValue($isRent ? $property->valor_aluguel : $property->valor_venda) ?: 'Sob consulta';
+        $valorLabel = $isRent ? 'Aluguel' : 'Valor';
         $quartos = $property->dormitorios ?? '-';
         $suites = $property->suites ?? '-';
         $vagas = $property->garagem ?? '-';
@@ -680,15 +692,18 @@ class WhatsAppService
         }
 
         $mensagem .= ".\n\nDados do imóvel:\n" .
-            "• Valor: {$valor}\n" .
+            "• {$valorLabel}: {$valor}\n" .
             "• Quartos: {$quartos} | Suítes: {$suites} | Vagas: {$vagas}";
 
         if ($localizacao) {
             $mensagem .= "\n• Localização: {$localizacao}";
         }
 
-        $mensagem .= "\n\n" . $nomePergunta . "\n";
-        $mensagem .= "Esse imóvel está dentro do que você busca ou quer ver opções parecidas?";
+        if (!$preferredName) {
+            $mensagem .= "\n\n" . $nomePergunta;
+        }
+
+        $mensagem .= "\n\nEsse imóvel está dentro do que você busca?";
 
         return $mensagem;
     }
@@ -711,14 +726,63 @@ class WhatsAppService
             ? 'até ' . $this->formatCurrencyValue($lead->budget_max)
             : ($lead->budget_min ? 'a partir de ' . $this->formatCurrencyValue($lead->budget_min) : null);
         $rooms = $lead->quartos ? "{$lead->quartos} quartos" : null;
+        $intent = $lead->objetivo_compra ? Str::lower($lead->objetivo_compra) : null;
 
-        $criteria = array_filter([$location, $budget, $rooms]);
+        $criteria = array_filter([$intent, $location, $budget, $rooms]);
 
         $message = "Oi{$nome}! Eu sou {$assistantName}, da *{$companyName}*.\n";
         $message .= 'Entendi sua busca: ' . implode(', ', $criteria) . ".\n";
         $message .= 'Vou te mostrar opções compatíveis agora.';
 
         return $message;
+    }
+
+    private function hydrateLeadFromPropertyInterest(Lead $lead, Property $property): void
+    {
+        $updates = [];
+        $finalidade = $this->normalizeIntentText($property->finalidade_imovel);
+        $isRent = preg_match('/\b(aluguel|locacao|locar)\b/u', $finalidade) === 1;
+
+        if (empty($lead->objetivo_compra)) {
+            $updates['objetivo_compra'] = $isRent ? 'Aluguel' : 'Compra';
+        }
+
+        if (empty($lead->preferencia_tipo_imovel) && !empty($property->tipo_imovel)) {
+            $updates['preferencia_tipo_imovel'] = $property->tipo_imovel;
+        }
+
+        if (empty($lead->preferencia_bairro) && !empty($property->bairro)) {
+            $updates['preferencia_bairro'] = $property->bairro;
+        }
+
+        if (empty($lead->localizacao)) {
+            $location = trim(collect([$property->bairro, $property->cidade])->filter()->implode(', '));
+            if ($location !== '') {
+                $updates['localizacao'] = $location;
+            }
+        }
+
+        if (empty($lead->quartos) && !empty($property->dormitorios)) {
+            $updates['quartos'] = (int) $property->dormitorios;
+        }
+
+        if (empty($lead->suites) && !empty($property->suites)) {
+            $updates['suites'] = (int) $property->suites;
+        }
+
+        if (empty($lead->garagem) && !empty($property->garagem)) {
+            $updates['garagem'] = (int) $property->garagem;
+        }
+
+        $propertyPrice = $isRent ? $property->valor_aluguel : $property->valor_venda;
+        if (!$lead->budget_min && !$lead->budget_max && !empty($propertyPrice)) {
+            $updates['budget_max'] = (float) $propertyPrice;
+        }
+
+        if (!empty($updates)) {
+            $lead->fill($updates);
+            $lead->save();
+        }
     }
 
     private function findPropertyFromMessage(?string $mensagem): ?Property
@@ -798,11 +862,11 @@ class WhatsAppService
 
      private function extractPropertyReference(string $mensagem): ?string
     {
-        if (preg_match('/ref[\s:.-]*([a-z0-9-]+)/i', $mensagem, $matches)) {
+        if (preg_match('/\bref\.?[\s:.-]+([a-z0-9-]+)/i', $mensagem, $matches)) {
             return strtoupper($matches[1]);
         }
 
-        if (preg_match('/refer[êe]ncia[\s:.-]*([a-z0-9-]+)/i', $mensagem, $matches)) {
+        if (preg_match('/\brefer[êe]ncia[\s:.-]+([a-z0-9-]+)/i', $mensagem, $matches)) {
             return strtoupper($matches[1]);
         }
 
@@ -901,6 +965,131 @@ class WhatsAppService
 
         return "Perfeito. Vou acionar um corretor da {$companyName} para falar com você e seguir o atendimento.";
     }
+
+    private function hasPresentedMatches($conversa, ?Lead $lead = null): bool
+    {
+        if (!$conversa) {
+            return false;
+        }
+
+        $query = LeadPropertyMatch::where('conversa_id', $conversa->id);
+        if ($lead) {
+            $query->where('lead_id', $lead->id);
+        }
+
+        return $query->exists();
+    }
+
+    private function isSpecificPropertyQuestion(?string $message): bool
+    {
+        $text = $this->normalizeIntentText($message);
+
+        if ($text === '') {
+            return false;
+        }
+
+        if ($this->extractPropertyReference((string) $message) || $this->extractPropertyCode((string) $message)) {
+            return true;
+        }
+
+        return preg_match('/\b(fale mais|detalhe|detalhes|sobre|condominio|condominio|iptu|endereco|rua|andar|area|metragem|foto|imagem|visita|gostei|interessei)\b/u', $text) === 1;
+    }
+
+    private function buildCriteriaReadyMessage(?Lead $lead): string
+    {
+        $parts = [];
+
+        if ($lead?->objetivo_compra) {
+            $parts[] = Str::lower($lead->objetivo_compra);
+        }
+        if ($lead?->preferencia_bairro || $lead?->localizacao) {
+            $parts[] = $lead->preferencia_bairro ?: $lead->localizacao;
+        }
+        if ($lead?->budget_max) {
+            $parts[] = 'até ' . $this->formatCurrencyValue($lead->budget_max);
+        }
+        if ($lead?->quartos) {
+            $parts[] = $lead->quartos . ' quartos';
+        }
+
+        $summary = $parts ? implode(', ', $parts) : 'o que você busca';
+
+        return "Perfeito, já tenho o essencial: *{$summary}*.\nVou separar opções compatíveis.";
+    }
+
+    private function buildNextQualificationMessage(?Lead $lead, bool $afterMatching = false): ?string
+    {
+        if (!$lead) {
+            return 'Me diga se você busca *compra* ou *aluguel* e a região de interesse.';
+        }
+
+        if (empty($lead->objetivo_compra)) {
+            return 'Você busca *compra* ou *aluguel*?';
+        }
+
+        if (!$lead->budget_min && !$lead->budget_max) {
+            return $this->isRentIntent($lead)
+                ? 'Qual faixa de aluguel mensal você quer considerar? Ex.: `até R$ 2.500`.'
+                : 'Qual faixa de investimento você quer considerar? Ex.: `até R$ 600 mil`.';
+        }
+
+        if (empty($lead->localizacao) && empty($lead->preferencia_bairro)) {
+            return 'Qual bairro ou região você prefere?';
+        }
+
+        if (empty($lead->preferencia_tipo_imovel)) {
+            return 'Prefere *apartamento*, *casa* ou outro tipo de imóvel?';
+        }
+
+        if (empty($lead->quartos)) {
+            return 'Quantos quartos você precisa?';
+        }
+
+        if (empty($lead->prazo_compra)) {
+            return $this->isRentIntent($lead)
+                ? 'Para quando você precisa se mudar?'
+                : 'Qual seu prazo para comprar: agora, próximos meses ou pesquisa inicial?';
+        }
+
+        if ($this->isSaleIntent($lead) && empty($lead->financiamento_status)) {
+            return 'Você pensa em comprar *à vista* ou com *financiamento*?';
+        }
+
+        if (empty($lead->renda_mensal)) {
+            return $afterMatching
+                ? 'Para deixar o corretor bem situado: qual sua renda mensal aproximada?'
+                : 'Qual sua renda mensal aproximada? Isso ajuda o corretor a orientar melhor.';
+        }
+
+        if (empty($lead->fonte_renda)) {
+            return 'Sua renda é CLT, autônoma, empresário ou outra fonte?';
+        }
+
+        return null;
+    }
+
+    private function buildPostMatchingQualificationQuestion(Lead $lead): ?string
+    {
+        $question = $this->buildNextQualificationMessage($lead, true);
+
+        return $question ? "────────────\n{$question}" : null;
+    }
+
+    private function isRentIntent(?Lead $lead): bool
+    {
+        $intent = $this->normalizeIntentText($lead?->objetivo_compra);
+
+        return $intent !== '' && preg_match('/\b(aluguel|alugar|locacao|locar)\b/u', $intent) === 1;
+    }
+
+    private function isSaleIntent(?Lead $lead): bool
+    {
+        if (!$lead || empty($lead->objetivo_compra)) {
+            return false;
+        }
+
+        return !$this->isRentIntent($lead);
+    }
     
     /**
      * Processar mensagem regular com progressão inteligente de stages
@@ -962,6 +1151,45 @@ class WhatsAppService
             ];
         }
 
+        if ($lead && !$this->hasEnoughDataForMatching($lead) && !$this->isSpecificPropertyQuestion($message)) {
+            $qualificationMessage = $this->buildNextQualificationMessage($lead);
+            $this->sendMessage($conversa->id, $conversa->telefone, $qualificationMessage);
+
+            return [
+                'success' => true,
+                'message' => 'Coleta local de dados do lead',
+                'ai_response' => $qualificationMessage,
+                'current_stage' => $conversa->fresh()->stage,
+            ];
+        }
+
+        if ($lead && $this->hasEnoughDataForMatching($lead) && !$this->hasPresentedMatches($conversa, $lead)) {
+            $readyMessage = $this->buildCriteriaReadyMessage($lead);
+            $this->sendMessage($conversa->id, $conversa->telefone, $readyMessage);
+            $this->performPropertyMatching($lead, $conversa);
+
+            return [
+                'success' => true,
+                'message' => 'Matching local executado com critérios completos',
+                'ai_response' => $readyMessage,
+                'current_stage' => $conversa->fresh()->stage,
+            ];
+        }
+
+        if ($lead && $this->hasPresentedMatches($conversa, $lead) && !$this->isSpecificPropertyQuestion($message)) {
+            $qualificationMessage = $this->buildNextQualificationMessage($lead, true);
+            if ($qualificationMessage) {
+                $this->sendMessage($conversa->id, $conversa->telefone, $qualificationMessage);
+
+                return [
+                    'success' => true,
+                    'message' => 'Qualificação local pós-apresentação',
+                    'ai_response' => $qualificationMessage,
+                    'current_stage' => $conversa->fresh()->stage,
+                ];
+            }
+        }
+
         if ($temBairro && $temOrcamento && $temPrazo && !$this->hasEnoughDataForMatching($lead)) {
             $companyName = $this->getCompanyName();
             $handoffMessage = "Perfeito! Vou repassar suas informações para um corretor especializado da {$companyName}. Ele vai te contatar em breve com as melhores opções. 👍";
@@ -989,7 +1217,7 @@ class WhatsAppService
         // BUSCAR IMÓVEIS DISPONÍVEIS para contexto da IA
         $propertyContextLimit = max(1, (int) env('AI_PROPERTY_CONTEXT_LIMIT', 25));
         $properties = $this->buildAvailablePropertyQuery($conversa->tenant_id ?? null)
-            ->select('codigo_imovel', 'tipo_imovel', 'bairro', 'cidade', 'valor_venda', 'dormitorios', 'suites', 'descricao', 'imagem_destaque', 'imagens')
+            ->select('codigo_imovel', 'tipo_imovel', 'finalidade_imovel', 'bairro', 'cidade', 'valor_venda', 'valor_aluguel', 'dormitorios', 'suites', 'descricao', 'imagem_destaque', 'imagens')
             ->orderByDesc('destaque')
             ->orderByDesc('updated_at')
             ->limit($propertyContextLimit)
@@ -1110,7 +1338,7 @@ class WhatsAppService
             $this->progressStage($conversa);
             
             // Verificar se já tem dados suficientes para matching
-                if ($conversa->lead && $this->hasEnoughDataForMatching($conversa->lead)) {
+                if ($conversa->lead && $this->hasEnoughDataForMatching($conversa->lead) && !$this->hasPresentedMatches($conversa, $conversa->lead)) {
                     // Transição automática: coleta_dados → matching → apresentacao
                     $this->performPropertyMatching($conversa->lead, $conversa);
                     $conversa->update(['stage' => 'apresentacao']);
@@ -1126,7 +1354,7 @@ class WhatsAppService
                 $conversa->load('lead');
                 $this->progressStage($conversa);
 
-                if ($conversa->lead && $this->hasEnoughDataForMatching($conversa->lead)) {
+                if ($conversa->lead && $this->hasEnoughDataForMatching($conversa->lead) && !$this->hasPresentedMatches($conversa, $conversa->lead)) {
                     $this->performPropertyMatching($conversa->lead, $conversa);
 
                     return [
@@ -1287,6 +1515,9 @@ class WhatsAppService
     {
         $temBairro = !empty($lead->localizacao) || !empty($lead->preferencia_bairro);
         $temOrcamento = $lead->budget_min || $lead->budget_max;
+        $temIntencao = !empty($lead->objetivo_compra);
+        $temPerfilImovel = !empty($lead->preferencia_tipo_imovel) || !empty($lead->quartos);
+        $temRenda = !empty($lead->renda_mensal);
         $prazoCurto = false;
 
         if (!empty($lead->prazo_compra)) {
@@ -1294,9 +1525,16 @@ class WhatsAppService
             $prazoCurto = Str::contains($prazo, ['urgente', 'imediato', '1 m', '2 m', '3 m', 'este mês', 'próximo mês', 'logo', 'rápido']);
         }
 
-        if ($temBairro && $temOrcamento && $prazoCurto) {
+        $score = 0;
+        foreach ([$temIntencao, $temBairro, $temOrcamento, $temPerfilImovel, $temRenda, !empty($lead->prazo_compra)] as $item) {
+            if ($item) {
+                $score++;
+            }
+        }
+
+        if ($temIntencao && $temBairro && $temOrcamento && $temPerfilImovel && ($temRenda || $prazoCurto)) {
             $classificacao = 'quente';
-        } elseif ($temBairro || $temOrcamento) {
+        } elseif ($score >= 3 || $temBairro || $temOrcamento) {
             $classificacao = 'morno';
         } else {
             $classificacao = 'frio';
@@ -1308,6 +1546,9 @@ class WhatsAppService
                 'lead_id' => $lead->id,
                 'tem_bairro' => $temBairro,
                 'tem_orcamento' => $temOrcamento,
+                'tem_intencao' => $temIntencao,
+                'tem_perfil_imovel' => $temPerfilImovel,
+                'tem_renda' => $temRenda,
                 'prazo_curto' => $prazoCurto,
             ]);
         }
@@ -1609,10 +1850,72 @@ class WhatsAppService
         }
 
         $this->hydrateLeadProfileFromSnippet($lead, $message);
+        $this->extractLeadIntentFromMessage($lead, $message);
         $this->extractRendaMensalFromMessage($lead, $message);
         $this->extractEmailFromMessage($lead, $message);
         $this->extractOrcamentoFromMessage($lead, $message);
         $this->extractPropertyPreferencesFromMessage($lead, $message);
+        $this->inferLeadIntentFromBudget($lead);
+    }
+
+    private function extractLeadIntentFromMessage(Lead $lead, string $message): void
+    {
+        $text = $this->normalizeIntentText($message);
+        if ($text === '') {
+            return;
+        }
+
+        $updates = [];
+
+        if (empty($lead->objetivo_compra)) {
+            if (preg_match('/\b(aluguel|alugar|locacao|locar)\b/u', $text)) {
+                $updates['objetivo_compra'] = 'Aluguel';
+            } elseif (preg_match('/\b(compra|comprar|venda|financiar|financiamento|a vista|avista)\b/u', $text)) {
+                $updates['objetivo_compra'] = 'Compra';
+            }
+        }
+
+        if (empty($lead->financiamento_status)) {
+            if (preg_match('/\b(financiamento|financiar|financiado|financiada)\b/u', $text)) {
+                $updates['financiamento_status'] = 'pretende financiar';
+            } elseif (preg_match('/\b(a vista|avista|sem financiamento)\b/u', $text)) {
+                $updates['financiamento_status'] = 'à vista';
+            }
+        }
+
+        if (empty($lead->fonte_renda)) {
+            if (preg_match('/\b(clt|carteira assinada|registrado|registrada)\b/u', $text)) {
+                $updates['fonte_renda'] = 'CLT';
+            } elseif (preg_match('/\b(autonomo|autonoma|autônomo|autônoma|freelancer|por conta)\b/u', $text)) {
+                $updates['fonte_renda'] = 'autônomo';
+            } elseif (preg_match('/\b(empresario|empresaria|empresário|empresária|empresa|mei|pj)\b/u', $text)) {
+                $updates['fonte_renda'] = 'empresa/PJ';
+            } elseif (preg_match('/\b(aposentado|aposentada|aposentadoria|pensionista)\b/u', $text)) {
+                $updates['fonte_renda'] = 'aposentadoria/pensão';
+            }
+        }
+
+        if (!empty($updates)) {
+            $lead->fill($updates);
+            $lead->save();
+
+            Log::info('Intenção e perfil financeiro detectados automaticamente', [
+                'lead_id' => $lead->id,
+                'data' => $updates,
+            ]);
+        }
+    }
+
+    private function inferLeadIntentFromBudget(Lead $lead): void
+    {
+        if (!empty($lead->objetivo_compra)) {
+            return;
+        }
+
+        $budget = (float) ($lead->budget_max ?: $lead->budget_min ?: 0);
+        if ($budget >= 50000) {
+            $lead->update(['objetivo_compra' => 'Compra']);
+        }
     }
 
     private function hydrateLeadProfileFromSnippet(Lead $lead, ?string $message): void
@@ -1648,27 +1951,30 @@ class WhatsAppService
     {
         $updates = [];
         $messageLower = mb_strtolower($message);
+        $isPreferenceUpdate = Str::contains($messageLower, [
+            'procuro', 'busco', 'quero', 'prefiro', 'preciso', 'aceito', 'veja', 'mostrar', 'opções', 'opcoes'
+        ]);
 
-        if (empty($lead->quartos) && preg_match('/(\d+)\s*(quarto|quartos|dormit[óo]rio|dormit[óo]rios)/iu', $message, $matches)) {
+        if ((empty($lead->quartos) || $isPreferenceUpdate) && preg_match('/(\d+)\s*(quarto|quartos|dormit[óo]rio|dormit[óo]rios)/iu', $message, $matches)) {
             $updates['quartos'] = (int) $matches[1];
         }
 
-        if (empty($lead->suites) && preg_match('/(\d+)\s*(su[íi]te|su[íi]tes|suite|suites)/iu', $message, $matches)) {
+        if ((empty($lead->suites) || $isPreferenceUpdate) && preg_match('/(\d+)\s*(su[íi]te|su[íi]tes|suite|suites)/iu', $message, $matches)) {
             $updates['suites'] = (int) $matches[1];
         }
 
-        if (empty($lead->garagem) && preg_match('/(\d+)\s*(vaga|vagas|garagem|garagens)/iu', $message, $matches)) {
+        if ((empty($lead->garagem) || $isPreferenceUpdate) && preg_match('/(\d+)\s*(vaga|vagas|garagem|garagens)/iu', $message, $matches)) {
             $updates['garagem'] = (int) $matches[1];
         }
 
-        if (empty($lead->preferencia_tipo_imovel)) {
+        if (empty($lead->preferencia_tipo_imovel) || $isPreferenceUpdate) {
             $tipo = $this->extractPropertyTypeFromText($messageLower);
             if ($tipo) {
                 $updates['preferencia_tipo_imovel'] = $tipo;
             }
         }
 
-        if (empty($lead->localizacao) && empty($lead->preferencia_bairro)) {
+        if (empty($lead->localizacao) && empty($lead->preferencia_bairro) || $isPreferenceUpdate) {
             $location = $this->extractLocationFromText($message);
             if ($location) {
                 $updates['localizacao'] = $location;
@@ -1803,7 +2109,7 @@ class WhatsAppService
         $message = strtolower($message);
         
         // Detectar menções de renda
-        if (preg_match('/renda.*?(\d+[\s]?mil|\d{4,})/', $message, $matches)) {
+        if (preg_match('/(?:renda|sal[aá]rio|ganho|recebo|faturamento|pro labore|pr[oó]-labore).*?((?:r\$)?\s*\d+[\d.,]*\s*(?:mil|k)?|\d{4,})/', $message, $matches)) {
             $value = $matches[1];
             
             // Converter "5 mil" para 5000
@@ -2265,10 +2571,14 @@ class WhatsAppService
      */
     private function hasEnoughDataForMatching($lead)
     {
+        $hasIntent = !empty($lead->objetivo_compra);
         $hasBudget = $lead->budget_min || $lead->budget_max;
         $hasLocation = !empty($lead->localizacao) || !empty($lead->preferencia_bairro);
+        $type = $this->normalizeIntentText($lead->preferencia_tipo_imovel);
+        $needsRooms = $type === '' || !preg_match('/\b(terreno|lote|sala|loja|galpao|galp[aã]o)\b/u', $type);
+        $hasRooms = !empty($lead->quartos) || !$needsRooms;
 
-        return $hasBudget && $hasLocation && $lead->quartos;
+        return $hasIntent && $hasBudget && $hasLocation && $hasRooms;
     }
     
     /**
@@ -2276,18 +2586,37 @@ class WhatsAppService
      */
     private function performPropertyMatching($lead, $conversa)
     {
+        $isRent = $this->isRentIntent($lead);
+        $priceColumn = $isRent ? 'valor_aluguel' : 'valor_venda';
+
         $candidateQuery = Property::where('active', 1)
             ->where('exibir_imovel', 1)
-            ->where('dormitorios', '>=', max(1, (int) $lead->quartos))
-            ->where(function($q) use ($lead) {
+            ->whereNotNull($priceColumn)
+            ->where($priceColumn, '>', 0)
+            ->where(function($q) use ($lead, $priceColumn) {
                 if ($lead->budget_min && $lead->budget_max) {
-                    $q->whereBetween('valor_venda', [$lead->budget_min, $lead->budget_max]);
+                    $q->whereBetween($priceColumn, [$lead->budget_min, $lead->budget_max]);
                 } elseif ($lead->budget_max) {
-                    $q->where('valor_venda', '<=', $lead->budget_max);
+                    $q->where($priceColumn, '<=', $lead->budget_max);
                 } elseif ($lead->budget_min) {
-                    $q->where('valor_venda', '>=', $lead->budget_min);
+                    $q->where($priceColumn, '>=', $lead->budget_min);
                 }
             });
+
+        if (!empty($lead->quartos)) {
+            $candidateQuery->where('dormitorios', '>=', max(1, (int) $lead->quartos));
+        }
+
+        if ($lead->objetivo_compra) {
+            $candidateQuery->where(function ($query) use ($isRent) {
+                if ($isRent) {
+                    $query->whereRaw("LOWER(COALESCE(finalidade_imovel, '')) LIKE ?", ['%alug%'])
+                        ->orWhereRaw("LOWER(COALESCE(finalidade_imovel, '')) LIKE ?", ['%loca%']);
+                } else {
+                    $query->whereRaw("LOWER(COALESCE(finalidade_imovel, '')) LIKE ?", ['%vend%']);
+                }
+            });
+        }
 
         if (!empty($lead->tenant_id)) {
             $candidateQuery->where('tenant_id', $lead->tenant_id);
@@ -2319,7 +2648,7 @@ class WhatsAppService
             ->limit((int) env('LOCAL_EMBEDDING_MATCH_CANDIDATES', 60))
             ->get();
 
-        $properties = $this->rankPropertiesForLead($lead, $candidates)->take(5);
+        $properties = $this->rankPropertiesForLead($lead, $candidates)->take(3);
         $this->refreshDatabaseConnectionAfterExternalWork();
         
         if ($properties->count() > 0) {
@@ -2339,13 +2668,17 @@ class WhatsAppService
             }
 
             // Enviar mensagem com imóveis encontrados
-            $mensagem = "🎉 Encontrei " . $properties->count() . " imóveis que combinam com o que você procura!\n\n";
-            $mensagem .= "Vou te enviar os detalhes agora...";
+            $mensagem = "Encontrei *" . $properties->count() . "* opções compatíveis:";
 
             $this->sendMessage($conversa->id, $conversa->telefone, $mensagem);
 
             foreach ($properties as $property) {
-                $this->sendPropertyPreview($conversa, $property);
+                $this->sendPropertyPreview($conversa, $property, $lead);
+            }
+
+            $qualificationQuestion = $this->buildPostMatchingQualificationQuestion($lead);
+            if ($qualificationQuestion) {
+                $this->sendMessage($conversa->id, $conversa->telefone, $qualificationQuestion);
             }
 
             // Atualizar stage para apresentacao
@@ -2364,12 +2697,8 @@ class WhatsAppService
             Log::info('─────────────────────────────────────────────────────────────────');
         } else {
             // NENHUM IMÓVEL ENCONTRADO
-            $mensagem = "😔 No momento não tenho imóveis disponíveis que se encaixem exatamente no que você procura.\n\n";
-            $mensagem .= "Mas não desanima! Posso fazer algumas coisas por você:\n\n";
-            $mensagem .= "1️⃣ Podemos ajustar um pouco o orçamento ou a região?\n";
-            $mensagem .= "2️⃣ Cadastro seu interesse e te aviso assim que chegar algo perfeito!\n";
-            $mensagem .= "3️⃣ Posso te mostrar opções bem próximas do que você quer?\n\n";
-            $mensagem .= "O que você prefere? 😊";
+            $mensagem = "Não encontrei uma opção exata agora.\n";
+            $mensagem .= "Posso tentar com região próxima ou ajustar a faixa de valor. O que prefere?";
             
             $this->sendMessage($conversa->id, $conversa->telefone, $mensagem);
             
@@ -2511,27 +2840,27 @@ class WhatsAppService
         }
     }
 
-    private function sendPropertyPreview($conversa, $property): void
+    private function sendPropertyPreview($conversa, $property, ?Lead $lead = null): void
     {
-        $valor = $property->valor_venda;
+        $isRent = $this->isRentIntent($lead);
+        $valor = $isRent ? $property->valor_aluguel : $property->valor_venda;
         $valorFormatado = $valor ? 'R$ ' . number_format($valor, 0, ',', '.') : 'Sob consulta';
+        $valorLabel = $isRent ? 'Aluguel' : 'Valor';
         $quartos = $property->dormitorios ?? '-';
         $suites = $property->suites ?? '-';
         $vagas = $property->garagem ?? '-';
 
         $highlights = $this->extractPropertyHighlights($property);
-        $detalhes = "🏡 *{$property->tipo_imovel}* - {$property->bairro}, {$property->cidade}\n";
+        $detalhes = "*{$property->tipo_imovel}* - {$property->bairro}, {$property->cidade}\n";
         if (!empty($property->codigo_imovel)) {
-            $detalhes .= "📎 Código: {$property->codigo_imovel}\n";
+            $detalhes .= "Código: `{$property->codigo_imovel}`\n";
         }
-        $detalhes .= "💰 Valor: {$valorFormatado}\n" .
-            "🛏️ Quartos: {$quartos} | Suítes: {$suites} | Vagas: {$vagas}\n";
+        $detalhes .= "{$valorLabel}: *{$valorFormatado}*\n" .
+            "Quartos: {$quartos} | Suítes: {$suites} | Vagas: {$vagas}\n";
 
         if (!empty($highlights)) {
-            $detalhes .= "✨ Destaques:\n- " . implode("\n- ", $highlights) . "\n";
+            $detalhes .= "Destaques:\n- " . implode("\n- ", $highlights) . "\n";
         }
-
-        $detalhes .= "\nFico à disposição para tirar qualquer dúvida sobre esse imóvel!";
 
         if (!empty($property->imagem_destaque)) {
             $this->sendMediaMessage($conversa->id, $conversa->telefone, $detalhes, $property->imagem_destaque);
@@ -2992,8 +3321,20 @@ class WhatsAppService
     {
         return Property::where('active', true)
             ->where('exibir_imovel', true)
-            ->where('finalidade_imovel', 'Venda')
-            ->whereNotNull('valor_venda')
+            ->where(function ($query) {
+                $query->where(function ($sale) {
+                    $sale->whereRaw("LOWER(COALESCE(finalidade_imovel, '')) LIKE ?", ['%vend%'])
+                        ->whereNotNull('valor_venda')
+                        ->where('valor_venda', '>', 0);
+                })->orWhere(function ($rent) {
+                    $rent->where(function ($purpose) {
+                        $purpose->whereRaw("LOWER(COALESCE(finalidade_imovel, '')) LIKE ?", ['%alug%'])
+                            ->orWhereRaw("LOWER(COALESCE(finalidade_imovel, '')) LIKE ?", ['%loca%']);
+                    })
+                    ->whereNotNull('valor_aluguel')
+                    ->where('valor_aluguel', '>', 0);
+                });
+            })
             ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId));
     }
     

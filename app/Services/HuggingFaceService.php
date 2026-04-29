@@ -55,7 +55,7 @@ REGRAS:
 - Use no maximo 30 palavras.
 - Faca uma pergunta por vez.
 - Nunca invente dados de imoveis; use apenas os imoveis reais fornecidos.
-- Colete bairro/regiao, orcamento, quartos e prazo de compra.
+- Colete apenas o que faltar: compra/aluguel, bairro/regiao, faixa de valor, quartos, prazo e renda aproximada.
 - Quando ja houver criterios suficientes, confirme que vai buscar opcoes compativeis.
 - Se o cliente pedir opcoes ou confirmar interesse, nao peca nova confirmacao.
 - Nao diga que e IA ou robo.{$audioInstruction}
@@ -173,14 +173,27 @@ REGRAS:
             $dormitorios = (int) ($property['dormitorios'] ?? 0);
             $suites = (int) ($property['suites'] ?? 0);
             $totalQuartos = $dormitorios + $suites;
-            $valor = isset($property['valor_venda'])
-                ? 'R$ ' . number_format((float) $property['valor_venda'], 0, ',', '.')
+            $valorVenda = isset($property['valor_venda']) && (float) $property['valor_venda'] > 0
+                ? 'venda R$ ' . number_format((float) $property['valor_venda'], 0, ',', '.')
+                : null;
+            $valorAluguel = isset($property['valor_aluguel']) && (float) $property['valor_aluguel'] > 0
+                ? 'aluguel R$ ' . number_format((float) $property['valor_aluguel'], 0, ',', '.')
+                : null;
+            $valor = $valorVenda ?: ($valorAluguel ?: 'sob consulta');
+
+            if ($valorVenda && $valorAluguel) {
+                $valor = "{$valorVenda} / {$valorAluguel}";
+            }
+
+            $finalidade = isset($property['finalidade_imovel'])
+                ? (string) $property['finalidade_imovel']
                 : 'sob consulta';
 
             $lines[] = sprintf(
-                '- Codigo %s | %s | %s, %s | %dq | %s',
+                '- Codigo %s | %s | %s | %s, %s | %dq | %s',
                 $property['codigo_imovel'] ?? 'N/A',
                 $property['tipo_imovel'] ?? 'Imovel',
+                $finalidade,
                 $property['bairro'] ?? 'Bairro nao informado',
                 $property['cidade'] ?? 'Cidade nao informada',
                 $totalQuartos,
@@ -196,6 +209,9 @@ REGRAS:
         $missing = [];
 
         if (is_array($leadData)) {
+            if (empty($leadData['objetivo_compra'])) {
+                $missing[] = 'compra ou aluguel';
+            }
             if (empty($leadData['localizacao']) && empty($leadData['preferencia_bairro'])) {
                 $missing[] = 'bairro ou regiao';
             }
@@ -206,10 +222,13 @@ REGRAS:
                 $missing[] = 'quantidade de quartos';
             }
             if (empty($leadData['prazo_compra'])) {
-                $missing[] = 'prazo de compra';
+                $missing[] = 'prazo';
+            }
+            if (empty($leadData['renda_mensal'])) {
+                $missing[] = 'renda mensal aproximada';
             }
         } else {
-            $missing = ['bairro ou regiao', 'faixa de valor', 'quantidade de quartos', 'prazo de compra'];
+            $missing = ['compra ou aluguel', 'bairro ou regiao', 'faixa de valor', 'quantidade de quartos', 'prazo', 'renda mensal aproximada'];
         }
 
         if (empty($missing)) {

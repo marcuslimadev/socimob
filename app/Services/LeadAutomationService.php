@@ -441,51 +441,7 @@ class LeadAutomationService
      */
     private function gerarMensagemInicial(Lead $lead)
     {
-        try {
-            // Montar contexto completo do lead
-            $contexto = $this->montarContextoLead($lead);
-
-            // Usar OpenAI para gerar mensagem personalizada
-            $prompt = "Você é um assistente imobiliário iniciando contato com um lead que demonstrou interesse. 
-            
-CONTEXTO DO LEAD:
-{$contexto}
-
-INSTRUÇÕES:
-- Faça uma abordagem amigável e personalizada
-- Mencione o interesse específico do lead (tipo de imóvel, localização, etc)
-- Seja direto mas cordial
-- Pergunte quando seria um bom momento para conversar
-- Máximo 3 linhas
-
-Gere a mensagem de primeiro contato:";
-
-            $provider = $this->aiProviderService->resolve($lead->tenant_id);
-            $mensagem = $provider === AiAtendimentoProviderService::HUGGINGFACE
-                ? $this->huggingFaceService->generateSimpleMessage(
-                    "Você é um assistente imobiliário profissional e cordial.",
-                    $prompt
-                )
-                : $this->openAIService->generateSimpleMessage(
-                    "Você é um assistente imobiliário profissional e cordial.",
-                    $prompt
-                );
-
-            // Fallback caso OpenAI falhe
-            if (empty($mensagem)) {
-                $mensagem = $this->mensagemInicialPadrao($lead);
-            }
-
-            return trim($mensagem);
-
-        } catch (\Exception $e) {
-            Log::error('[LeadAutomation] Erro ao gerar mensagem IA', [
-                'lead_id' => $lead->id,
-                'error' => $e->getMessage()
-            ]);
-
-            return $this->mensagemInicialPadrao($lead);
-        }
+        return $this->mensagemInicialPadrao($lead);
     }
 
     /**
@@ -711,7 +667,7 @@ Gere a mensagem de primeiro contato:";
      */
     private function mensagemInicialPadrao(Lead $lead)
     {
-        $nome = $lead->nome ?? 'Cliente';
+        $nome = $lead->nome ? strtok($lead->nome, ' ') : null;
         $saudacao = $this->obterSaudacao();
 
         // Resolver nomes dinâmicos do tenant
@@ -719,21 +675,21 @@ Gere a mensagem de primeiro contato:";
         $assistantName = $tenant ? $tenant->getAiAssistantName() : env('AI_ASSISTANT_NAME', 'Teresa');
         $companyName = $tenant ? $tenant->getCompanyName() : env('COMPANY_NAME', 'Imobiliária');
 
-        // Personalizar com nome se disponível
-        if ($lead->nome) {
-            $msg = "{$saudacao}, {$nome}! Meu nome é {$assistantName}, assistente virtual da {$companyName}.\n\n";
-        } else {
-            $msg = "{$saudacao}! Meu nome é {$assistantName}, assistente virtual da {$companyName}.\n\n";
+        $msg = $nome ? "{$saudacao}, *{$nome}*." : "{$saudacao}.";
+        $msg .= " Sou {$assistantName}, da *{$companyName}*.\n";
+
+        $resumo = array_filter([
+            $lead->objetivo_compra ? mb_strtolower($lead->objetivo_compra) : null,
+            $lead->preferencia_tipo_imovel,
+            $lead->preferencia_bairro ?: $lead->localizacao,
+            $lead->budget_max ? 'até R$ ' . number_format((float) $lead->budget_max, 0, ',', '.') : null,
+        ]);
+
+        if ($resumo) {
+            $msg .= "Recebi seu interesse: " . implode(', ', $resumo) . ".\n";
         }
 
-        $msg .= "Vi que você demonstrou interesse em nossos imóveis";
-
-        if ($lead->tipo_interesse) {
-            $msg .= " para {$lead->tipo_interesse}";
-        }
-
-        $msg .= ". Gostaria de te ajudar a encontrar o imóvel ideal!\n\n";
-        $msg .= "Quando seria um bom momento para conversarmos?";
+        $msg .= "Ainda faz sentido para você?";
 
         return $msg;
     }

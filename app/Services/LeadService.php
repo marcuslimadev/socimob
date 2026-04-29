@@ -148,6 +148,10 @@ class LeadService
                 'chaves_na_mao_retries' => $data['chaves_na_mao_retries'] ?? null,
             ], fn ($value) => $value !== null);
 
+            if (($payload['status'] ?? null) === 'novo' && !empty($existingLead->status) && $existingLead->status !== 'novo') {
+                unset($payload['status']);
+            }
+
             $existingLead->fill($payload);
 
             if (isset($data['primeira_interacao']) && empty($existingLead->primeira_interacao)) {
