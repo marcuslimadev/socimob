@@ -1578,7 +1578,51 @@ export default function Chat() {
                       </div>
                       <div className="flex items-center gap-2"><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#ffc51a] bg-white text-[#132b4c] hover:bg-[#ececea]"><Phone className="h-4 w-4" /></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#ffc51a] bg-white text-[#132b4c] hover:bg-[#ececea]"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><DropdownMenuItem disabled={!canDeleteConversation || isDeletingConversation} variant="destructive" onSelect={(event) => { event.preventDefault(); if (!canDeleteConversation || isDeletingConversation) return; setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" />Excluir conversa</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
                     </div>
-                    {observacoesText && <div className="mt-3 flex items-start gap-3 rounded-2xl border border-[#ffc51a] bg-white px-3.5 py-2.5 text-sm text-[#4d5560]"><div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[#132b4c] text-white"><Info className="h-4 w-4" /></div><div><p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#617489]">Observações do lead</p><p className="mt-1 whitespace-pre-wrap leading-6">{observacoesText}</p></div></div>}
+                            {observacoesText && (
+                              !observacoesHidden && (
+                                <div className="mt-3 rounded-2xl border border-[#ffc51a] bg-white px-3.5 py-2.5 text-sm text-[#4d5560]">
+                                  <div className="flex items-start gap-3">
+                                    <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[#132b4c] text-white"><Info className="h-4 w-4" /></div>
+                                    <div className="flex-1">
+                                      <div className="flex items-center justify-between">
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#617489]">Observações do lead</p>
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            type="button"
+                                            aria-label={observacoesCollapsed ? 'Expandir observações' : 'Minimizar observações'}
+                                            onClick={() => {
+                                              const next = !observacoesCollapsed;
+                                              setObservacoesCollapsed(next);
+                                              saveObservacoesState(selectedContactId, next, observacoesHidden);
+                                            }}
+                                            className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white/60 text-[#17365d] hover:bg-white/80"
+                                          >
+                                            {observacoesCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            aria-label="Fechar observações"
+                                            onClick={() => {
+                                              setObservacoesHidden(true);
+                                              saveObservacoesState(selectedContactId, observacoesCollapsed, true);
+                                            }}
+                                            className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white/60 text-[#17365d] hover:bg-white/80"
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      {!observacoesCollapsed ? (
+                                        <p className="mt-1 whitespace-pre-wrap leading-6">{observacoesText}</p>
+                                      ) : (
+                                        <p className="mt-1 whitespace-pre-wrap leading-6 line-clamp-1">{observacoesText}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            )}
                   </header>
                   <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
                     <div className="absolute inset-0" style={{ backgroundImage: `radial-gradient(circle at 14% 12%, rgba(45,111,171,0.10), transparent 26%), radial-gradient(circle at 86% 14%, rgba(255,29,45,0.09), transparent 24%), radial-gradient(circle at 52% 100%, rgba(255,197,26,0.11), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,253,248,0.98)), url("${chatPatternDataUrl}")`, backgroundSize: 'auto, auto, auto, auto, 220px 220px' }} />
