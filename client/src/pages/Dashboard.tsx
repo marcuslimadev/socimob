@@ -1,5 +1,6 @@
 // Dashboard Principal - SOCIMOB v2 - Timeline Real do Sistema
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
@@ -92,6 +93,7 @@ function clampPercentage(value: number): number {
 }
 
 export default function Dashboard() {
+  const [, setLocation] = useLocation();
   const { theme } = useTheme();
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard', 'stats'],
@@ -133,9 +135,17 @@ export default function Dashboard() {
   });
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const role = String(user?.role || '').toLowerCase();
+  const isAdmin = role === 'admin' || role === 'super_admin';
+  const isBroker = role === 'corretor' || role === 'agent';
   const firstName = String(user?.name || '').trim().split(' ')[0] || 'Equipe';
   const isLightTheme = theme === 'light';
+
+  useEffect(() => {
+    if (isBroker) {
+      setLocation('/chat');
+    }
+  }, [isBroker, setLocation]);
 
   const summaryMetrics = stats
     ? {
@@ -497,6 +507,10 @@ export default function Dashboard() {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
   };
+
+  if (isBroker) {
+    return null;
+  }
 
   return (
     <PageLayout>

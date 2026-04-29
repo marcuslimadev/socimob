@@ -57,7 +57,9 @@ export default function Login() {
         toast.success('Login realizado com sucesso!');
 
         const role = (response.data.user?.role || '').toLowerCase();
-        if (role === 'admin' || role === 'super_admin' || role === 'corretor') {
+        if (role === 'corretor' || role === 'agent') {
+          setLocation('/chat');
+        } else if (role === 'admin' || role === 'super_admin') {
           setLocation('/dashboard');
         } else {
           setLocation('/portal/meu-financeiro');

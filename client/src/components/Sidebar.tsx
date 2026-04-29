@@ -255,7 +255,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         }
 
         badgePollingFailureCountRef.current = 0;
-        scheduleNextBadgePoll(15000);
+        scheduleNextBadgePoll(7000);
       } catch (error) {
         const failureCount = badgePollingFailureCountRef.current + 1;
         badgePollingFailureCountRef.current = failureCount;
@@ -337,7 +337,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         const unread = Number(response.data?.unread ?? 0);
         setUnreadNotificationsCount(Number.isFinite(unread) ? unread : 0);
         notificationPollingFailureCountRef.current = 0;
-        scheduleNextNotificationPoll(15000);
+        scheduleNextNotificationPoll(7000);
       } catch (error) {
         const failureCount = notificationPollingFailureCountRef.current + 1;
         notificationPollingFailureCountRef.current = failureCount;

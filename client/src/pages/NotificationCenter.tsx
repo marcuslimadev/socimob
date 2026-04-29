@@ -46,16 +46,31 @@ interface Assignee {
   role?: string;
 }
 
+interface BrokerConversation {
+  id: number;
+  leadId?: number | null;
+  brokerId?: number | null;
+  name: string;
+  phone?: string | null;
+  lastMessage?: string | null;
+  status?: string | null;
+  leadStatus?: string | null;
+  unread: number;
+  lastActivity?: string | null;
+}
+
 export default function NotificationCenter() {
   const [filter, setFilter] = useState('todos');
   const [typeFilter, setTypeFilter] = useState('todos');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [assignees, setAssignees] = useState<Assignee[]>([]);
+  const [brokerConversations, setBrokerConversations] = useState<BrokerConversation[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAssignees, setIsLoadingAssignees] = useState(false);
   const [assigningNotificationId, setAssigningNotificationId] = useState<number | null>(null);
   const [draggedNotificationId, setDraggedNotificationId] = useState<number | null>(null);
+  const [draggedConversationId, setDraggedConversationId] = useState<number | null>(null);
   const [activeDropUserId, setActiveDropUserId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
@@ -84,6 +99,40 @@ export default function NotificationCenter() {
   }, []);
 
   useEffect(() => {
+    const refresh = () => {
+      void fetchSummary();
+      void fetchNotifications({ silent: true });
+      if (canDistribute) {
+        void fetchBrokerConversations();
+      }
+    };
+
+    const intervalId = window.setInterval(refresh, 7000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refresh();
+      }
+    };
+    const handleNotificationsChanged = () => refresh();
+    const handleChatChanged = () => {
+      if (canDistribute) {
+        void fetchBrokerConversations();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('socimob:notifications-changed', handleNotificationsChanged);
+    window.addEventListener('socimob:chat-unread-changed', handleChatChanged);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('socimob:notifications-changed', handleNotificationsChanged);
+      window.removeEventListener('socimob:chat-unread-changed', handleChatChanged);
+    };
+  }, [canDistribute, filter, page, typeFilter]);
+
+  useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (!storedUser) return;
 
@@ -98,6 +147,7 @@ export default function NotificationCenter() {
   useEffect(() => {
     if (!canDistribute) return;
     void fetchAssignees();
+    void fetchBrokerConversations();
   }, [canDistribute]);
 
   const fetchSummary = async () => {
@@ -113,9 +163,11 @@ export default function NotificationCenter() {
     }
   };
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (options: { silent?: boolean } = {}) => {
     try {
-      setIsLoading(true);
+      if (!options.silent) {
+        setIsLoading(true);
+      }
       const status = filter === 'nao-lidas' ? 'unread' : filter === 'lidas' ? 'read' : undefined;
       const type = typeFilter !== 'todos' ? typeFilter : undefined;
       const response = await api.get('/notifications', {
@@ -131,9 +183,13 @@ export default function NotificationCenter() {
       setLastPage(response.data.last_page || 1);
     } catch (error) {
       console.error('Erro ao carregar notificações:', error);
-      toast.error('Erro ao carregar notificações');
+      if (!options.silent) {
+        toast.error('Erro ao carregar notificações');
+      }
     } finally {
-      setIsLoading(false);
+      if (!options.silent) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -158,6 +214,40 @@ export default function NotificationCenter() {
       toast.error('Erro ao carregar corretores');
     } finally {
       setIsLoadingAssignees(false);
+    }
+  };
+
+  const fetchBrokerConversations = async () => {
+    try {
+      const response = await api.get('/admin/conversas');
+      const items = response.data?.data || [];
+      const conversations = (Array.isArray(items) ? items : [])
+        .filter((item: any) => item && item.id != null && item.corretor_id != null)
+        .map((item: any) => {
+          const name = item.lead_nome || item.lead_telefone || item.telefone || 'Cliente';
+          return {
+            id: Number(item.id),
+            leadId: item.lead_id ? Number(item.lead_id) : null,
+            brokerId: item.corretor_id ? Number(item.corretor_id) : null,
+            name: String(name),
+            phone: item.lead_telefone || item.telefone || null,
+            lastMessage: item.ultima_mensagem || null,
+            status: item.status || null,
+            leadStatus: item.lead_status || null,
+            unread: Number(item.mensagens_nao_lidas || 0),
+            lastActivity: item.ultima_atividade || item.created_at || null,
+          } as BrokerConversation;
+        })
+        .filter((conversation: BrokerConversation) => {
+          if (!Number.isFinite(conversation.id) || !conversation.brokerId) return false;
+          const status = String(conversation.status || '').toLowerCase();
+          const leadStatus = String(conversation.leadStatus || '').toLowerCase();
+          return !['encerrada', 'fechada', 'cancelada'].includes(status) && leadStatus !== 'perdido';
+        });
+
+      setBrokerConversations(conversations);
+    } catch (error) {
+      console.error('Erro ao carregar atendimentos por corretor:', error);
     }
   };
 
@@ -200,11 +290,26 @@ export default function NotificationCenter() {
 
   const unreadCount = summary.unread;
   const readCount = Math.max(0, summary.total - summary.unread);
+  const conversationsByBroker = useMemo(() => {
+    return brokerConversations.reduce<Record<number, BrokerConversation[]>>((acc, conversation) => {
+      if (!conversation.brokerId) return acc;
+      if (!acc[conversation.brokerId]) acc[conversation.brokerId] = [];
+      acc[conversation.brokerId].push(conversation);
+      return acc;
+    }, {});
+  }, [brokerConversations]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  };
+
+  const formatShortDate = (dateString?: string | null) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   };
 
   const toPositiveInt = (value: unknown) => {
@@ -318,23 +423,20 @@ export default function NotificationCenter() {
     }
   };
 
-  const assignNotificationToBroker = async (notification: Notification, assignee: Assignee) => {
-    const conversationId = resolveConversationId(notification);
-    if (!conversationId) {
-      toast.error('Essa notificação não tem conversa vinculada');
-      return;
-    }
-
+  const assignConversationToBroker = async (conversationId: number, assignee: Assignee, notification?: Notification) => {
     try {
-      setAssigningNotificationId(notification.id);
+      if (notification) {
+        setAssigningNotificationId(notification.id);
+      }
+
       await api.post(`/admin/conversas/${conversationId}/atribuir`, { corretor_id: assignee.id });
 
-      if (!notification.is_read) {
+      if (notification && !notification.is_read) {
         await markAsRead(notification.id, { silent: true });
       }
 
       toast.success(`Atendimento enviado para ${assignee.name}`);
-      await Promise.all([fetchSummary(), fetchNotifications()]);
+      await Promise.all([fetchSummary(), fetchNotifications({ silent: true }), fetchBrokerConversations()]);
       window.dispatchEvent(new CustomEvent('socimob:notifications-changed'));
       window.dispatchEvent(new CustomEvent('socimob:chat-unread-changed'));
     } catch (error: any) {
@@ -344,8 +446,19 @@ export default function NotificationCenter() {
     } finally {
       setAssigningNotificationId(null);
       setDraggedNotificationId(null);
+      setDraggedConversationId(null);
       setActiveDropUserId(null);
     }
+  };
+
+  const assignNotificationToBroker = async (notification: Notification, assignee: Assignee) => {
+    const conversationId = resolveConversationId(notification);
+    if (!conversationId) {
+      toast.error('Essa notificação não tem conversa vinculada');
+      return;
+    }
+
+    await assignConversationToBroker(conversationId, assignee, notification);
   };
 
   const handleNotificationDragStart = (event: DragEvent<HTMLDivElement>, notification: Notification) => {
@@ -360,8 +473,24 @@ export default function NotificationCenter() {
     event.dataTransfer.setData('text/plain', String(notification.id));
   };
 
-  const handleNotificationDrop = (event: DragEvent<HTMLDivElement>, assignee: Assignee) => {
+  const handleConversationDragStart = (event: DragEvent<HTMLDivElement>, conversation: BrokerConversation) => {
+    setDraggedConversationId(conversation.id);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('application/x-socimob-conversation-id', String(conversation.id));
+    event.dataTransfer.setData('text/plain', String(conversation.id));
+  };
+
+  const handleAssigneeDrop = (event: DragEvent<HTMLDivElement>, assignee: Assignee) => {
     event.preventDefault();
+    const conversationId = Number(event.dataTransfer.getData('application/x-socimob-conversation-id'));
+    if (conversationId > 0) {
+      if (conversationId && assignee.id !== brokerConversations.find((item) => item.id === conversationId)?.brokerId) {
+        void assignConversationToBroker(conversationId, assignee);
+      }
+      setActiveDropUserId(null);
+      return;
+    }
+
     const notificationId = Number(
       event.dataTransfer.getData('application/x-socimob-notification-id') ||
         event.dataTransfer.getData('text/plain') ||
@@ -620,13 +749,17 @@ export default function NotificationCenter() {
                           setActiveDropUserId(assignee.id);
                         }}
                         onDragLeave={() => setActiveDropUserId(null)}
-                        onDrop={(event) => handleNotificationDrop(event, assignee)}
-                        className={`min-h-[96px] rounded-2xl border p-4 transition-all ${
+                        onDrop={(event) => handleAssigneeDrop(event, assignee)}
+                        className={`min-h-[150px] rounded-2xl border p-4 transition-all ${
                           isActiveDrop
                             ? 'border-emerald-400 bg-emerald-500/15 shadow-[0_0_0_1px_rgba(52,211,153,0.28),0_18px_40px_rgba(6,95,70,0.18)]'
                             : 'border-white/10 bg-white/[0.045] hover:border-cyan-300/20 hover:bg-white/[0.07]'
                         }`}
                       >
+                        {(() => {
+                          const assigned = conversationsByBroker[assignee.id] || [];
+                          return (
+                            <>
                         <div className="flex items-center gap-3">
                           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200">
                             <UserCheck size={19} />
@@ -635,7 +768,58 @@ export default function NotificationCenter() {
                             <p className="truncate text-sm font-bold text-foreground">{assignee.name}</p>
                             <p className="truncate text-xs text-muted-foreground">{assignee.email || 'corretor ativo'}</p>
                           </div>
+                          <span className="ml-auto rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[11px] font-bold text-cyan-100">
+                            {assigned.length}
+                          </span>
                         </div>
+
+                        <div className="mt-3 space-y-2">
+                          {assigned.slice(0, 6).map((conversation) => (
+                            <div
+                              key={`broker-conversation-${conversation.id}`}
+                              draggable
+                              onDragStart={(event) => handleConversationDragStart(event, conversation)}
+                              onDragEnd={() => {
+                                setDraggedConversationId(null);
+                                setActiveDropUserId(null);
+                              }}
+                              className={`cursor-grab rounded-xl border border-white/10 bg-[#071221]/80 px-3 py-2 active:cursor-grabbing ${
+                                draggedConversationId === conversation.id ? 'opacity-60 ring-2 ring-cyan-400/40' : ''
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="truncate text-xs font-semibold text-white">{conversation.name}</p>
+                                  <p className="truncate text-[11px] text-slate-400">{conversation.phone || 'sem telefone'}</p>
+                                </div>
+                                {conversation.unread > 0 ? (
+                                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                                    {conversation.unread > 9 ? '9+' : conversation.unread}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                                <span className="truncate">{conversation.lastMessage || 'Sem mensagens'}</span>
+                                <span className="shrink-0">{formatShortDate(conversation.lastActivity)}</span>
+                              </div>
+                            </div>
+                          ))}
+
+                          {assigned.length > 6 ? (
+                            <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300">
+                              +{assigned.length - 6} atendimento{assigned.length - 6 !== 1 ? 's' : ''}
+                            </div>
+                          ) : null}
+
+                          {assigned.length === 0 ? (
+                            <div className="rounded-xl border border-dashed border-white/12 bg-white/[0.025] px-3 py-3 text-center text-xs text-slate-400">
+                              Sem atendimentos ativos
+                            </div>
+                          ) : null}
+                        </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     );
                   })}

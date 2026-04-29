@@ -114,6 +114,7 @@ const LEAD_STATUS_OPTIONS: Array<{ value: LeadStatus; label: string }> = [
 
 export default function Chat() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const selectedContactIdRef = useRef<string | null>(null);
   const [messageText, setMessageText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -367,7 +368,34 @@ export default function Chat() {
   }, [messages, getScrollViewport]);
 
   useEffect(() => {
+    selectedContactIdRef.current = selectedContactId;
+  }, [selectedContactId]);
+
+  useEffect(() => {
     fetchContacts();
+
+    const contactsIntervalId = window.setInterval(() => {
+      void fetchContacts({ silent: true });
+    }, 7000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchContacts({ silent: true });
+      }
+    };
+
+    const handleUnreadChanged = () => {
+      void fetchContacts({ silent: true });
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('socimob:chat-unread-changed', handleUnreadChanged);
+
+    return () => {
+      window.clearInterval(contactsIntervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('socimob:chat-unread-changed', handleUnreadChanged);
+    };
   }, []);
 
   useEffect(() => {
@@ -526,7 +554,7 @@ export default function Chat() {
         return old;
       });
 
-      const pending = prev.filter((m) => m.id.startsWith('temp-') && !incomingIds.has(m.id));
+      const pending = prev.filter((m) => String(m.id).startsWith('temp-') && !incomingIds.has(String(m.id)));
       if (pending.length) {
         hasChanges = true;
         merged.push(...pending);
@@ -565,9 +593,11 @@ export default function Chat() {
     }
   };
 
-  const fetchContacts = async () => {
+  const fetchContacts = async (options: { silent?: boolean } = {}) => {
     try {
-      setIsLoadingContacts(true);
+      if (!options.silent) {
+        setIsLoadingContacts(true);
+      }
       const response = await api.get('/admin/conversas');
 
       if (response.data.success) {
@@ -624,7 +654,7 @@ export default function Chat() {
         const targetConversationId = query.get('conversationId') || query.get('conversaId');
         const targetLeadId = query.get('leadId');
 
-        if ((targetConversationId || targetLeadId) && !selectedContactId) {
+        if ((targetConversationId || targetLeadId) && !selectedContactIdRef.current) {
           const target = mappedContacts.find((c: Contact) =>
             targetConversationId
               ? c.id === targetConversationId
@@ -637,9 +667,13 @@ export default function Chat() {
         }
       }
     } catch (e) {
-      toast.error('Erro ao carregar conversas');
+      if (!options.silent) {
+        toast.error('Erro ao carregar conversas');
+      }
     } finally {
-      setIsLoadingContacts(false);
+      if (!options.silent) {
+        setIsLoadingContacts(false);
+      }
       setIsRefreshing(false);
     }
   };
@@ -733,7 +767,7 @@ export default function Chat() {
 
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === tempId ? { ...m, id: response.data.data?.id || tempId, status: 'sent' } : m
+          m.id === tempId ? { ...m, id: String(response.data.data?.id || tempId), status: 'sent' } : m
         )
       );
 
