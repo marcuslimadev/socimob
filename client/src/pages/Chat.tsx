@@ -87,6 +87,16 @@ interface Contact {
   lastActivityAt?: string | null;
   createdAt?: string | null;
   status?: string | null;
+  corretorId?: number | null;
+  corretorNome?: string | null;
+  emFila?: boolean;
+}
+
+interface AssignableUser {
+  id: number;
+  name: string;
+  email?: string;
+  role?: string;
 }
 
 type LeadStatus = 'novo' | 'em_atendimento' | 'qualificado' | 'proposta' | 'fechado' | 'perdido';
@@ -119,6 +129,9 @@ export default function Chat() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
   const [isUpdatingLeadStatus, setIsUpdatingLeadStatus] = useState(false);
+  const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
+  const [isLoadingAssignableUsers, setIsLoadingAssignableUsers] = useState(false);
+  const [isAssigningConversation, setIsAssigningConversation] = useState(false);
   const [isReprocessando, setIsReprocessando] = useState(false);
 
   const handleReprocessarPendentes = async () => {
@@ -306,6 +319,7 @@ export default function Chat() {
     }
   }, []);
   const canDeleteConversation = currentUserRole === 'admin' || currentUserRole === 'super_admin';
+  const canAssignConversation = currentUserRole === 'admin' || currentUserRole === 'super_admin';
   const selectedClassificationMeta = useMemo(
     () => getClassificationMeta(selectedContact?.classificacao),
     [selectedContact?.classificacao]
@@ -355,6 +369,12 @@ export default function Chat() {
   useEffect(() => {
     fetchContacts();
   }, []);
+
+  useEffect(() => {
+    if (canAssignConversation) {
+      void fetchAssignableUsers();
+    }
+  }, [canAssignConversation]);
 
   useEffect(() => {
     if (!selectedContactId) return;
@@ -523,6 +543,28 @@ export default function Chat() {
     });
   };
 
+  const fetchAssignableUsers = async () => {
+    try {
+      setIsLoadingAssignableUsers(true);
+      const response = await api.get('/admin/corretores');
+      const users = response.data?.corretores || response.data?.data || [];
+      setAssignableUsers(
+        users
+          .filter((user: any) => user && user.id != null)
+          .map((user: any) => ({
+            id: Number(user.id),
+            name: user.name || user.email || `Usuário #${user.id}`,
+            email: user.email,
+            role: user.role,
+          }))
+      );
+    } catch (error) {
+      toast.error('Erro ao carregar atendentes');
+    } finally {
+      setIsLoadingAssignableUsers(false);
+    }
+  };
+
   const fetchContacts = async () => {
     try {
       setIsLoadingContacts(true);
@@ -551,6 +593,9 @@ export default function Chat() {
               lastActivityAt: item.ultima_atividade || item.created_at || null,
               createdAt: item.created_at || null,
               status: item.status || null,
+              corretorId: item.corretor_id ? Number(item.corretor_id) : null,
+              corretorNome: item.corretor_nome || null,
+              emFila: !!item.em_fila,
             };
           });
 
@@ -566,7 +611,9 @@ export default function Chat() {
               o.lastMessage !== n.lastMessage ||
               o.unread !== n.unread ||
               o.needsHumanIntervention !== n.needsHumanIntervention ||
-              o.leadStatus !== n.leadStatus
+              o.leadStatus !== n.leadStatus ||
+              o.corretorId !== n.corretorId ||
+              o.corretorNome !== n.corretorNome
             );
           });
 
@@ -574,10 +621,15 @@ export default function Chat() {
         });
 
         const query = new URLSearchParams(window.location.search);
+        const targetConversationId = query.get('conversationId') || query.get('conversaId');
         const targetLeadId = query.get('leadId');
 
-        if (targetLeadId && !selectedContactId) {
-          const target = mappedContacts.find((c: Contact) => c.leadId?.toString() === targetLeadId);
+        if ((targetConversationId || targetLeadId) && !selectedContactId) {
+          const target = mappedContacts.find((c: Contact) =>
+            targetConversationId
+              ? c.id === targetConversationId
+              : c.leadId?.toString() === targetLeadId
+          );
           if (target) {
             setSelectedContactId(target.id);
             setTimeout(() => scrollToBottom('auto'), 200);
@@ -883,6 +935,50 @@ export default function Chat() {
       toast.error(message);
     } finally {
       setIsUpdatingLeadStatus(false);
+    }
+  };
+
+  const handleConversationAssignmentChange = async (value: string) => {
+    if (!selectedContact || isAssigningConversation) return;
+
+    const previousAssignee = {
+      corretorId: selectedContact.corretorId ?? null,
+      corretorNome: selectedContact.corretorNome ?? null,
+      emFila: selectedContact.emFila,
+    };
+    const targetId = value ? Number(value) : null;
+    const targetUser = targetId ? assignableUsers.find((user) => user.id === targetId) : null;
+
+    setIsAssigningConversation(true);
+    setContacts((prev) =>
+      prev.map((contact) =>
+        contact.id === selectedContact.id
+          ? {
+              ...contact,
+              corretorId: targetId,
+              corretorNome: targetUser?.name || null,
+              emFila: !targetId,
+              status: targetId ? 'ativa' : 'aguardando_corretor',
+              leadStatus: targetId ? 'em_atendimento' : contact.leadStatus,
+            }
+          : contact
+      )
+    );
+
+    try {
+      await api.post(`/admin/conversas/${selectedContact.id}/atribuir`, { corretor_id: targetId });
+      toast.success(targetUser ? `Atendimento atribuído para ${targetUser.name}` : 'Atendimento voltou para distribuição');
+      await fetchContacts();
+    } catch (error: any) {
+      setContacts((prev) =>
+        prev.map((contact) =>
+          contact.id === selectedContact.id ? { ...contact, ...previousAssignee } : contact
+        )
+      );
+      const message = error?.response?.data?.message || 'Erro ao distribuir atendimento';
+      toast.error(message);
+    } finally {
+      setIsAssigningConversation(false);
     }
   };
 
@@ -1389,6 +1485,25 @@ export default function Chat() {
                               </select>
                             </label>
                             {isUpdatingLeadStatus && <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#ffc51a] bg-white px-3 text-sm text-[#5a646f]"><Loader2 className="h-4 w-4 animate-spin" />Salvando etapa...</span>}
+                            {canAssignConversation && (
+                              <label className="flex min-w-[240px] flex-col gap-1">
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#617489]">Atendente</span>
+                                <select
+                                  value={selectedContact.corretorId ? String(selectedContact.corretorId) : ''}
+                                  onChange={(e) => void handleConversationAssignmentChange(e.target.value)}
+                                  disabled={isAssigningConversation || isLoadingAssignableUsers}
+                                  className="h-10 rounded-xl border border-[#2d6fab] bg-white px-3 text-sm font-semibold text-[#132b4c] outline-none transition focus:border-[#17365d] focus:ring-4 focus:ring-[#2d6fab]/20 disabled:cursor-not-allowed disabled:opacity-70"
+                                >
+                                  <option value="">Aguardando distribuição</option>
+                                  {assignableUsers.map((user) => (
+                                    <option key={user.id} value={user.id}>
+                                      {user.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            )}
+                            {isAssigningConversation && <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#2d6fab] bg-white px-3 text-sm text-[#5a646f]"><Loader2 className="h-4 w-4 animate-spin" />Distribuindo...</span>}
                           </div>
                         </div>
                       </div>

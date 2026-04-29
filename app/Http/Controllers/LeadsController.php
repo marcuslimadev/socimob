@@ -21,6 +21,22 @@ use App\Services\OpenAIService;
  */
 class LeadsController extends Controller
 {
+    private function isBrokerRole(?string $role): bool
+    {
+        return in_array($role, ['corretor', 'agent'], true);
+    }
+
+    private function applyLeadVisibility($query, Request $request)
+    {
+        $user = $request->user();
+
+        if ($user && $this->isBrokerRole($user->role ?? null)) {
+            $query->where('corretor_id', $user->id);
+        }
+
+        return $query;
+    }
+
     private function normalizeLeadPayload(array $data, LeadService $leadService): array
     {
         if (array_key_exists('nome', $data) && is_string($data['nome'])) {
@@ -63,6 +79,7 @@ class LeadsController extends Controller
 
             $db = app('db');
             $query = $db->table('leads')->where('tenant_id', $tenantId);
+            $this->applyLeadVisibility($query, $request);
             
             // Filtros
             if ($request->status) {
@@ -176,6 +193,10 @@ class LeadsController extends Controller
 
         if (!isset($data['status'])) {
             $data['status'] = 'novo';
+        }
+
+        if ($request->user() && $this->isBrokerRole($request->user()->role ?? null)) {
+            $data['corretor_id'] = $request->user()->id;
         }
 
         if ($request->user()) {
@@ -312,7 +333,10 @@ class LeadsController extends Controller
             }
 
             $db = app('db');
-            $builder = fn () => $db->table('leads')->where('tenant_id', $tenantId);
+            $builder = fn () => $this->applyLeadVisibility(
+                $db->table('leads')->where('tenant_id', $tenantId),
+                $request
+            );
 
             $stats = [
                 'total' => $builder()->count(),
@@ -465,10 +489,11 @@ class LeadsController extends Controller
 
         $tenantId = $this->resolveTenantId($request);
 
-        $leadIds = Lead::whereIn('id', $data['ids'])
-            ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
-            ->pluck('id')
-            ->all();
+        $leadQuery = Lead::whereIn('id', $data['ids'])
+            ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId));
+        $this->applyLeadVisibility($leadQuery, $request);
+
+        $leadIds = $leadQuery->pluck('id')->all();
 
         if (empty($leadIds)) {
             return response()->json([
@@ -586,6 +611,8 @@ class LeadsController extends Controller
         if ($tenantId) {
             $query->where('tenant_id', $tenantId);
         }
+
+        $this->applyLeadVisibility($query, $request);
 
         return $query->findOrFail($id);
     }

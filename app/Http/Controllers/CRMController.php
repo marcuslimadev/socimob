@@ -5,6 +5,7 @@ use App\Models\Conversa;
 use App\Models\Lead;
 use App\Models\Property;
 use App\Models\User;
+use App\Services\ConversationAssignmentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -19,21 +20,7 @@ class CRMController extends Controller
 
     private function isBrokerRole(?string $role): bool
     {
-        return $role === 'corretor';
-    }
-
-    private function ensureBrokerCanAccessLead(User $user, Lead $lead): void
-    {
-        if (!$this->isBrokerRole($user->role ?? null)) {
-            return;
-        }
-
-        if ($lead->corretor_id !== null && (int) $lead->corretor_id !== (int) $user->id) {
-            abort(response()->json([
-                'success' => false,
-                'message' => 'Você só pode acessar atendimentos livres ou atribuídos a você.',
-            ], 403));
-        }
+        return in_array($role, ['corretor', 'agent'], true);
     }
 
     private function normalizeStatus(?string $status): string
@@ -406,7 +393,8 @@ class CRMController extends Controller
         return User::query()
             ->where('tenant_id', $tenantId)
             ->where('id', $userId)
-            ->whereIn('role', ['admin', 'super_admin', 'corretor'])
+            ->where('is_active', true)
+            ->whereIn('role', ['admin', 'super_admin', 'corretor', 'agent'])
             ->firstOrFail();
     }
 
@@ -487,6 +475,13 @@ class CRMController extends Controller
             }
 
             $currentOwnerId = $conversa?->corretor_id ?: $lead->corretor_id;
+            if (!$allowAdminOverride && !$actorIsAdmin && !$currentOwnerId) {
+                abort(response()->json([
+                    'success' => false,
+                    'message' => 'Este atendimento precisa ser distribuído por um administrador.',
+                ], 403));
+            }
+
             if (!$allowAdminOverride && !$actorIsAdmin && $currentOwnerId && $currentOwnerId !== $target->id) {
                 abort(response()->json([
                     'success' => false,
@@ -516,10 +511,16 @@ class CRMController extends Controller
             if ($conversa) {
                 $conversa->corretor_id = $target->id;
                 $conversa->user_id = $target->id;
-                $conversa->status = 'em_atendimento';
+                $conversa->status = 'ativa';
                 $conversa->stage = 'atendimento_humano';
                 $conversa->updated_at = now();
                 $conversa->save();
+
+                $freshConversa = $conversa->fresh(['lead']);
+                if ($freshConversa) {
+                    app(ConversationAssignmentNotificationService::class)
+                        ->notifyAssigned($freshConversa, $target, $lead, $actor);
+                }
             }
 
             return [
@@ -542,12 +543,9 @@ class CRMController extends Controller
             $query = Lead::with(['pessoa:id,nome,tipo,cpf,email,telefone,celular,observacoes,origem', 'corretor:id,name'])
                 ->where('tenant_id', $tenantId);
 
-            // Permissões: corretor vê somente o que estiver livre ou atribuído a ele.
+            // Permissões: corretor vê somente o que foi atribuído a ele.
             if ($this->isBrokerRole($user->role ?? null)) {
-                $query->where(function ($q) use ($user) {
-                    $q->where('corretor_id', $user->id)
-                      ->orWhereNull('corretor_id');
-                });
+                $query->where('corretor_id', $user->id);
             }
 
             // Filtros
@@ -740,7 +738,14 @@ class CRMController extends Controller
             }
             $user = $request->user();
             $lead = Lead::where('tenant_id', $tenantId)->findOrFail($id);
-            $this->ensureBrokerCanAccessLead($user, $lead);
+            if ($this->isBrokerRole($user->role ?? null)
+                && (empty($lead->corretor_id) || (int) $lead->corretor_id !== (int) $user->id)
+            ) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Você só pode acessar clientes atribuídos a você.',
+                ], 403);
+            }
             $lead->status = $request->status;
             $lead->updated_at = now();
             $lead->save();

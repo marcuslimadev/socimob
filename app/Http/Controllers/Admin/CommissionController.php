@@ -301,10 +301,10 @@ class CommissionController extends Controller
             }
             
             $corretores = User::where('tenant_id', $tenantId)
-                ->whereIn('role', ['corretor', 'admin', 'super_admin'])
+                ->whereIn('role', ['corretor', 'agent', 'admin', 'super_admin'])
                 ->where('is_active', true)
                 ->orderBy('name')
-                ->get(['id', 'name', 'email', 'pix_key', 'pix_type', 'banco', 'agencia', 'conta']);
+                ->get(['id', 'name', 'email', 'role', 'pix_key', 'pix_type', 'banco', 'agencia', 'conta']);
 
             return response()->json([
                 'success' => true,

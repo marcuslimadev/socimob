@@ -24,6 +24,11 @@ class ConversasController extends Controller
     {
         $this->twilio = $twilio;
     }
+
+    private function isBrokerRole(?string $role): bool
+    {
+        return in_array($role, ['corretor', 'agent'], true);
+    }
     
     /**
      * Listar conversas
@@ -50,6 +55,9 @@ class ConversasController extends Controller
                         $q->where('status', '!=', 'encerrada')
                           ->orWhereNull('status');
                     });
+                })
+                ->when($this->isBrokerRole($request->user()?->role ?? null), function ($query) use ($request) {
+                    return $query->where('corretor_id', $request->user()->id);
                 })
                 ->orderBy('ultima_atividade', 'desc')
                 ->limit(200)
@@ -376,23 +384,22 @@ class ConversasController extends Controller
         $conversa = $this->resolveConversaForTenant($id, $request);
         $user = $request->user();
 
-        // Verificar se conversa está atribuída a outro corretor
-        if ($conversa->corretor_id && $user && $conversa->corretor_id !== $user->id) {
-            // Apenas admin pode pegar conversa de outro corretor
-            if (!in_array($user->role, ['admin', 'super_admin'])) {
+        // Corretor só responde conversa atribuída a ele.
+        if ($user && $this->isBrokerRole($user->role ?? null)) {
+            if (empty($conversa->corretor_id) || (int) $conversa->corretor_id !== (int) $user->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Conversa em atendimento por outro corretor'
+                    'message' => 'Você só pode responder conversas atribuídas a você'
                 ], 403);
             }
         }
 
-        // Atribuir conversa ao corretor/admin que está enviando a mensagem
-        if ($user && empty($conversa->corretor_id)) {
+        // Admin pode assumir uma conversa livre ao responder.
+        if ($user && empty($conversa->corretor_id) && in_array($user->role, ['admin', 'super_admin'], true)) {
             $conversa->update([
                 'corretor_id' => $user->id,
                 'user_id' => $user->id,
-                'status' => 'em_atendimento',
+                'status' => 'ativa',
                 'stage' => 'atendimento_humano'
             ]);
             
@@ -474,6 +481,9 @@ class ConversasController extends Controller
             }])
             ->where('status', 'ativa')
             ->where('tenant_id', $tenantId)
+            ->when($this->isBrokerRole($request->user()?->role ?? null), function ($query) use ($request) {
+                return $query->where('corretor_id', $request->user()->id);
+            })
             ->orderBy('ultima_atividade', 'desc')
             ->limit(10)
             ->get();
@@ -710,7 +720,7 @@ class ConversasController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'corretor_id' => 'nullable|exists:users,id'
+            'corretor_id' => 'nullable|integer'
         ]);
 
         if ($validator->fails()) {
@@ -722,6 +732,22 @@ class ConversasController extends Controller
 
         $conversa = $this->resolveConversaForTenant($id, $request);
         $corretorId = $request->input('corretor_id');
+
+        if ($corretorId !== null) {
+            $exists = DB::table('users')
+                ->where('id', $corretorId)
+                ->where('tenant_id', $this->resolveTenantId($request))
+                ->where('is_active', true)
+                ->whereIn('role', ['corretor', 'agent', 'admin', 'super_admin'])
+                ->exists();
+
+            if (!$exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuário alvo inválido para atribuição',
+                ], 422);
+            }
+        }
 
         // Se corretor_id é null, libera a conversa para a IA
         if ($corretorId === null) {
@@ -748,7 +774,7 @@ class ConversasController extends Controller
         $conversa->update([
             'corretor_id' => $corretorId,
             'user_id' => $corretorId,
-            'status' => 'em_atendimento',
+            'status' => 'ativa',
             'stage' => 'atendimento_humano'
         ]);
 

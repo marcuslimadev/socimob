@@ -226,6 +226,7 @@ class Notification extends Model
         }
 
         $leadId = self::firstInt($data, ['lead_id', 'crm_lead_id']);
+        $conversationId = self::firstInt($data, ['conversa_id', 'conversation_id']);
         $vistoriaId = self::firstInt($data, ['vistoria_id']);
         $documentId = self::firstInt($data, ['documento_id', 'document_id']);
         $resolvedPropertyId = $propertyId ?: self::firstInt($data, ['property_id', 'current_property_id', 'conflicting_property_id']);
@@ -237,6 +238,10 @@ class Notification extends Model
         }
 
         if (in_array($type, ['message', 'nova_conversa'], true)) {
+            if ($conversationId) {
+                return "/chat?conversationId={$conversationId}";
+            }
+
             return $leadId ? "/chat?leadId={$leadId}" : '/chat';
         }
 

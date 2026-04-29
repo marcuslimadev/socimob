@@ -2,7 +2,10 @@
 namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
+use App\Models\Conversa;
 use App\Models\Tenant;
+use App\Models\User;
+use App\Services\ConversationAssignmentNotificationService;
 use App\Services\EvolutionApiService;
 use App\Services\MetaCloudGateway;
 use App\Services\TwilioService;
@@ -22,7 +25,16 @@ class ConversasController extends Controller
 
     private function isBrokerRole(?string $role): bool
     {
-        return $role === 'corretor';
+        return in_array($role, ['corretor', 'agent'], true);
+    }
+
+    private function brokerCanAccessConversation($user, $conversa): bool
+    {
+        if (!$this->isBrokerRole($user->role ?? null)) {
+            return true;
+        }
+
+        return !empty($conversa->corretor_id) && (int) $conversa->corretor_id === (int) $user->id;
     }
 
     /**
@@ -53,101 +65,13 @@ class ConversasController extends Controller
                       ->orWhere('leads.tenant_id', $tenantId);
                 });
             
-            // Se for corretor, buscar suas conversas + todas as conversas ainda não atendidas (sem outgoing)
+            // Corretor só enxerga conversas atribuídas a ele. A fila livre fica com o admin para distribuição.
             if ($this->isBrokerRole($user->role ?? null)) {
-                // Buscar conversas do corretor
-                $minhasConversas = DB::table('conversas')
-                    ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
-                    ->leftJoin('users as corretor', 'conversas.corretor_id', '=', 'corretor.id')
-                    ->select(
-                        'conversas.*',
-                        'leads.nome as lead_nome',
-                        'leads.telefone as lead_telefone',
-                        'leads.email as lead_email',
-                        'leads.observacoes as lead_observacoes',
-                        'leads.classificacao as lead_classificacao',
-                        'leads.status as lead_status',
-                        'corretor.name as corretor_nome'
-                    )
-                    ->where(function ($q) use ($tenantId) {
-                        $q->where('conversas.tenant_id', $tenantId)
-                          ->orWhere('leads.tenant_id', $tenantId);
-                    })
+                $conversas = $query
                     ->where('conversas.corretor_id', $user->id)
                     ->orderByRaw('COALESCE(conversas.ultima_atividade, conversas.created_at) DESC')
                     ->orderBy('conversas.created_at', 'desc')
                     ->get();
-
-                // Conversas disponíveis para todos os corretores: ainda não atendidas por humano (e nem pela IA)
-                // Regra: ainda não existe mensagem outgoing enviada por um usuário humano.
-                // Mensagens automáticas/IA não possuem user_id e NÃO removem do pool.
-                $hasUserIdColumn = Schema::hasColumn('mensagens', 'user_id');
-                if ($hasUserIdColumn) {
-                    // Novo comportamento: só tira do pool quando houver outgoing humano (mensagens.user_id preenchido).
-                    $conversasNaoAtendidas = DB::table('conversas')
-                        ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
-                        ->leftJoin('users as corretor', 'conversas.corretor_id', '=', 'corretor.id')
-                        ->select(
-                            'conversas.*',
-                            'leads.nome as lead_nome',
-                            'leads.telefone as lead_telefone',
-                            'leads.email as lead_email',
-                            'leads.observacoes as lead_observacoes',
-                            'leads.classificacao as lead_classificacao',
-                            'leads.status as lead_status',
-                            'corretor.name as corretor_nome'
-                        )
-                        ->where(function ($q) use ($tenantId) {
-                            $q->where('conversas.tenant_id', $tenantId)
-                              ->orWhere('leads.tenant_id', $tenantId);
-                        })
-                        ->whereNull('conversas.corretor_id')
-                        ->where('conversas.status', 'ativa')
-                        ->whereNotExists(function ($sub) {
-                            $sub->select(DB::raw(1))
-                                ->from('mensagens')
-                                ->whereColumn('mensagens.conversa_id', 'conversas.id')
-                                ->where('mensagens.direction', 'outgoing')
-                                ->whereNotNull('mensagens.user_id');
-                        })
-                        ->orderBy('conversas.created_at', 'asc')
-                        ->get();
-                } else {
-                    // Fallback antigo (se não houver coluna user_id): qualquer outgoing tira do pool.
-                    $conversasNaoAtendidas = DB::table('conversas')
-                        ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
-                        ->leftJoin('users as corretor', 'conversas.corretor_id', '=', 'corretor.id')
-                        ->select(
-                            'conversas.*',
-                            'leads.nome as lead_nome',
-                            'leads.telefone as lead_telefone',
-                            'leads.email as lead_email',
-                            'leads.observacoes as lead_observacoes',
-                            'leads.classificacao as lead_classificacao',
-                            'leads.status as lead_status',
-                            'corretor.name as corretor_nome'
-                        )
-                        ->where(function ($q) use ($tenantId) {
-                            $q->where('conversas.tenant_id', $tenantId)
-                              ->orWhere('leads.tenant_id', $tenantId);
-                        })
-                        ->whereNull('conversas.corretor_id')
-                        ->where('conversas.status', 'ativa')
-                        ->whereNotExists(function ($sub) {
-                            $sub->select(DB::raw(1))
-                                ->from('mensagens')
-                                ->whereColumn('mensagens.conversa_id', 'conversas.id')
-                                ->where('mensagens.direction', 'outgoing');
-                        })
-                        ->orderBy('conversas.created_at', 'asc')
-                        ->get();
-                }
-
-                // Minhas conversas primeiro; depois as não atendidas (pool)
-                $conversas = $minhasConversas
-                    ->concat($conversasNaoAtendidas)
-                    ->unique('id')
-                    ->values();
             } else {
                 // Admin vê todas as conversas do tenant.
                 $conversas = $query
@@ -296,75 +220,10 @@ class ConversasController extends Controller
      */
     public function pegarProxima(Request $request)
     {
-        try {
-            $user = $request->user();
-            $tenantId = $request->attributes->get('tenant_id');
-            
-            // Apenas corretores podem pegar conversas da fila
-            if (!$this->isBrokerRole($user->role ?? null)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Apenas corretores podem pegar conversas da fila'
-                ], 403);
-            }
-            
-            // Buscar próxima conversa em fila (FIFO - primeiro que chegou)
-            $conversa = DB::table('conversas')
-                ->where('tenant_id', $tenantId)
-                ->whereNull('corretor_id')
-                ->where('status', 'ativa')
-                ->orderBy('created_at', 'asc') // Primeira a chegar
-                ->first();
-            
-            if (!$conversa) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Não há conversas na fila no momento'
-                ], 404);
-            }
-            
-            // Atribuir ao corretor
-            DB::table('conversas')
-                ->where('id', $conversa->id)
-                ->update([
-                    'corretor_id' => $user->id,
-                    'updated_at' => Carbon::now()
-                ]);
-            
-            // Registrar log
-            \App\Models\SystemLog::info(
-                \App\Models\SystemLog::CATEGORY_AUTOMATION,
-                'conversa_atribuida',
-                'Conversa atribuída automaticamente ao corretor',
-                [
-                    'conversa_id' => $conversa->id,
-                    'corretor_id' => $user->id,
-                    'corretor_nome' => $user->name,
-                    'lead_id' => $conversa->lead_id,
-                    'tenant_id' => $tenantId
-                ]
-            );
-            
-            // Buscar dados completos
-            $conversaCompleta = DB::table('conversas')
-                ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
-                ->select('conversas.*', 'leads.nome as lead_nome', 'leads.telefone as lead_telefone')
-                ->where('conversas.id', $conversa->id)
-                ->first();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Conversa atribuída com sucesso',
-                'data' => $conversaCompleta
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erro ao pegar conversa da fila',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => false,
+            'message' => 'As conversas são distribuídas por um administrador.'
+        ], 403);
     }
     
     /**
@@ -401,8 +260,26 @@ class ConversasController extends Controller
                 ->where('id', $id)
                 ->update([
                     'corretor_id' => null,
+                    'status' => 'aguardando_corretor',
                     'updated_at' => Carbon::now()
                 ]);
+
+            if (!empty($conversa->lead_id)) {
+                DB::table('leads')
+                    ->where('id', $conversa->lead_id)
+                    ->where('tenant_id', $tenantId)
+                    ->update([
+                        'corretor_id' => null,
+                        'status' => 'qualificado',
+                        'updated_at' => Carbon::now(),
+                    ]);
+            }
+
+            $returnedConversation = Conversa::with('lead')->find($id);
+            if ($returnedConversation) {
+                app(ConversationAssignmentNotificationService::class)
+                    ->notifyAwaitingDistribution($returnedConversation, $returnedConversation->lead);
+            }
             
             \App\Models\SystemLog::info(
                 \App\Models\SystemLog::CATEGORY_AUTOMATION,
@@ -443,10 +320,7 @@ class ConversasController extends Controller
                 ->where('status', 'ativa');
 
             if ($this->isBrokerRole($user->role ?? null)) {
-                $scopeConversas->where(function ($q) use ($user) {
-                    $q->where('corretor_id', $user->id)
-                      ->orWhereNull('corretor_id');
-                });
+                $scopeConversas->where('corretor_id', $user->id);
             }
 
             $scopedConversationIds = (clone $scopeConversas)->pluck('id');
@@ -469,28 +343,22 @@ class ConversasController extends Controller
                     ->count('conversa_id');
             }
             
+            $statsQuery = fn () => DB::table('conversas')
+                ->where('conversas.tenant_id', $tenantId)
+                ->where('conversas.status', 'ativa')
+                ->when($this->isBrokerRole($user->role ?? null), fn ($query) => $query->where('conversas.corretor_id', $user->id));
+
             $stats = [
-                'em_fila' => DB::table('conversas')
-                    ->where('tenant_id', $tenantId)
-                    ->whereNull('corretor_id')
-                    ->where('status', 'ativa')
-                    ->count(),
-                    
-                'atribuidas' => DB::table('conversas')
-                    ->where('tenant_id', $tenantId)
-                    ->whereNotNull('corretor_id')
-                    ->where('status', 'ativa')
-                    ->count(),
-                    
-                'total_ativas' => DB::table('conversas')
-                    ->where('tenant_id', $tenantId)
-                    ->where('status', 'ativa')
-                    ->count(),
-                    
-                'por_corretor' => DB::table('conversas')
+                'em_fila' => $this->isBrokerRole($user->role ?? null)
+                    ? 0
+                    : $statsQuery()->whereNull('conversas.corretor_id')->count(),
+
+                'atribuidas' => $statsQuery()->whereNotNull('conversas.corretor_id')->count(),
+
+                'total_ativas' => $statsQuery()->count(),
+
+                'por_corretor' => $statsQuery()
                     ->join('users', 'conversas.corretor_id', '=', 'users.id')
-                    ->where('conversas.tenant_id', $tenantId)
-                    ->where('conversas.status', 'ativa')
                     ->whereNotNull('conversas.corretor_id')
                     ->select('users.name', DB::raw('COUNT(*) as total'))
                     ->groupBy('users.id', 'users.name')
@@ -548,8 +416,8 @@ class ConversasController extends Controller
                 ], 404);
             }
 
-            // Corretor só pode ver mensagens se a conversa estiver livre ou atribuída a ele
-            if (($user->role ?? null) === 'corretor' && !empty($conversa->corretor_id) && (int) $conversa->corretor_id !== (int) $user->id) {
+            // Corretor só pode ver mensagens de conversas atribuídas a ele.
+            if (!$this->brokerCanAccessConversation($user, $conversa)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Você não tem permissão para acessar esta conversa'
@@ -674,40 +542,13 @@ class ConversasController extends Controller
                 ], 404);
             }
 
-            // Regras de atribuição:
-            // - Corretor: ao enviar a primeira mensagem, a conversa deve sumir para os outros (claim). Se já estiver atribuída a outro, bloquear.
-            // - Admin: ao enviar, o atendimento vai pra ele imediatamente (toma a conversa).
-            if (($user->role ?? null) === 'corretor') {
-                if (!empty($conversa->corretor_id) && (int) $conversa->corretor_id !== (int) $user->id) {
+            // Corretor só responde atendimentos já distribuídos para ele.
+            if ($this->isBrokerRole($user->role ?? null)) {
+                if (!$this->brokerCanAccessConversation($user, $conversa)) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Conversa já está em atendimento por outro corretor'
+                        'message' => 'Você só pode responder conversas atribuídas a você'
                     ], 403);
-                }
-
-                if (empty($conversa->corretor_id)) {
-                    // Claim atômico: só toma se ainda estiver livre
-                    $updated = DB::table('conversas')
-                        ->where('id', $id)
-                        ->whereNull('corretor_id')
-                        ->update([
-                            'corretor_id' => $user->id,
-                            'updated_at' => Carbon::now(),
-                        ]);
-
-                    if ($updated === 0) {
-                        // Alguém tomou antes
-                        $currentOwner = DB::table('conversas')->where('id', $id)->value('corretor_id');
-                        if (!empty($currentOwner) && (int) $currentOwner !== (int) $user->id) {
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'Conversa foi atribuída a outro usuário. Atualize a lista.'
-                            ], 409);
-                        }
-                    }
-
-                    // Atualizar objeto local
-                    $conversa->corretor_id = $user->id;
                 }
             } else {
                 // Admin (e outros perfis com permissão) tomam a conversa ao enviar
@@ -886,8 +727,8 @@ class ConversasController extends Controller
                 ], 404);
             }
 
-            // Corretor só pode ver detalhes se a conversa estiver livre ou atribuída a ele
-            if (($user->role ?? null) === 'corretor' && !empty($conversa->corretor_id) && (int) $conversa->corretor_id !== (int) $user->id) {
+            // Corretor só pode ver detalhes de conversas atribuídas a ele.
+            if (!$this->brokerCanAccessConversation($user, $conversa)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Você não tem permissão para acessar esta conversa'
@@ -947,6 +788,7 @@ class ConversasController extends Controller
                 $target = DB::table('users')
                     ->where('id', $targetId)
                     ->where('tenant_id', $tenantId)
+                    ->where('is_active', true)
                     ->first();
 
                 if (!$target) {
@@ -956,7 +798,7 @@ class ConversasController extends Controller
                     ], 404);
                 }
 
-                if (!in_array($target->role ?? null, ['corretor', 'admin', 'super_admin'], true)) {
+                if (!in_array($target->role ?? null, ['corretor', 'agent', 'admin', 'super_admin'], true)) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Usuário alvo inválido para atribuição'
@@ -968,8 +810,29 @@ class ConversasController extends Controller
                 ->where('id', $id)
                 ->update([
                     'corretor_id' => $targetId,
+                    'status' => $targetId ? 'ativa' : 'aguardando_corretor',
                     'updated_at' => Carbon::now(),
                 ]);
+
+            if (!empty($conversa->lead_id)) {
+                DB::table('leads')
+                    ->where('id', $conversa->lead_id)
+                    ->where('tenant_id', $tenantId)
+                    ->update([
+                        'corretor_id' => $targetId,
+                        'status' => $targetId ? 'em_atendimento' : 'qualificado',
+                        'updated_at' => Carbon::now(),
+                    ]);
+            }
+
+            if ($targetId) {
+                $assignedConversation = Conversa::with('lead')->find($id);
+                $assignedUser = User::find($targetId);
+                if ($assignedConversation && $assignedUser) {
+                    app(ConversationAssignmentNotificationService::class)
+                        ->notifyAssigned($assignedConversation, $assignedUser, $assignedConversation->lead, $user);
+                }
+            }
 
             return response()->json([
                 'success' => true,

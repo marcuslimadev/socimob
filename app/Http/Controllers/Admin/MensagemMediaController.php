@@ -47,8 +47,10 @@ class MensagemMediaController extends Controller
             return response('Not found', 404);
         }
 
-        // Corretor só pode baixar mídia das próprias conversas (se já atribuída)
-        if (($user->role ?? null) === 'corretor' && $msg->conversa_corretor_id && (int) $msg->conversa_corretor_id !== (int) $user->id) {
+        // Corretor só pode baixar mídia de conversas atribuídas a ele.
+        if (in_array($user->role ?? null, ['corretor', 'agent'], true)
+            && (empty($msg->conversa_corretor_id) || (int) $msg->conversa_corretor_id !== (int) $user->id)
+        ) {
             return response('Forbidden', 403);
         }
 

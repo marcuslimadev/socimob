@@ -15,6 +15,7 @@ use App\Models\WhatsApp\WhatsAppPhoneNumber;
 use App\Services\LeadCustomerService;
 use App\Services\MetaCloudGateway;
 use App\Services\MetaWhatsAppService;
+use App\Services\ConversationAssignmentNotificationService;
 use App\Services\TwilioService;
 use App\Services\EvolutionApiService;
 use App\Services\SmsShortLinkService;
@@ -83,6 +84,28 @@ class WhatsAppService
             'evolution' => $this->evolution,
             default => $this->twilio,
         };
+    }
+
+    private function notifyConversationAwaitingDistribution($conversa, ?Lead $lead = null): void
+    {
+        try {
+            $conversation = $conversa instanceof Conversa
+                ? ($conversa->exists ? $conversa->fresh(['lead']) : $conversa)
+                : Conversa::with('lead')->find($conversa->id ?? null);
+
+            if (!$conversation) {
+                return;
+            }
+
+            app(ConversationAssignmentNotificationService::class)
+                ->notifyAwaitingDistribution($conversation, $lead ?: $conversation->lead);
+        } catch (\Throwable $e) {
+            Log::warning('[WhatsAppService] Falha ao notificar distribuição de conversa', [
+                'conversa_id' => $conversa->id ?? null,
+                'lead_id' => $lead?->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
     
     /**
@@ -1174,6 +1197,7 @@ class WhatsAppService
             $this->updateLeadStatusFromStage($lead, $stage);
 
             $this->sendMessage($conversa->id, $conversa->telefone, $handoffMessage);
+            $this->notifyConversationAwaitingDistribution($conversa, $lead);
 
             return [
                 'success' => true,
@@ -1240,6 +1264,7 @@ class WhatsAppService
             ]);
             $this->updateLeadStatusFromStage($lead, 'atendimento_humano');
             $this->sendMessage($conversa->id, $conversa->telefone, $completeMessage);
+            $this->notifyConversationAwaitingDistribution($conversa, $lead);
 
             return [
                 'success' => true,
@@ -1261,6 +1286,7 @@ class WhatsAppService
             $this->updateLeadStatusFromStage($conversa->lead, 'atendimento_humano');
 
             $this->sendMessage($conversa->id, $conversa->telefone, $handoffMessage);
+            $this->notifyConversationAwaitingDistribution($conversa, $conversa->lead);
 
             return [
                 'success' => true,

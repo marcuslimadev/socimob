@@ -158,6 +158,15 @@ export default function NotificationCenter() {
       : typeof notification.data?.lead_id === 'string' && !Number.isNaN(Number(notification.data.lead_id))
         ? Number(notification.data.lead_id)
         : null;
+    const conversationId = typeof notification.data?.conversa_id === 'number'
+      ? notification.data.conversa_id
+      : typeof notification.data?.conversation_id === 'number'
+        ? notification.data.conversation_id
+        : typeof notification.data?.conversa_id === 'string' && !Number.isNaN(Number(notification.data.conversa_id))
+          ? Number(notification.data.conversa_id)
+          : typeof notification.data?.conversation_id === 'string' && !Number.isNaN(Number(notification.data.conversation_id))
+            ? Number(notification.data.conversation_id)
+            : null;
 
     if (notification.action_url) return notification.action_url;
     if (nestedActionUrl) return nestedActionUrl;
@@ -167,6 +176,7 @@ export default function NotificationCenter() {
       return leadId ? `/leads/${leadId}` : '/leads';
     }
     if (notification.type === 'message' || notification.type === 'nova_conversa') {
+      if (conversationId) return `/chat?conversationId=${conversationId}`;
       return leadId ? `/chat?leadId=${leadId}` : '/chat';
     }
     if (notification.type === 'property_match' && notification.property_id) {
