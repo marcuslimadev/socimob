@@ -643,10 +643,11 @@ class WhatsAppService
         $quartos = $property->dormitorios ?? '-';
         $suites = $property->suites ?? '-';
         $vagas = $property->garagem ?? '-';
-        $highlights = $this->extractPropertyHighlights($property);
         $nomePergunta = $this->buildNameConfirmation($preferredName);
+        $tipo = $this->cleanPropertyText((string) ($property->tipo_imovel ?: 'imóvel'));
 
-        $mensagem = $saudacao . " Eu sou a {$assistantName}, da *{$companyName}*. Vi que você se interessou pelo {$property->tipo_imovel}";
+        $mensagem = $saudacao . " Eu sou a {$assistantName}, da *{$companyName}*.\n";
+        $mensagem .= "Vi seu interesse neste {$tipo}";
 
         if ($localizacao) {
             $mensagem .= " em {$localizacao}";
@@ -656,23 +657,16 @@ class WhatsAppService
             $mensagem .= " (Ref: {$referencia})";
         }
 
-        $mensagem .= ".\n\nPrincipais pontos:\n" .
+        $mensagem .= ".\n\nDados do imóvel:\n" .
             "• Valor: {$valor}\n" .
-            "• Quartos: {$quartos} | Suítes: {$suites} | Vagas: {$vagas}\n";
+            "• Quartos: {$quartos} | Suítes: {$suites} | Vagas: {$vagas}";
 
         if ($localizacao) {
-            $mensagem .= "• Localização: {$localizacao}\n";
+            $mensagem .= "\n• Localização: {$localizacao}";
         }
 
-        if (!empty($highlights)) {
-            $mensagem .= "\nDestaques:\n• " . implode("\n• ", $highlights) . "\n";
-        }
-
-        $mensagem .= "\n\n" . $nomePergunta . "\n\nPara te ajudar melhor, me conta:\n" .
-            "• Esse valor está dentro do que você busca?\n" .
-            "• Posso mostrar outras regiões também ou prefere só essa?\n" .
-            "• Tem alguma característica específica que seja importante?\n\n" .
-            "Fico no aguardo para preparar as melhores opções para você.";
+        $mensagem .= "\n\n" . $nomePergunta . "\n";
+        $mensagem .= "Esse imóvel está dentro do que você busca ou quer ver opções parecidas?";
 
         return $mensagem;
     }
@@ -2381,13 +2375,21 @@ class WhatsAppService
             }
         }
 
-        if (empty($highlights) && !empty($property->descricao)) {
-            $highlights = preg_split('/[\r\n]+/', strip_tags($property->descricao));
-        }
-
-        $cleaned = array_values(array_filter(array_map('trim', $highlights)));
+        $cleaned = array_values(array_filter(array_map(
+            fn ($value) => $this->cleanPropertyText((string) $value),
+            $highlights
+        )));
 
         return array_slice($cleaned, 0, 3);
+    }
+
+    private function cleanPropertyText(string $value): string
+    {
+        $value = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $value = strip_tags($value);
+        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+
+        return trim($value);
     }
 
     private function buildLocalFallbackMessage(?Lead $lead): string
