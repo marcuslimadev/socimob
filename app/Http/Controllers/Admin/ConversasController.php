@@ -924,6 +924,10 @@ class ConversasController extends Controller
             $base = $requestBase;
         }
 
+        if ($base !== '' && !str_contains($base, 'localhost') && str_starts_with($base, 'http://')) {
+            $base = 'https://' . substr($base, 7);
+        }
+
         return $base . '/' . ltrim($storageUrl, '/');
     }
     
