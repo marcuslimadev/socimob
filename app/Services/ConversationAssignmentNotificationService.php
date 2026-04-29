@@ -41,6 +41,34 @@ class ConversationAssignmentNotificationService
         );
     }
 
+    public function notifyAiConversationStarted(Conversa $conversa, ?Lead $lead = null): ?Notification
+    {
+        $tenantId = (int) ($conversa->tenant_id ?: $lead?->tenant_id);
+        if ($tenantId <= 0) {
+            return null;
+        }
+
+        $distributor = $this->resolveDistributionUser($tenantId);
+        if (!$distributor) {
+            Log::warning('[ConversationAssignmentNotification] Nenhum distribuidor ativo encontrado para novo contato IA', [
+                'tenant_id' => $tenantId,
+                'conversa_id' => $conversa->id,
+                'lead_id' => $lead?->id ?: $conversa->lead_id,
+            ]);
+
+            return null;
+        }
+
+        return $this->createConversationNotification(
+            $distributor,
+            $conversa,
+            $lead,
+            'ai_conversation_started',
+            'Novo contato com a IA',
+            $this->buildAiStartedMessage($lead, $conversa)
+        );
+    }
+
     public function notifyAssigned(Conversa $conversa, User $assignee, ?Lead $lead = null, ?User $assignedBy = null): ?Notification
     {
         $tenantId = (int) ($conversa->tenant_id ?: $lead?->tenant_id ?: $assignee->tenant_id);
@@ -138,6 +166,14 @@ class ConversationAssignmentNotificationService
         $phone = $lead?->telefone ?: $conversa->telefone;
 
         return trim($name . ($phone ? " ({$phone})" : '') . ' está aguardando distribuição no chat.');
+    }
+
+    private function buildAiStartedMessage(?Lead $lead, Conversa $conversa): string
+    {
+        $name = $this->leadName($lead);
+        $phone = $lead?->telefone ?: $conversa->telefone;
+
+        return trim($name . ($phone ? " ({$phone})" : '') . ' iniciou conversa com a IA.');
     }
 
     private function buildAssignedMessage(?Lead $lead, Conversa $conversa, ?User $assignedBy): string

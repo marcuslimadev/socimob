@@ -185,6 +185,10 @@ class WhatsAppService
                 'status' => 'received'
             ]);
 
+            $isFirstIncomingMessage = $conversa->mensagens()
+                ->where('direction', 'incoming')
+                ->count() === 1;
+
             if ($channel === 'whatsapp') {
                 $code = trim((string) $body);
                 $shortLink = null;
@@ -262,6 +266,19 @@ class WhatsAppService
 
             if ($leadModel) {
                 $this->hydrateLeadProfileFromSnippet($leadModel, $body);
+
+                if ($isFirstIncomingMessage) {
+                    try {
+                        app(ConversationAssignmentNotificationService::class)
+                            ->notifyAiConversationStarted($conversa->fresh(['lead']) ?: $conversa, $leadModel);
+                    } catch (\Throwable $e) {
+                        Log::warning('[WhatsAppService] Falha ao notificar primeiro contato com IA', [
+                            'conversa_id' => $conversa->id,
+                            'lead_id' => $leadModel->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
                 
                 Log::info('📋 Chamando handleIncomingDocument', [
                     'messageType' => $messageType,
@@ -2623,6 +2640,7 @@ class WhatsAppService
         // 1. Baixar e salvar localmente QUALQUER mídia recebida
         $localMediaUrl = $mediaUrl;
         $isRemoteMedia = !str_starts_with((string) $mediaUrl, '/storage/');
+        $mediaStoredForDocument = !$isRemoteMedia;
 
         if ($isRemoteMedia) {
             try {
@@ -2640,6 +2658,7 @@ class WhatsAppService
                     Log::info('Mídia salva localmente', ['local_path' => $localPath]);
                     $mensagem->update(['media_url' => $localPath]);
                     $localMediaUrl = $localPath;
+                    $mediaStoredForDocument = true;
                 } else {
                     Log::error('Falha ao baixar mídia', ['url' => $mediaUrl, 'error' => $mediaData['error'] ?? '']);
                 }
@@ -2648,41 +2667,41 @@ class WhatsAppService
             }
         }
 
-        // 2. Para PDFs e imagens, criar LeadDocument (para o painel de documentos do lead)
-        $isPdf = $mediaType && stripos($mediaType, 'pdf') !== false;
-        $isValidImage = $mediaType && (
-            stripos($mediaType, 'image/jpeg') !== false ||
-            stripos($mediaType, 'image/jpg') !== false ||
-            stripos($mediaType, 'image/png') !== false
-        );
-
-        if (!$isPdf && !$isValidImage) {
-            $path = parse_url($mediaUrl, PHP_URL_PATH) ?: '';
-            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-            $isPdf = ($ext === 'pdf');
-            $isValidImage = in_array($ext, ['jpg', 'jpeg', 'png']);
+        if (!$mediaStoredForDocument) {
+            return;
         }
 
-        if ($isPdf || $isValidImage) {
-            $path = parse_url($mediaUrl, PHP_URL_PATH) ?? '';
-            $nomeArquivo = basename($path);
-            if (!$nomeArquivo) {
-                $ext = $isPdf ? 'pdf' : 'jpg';
-                $nomeArquivo = 'documento_' . date('YmdHis') . '.' . $ext;
-            }
+        // 2. Registrar todo anexo recebido no gerenciador do cliente dentro do chat/CRM.
+        $documentPath = parse_url((string) $localMediaUrl, PHP_URL_PATH)
+            ?: (parse_url((string) $mediaUrl, PHP_URL_PATH) ?: '');
+        $nomeArquivo = basename($documentPath);
+        $effectiveMimeType = $mediaType ?: ($mediaData['contentType'] ?? null) ?: 'application/octet-stream';
 
-            LeadDocument::create([
+        if (!$nomeArquivo || !str_contains($nomeArquivo, '.')) {
+            $extension = $this->extensionFromContentType($effectiveMimeType);
+            $nomeArquivo = 'anexo_chat_' . date('YmdHis') . "_{$mensagem->id}.{$extension}";
+        }
+
+        $guessedType = $this->guessDocumentType($messageBody);
+        $documentType = $guessedType !== 'documento'
+            ? $guessedType
+            : $this->documentTypeFromMessageType($messageType);
+
+        LeadDocument::query()->firstOrCreate(
+            [
                 'tenant_id' => $conversa->tenant_id,
                 'lead_id' => $lead->id,
-                'conversa_id' => $conversa->id,
                 'mensagem_id' => $mensagem->id,
+            ],
+            [
+                'conversa_id' => $conversa->id,
                 'nome' => $nomeArquivo,
-                'tipo' => $this->guessDocumentType($messageBody),
-                'mime_type' => $mediaType ?? 'application/octet-stream',
+                'tipo' => $documentType,
+                'mime_type' => $effectiveMimeType,
                 'arquivo_url' => $localMediaUrl,
-                'status' => 'pendente',
-            ]);
-        }
+                'status' => 'recebido_chat',
+            ]
+        );
     }
 
     private function downloadIncomingMedia(string $mediaUrl, ?string $source = null): array
@@ -2866,6 +2885,16 @@ class WhatsAppService
         }
 
         return 'documento';
+    }
+
+    private function documentTypeFromMessageType(?string $messageType): string
+    {
+        return match (strtolower((string) $messageType)) {
+            'image', 'photo', 'picture', 'sticker' => 'foto_chat',
+            'audio', 'voice' => 'audio_chat',
+            'video' => 'video_chat',
+            default => 'arquivo_chat',
+        };
     }
     
     /**

@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\Conversa;
+use App\Models\LeadDocument;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\ConversationAssignmentNotificationService;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ConversasController extends Controller
 {
@@ -689,6 +692,239 @@ class ConversasController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Enviar foto ou arquivo pelo chat e anexar automaticamente ao lead.
+     */
+    public function enviarMidia(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'arquivo' => 'required|file|mimes:jpg,jpeg,png,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,csv|max:51200',
+                'content' => 'nullable|string|max:1024',
+            ]);
+
+            $user = $request->user();
+            $tenantId = $request->attributes->get('tenant_id');
+
+            $conversa = DB::table('conversas')
+                ->where('id', $id)
+                ->where('tenant_id', $tenantId)
+                ->first();
+
+            if (!$conversa) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Conversa não encontrada'
+                ], 404);
+            }
+
+            if ($this->isBrokerRole($user->role ?? null)) {
+                if (!$this->brokerCanAccessConversation($user, $conversa)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Você só pode responder conversas atribuídas a você'
+                    ], 403);
+                }
+            } elseif (!empty($user?->id)) {
+                DB::table('conversas')
+                    ->where('id', $id)
+                    ->update([
+                        'corretor_id' => $user->id,
+                        'updated_at' => Carbon::now(),
+                    ]);
+                $conversa->corretor_id = $user->id;
+            }
+
+            $file = $request->file('arquivo');
+            $caption = trim((string) $request->input('content', ''));
+            $originalName = $file->getClientOriginalName() ?: 'arquivo';
+            $extension = strtolower($file->getClientOriginalExtension() ?: pathinfo($originalName, PATHINFO_EXTENSION));
+            $mimeType = $file->getClientMimeType() ?: 'application/octet-stream';
+            $messageType = $this->chatMessageTypeFromMime($mimeType, $extension);
+
+            $leadFolder = $conversa->lead_id ? "lead-{$conversa->lead_id}" : "conversa-{$conversa->id}";
+            $baseName = Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) ?: 'arquivo';
+            $safeName = $baseName . '-' . now()->format('YmdHis') . '-' . Str::lower(Str::random(6)) . ($extension ? ".{$extension}" : '');
+            $path = $file->storeAs("chat/tenant-{$tenantId}/{$leadFolder}", $safeName, 'public');
+            $storageUrl = Storage::disk('public')->url($path);
+            $publicMediaUrl = $this->absoluteMediaUrl($request, $storageUrl);
+
+            $payload = [
+                'tenant_id' => $tenantId,
+                'conversa_id' => $id,
+                'direction' => 'outgoing',
+                'message_type' => $messageType,
+                'content' => $caption,
+                'media_url' => $storageUrl,
+                'status' => 'queued',
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ];
+
+            if (Schema::hasColumn('mensagens', 'user_id')) {
+                $payload['user_id'] = $user?->id;
+            }
+
+            $mensagemId = DB::table('mensagens')->insertGetId($payload);
+
+            if (!empty($conversa->lead_id)) {
+                LeadDocument::create([
+                    'tenant_id' => $tenantId,
+                    'lead_id' => $conversa->lead_id,
+                    'conversa_id' => $conversa->id,
+                    'mensagem_id' => $mensagemId,
+                    'nome' => $originalName,
+                    'tipo' => $messageType === 'image' ? 'foto_chat' : 'arquivo_chat',
+                    'mime_type' => $mimeType,
+                    'arquivo_url' => $storageUrl,
+                    'status' => 'enviado_chat',
+                ]);
+            }
+
+            try {
+                $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
+                if ($driver === 'meta_cloud') {
+                    $resultado = app(MetaCloudGateway::class)->sendMedia(
+                        $conversa->telefone,
+                        $caption !== '' ? $caption : null,
+                        $publicMediaUrl,
+                        (int) $tenantId
+                    );
+                } else {
+                    $gateway = $driver === 'evolution'
+                        ? app(EvolutionApiService::class)
+                        : app(TwilioService::class);
+
+                    $resultado = $gateway->sendMedia(
+                        $conversa->telefone,
+                        $caption,
+                        $publicMediaUrl
+                    );
+                }
+
+                if (empty($resultado['success'])) {
+                    DB::table('mensagens')
+                        ->where('id', $mensagemId)
+                        ->update([
+                            'status' => 'failed',
+                            'updated_at' => Carbon::now(),
+                        ]);
+
+                    Log::error('Falha ao enviar mídia via provider WhatsApp', [
+                        'mensagem_id' => $mensagemId,
+                        'to' => $conversa->telefone,
+                        'driver' => $driver,
+                        'http_code' => $resultado['http_code'] ?? null,
+                        'error' => $resultado['error'] ?? null,
+                        'response' => $resultado['response'] ?? null,
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Falha ao enviar arquivo via provider de WhatsApp',
+                        'provider' => [
+                            'driver' => $driver,
+                            'http_code' => $resultado['http_code'] ?? null,
+                            'error' => $resultado['error'] ?? null,
+                        ]
+                    ], 502);
+                }
+
+                DB::table('mensagens')
+                    ->where('id', $mensagemId)
+                    ->update([
+                        'message_sid' => $resultado['message_sid'] ?? null,
+                        'status' => 'sent',
+                        'sent_at' => Carbon::now(),
+                        'updated_at' => Carbon::now(),
+                    ]);
+            } catch (\Exception $e) {
+                DB::table('mensagens')
+                    ->where('id', $mensagemId)
+                    ->update([
+                        'status' => 'failed',
+                        'updated_at' => Carbon::now(),
+                    ]);
+
+                Log::error('Erro ao enviar mídia via provider de WhatsApp', [
+                    'mensagem_id' => $mensagemId,
+                    'erro' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erro ao enviar arquivo via provider de WhatsApp'
+                ], 502);
+            }
+
+            DB::table('conversas')
+                ->where('id', $id)
+                ->update([
+                    'ultima_atividade' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ]);
+
+            $mensagem = DB::table('mensagens')->find($mensagemId);
+
+            return response()->json([
+                'success' => true,
+                'data' => $mensagem,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Arquivo inválido',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Erro ao enviar mídia no chat', [
+                'conversa_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao enviar arquivo',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function chatMessageTypeFromMime(?string $mimeType, ?string $extension = null): string
+    {
+        $mime = strtolower((string) $mimeType);
+        $ext = strtolower((string) $extension);
+
+        if (str_starts_with($mime, 'image/')) {
+            return 'image';
+        }
+
+        if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            return 'image';
+        }
+
+        return 'document';
+    }
+
+    private function absoluteMediaUrl(Request $request, string $storageUrl): string
+    {
+        if (Str::startsWith($storageUrl, ['http://', 'https://'])) {
+            return $storageUrl;
+        }
+
+        $requestBase = rtrim($request->getSchemeAndHttpHost(), '/');
+        $configBase = rtrim((string) config('app.url'), '/');
+        $base = ($requestBase !== '' && !str_contains($requestBase, 'localhost'))
+            ? $requestBase
+            : $configBase;
+
+        if ($base === '') {
+            $base = $requestBase;
+        }
+
+        return $base . '/' . ltrim($storageUrl, '/');
     }
     
     /**

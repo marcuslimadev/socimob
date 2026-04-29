@@ -44,6 +44,16 @@ interface Property {
   descricao?: string;
 }
 
+interface AdTexts {
+  badge: string;
+  title: string;
+  location: string;
+  price: string;
+  specs: string;
+  note: string;
+  cta: string;
+}
+
 const STORY_WIDTH = 1080;
 const STORY_HEIGHT = 1920;
 
@@ -172,6 +182,16 @@ const getLocationText = (property: Property) =>
     .filter(Boolean)
     .join(', ');
 
+const buildDefaultAdTexts = (property: Property): AdTexts => ({
+  badge: getTransactionLabel(getTransactionType(property)),
+  title: getPropertyTitle(property),
+  location: getLocationText(property) || 'Localização sob consulta',
+  price: formatCurrency(getPrice(property)),
+  specs: [...getPrimarySpecs(property), ...getSecondarySpecs(property)].slice(0, 5).join(' • '),
+  note: (property.description || property.descricao || '').replace(/<[^>]+>/g, '').slice(0, 130),
+  cta: 'Fale com nossa IA',
+});
+
 const splitLines = (text: string, maxLength: number, maxLines: number) => {
   const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
@@ -297,6 +317,7 @@ interface StoryPreviewCardProps {
   property: Property;
   tenant: TenantBranding | null;
   photos: string[];
+  texts?: AdTexts;
   storyRef?: Ref<HTMLDivElement>;
   className?: string;
 }
@@ -305,18 +326,27 @@ interface ExportStoryState {
   property: Property;
   photos: string[];
   logoSrc: string;
+  texts?: AdTexts;
 }
 
-function StoryPreviewCard({ property, tenant, photos, storyRef, className }: StoryPreviewCardProps) {
+function StoryPreviewCard({ property, tenant, photos, texts, storyRef, className }: StoryPreviewCardProps) {
   const [renderablePhotos, setRenderablePhotos] = useState<string[]>(photos);
   const [showLogo, setShowLogo] = useState(true);
   const photoSignature = photos.join('||');
-  const thumbPhotos = renderablePhotos.slice(1, 3);
+  const thumbPhotos = renderablePhotos.slice(1, 5);
   const transactionType = getTransactionType(property);
-  const primarySpecs = getPrimarySpecs(property);
+  const primarySpecs = texts?.specs
+    ? texts.specs.split(/[•|]/).map((item) => item.trim()).filter(Boolean)
+    : getPrimarySpecs(property);
   const secondarySpecs = getSecondarySpecs(property);
   const logoSrc = tenant?.logo_url || tenant?.logo;
   const tenantPhone = formatPhone(tenant?.tenant_phone || tenant?.contact_phone);
+  const badgeText = texts?.badge || getTransactionLabel(transactionType);
+  const titleText = texts?.title || getPropertyTitle(property);
+  const locationText = texts?.location || getLocationText(property) || 'Localização sob consulta';
+  const priceText = texts?.price || formatCurrency(getPrice(property));
+  const noteText = texts?.note?.trim();
+  const ctaText = texts?.cta?.trim();
 
   useEffect(() => {
     setRenderablePhotos(photos);
@@ -356,7 +386,7 @@ function StoryPreviewCard({ property, tenant, photos, storyRef, className }: Sto
 
       <div className="absolute inset-x-4 top-4 flex items-center justify-start">
         <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${getTransactionBadge(transactionType)}`}>
-          {getTransactionLabel(transactionType)}
+          {badgeText}
         </span>
       </div>
 
@@ -386,14 +416,15 @@ function StoryPreviewCard({ property, tenant, photos, storyRef, className }: Sto
           </div>
         </div>
         <h3 className="line-clamp-2 text-[1.38rem] font-bold leading-[1.08] text-white">
-          {getPropertyTitle(property)}
+          {titleText}
         </h3>
         <p className="mt-2 line-clamp-2 text-sm text-white/72">
-          {getLocationText(property) || 'Localização sob consulta'}
+          {locationText}
         </p>
         <p className="mt-3 text-[1.7rem] font-bold leading-none text-white">
-          {formatCurrency(getPrice(property))}
+          {priceText}
         </p>
+        {noteText && <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-white/72">{noteText}</p>}
         {primarySpecs.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2 text-[12px] text-white/78">
             {primarySpecs.map((spec) => <span key={spec}>{spec}</span>)}
@@ -409,7 +440,7 @@ function StoryPreviewCard({ property, tenant, photos, storyRef, className }: Sto
             {thumbPhotos.map((photo, index) => (
               <div
                 key={`${property.id}-${photo}-${index}`}
-                className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-[0_10px_22px_rgba(15,23,42,0.22),0_2px_6px_rgba(15,23,42,0.12)]"
+                className="relative aspect-[4/3] overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-[0_10px_22px_rgba(15,23,42,0.22),0_2px_6px_rgba(15,23,42,0.12)]"
               >
                 <img
                   src={photo}
@@ -422,6 +453,7 @@ function StoryPreviewCard({ property, tenant, photos, storyRef, className }: Sto
             ))}
           </div>
         )}
+        {ctaText && <p className="mt-3 rounded-full bg-white px-3 py-2 text-center text-[12px] font-bold text-[#07111d]">{ctaText}</p>}
       </div>
     </div>
   );
@@ -433,6 +465,9 @@ export default function PropertyAds() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [downloadingPropertyId, setDownloadingPropertyId] = useState<number | null>(null);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+  const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
+  const [adTexts, setAdTexts] = useState<AdTexts | null>(null);
   const [exportStory, setExportStory] = useState<ExportStoryState | null>(null);
   const exportStoryRef = useRef<HTMLDivElement | null>(null);
   const exportObjectUrlsRef = useRef<string[]>([]);
@@ -441,6 +476,28 @@ export default function PropertyAds() {
     fetchProperties();
     fetchTenantBranding().then(setTenant).catch(() => null);
   }, []);
+
+  const selectedProperty = useMemo(
+    () => properties.find((property) => property.id === selectedPropertyId) || properties[0] || null,
+    [properties, selectedPropertyId],
+  );
+
+  useEffect(() => {
+    if (!properties.length || selectedPropertyId) return;
+    setSelectedPropertyId(properties[0].id);
+  }, [properties, selectedPropertyId]);
+
+  useEffect(() => {
+    if (!selectedProperty) {
+      setSelectedPhotos([]);
+      setAdTexts(null);
+      return;
+    }
+
+    const photos = normalizePhotos(selectedProperty);
+    setSelectedPhotos(photos.slice(0, Math.min(3, photos.length)));
+    setAdTexts(buildDefaultAdTexts(selectedProperty));
+  }, [selectedProperty?.id]);
 
   const fetchProperties = async () => {
     try {
@@ -835,14 +892,14 @@ export default function PropertyAds() {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   };
 
-  const handleDownloadStory = async (property: Property) => {
+  const handleDownloadStory = async (property: Property, photosOverride?: string[], textsOverride?: AdTexts | null) => {
     let restoreRemoteFonts = () => undefined;
     try {
       setDownloadingPropertyId(property.id);
       cleanupExportAssets();
 
       const objectUrls: string[] = [];
-      const normalizedPhotos = normalizePhotos(property).slice(0, 3);
+      const normalizedPhotos = (photosOverride?.length ? photosOverride : normalizePhotos(property)).slice(0, 5);
       const resolvedPhotos = await Promise.all(
         normalizedPhotos.map((photo) => resolveAssetUrl(photo, objectUrls)),
       );
@@ -854,6 +911,7 @@ export default function PropertyAds() {
         property,
         photos: resolvedPhotos.filter(Boolean),
         logoSrc: resolvedLogoSrc || tenantLogoSrc || '',
+        texts: textsOverride || undefined,
       });
 
       await waitForNextPaint();
@@ -899,6 +957,48 @@ export default function PropertyAds() {
     getCity(prop).toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
+  const allSelectedPhotos = selectedProperty ? normalizePhotos(selectedProperty) : [];
+  const selectedPhotoSet = useMemo(() => new Set(selectedPhotos), [selectedPhotos]);
+  const aiWhatsappLink = useMemo(() => {
+    const rawPhone = tenant?.whatsapp_phone || tenant?.tenant_phone || tenant?.contact_phone || '';
+    let digits = rawPhone.replace(/\D/g, '');
+    if (digits.length === 10 || digits.length === 11) {
+      digits = `55${digits}`;
+    }
+
+    const ref = selectedProperty?.referencia || selectedProperty?.codigo || String(selectedProperty?.id || '');
+    const message = `Olá, quero atendimento sobre o imóvel ${ref || getPropertyTitle(selectedProperty || {} as Property)}.`;
+
+    return digits ? `https://wa.me/${digits}?text=${encodeURIComponent(message)}` : '';
+  }, [tenant, selectedProperty]);
+
+  const shareText = useMemo(() => {
+    if (!selectedProperty || !adTexts) return '';
+
+    const ref = selectedProperty.referencia || selectedProperty.codigo || selectedProperty.id;
+    const lines = [
+      `*${adTexts.title}*`,
+      adTexts.location,
+      adTexts.price,
+      adTexts.specs,
+      ref ? `Ref: ${ref}` : '',
+      aiWhatsappLink ? `Atendimento via IA: ${aiWhatsappLink}` : '',
+    ].filter(Boolean);
+
+    return lines.join('\n');
+  }, [selectedProperty, adTexts, aiWhatsappLink]);
+
+  const copyShareText = async () => {
+    if (!shareText) return;
+
+    try {
+      await navigator.clipboard.writeText(shareText);
+      toast.success('Texto copiado');
+    } catch {
+      toast.error('Não foi possível copiar o texto');
+    }
+  };
+
   return (
     <div className="flex">
       <Sidebar />
@@ -911,7 +1011,7 @@ export default function PropertyAds() {
           <div className="page-header mb-8">
             <div>
               <h1 className="page-title mb-2">Propaganda de Imóveis</h1>
-              <p className="page-subtitle">Gere uma peça vertical com visual mais limpo e focado no cliente final</p>
+              <p className="page-subtitle">Escolha o imóvel, ajuste fotos e edite os textos antes de gerar a peça.</p>
             </div>
           </div>
 
@@ -947,6 +1047,143 @@ export default function PropertyAds() {
             </div>
           </div>
 
+          {selectedProperty && adTexts && (
+            <div className="mb-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+              <div className="space-y-6">
+                <div className="glass-panel rounded-2xl p-5">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-300">Imóvel selecionado</p>
+                      <h2 className="mt-1 text-xl font-bold text-foreground">{getPropertyTitle(selectedProperty)}</h2>
+                    </div>
+                    <select
+                      value={selectedProperty.id}
+                      onChange={(event) => setSelectedPropertyId(Number(event.target.value))}
+                      className="min-w-[260px] rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm font-semibold text-foreground outline-none focus:ring-2 focus:ring-sky-500"
+                    >
+                      {properties.map((property) => (
+                        <option key={property.id} value={property.id} className="bg-slate-900">
+                          {getPropertyTitle(property)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {[
+                      { key: 'badge', label: 'Etiqueta' },
+                      { key: 'title', label: 'Título' },
+                      { key: 'location', label: 'Localização' },
+                      { key: 'price', label: 'Valor' },
+                      { key: 'specs', label: 'Características' },
+                      { key: 'cta', label: 'Chamada' },
+                    ].map((field) => (
+                      <label key={field.key} className={field.key === 'specs' ? 'md:col-span-2' : ''}>
+                        <span className="mb-1 block text-xs font-semibold text-muted-foreground">{field.label}</span>
+                        <input
+                          value={String(adTexts[field.key as keyof AdTexts] || '')}
+                          onChange={(event) => setAdTexts((current) => current ? { ...current, [field.key]: event.target.value } : current)}
+                          className="w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-sky-500"
+                        />
+                      </label>
+                    ))}
+                    <label className="md:col-span-2">
+                      <span className="mb-1 block text-xs font-semibold text-muted-foreground">Texto curto</span>
+                      <textarea
+                        value={adTexts.note}
+                        onChange={(event) => setAdTexts((current) => current ? { ...current, note: event.target.value } : current)}
+                        rows={3}
+                        className="w-full resize-none rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-sky-500"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="glass-panel rounded-2xl p-5">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-300">Fotos</p>
+                      <h3 className="mt-1 text-lg font-bold text-foreground">{selectedPhotos.length} selecionada(s)</h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPhotos(allSelectedPhotos.slice(0, 5))}
+                      className="rounded-xl border border-white/15 bg-white/8 px-3 py-2 text-sm font-semibold text-white hover:bg-white/12"
+                    >
+                      Usar primeiras 5
+                    </button>
+                  </div>
+
+                  {allSelectedPhotos.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-white/15 bg-white/5 px-4 py-6 text-center text-sm text-muted-foreground">Este imóvel não tem fotos cadastradas.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                      {allSelectedPhotos.map((photo, index) => {
+                        const isSelected = selectedPhotoSet.has(photo);
+                        return (
+                          <button
+                            key={`${photo}-${index}`}
+                            type="button"
+                            onClick={() => {
+                              setSelectedPhotos((current) =>
+                                current.includes(photo)
+                                  ? current.filter((item) => item !== photo)
+                                  : [...current, photo].slice(0, 5)
+                              );
+                            }}
+                            className={`overflow-hidden rounded-2xl border text-left transition ${
+                              isSelected ? 'border-sky-400 bg-sky-500/15 ring-2 ring-sky-400/30' : 'border-white/10 bg-white/5 hover:bg-white/10'
+                            }`}
+                          >
+                            <img src={photo} alt={`Foto ${index + 1}`} className="aspect-[4/3] w-full object-cover" />
+                            <div className="flex items-center justify-between px-2 py-1.5 text-xs">
+                              <span className="font-semibold text-foreground">Foto {index + 1}</span>
+                              {isSelected && <span className="rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-bold text-white">{selectedPhotos.indexOf(photo) + 1}</span>}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="glass-panel rounded-2xl p-5">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-300">Texto para divulgação</p>
+                      <h3 className="mt-1 text-lg font-bold text-foreground">Resumo com link da IA</h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={copyShareText}
+                      className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                    >
+                      Copiar texto
+                    </button>
+                  </div>
+                  <textarea
+                    value={shareText}
+                    readOnly
+                    rows={7}
+                    className="w-full resize-none rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-sm leading-6 text-foreground outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="glass-panel rounded-2xl p-5 xl:sticky xl:top-28 xl:self-start">
+                <StoryPreviewCard property={selectedProperty} tenant={tenant} photos={selectedPhotos} texts={adTexts} />
+                <button
+                  onClick={() => handleDownloadStory(selectedProperty, selectedPhotos, adTexts)}
+                  disabled={downloadingPropertyId === selectedProperty.id || selectedPhotos.length === 0}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {downloadingPropertyId === selectedProperty.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                  {downloadingPropertyId === selectedProperty.id ? 'Gerando...' : 'Gerar propaganda'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {isLoading ? (
             <div className="flex justify-center py-20">
               <Loader2 className="h-12 w-12 animate-spin text-sky-500" />
@@ -973,12 +1210,16 @@ export default function PropertyAds() {
                       <StoryPreviewCard property={property} tenant={tenant} photos={photos} />
 
                       <button
-                        onClick={() => handleDownloadStory(property)}
+                        onClick={() => setSelectedPropertyId(property.id)}
                         disabled={downloadingPropertyId === property.id}
-                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/8 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-70"
+                        className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
+                          selectedProperty?.id === property.id
+                            ? 'border-sky-400 bg-sky-500/25'
+                            : 'border-white/12 bg-white/8 hover:bg-white/12'
+                        }`}
                       >
-                        {downloadingPropertyId === property.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                        {downloadingPropertyId === property.id ? 'Gerando...' : 'Baixar'}
+                        <Image size={16} />
+                        {selectedProperty?.id === property.id ? 'Selecionado' : 'Editar propaganda'}
                       </button>
                     </div>
                   </motion.div>
@@ -995,6 +1236,7 @@ export default function PropertyAds() {
             property={exportStory.property}
             tenant={exportStory.logoSrc ? { ...tenant, logo_url: exportStory.logoSrc, logo: exportStory.logoSrc } : tenant}
             photos={exportStory.photos}
+            texts={exportStory.texts}
             className="relative aspect-[9/16] w-[330px] overflow-hidden rounded-[30px] border border-white/15 bg-[#0a1320] [font-family:Arial,sans-serif]"
           />
         </div>

@@ -491,6 +491,7 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
         $router->get('/conversas/{id}', 'App\Http\Controllers\Admin\ConversasController@show');
         $router->get('/conversas/{id}/mensagens', 'App\Http\Controllers\Admin\ConversasController@mensagens');
         $router->post('/conversas/{id}/mensagens', 'App\Http\Controllers\Admin\ConversasController@enviarMensagem');
+        $router->post('/conversas/{id}/mensagens/media', 'App\Http\Controllers\Admin\ConversasController@enviarMidia');
         // Proxy de mídia (Twilio) – também exposto sem auth em /api/conversas/media/proxy
         $router->get('/conversas/media/proxy', 'App\Http\Controllers\Admin\ConversasController@proxyMedia');
         $router->get('/mensagens/{id}/media', 'App\Http\Controllers\Admin\MensagemMediaController@show');

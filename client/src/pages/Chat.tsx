@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, type ChangeEvent } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -22,6 +22,9 @@ import {
   User,
   RefreshCw,
   FileText,
+  FolderOpen,
+  Download,
+  Upload,
   ExternalLink,
   Info,
   Tag,
@@ -100,6 +103,16 @@ interface AssignableUser {
   role?: string;
 }
 
+interface ClientFile {
+  id: number;
+  nome: string;
+  tipo?: string | null;
+  mime_type?: string | null;
+  arquivo_url: string;
+  status?: string | null;
+  created_at: string;
+}
+
 type LeadStatus = 'novo' | 'em_atendimento' | 'qualificado' | 'proposta' | 'fechado' | 'perdido';
 type ContactFilter = 'all' | 'unread' | 'priority';
 const CONTACTS_BATCH_SIZE = 40;
@@ -135,6 +148,10 @@ export default function Chat() {
   const [isLoadingAssignableUsers, setIsLoadingAssignableUsers] = useState(false);
   const [isAssigningConversation, setIsAssigningConversation] = useState(false);
   const [isReprocessando, setIsReprocessando] = useState(false);
+  const [clientFiles, setClientFiles] = useState<ClientFile[]>([]);
+  const [isLoadingClientFiles, setIsLoadingClientFiles] = useState(false);
+  const [isClientFilesOpen, setIsClientFilesOpen] = useState(true);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
 
   const handleReprocessarPendentes = async () => {
     try {
@@ -151,6 +168,7 @@ export default function Chat() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const sidebarScrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -474,6 +492,22 @@ export default function Chat() {
     };
   }, [selectedContactId]);
 
+  useEffect(() => {
+    const leadId = selectedContact?.leadId;
+    if (!leadId) {
+      setClientFiles([]);
+      return;
+    }
+
+    void fetchClientFiles(leadId);
+
+    const intervalId = window.setInterval(() => {
+      void fetchClientFiles(leadId, { silent: true });
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, [selectedContact?.leadId]);
+
   const getInitials = (name: string) => {
     if (!name) return '?';
     const parts = name.trim().split(' ');
@@ -770,6 +804,41 @@ export default function Chat() {
     }
   };
 
+  const fetchClientFiles = async (leadId: number, options: { silent?: boolean } = {}) => {
+    if (!leadId) return;
+
+    try {
+      if (!options.silent) {
+        setIsLoadingClientFiles(true);
+      }
+
+      const response = await api.get(`/leads/${leadId}/documents`);
+      const files = Array.isArray(response.data?.data) ? response.data.data : [];
+      setClientFiles(
+        files
+          .filter((item: any) => item && item.id != null && item.arquivo_url)
+          .map((item: any) => ({
+            id: Number(item.id),
+            nome: String(item.nome || 'Arquivo'),
+            tipo: item.tipo || null,
+            mime_type: item.mime_type || null,
+            arquivo_url: String(item.arquivo_url),
+            status: item.status || null,
+            created_at: item.created_at || new Date().toISOString(),
+          }))
+      );
+    } catch (error) {
+      console.error('Erro ao carregar arquivos do cliente:', error);
+      if (!options.silent) {
+        toast.error('Erro ao carregar arquivos do cliente');
+      }
+    } finally {
+      if (!options.silent) {
+        setIsLoadingClientFiles(false);
+      }
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!messageText.trim() || !selectedContactId || isSending) return;
 
@@ -814,6 +883,55 @@ export default function Chat() {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
     } finally {
       setIsSending(false);
+      inputRef.current?.focus();
+    }
+  };
+
+  const handleAttachmentChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedContactId || isSending || isUploadingAttachment) {
+      return;
+    }
+
+    const caption = messageText.trim();
+    const formData = new FormData();
+    formData.append('arquivo', file);
+    if (caption) {
+      formData.append('content', caption);
+    }
+
+    setIsUploadingAttachment(true);
+    setIsSending(true);
+    setMessageText('');
+
+    try {
+      const response = await api.post(`/admin/conversas/${selectedContactId}/mensagens/media`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (!response.data.success) {
+        throw new Error('Falha ao enviar arquivo');
+      }
+
+      toast.success('Arquivo enviado');
+      await fetchMessages(selectedContactId);
+      void fetchContacts({ silent: true });
+      if (selectedContact?.leadId) {
+        void fetchClientFiles(selectedContact.leadId, { silent: true });
+      }
+      scrollToBottom('auto');
+    } catch (error: any) {
+      console.error('Erro ao enviar arquivo:', error);
+      toast.error(error?.response?.data?.message || 'Erro ao enviar arquivo');
+      if (caption) {
+        setMessageText(caption);
+      }
+    } finally {
+      setIsUploadingAttachment(false);
+      setIsSending(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       inputRef.current?.focus();
     }
   };
@@ -1351,6 +1469,26 @@ export default function Chat() {
     return `${storageBaseUrl}/${url}`;
   };
 
+  const clientImageFiles = useMemo(
+    () => clientFiles.filter((file) => file.mime_type?.startsWith('image/') || /\.(png|jpe?g|webp|gif)(\?|$|#)/i.test(file.arquivo_url)),
+    [clientFiles]
+  );
+
+  const clientDocumentFiles = useMemo(
+    () => clientFiles.filter((file) => !clientImageFiles.some((image) => image.id === file.id)),
+    [clientFiles, clientImageFiles]
+  );
+
+  const formatClientFileDate = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   const getMessageDisplayText = (message: Message) => {
     if (message.messageType === 'audio') {
       return message.text || 'Áudio';
@@ -1385,6 +1523,120 @@ export default function Chat() {
       context: 'Cliente',
     };
   };
+
+  const renderClientFileManager = () => (
+    <aside className="hidden w-[330px] flex-shrink-0 flex-col border-l border-[#ffc51a] bg-[#f8fafc] xl:flex">
+      <div className="border-b border-[#ffc51a] bg-white px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#617489]">Cliente</p>
+            <h3 className="mt-1 truncate text-base font-semibold text-[#132b4c]">Arquivos e fotos</h3>
+            <p className="mt-1 text-xs text-[#5a646f]">{clientFiles.length} item(ns) salvos neste atendimento</p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsClientFilesOpen(false)}
+            className="h-9 w-9 rounded-full text-[#617489] hover:bg-[#ececea] hover:text-[#132b4c]"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!selectedContactId || isUploadingAttachment}
+            className="h-9 flex-1 rounded-xl border border-[#2d6fab] bg-[#2d6fab] text-xs font-semibold text-white hover:bg-[#245b90] hover:text-white"
+          >
+            {isUploadingAttachment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+            Enviar
+          </Button>
+          {selectedContact?.leadId && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => void fetchClientFiles(selectedContact.leadId, { silent: false })}
+              disabled={isLoadingClientFiles}
+              className="h-9 rounded-xl border border-[#d5dde7] bg-white px-3 text-[#132b4c] hover:bg-[#ececea]"
+            >
+              <RefreshCw className={cn('h-4 w-4', isLoadingClientFiles && 'animate-spin')} />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="space-y-4 p-4">
+          {isLoadingClientFiles ? (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#d5dde7] bg-white py-10 text-sm text-[#5a646f]">
+              <Loader2 className="h-6 w-6 animate-spin text-[#2d6fab]" />
+              Carregando arquivos...
+            </div>
+          ) : clientFiles.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[#c8d3df] bg-white px-4 py-10 text-center">
+              <FolderOpen className="h-8 w-8 text-[#2d6fab]" />
+              <p className="text-sm font-semibold text-[#132b4c]">Nenhum anexo ainda</p>
+              <p className="text-xs leading-5 text-[#5a646f]">Sem documentos vinculados a este cliente.</p>
+            </div>
+          ) : (
+            <>
+              {clientImageFiles.length > 0 && (
+                <section>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#617489]">Fotos</p>
+                    <span className="rounded-full bg-[#2d6fab]/12 px-2 py-0.5 text-[11px] font-semibold text-[#2d6fab]">{clientImageFiles.length}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {clientImageFiles.map((file) => {
+                      const url = getMediaUrl(file.arquivo_url);
+                      return (
+                        <a key={file.id} href={url} target="_blank" rel="noopener noreferrer" className="group overflow-hidden rounded-2xl border border-[#d5dde7] bg-white">
+                          <img src={url} alt={file.nome} loading="lazy" className="aspect-square w-full object-cover transition group-hover:scale-[1.03]" />
+                          <div className="px-2 py-1.5">
+                            <p className="truncate text-[11px] font-semibold text-[#132b4c]">{file.nome}</p>
+                            <p className="text-[10px] text-[#7a838d]">{formatClientFileDate(file.created_at)}</p>
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {clientDocumentFiles.length > 0 && (
+                <section>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#617489]">Arquivos</p>
+                    <span className="rounded-full bg-[#132b4c]/10 px-2 py-0.5 text-[11px] font-semibold text-[#132b4c]">{clientDocumentFiles.length}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {clientDocumentFiles.map((file) => {
+                      const url = getMediaUrl(file.arquivo_url);
+                      return (
+                        <a key={file.id} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-2xl border border-[#d5dde7] bg-white p-3 transition hover:border-[#2d6fab] hover:bg-[#f2f7ff]">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#132b4c] text-white">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-[#132b4c]">{file.nome}</p>
+                            <p className="text-xs text-[#5a646f]">{file.tipo || file.mime_type || 'arquivo'} · {formatClientFileDate(file.created_at)}</p>
+                          </div>
+                          <Download className="h-4 w-4 flex-shrink-0 text-[#617489]" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+        </div>
+      </ScrollArea>
+    </aside>
+  );
 
   const renderChatLayout = () => (
     <div className="flex h-[100dvh] overflow-hidden bg-[radial-gradient(circle_at_12%_10%,rgba(45,111,171,0.10),transparent_28%),radial-gradient(circle_at_92%_16%,rgba(255,29,45,0.09),transparent_24%),radial-gradient(circle_at_66%_96%,rgba(255,197,26,0.12),transparent_30%),linear-gradient(180deg,#ffffff_0%,#fffdf8_100%)] text-[#f3f4f6]">
@@ -1576,7 +1828,18 @@ export default function Chat() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2"><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#ffc51a] bg-white text-[#132b4c] hover:bg-[#ececea]"><Phone className="h-4 w-4" /></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#ffc51a] bg-white text-[#132b4c] hover:bg-[#ececea]"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><DropdownMenuItem disabled={!canDeleteConversation || isDeletingConversation} variant="destructive" onSelect={(event) => { event.preventDefault(); if (!canDeleteConversation || isDeletingConversation) return; setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" />Excluir conversa</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setIsClientFilesOpen((prev) => !prev)}
+                          className="h-10 rounded-full border border-[#ffc51a] bg-white px-3 text-[#132b4c] hover:bg-[#ececea]"
+                        >
+                          <FolderOpen className="mr-2 h-4 w-4" />
+                          <span className="hidden lg:inline">Arquivos</span>
+                          {clientFiles.length > 0 && <span className="ml-2 rounded-full bg-[#2d6fab] px-1.5 py-0.5 text-[10px] font-bold text-white">{clientFiles.length > 9 ? '9+' : clientFiles.length}</span>}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#ffc51a] bg-white text-[#132b4c] hover:bg-[#ececea]"><Phone className="h-4 w-4" /></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-[#ffc51a] bg-white text-[#132b4c] hover:bg-[#ececea]"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><DropdownMenuItem disabled={!canDeleteConversation || isDeletingConversation} variant="destructive" onSelect={(event) => { event.preventDefault(); if (!canDeleteConversation || isDeletingConversation) return; setIsDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4" />Excluir conversa</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
                     </div>
                             {observacoesText && (
                               !observacoesHidden && (
@@ -1624,8 +1887,9 @@ export default function Chat() {
                               )
                             )}
                   </header>
-                  <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-                    <div className="absolute inset-0" style={{ backgroundImage: `radial-gradient(circle at 14% 12%, rgba(45,111,171,0.10), transparent 26%), radial-gradient(circle at 86% 14%, rgba(255,29,45,0.09), transparent 24%), radial-gradient(circle at 52% 100%, rgba(255,197,26,0.11), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,253,248,0.98)), url("${chatPatternDataUrl}")`, backgroundSize: 'auto, auto, auto, auto, 220px 220px' }} />
+                  <div className="flex min-h-0 flex-1 overflow-hidden">
+                    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+                      <div className="absolute inset-0" style={{ backgroundImage: `radial-gradient(circle at 14% 12%, rgba(45,111,171,0.10), transparent 26%), radial-gradient(circle at 86% 14%, rgba(255,29,45,0.09), transparent 24%), radial-gradient(circle at 52% 100%, rgba(255,197,26,0.11), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,253,248,0.98)), url("${chatPatternDataUrl}")`, backgroundSize: 'auto, auto, auto, auto, 220px 220px' }} />
                     <ScrollArea ref={scrollAreaRef} className="relative min-h-0 flex-1">
                       <div className="mx-auto flex h-full w-full max-w-[calc(100%-1rem)] flex-col gap-4 px-3 py-4 md:max-w-[calc(100%-2rem)] md:px-5 md:py-5">
                         {searchTerm && <div className="flex items-center justify-between gap-3 rounded-full border border-[#ffc51a] bg-white px-4 py-1.5 text-xs text-[#4d5560] shadow-[0_8px_20px_rgba(0,0,0,0.05)]"><span>Filtrando por <strong className="font-semibold text-[#132b4c]">"{searchTerm}"</strong></span><button type="button" onClick={() => setSearchTerm('')} className="font-semibold text-[#ff1d2d]">Limpar</button></div>}
@@ -1671,12 +1935,30 @@ export default function Chat() {
                       <div className="mx-auto flex w-full max-w-[calc(100%-1rem)] flex-col gap-1.5 md:max-w-[calc(100%-2rem)]">
                         <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#5a646f]"><span>{selectedContact.needsHumanIntervention ? 'Conversa marcada para atendimento humano.' : 'Resposta direta e contexto completo.'}</span><span>Enter para enviar</span></div>
                         <div className="flex items-end gap-2.5 rounded-[24px] border border-[#ffc51a] bg-white p-1.5 shadow-[0_14px_30px_rgba(0,0,0,0.06)]">
-                          <Button variant="ghost" size="icon" className="h-10 w-10 flex-shrink-0 rounded-full text-[#617489] hover:bg-[#ececea] hover:text-[#132b4c]"><Paperclip className="h-5 w-5" /></Button>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="hidden"
+                            accept="image/jpeg,image/png,image/webp,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+                            onChange={handleAttachmentChange}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isSending || isUploadingAttachment}
+                            className="h-10 w-10 flex-shrink-0 rounded-full text-[#617489] hover:bg-[#ececea] hover:text-[#132b4c] disabled:opacity-60"
+                          >
+                            {isUploadingAttachment ? <Loader2 className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
+                          </Button>
                           <div className="relative flex-1 rounded-[18px] border border-[#ffc51a] bg-[#f8fafc] px-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]"><input ref={inputRef} type="text" value={messageText} onChange={(e) => setMessageText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} placeholder="Escreva uma resposta objetiva..." className="h-10 w-full rounded-[18px] border-0 bg-transparent px-3 text-sm text-[#0a0a12] placeholder:text-[#8a8e93] outline-none" disabled={isSending} /></div>
                           <Button onClick={handleSendMessage} disabled={!messageText.trim() || isSending} size="icon" className="h-10 w-10 flex-shrink-0 rounded-full bg-[#ff1d2d] text-white shadow-[0_12px_24px_rgba(255,29,45,0.24)] hover:bg-[#e31626] disabled:shadow-none">{isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
                         </div>
                       </div>
                     </div>
+                    </div>
+                    {isClientFilesOpen && renderClientFileManager()}
                   </div>
                 </>
               )}
