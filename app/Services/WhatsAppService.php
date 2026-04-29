@@ -457,6 +457,9 @@ class WhatsAppService
                 $mensagemBoasVindas = $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property);
             } elseif ($this->hasEnoughDataForMatching($lead)) {
                 $mensagemBoasVindas = $this->buildCriteriaWelcomeMessage($assistantName, $nomePreferido, $lead);
+            } elseif ($this->hasAnyQualificationData($lead)) {
+                $mensagemBoasVindas = $this->buildNextQualificationMessage($lead)
+                    ?: $this->buildGenericWelcomeMessage($assistantName, $nomePreferido);
             } else {
                 $mensagemBoasVindas = $this->buildGenericWelcomeMessage($assistantName, $nomePreferido);
             }
@@ -586,6 +589,9 @@ class WhatsAppService
             $mensagemBoasVindas = $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property, $companyName);
         } elseif ($this->hasEnoughDataForMatching($lead)) {
             $mensagemBoasVindas = $this->buildCriteriaWelcomeMessage($assistantName, $nomePreferido, $lead, $companyName);
+        } elseif ($this->hasAnyQualificationData($lead)) {
+            $mensagemBoasVindas = $this->buildNextQualificationMessage($lead)
+                ?: $this->buildGenericWelcomeMessage($assistantName, $nomePreferido, $companyName);
         } else {
             $mensagemBoasVindas = $this->buildGenericWelcomeMessage($assistantName, $nomePreferido, $companyName);
         }
@@ -1066,6 +1072,19 @@ class WhatsAppService
         }
 
         return null;
+    }
+
+    private function hasAnyQualificationData(Lead $lead): bool
+    {
+        return !empty($lead->objetivo_compra)
+            || !empty($lead->preferencia_bairro)
+            || !empty($lead->localizacao)
+            || !empty($lead->preferencia_tipo_imovel)
+            || !empty($lead->quartos)
+            || !empty($lead->budget_min)
+            || !empty($lead->budget_max)
+            || !empty($lead->renda_mensal)
+            || !empty($lead->prazo_compra);
     }
 
     private function buildPostMatchingQualificationQuestion(Lead $lead): ?string
