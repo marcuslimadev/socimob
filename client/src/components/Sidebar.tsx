@@ -29,6 +29,7 @@ import {
   DollarSign,
   Star,
   BookOpen,
+  Bell,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { normalizeHiddenSidebarKeys } from '@/lib/sidebarVisibility';
@@ -124,12 +125,16 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [hiddenSidebarKeys, setHiddenSidebarKeys] = useState<string[]>([]);
   const { theme, setTheme } = useTheme();
   const isDarkTheme = theme === 'dark';
   const badgePollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const badgePollingInFlightRef = useRef(false);
   const badgePollingFailureCountRef = useRef(0);
+  const notificationPollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notificationPollingInFlightRef = useRef(false);
+  const notificationPollingFailureCountRef = useRef(0);
   const desktopNavRef = useRef<HTMLDivElement | null>(null);
 
   const handleThemeToggle = () => {
@@ -292,6 +297,88 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       window.removeEventListener('online', handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('socimob:chat-unread-changed', handleChatUnreadChanged);
+    };
+  }, []);
+
+  useEffect(() => {
+    const clearNotificationPollingTimer = () => {
+      if (notificationPollingTimeoutRef.current) {
+        clearTimeout(notificationPollingTimeoutRef.current);
+        notificationPollingTimeoutRef.current = null;
+      }
+    };
+
+    const scheduleNextNotificationPoll = (delayMs: number) => {
+      clearNotificationPollingTimer();
+      notificationPollingTimeoutRef.current = setTimeout(() => {
+        void loadNotificationCount();
+      }, delayMs);
+    };
+
+    const loadNotificationCount = async () => {
+      if (notificationPollingInFlightRef.current) {
+        return;
+      }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        scheduleNextNotificationPoll(60000);
+        return;
+      }
+
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        scheduleNextNotificationPoll(60000);
+        return;
+      }
+
+      notificationPollingInFlightRef.current = true;
+
+      try {
+        const response = await api.get('/notifications/summary');
+        const unread = Number(response.data?.unread ?? 0);
+        setUnreadNotificationsCount(Number.isFinite(unread) ? unread : 0);
+        notificationPollingFailureCountRef.current = 0;
+        scheduleNextNotificationPoll(15000);
+      } catch (error) {
+        const failureCount = notificationPollingFailureCountRef.current + 1;
+        notificationPollingFailureCountRef.current = failureCount;
+
+        if (isTransientNetworkError(error)) {
+          const delayMs = Math.min(60000 * Math.max(failureCount, 1), 5 * 60 * 1000);
+          scheduleNextNotificationPoll(delayMs);
+        } else {
+          scheduleNextNotificationPoll(60000);
+        }
+      } finally {
+        notificationPollingInFlightRef.current = false;
+      }
+    };
+
+    void loadNotificationCount();
+
+    const handleOnline = () => {
+      notificationPollingFailureCountRef.current = 0;
+      void loadNotificationCount();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadNotificationCount();
+      }
+    };
+
+    const handleNotificationsChanged = () => {
+      void loadNotificationCount();
+    };
+
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('socimob:notifications-changed', handleNotificationsChanged);
+
+    return () => {
+      clearNotificationPollingTimer();
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('socimob:notifications-changed', handleNotificationsChanged);
     };
   }, []);
 
@@ -480,6 +567,8 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const desktopMenuLabel = settingsActive
     ? settingsItem.label
     : currentSection?.label || activePrimaryTab?.label || 'Menu';
+  const notificationBadgeLabel = unreadNotificationsCount > 99 ? '99+' : String(unreadNotificationsCount);
+  const notificationsActive = isRouteMatch(location, '/notifications');
 
   return (
     <>
@@ -598,6 +687,26 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
             <div className="hidden items-center gap-2 md:flex lg:gap-2.5">
               {user?.role === 'super_admin' && <div className="w-[240px]"><TenantSelector isSuperAdmin={true} /></div>}
+              <Link to="/notifications">
+                <div
+                  className={`relative flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
+                    notificationsActive
+                      ? 'border-cyan-300/20 bg-cyan-300/10 text-white'
+                      : isDarkTheme
+                        ? 'border-white/10 bg-white/[0.035] text-slate-200 hover:border-white/16 hover:bg-white/[0.08]'
+                        : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                  }`}
+                  aria-label="Notificações"
+                  title="Notificações"
+                >
+                  <Bell size={16} />
+                  {unreadNotificationsCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_rgba(8,14,27,0.96)]">
+                      {notificationBadgeLabel}
+                    </span>
+                  ) : null}
+                </div>
+              </Link>
               <button
                 onClick={handleThemeToggle}
                 className={`flex h-10 items-center gap-2 rounded-full border px-3 text-[12px] transition-colors ${
@@ -622,14 +731,34 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={toggleMobileMenu}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] text-white transition-colors hover:border-white/16 hover:bg-white/[0.08] md:hidden"
-              aria-label={actualIsOpen ? 'Fechar navegação' : 'Abrir navegação'}
-            >
-              {actualIsOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
+            <div className="flex items-center gap-2 md:hidden">
+              <Link to="/notifications">
+                <div
+                  className={`relative flex h-11 w-11 items-center justify-center rounded-2xl border text-white transition-colors ${
+                    notificationsActive
+                      ? 'border-cyan-300/20 bg-cyan-300/10'
+                      : 'border-white/10 bg-white/[0.035] hover:border-white/16 hover:bg-white/[0.08]'
+                  }`}
+                  aria-label="Notificações"
+                  title="Notificações"
+                >
+                  <Bell size={19} />
+                  {unreadNotificationsCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-[0_0_0_2px_rgba(8,14,27,0.96)]">
+                      {notificationBadgeLabel}
+                    </span>
+                  ) : null}
+                </div>
+              </Link>
+              <button
+                type="button"
+                onClick={toggleMobileMenu}
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] text-white transition-colors hover:border-white/16 hover:bg-white/[0.08]"
+                aria-label={actualIsOpen ? 'Fechar navegação' : 'Abrir navegação'}
+              >
+                {actualIsOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
           </div>
 
           <div className="pb-3 md:hidden">

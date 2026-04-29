@@ -195,6 +195,7 @@ export default function NotificationCenter() {
       await api.post(`/notifications/${id}/read`);
       setNotifications((notifs) => notifs.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
       setSummary((prev) => ({ ...prev, unread: Math.max(0, prev.unread - 1) }));
+      window.dispatchEvent(new CustomEvent('socimob:notifications-changed'));
       if (!options?.silent) toast.success('Notificação marcada como lida');
     } catch (error) {
       console.error('Erro ao marcar notificação como lida:', error);
@@ -207,6 +208,7 @@ export default function NotificationCenter() {
       await api.post(`/notifications/${id}/unread`);
       setNotifications((notifs) => notifs.map((n) => (n.id === id ? { ...n, is_read: false } : n)));
       setSummary((prev) => ({ ...prev, unread: prev.unread + 1 }));
+      window.dispatchEvent(new CustomEvent('socimob:notifications-changed'));
       toast.success('Notificação marcada como não lida');
     } catch (error) {
       console.error('Erro ao marcar notificação como não lida:', error);
@@ -219,6 +221,7 @@ export default function NotificationCenter() {
       await api.delete(`/notifications/${id}`);
       setNotifications((notifs) => notifs.filter((n) => n.id !== id));
       await fetchSummary();
+      window.dispatchEvent(new CustomEvent('socimob:notifications-changed'));
       toast.success('Notificação removida');
     } catch (error) {
       console.error('Erro ao excluir notificação:', error);
@@ -231,6 +234,7 @@ export default function NotificationCenter() {
       await api.post('/notifications/mark-all-as-read');
       setNotifications((notifs) => notifs.map((n) => ({ ...n, is_read: true })));
       setSummary((prev) => ({ ...prev, unread: 0 }));
+      window.dispatchEvent(new CustomEvent('socimob:notifications-changed'));
       toast.success('Todas as notificações foram marcadas como lidas');
     } catch (error) {
       console.error('Erro ao marcar todas como lidas:', error);

@@ -60,6 +60,7 @@ const PortalProprietarioLogin = lazy(() => import('./pages/PortalProprietarioLog
 const PortalProprietarioDashboard = lazy(() => import('./pages/PortalProprietarioDashboard'));
 const ContratoTemplates = lazy(() => import('./pages/ContratoTemplates'));
 const SocimobLanding = lazy(() => import("./pages/SocimobLanding"));
+const NotificationCenter = lazy(() => import("./pages/NotificationCenter"));
 
 const SOCIMOB_MARKETING_HOSTS = new Set(["socimob.com", "www.socimob.com"]);
 
@@ -110,7 +111,7 @@ function Router() {
       <Route path="/properties/novo" component={ImovelFormWizard} />
       <Route path="/properties/:id/editar" component={ImovelFormWizard} />
       <Route path="/chat" component={Chat} />
-      <Route path="/notifications" component={NotificationsRedirect} />
+      <Route path="/notifications" component={NotificationCenter} />
       <Route path="/login" component={Login} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
@@ -261,16 +262,6 @@ function LoginRedirect() {
 
   useEffect(() => {
     setLocation("/login");
-  }, [setLocation]);
-
-  return null;
-}
-
-function NotificationsRedirect() {
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    setLocation('/dashboard');
   }, [setLocation]);
 
   return null;
