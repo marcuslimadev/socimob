@@ -2293,6 +2293,26 @@ class WhatsAppService
             $candidateQuery->where('tenant_id', $lead->tenant_id);
         }
 
+        if (!empty($lead->preferencia_tipo_imovel)) {
+            $candidateQuery->whereRaw('LOWER(tipo_imovel) LIKE ?', [
+                '%' . Str::lower($lead->preferencia_tipo_imovel) . '%',
+            ]);
+        }
+
+        $location = $lead->preferencia_bairro ?: $lead->localizacao;
+        if (!empty($location)) {
+            $locationQuery = clone $candidateQuery;
+            $locationQuery->where(function ($query) use ($location) {
+                $needle = '%' . Str::lower($location) . '%';
+                $query->whereRaw('LOWER(bairro) LIKE ?', [$needle])
+                    ->orWhereRaw('LOWER(cidade) LIKE ?', [$needle]);
+            });
+
+            if ((clone $locationQuery)->exists()) {
+                $candidateQuery = $locationQuery;
+            }
+        }
+
         $candidates = $candidateQuery
             ->orderByDesc('destaque')
             ->orderByDesc('updated_at')
