@@ -46,13 +46,13 @@ class HuggingFaceService
                 [$assistantName, $companyName, $audioInstruction, $propertiesContext],
                 (string) $customPrompt
             );
-            $systemPrompt .= "\n\nREGRA FIXA: responda sempre em portugues do Brasil, com no maximo 30 palavras, uma pergunta por vez.";
+            $systemPrompt .= "\n\nREGRA FIXA: responda sempre em portugues do Brasil, com no maximo 40 palavras, uma pergunta por vez.";
         } else {
             $systemPrompt = "Voce e {$assistantName}, assistente imobiliario virtual da {$companyName}.
 
 REGRAS:
 - Responda sempre em portugues do Brasil.
-- Use no maximo 30 palavras.
+- Use no maximo 40 palavras.
 - Faca uma pergunta por vez.
 - Nunca invente dados de imoveis; use apenas os imoveis reais fornecidos.
 - Colete bairro/regiao, orcamento, quartos e prazo de compra.
@@ -67,7 +67,7 @@ REGRAS:
         $userPrompt = ($context ? "Historico da conversa:\n{$context}\n\n" : '') .
             "Mensagem do cliente: {$message}\n\nResposta curta:";
 
-        $result = $this->chatCompletion($systemPrompt, $userPrompt, 30, 90);
+        $result = $this->chatCompletion($systemPrompt, $userPrompt, 45, 130);
 
         if (!($result['success'] ?? false)) {
             Log::warning('[HuggingFace] Falha ao processar mensagem', [
