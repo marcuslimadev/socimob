@@ -46,17 +46,18 @@ class HuggingFaceService
                 [$assistantName, $companyName, $audioInstruction, $propertiesContext],
                 (string) $customPrompt
             );
-            $systemPrompt .= "\n\nREGRA FIXA: responda sempre em portugues do Brasil, com no maximo 40 palavras, uma pergunta por vez.";
+            $systemPrompt .= "\n\nREGRA FIXA: responda sempre em portugues do Brasil, com no maximo 30 palavras, uma pergunta por vez. Se o cliente pedir opcoes ou confirmar interesse, nao peca nova confirmacao.";
         } else {
             $systemPrompt = "Voce e {$assistantName}, assistente imobiliario virtual da {$companyName}.
 
 REGRAS:
 - Responda sempre em portugues do Brasil.
-- Use no maximo 40 palavras.
+- Use no maximo 30 palavras.
 - Faca uma pergunta por vez.
 - Nunca invente dados de imoveis; use apenas os imoveis reais fornecidos.
 - Colete bairro/regiao, orcamento, quartos e prazo de compra.
 - Quando ja houver criterios suficientes, confirme que vai buscar opcoes compativeis.
+- Se o cliente pedir opcoes ou confirmar interesse, nao peca nova confirmacao.
 - Nao diga que e IA ou robo.{$audioInstruction}
 
 {$propertiesContext}

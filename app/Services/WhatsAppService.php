@@ -440,6 +440,10 @@ class WhatsAppService
         $totalMensagens = $conversa->mensagens()->count();
 
         if ($totalMensagens === 1) {
+            $this->hydrateLeadFromMessage($lead, $body);
+            $lead->refresh();
+            $this->classifyLead($lead);
+
             $assistantName = $this->getAssistantName();
             $nomePreferido = $this->extractPreferredName($lead->nome ?? null);
             $property = $this->findPropertyFromMessage($body);
@@ -544,6 +548,12 @@ class WhatsAppService
     {
         // Criar lead com todos os dados capturados
         $lead = $this->createLead($telefone, $dados, $conversa->id);
+
+        if ($mensagemOriginal) {
+            $this->hydrateLeadFromMessage($lead, $mensagemOriginal);
+            $lead->refresh();
+            $this->classifyLead($lead);
+        }
 
         $conversa->update([
             'lead_id' => $lead->id,
@@ -697,25 +707,46 @@ class WhatsAppService
                 ->where('exibir_imovel', true)
                 ->where(function ($query) use ($ref) {
                     $query->whereRaw('UPPER(codigo_imovel) = ?', [$ref])
-                        ->orWhereRaw('UPPER(referencia_imovel) = ?', [$ref]);
+                        ->orWhereRaw('UPPER(referencia_imovel) = ?', [$ref])
+                        ->orWhereRaw('UPPER(codigo) = ?', [$ref])
+                        ->orWhereRaw('UPPER(external_id) = ?', [$ref]);
                 })
                 ->first();
 
             if ($property) {
                 return $property;
             }
+
+            Log::warning('Referencia explicita de imovel nao encontrada; evitando fallback por bairro/tipo', [
+                'referencia' => $ref,
+                'mensagem' => substr($texto, 0, 160),
+            ]);
+
+            return null;
         }
 
         $codigo = $this->extractPropertyCode($texto);
         if ($codigo) {
             $property = Property::where('active', true)
                 ->where('exibir_imovel', true)
-                ->whereRaw('UPPER(codigo_imovel) = ?', [$codigo])
+                ->where(function ($query) use ($codigo) {
+                    $query->whereRaw('UPPER(codigo_imovel) = ?', [$codigo])
+                        ->orWhereRaw('UPPER(referencia_imovel) = ?', [$codigo])
+                        ->orWhereRaw('UPPER(codigo) = ?', [$codigo])
+                        ->orWhereRaw('UPPER(external_id) = ?', [$codigo]);
+                })
                 ->first();
 
             if ($property) {
                 return $property;
             }
+
+            Log::warning('Codigo explicito de imovel nao encontrado; evitando fallback por bairro/tipo', [
+                'codigo' => $codigo,
+                'mensagem' => substr($texto, 0, 160),
+            ]);
+
+            return null;
         }
 
         $bairro = $this->extractBairroFromMessage($texto);
@@ -798,6 +829,52 @@ class WhatsAppService
 
         return $numeric > 0 ? 'R$ ' . number_format($numeric, 0, ',', '.') : null;
     }
+
+    private function normalizeIntentText(?string $message): string
+    {
+        $text = Str::ascii(Str::lower(trim((string) $message)));
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+
+        return trim($text);
+    }
+
+    private function isAffirmativeOrShowOptionsRequest(?string $message): bool
+    {
+        $text = $this->normalizeIntentText($message);
+
+        if ($text === '') {
+            return false;
+        }
+
+        if (preg_match('/^(sim|s|ok|claro|pode|aceito|quero|isso|exato|exatamente|perfeito|beleza)$/u', $text)) {
+            return true;
+        }
+
+        return preg_match('/\b(mostra|mostrar|mande|manda|envia|enviar|veja|ver|opcoes|opcao|imoveis|compativeis|abaixo|preco|valor|dentro do orcamento)\b/u', $text) === 1;
+    }
+
+    private function isHumanContactRequest(?string $message): bool
+    {
+        $text = $this->normalizeIntentText($message);
+
+        if ($text === '') {
+            return false;
+        }
+
+        return preg_match('/\b(ligar|liga|ligacao|telefone|whatsapp|corretor|humano|atendente|visita|visitar|agendar|agenda|marcar|conhecer|ver o imovel)\b/u', $text) === 1;
+    }
+
+    private function buildHumanContactMessage(?Lead $lead, ?string $message = null): string
+    {
+        $companyName = $this->getCompanyName();
+        $text = $this->normalizeIntentText($message);
+
+        if (preg_match('/\b(visita|visitar|agendar|agenda|marcar|conhecer|ver o imovel)\b/u', $text)) {
+            return "Perfeito. Vou acionar um corretor da {$companyName} para combinar a visita com você.";
+        }
+
+        return "Perfeito. Vou acionar um corretor da {$companyName} para falar com você e seguir o atendimento.";
+    }
     
     /**
      * Processar mensagem regular com progressão inteligente de stages
@@ -824,6 +901,40 @@ class WhatsAppService
         $temBairro = $lead && (!empty($lead->localizacao) || !empty($lead->preferencia_bairro));
         $temOrcamento = $lead && ($lead->budget_min || $lead->budget_max);
         $temPrazo = $lead && !empty($lead->prazo_compra);
+
+        if ($lead && $this->isHumanContactRequest($message)) {
+            $handoffMessage = $this->buildHumanContactMessage($lead, $message);
+            $stage = preg_match('/\b(visita|visitar|agendar|agenda|marcar|conhecer|ver o imovel)\b/u', $this->normalizeIntentText($message))
+                ? 'agendamento'
+                : 'atendimento_humano';
+
+            $conversa->update([
+                'stage' => $stage,
+                'status' => $stage === 'agendamento' ? 'ativa' : 'aguardando_corretor',
+                'ultima_atividade' => Carbon::now(),
+            ]);
+            $this->updateLeadStatusFromStage($lead, $stage);
+
+            $this->sendMessage($conversa->id, $conversa->telefone, $handoffMessage);
+
+            return [
+                'success' => true,
+                'message' => 'Cliente encaminhado para atendimento humano',
+                'ai_response' => $handoffMessage,
+                'current_stage' => $conversa->fresh()->stage,
+            ];
+        }
+
+        if ($lead && $this->hasEnoughDataForMatching($lead) && $this->isAffirmativeOrShowOptionsRequest($message)) {
+            $this->performPropertyMatching($lead, $conversa);
+
+            return [
+                'success' => true,
+                'message' => 'Matching executado por intenção explícita do cliente',
+                'ai_response' => 'Matching local executado',
+                'current_stage' => $conversa->fresh()->stage,
+            ];
+        }
 
         if ($temBairro && $temOrcamento && $temPrazo && !$this->hasEnoughDataForMatching($lead)) {
             $companyName = $this->getCompanyName();
@@ -1604,6 +1715,27 @@ class WhatsAppService
     {
         if (preg_match('/(?:at[ée]|em|nos|nos pr[óo]ximos)\s+(\d+)\s*(m[eê]s|mes|meses)/iu', $messageLower, $matches)) {
             return 'até ' . $matches[1] . ' ' . (str_starts_with($matches[2], 'mês') ? 'mês' : 'meses');
+        }
+
+        $numberWords = [
+            'um' => 1,
+            'uma' => 1,
+            'dois' => 2,
+            'duas' => 2,
+            'tres' => 3,
+            'três' => 3,
+            'quatro' => 4,
+            'cinco' => 5,
+            'seis' => 6,
+        ];
+
+        if (preg_match('/(?:at[ée]|em|nos|nos pr[óo]ximos)?\s*(um|uma|dois|duas|tr[eê]s|quatro|cinco|seis)\s*(m[eê]s|mes|meses)/iu', $messageLower, $matches)) {
+            $word = Str::lower($matches[1]);
+            $months = $numberWords[$word] ?? $numberWords[Str::ascii($word)] ?? null;
+
+            if ($months) {
+                return 'até ' . $months . ' ' . ($months === 1 ? 'mês' : 'meses');
+            }
         }
 
         if (str_contains($messageLower, 'urgente') || str_contains($messageLower, 'imediato')) {
