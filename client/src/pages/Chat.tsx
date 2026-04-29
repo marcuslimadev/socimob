@@ -27,6 +27,7 @@ import {
   Tag,
   Bot,
   AlertTriangle
+  ,ChevronDown,ChevronUp,X
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -334,6 +335,40 @@ export default function Chat() {
     () => normalizeObservacoes(selectedContact?.observacoes),
     [selectedContact?.observacoes]
   );
+
+  const [observacoesCollapsed, setObservacoesCollapsed] = useState<boolean>(false);
+  const [observacoesHidden, setObservacoesHidden] = useState<boolean>(false);
+
+  // Persist collapse/hidden state per contact in localStorage
+  const storageKey = (id: string | null, key: 'collapsed' | 'hidden') => `chat.observacoes.${key}.${id}`;
+
+  useEffect(() => {
+    if (!selectedContactId) {
+      setObservacoesCollapsed(false);
+      setObservacoesHidden(false);
+      return;
+    }
+
+    try {
+      const collapsed = localStorage.getItem(storageKey(selectedContactId, 'collapsed'));
+      const hidden = localStorage.getItem(storageKey(selectedContactId, 'hidden'));
+      setObservacoesCollapsed(collapsed === '1');
+      setObservacoesHidden(hidden === '1');
+    } catch {
+      setObservacoesCollapsed(false);
+      setObservacoesHidden(false);
+    }
+  }, [selectedContactId]);
+
+  const saveObservacoesState = (id: string | null, collapsed: boolean, hidden: boolean) => {
+    if (!id) return;
+    try {
+      localStorage.setItem(storageKey(id, 'collapsed'), collapsed ? '1' : '0');
+      localStorage.setItem(storageKey(id, 'hidden'), hidden ? '1' : '0');
+    } catch {
+      // ignore
+    }
+  };
 
   const getScrollViewport = useCallback(() => {
     if (!scrollAreaRef.current) return null;
@@ -2021,17 +2056,50 @@ export default function Chat() {
                       {(observacoesText || selectedContact.lastMessage) && (
                         <div className="relative mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
                           {observacoesText ? (
-                            <div className="rounded-[24px] border border-[#e5d9c9] bg-white/82 p-4 shadow-[0_12px_28px_rgba(20,32,51,0.06)]">
-                              <div className="flex items-center gap-2 text-[#17365d]">
-                                <Info className="h-4 w-4" />
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8b755d]">
-                                  Observações do lead
-                                </p>
+                            !observacoesHidden && (
+                              <div className="rounded-[24px] border border-[#e5d9c9] bg-white/82 p-4 shadow-[0_12px_28px_rgba(20,32,51,0.06)]">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2 text-[#17365d]">
+                                    <Info className="h-4 w-4" />
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8b755d]">
+                                      Observações do lead
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      aria-label={observacoesCollapsed ? 'Expandir observações' : 'Minimizar observações'}
+                                      onClick={() => {
+                                        const next = !observacoesCollapsed;
+                                        setObservacoesCollapsed(next);
+                                        saveObservacoesState(selectedContactId, next, observacoesHidden);
+                                      }}
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white/60 text-[#17365d] hover:bg-white/80"
+                                    >
+                                      {observacoesCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      aria-label="Fechar observações"
+                                      onClick={() => {
+                                        setObservacoesHidden(true);
+                                        saveObservacoesState(selectedContactId, observacoesCollapsed, true);
+                                      }}
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white/60 text-[#17365d] hover:bg-white/80"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                                {!observacoesCollapsed ? (
+                                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#5f5647]">
+                                    {observacoesText}
+                                  </p>
+                                ) : (
+                                  <p className="mt-3 text-sm leading-6 text-[#5f5647] line-clamp-1">{observacoesText}</p>
+                                )}
                               </div>
-                              <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#5f5647]">
-                                {observacoesText}
-                              </p>
-                            </div>
+                            )
                           ) : (
                             <div className="rounded-[24px] border border-[#e5d9c9] bg-white/82 p-4 shadow-[0_12px_28px_rgba(20,32,51,0.06)]">
                               <div className="flex items-center gap-2 text-[#17365d]">
