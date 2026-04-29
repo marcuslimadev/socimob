@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type DragEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertCircle,
@@ -13,6 +13,7 @@ import {
   MessageSquare,
   RefreshCcw,
   Trash2,
+  UserCheck,
   Users,
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
@@ -38,14 +39,28 @@ interface NotificationSummary {
   by_type: Array<{ type: string; count: number }>;
 }
 
+interface Assignee {
+  id: number;
+  name: string;
+  email?: string;
+  role?: string;
+}
+
 export default function NotificationCenter() {
   const [filter, setFilter] = useState('todos');
   const [typeFilter, setTypeFilter] = useState('todos');
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [assignees, setAssignees] = useState<Assignee[]>([]);
+  const [currentUserRole, setCurrentUserRole] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingAssignees, setIsLoadingAssignees] = useState(false);
+  const [assigningNotificationId, setAssigningNotificationId] = useState<number | null>(null);
+  const [draggedNotificationId, setDraggedNotificationId] = useState<number | null>(null);
+  const [activeDropUserId, setActiveDropUserId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [summary, setSummary] = useState<NotificationSummary>({ total: 0, unread: 0, by_type: [] });
+  const canDistribute = ['admin', 'super_admin'].includes(currentUserRole);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -67,6 +82,23 @@ export default function NotificationCenter() {
   useEffect(() => {
     void fetchSummary();
   }, []);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) return;
+
+    try {
+      const parsed = JSON.parse(storedUser);
+      setCurrentUserRole(String(parsed?.role || '').toLowerCase());
+    } catch {
+      setCurrentUserRole('');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!canDistribute) return;
+    void fetchAssignees();
+  }, [canDistribute]);
 
   const fetchSummary = async () => {
     try {
@@ -102,6 +134,30 @@ export default function NotificationCenter() {
       toast.error('Erro ao carregar notificações');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchAssignees = async () => {
+    try {
+      setIsLoadingAssignees(true);
+      const response = await api.get('/admin/corretores');
+      const users = response.data?.corretores || response.data?.data || [];
+      const assignableUsers = (Array.isArray(users) ? users : [])
+        .map((user: any) => ({
+          id: Number(user.id),
+          name: String(user.name || 'Atendente'),
+          email: user.email ? String(user.email) : undefined,
+          role: user.role ? String(user.role).toLowerCase() : undefined,
+        }))
+        .filter((user: Assignee) => Number.isFinite(user.id) && user.id > 0)
+        .filter((user: Assignee) => ['corretor', 'agent'].includes(user.role || ''));
+
+      setAssignees(assignableUsers);
+    } catch (error) {
+      console.error('Erro ao carregar corretores:', error);
+      toast.error('Erro ao carregar corretores');
+    } finally {
+      setIsLoadingAssignees(false);
     }
   };
 
@@ -150,6 +206,26 @@ export default function NotificationCenter() {
     const date = new Date(dateString);
     return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
   };
+
+  const toPositiveInt = (value: unknown) => {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return Math.trunc(value);
+    if (typeof value === 'string' && value.trim() !== '' && !Number.isNaN(Number(value))) {
+      const parsed = Number(value);
+      return parsed > 0 ? Math.trunc(parsed) : null;
+    }
+    return null;
+  };
+
+  const resolveConversationId = (notification: Notification) => {
+    const fromData = toPositiveInt(notification.data?.conversa_id) || toPositiveInt(notification.data?.conversation_id);
+    if (fromData) return fromData;
+
+    const actionUrl = notification.action_url || (typeof notification.data?.action_url === 'string' ? notification.data.action_url : null);
+    const match = actionUrl?.match(/[?&](?:conversationId|conversaId)=(\d+)/);
+    return match ? toPositiveInt(match[1]) : null;
+  };
+
+  const canAssignNotification = (notification: Notification) => canDistribute && Boolean(resolveConversationId(notification));
 
   const resolveActionUrl = (notification: Notification) => {
     const nestedActionUrl = typeof notification.data?.action_url === 'string' ? notification.data.action_url : null;
@@ -242,6 +318,65 @@ export default function NotificationCenter() {
     }
   };
 
+  const assignNotificationToBroker = async (notification: Notification, assignee: Assignee) => {
+    const conversationId = resolveConversationId(notification);
+    if (!conversationId) {
+      toast.error('Essa notificação não tem conversa vinculada');
+      return;
+    }
+
+    try {
+      setAssigningNotificationId(notification.id);
+      await api.post(`/admin/conversas/${conversationId}/atribuir`, { corretor_id: assignee.id });
+
+      if (!notification.is_read) {
+        await markAsRead(notification.id, { silent: true });
+      }
+
+      toast.success(`Atendimento enviado para ${assignee.name}`);
+      await Promise.all([fetchSummary(), fetchNotifications()]);
+      window.dispatchEvent(new CustomEvent('socimob:notifications-changed'));
+      window.dispatchEvent(new CustomEvent('socimob:chat-unread-changed'));
+    } catch (error: any) {
+      console.error('Erro ao atribuir atendimento:', error);
+      const message = error?.response?.data?.error || error?.response?.data?.message || 'Erro ao distribuir atendimento';
+      toast.error(message);
+    } finally {
+      setAssigningNotificationId(null);
+      setDraggedNotificationId(null);
+      setActiveDropUserId(null);
+    }
+  };
+
+  const handleNotificationDragStart = (event: DragEvent<HTMLDivElement>, notification: Notification) => {
+    if (!canAssignNotification(notification) || assigningNotificationId) {
+      event.preventDefault();
+      return;
+    }
+
+    setDraggedNotificationId(notification.id);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('application/x-socimob-notification-id', String(notification.id));
+    event.dataTransfer.setData('text/plain', String(notification.id));
+  };
+
+  const handleNotificationDrop = (event: DragEvent<HTMLDivElement>, assignee: Assignee) => {
+    event.preventDefault();
+    const notificationId = Number(
+      event.dataTransfer.getData('application/x-socimob-notification-id') ||
+        event.dataTransfer.getData('text/plain') ||
+        draggedNotificationId,
+    );
+    const notification = notifications.find((item) => item.id === notificationId);
+
+    if (!notification) {
+      setActiveDropUserId(null);
+      return;
+    }
+
+    void assignNotificationToBroker(notification, assignee);
+  };
+
   const openNotificationTarget = async (notification: Notification) => {
     const targetUrl = resolveActionUrl(notification);
     if (!targetUrl) {
@@ -261,7 +396,7 @@ export default function NotificationCenter() {
       <Sidebar />
 
       <div className="page-shell">
-        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="mx-auto max-w-5xl">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="mx-auto max-w-7xl">
           <motion.div variants={itemVariants} className="mb-8">
             <div className="page-header mb-4">
               <div>
@@ -347,103 +482,173 @@ export default function NotificationCenter() {
             </div>
           </motion.div>
 
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
-            {isLoading ? (
-              <motion.div variants={itemVariants} className="flex items-center justify-center py-16">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </motion.div>
-            ) : notifications.length === 0 ? (
-              <motion.div variants={itemVariants} className="py-12 text-center">
-                <Bell size={48} className="mx-auto mb-4 text-muted-foreground opacity-50" />
-                <p className="mb-2 text-lg font-semibold text-foreground">Nenhuma notificação</p>
-                <p className="text-muted-foreground">
-                  {filter === 'nao-lidas'
-                    ? 'Você está em dia. Todas as notificações já foram lidas.'
-                    : 'Nenhuma notificação para exibir com os filtros atuais.'}
-                </p>
-              </motion.div>
-            ) : (
-              notifications.map((notification, index) => {
-                const meta = getNotificationMeta(notification.type);
-                const actionUrl = resolveActionUrl(notification);
+          <div className={`grid gap-6 ${canDistribute ? 'xl:grid-cols-[minmax(0,1fr)_360px]' : ''}`}>
+            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+              {isLoading ? (
+                <motion.div variants={itemVariants} className="flex items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </motion.div>
+              ) : notifications.length === 0 ? (
+                <motion.div variants={itemVariants} className="py-12 text-center">
+                  <Bell size={48} className="mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <p className="mb-2 text-lg font-semibold text-foreground">Nenhuma notificação</p>
+                  <p className="text-muted-foreground">
+                    {filter === 'nao-lidas'
+                      ? 'Você está em dia. Todas as notificações já foram lidas.'
+                      : 'Nenhuma notificação para exibir com os filtros atuais.'}
+                  </p>
+                </motion.div>
+              ) : (
+                notifications.map((notification, index) => {
+                  const meta = getNotificationMeta(notification.type);
+                  const actionUrl = resolveActionUrl(notification);
+                  const canAssign = canAssignNotification(notification);
+                  const isAssigning = assigningNotificationId === notification.id;
 
-                return (
-                  <motion.div
-                    key={notification.id}
-                    variants={itemVariants}
-                    transition={{ delay: 0.2 + index * 0.04 }}
-                    className={`glass-panel rounded-2xl border-l-4 p-6 transition-all hover:bg-white/10 ${
-                      !notification.is_read ? `${meta.accent} bg-white/5` : 'border-l-white/20'
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0">{meta.icon}</div>
+                  return (
+                    <motion.div
+                      key={notification.id}
+                      variants={itemVariants}
+                      transition={{ delay: 0.2 + index * 0.04 }}
+                      draggable={canAssign && !isAssigning}
+                      onDragStart={(event) => handleNotificationDragStart(event, notification)}
+                      onDragEnd={() => {
+                        setDraggedNotificationId(null);
+                        setActiveDropUserId(null);
+                      }}
+                      className={`glass-panel rounded-2xl border-l-4 p-6 transition-all hover:bg-white/10 ${
+                        !notification.is_read ? `${meta.accent} bg-white/5` : 'border-l-white/20'
+                      } ${canAssign ? 'cursor-grab active:cursor-grabbing' : ''} ${draggedNotificationId === notification.id ? 'opacity-60 ring-2 ring-cyan-400/40' : ''}`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0">{meta.icon}</div>
 
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-2 flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="mb-2 flex flex-wrap items-center gap-2">
-                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                                {meta.label}
-                              </span>
-                              {!notification.is_read && (
-                                <span className="rounded-full border border-blue-500/30 bg-blue-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300">
-                                  Não lida
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="mb-2 flex flex-wrap items-center gap-2">
+                                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                  {meta.label}
                                 </span>
-                              )}
+                                {!notification.is_read && (
+                                  <span className="rounded-full border border-blue-500/30 bg-blue-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300">
+                                    Não lida
+                                  </span>
+                                )}
+                                {canAssign && (
+                                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                                    Distribuição
+                                  </span>
+                                )}
+                              </div>
+                              <h3 className="truncate text-lg font-bold text-foreground">{notification.title}</h3>
                             </div>
-                            <h3 className="truncate text-lg font-bold text-foreground">{notification.title}</h3>
+                            <span className="shrink-0 text-xs text-muted-foreground">{formatDate(notification.created_at)}</span>
                           </div>
-                          <span className="shrink-0 text-xs text-muted-foreground">{formatDate(notification.created_at)}</span>
+
+                          <p className="mb-4 text-muted-foreground">{notification.message}</p>
+
+                          <div className="flex flex-wrap gap-2">
+                            {actionUrl && (
+                              <button
+                                type="button"
+                                onClick={() => void openNotificationTarget(notification)}
+                                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                              >
+                                <ExternalLink size={14} /> Abrir
+                              </button>
+                            )}
+
+                            {notification.is_read ? (
+                              <button
+                                type="button"
+                                onClick={() => void markAsUnread(notification.id)}
+                                className="rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium text-foreground hover:bg-white/10"
+                              >
+                                Marcar como não lida
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => void markAsRead(notification.id)}
+                                className="rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium text-foreground hover:bg-white/10"
+                              >
+                                Marcar como lida
+                              </button>
+                            )}
+                          </div>
                         </div>
 
-                        <p className="mb-4 text-muted-foreground">{notification.message}</p>
+                        <motion.button
+                          whileHover={{ scale: 1.08 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => void deleteNotification(notification.id)}
+                          className="flex-shrink-0 rounded-lg p-2 transition-all hover:bg-white/10"
+                        >
+                          <Trash2 size={18} className="text-muted-foreground hover:text-destructive" />
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  );
+                })
+              )}
+            </motion.div>
 
-                        <div className="flex flex-wrap gap-2">
-                          {actionUrl && (
-                            <button
-                              type="button"
-                              onClick={() => void openNotificationTarget(notification)}
-                              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-                            >
-                              <ExternalLink size={14} /> Abrir
-                            </button>
-                          )}
+            {canDistribute && (
+              <aside className="xl:sticky xl:top-28 xl:self-start">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Distribuição</p>
+                    <h2 className="text-xl font-bold text-foreground">Corretores</h2>
+                  </div>
+                  {isLoadingAssignees ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : null}
+                </div>
 
-                          {notification.is_read ? (
-                            <button
-                              type="button"
-                              onClick={() => void markAsUnread(notification.id)}
-                              className="rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium text-foreground hover:bg-white/10"
-                            >
-                              Marcar como não lida
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => void markAsRead(notification.id)}
-                              className="rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium text-foreground hover:bg-white/10"
-                            >
-                              Marcar como lida
-                            </button>
-                          )}
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  {assignees.map((assignee) => {
+                    const isActiveDrop = activeDropUserId === assignee.id;
+                    return (
+                      <div
+                        key={assignee.id}
+                        onDragEnter={(event) => {
+                          event.preventDefault();
+                          setActiveDropUserId(assignee.id);
+                        }}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = 'move';
+                          setActiveDropUserId(assignee.id);
+                        }}
+                        onDragLeave={() => setActiveDropUserId(null)}
+                        onDrop={(event) => handleNotificationDrop(event, assignee)}
+                        className={`min-h-[96px] rounded-2xl border p-4 transition-all ${
+                          isActiveDrop
+                            ? 'border-emerald-400 bg-emerald-500/15 shadow-[0_0_0_1px_rgba(52,211,153,0.28),0_18px_40px_rgba(6,95,70,0.18)]'
+                            : 'border-white/10 bg-white/[0.045] hover:border-cyan-300/20 hover:bg-white/[0.07]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200">
+                            <UserCheck size={19} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-bold text-foreground">{assignee.name}</p>
+                            <p className="truncate text-xs text-muted-foreground">{assignee.email || 'corretor ativo'}</p>
+                          </div>
                         </div>
                       </div>
+                    );
+                  })}
 
-                      <motion.button
-                        whileHover={{ scale: 1.08 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => void deleteNotification(notification.id)}
-                        className="flex-shrink-0 rounded-lg p-2 transition-all hover:bg-white/10"
-                      >
-                        <Trash2 size={18} className="text-muted-foreground hover:text-destructive" />
-                      </motion.button>
+                  {!isLoadingAssignees && assignees.length === 0 && (
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 text-sm text-muted-foreground">
+                      Nenhum corretor ativo disponível.
                     </div>
-                  </motion.div>
-                );
-              })
+                  )}
+                </div>
+              </aside>
             )}
-          </motion.div>
+          </div>
 
           {!isLoading && notifications.length > 0 && (
             <div className="mt-10 flex items-center justify-center gap-2">
