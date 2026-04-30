@@ -69,6 +69,22 @@ class TenantSettingsController extends Controller
                 'secondary_color' => $tenant->secondary_color,
                 'contact_email' => $tenant->contact_email,
                 'contact_phone' => $tenant->contact_phone,
+                // IA atendimento
+                'openai_api_key' => $tenant->openai_api_key,
+                'openai_model' => $tenant->openai_model,
+                'ai_assistant_name' => $tenant->ai_assistant_name,
+                // Twilio
+                'twilio_account_sid' => $tenant->twilio_account_sid,
+                'twilio_whatsapp_from' => $tenant->twilio_whatsapp_from,
+                'twilio_template_welcome_sid' => $tenant->twilio_template_welcome_sid,
+                // Email
+                'mail_driver' => $tenant->mail_driver,
+                'mail_host' => $tenant->mail_host,
+                'mail_port' => $tenant->mail_port,
+                'mail_username' => $tenant->mail_username,
+                'mail_encryption' => $tenant->mail_encryption,
+                'mail_from_address' => $tenant->mail_from_address,
+                'mail_from_name' => $tenant->mail_from_name,
                 'metadata' => $tenant->metadata,
                 'razao_social' => $tenant->metadata['razao_social'] ?? null,
                 'cnpj' => $tenant->metadata['cnpj'] ?? null,
