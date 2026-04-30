@@ -147,14 +147,14 @@ export default function PropertySyncRuns() {
   const activePercent = getProgressPercent(activeRun);
 
   return (
-    <div className="flex min-h-screen bg-white text-gray-900 dark:bg-[#0f0f0f] dark:text-gray-100">
+    <div className="flex min-h-screen bg-background text-foreground">
       <Sidebar />
       <main className="page-shell overflow-y-auto">
         <div className="mx-auto max-w-7xl space-y-6">
           <div className="page-header flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Sincronizações de Imóveis</h1>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              <h1 className="text-3xl font-bold text-foreground">Sincronizações de Imóveis</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Veja o histórico das sincronizações e execute manualmente quando necessário.
               </p>
             </div>
@@ -162,7 +162,7 @@ export default function PropertySyncRuns() {
               <button
                 onClick={() => fetchRuns(page)}
                 disabled={loading}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-[#1a1a1a] dark:text-gray-200 dark:hover:bg-[#252525]"
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground hover:bg-muted/60 disabled:opacity-60"
               >
                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                 Atualizar
@@ -170,7 +170,7 @@ export default function PropertySyncRuns() {
               <button
                 onClick={runManualSync}
                 disabled={runningManual || !!activeRun}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-60 dark:border-[#2d6fab] dark:bg-[#2d6fab] dark:hover:bg-[#245986]"
+                className="inline-flex items-center gap-2 rounded-lg border border-sky-300 bg-sky-100 px-4 py-2 text-sm font-semibold text-sky-900 hover:bg-sky-200 disabled:opacity-60 dark:border-sky-700 dark:bg-sky-900/30 dark:text-sky-200 dark:hover:bg-sky-900/40"
               >
                 <PlayCircle size={16} className={runningManual ? 'animate-pulse' : ''} />
                 Executar sincronização manual
@@ -179,43 +179,43 @@ export default function PropertySyncRuns() {
           </div>
 
           <section className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <div className="rounded-xl border border-gray-300 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1a1a1a] dark:shadow-none">
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-500">Total de execuções</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{total}</p>
+            <div className="system-panel rounded-xl p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Total de execuções</p>
+              <p className="mt-2 text-2xl font-bold text-foreground">{total}</p>
             </div>
-            <div className="rounded-xl border border-gray-300 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1a1a1a] dark:shadow-none">
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-500">Sucesso nesta página</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-emerald-400">
+            <div className="system-panel rounded-xl p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Sucesso nesta página</p>
+              <p className="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                 {runs.filter((run) => run.status === 'success').length}
               </p>
             </div>
-            <div className="rounded-xl border border-gray-300 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1a1a1a] dark:shadow-none">
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-500">Falhas nesta página</p>
-              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-rose-400">
+            <div className="system-panel rounded-xl p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Falhas nesta página</p>
+              <p className="mt-2 text-2xl font-bold text-rose-600 dark:text-rose-400">
                 {runs.filter((run) => run.status === 'failed').length}
               </p>
             </div>
-            <div className="rounded-xl border border-gray-300 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1a1a1a] dark:shadow-none">
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-500">Execução em andamento</p>
-              <p className="mt-2 text-sm font-semibold text-gray-800 dark:text-amber-300">
+            <div className="system-panel rounded-xl p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Execução em andamento</p>
+              <p className="mt-2 text-sm font-semibold text-sky-700 dark:text-sky-300">
                 {activeRun ? `ID #${activeRun.id}` : 'Nenhuma'}
               </p>
             </div>
           </section>
 
           {activeRun && (
-            <section className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 shadow-sm dark:border-blue-900/40 dark:bg-blue-950/20 dark:shadow-none">
-              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-blue-800 dark:text-blue-300">
+            <section className="rounded-xl border border-sky-200 bg-sky-50/80 p-4 shadow-sm dark:border-sky-900/40 dark:bg-sky-950/20 dark:shadow-none">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-300">
                 <span>Progresso da execução #{activeRun.id}</span>
                 <span>{activePercent}%</span>
               </div>
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-blue-100 dark:bg-blue-900/50">
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-sky-100 dark:bg-sky-900/50">
                 <div
-                  className="h-full rounded-full bg-blue-600 transition-all duration-500"
+                  className="h-full rounded-full bg-sky-600 transition-all duration-500"
                   style={{ width: `${activePercent}%` }}
                 />
               </div>
-              <p className="mt-2 text-xs text-blue-900 dark:text-blue-200">
+              <p className="mt-2 text-xs text-sky-900 dark:text-sky-200">
                 Processados: {activeProgress?.processed ?? 0}
                 {activeProgress?.total ? ` de ${activeProgress.total}` : ''}
                 {activeProgress?.current_page ? ` | Página ${activeProgress.current_page}` : ''}
@@ -226,18 +226,18 @@ export default function PropertySyncRuns() {
                 <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-1 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300">
                   Inseridos: {activeStats.new ?? 0}
                 </span>
-                <span className="rounded-full border border-cyan-300 bg-cyan-50 px-2 py-1 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-300">
+                <span className="rounded-full border border-sky-300 bg-sky-50 px-2 py-1 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/40 dark:text-sky-300">
                   Atualizados: {activeStats.updated ?? 0}
                 </span>
               </div>
             </section>
           )}
 
-          <section className="overflow-hidden rounded-xl border border-gray-300 bg-white shadow-sm dark:border-gray-800 dark:bg-[#141414] dark:shadow-none">
+          <section className="system-panel overflow-hidden rounded-xl">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] border-collapse">
-                <thead className="bg-gray-100 dark:bg-[#1c1c1c]">
-                  <tr className="text-left text-xs uppercase tracking-wide text-gray-600 dark:text-gray-400">
+                <thead className="bg-slate-100 dark:bg-[#1c1c1c]">
+                  <tr className="text-left text-xs uppercase tracking-wide text-slate-600 dark:text-gray-400">
                     <th className="px-4 py-3">ID</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3">Início</th>
@@ -250,13 +250,13 @@ export default function PropertySyncRuns() {
                 <tbody>
                   {loading && runs.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
+                      <td colSpan={7} className="px-4 py-10 text-center text-sm text-muted-foreground">
                         Carregando histórico...
                       </td>
                     </tr>
                   ) : runs.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
+                      <td colSpan={7} className="px-4 py-10 text-center text-sm text-muted-foreground">
                         Ainda não existem sincronizações registradas.
                       </td>
                     </tr>
@@ -278,44 +278,44 @@ export default function PropertySyncRuns() {
                         : summary;
 
                       return (
-                        <tr key={run.id} className="border-t border-gray-200 text-sm text-gray-700 dark:border-gray-800 dark:text-gray-200">
-                          <td className="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-300">#{run.id}</td>
+                        <tr key={run.id} className="border-t border-border text-sm text-foreground">
+                          <td className="px-4 py-3 font-mono text-xs text-muted-foreground">#{run.id}</td>
                           <td className="px-4 py-3">
                             {run.status === 'success' && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300">
                                 <CheckCircle2 size={13} /> Sucesso
                               </span>
                             )}
                             {run.status === 'failed' && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-300">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-50 px-2 py-1 text-xs text-rose-700 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-300">
                                 <XCircle size={13} /> Falha
                               </span>
                             )}
                             {run.status === 'running' && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-sky-300 bg-sky-50 px-2 py-1 text-xs text-sky-700 dark:border-sky-800 dark:bg-sky-900/20 dark:text-sky-300">
                                 <Clock3 size={13} /> Em execução
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{formatDateTime(run.started_at)}</td>
-                          <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{formatDateTime(run.finished_at)}</td>
-                          <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{formatDateTime(run.started_at)}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{formatDateTime(run.finished_at)}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">
                             <span className="inline-flex items-center gap-1">
                               <Timer size={13} /> {formatDuration(run.duration_ms)}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
+                          <td className="px-4 py-3 text-xs text-muted-foreground">
                             <div>{runningSummary}</div>
                             {run.status === 'running' && (
-                              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
+                              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-gray-800">
                                 <div
-                                  className="h-full rounded-full bg-blue-600 transition-all duration-500"
+                                  className="h-full rounded-full bg-sky-600 transition-all duration-500"
                                   style={{ width: `${percent}%` }}
                                 />
                               </div>
                             )}
                           </td>
-                          <td className="max-w-[280px] px-4 py-3 text-xs text-gray-700 dark:text-rose-300">
+                          <td className="max-w-[280px] px-4 py-3 text-xs text-rose-700 dark:text-rose-300">
                             {run.error_message || run.result_payload?.error || '-'}
                           </td>
                         </tr>
@@ -326,7 +326,7 @@ export default function PropertySyncRuns() {
               </table>
             </div>
 
-            <div className="flex items-center justify-between border-t border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-[#1a1a1a] dark:text-gray-300">
+            <div className="flex items-center justify-between border-t border-border bg-slate-50 px-4 py-3 text-sm text-foreground dark:bg-[#1a1a1a] dark:text-gray-300">
               <span>
                 Página {page} de {lastPage}
               </span>
@@ -334,14 +334,14 @@ export default function PropertySyncRuns() {
                 <button
                   onClick={() => fetchRuns(page - 1)}
                   disabled={page <= 1 || loading}
-                  className="rounded border border-gray-300 bg-white px-3 py-1.5 text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:bg-[#252525]"
+                  className="rounded border border-border bg-card px-3 py-1.5 text-foreground hover:bg-slate-100 disabled:opacity-50 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:bg-[#252525]"
                 >
                   Anterior
                 </button>
                 <button
                   onClick={() => fetchRuns(page + 1)}
                   disabled={page >= lastPage || loading}
-                  className="rounded border border-gray-300 bg-white px-3 py-1.5 text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:bg-[#252525]"
+                  className="rounded border border-border bg-card px-3 py-1.5 text-foreground hover:bg-slate-100 disabled:opacity-50 dark:border-gray-700 dark:bg-transparent dark:text-gray-300 dark:hover:bg-[#252525]"
                 >
                   Próxima
                 </button>
