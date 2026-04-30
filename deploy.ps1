@@ -241,6 +241,35 @@ cat > storage/app/deploy-version.json <<EOF
 }
 EOF
 
+mkdir -p versao
+cat > versao/index.html <<EOF
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Versao SOCIMOB</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; background: #f8fafc; color: #0f172a; }
+    .box { max-width: 860px; background: #fff; border: 1px solid #d7e0eb; border-radius: 10px; padding: 1rem 1.25rem; }
+    .title { font-size: 1.2rem; font-weight: 700; margin-bottom: .75rem; }
+    .row { margin: .35rem 0; }
+    .label { font-weight: 700; }
+    .summary { white-space: pre-wrap; background: #f3f6fb; border: 1px solid #d7e0eb; border-radius: 8px; padding: .75rem; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="title">SOCIMOB - Versao de Deploy</div>
+    <div class="row"><span class="label">Version:</span> $nextVersion $deployedAtDisplay</div>
+    <div class="row"><span class="label">Deploy by:</span> $deployedByEscaped</div>
+    <div class="row"><span class="label">Resumo:</span></div>
+    <div class="summary">$deploySummaryEscaped</div>
+  </div>
+</body>
+</html>
+EOF
+
 printf "\n"
 printf "%s\n" "=== COMPOSER INSTALL ==="
 /opt/alt/php83/usr/bin/php "$COMPOSER_PATH" install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -5
