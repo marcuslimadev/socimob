@@ -203,11 +203,11 @@ class LeadsController extends Controller
             $data['user_id'] = $request->user()->id;
         }
 
-        $lead = Lead::create($data);
+        $lead = app(LeadService::class)->saveUnique($data);
 
         return response()->json([
             'success' => true,
-            'message' => 'Lead criado com sucesso',
+            'message' => 'Lead salvo com sucesso',
             'data' => $lead
         ], 201);
     }

@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use App\Services\LeadService;
 
 class PortalController extends Controller
 {
@@ -704,46 +705,32 @@ class PortalController extends Controller
 
             $whatsapp = preg_replace('/\D/', '', $request->whatsapp);
 
-            // Check for existing lead with same whatsapp for this tenant
-            $existingLead = \App\Models\Lead::where('tenant_id', $tenantId)
-                ->where(function ($q) use ($whatsapp, $request) {
-                    $q->where('telefone', 'like', "%{$whatsapp}%")
-                      ->orWhere('whatsapp', 'like', "%{$whatsapp}%");
-                    if ($request->email) {
-                        $q->orWhere('email', $request->email);
-                    }
-                })
-                ->first();
+            $leadService = app(LeadService::class);
+            $existingLead = $leadService->findExisting(
+                $tenantId,
+                $request->email ? mb_strtolower(trim((string) $request->email)) : null,
+                $whatsapp,
+                $whatsapp
+            );
 
-            if ($existingLead) {
-                // Update existing lead
-                if ($request->interesse) {
-                    $obs = $existingLead->observacoes ?? '';
-                    $obs .= ($obs ? "" : '') . "[Chat Portal " . now()->format('d/m/Y H:i') . "] " . $request->interesse;
-                    $existingLead->observacoes = $obs;
-                }
-                if ($request->email && !$existingLead->email) {
-                    $existingLead->email = $request->email;
-                }
-                $existingLead->saveQuietly();
+            $chatObs = $request->interesse
+                ? "[Chat Portal " . now()->format('d/m/Y H:i') . "] " . $request->interesse
+                : "[Chat Portal " . now()->format('d/m/Y H:i') . "] Lead capturado via chat automatizado do portal";
 
-                $lead = $existingLead;
-            } else {
-                // Create new lead
-                $lead = new \App\Models\Lead([
-                    'tenant_id' => $tenantId,
-                    'nome' => $request->nome,
-                    'telefone' => $whatsapp,
-                    'whatsapp' => $whatsapp,
-                    'email' => $request->email,
-                    'status' => 'novo',
-                    'classificacao' => 'quente',
-                    'observacoes' => $request->interesse
-                        ? "[Chat Portal " . now()->format('d/m/Y H:i') . "] " . $request->interesse
-                        : "[Chat Portal " . now()->format('d/m/Y H:i') . "] Lead capturado via chat automatizado do portal",
-                ]);
-                $lead->saveQuietly();
+            if ($existingLead && !empty($existingLead->observacoes)) {
+                $chatObs = trim($existingLead->observacoes . PHP_EOL . $chatObs);
             }
+
+            $lead = $leadService->saveUnique([
+                'tenant_id' => $tenantId,
+                'nome' => $request->nome,
+                'telefone' => $whatsapp,
+                'whatsapp' => $whatsapp,
+                'email' => $request->email ? mb_strtolower(trim((string) $request->email)) : null,
+                'status' => 'novo',
+                'classificacao' => 'quente',
+                'observacoes' => $chatObs,
+            ]);
 
             // Get tenant WhatsApp number
             $tenant = \App\Models\Tenant::find($tenantId);
@@ -825,41 +812,31 @@ class PortalController extends Controller
 
             $telefone = preg_replace('/\D/', '', $request->telefone);
 
-            // Create or find lead
-            $existingLead = \App\Models\Lead::where('tenant_id', $tenantId)
-                ->where(function ($q) use ($telefone, $request) {
-                    $q->where('telefone', 'like', "%{$telefone}%")
-                      ->orWhere('whatsapp', 'like', "%{$telefone}%");
-                    if ($request->email) {
-                        $q->orWhere('email', $request->email);
-                    }
-                })
-                ->first();
+            $leadService = app(LeadService::class);
+            $existingLead = $leadService->findExisting(
+                $tenantId,
+                $request->email ? mb_strtolower(trim((string) $request->email)) : null,
+                $telefone,
+                $telefone
+            );
 
-            if ($existingLead) {
-                $obs = $existingLead->observacoes ?? '';
-                $obs .= ($obs ? "" : '') . "[Avaliacao Portal " . now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
-                if ($request->endereco) $obs .= " - Endereco: {$request->endereco}";
-                if ($request->bairro) $obs .= ", {$request->bairro}";
-                $existingLead->observacoes = $obs;
-                $existingLead->save();
-                $lead = $existingLead;
-            } else {
-                $obsText = "[Avaliacao Portal " . now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
-                if ($request->endereco) $obsText .= " - Endereco: {$request->endereco}";
-                if ($request->bairro) $obsText .= ", {$request->bairro}";
-
-                $lead = \App\Models\Lead::create([
-                    'tenant_id' => $tenantId,
-                    'nome' => $request->nome,
-                    'telefone' => $telefone,
-                    'whatsapp' => $telefone,
-                    'email' => $request->email,
-                    'status' => 'novo',
-                    'classificacao' => 'quente',
-                    'observacoes' => $obsText,
-                ]);
+            $obsText = "[Avaliacao Portal " . now()->format('d/m/Y H:i') . "] Solicitou avaliacao de imovel";
+            if ($request->endereco) $obsText .= " - Endereco: {$request->endereco}";
+            if ($request->bairro) $obsText .= ", {$request->bairro}";
+            if ($existingLead && !empty($existingLead->observacoes)) {
+                $obsText = trim($existingLead->observacoes . PHP_EOL . $obsText);
             }
+
+            $lead = $leadService->saveUnique([
+                'tenant_id' => $tenantId,
+                'nome' => $request->nome,
+                'telefone' => $telefone,
+                'whatsapp' => $telefone,
+                'email' => $request->email ? mb_strtolower(trim((string) $request->email)) : null,
+                'status' => 'novo',
+                'classificacao' => 'quente',
+                'observacoes' => $obsText,
+            ]);
 
             // Create evaluation request
             if (Schema::hasTable('property_evaluations')) {
@@ -1098,37 +1075,32 @@ class PortalController extends Controller
                 }
             }
 
-            // Criar ou atualizar lead no CRM
-            $lead = \App\Models\Lead::where('tenant_id', $tenantId)
-                ->where(function ($q) use ($telefone, $request) {
-                    $q->where('telefone', 'like', "%{$telefone}%")
-                      ->orWhere('whatsapp', 'like', "%{$telefone}%");
-                    if ($request->email_contato) {
-                        $q->orWhere('email', $request->email_contato);
-                    }
-                })
-                ->first();
-
             $obsLead = "[Venda Portal {$now}] Solicitou cadastro de imóvel para venda/aluguel: {$request->tipo_imovel} em {$request->cidade}";
             if ($request->valor_pretendido) {
                 $obsLead .= ' - Valor pretendido: R$ ' . number_format((float)$request->valor_pretendido, 0, ',', '.');
             }
+            $leadService = app(LeadService::class);
+            $existingLead = $leadService->findExisting(
+                $tenantId,
+                $request->email_contato ? mb_strtolower(trim((string) $request->email_contato)) : null,
+                $telefone,
+                $telefone
+            );
 
-            if ($lead) {
-                $lead->observacoes = trim(($lead->observacoes ? $lead->observacoes . PHP_EOL : '') . $obsLead);
-                $lead->save();
-            } else {
-                $lead = \App\Models\Lead::create([
-                    'tenant_id'    => $tenantId,
-                    'nome'         => $request->nome_contato,
-                    'telefone'     => $telefone,
-                    'whatsapp'     => $telefone,
-                    'email'        => $request->email_contato,
-                    'status'       => 'novo',
-                    'classificacao' => 'quente',
-                    'observacoes'  => $obsLead,
-                ]);
+            if ($existingLead && !empty($existingLead->observacoes)) {
+                $obsLead = trim($existingLead->observacoes . PHP_EOL . $obsLead);
             }
+
+            $lead = $leadService->saveUnique([
+                'tenant_id' => $tenantId,
+                'nome' => $request->nome_contato,
+                'telefone' => $telefone,
+                'whatsapp' => $telefone,
+                'email' => $request->email_contato ? mb_strtolower(trim((string) $request->email_contato)) : null,
+                'status' => 'novo',
+                'classificacao' => 'quente',
+                'observacoes' => $obsLead,
+            ]);
 
             $portalRequestNotes = $this->buildPortalPropertyRequestNotes($request, $property, $valorPretendido);
 
