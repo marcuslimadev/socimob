@@ -612,7 +612,11 @@ body[data-theme='light'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='
 
 body[data-theme='light'] .page-shell {
   color: #000000;
-  background: var(--shell-bg) !important;
+  background: #f8fafc !important;
+  --surface-subtle: #f3f6fb;
+  --surface-elevated: #ffffff;
+  --border: #d7e0eb;
+  --input: #c5d1e0;
 }
 
 body[data-theme='light'] .page-shell .glass-panel,
@@ -623,7 +627,7 @@ body[data-theme='light'] .page-shell [class*='bg-[#0d0f14]'],
 body[data-theme='light'] .page-shell [class*='bg-[#0b1627]'] {
   background: var(--surface-elevated) !important;
   border-color: var(--border) !important;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06) !important;
 }
 
 body[data-theme='light'] .page-shell [class*='bg-white/3'],
