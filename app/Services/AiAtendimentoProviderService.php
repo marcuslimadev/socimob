@@ -12,11 +12,11 @@ class AiAtendimentoProviderService
 
     public function resolve(?int $tenantId = null): string
     {
-        $provider = AppSetting::getValue(
-            self::SETTING_KEY,
-            env('AI_ATENDIMENTO_PROVIDER', self::OPENAI),
-            $tenantId
-        );
+        $provider = AppSetting::getValue(self::SETTING_KEY, null, $tenantId);
+
+        if ($provider === null || trim((string) $provider) === '') {
+            return self::OPENAI;
+        }
 
         return $this->normalize((string) $provider);
     }

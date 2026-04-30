@@ -1373,6 +1373,17 @@ class WhatsAppService
         
         $aiProvider = $this->aiProviderService->resolve($conversa->tenant_id ?? $conversa->lead?->tenant_id ?? null);
 
+        if (
+            $aiProvider === AiAtendimentoProviderService::HUGGINGFACE &&
+            !$this->huggingFaceService->isConfigured()
+        ) {
+            Log::warning('⚠️ Hugging Face indisponível, fallback automático para OpenAI', [
+                'conversa_id' => $conversa->id,
+                'tenant_id' => $conversa->tenant_id ?? null,
+            ]);
+            $aiProvider = AiAtendimentoProviderService::OPENAI;
+        }
+
         Log::info('🤖 Provedor IA selecionado para atendimento', [
             'conversa_id' => $conversa->id,
             'tenant_id' => $conversa->tenant_id ?? null,

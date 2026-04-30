@@ -1043,6 +1043,9 @@ export default function Settings() {
                                   ? `Hugging Face com ${aiProviderStatus?.huggingface?.model || 'meta-llama/Llama-3.1-8B-Instruct'} para respostas e embeddings locais para matching.`
                                   : 'OpenAI para respostas, extração de dados e condução do atendimento.'}
                               </p>
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                Você pode alternar a qualquer momento. A mudança é salva automaticamente.
+                              </p>
                               {aiProvider === 'huggingface' && aiProviderStatus?.huggingface?.configured === false && (
                                 <p className="mt-2 text-xs text-amber-300">
                                   Configure HUGGINGFACE_API_KEY em produção para usar o Llama; sem isso o fluxo usa fallback guiado.
