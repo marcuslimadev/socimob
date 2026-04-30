@@ -676,12 +676,43 @@ export default function Chat() {
               emFila: !!item.em_fila,
             };
           });
+        const dedupedContacts = Array.from(
+          mappedContacts.reduce((acc: Map<string, Contact>, contact: Contact) => {
+            const dedupeKey = contact.leadId
+              ? `lead:${contact.leadId}`
+              : `phone:${(contact.phone || '').replace(/\D+/g, '')}:${contact.name.toLowerCase()}`;
+
+            const existing = acc.get(dedupeKey);
+            if (!existing) {
+              acc.set(dedupeKey, contact);
+              return acc;
+            }
+
+            const existingLastActivity = new Date(existing.lastActivityAt || existing.createdAt || 0).getTime();
+            const currentLastActivity = new Date(contact.lastActivityAt || contact.createdAt || 0).getTime();
+
+            const existingHasMessage = existing.lastMessage && existing.lastMessage !== 'Sem mensagens';
+            const currentHasMessage = contact.lastMessage && contact.lastMessage !== 'Sem mensagens';
+
+            const shouldReplace =
+              currentLastActivity > existingLastActivity ||
+              (!existingHasMessage && currentHasMessage) ||
+              (existing.unread === 0 && contact.unread > 0);
+
+            if (shouldReplace) {
+              acc.set(dedupeKey, contact);
+            }
+
+            return acc;
+          }, new Map<string, Contact>())
+            .values()
+        );
 
         setContacts((prev) => {
-          if (prev.length === 0) return mappedContacts;
-          if (prev.length !== mappedContacts.length) return mappedContacts;
+          if (prev.length === 0) return dedupedContacts;
+          if (prev.length !== dedupedContacts.length) return dedupedContacts;
 
-          const hasChanges = mappedContacts.some((n: Contact, idx: number) => {
+          const hasChanges = dedupedContacts.some((n: Contact, idx: number) => {
             const o = prev[idx];
             return (
               !o ||
@@ -695,7 +726,7 @@ export default function Chat() {
             );
           });
 
-          return hasChanges ? mappedContacts : prev;
+          return hasChanges ? dedupedContacts : prev;
         });
 
         const query = new URLSearchParams(window.location.search);
@@ -703,7 +734,7 @@ export default function Chat() {
         const targetLeadId = query.get('leadId');
 
         if ((targetConversationId || targetLeadId) && !selectedContactIdRef.current) {
-          const target = mappedContacts.find((c: Contact) =>
+          const target = dedupedContacts.find((c: Contact) =>
             targetConversationId
               ? c.id === targetConversationId
               : c.leadId?.toString() === targetLeadId
