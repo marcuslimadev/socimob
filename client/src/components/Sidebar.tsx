@@ -569,6 +569,41 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     : currentSection?.label || activePrimaryTab?.label || 'Menu';
   const notificationBadgeLabel = unreadNotificationsCount > 99 ? '99+' : String(unreadNotificationsCount);
   const notificationsActive = isRouteMatch(location, '/notifications');
+  const logoContainerClass = isDarkTheme
+    ? 'border-cyan-300/10 bg-white/[0.04] text-white shadow-[0_14px_30px_rgba(2,6,23,0.28)]'
+    : 'border-slate-300 bg-slate-100 text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.12)]';
+  const tenantNameClass = isDarkTheme ? 'text-white' : 'text-slate-800';
+  const desktopMenuButtonClass = isDarkTheme
+    ? 'border-transparent bg-white/[0.03] text-slate-200 hover:border-white/10 hover:bg-white/[0.07] hover:text-white'
+    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900';
+  const desktopMenuButtonActiveClass = isDarkTheme
+    ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(32,54,73,0.95),rgba(16,31,49,0.95))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_24px_rgba(2,6,23,0.18)]'
+    : 'border-slate-300 bg-slate-100 text-slate-900 shadow-[0_8px_20px_rgba(15,23,42,0.10)]';
+  const dropdownPanelClass = isDarkTheme
+    ? 'border-white/10 bg-[#0b1627] shadow-[0_18px_40px_rgba(2,6,23,0.45)]'
+    : 'border-slate-300 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.14)]';
+  const sectionCardClass = isDarkTheme ? 'border-white/8 bg-white/[0.03]' : 'border-slate-200 bg-slate-50';
+  const sectionHeaderTextClass = isDarkTheme ? 'text-slate-400' : 'text-slate-500';
+  const sectionHeaderIconClass = isDarkTheme ? 'text-slate-300' : 'text-slate-600';
+  const badgeClass = isDarkTheme ? 'bg-white/10 text-slate-200' : 'bg-slate-200 text-slate-700';
+  const itemClass = isDarkTheme
+    ? 'border border-transparent bg-white/5 text-slate-200 hover:border-white/10 hover:bg-white/10'
+    : 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50';
+  const itemActiveClass = isDarkTheme
+    ? 'border border-cyan-400/20 bg-cyan-400/10 text-white'
+    : 'border border-blue-200 bg-blue-50 text-blue-900';
+  const mobilePanelClass = isDarkTheme
+    ? 'border-white/10 bg-[#0b1627] shadow-[0_18px_40px_rgba(2,6,23,0.45)]'
+    : 'border-slate-300 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.14)]';
+  const mobileSubtleTextClass = isDarkTheme ? 'text-slate-400' : 'text-slate-500';
+  const mobileTitleClass = isDarkTheme ? 'text-white' : 'text-slate-900';
+  const mobileChipClass = isDarkTheme
+    ? 'border-white/10 bg-white/5 text-slate-300'
+    : 'border-slate-300 bg-slate-100 text-slate-700';
+  const mobileItemClass = isDarkTheme ? 'border border-white/10 bg-white/5 text-slate-200' : 'border border-slate-200 bg-white text-slate-700';
+  const mobileItemActiveClass = isDarkTheme ? 'border border-white/15 bg-white/10 text-white' : 'border border-blue-200 bg-blue-50 text-blue-900';
+  const mobileSecondaryItemClass = isDarkTheme ? 'border-white/10 bg-white/5 text-slate-200' : 'border-slate-200 bg-white text-slate-700';
+  const mobileSecondaryItemActiveClass = isDarkTheme ? 'border-cyan-400/20 bg-cyan-400/10 text-white' : 'border-blue-200 bg-blue-50 text-blue-900';
 
   return (
     <>
@@ -586,16 +621,16 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 <img
                   src={tenant.logo_url || tenant.logo}
                   alt={tenant.name}
-                  className="h-10 w-10 rounded-xl border border-cyan-300/10 bg-white/[0.04] object-contain p-1.5 shadow-[0_14px_30px_rgba(2,6,23,0.28)]"
+                  className={`h-10 w-10 rounded-xl border object-contain p-1.5 ${logoContainerClass}`}
                 />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/10 bg-white/[0.04] text-white shadow-[0_14px_30px_rgba(2,6,23,0.28)]">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${logoContainerClass}`}>
                   <Building2 size={17} />
                 </div>
               )}
 
               <div className="min-w-0 shrink-0">
-                <p className="truncate font-serif text-[1rem] font-semibold leading-tight tracking-[0.01em] text-white md:text-[1.12rem]">
+                <p className={`truncate font-sans text-[1rem] font-semibold leading-tight tracking-[0.01em] md:text-[1.12rem] ${tenantNameClass}`}>
                   {tenant?.name || 'SOCIMOB'}
                 </p>
               </div>
@@ -607,13 +642,13 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                     onClick={() => setOpenDesktopSectionId((current) => (current === 'main-menu' ? null : 'main-menu'))}
                     className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-[13px] transition-all ${
                       openDesktopSectionId === 'main-menu'
-                        ? 'border-cyan-300/16 bg-[linear-gradient(180deg,rgba(32,54,73,0.95),rgba(16,31,49,0.95))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_24px_rgba(2,6,23,0.18)]'
-                        : 'border-transparent bg-white/[0.03] text-slate-200 hover:border-white/10 hover:bg-white/[0.07] hover:text-white'
+                        ? desktopMenuButtonActiveClass
+                        : desktopMenuButtonClass
                     }`}
                   >
                     <span className="font-medium">{desktopMenuLabel}</span>
                     {activePrimaryTab?.badge ? (
-                      <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-slate-100">
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${badgeClass}`}>
                         {activePrimaryTab.badge}
                       </span>
                     ) : null}
@@ -621,15 +656,15 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                   </button>
 
                   {openDesktopSectionId === 'main-menu' ? (
-                    <div className="absolute left-0 top-full z-50 mt-2 w-[360px] rounded-3xl border border-white/10 bg-[#0b1627] p-3 shadow-[0_18px_40px_rgba(2,6,23,0.45)] backdrop-blur-xl">
+                    <div className={`absolute left-0 top-full z-50 mt-2 w-[360px] rounded-3xl border p-3 backdrop-blur-xl ${dropdownPanelClass}`}>
                       <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
                         {visibleSections.map((section) => (
-                          <div key={section.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-2">
+                          <div key={section.id} className={`rounded-2xl border p-2 ${sectionCardClass}`}>
                             <div className="mb-1 flex items-center gap-2 px-2 py-2">
-                              <div className="shrink-0 text-slate-300">{section.icon}</div>
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{section.label}</p>
+                              <div className={`shrink-0 ${sectionHeaderIconClass}`}>{section.icon}</div>
+                              <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${sectionHeaderTextClass}`}>{section.label}</p>
                               {getSectionBadge(section) ? (
-                                <span className="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-slate-200">
+                                <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${badgeClass}`}>
                                   {getSectionBadge(section)}
                                 </span>
                               ) : null}
@@ -644,14 +679,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                                       onClick={() => setOpenDesktopSectionId(null)}
                                       className={`flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm transition-all ${
                                         itemIsActive
-                                          ? 'border border-cyan-400/20 bg-cyan-400/10 text-white'
-                                          : 'border border-transparent bg-white/5 text-slate-200 hover:border-white/10 hover:bg-white/10'
+                                          ? itemActiveClass
+                                          : itemClass
                                       }`}
                                     >
                                       <div className="shrink-0">{item.icon}</div>
                                       <span className="font-medium">{item.label}</span>
                                       {item.badge ? (
-                                        <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${itemIsActive ? 'bg-white/15 text-white' : 'bg-white/10 text-slate-200'}`}>
+                                        <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${itemIsActive ? (isDarkTheme ? 'bg-white/15 text-white' : 'bg-blue-100 text-blue-800') : badgeClass}`}>
                                           {item.badge}
                                         </span>
                                       ) : null}
@@ -663,14 +698,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                           </div>
                         ))}
 
-                        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-2">
+                        <div className={`rounded-2xl border p-2 ${sectionCardClass}`}>
                           <Link to={settingsItem.href}>
                             <div
                               onClick={() => setOpenDesktopSectionId(null)}
                               className={`flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm transition-all ${
                                 settingsActive
-                                  ? 'border border-cyan-400/20 bg-cyan-400/10 text-white'
-                                  : 'border border-transparent bg-white/5 text-slate-200 hover:border-white/10 hover:bg-white/10'
+                                  ? itemActiveClass
+                                  : itemClass
                               }`}
                             >
                               <div className="shrink-0">{settingsItem.icon}</div>
@@ -736,8 +771,12 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                 <div
                   className={`relative flex h-11 w-11 items-center justify-center rounded-2xl border text-white transition-colors ${
                     notificationsActive
-                      ? 'border-cyan-300/20 bg-cyan-300/10'
-                      : 'border-white/10 bg-white/[0.035] hover:border-white/16 hover:bg-white/[0.08]'
+                      ? isDarkTheme
+                        ? 'border-cyan-300/20 bg-cyan-300/10 text-white'
+                        : 'border-blue-200 bg-blue-50 text-blue-900'
+                      : isDarkTheme
+                        ? 'border-white/10 bg-white/[0.035] text-white hover:border-white/16 hover:bg-white/[0.08]'
+                        : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
                   }`}
                   aria-label="Notificações"
                   title="Notificações"
@@ -764,13 +803,13 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           <div className="pb-3 md:hidden">
             {actualIsOpen && (
               <div className="space-y-3 border-t border-white/8 pt-3">
-                <div className="rounded-[28px] border border-white/10 bg-[#0b1627] p-4 shadow-[0_18px_40px_rgba(2,6,23,0.45)]">
+                <div className={`rounded-[28px] border p-4 ${mobilePanelClass}`}>
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Menu principal</p>
-                      <p className="text-sm font-medium text-white">Escolha uma área do sistema</p>
+                      <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${mobileSubtleTextClass}`}>Menu principal</p>
+                      <p className={`text-sm font-medium ${mobileTitleClass}`}>Escolha uma área do sistema</p>
                     </div>
-                    <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+                    <div className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${mobileChipClass}`}>
                       {currentSection?.label || 'Geral'}
                     </div>
                   </div>
@@ -785,14 +824,14 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                             onClick={closeMobileMenu}
                             className={`flex items-center gap-2 rounded-2xl px-3 py-3 text-sm ${
                               isActive
-                                ? 'border border-white/15 bg-white/10 text-white'
-                                : 'border border-white/10 bg-white/5 text-slate-200'
+                                ? mobileItemActiveClass
+                                : mobileItemClass
                             }`}
                           >
                             <div className="shrink-0">{tab.icon}</div>
                             <span className="font-medium">{tab.label}</span>
                             {tab.badge ? (
-                              <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-white/15 text-white' : 'bg-white/10 text-slate-200'}`}>
+                              <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? (isDarkTheme ? 'bg-white/15 text-white' : 'bg-blue-100 text-blue-800') : badgeClass}`}>
                                 {tab.badge}
                               </span>
                             ) : null}
@@ -804,7 +843,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
                   {showFixedSubmenu && (
                     <div className="mt-4 border-t border-white/10 pt-4">
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{currentSection?.label}</p>
+                      <p className={`mb-2 text-xs font-semibold uppercase tracking-[0.16em] ${mobileSubtleTextClass}`}>{currentSection?.label}</p>
                       <div className="grid gap-2">
                         {secondaryTabs.map((item) => {
                           const isActive = isRouteMatch(location, item.href);
@@ -815,13 +854,13 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                                 onClick={closeMobileMenu}
                                 className={`flex items-center gap-2 rounded-2xl border px-3 py-2.5 text-sm ${
                                   isActive
-                                    ? 'border-cyan-400/20 bg-cyan-400/10 text-white'
-                                    : 'border-white/10 bg-white/5 text-slate-200'
+                                    ? mobileSecondaryItemActiveClass
+                                    : mobileSecondaryItemClass
                                 }`}
                               >
                                 <div className="shrink-0">{item.icon}</div>
                                 <span className="font-medium">{item.label}</span>
-                                {item.badge ? <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-white/15 text-white' : 'bg-white/10 text-slate-200'}`}>{item.badge}</span> : null}
+                                {item.badge ? <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? (isDarkTheme ? 'bg-white/15 text-white' : 'bg-blue-100 text-blue-800') : badgeClass}`}>{item.badge}</span> : null}
                               </div>
                             </Link>
                           );
@@ -847,14 +886,26 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                     </button>
                     <button
                       onClick={handleLogout}
-                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 text-sm text-slate-200"
+                      className={`flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border px-3 text-sm ${
+                        isDarkTheme
+                          ? 'border-white/10 bg-white/5 text-slate-200'
+                          : 'border-slate-300 bg-white text-slate-700'
+                      }`}
                     >
                       <LogOut size={15} />
                       <span>Sair</span>
                     </button>
                   </div>
 
-                  {user?.role === 'super_admin' && <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-2"><TenantSelector isSuperAdmin={true} /></div>}
+                  {user?.role === 'super_admin' && (
+                    <div
+                      className={`mt-4 rounded-2xl border p-2 ${
+                        isDarkTheme ? 'border-white/10 bg-white/5' : 'border-slate-300 bg-slate-50'
+                      }`}
+                    >
+                      <TenantSelector isSuperAdmin={true} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}

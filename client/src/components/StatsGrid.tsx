@@ -78,7 +78,7 @@ export default function StatsGrid({ stats, loading }: StatsGridProps) {
     return (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {[...Array(6)].map((_, i) => (
-          <div key={i} className="h-24 rounded-lg bg-white/5 border border-white/10 animate-pulse" />
+          <div key={i} className="system-panel h-24 rounded-lg animate-pulse" />
         ))}
       </div>
     );
@@ -92,7 +92,7 @@ export default function StatsGrid({ stats, loading }: StatsGridProps) {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: index * 0.05 }}
-          className={`glass-panel p-4 rounded-xl border ${card.border} group cursor-default overflow-hidden`}
+          className={`system-panel p-4 rounded-xl border ${card.border} group cursor-default overflow-hidden`}
         >
           <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`} />
 

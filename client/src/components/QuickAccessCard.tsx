@@ -27,7 +27,7 @@ const QuickAccessCard = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay, type: 'spring', stiffness: 200 }}
         whileHover={{ y: -4, scale: 1.02 }}
-        className="glass-panel p-5 rounded-2xl group cursor-pointer h-full"
+        className="system-panel p-5 rounded-2xl group cursor-pointer h-full"
       >
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex-1">
@@ -38,13 +38,13 @@ const QuickAccessCard = ({
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ delay: delay + 0.1, type: 'spring', stiffness: 200 }}
-            className={`w-11 h-11 rounded-xl ${gradient} flex items-center justify-center text-white transition-all`}
+            className={`system-icon-box w-11 h-11 rounded-xl ${gradient} flex items-center justify-center transition-all`}
           >
             {icon}
           </motion.div>
         </div>
         {badge && (
-          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/10 border border-white/20 text-foreground">
+          <div className="system-chip inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold">
             {badge}
           </div>
         )}

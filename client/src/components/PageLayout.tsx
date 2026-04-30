@@ -11,7 +11,7 @@ export default function PageLayout({ children }: PageLayoutProps) {
       <Sidebar />
 
       <div className="page-shell">
-        {children}
+        <div className="page-content">{children}</div>
       </div>
     </div>
   );

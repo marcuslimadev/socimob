@@ -32,7 +32,7 @@ const MetricCard = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, type: 'spring', stiffness: 200 }}
       whileHover={{ y: -4, scale: 1.02 }}
-      className="glass-panel p-6 rounded-2xl group cursor-pointer"
+      className="system-panel p-6 rounded-2xl group cursor-pointer"
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
@@ -48,7 +48,7 @@ const MetricCard = ({
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ delay: delay + 0.2, type: 'spring', stiffness: 200 }}
-            className={`w-12 h-12 rounded-xl ${gradient} flex items-center justify-center text-white transition-all`}
+            className={`system-icon-box w-12 h-12 rounded-xl ${gradient} flex items-center justify-center transition-all`}
           >
             {icon}
           </motion.div>
@@ -81,11 +81,11 @@ const MetricCard = ({
             <LineChart data={sparklineData}>
               <Tooltip
                 contentStyle={{
-                  background: 'rgba(10, 14, 39, 0.9)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  background: 'color-mix(in srgb, var(--surface-elevated) 96%, var(--background) 4%)',
+                  border: '1px solid var(--border)',
                   borderRadius: '8px',
                 }}
-                cursor={{ stroke: 'rgba(0, 102, 255, 0.3)' }}
+                cursor={{ stroke: 'color-mix(in srgb, var(--primary) 30%, transparent)' }}
               />
               <Line
                 type="monotone"
