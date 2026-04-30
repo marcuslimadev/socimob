@@ -38,12 +38,20 @@ $SSH_HOST = "145.223.105.168"
 $SSH_PORT = "65002"
 $SSH_USER = "u815655858"
 $SSH_PASS = "DimidricaGata09'@"
-$DEPLOY_PATH = "/home/u815655858/domains/lojadaesquina.store/public_html"
 $COMPOSER_PATH = "/usr/local/bin/composer"
 $APP_URL = Get-DotEnvValue -Key "APP_URL"
 if ([string]::IsNullOrWhiteSpace($APP_URL)) {
     $APP_URL = "https://exclusivalarimoveis.com"
 }
+
+$appHost = ([System.Uri]$APP_URL).Host.ToLowerInvariant()
+$configuredDeployPath = Get-DotEnvValue -Key "DEPLOY_PATH"
+if ([string]::IsNullOrWhiteSpace($configuredDeployPath)) {
+    $DEPLOY_PATH = "/home/$SSH_USER/domains/$appHost/public_html"
+} else {
+    $DEPLOY_PATH = $configuredDeployPath
+}
+
 if ([string]::IsNullOrWhiteSpace($HealthUrl)) {
     $HEALTH_URL = "$($APP_URL.TrimEnd('/'))/api/health"
 } else {
