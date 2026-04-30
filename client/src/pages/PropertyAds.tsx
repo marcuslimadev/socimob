@@ -1,6 +1,20 @@
-import { useEffect, useRef, useState, type Ref } from 'react';
+import { useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { motion } from 'framer-motion';
-import { Image, Search, Loader2, Download } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  Download,
+  Eye,
+  EyeOff,
+  Image,
+  Loader2,
+  Palette,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+  Type,
+} from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
@@ -54,8 +68,83 @@ interface AdTexts {
   cta: string;
 }
 
+type AdLayout = 'classic' | 'gallery' | 'clean';
+
+interface AdDesign {
+  layout: AdLayout;
+  accentColor: string;
+  panelOpacity: number;
+  textScale: number;
+  showLogo: boolean;
+  showPhone: boolean;
+  showBadge: boolean;
+  showNote: boolean;
+  showSpecs: boolean;
+  showSecondarySpecs: boolean;
+  showCta: boolean;
+  showThumbnails: boolean;
+}
+
 const STORY_WIDTH = 1080;
 const STORY_HEIGHT = 1920;
+const MAX_SELECTED_PHOTOS = 7;
+
+const DEFAULT_AD_DESIGN: AdDesign = {
+  layout: 'classic',
+  accentColor: '#38bdf8',
+  panelOpacity: 76,
+  textScale: 100,
+  showLogo: true,
+  showPhone: true,
+  showBadge: true,
+  showNote: true,
+  showSpecs: true,
+  showSecondarySpecs: true,
+  showCta: true,
+  showThumbnails: true,
+};
+
+const AD_ACCENT_COLORS = ['#38bdf8', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#f8fafc'];
+
+const AD_LAYOUT_OPTIONS: Array<{ value: AdLayout; label: string }> = [
+  { value: 'classic', label: 'Clássico' },
+  { value: 'gallery', label: 'Galeria' },
+  { value: 'clean', label: 'Clean' },
+];
+
+type AdVisibilityKey =
+  | 'showLogo'
+  | 'showPhone'
+  | 'showBadge'
+  | 'showNote'
+  | 'showSpecs'
+  | 'showSecondarySpecs'
+  | 'showCta'
+  | 'showThumbnails';
+
+const AD_VISIBILITY_OPTIONS: Array<{ key: AdVisibilityKey; label: string }> = [
+  { key: 'showLogo', label: 'Logo' },
+  { key: 'showPhone', label: 'Telefone' },
+  { key: 'showBadge', label: 'Etiqueta' },
+  { key: 'showNote', label: 'Texto curto' },
+  { key: 'showSpecs', label: 'Características' },
+  { key: 'showSecondarySpecs', label: 'Detalhes' },
+  { key: 'showCta', label: 'Chamada' },
+  { key: 'showThumbnails', label: 'Fotos extras' },
+];
+
+const hexToRgba = (hex: string, opacity: number) => {
+  const normalized = hex.replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) {
+    return `rgba(56, 189, 248, ${opacity})`;
+  }
+
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
 
 const isAbsoluteHttpUrl = (value: string) => /^https?:\/\//i.test(value);
 
@@ -318,6 +407,7 @@ interface StoryPreviewCardProps {
   tenant: TenantBranding | null;
   photos: string[];
   texts?: AdTexts;
+  design?: AdDesign;
   storyRef?: Ref<HTMLDivElement>;
   className?: string;
 }
@@ -327,26 +417,38 @@ interface ExportStoryState {
   photos: string[];
   logoSrc: string;
   texts?: AdTexts;
+  design?: AdDesign;
 }
 
-function StoryPreviewCard({ property, tenant, photos, texts, storyRef, className }: StoryPreviewCardProps) {
+function StoryPreviewCard({ property, tenant, photos, texts, design, storyRef, className }: StoryPreviewCardProps) {
   const [renderablePhotos, setRenderablePhotos] = useState<string[]>(photos);
   const [showLogo, setShowLogo] = useState(true);
+  const activeDesign = design || DEFAULT_AD_DESIGN;
   const photoSignature = photos.join('||');
-  const thumbPhotos = renderablePhotos.slice(1, 5);
+  const visiblePhotos = renderablePhotos.slice(0, MAX_SELECTED_PHOTOS);
+  const thumbPhotos = activeDesign.showThumbnails ? visiblePhotos.slice(1) : [];
   const transactionType = getTransactionType(property);
-  const primarySpecs = texts?.specs
+  const primarySpecs = activeDesign.showSpecs && texts?.specs
     ? texts.specs.split(/[•|]/).map((item) => item.trim()).filter(Boolean)
-    : getPrimarySpecs(property);
-  const secondarySpecs = getSecondarySpecs(property);
+    : activeDesign.showSpecs ? getPrimarySpecs(property) : [];
+  const secondarySpecs = activeDesign.showSecondarySpecs ? getSecondarySpecs(property) : [];
   const logoSrc = tenant?.logo_url || tenant?.logo;
-  const tenantPhone = formatPhone(tenant?.tenant_phone || tenant?.contact_phone);
+  const tenantPhone = activeDesign.showPhone ? formatPhone(tenant?.tenant_phone || tenant?.contact_phone) : '';
   const badgeText = texts?.badge || getTransactionLabel(transactionType);
   const titleText = texts?.title || getPropertyTitle(property);
   const locationText = texts?.location || getLocationText(property) || 'Localização sob consulta';
   const priceText = texts?.price || formatCurrency(getPrice(property));
-  const noteText = texts?.note?.trim();
-  const ctaText = texts?.cta?.trim();
+  const noteText = activeDesign.showNote ? texts?.note?.trim() : '';
+  const ctaText = activeDesign.showCta ? texts?.cta?.trim() : '';
+  const textScale = activeDesign.textScale / 100;
+  const isCleanLayout = activeDesign.layout === 'clean';
+  const isGalleryLayout = activeDesign.layout === 'gallery';
+  const panelBackground = isCleanLayout
+    ? hexToRgba('#f8fafc', Math.min(0.96, Math.max(0.72, activeDesign.panelOpacity / 100)))
+    : hexToRgba('#07111d', Math.min(0.92, Math.max(0.46, activeDesign.panelOpacity / 100)));
+  const panelTextColor = isCleanLayout ? '#07111d' : '#ffffff';
+  const mutedTextColor = isCleanLayout ? 'rgba(7,17,29,0.72)' : 'rgba(255,255,255,0.72)';
+  const softTextColor = isCleanLayout ? 'rgba(7,17,29,0.58)' : 'rgba(255,255,255,0.58)';
 
   useEffect(() => {
     setRenderablePhotos(photos);
@@ -371,29 +473,39 @@ function StoryPreviewCard({ property, tenant, photos, texts, storyRef, className
       ref={storyRef}
       className={className || 'relative mx-auto aspect-[9/16] w-full max-w-[330px] overflow-hidden rounded-[30px] border border-white/15 bg-[#0a1320]'}
     >
-      {renderablePhotos.length > 0 ? (
+      {visiblePhotos.length > 0 ? (
         <img
-          src={renderablePhotos[0]}
+          src={visiblePhotos[0]}
           alt={getPropertyTitle(property)}
           className="absolute inset-0 h-full w-full object-cover"
-          onError={() => removePhoto(renderablePhotos[0])}
+          onError={() => removePhoto(visiblePhotos[0])}
         />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-950" />
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-[#07111d]" />
+      <div className={`absolute inset-0 ${isCleanLayout ? 'bg-gradient-to-b from-black/0 via-black/10 to-black/45' : 'bg-gradient-to-b from-black/10 via-black/35 to-[#07111d]'}`} />
 
+      {activeDesign.showBadge && (
       <div className="absolute inset-x-4 top-4 flex items-center justify-start">
-        <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${getTransactionBadge(transactionType)}`}>
+        <span
+          className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${getTransactionBadge(transactionType)}`}
+          style={{ borderColor: hexToRgba(activeDesign.accentColor, 0.6), backgroundColor: hexToRgba(activeDesign.accentColor, 0.18) }}
+        >
           {badgeText}
         </span>
       </div>
+      )}
 
-      <div className="absolute inset-x-4 bottom-4 rounded-[26px] bg-[#07111d]/72 p-4 backdrop-blur-sm">
+      <div
+        className={`absolute rounded-[26px] p-4 backdrop-blur-sm ${
+          isGalleryLayout ? 'inset-x-4 bottom-4' : isCleanLayout ? 'inset-x-5 bottom-5' : 'inset-x-4 bottom-4'
+        }`}
+        style={{ backgroundColor: panelBackground, color: panelTextColor }}
+      >
         <div className="mb-2 flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-2">
-            {logoSrc && showLogo && (
+            {activeDesign.showLogo && logoSrc && showLogo && (
               <div className="mt-0.5 flex h-7 items-center rounded-md bg-white/95 px-2 py-1">
                 <img
                   src={logoSrc}
@@ -404,43 +516,45 @@ function StoryPreviewCard({ property, tenant, photos, texts, storyRef, className
               </div>
             )}
             <div className="min-w-0">
-              <p className="truncate text-[10px] uppercase tracking-[0.28em] text-amber-300">
+              <p className="truncate text-[10px] uppercase tracking-[0.28em]" style={{ color: activeDesign.accentColor }}>
                 {tenant?.name || 'Tenant'}
               </p>
               {tenantPhone && (
-                <p className="mt-1 truncate text-[10px] font-semibold tracking-[0.08em] text-white/82">
+                <p className="mt-1 truncate text-[10px] font-semibold tracking-[0.08em]" style={{ color: mutedTextColor }}>
                   {tenantPhone}
                 </p>
               )}
             </div>
           </div>
         </div>
-        <h3 className="line-clamp-2 text-[1.38rem] font-bold leading-[1.08] text-white">
+        <h3 className="line-clamp-2 font-bold leading-[1.08]" style={{ color: panelTextColor, fontSize: `${1.38 * textScale}rem` }}>
           {titleText}
         </h3>
-        <p className="mt-2 line-clamp-2 text-sm text-white/72">
+        <p className="mt-2 line-clamp-2 text-sm" style={{ color: mutedTextColor }}>
           {locationText}
         </p>
-        <p className="mt-3 text-[1.7rem] font-bold leading-none text-white">
+        <p className="mt-3 font-bold leading-none" style={{ color: panelTextColor, fontSize: `${1.7 * textScale}rem` }}>
           {priceText}
         </p>
-        {noteText && <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-white/72">{noteText}</p>}
+        {noteText && <p className="mt-2 line-clamp-2 text-[12px] leading-5" style={{ color: mutedTextColor }}>{noteText}</p>}
         {primarySpecs.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2 text-[12px] text-white/78">
+          <div className="mt-2 flex flex-wrap gap-2 text-[12px]" style={{ color: mutedTextColor }}>
             {primarySpecs.map((spec) => <span key={spec}>{spec}</span>)}
           </div>
         )}
         {secondarySpecs.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-white/58">
+          <div className="mt-1 flex flex-wrap gap-2 text-[11px]" style={{ color: softTextColor }}>
             {secondarySpecs.map((spec) => <span key={spec}>{spec}</span>)}
           </div>
         )}
         {thumbPhotos.length > 0 && (
-          <div className={`mt-3 grid gap-2 ${thumbPhotos.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          <div className={`mt-3 grid gap-2 ${thumbPhotos.length >= 5 ? 'grid-cols-3' : thumbPhotos.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
             {thumbPhotos.map((photo, index) => (
               <div
                 key={`${property.id}-${photo}-${index}`}
-                className="relative aspect-[4/3] overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-[0_10px_22px_rgba(15,23,42,0.22),0_2px_6px_rgba(15,23,42,0.12)]"
+                className={`relative overflow-hidden border border-white/10 bg-white/5 shadow-[0_10px_22px_rgba(15,23,42,0.22),0_2px_6px_rgba(15,23,42,0.12)] ${
+                  thumbPhotos.length >= 5 ? 'aspect-square rounded-lg' : 'aspect-[4/3] rounded-xl'
+                }`}
               >
                 <img
                   src={photo}
@@ -453,7 +567,14 @@ function StoryPreviewCard({ property, tenant, photos, texts, storyRef, className
             ))}
           </div>
         )}
-        {ctaText && <p className="mt-3 rounded-full bg-white px-3 py-2 text-center text-[12px] font-bold text-[#07111d]">{ctaText}</p>}
+        {ctaText && (
+          <p
+            className="mt-3 rounded-full px-3 py-2 text-center text-[12px] font-bold"
+            style={{ backgroundColor: isCleanLayout ? activeDesign.accentColor : '#ffffff', color: isCleanLayout ? '#ffffff' : '#07111d' }}
+          >
+            {ctaText}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -468,6 +589,7 @@ export default function PropertyAds() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
   const [adTexts, setAdTexts] = useState<AdTexts | null>(null);
+  const [adDesign, setAdDesign] = useState<AdDesign>(DEFAULT_AD_DESIGN);
   const [exportStory, setExportStory] = useState<ExportStoryState | null>(null);
   const exportStoryRef = useRef<HTMLDivElement | null>(null);
   const exportObjectUrlsRef = useRef<string[]>([]);
@@ -498,6 +620,47 @@ export default function PropertyAds() {
     setSelectedPhotos(photos.slice(0, Math.min(3, photos.length)));
     setAdTexts(buildDefaultAdTexts(selectedProperty));
   }, [selectedProperty?.id]);
+
+  const updateAdDesign = <K extends keyof AdDesign>(key: K, value: AdDesign[K]) => {
+    setAdDesign((current) => ({ ...current, [key]: value }));
+  };
+
+  const resetAdDesign = () => {
+    setAdDesign(DEFAULT_AD_DESIGN);
+  };
+
+  const selectFirstPhotos = (count: number) => {
+    setSelectedPhotos(allSelectedPhotos.slice(0, Math.min(count, MAX_SELECTED_PHOTOS, allSelectedPhotos.length)));
+  };
+
+  const togglePhotoSelection = (photo: string) => {
+    setSelectedPhotos((current) => {
+      if (current.includes(photo)) {
+        return current.filter((item) => item !== photo);
+      }
+
+      if (current.length >= MAX_SELECTED_PHOTOS) {
+        toast.warning(`Use no máximo ${MAX_SELECTED_PHOTOS} fotos por propaganda`);
+        return current;
+      }
+
+      return [...current, photo];
+    });
+  };
+
+  const moveSelectedPhoto = (photo: string, direction: -1 | 1) => {
+    setSelectedPhotos((current) => {
+      const index = current.indexOf(photo);
+      const targetIndex = index + direction;
+      if (index < 0 || targetIndex < 0 || targetIndex >= current.length) {
+        return current;
+      }
+
+      const next = [...current];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  };
 
   const fetchProperties = async () => {
     try {
@@ -892,14 +1055,19 @@ export default function PropertyAds() {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   };
 
-  const handleDownloadStory = async (property: Property, photosOverride?: string[], textsOverride?: AdTexts | null) => {
+  const handleDownloadStory = async (
+    property: Property,
+    photosOverride?: string[],
+    textsOverride?: AdTexts | null,
+    designOverride?: AdDesign,
+  ) => {
     let restoreRemoteFonts = () => undefined;
     try {
       setDownloadingPropertyId(property.id);
       cleanupExportAssets();
 
       const objectUrls: string[] = [];
-      const normalizedPhotos = (photosOverride?.length ? photosOverride : normalizePhotos(property)).slice(0, 5);
+      const normalizedPhotos = (photosOverride?.length ? photosOverride : normalizePhotos(property)).slice(0, MAX_SELECTED_PHOTOS);
       const resolvedPhotos = await Promise.all(
         normalizedPhotos.map((photo) => resolveAssetUrl(photo, objectUrls)),
       );
@@ -912,6 +1080,7 @@ export default function PropertyAds() {
         photos: resolvedPhotos.filter(Boolean),
         logoSrc: resolvedLogoSrc || tenantLogoSrc || '',
         texts: textsOverride || undefined,
+        design: designOverride || adDesign,
       });
 
       await waitForNextPaint();
@@ -1100,49 +1269,209 @@ export default function PropertyAds() {
                 </div>
 
                 <div className="glass-panel rounded-2xl p-5">
-                  <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-300">Editor visual</p>
+                      <h3 className="mt-1 text-lg font-bold text-foreground">Layout da peça</h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={resetAdDesign}
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/8 px-3 py-2 text-sm font-semibold text-white hover:bg-white/12"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Restaurar
+                    </button>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-3">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        <SlidersHorizontal className="h-4 w-4" />
+                        Modelo
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {AD_LAYOUT_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => updateAdDesign('layout', option.value)}
+                            className={`rounded-xl border px-2 py-2 text-xs font-semibold transition ${
+                              adDesign.layout === option.value
+                                ? 'border-sky-400 bg-sky-500/20 text-sky-100'
+                                : 'border-white/10 bg-white/5 text-muted-foreground hover:bg-white/10'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        <Palette className="h-4 w-4" />
+                        Cor
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {AD_ACCENT_COLORS.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => updateAdDesign('accentColor', color)}
+                            className="relative h-9 w-9 rounded-full border border-white/20"
+                            style={{ backgroundColor: color }}
+                            aria-label={`Cor ${color}`}
+                          >
+                            {adDesign.accentColor === color && (
+                              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/20">
+                                <Check className="h-4 w-4 text-white" />
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        <Type className="h-4 w-4" />
+                        Ajustes
+                      </div>
+                      <label className="block text-xs font-medium text-muted-foreground">
+                        Opacidade
+                        <input
+                          type="range"
+                          min="45"
+                          max="96"
+                          value={adDesign.panelOpacity}
+                          onChange={(event) => updateAdDesign('panelOpacity', Number(event.target.value))}
+                          className="mt-2 w-full accent-sky-500"
+                        />
+                      </label>
+                      <label className="mt-3 block text-xs font-medium text-muted-foreground">
+                        Texto
+                        <input
+                          type="range"
+                          min="88"
+                          max="116"
+                          value={adDesign.textScale}
+                          onChange={(event) => updateAdDesign('textScale', Number(event.target.value))}
+                          className="mt-2 w-full accent-sky-500"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    {AD_VISIBILITY_OPTIONS.map((option) => {
+                      const isVisible = Boolean(adDesign[option.key]);
+                      return (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onClick={() => updateAdDesign(option.key, !isVisible)}
+                          className={`inline-flex items-center justify-between rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                            isVisible
+                              ? 'border-sky-400/40 bg-sky-500/15 text-sky-100'
+                              : 'border-white/10 bg-white/5 text-muted-foreground hover:bg-white/10'
+                          }`}
+                        >
+                          {option.label}
+                          {isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="glass-panel rounded-2xl p-5">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-300">Fotos</p>
                       <h3 className="mt-1 text-lg font-bold text-foreground">{selectedPhotos.length} selecionada(s)</h3>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPhotos(allSelectedPhotos.slice(0, 5))}
-                      className="rounded-xl border border-white/15 bg-white/8 px-3 py-2 text-sm font-semibold text-white hover:bg-white/12"
-                    >
-                      Usar primeiras 5
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {Array.from({ length: Math.min(MAX_SELECTED_PHOTOS, allSelectedPhotos.length) }, (_, index) => index + 1).map((count) => (
+                        <button
+                          key={count}
+                          type="button"
+                          onClick={() => selectFirstPhotos(count)}
+                          className={`h-9 min-w-9 rounded-xl border px-3 text-sm font-bold transition ${
+                            selectedPhotos.length === count
+                              ? 'border-sky-400 bg-sky-500/20 text-sky-100'
+                              : 'border-white/15 bg-white/8 text-white hover:bg-white/12'
+                          }`}
+                        >
+                          {count}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {allSelectedPhotos.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-white/15 bg-white/5 px-4 py-6 text-center text-sm text-muted-foreground">Este imóvel não tem fotos cadastradas.</p>
                   ) : (
-                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                      {allSelectedPhotos.map((photo, index) => {
-                        const isSelected = selectedPhotoSet.has(photo);
-                        return (
-                          <button
-                            key={`${photo}-${index}`}
-                            type="button"
-                            onClick={() => {
-                              setSelectedPhotos((current) =>
-                                current.includes(photo)
-                                  ? current.filter((item) => item !== photo)
-                                  : [...current, photo].slice(0, 5)
-                              );
-                            }}
-                            className={`overflow-hidden rounded-2xl border text-left transition ${
-                              isSelected ? 'border-sky-400 bg-sky-500/15 ring-2 ring-sky-400/30' : 'border-white/10 bg-white/5 hover:bg-white/10'
-                            }`}
-                          >
-                            <img src={photo} alt={`Foto ${index + 1}`} className="aspect-[4/3] w-full object-cover" />
-                            <div className="flex items-center justify-between px-2 py-1.5 text-xs">
-                              <span className="font-semibold text-foreground">Foto {index + 1}</span>
-                              {isSelected && <span className="rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-bold text-white">{selectedPhotos.indexOf(photo) + 1}</span>}
-                            </div>
-                          </button>
-                        );
-                      })}
+                    <div className="space-y-4">
+                      {selectedPhotos.length > 0 && (
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Ordem na propaganda</p>
+                            <span className="rounded-full bg-white/10 px-2 py-1 text-[11px] font-bold text-sky-100">{selectedPhotos.length}/{MAX_SELECTED_PHOTOS}</span>
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {selectedPhotos.map((photo, index) => (
+                              <div key={`selected-${photo}`} className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2">
+                                <img src={photo} alt={`Selecionada ${index + 1}`} className="h-12 w-16 rounded-lg object-cover" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-xs font-semibold text-foreground">Foto {index + 1}</p>
+                                  <p className="text-[11px] text-muted-foreground">{index === 0 ? 'Principal' : 'Extra'}</p>
+                                </div>
+                                <div className="flex gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => moveSelectedPhoto(photo, -1)}
+                                    disabled={index === 0}
+                                    className="rounded-lg border border-white/10 p-1.5 text-muted-foreground hover:bg-white/10 hover:text-white disabled:opacity-35"
+                                  >
+                                    <ArrowUp className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveSelectedPhoto(photo, 1)}
+                                    disabled={index === selectedPhotos.length - 1}
+                                    className="rounded-lg border border-white/10 p-1.5 text-muted-foreground hover:bg-white/10 hover:text-white disabled:opacity-35"
+                                  >
+                                    <ArrowDown className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                        {allSelectedPhotos.map((photo, index) => {
+                          const isSelected = selectedPhotoSet.has(photo);
+                          return (
+                            <button
+                              key={`${photo}-${index}`}
+                              type="button"
+                              onClick={() => togglePhotoSelection(photo)}
+                              className={`overflow-hidden rounded-2xl border text-left transition ${
+                                isSelected ? 'border-sky-400 bg-sky-500/15 ring-2 ring-sky-400/30' : 'border-white/10 bg-white/5 hover:bg-white/10'
+                              }`}
+                            >
+                              <img src={photo} alt={`Foto ${index + 1}`} className="aspect-[4/3] w-full object-cover" />
+                              <div className="flex items-center justify-between px-2 py-1.5 text-xs">
+                                <span className="font-semibold text-foreground">Foto {index + 1}</span>
+                                {isSelected && <span className="rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-bold text-white">{selectedPhotos.indexOf(photo) + 1}</span>}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1171,9 +1500,9 @@ export default function PropertyAds() {
               </div>
 
               <div className="glass-panel rounded-2xl p-5 xl:sticky xl:top-28 xl:self-start">
-                <StoryPreviewCard property={selectedProperty} tenant={tenant} photos={selectedPhotos} texts={adTexts} />
+                <StoryPreviewCard property={selectedProperty} tenant={tenant} photos={selectedPhotos} texts={adTexts} design={adDesign} />
                 <button
-                  onClick={() => handleDownloadStory(selectedProperty, selectedPhotos, adTexts)}
+                  onClick={() => handleDownloadStory(selectedProperty, selectedPhotos, adTexts, adDesign)}
                   disabled={downloadingPropertyId === selectedProperty.id || selectedPhotos.length === 0}
                   className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
                 >
@@ -1237,7 +1566,8 @@ export default function PropertyAds() {
             tenant={exportStory.logoSrc ? { ...tenant, logo_url: exportStory.logoSrc, logo: exportStory.logoSrc } : tenant}
             photos={exportStory.photos}
             texts={exportStory.texts}
-            className="relative aspect-[9/16] w-[330px] overflow-hidden rounded-[30px] border border-white/15 bg-[#0a1320] [font-family:Arial,sans-serif]"
+            design={exportStory.design}
+            className="relative h-[480px] w-[270px] overflow-hidden rounded-[30px] border border-white/15 bg-[#0a1320] [font-family:Arial,sans-serif]"
           />
         </div>
       )}
