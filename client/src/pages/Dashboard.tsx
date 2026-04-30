@@ -200,8 +200,8 @@ export default function Dashboard() {
           value: stats.leads.qualificados,
           total: stats.leads.total,
           percent: summaryMetrics?.qualificationRate ?? 0,
-          accent: 'bg-[linear-gradient(135deg,rgba(27,94,32,0.28),rgba(76,175,80,0.08))]',
-          bar: 'bg-green-400',
+          accent: 'system-panel-subtle',
+          bar: 'bg-green-500',
           icon: Target,
         },
         {
@@ -209,8 +209,8 @@ export default function Dashboard() {
           value: stats.imoveis.ativos,
           total: stats.imoveis.total,
           percent: summaryMetrics?.inventoryRate ?? 0,
-          accent: 'bg-[linear-gradient(135deg,rgba(11,61,145,0.26),rgba(70,170,255,0.08))]',
-          bar: 'bg-sky-400',
+          accent: 'system-panel-subtle',
+          bar: 'bg-sky-500',
           icon: Home,
         },
         {
@@ -218,8 +218,8 @@ export default function Dashboard() {
           value: stats.assinaturas.assinados,
           total: stats.assinaturas.total,
           percent: summaryMetrics?.signatureRate ?? 0,
-          accent: 'bg-[linear-gradient(135deg,rgba(127,59,8,0.26),rgba(245,158,11,0.08))]',
-          bar: 'bg-amber-400',
+          accent: 'system-panel-subtle',
+          bar: 'bg-amber-500',
           icon: CheckCircle2,
         },
       ]
@@ -521,19 +521,19 @@ export default function Dashboard() {
         className="mx-auto max-w-7xl"
       >
         <motion.div variants={itemVariants} className="mb-6 grid gap-4 xl:grid-cols-[1.7fr_1fr]">
-          <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(68,138,255,0.22),transparent_38%),linear-gradient(135deg,rgba(10,15,28,0.98),rgba(15,23,42,0.88))] p-5 sm:p-7">
-            <div className="absolute inset-y-0 right-0 w-40 bg-[radial-gradient(circle_at_center,rgba(255,193,7,0.14),transparent_65%)]" />
+          <div className="relative overflow-hidden rounded-[28px] system-panel p-5 sm:p-7">
+            <div className="absolute inset-y-0 right-0 w-40 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.12),transparent_65%)]" />
             <div className="relative z-10">
-              <div className="mb-5 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-200/80">
-                <span className="rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1">Radar operacional</span>
-                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Atualiza automaticamente</span>
+              <div className="mb-5 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                <span className="rounded-full border border-border bg-muted px-3 py-1">Radar operacional</span>
+                <span className="rounded-full border border-border bg-muted px-3 py-1">Atualiza automaticamente</span>
               </div>
 
               <div className="max-w-3xl">
-                <h1 className="mb-2 text-2xl font-semibold leading-tight text-white sm:text-3xl md:text-4xl">
+                <h1 className="mb-2 text-2xl font-semibold leading-tight text-foreground sm:text-3xl md:text-4xl">
                   {isAdmin ? 'Painel de comando da operação' : `Bom trabalho, ${firstName}`}
                 </h1>
-                <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+                <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
                   {isAdmin
                     ? 'Visão executiva do pipeline comercial, gargalos operacionais e atividade recente do tenant em um único fluxo.'
                     : 'Acompanhe o ritmo da sua carteira, o que exige resposta imediata e o histórico mais recente da operação.'}
@@ -541,41 +541,41 @@ export default function Dashboard() {
               </div>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+                <div className="rounded-2xl border border-border bg-muted/50 p-4">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs uppercase tracking-[0.2em] text-slate-400">Pipeline</span>
+                    <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pipeline</span>
                     <Users size={16} className="text-sky-300" />
                   </div>
-                  <div className="text-3xl font-semibold text-white">{formatNumber(stats?.leads.total ?? 0)}</div>
-                  <p className="mt-1 text-xs text-slate-400">{formatNumber(stats?.leads.novos ?? 0)} novos em entrada</p>
+                  <div className="text-3xl font-semibold text-foreground">{formatNumber(stats?.leads.total ?? 0)}</div>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatNumber(stats?.leads.novos ?? 0)} novos em entrada</p>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+                <div className="rounded-2xl border border-border bg-muted/50 p-4">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs uppercase tracking-[0.2em] text-slate-400">Fechamento do mês</span>
+                    <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Fechamento do mês</span>
                     <TrendingUp size={16} className="text-emerald-300" />
                   </div>
-                  <div className="text-3xl font-semibold text-white">{summaryMetrics ? `${summaryMetrics.performanceRate}%` : '0%'}</div>
-                  <p className="mt-1 text-xs text-slate-400">{formatNumber(stats?.leads.fechados_mes ?? 0)} leads fechados neste mês</p>
+                  <div className="text-3xl font-semibold text-foreground">{summaryMetrics ? `${summaryMetrics.performanceRate}%` : '0%'}</div>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatNumber(stats?.leads.fechados_mes ?? 0)} leads fechados neste mês</p>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+                <div className="rounded-2xl border border-border bg-muted/50 p-4">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs uppercase tracking-[0.2em] text-slate-400">Inventário ativo</span>
+                    <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Inventário ativo</span>
                     <Building2 size={16} className="text-amber-300" />
                   </div>
-                  <div className="text-3xl font-semibold text-white">{summaryMetrics ? `${summaryMetrics.inventoryRate}%` : '0%'}</div>
-                  <p className="mt-1 text-xs text-slate-400">{formatNumber(stats?.imoveis.ativos ?? 0)} de {formatNumber(stats?.imoveis.total ?? 0)} imóveis publicados</p>
+                  <div className="text-3xl font-semibold text-foreground">{summaryMetrics ? `${summaryMetrics.inventoryRate}%` : '0%'}</div>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatNumber(stats?.imoveis.ativos ?? 0)} de {formatNumber(stats?.imoveis.total ?? 0)} imóveis publicados</p>
                 </div>
               </div>
 
-              <div className="mt-6 rounded-[24px] border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+              <div className="mt-6 rounded-[24px] border border-border bg-muted/50 p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Pulso operacional</p>
-                    <h2 className="mt-1 text-sm font-semibold text-white sm:text-base">Highcharts de ritmo comercial e execução</h2>
+                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Pulso operacional</p>
+                    <h2 className="mt-1 text-sm font-semibold text-foreground sm:text-base">Highcharts de ritmo comercial e execução</h2>
                   </div>
-                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-slate-300">
+                  <div className="rounded-full border border-border bg-muted px-3 py-1 text-[11px] text-muted-foreground">
                     leitura dos principais gargalos agora
                   </div>
                 </div>
@@ -585,7 +585,7 @@ export default function Dashboard() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <div className="glass-panel rounded-[24px] border border-white/10 p-5">
+            <div className="system-panel rounded-[24px] p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Saúde comercial</p>
@@ -600,7 +600,7 @@ export default function Dashboard() {
                     <span>Leads qualificados</span>
                     <span>{summaryMetrics ? `${summaryMetrics.qualificationRate}%` : '0%'}</span>
                   </div>
-                  <div className="h-2 rounded-full bg-white/10">
+                  <div className="h-2 rounded-full bg-muted">
                     <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${clampPercentage(summaryMetrics?.qualificationRate ?? 0)}%` }} />
                   </div>
                 </div>
@@ -610,18 +610,18 @@ export default function Dashboard() {
                     <span>Documentos assinados</span>
                     <span>{summaryMetrics ? `${summaryMetrics.signatureRate}%` : '0%'}</span>
                   </div>
-                  <div className="h-2 rounded-full bg-white/10">
+                  <div className="h-2 rounded-full bg-muted">
                     <div className="h-2 rounded-full bg-amber-400" style={{ width: `${clampPercentage(summaryMetrics?.signatureRate ?? 0)}%` }} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div className="rounded-2xl bg-white/5 p-3">
+                  <div className="rounded-2xl bg-muted/60 p-3">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Hoje</p>
                     <p className="mt-1 text-2xl font-semibold text-foreground">{formatNumber(stats?.conversas.hoje ?? 0)}</p>
                     <p className="text-xs text-muted-foreground">novas conversas</p>
                   </div>
-                  <div className="rounded-2xl bg-white/5 p-3">
+                  <div className="rounded-2xl bg-muted/60 p-3">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Equipe</p>
                     <p className="mt-1 text-2xl font-semibold text-foreground">{formatNumber(stats?.corretores?.total ?? 0)}</p>
                     <p className="text-xs text-muted-foreground">corretores ativos</p>
@@ -630,18 +630,18 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="glass-panel rounded-[24px] border border-white/10 p-5">
+            <div className="system-panel rounded-[24px] p-5">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Base ativa</p>
               <h2 className="mt-1 text-lg font-semibold text-foreground">Composição do cadastro</h2>
               <div className="mt-4 space-y-3">
-                <div className="rounded-2xl bg-white/5 p-3">
+                <div className="rounded-2xl bg-muted/60 p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground">Pessoas físicas</span>
                     <span className="text-sm font-medium text-foreground">{summaryMetrics ? `${summaryMetrics.peopleMixRate}%` : '0%'}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{formatNumber(stats?.pessoas.fisicas ?? 0)} de {formatNumber(stats?.pessoas.total ?? 0)} cadastros ativos</p>
                 </div>
-                <div className="rounded-2xl bg-white/5 p-3">
+                <div className="rounded-2xl bg-muted/60 p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground">Pessoas jurídicas</span>
                     <span className="text-sm font-medium text-foreground">{formatNumber(stats?.pessoas.juridicas ?? 0)}</span>
@@ -654,7 +654,7 @@ export default function Dashboard() {
         </motion.div>
 
         <motion.div variants={itemVariants} className="mb-6 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="glass-panel rounded-[24px] border border-white/10 p-4 sm:p-5">
+          <div className="system-panel rounded-[24px] p-4 sm:p-5">
             <div className="mb-4 flex items-end justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Panorama operacional</p>
@@ -665,7 +665,7 @@ export default function Dashboard() {
             <StatsGrid stats={stats} loading={statsLoading} />
           </div>
 
-          <div className="glass-panel rounded-[24px] border border-white/10 p-4 sm:p-5">
+          <div className="system-panel rounded-[24px] p-4 sm:p-5">
             <div className="mb-4">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Foco agora</p>
               <h2 className="mt-1 text-lg font-semibold text-foreground">O que pede atenção imediata</h2>
@@ -705,26 +705,26 @@ export default function Dashboard() {
             const Icon = card.icon;
 
             return (
-              <div key={card.label} className={`overflow-hidden rounded-[24px] border border-white/10 p-5 ${card.accent}`}>
+              <div key={card.label} className={`overflow-hidden rounded-[24px] border border-border p-5 ${card.accent}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-white/65">{card.label}</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{card.label}</p>
                     <div className="mt-3 flex items-end gap-2">
-                      <span className="text-3xl font-semibold text-white">{formatNumber(card.value)}</span>
-                      <span className="pb-1 text-sm text-white/70">de {formatNumber(card.total)}</span>
+                      <span className="text-3xl font-semibold text-foreground">{formatNumber(card.value)}</span>
+                      <span className="pb-1 text-sm text-muted-foreground">de {formatNumber(card.total)}</span>
                     </div>
                   </div>
-                  <div className="rounded-2xl bg-white/10 p-2.5 text-white">
+                  <div className="rounded-2xl bg-primary/12 p-2.5 text-primary">
                     <Icon size={18} />
                   </div>
                 </div>
 
                 <div className="mt-5">
-                  <div className="mb-1 flex items-center justify-between text-sm text-white/80">
+                  <div className="mb-1 flex items-center justify-between text-sm text-muted-foreground">
                     <span>Taxa atual</span>
                     <span>{card.percent}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-white/15">
+                  <div className="h-2 rounded-full bg-muted">
                     <div className={`h-2 rounded-full ${card.bar}`} style={{ width: `${clampPercentage(card.percent)}%` }} />
                   </div>
                 </div>
@@ -735,7 +735,7 @@ export default function Dashboard() {
 
         {/* --- Gráficos analíticos por corretor e portal --- */}
         <motion.div variants={itemVariants} className="mb-6 grid gap-4 xl:grid-cols-2">
-          <div className="glass-panel rounded-[24px] border border-white/10 p-4 sm:p-5">
+          <div className="system-panel rounded-[24px] p-4 sm:p-5">
             <div className="mb-3">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">CRM</p>
               <h2 className="mt-1 text-base font-semibold text-foreground">Atendimentos por corretor</h2>
@@ -750,7 +750,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="glass-panel rounded-[24px] border border-white/10 p-4 sm:p-5">
+          <div className="system-panel rounded-[24px] p-4 sm:p-5">
             <div className="mb-3">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Inventário</p>
               <h2 className="mt-1 text-base font-semibold text-foreground">Captações por corretor</h2>
@@ -767,14 +767,14 @@ export default function Dashboard() {
         </motion.div>
 
         <motion.div variants={itemVariants} className="mb-6">
-          <div className="glass-panel rounded-[24px] border border-white/10 p-4 sm:p-5">
+          <div className="system-panel rounded-[24px] p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Portal do cliente</p>
                 <h2 className="mt-1 text-base font-semibold text-foreground">Acessos ao portal por dia</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">Pageviews registrados nos últimos 30 dias</p>
               </div>
-              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-muted-foreground">
+              <div className="rounded-full border border-border bg-muted px-3 py-1 text-[11px] text-muted-foreground">
                 últimos 30 dias
               </div>
             </div>
@@ -789,7 +789,7 @@ export default function Dashboard() {
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <div className="glass-panel rounded-[24px] p-4 sm:p-5 md:p-6">
+          <div className="system-panel rounded-[24px] p-4 sm:p-5 md:p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="flex items-center gap-2 text-lg font-bold text-foreground sm:text-xl">
@@ -800,7 +800,7 @@ export default function Dashboard() {
                   Feed unificado com eventos comerciais, atendimento, vistorias, assinaturas e logs relevantes.
                 </p>
               </div>
-              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground">
+              <div className="rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">
                 leitura em fluxo contínuo
               </div>
             </div>
