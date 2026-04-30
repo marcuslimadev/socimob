@@ -11,6 +11,43 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Get-NextDeployVersion {
+    param(
+        [string]$VersionFilePath,
+        [string]$FallbackBaseVersion
+    )
+
+    $baseVersion = $FallbackBaseVersion
+    if ([string]::IsNullOrWhiteSpace($baseVersion)) {
+        $baseVersion = "11.48.0"
+    }
+
+    $majorMinor = "11.48"
+    if ($baseVersion -match '^(\d+)\.(\d+)\.(\d+)$') {
+        $majorMinor = "$($matches[1]).$($matches[2])"
+    }
+
+    $nextPatch = 1
+
+    if (Test-Path $VersionFilePath) {
+        try {
+            $existing = Get-Content $VersionFilePath -Raw | ConvertFrom-Json
+            $existingVersion = [string]$existing.version
+            if ($existingVersion -match '^\d+\.\d+\.(\d{1,2})$') {
+                $nextPatch = [int]$matches[1] + 1
+            }
+        } catch {
+            $nextPatch = 1
+        }
+    }
+
+    if ($nextPatch -gt 99) {
+        $nextPatch = 99
+    }
+
+    return "$majorMinor.$($nextPatch.ToString('00'))"
+}
+
 # Cores
 function Write-Step { param($msg) Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 function Write-Success { param($msg) Write-Host "V $msg" -ForegroundColor Green }
@@ -66,6 +103,26 @@ try {
     Write-Host ""
 
     if (-not $RemoteFailureSelfTest) {
+        # 0. VERSIONAMENTO DE DEPLOY
+        Write-Step "ATUALIZAR METADADOS DE VERSAO"
+        $versionFilePath = "storage/app/deploy-version.json"
+        $nextVersion = Get-NextDeployVersion -VersionFilePath $versionFilePath -FallbackBaseVersion (Get-DotEnvValue -Key "APP_VERSION")
+        $deployedAt = Get-Date
+        $deployedAtDisplay = $deployedAt.ToString("dd/MM/yyyy HH:mm")
+        $deployedAtIso = $deployedAt.ToString("yyyy-MM-ddTHH:mm:ssK")
+
+        $versionPayload = @{
+            app = "SOCIMOB"
+            version = $nextVersion
+            deployed_at = $deployedAtDisplay
+            deployed_at_iso = $deployedAtIso
+            deploy_summary = $CommitMessage
+            deployed_by = $env:USERNAME
+        } | ConvertTo-Json -Depth 4
+
+        Set-Content -Path $versionFilePath -Value $versionPayload -Encoding UTF8
+        Write-Success "Versao de deploy atualizada para $nextVersion ($deployedAtDisplay)"
+
         # 1. BUILD DO FRONTEND (já gera em dist/public/)
         Write-Step "BUILD DO FRONTEND REACT"
         pnpm run build

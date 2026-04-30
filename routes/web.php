@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\File;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,12 +17,65 @@ use Illuminate\Support\Facades\Log;
 |--------------------------------------------------------------------------
 */
 
+if (!function_exists('socimobDeployInfo')) {
+    function socimobDeployInfo(): array
+    {
+        $fallbackVersion = app()->version();
+        $fallbackDeployedAt = now()->format('d/m/Y H:i');
+        $fallbackSummary = 'Sem resumo de deploy disponível.';
+
+        $versionFile = storage_path('app/deploy-version.json');
+        if (!File::exists($versionFile)) {
+            return [
+                'app' => 'SOCIMOB',
+                'version' => $fallbackVersion,
+                'deployed_at' => $fallbackDeployedAt,
+                'deploy_summary' => $fallbackSummary,
+            ];
+        }
+
+        try {
+            $raw = File::get($versionFile);
+            $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+
+            return [
+                'app' => $data['app'] ?? 'SOCIMOB',
+                'version' => $data['version'] ?? $fallbackVersion,
+                'deployed_at' => $data['deployed_at'] ?? $fallbackDeployedAt,
+                'deploy_summary' => $data['deploy_summary'] ?? $fallbackSummary,
+                'deployed_by' => $data['deployed_by'] ?? null,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'app' => 'SOCIMOB',
+                'version' => $fallbackVersion,
+                'deployed_at' => $fallbackDeployedAt,
+                'deploy_summary' => $fallbackSummary,
+            ];
+        }
+    }
+}
+
 // Health check - movido para /api/health para não conflitar com index.html
 $router->get('/api/health', function () use ($router) {
+    $deploy = socimobDeployInfo();
     return response()->json([
-        'app' => 'SOCIMOB',
-        'version' => app()->version(),
+        'app' => $deploy['app'],
+        'version' => $deploy['version'],
+        'deployed_at' => $deploy['deployed_at'],
         'status' => 'online'
+    ]);
+});
+
+// Endpoint de versão com resumo do último deploy
+$router->get('/versao', function () use ($router) {
+    $deploy = socimobDeployInfo();
+    return response()->json([
+        'app' => $deploy['app'],
+        'version' => $deploy['version'],
+        'deployed_at' => $deploy['deployed_at'],
+        'deploy_summary' => $deploy['deploy_summary'],
+        'deployed_by' => $deploy['deployed_by'] ?? null,
     ]);
 });
 
