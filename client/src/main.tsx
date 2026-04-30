@@ -116,7 +116,6 @@ const applyTenantBranding = async () => {
 };
 
 if (typeof document !== "undefined") {
-  document.documentElement.classList.add("dark");
   applyTenantMetaTags();
 }
 
