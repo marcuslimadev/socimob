@@ -110,6 +110,8 @@ try {
         $deployedAt = Get-Date
         $deployedAtDisplay = $deployedAt.ToString("dd/MM/yyyy HH:mm")
         $deployedAtIso = $deployedAt.ToString("yyyy-MM-ddTHH:mm:ssK")
+        $deploySummaryEscaped = $CommitMessage.Replace('"', '\"')
+        $deployedByEscaped = $env:USERNAME.Replace('"', '\"')
 
         $versionPayload = @{
             app = "SOCIMOB"
@@ -224,6 +226,20 @@ printf "\n"
 printf "%s\n" "=== COPIAR BUILD ==="
 cp -rf dist/public/* ./
 cp public/.htaccess ./.htaccess
+
+printf "\n"
+printf "%s\n" "=== ATUALIZAR METADADOS DE VERSAO ==="
+mkdir -p storage/app
+cat > storage/app/deploy-version.json <<EOF
+{
+  "app": "SOCIMOB",
+  "version": "$nextVersion",
+  "deployed_at": "$deployedAtDisplay",
+  "deployed_at_iso": "$deployedAtIso",
+  "deploy_summary": "$deploySummaryEscaped",
+  "deployed_by": "$deployedByEscaped"
+}
+EOF
 
 printf "\n"
 printf "%s\n" "=== COMPOSER INSTALL ==="
