@@ -1535,8 +1535,8 @@ export default function Chat() {
   };
 
   const renderClientFileManager = () => (
-    <aside className="hidden w-[330px] flex-shrink-0 flex-col border-l border-[#ffc51a] bg-[#f8fafc] xl:flex">
-      <div className="border-b border-[#ffc51a] bg-white px-4 py-3">
+    <aside className="hidden w-[330px] flex-shrink-0 flex-col border-l border-[#dbe5f2] bg-[#f8fafc] xl:flex">
+      <div className="border-b border-[#dbe5f2] bg-white px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#617489]">Cliente</p>
@@ -1655,7 +1655,7 @@ export default function Chat() {
         <div
           className="box-border flex h-[calc(100dvh-var(--app-header-offset,0px))] min-h-0 flex-1 overflow-hidden p-2 md:p-3"
         >
-          <div className="flex min-h-0 flex-1 overflow-hidden rounded-[20px] border border-[#ffc51a] bg-[#ffffff] shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
+          <div className="flex min-h-0 flex-1 overflow-hidden rounded-[20px] border border-[#dbe5f2] bg-[#ffffff] shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
             <aside className={cn('min-h-0 w-full flex-shrink-0 flex-col border-r border-[#274d7b] bg-[linear-gradient(180deg,#132b4c_0%,#0d2038_100%)] md:flex md:w-[360px] lg:w-[380px]', showMobileContacts ? 'flex' : 'hidden md:flex')}>
               <div className="border-b border-[#274d7b] p-3.5 md:p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -1783,7 +1783,7 @@ export default function Chat() {
                 <div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_14%_12%,rgba(45,111,171,0.12),transparent_26%),radial-gradient(circle_at_86%_14%,rgba(255,29,45,0.10),transparent_24%),radial-gradient(circle_at_52%_100%,rgba(255,197,26,0.12),transparent_30%),linear-gradient(180deg,#ffffff_0%,#fffdf8_100%)] p-8"><div className="max-w-xl text-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-[#ffc51a]/70 bg-[#132b4c] text-white shadow-[0_12px_28px_rgba(0,0,0,0.16)]"><MessageCircle className="h-7 w-7" /></div><h2 className="mt-6 text-[2rem] font-semibold leading-none tracking-[-0.05em] text-[#132b4c]">Selecione uma conversa</h2><p className="mt-3 text-sm leading-7 text-[#4d5560] md:text-[15px]">A fila fica na lateral. O histórico abre aqui no centro, com leitura limpa e resposta rápida.</p></div></div>
               ) : (
                 <>
-                  <header className="border-b border-[#ffc51a] bg-[#ffffff] px-4 py-3 md:px-5">
+                  <header className="border-b border-[#dbe5f2] bg-[#ffffff] px-4 py-3 md:px-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 items-start gap-3">
                         <Button variant="ghost" size="icon" className="mt-0.5 rounded-full text-[#132b4c] hover:bg-[#132b4c]/8 md:hidden" onClick={() => setShowMobileContacts(true)}><ArrowLeft className="h-5 w-5" /></Button>
@@ -1907,7 +1907,7 @@ export default function Chat() {
                         <div ref={messagesEndRef} />
                       </div>
                     </ScrollArea>
-                    <div className="border-t border-[#ffc51a] bg-[#ffffff] px-4 py-3 md:px-5">
+                    <div className="border-t border-[#dbe5f2] bg-[#ffffff] px-4 py-3 md:px-5">
                       <div className="mx-auto flex w-full max-w-[calc(100%-1rem)] flex-col gap-1.5 md:max-w-[calc(100%-2rem)]">
                         <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#5a646f]"><span>{selectedContact.needsHumanIntervention ? 'Conversa marcada para atendimento humano.' : 'Resposta direta e contexto completo.'}</span><span>Enter para enviar</span></div>
                         <div className="flex items-end gap-2.5 rounded-[24px] border border-[#ffc51a] bg-white p-1.5 shadow-[0_14px_30px_rgba(0,0,0,0.06)]">
