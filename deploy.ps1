@@ -44,10 +44,10 @@ if ([string]::IsNullOrWhiteSpace($APP_URL)) {
     $APP_URL = "https://exclusivalarimoveis.com"
 }
 
-$appHost = ([System.Uri]$APP_URL).Host.ToLowerInvariant()
 $configuredDeployPath = Get-DotEnvValue -Key "DEPLOY_PATH"
 if ([string]::IsNullOrWhiteSpace($configuredDeployPath)) {
-    $DEPLOY_PATH = "/home/$SSH_USER/domains/$appHost/public_html"
+    # Domínio principal está apontado como alias para este document root na hospedagem
+    $DEPLOY_PATH = "/home/$SSH_USER/domains/lojadaesquina.store/public_html"
 } else {
     $DEPLOY_PATH = $configuredDeployPath
 }
