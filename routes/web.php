@@ -59,11 +59,38 @@ if (!function_exists('socimobDeployInfo')) {
 // Health check - movido para /api/health para não conflitar com index.html
 $router->get('/api/health', function () use ($router) {
     $deploy = socimobDeployInfo();
+
+    $schedulerPath = storage_path('framework/scheduler-health.json');
+    $schedulerLastRunAt = null;
+    $schedulerHealthy = false;
+    $schedulerStatus = 'unknown';
+    if (File::exists($schedulerPath)) {
+        try {
+            $raw = File::get($schedulerPath);
+            $sched = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+            $schedulerLastRunAt = $sched['last_run_at'] ?? null;
+            if ($schedulerLastRunAt) {
+                $last = \Carbon\Carbon::parse($schedulerLastRunAt);
+                $schedulerHealthy = $last->isAfter(now()->subMinutes(5));
+                $schedulerStatus = $schedulerHealthy ? 'ok' : 'stale';
+            }
+        } catch (\Throwable $e) {
+            $schedulerStatus = 'invalid';
+        }
+    } else {
+        $schedulerStatus = 'never';
+    }
+
     return response()->json([
         'app' => $deploy['app'],
         'version' => $deploy['version'],
         'deployed_at' => $deploy['deployed_at'],
-        'status' => 'online'
+        'status' => 'online',
+        'scheduler' => [
+            'last_run_at' => $schedulerLastRunAt,
+            'healthy' => $schedulerHealthy,
+            'status' => $schedulerStatus,
+        ],
     ]);
 });
 

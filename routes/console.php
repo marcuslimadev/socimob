@@ -2,11 +2,20 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// Marca que `php artisan schedule:run` está sendo executado (monitorado em /api/health)
+Schedule::call(function () {
+    File::put(
+        storage_path('framework/scheduler-health.json'),
+        json_encode(['last_run_at' => now()->toIso8601String()], JSON_THROW_ON_ERROR)
+    );
+})->everyMinute()->name('scheduler-health');
 
 // Migrated schedules from Lumen Console/Kernel.php
 Schedule::command('properties:sync')
