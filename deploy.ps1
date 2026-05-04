@@ -287,6 +287,14 @@ printf "%s\n" "=== VERIFICAR BUILD ==="
 grep "index-" index.html
 test -f .htaccess
 
+printf "\n"
+printf "%s\n" "=== LIMPAR CACHE PHP/LARAVEL ==="
+/opt/alt/php83/usr/bin/php artisan optimize:clear
+
+printf "\n"
+printf "%s\n" "=== SCHEDULER (uma rodada pos-deploy) ==="
+/opt/alt/php83/usr/bin/php artisan schedule:run 2>&1 | tail -30
+
 printf "%s\n" "=== DEPLOY CONCLUIDO ==="
 date
 '
