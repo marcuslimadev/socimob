@@ -19,7 +19,8 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
         'password',
         'role',
         'is_active',
-        'tenant_id'
+        'tenant_id',
+        'pessoa_id',
     ];
 
     protected $hidden = [
@@ -36,6 +37,12 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
     public function tenant()
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    /** Pessoa vinculada (ex.: mesmo corretor no CRM) para filtros como “minhas vistorias”. */
+    public function pessoa()
+    {
+        return $this->belongsTo(Pessoa::class, 'pessoa_id');
     }
 
     /**

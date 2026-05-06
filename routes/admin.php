@@ -109,9 +109,19 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
         }
         
         $users = app('db')->table('users')
-            ->where('tenant_id', $user->tenant_id)
-            ->select('id', 'name', 'email', 'role', 'is_active as ativo', 'created_at')
-            ->orderBy('created_at', 'desc')
+            ->leftJoin('pessoas', 'users.pessoa_id', '=', 'pessoas.id')
+            ->where('users.tenant_id', $user->tenant_id)
+            ->select(
+                'users.id',
+                'users.name',
+                'users.email',
+                'users.role',
+                'users.is_active as ativo',
+                'users.pessoa_id',
+                'pessoas.nome as pessoa_nome',
+                'users.created_at'
+            )
+            ->orderBy('users.created_at', 'desc')
             ->get();
         return response()->json(['data' => $users]);
     });
@@ -139,9 +149,22 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
             return response()->json(['message' => 'Email já cadastrado'], 400);
         }
         
+        $pessoaId = null;
+        if (!empty($data['pessoa_id'])) {
+            $pessoaId = (int) $data['pessoa_id'];
+            $ok = app('db')->table('pessoas')
+                ->where('tenant_id', $user->tenant_id)
+                ->where('id', $pessoaId)
+                ->exists();
+            if (!$ok) {
+                return response()->json(['message' => 'Pessoa inválida para este tenant'], 400);
+            }
+        }
+
         // Criar usuário
         $userId = app('db')->table('users')->insertGetId([
             'tenant_id' => $user->tenant_id,
+            'pessoa_id' => $pessoaId,
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => password_hash($data['password'], PASSWORD_BCRYPT),
@@ -162,6 +185,22 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
         
         $data = app('request')->all();
         
+        $pessoaId = null;
+        if (array_key_exists('pessoa_id', $data)) {
+            if ($data['pessoa_id'] === '' || $data['pessoa_id'] === null) {
+                $pessoaId = null;
+            } else {
+                $pessoaId = (int) $data['pessoa_id'];
+                $ok = app('db')->table('pessoas')
+                    ->where('tenant_id', $user->tenant_id)
+                    ->where('id', $pessoaId)
+                    ->exists();
+                if (!$ok) {
+                    return response()->json(['message' => 'Pessoa inválida para este tenant'], 400);
+                }
+            }
+        }
+
         $update = [
             'name' => $data['name'],
             'email' => $data['email'],
@@ -169,6 +208,10 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
             'is_active' => $data['ativo'] ?? true,
             'updated_at' => date('Y-m-d H:i:s')
         ];
+
+        if (array_key_exists('pessoa_id', $data)) {
+            $update['pessoa_id'] = $pessoaId;
+        }
         
         // Atualizar senha apenas se fornecida
         if (!empty($data['password'])) {

@@ -68,6 +68,7 @@ abstract class BackendFeatureTestCase extends TestCase
             'contratos_documentos',
             'contratos_compra_venda',
             'vistoria_fotos',
+            'vistoria_solicitacoes',
             'vistorias',
             'contratos_locacao',
             'imo_properties',
@@ -92,6 +93,7 @@ abstract class BackendFeatureTestCase extends TestCase
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('tenant_id')->nullable();
+            $table->unsignedBigInteger('pessoa_id')->nullable();
             $table->string('name');
             $table->string('email')->nullable();
             $table->string('password')->nullable();
@@ -220,6 +222,7 @@ abstract class BackendFeatureTestCase extends TestCase
             $table->string('status')->nullable();
             $table->string('cliente_nome')->nullable();
             $table->unsignedBigInteger('imovel_id')->nullable();
+            $table->json('imovel_livre')->nullable();
             $table->string('tipo')->nullable();
             $table->json('vistoriadores')->nullable();
             $table->json('pessoas')->nullable();
@@ -231,6 +234,22 @@ abstract class BackendFeatureTestCase extends TestCase
             $table->json('comodos')->nullable();
             $table->string('assinatura_inquilino_status')->nullable();
             $table->string('assinatura_proprietario_status')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('vistoria_solicitacoes', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('tenant_id')->nullable();
+            $table->string('codigo')->nullable();
+            $table->string('status')->nullable();
+            $table->string('cliente_nome')->nullable();
+            $table->string('tipo')->nullable();
+            $table->unsignedBigInteger('imovel_id')->nullable();
+            $table->unsignedBigInteger('vistoria_id')->nullable();
+            $table->text('observacoes')->nullable();
+            $table->json('pessoas')->nullable();
+            $table->json('historico')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

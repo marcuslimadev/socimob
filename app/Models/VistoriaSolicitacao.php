@@ -19,6 +19,7 @@ class VistoriaSolicitacao extends Model
         'cliente_nome',
         'tipo',
         'imovel_id',
+        'vistoria_id',
         'observacoes',
         'pessoas',
         'historico',
@@ -28,4 +29,9 @@ class VistoriaSolicitacao extends Model
         'pessoas' => 'array',
         'historico' => 'array',
     ];
+
+    public function vistoria()
+    {
+        return $this->belongsTo(Vistoria::class, 'vistoria_id');
+    }
 }

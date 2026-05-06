@@ -104,6 +104,8 @@ class AuthController extends Controller
         
         $token = SimpleAuthToken::issue($user->id);
 
+        $user->loadMissing('pessoa:id,nome');
+
         return response()->json([
             'success' => true,
             'token' => $token,
@@ -113,6 +115,8 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
                 'tipo' => $user->role === 'super_admin' ? 'Super Admin' : ucfirst($user->role),
+                'pessoa_id' => $user->pessoa_id,
+                'pessoa_nome' => $user->pessoa?->nome,
             ],
             'message' => 'Login realizado com sucesso!'
         ]);
@@ -159,7 +163,9 @@ class AuthController extends Controller
                 'message' => 'Usuário não autenticado'
             ], 401);
         }
-        
+
+        $user->loadMissing('pessoa:id,nome');
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -168,6 +174,8 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
                 'is_active' => $user->is_active,
+                'pessoa_id' => $user->pessoa_id,
+                'pessoa_nome' => $user->pessoa?->nome,
             ]
         ]);
     }

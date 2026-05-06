@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ClipboardCheck, Loader2, Filter, Plus } from 'lucide-react';
+import { ClipboardCheck, Loader2, Filter, Plus, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 
@@ -13,6 +13,7 @@ interface Solicitacao {
   cliente_nome: string;
   tipo: string;
   imovel_id: number | null;
+  vistoria_id?: number | null;
   created_at?: string | null;
 }
 
@@ -23,12 +24,14 @@ const tipoLabels: Record<string, string> = {
 };
 
 export default function VistoriaSolicitacoes() {
+  const [, setLocation] = useLocation();
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('todos');
   const [tipoFilter, setTipoFilter] = useState('todos');
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [convertingId, setConvertingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchSolicitacoes();
@@ -53,6 +56,33 @@ export default function VistoriaSolicitacoes() {
       toast.error('Erro ao carregar solicitacoes');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const converterEmVistoria = async (item: Solicitacao) => {
+    if (item.vistoria_id || item.status === 'cancelada') return;
+    setConvertingId(item.id);
+    try {
+      const { data } = await api.post(`/vistorias/solicitacoes/${item.id}/converter`);
+      const vid = typeof data?.vistoria_id === 'number' ? data.vistoria_id : Number(data?.vistoria_id);
+      const msg = data?.already_converted
+        ? 'Esta solicitação já havia sido convertida.'
+        : data?.message || 'Solicitação convertida em vistoria operacional.';
+      toast.success(msg, {
+        action:
+          vid > 0
+            ? {
+                label: 'Abrir vistoria',
+                onClick: () => setLocation(`/vistorias/${vid}`),
+              }
+            : undefined,
+      });
+      await fetchSolicitacoes();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.response?.data?.message || 'Não foi possível converter.');
+    } finally {
+      setConvertingId(null);
     }
   };
 
@@ -165,6 +195,7 @@ export default function VistoriaSolicitacoes() {
                       <th className="pb-3">Imóvel</th>
                       <th className="pb-3">Status</th>
                       <th className="pb-3">Criado em</th>
+                      <th className="pb-3 text-right">Operação</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -176,6 +207,32 @@ export default function VistoriaSolicitacoes() {
                         <td className="py-3 text-foreground">{item.imovel_id || '-'}</td>
                         <td className="py-3 text-foreground">{item.status}</td>
                         <td className="py-3 text-foreground">{formatDate(item.created_at)}</td>
+                        <td className="py-3 text-right">
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            {item.vistoria_id ? (
+                              <Link
+                                to={`/vistorias/${item.vistoria_id}`}
+                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-200 hover:bg-emerald-500/20"
+                              >
+                                Vistoria <ArrowRight size={14} aria-hidden />
+                              </Link>
+                            ) : item.status === 'cancelada' ? (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            ) : (
+                              <motion.button
+                                type="button"
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                                disabled={convertingId === item.id}
+                                onClick={() => converterEmVistoria(item)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-blue-500/35 bg-blue-500/15 px-3 py-1.5 text-xs font-semibold text-blue-100 disabled:opacity-50 touch-manipulation"
+                              >
+                                {convertingId === item.id ? <Loader2 size={14} className="animate-spin" aria-hidden /> : null}
+                                Gerar vistoria
+                              </motion.button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

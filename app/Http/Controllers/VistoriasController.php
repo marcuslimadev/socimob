@@ -5,7 +5,9 @@ use App\Models\ContratoLocacao;
 use App\Models\Pessoa;
 use App\Models\Property;
 use App\Models\Vistoria;
+use App\Models\VistoriaSolicitacao;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -183,6 +185,11 @@ class VistoriasController extends Controller
 
     public function destroy(Request $request, $id)
     {
+        $user = $request->user();
+        if (!$user || !in_array((string) ($user->role ?? ''), ['admin', 'super_admin'], true)) {
+            return response()->json(['error' => 'Forbidden', 'message' => 'Somente administradores podem excluir vistorias.'], 403);
+        }
+
         $vistoria = $this->applyTenantScope(Vistoria::query(), $request)->find($id);
 
         if (!$vistoria) {
@@ -197,6 +204,208 @@ class VistoriasController extends Controller
         ]);
     }
 
+    /**
+     * Converte uma solicitação de vistoria em registro operacional (vistoria).
+     * POST /api/vistorias/solicitacoes/{solicitacaoId}/converter
+     */
+    public function converterFromSolicitacao(Request $request, int $solicitacaoId)
+    {
+        $tenantId = $this->resolveTenantId($request);
+
+        $solicitacao = VistoriaSolicitacao::where('tenant_id', $tenantId)->find($solicitacaoId);
+        if (!$solicitacao) {
+            return response()->json(['success' => false, 'error' => 'Solicitação não encontrada'], 404);
+        }
+
+        if ($solicitacao->status === 'cancelada') {
+            return response()->json(['success' => false, 'message' => 'Solicitação cancelada não pode gerar vistoria.'], 422);
+        }
+
+        if ($solicitacao->vistoria_id) {
+            $vistoria = $this->applyTenantScope(Vistoria::query()->with($this->detailRelations()), $request)
+                ->find($solicitacao->vistoria_id);
+
+            return response()->json([
+                'success' => true,
+                'already_converted' => true,
+                'vistoria' => $vistoria ? $this->serializeVistoria($vistoria) : null,
+                'vistoria_id' => $solicitacao->vistoria_id,
+                'solicitacao_id' => $solicitacao->id,
+            ]);
+        }
+
+        try {
+            $response = DB::transaction(function () use ($solicitacao, $tenantId) {
+                $imovelId = null;
+                if ($solicitacao->imovel_id) {
+                    $exists = Property::query()
+                        ->where('tenant_id', $tenantId)
+                        ->whereKey((int) $solicitacao->imovel_id)
+                        ->exists();
+                    $imovelId = $exists ? (int) $solicitacao->imovel_id : null;
+                }
+
+                $participantesIds = $this->participantesIdsFromSolicitacao($solicitacao, $tenantId);
+                $tipo = $this->normalizeTipoFromSolicitacao((string) $solicitacao->tipo);
+
+                $labelSol = trim((string) ($solicitacao->codigo ?? ''));
+                $refPrefix = '[Origem: solicitação ' . ($labelSol !== '' ? $labelSol : '#' . $solicitacao->id) . ']';
+                $obsOriginal = trim((string) ($solicitacao->observacoes ?? ''));
+
+                $imovelLivre = null;
+                if (!$imovelId) {
+                    $livreRef = $obsOriginal !== '' ? $obsOriginal : 'Referência pendente — preencher no detalhe da vistoria.';
+                    $livreTitulo = $labelSol !== '' ? 'Solicitação ' . $labelSol : 'Solicitação #' . $solicitacao->id;
+                    $imovelLivre = ['titulo' => $livreTitulo, 'referencia' => $livreRef];
+                }
+
+                $observacoes = $obsOriginal !== ''
+                    ? $refPrefix . "\n\n" . $obsOriginal
+                    : $refPrefix;
+
+                $vistoriaStatus = $solicitacao->status === 'solicitada' ? 'designada' : $solicitacao->status;
+                if (!in_array($vistoriaStatus, ['solicitada', 'designada', 'andamento', 'concluida', 'cancelada'], true)) {
+                    $vistoriaStatus = 'designada';
+                }
+
+                $validated = [
+                    'codigo' => null,
+                    'status' => $vistoriaStatus,
+                    'cliente_nome' => $solicitacao->cliente_nome,
+                    'contrato_id' => null,
+                    'imovel_id' => $imovelId,
+                    'imovel_livre' => $imovelLivre,
+                    'responsavel_pessoa_id' => null,
+                    'tipo' => $tipo,
+                    'vistoriadores' => null,
+                    'participantes_ids' => $participantesIds,
+                    'metragem' => null,
+                    'mobiliado' => false,
+                    'data_vistoria' => null,
+                    'observacoes' => $observacoes,
+                    'comodos' => null,
+                    'assinatura_inquilino_status' => 'pendente',
+                    'assinatura_proprietario_status' => 'pendente',
+                ];
+
+                $payload = $this->preparePayload($validated, $tenantId);
+
+                $stringPessoas = $this->pessoaNomesStringFromSolicitacao($solicitacao);
+                if ($stringPessoas !== [] && empty($payload['participantes_ids'])) {
+                    $existing = $payload['pessoas'] ?? [];
+                    if (!is_array($existing) || $existing === []) {
+                        $payload['pessoas'] = $stringPessoas;
+                    }
+                }
+
+                $payload['tenant_id'] = $tenantId;
+
+                $codigo = 'VST-' . now()->format('Ymd-His');
+                if ($labelSol !== '') {
+                    $slug = preg_replace('/[^a-zA-Z0-9\-]+/', '-', $labelSol);
+                    $slug = trim((string) $slug, '-');
+                    if ($slug !== '') {
+                        $codigo .= '-' . mb_substr($slug, 0, 32);
+                    }
+                }
+                $payload['codigo'] = $codigo;
+
+                $vistoria = Vistoria::create($payload)->load($this->detailRelations());
+
+                $historico = $solicitacao->historico ?? [];
+                $historico[] = [
+                    'evento' => 'convertida_em_vistoria',
+                    'descricao' => "Vistoria operacional #{$vistoria->id} ({$vistoria->codigo})",
+                    'data' => now()->toDateTimeString(),
+                ];
+                $solicitacao->vistoria_id = $vistoria->id;
+                $solicitacao->status = $vistoriaStatus;
+                $solicitacao->historico = $historico;
+                $solicitacao->save();
+
+                return response()->json([
+                    'success' => true,
+                    'already_converted' => false,
+                    'message' => 'Solicitação convertida em vistoria.',
+                    'vistoria' => $this->serializeVistoria($vistoria),
+                    'vistoria_id' => $vistoria->id,
+                    'solicitacao_id' => $solicitacao->id,
+                    'solicitacao' => $solicitacao->fresh(),
+                ], 201);
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Não foi possível converter esta solicitação.',
+            ], 422);
+        }
+
+        return $response;
+    }
+
+    /** @return list<int> */
+    private function participantesIdsFromSolicitacao(VistoriaSolicitacao $solicitacao, int $tenantId): array
+    {
+        $ids = [];
+        foreach ($solicitacao->pessoas ?? [] as $item) {
+            if (is_int($item) || (is_string($item) && ctype_digit($item))) {
+                $ids[] = (int) $item;
+                continue;
+            }
+            if (is_array($item) && isset($item['id']) && (is_int($item['id']) || ctype_digit((string) $item['id']))) {
+                $ids[] = (int) $item['id'];
+            }
+        }
+        $ids = array_values(array_unique(array_filter($ids)));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return Pessoa::query()
+            ->where('tenant_id', $tenantId)
+            ->whereIn('id', $ids)
+            ->orderBy('nome')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /** @return list<string> */
+    private function pessoaNomesStringFromSolicitacao(VistoriaSolicitacao $solicitacao): array
+    {
+        $out = [];
+        foreach ($solicitacao->pessoas ?? [] as $item) {
+            if (is_string($item)) {
+                $t = trim($item);
+                if ($t !== '') {
+                    $out[] = $t;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    private function normalizeTipoFromSolicitacao(string $raw): string
+    {
+        $t = mb_strtolower(trim($raw));
+        if ($t === 'entrada' || str_contains($t, 'entrada')) {
+            return 'entrada';
+        }
+        if ($t === 'saida' || $t === 'saída' || str_contains($t, 'saida') || str_contains($t, 'saída')) {
+            return 'saida';
+        }
+        if ($t === 'periodica' || $t === 'periódica' || str_contains($t, 'periodica')) {
+            return 'periodica';
+        }
+
+        return 'periodica';
+    }
+
     private function validatePayload(Request $request, bool $partial): array
     {
         $rules = [
@@ -205,6 +414,14 @@ class VistoriasController extends Controller
             'cliente_nome' => 'nullable|string|max:255',
             'contrato_id' => 'nullable|integer|exists:contratos_locacao,id',
             'imovel_id' => 'nullable|integer|exists:imo_properties,id',
+            'imovel_livre' => 'nullable|array',
+            'imovel_livre.titulo' => 'nullable|string|max:255',
+            'imovel_livre.logradouro' => 'nullable|string|max:500',
+            'imovel_livre.bairro' => 'nullable|string|max:120',
+            'imovel_livre.cidade' => 'nullable|string|max:120',
+            'imovel_livre.estado' => 'nullable|string|max:2',
+            'imovel_livre.tipo_imovel' => 'nullable|string|max:120',
+            'imovel_livre.referencia' => 'nullable|string|max:1000',
             'responsavel_pessoa_id' => 'nullable|integer|exists:pessoas,id',
             'tipo' => [$partial ? 'sometimes' : 'required', 'string', 'in:entrada,saida,periodica'],
             'vistoriadores' => 'nullable|array',
@@ -220,7 +437,25 @@ class VistoriasController extends Controller
             'assinatura_proprietario_status' => 'nullable|string|max:30',
         ];
 
-        return app('validator')->make($request->all(), $rules)->validate();
+        $validator = app('validator')->make($request->all(), $rules);
+
+        if (!$partial) {
+            $validator->after(function (\Illuminate\Contracts\Validation\Validator $v): void {
+                $data = $v->getData();
+                $hasContrato = !empty($data['contrato_id']);
+                $hasImovelCadastro = !empty($data['imovel_id']);
+                $hasManual = $this->imovelLivreTemConteudo($data['imovel_livre'] ?? null);
+
+                if (!$hasContrato && !$hasImovelCadastro && !$hasManual) {
+                    $v->errors()->add(
+                        'imovel_id',
+                        'Informe um contrato, um imóvel do cadastro ou os dados do local na vistoria (modo livre).'
+                    );
+                }
+            });
+        }
+
+        return $validator->validate();
     }
 
     private function preparePayload(array $validated, int $tenantId, ?Vistoria $current = null): array
@@ -294,7 +529,96 @@ class VistoriasController extends Controller
             }
         }
 
+        $finalContratoId = array_key_exists('contrato_id', $validated)
+            ? ($validated['contrato_id'] ?: null)
+            : $current?->contrato_id;
+        $finalImovelId = array_key_exists('imovel_id', $validated)
+            ? ($validated['imovel_id'] ?: null)
+            : $current?->imovel_id;
+
+        if ($finalContratoId || $finalImovelId) {
+            $validated['imovel_livre'] = null;
+        } else {
+            $livreIncoming = array_key_exists('imovel_livre', $validated)
+                ? $validated['imovel_livre']
+                : ($current?->imovel_livre ?? null);
+            $validated['imovel_livre'] = $this->normalizeImovelLivre(
+                is_array($livreIncoming) ? $livreIncoming : null
+            );
+        }
+
         return $validated;
+    }
+
+    /** @param  array<string, mixed>|null  $raw */
+    private function normalizeImovelLivre(?array $raw): ?array
+    {
+        $keys = ['titulo', 'logradouro', 'bairro', 'cidade', 'estado', 'tipo_imovel', 'referencia'];
+        $out = [];
+        foreach ($keys as $k) {
+            if (!isset($raw[$k])) {
+                continue;
+            }
+            $v = trim((string) $raw[$k]);
+            if ($k === 'estado') {
+                $v = mb_strtoupper($v);
+            }
+            if ($v !== '') {
+                $out[$k] = $v;
+            }
+        }
+
+        return $out === [] ? null : $out;
+    }
+
+    /** @param  array<string, mixed>|null  $raw */
+    private function imovelLivreTemConteudo($raw): bool
+    {
+        if (!is_array($raw)) {
+            return false;
+        }
+        foreach (['titulo', 'logradouro', 'bairro', 'cidade', 'estado', 'tipo_imovel', 'referencia'] as $key) {
+            if (!empty(trim((string) ($raw[$key] ?? '')))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @param  array<string, mixed>|null  $livre */
+    private function serializeImovelLivre(?array $livre): ?array
+    {
+        $livre = $this->normalizeImovelLivre($livre);
+        if ($livre === null) {
+            return null;
+        }
+
+        $endereco = collect([
+            $livre['logradouro'] ?? null,
+            $livre['bairro'] ?? null,
+            $livre['cidade'] ?? null,
+            $livre['estado'] ?? null,
+        ])->filter()->implode(', ');
+
+        $titulo = $livre['titulo'] ?? null;
+        $label = $titulo
+            ?: ($endereco !== '' ? $endereco : 'Local informado só na vistoria');
+
+        return [
+            'id' => null,
+            'codigo' => null,
+            'titulo' => $titulo,
+            'label' => $label,
+            'tipo_imovel' => $livre['tipo_imovel'] ?? null,
+            'finalidade_imovel' => null,
+            'endereco' => $endereco,
+            'metragem' => null,
+            'dormitorios' => null,
+            'banheiros' => null,
+            'garagem' => null,
+            'referencia_manual' => $livre['referencia'] ?? null,
+        ];
     }
 
     private function applyTenantScope($query, Request $request)
@@ -378,10 +702,21 @@ class VistoriasController extends Controller
             $somenteComContrato ? $query->whereNotNull('contrato_id') : $query->whereNull('contrato_id');
         }
 
+        $somenteMinhas = filter_var(
+            $request->query('somente_minhas', $request->query('minhas', false)),
+            FILTER_VALIDATE_BOOLEAN
+        );
+        if ($somenteMinhas) {
+            $user = $request->user();
+            if ($user && !empty($user->pessoa_id)) {
+                $query->where('responsavel_pessoa_id', (int) $user->pessoa_id);
+            }
+        }
+
         return $query;
     }
 
-    private function detailRelations(): array
+    protected function detailRelations(): array
     {
         return [
             'fotos',
@@ -405,7 +740,10 @@ class VistoriasController extends Controller
                 ->orderBy('nome')
                 ->get(['id', 'nome', 'email', 'telefone', 'celular', 'papeis']);
 
-        $imovel = $vistoria->contrato?->imovel ?: $vistoria->imovel;
+        $imovelRelation = $vistoria->contrato?->imovel ?: $vistoria->imovel;
+        $imovelView = $imovelRelation
+            ? $this->serializeImovel($imovelRelation)
+            : $this->serializeImovelLivre($vistoria->imovel_livre);
         $contrato = $vistoria->contrato;
 
         return [
@@ -429,6 +767,7 @@ class VistoriasController extends Controller
             'comodos' => $vistoria->comodos ?? [],
             'assinatura_inquilino_status' => $vistoria->assinatura_inquilino_status,
             'assinatura_proprietario_status' => $vistoria->assinatura_proprietario_status,
+            'imovel_livre' => $this->normalizeImovelLivre($vistoria->imovel_livre),
             'created_at' => optional($vistoria->created_at)->toIso8601String(),
             'updated_at' => optional($vistoria->updated_at)->toIso8601String(),
             'responsavel' => $vistoria->responsavel ? [
@@ -438,9 +777,11 @@ class VistoriasController extends Controller
                 'telefone' => $vistoria->responsavel->telefone,
                 'celular' => $vistoria->responsavel->celular,
             ] : null,
-            'imovel' => $imovel ? $this->serializeImovel($imovel) : null,
+            'imovel' => $imovelView,
             'contrato' => $contrato ? $this->serializeContrato($contrato) : null,
-            'fotos' => $vistoria->fotos ?? [],
+            'fotos' => $vistoria->relationLoaded('fotos')
+                ? $vistoria->fotos->map(fn ($foto) => $foto->toArray())->values()->all()
+                : [],
         ];
     }
 

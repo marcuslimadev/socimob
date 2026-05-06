@@ -13,8 +13,12 @@ interface User {
   role: string;
   is_active?: boolean;
   ativo?: boolean;
+  pessoa_id?: number | null;
+  pessoa_nome?: string | null;
   created_at: string;
 }
+
+type PessoaOption = { id: number; nome: string };
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
@@ -33,10 +37,25 @@ export default function AdminUsers() {
     password: '',
     role: 'corretor',
     is_active: true,
+    pessoa_id: '',
   });
+  const [pessoasOpts, setPessoasOpts] = useState<PessoaOption[]>([]);
 
   useEffect(() => {
     fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const loadPessoas = async () => {
+      try {
+        const { data } = await api.get('/pessoas', { params: { per_page: 300 } });
+        const rows = data?.data || [];
+        setPessoasOpts(rows.map((p: any) => ({ id: p.id, nome: p.nome })));
+      } catch {
+        setPessoasOpts([]);
+      }
+    };
+    loadPessoas();
   }, []);
 
   const fetchUsers = async () => {
@@ -54,12 +73,27 @@ export default function AdminUsers() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editingUser && !formData.password.trim()) {
+      toast.error('Informe uma senha para o novo usuário');
+      return;
+    }
     try {
+      const payload: Record<string, unknown> = {
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        ativo: formData.is_active,
+        pessoa_id: formData.pessoa_id.trim() ? Number(formData.pessoa_id) : null,
+      };
+      if (formData.password.trim()) {
+        payload.password = formData.password;
+      }
+
       if (editingUser) {
-        await api.put(`/admin/users/${editingUser.id}`, formData);
+        await api.put(`/admin/users/${editingUser.id}`, payload);
         toast.success('Usuário atualizado com sucesso');
       } else {
-        await api.post('/admin/users', formData);
+        await api.post('/admin/users', payload);
         toast.success('Usuário criado com sucesso');
       }
       setShowModal(false);
@@ -79,6 +113,7 @@ export default function AdminUsers() {
       password: '',
       role: user.role,
       is_active: user.ativo ?? user.is_active ?? true,
+      pessoa_id: user.pessoa_id != null ? String(user.pessoa_id) : '',
     });
     setShowModal(true);
   };
@@ -107,6 +142,7 @@ export default function AdminUsers() {
       password: '',
       role: 'corretor',
       is_active: true,
+      pessoa_id: '',
     });
   };
 
@@ -190,6 +226,7 @@ export default function AdminUsers() {
                   <tr className="border-b border-white/10">
                     <th className="text-left p-4 text-muted-foreground font-medium">Nome</th>
                     <th className="text-left p-4 text-muted-foreground font-medium">Email</th>
+                    <th className="text-left p-4 text-muted-foreground font-medium">Pessoa CRM</th>
                     <th className="text-left p-4 text-muted-foreground font-medium">Função</th>
                     <th className="text-left p-4 text-muted-foreground font-medium">Status</th>
                     <th className="text-right p-4 text-muted-foreground font-medium">Ações</th>
@@ -207,6 +244,9 @@ export default function AdminUsers() {
                         </div>
                       </td>
                       <td className="p-4 text-muted-foreground">{user.email}</td>
+                      <td className="p-4 text-muted-foreground text-sm">
+                        {user.pessoa_nome || (user.pessoa_id ? `#${user.pessoa_id}` : '—')}
+                      </td>
                       <td className="p-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getRoleBadge(user.role)}`}>
                           {getRoleLabel(user.role)}
@@ -305,6 +345,24 @@ export default function AdminUsers() {
                   <option value="corretor">Corretor</option>
                   <option value="trainee">Trainee</option>
                   <option value="admin">Administrador</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Vincular a pessoa (CRM){' '}
+                  <span className="text-muted-foreground font-normal">— opcional, para “minhas vistorias”</span>
+                </label>
+                <select
+                  value={formData.pessoa_id}
+                  onChange={(e) => setFormData({ ...formData, pessoa_id: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground"
+                >
+                  <option value="">Nenhum</option>
+                  {pessoasOpts.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="flex items-center gap-2">

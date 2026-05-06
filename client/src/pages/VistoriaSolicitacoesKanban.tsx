@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, Plus, GripVertical } from 'lucide-react';
+import { Loader2, Plus, GripVertical, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 
@@ -13,6 +13,7 @@ interface Solicitacao {
   cliente_nome: string;
   tipo: string;
   imovel_id: number | null;
+  vistoria_id?: number | null;
   created_at?: string | null;
 }
 
@@ -32,10 +33,12 @@ const COLUMNS: { id: string; title: string; status: string; color: string }[] = 
 ];
 
 export default function VistoriaSolicitacoesKanban() {
+  const [, setLocation] = useLocation();
   const [columns, setColumns] = useState<KanbanColumn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [draggedItem, setDraggedItem] = useState<Solicitacao | null>(null);
   const [draggedFromColumn, setDraggedFromColumn] = useState<string | null>(null);
+  const [convertingId, setConvertingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchSolicitacoes();
@@ -64,6 +67,35 @@ export default function VistoriaSolicitacoesKanban() {
       toast.error('Erro ao carregar solicitações');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const converterEmVistoria = async (item: Solicitacao) => {
+    if (item.vistoria_id || item.status === 'cancelada') return;
+    setConvertingId(item.id);
+    try {
+      const { data } = await api.post(`/vistorias/solicitacoes/${item.id}/converter`);
+      const vid = typeof data?.vistoria_id === 'number' ? data.vistoria_id : Number(data?.vistoria_id);
+      toast.success(
+        data?.already_converted
+          ? 'Esta solicitação já havia sido convertida.'
+          : data?.message || 'Solicitação convertida.',
+        {
+          action:
+            vid > 0
+              ? {
+                  label: 'Abrir vistoria',
+                  onClick: () => setLocation(`/vistorias/${vid}`),
+                }
+              : undefined,
+        }
+      );
+      await fetchSolicitacoes();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.response?.data?.message || 'Não foi possível converter.');
+    } finally {
+      setConvertingId(null);
     }
   };
 
@@ -223,6 +255,28 @@ export default function VistoriaSolicitacoesKanban() {
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-2">
                                   {formatDate(item.created_at)}
+                                </div>
+                                <div
+                                  className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-2"
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  {item.vistoria_id ? (
+                                    <Link
+                                      to={`/vistorias/${item.vistoria_id}`}
+                                      className="inline-flex items-center gap-1 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-100"
+                                    >
+                                      Vistoria <ArrowRight size={12} aria-hidden />
+                                    </Link>
+                                  ) : item.status !== 'cancelada' ? (
+                                    <button
+                                      type="button"
+                                      disabled={convertingId === item.id}
+                                      onClick={() => converterEmVistoria(item)}
+                                      className="rounded-md border border-blue-500/35 bg-blue-500/15 px-2 py-1 text-[11px] font-semibold text-blue-100 disabled:opacity-50 touch-manipulation"
+                                    >
+                                      {convertingId === item.id ? '…' : 'Gerar vistoria'}
+                                    </button>
+                                  ) : null}
                                 </div>
                               </div>
                             </div>

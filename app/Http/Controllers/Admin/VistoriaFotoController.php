@@ -11,14 +11,36 @@ use Illuminate\Support\Str;
 
 class VistoriaFotoController extends Controller
 {
-    public function index(int $vistoriaId)
+    private function resolveTenantId(Request $request): ?int
     {
-        $vistoria = Vistoria::find($vistoriaId);
+        $tenantId = $request->attributes->get('tenant_id')
+            ?? (app()->bound('tenant') ? app('tenant')->id : null);
+
+        return $tenantId ? (int) $tenantId : null;
+    }
+
+    private function vistoriaForTenant(Request $request, int $vistoriaId): ?Vistoria
+    {
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return null;
+        }
+
+        return Vistoria::query()
+            ->where('tenant_id', $tenantId)
+            ->find($vistoriaId);
+    }
+
+    public function index(Request $request, int $vistoriaId)
+    {
+        $vistoria = $this->vistoriaForTenant($request, $vistoriaId);
         if (!$vistoria) {
             return response()->json(['success' => false, 'message' => 'Vistoria não encontrada'], 404);
         }
 
-        $fotos = VistoriaFoto::where('vistoria_id', $vistoriaId)
+        $fotos = VistoriaFoto::query()
+            ->where('tenant_id', $vistoria->tenant_id)
+            ->where('vistoria_id', $vistoriaId)
             ->orderBy('comodo')
             ->orderBy('ordem')
             ->get();
@@ -28,7 +50,7 @@ class VistoriaFotoController extends Controller
 
     public function store(Request $request, int $vistoriaId)
     {
-        $vistoria = Vistoria::find($vistoriaId);
+        $vistoria = $this->vistoriaForTenant($request, $vistoriaId);
         if (!$vistoria) {
             return response()->json(['success' => false, 'message' => 'Vistoria não encontrada'], 404);
         }
@@ -50,6 +72,8 @@ class VistoriaFotoController extends Controller
         $filename = 'vistorias/' . $vistoria->tenant_id . '/' . $vistoriaId . '/' . Str::uuid() . '.' . $ext;
         $path = Storage::disk('public')->putFileAs(dirname($filename), $file, basename($filename));
 
+        $authUser = $request->user();
+
         $foto = VistoriaFoto::create([
             'tenant_id' => $vistoria->tenant_id,
             'vistoria_id' => $vistoriaId,
@@ -58,15 +82,26 @@ class VistoriaFotoController extends Controller
             'arquivo_path' => $path,
             'destaque' => $validator->validated()['destaque'] ?? false,
             'ordem' => $validator->validated()['ordem'] ?? 0,
+            'enviado_por_user_id' => $authUser?->id,
+            'enviado_por_pessoa_id' => $authUser?->pessoa_id,
             'enviado_por_tipo' => 'admin',
         ]);
 
         return response()->json(['success' => true, 'item' => $foto], 201);
     }
 
-    public function update(Request $request, int $vistoriaId, int $fotoId)
+    public function update(Request $request, int $vistoriaId, int $id)
     {
-        $foto = VistoriaFoto::where('vistoria_id', $vistoriaId)->find($fotoId);
+        $vistoria = $this->vistoriaForTenant($request, $vistoriaId);
+        if (!$vistoria) {
+            return response()->json(['success' => false, 'message' => 'Vistoria não encontrada'], 404);
+        }
+
+        $foto = VistoriaFoto::query()
+            ->where('tenant_id', $vistoria->tenant_id)
+            ->where('vistoria_id', $vistoriaId)
+            ->find($id);
+
         if (!$foto) {
             return response()->json(['success' => false, 'message' => 'Foto não encontrada'], 404);
         }
@@ -87,9 +122,18 @@ class VistoriaFotoController extends Controller
         return response()->json(['success' => true, 'item' => $foto->fresh()]);
     }
 
-    public function destroy(int $vistoriaId, int $fotoId)
+    public function destroy(Request $request, int $vistoriaId, int $id)
     {
-        $foto = VistoriaFoto::where('vistoria_id', $vistoriaId)->find($fotoId);
+        $vistoria = $this->vistoriaForTenant($request, $vistoriaId);
+        if (!$vistoria) {
+            return response()->json(['success' => false, 'message' => 'Vistoria não encontrada'], 404);
+        }
+
+        $foto = VistoriaFoto::query()
+            ->where('tenant_id', $vistoria->tenant_id)
+            ->where('vistoria_id', $vistoriaId)
+            ->find($id);
+
         if (!$foto) {
             return response()->json(['success' => false, 'message' => 'Foto não encontrada'], 404);
         }

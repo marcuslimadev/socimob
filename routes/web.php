@@ -397,12 +397,20 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->delete('/vistorias/{id}', 'App\Http\Controllers\VistoriasController@destroy');
     $router->get('/vistorias/solicitacoes', 'App\Http\Controllers\VistoriaSolicitacoesController@index');
     $router->post('/vistorias/solicitacoes', 'App\Http\Controllers\VistoriaSolicitacoesController@store');
+    $router->post('/vistorias/solicitacoes/{solicitacaoId}/converter', 'App\Http\Controllers\VistoriasController@converterFromSolicitacao');
     $router->put('/vistorias/solicitacoes/{id}/status', 'App\Http\Controllers\VistoriaSolicitacoesController@updateStatus');
     $router->get('/vistorias/contestacoes', 'App\Http\Controllers\VistoriaContestacoesController@index');
     $router->post('/vistorias/contestacoes', 'App\Http\Controllers\VistoriaContestacoesController@store');
     $router->get('/vistorias/contestacoes/{id}', 'App\Http\Controllers\VistoriaContestacoesController@show');
     $router->put('/vistorias/contestacoes/{id}/status', 'App\Http\Controllers\VistoriaContestacoesController@updateStatus');
     $router->delete('/vistorias/contestacoes/{id}', 'App\Http\Controllers\VistoriaContestacoesController@destroy');
+
+    // Fotos da vistoria (mesmo auth/tenant das demais rotas de vistoria — uso em campo e app)
+    $router->get('/vistorias/{vistoriaId}/fotos', 'App\Http\Controllers\VistoriaFotosApiController@index');
+    $router->post('/vistorias/{vistoriaId}/fotos', 'App\Http\Controllers\VistoriaFotosApiController@store');
+    $router->patch('/vistorias/{vistoriaId}/fotos/{fotoId}', 'App\Http\Controllers\VistoriaFotosApiController@update');
+    $router->delete('/vistorias/{vistoriaId}/fotos/{fotoId}', 'App\Http\Controllers\VistoriaFotosApiController@destroy');
+
     $router->get('/vistorias/{id}', 'App\Http\Controllers\VistoriasController@show');
 
     // Pessoas
