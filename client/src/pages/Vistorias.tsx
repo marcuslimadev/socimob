@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Building2, ClipboardCheck, Loader2, Pencil, Plus, Search, Trash2, Users, X } from 'lucide-react';
 import Select from 'react-select';
 import { toast } from 'sonner';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -132,11 +132,20 @@ const imovelText = (i?: Imovel | null) => {
 };
 const contratoText = (c?: Contrato | null) => c ? `${c.numero_contrato || `#${c.id}`} • ${c.locatario?.nome || 'Sem locatário'}` : 'Sem contrato';
 const badgeClass = (status: string) => ({ solicitada: 'bg-amber-500/15 text-amber-300 border-amber-500/30', designada: 'bg-blue-500/15 text-blue-300 border-blue-500/30', andamento: 'bg-violet-500/15 text-violet-300 border-violet-500/30', concluida: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', cancelada: 'bg-red-500/15 text-red-300 border-red-500/30' }[status] || 'bg-white/10 text-foreground border-white/10');
+const nextActionHint = (item: Vistoria) => {
+  const medias = item.fotos?.length || 0;
+  if (item.status === 'cancelada') return 'Vistoria cancelada: sem ação operacional.';
+  if (item.status === 'concluida') return 'Vistoria concluída: revisar execução e evidências.';
+  if (item.status === 'andamento') return medias > 0 ? 'Retomar execução guiada para concluir a vistoria.' : 'Retomar execução: anexe ao menos uma mídia para avançar.';
+  if (item.status === 'designada') return 'Próxima ação: iniciar vistoria e registrar início em campo.';
+  return 'Próxima ação: iniciar vistoria.';
+};
 
 /** Campos com altura tocável e texto ≥16px no mobile (evita zoom iOS em foco). */
 const fieldTouchClass = 'min-h-11 text-base sm:min-h-10 sm:text-sm';
 
 export default function Vistorias() {
+  const [, setLocation] = useLocation();
   const [vistorias, setVistorias] = useState<Vistoria[]>([]);
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [imoveis, setImoveis] = useState<Imovel[]>([]);
@@ -150,6 +159,7 @@ export default function Vistorias() {
   const [showAdvancedCreate, setShowAdvancedCreate] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [startingId, setStartingId] = useState<number | null>(null);
   const [filtersExtraOpen, setFiltersExtraOpen] = useState(false);
   const [filterMinhas, setFilterMinhas] = useState(false);
   const [profile, setProfile] = useState<{ role: string; pessoa_id: number | null }>(() => {
@@ -394,6 +404,52 @@ export default function Vistorias() {
     catch (error: any) { console.error(error); toast.error(error?.response?.data?.message || 'Erro ao excluir vistoria.'); }
   };
 
+  const startFromList = async (item: Vistoria) => {
+    if (!item?.id) return;
+    if (item.status === 'cancelada') {
+      toast.error('Vistoria cancelada não pode ser iniciada.');
+      return;
+    }
+    setStartingId(item.id);
+    try {
+      if (item.status === 'andamento') {
+        setLocation(`/vistorias/${item.id}/execucao`);
+        return;
+      }
+      if (item.status === 'concluida') {
+        toast.success('Abrindo execução concluída para consulta.');
+        setLocation(`/vistorias/${item.id}/execucao`);
+        return;
+      }
+      if (!['andamento', 'concluida'].includes(item.status)) {
+        await api.put(`/vistorias/${item.id}`, {
+          status: 'andamento',
+          data_vistoria: item.data_vistoria || new Date().toISOString(),
+        });
+      }
+      toast.success('Vistoria iniciada. Redirecionando para execução.');
+      setLocation(`/vistorias/${item.id}/execucao`);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.response?.data?.message || 'Não foi possível iniciar a vistoria.');
+    } finally {
+      setStartingId(null);
+    }
+  };
+
+  const startActionLabel = (status: string) => {
+    if (status === 'andamento') return 'Retomar';
+    if (status === 'concluida') return 'Ver execução';
+    if (status === 'cancelada') return 'Cancelada';
+    return 'Iniciar';
+  };
+
+  const startActionClass = (status: string) => {
+    if (status === 'cancelada') return 'border-white/20 bg-white/5 text-muted-foreground';
+    if (status === 'concluida') return 'border-cyan-500/30 bg-cyan-500/10 text-cyan-200';
+    return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200';
+  };
+
   return (
     <>
     <div className="flex">
@@ -406,7 +462,7 @@ export default function Vistorias() {
 
     <div className="glass-panel rounded-2xl p-5 space-y-4"><div className="flex flex-wrap items-center gap-3">{pessoaLinked ? <label className="flex min-h-11 cursor-pointer touch-manipulation items-center gap-2 rounded-xl border border-cyan-500/25 bg-cyan-500/5 px-3 py-2 text-sm text-cyan-100 sm:min-h-10"><input type="checkbox" className="h-4 w-4 rounded border-white/30 bg-white/10" checked={filterMinhas} onChange={(e) => { const v = e.target.checked; setFilterMinhas(v); setPage(1); loadVistorias(1, { minhas: v }); }} />Minhas visitas (sou responsável)</label> : null}{!pessoaLinked && isFieldUser ? <span className="text-xs leading-relaxed text-muted-foreground sm:text-sm">Para listar só as visitas em que você é o responsável, peça ao admin para vincular seu usuário a uma pessoa em <strong className="text-foreground">Usuários</strong>.</span> : null}</div><div className="grid gap-3 md:grid-cols-4"><label className="relative block"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={filters.codigo} onChange={(e) => setFilters((prev) => ({ ...prev, codigo: e.target.value }))} placeholder="Código" className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-foreground" /></label><input value={filters.cliente} onChange={(e) => setFilters((prev) => ({ ...prev, cliente: e.target.value }))} placeholder="Cliente" className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground" /><select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="todos">Todos os status</option>{statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><select value={filters.tipo} onChange={(e) => setFilters((prev) => ({ ...prev, tipo: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="todos">Todos os tipos</option>{tipoOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div><button type="button" onClick={() => setFiltersExtraOpen((v) => !v)} className="touch-manipulation rounded-xl border border-dashed border-white/20 bg-white/5 py-3 text-base text-muted-foreground md:hidden sm:text-sm">{filtersExtraOpen ? 'Ocultar filtros extras' : 'Mais filtros — contrato, imóvel, responsável'}</button><div className={`grid gap-3 md:grid-cols-3 ${filtersExtraOpen ? '' : 'hidden md:grid'}`}><select value={filters.contrato_id} onChange={(e) => setFilters((prev) => ({ ...prev, contrato_id: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="">Filtrar por contrato</option>{contratos.map((item) => <option key={item.id} value={item.id}>{contratoText(item)}</option>)}</select><select value={filters.imovel_id} onChange={(e) => setFilters((prev) => ({ ...prev, imovel_id: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="">Filtrar por imóvel</option>{imoveis.map((item) => <option key={item.id} value={item.id}>{imovelText(item)}</option>)}</select><select value={filters.responsavel_pessoa_id} onChange={(e) => setFilters((prev) => ({ ...prev, responsavel_pessoa_id: e.target.value }))} className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-foreground"><option value="">Filtrar por responsável</option>{pessoas.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></div><div className="flex items-center justify-end gap-2"><button onClick={resetFilters} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-foreground">Limpar</button><button onClick={applyFilters} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Aplicar</button></div></div>
 
-    <div className="glass-panel rounded-2xl p-5">{loading ? <div className="flex items-center justify-center py-16 text-muted-foreground"><Loader2 className="mr-2 h-6 w-6 animate-spin" />Carregando vistorias...</div> : vistorias.length === 0 ? <div className="rounded-2xl border border-dashed border-white/10 px-6 py-14 text-center text-sm text-muted-foreground">Nenhuma vistoria encontrada.</div> : <div className="grid gap-4 lg:grid-cols-2">{vistorias.map((item) => <div key={item.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5"><div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"><div className="min-w-0"><div className="mb-2 flex flex-wrap items-center gap-2"><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${badgeClass(item.status)}`}>{statusOptions.find(([value]) => value === item.status)?.[1] || item.status}</span><span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-muted-foreground">{tipoOptions.find(([value]) => value === item.tipo)?.[1] || item.tipo || '-'}</span></div><h3 className="text-lg font-semibold text-foreground">{item.codigo || `Vistoria #${item.id}`}</h3><p className="mt-1 text-sm text-muted-foreground">{item.cliente_nome || item.contrato?.locatario?.nome || 'Sem cliente vinculado'}</p></div><div className="flex flex-wrap gap-2 sm:shrink-0 sm:justify-end"><Link to={`/vistorias/${item.id}`} className="inline-flex min-h-10 flex-1 touch-manipulation items-center justify-center rounded-xl border border-white/10 px-3 py-2 text-center text-sm text-foreground sm:flex-none">Detalhe</Link><button type="button" onClick={() => { openEdit(item); setShowForm(true); }} className="inline-flex min-h-10 flex-1 touch-manipulation items-center justify-center gap-1 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-300 sm:flex-none"><Pencil size={14} aria-hidden /><span>Editar</span></button>{isAdminLike ? <button type="button" onClick={() => setDeleteId(item.id)} className="inline-flex min-h-10 flex-1 touch-manipulation items-center justify-center gap-1 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300 sm:w-auto"><Trash2 size={14} aria-hidden /><span>Excluir</span></button> : null}</div></div><div className="grid gap-3 md:grid-cols-2"><div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Contrato</p><p className="text-sm text-foreground">{contratoText(item.contrato)}</p></div><div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Imóvel</p><p className="text-sm text-foreground">{imovelText(item.imovel || item.contrato?.imovel)}</p></div><div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Responsável</p><p className="text-sm text-foreground">{personText(item.responsavel)}</p></div><div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Execução</p><p className="text-sm text-foreground">{formatDate(item.data_vistoria)}</p><p className="mt-1 text-xs text-muted-foreground">{formatMetric(item.metragem)} • {item.mobiliado ? 'Mobiliado' : 'Sem mobília'}</p></div></div><div className="mt-4 rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Participantes</p><p className="text-sm text-foreground">{item.participantes_nomes?.length ? item.participantes_nomes.join(', ') : 'Sem participantes vinculados.'}</p></div>{item.observacoes ? <p className="mt-4 text-sm leading-6 text-muted-foreground">{item.observacoes}</p> : null}</div>)}</div>}<div className="mt-6 flex items-center justify-center gap-3"><button type="button" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1} className="min-h-10 touch-manipulation rounded-xl border border-white/10 px-4 py-2 text-sm text-foreground disabled:opacity-40">Anterior</button><span className="text-sm text-muted-foreground">Página {page} de {lastPage}</span><button type="button" onClick={() => setPage((prev) => Math.min(lastPage, prev + 1))} disabled={page >= lastPage} className="min-h-10 touch-manipulation rounded-xl border border-white/10 px-4 py-2 text-sm text-foreground disabled:opacity-40">Próxima</button></div></div>
+    <div className="glass-panel rounded-2xl p-5">{loading ? <div className="flex items-center justify-center py-16 text-muted-foreground"><Loader2 className="mr-2 h-6 w-6 animate-spin" />Carregando vistorias...</div> : vistorias.length === 0 ? <div className="rounded-2xl border border-dashed border-white/10 px-6 py-14 text-center text-sm text-muted-foreground">Nenhuma vistoria encontrada.</div> : <div className="grid gap-4 lg:grid-cols-2">{vistorias.map((item) => <div key={item.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5"><div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"><div className="min-w-0"><div className="mb-2 flex flex-wrap items-center gap-2"><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${badgeClass(item.status)}`}>{statusOptions.find(([value]) => value === item.status)?.[1] || item.status}</span><span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-muted-foreground">{tipoOptions.find(([value]) => value === item.tipo)?.[1] || item.tipo || '-'}</span></div><h3 className="text-lg font-semibold text-foreground">{item.codigo || `Vistoria #${item.id}`}</h3><p className="mt-1 text-sm text-muted-foreground">{item.cliente_nome || item.contrato?.locatario?.nome || 'Sem cliente vinculado'}</p></div><div className="flex flex-wrap gap-2 sm:shrink-0 sm:justify-end"><button type="button" onClick={() => startFromList(item)} disabled={startingId === item.id || item.status === 'cancelada'} className={`inline-flex min-h-10 flex-1 touch-manipulation items-center justify-center rounded-xl border px-3 py-2 text-center text-sm sm:flex-none disabled:opacity-50 ${startActionClass(item.status)}`}>{startingId === item.id ? 'Iniciando...' : startActionLabel(item.status)}</button><button type="button" onClick={() => { openEdit(item); setShowForm(true); }} className="inline-flex min-h-10 flex-1 touch-manipulation items-center justify-center gap-1 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-300 sm:flex-none"><Pencil size={14} aria-hidden /><span>Editar</span></button>{isAdminLike ? <button type="button" onClick={() => setDeleteId(item.id)} className="inline-flex min-h-10 flex-1 touch-manipulation items-center justify-center gap-1 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300 sm:w-auto"><Trash2 size={14} aria-hidden /><span>Excluir</span></button> : null}</div></div><div className="grid gap-3 md:grid-cols-2"><div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Contrato</p><p className="text-sm text-foreground">{contratoText(item.contrato)}</p></div><div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Imóvel</p><p className="text-sm text-foreground">{imovelText(item.imovel || item.contrato?.imovel)}</p></div><div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Responsável</p><p className="text-sm text-foreground">{personText(item.responsavel)}</p></div><div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">Execução</p><p className="text-sm text-foreground">{formatDate(item.data_vistoria)}</p><p className="mt-1 text-xs text-muted-foreground">{formatMetric(item.metragem)} • {item.mobiliado ? 'Mobiliado' : 'Sem mobília'}</p></div></div><div className="mt-4 rounded-xl border border-white/10 bg-black/10 p-3"><p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Participantes</p><p className="text-sm text-foreground">{item.participantes_nomes?.length ? item.participantes_nomes.join(', ') : 'Sem participantes vinculados.'}</p></div><div className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-3"><p className="mb-1 text-xs uppercase tracking-[0.18em] text-cyan-100/80">Próxima ação recomendada</p><p className="text-sm text-cyan-100">{nextActionHint(item)}</p></div>{item.observacoes ? <p className="mt-4 text-sm leading-6 text-muted-foreground">{item.observacoes}</p> : null}</div>)}</div>}<div className="mt-6 flex items-center justify-center gap-3"><button type="button" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1} className="min-h-10 touch-manipulation rounded-xl border border-white/10 px-4 py-2 text-sm text-foreground disabled:opacity-40">Anterior</button><span className="text-sm text-muted-foreground">Página {page} de {lastPage}</span><button type="button" onClick={() => setPage((prev) => Math.min(lastPage, prev + 1))} disabled={page >= lastPage} className="min-h-10 touch-manipulation rounded-xl border border-white/10 px-4 py-2 text-sm text-foreground disabled:opacity-40">Próxima</button></div></div>
         </motion.div>
       </div>
     </div>
@@ -419,4 +475,7 @@ export default function Vistorias() {
     </>
   );
 }
+
+
+
 

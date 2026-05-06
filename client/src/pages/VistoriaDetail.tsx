@@ -199,7 +199,7 @@ export default function VistoriaDetail() {
                     type="button"
                     className="flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-base text-emerald-200 sm:min-h-10 sm:text-sm"
                   >
-                    Abrir execução guiada
+                    Iniciar vistoria
                   </button>
                 </Link>
               ) : null}

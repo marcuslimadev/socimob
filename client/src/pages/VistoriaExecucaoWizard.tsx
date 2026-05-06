@@ -22,6 +22,10 @@ export default function VistoriaExecucaoWizard() {
   const [comentario, setComentario] = useState('');
   const [comodo, setComodo] = useState('');
   const [descricao, setDescricao] = useState('');
+  const [iniciando, setIniciando] = useState(false);
+  const [checkChegada, setCheckChegada] = useState(false);
+  const [checkAcesso, setCheckAcesso] = useState(false);
+  const [checkEscopo, setCheckEscopo] = useState(false);
 
   const id = params?.id;
   const refresh = async () => {
@@ -46,6 +50,15 @@ export default function VistoriaExecucaoWizard() {
       imagens: fotos.filter((f) => String(f.mime_type || '').startsWith('image/')).length,
     };
   }, [vistoria]);
+  const started = ['andamento', 'concluida'].includes(vistoria?.status || '');
+  const canAdvance =
+    step === 0
+      ? checkChegada && checkAcesso && checkEscopo
+      : step === 1
+        ? mediaResumo.total > 0
+        : step === 2
+          ? (vistoria?.comentarios || []).length > 0
+          : true;
 
   const upload = async (files: FileList | null) => {
     if (!id || !files?.length) return;
@@ -96,6 +109,23 @@ export default function VistoriaExecucaoWizard() {
     }
   };
 
+  const iniciarVistoria = async () => {
+    if (!id || started) return;
+    setIniciando(true);
+    try {
+      await api.put(`/vistorias/${id}`, {
+        status: 'andamento',
+        data_vistoria: new Date().toISOString(),
+      });
+      toast.success('Vistoria iniciada e registrada.');
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Não foi possível iniciar a vistoria.');
+    } finally {
+      setIniciando(false);
+    }
+  };
+
   return (
     <div className="flex">
       <Sidebar />
@@ -123,18 +153,30 @@ export default function VistoriaExecucaoWizard() {
 
           {loading ? <div className="glass-panel rounded-2xl p-10 flex justify-center"><Loader2 className="animate-spin" /></div> : (
             <div className="glass-panel rounded-2xl p-5 space-y-4">
-              <p className="text-sm text-muted-foreground">Vistoria: <strong className="text-foreground">{vistoria?.codigo || `#${vistoria?.id}`}</strong> · status atual: <strong className="text-foreground">{vistoria?.status}</strong></p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm text-muted-foreground">Vistoria: <strong className="text-foreground">{vistoria?.codigo || `#${vistoria?.id}`}</strong> · status atual: <strong className="text-foreground">{vistoria?.status}</strong></p>
+                {!started ? (
+                  <button onClick={iniciarVistoria} disabled={iniciando} className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-black">
+                    {iniciando ? 'Iniciando...' : 'Iniciar vistoria'}
+                  </button>
+                ) : (
+                  <span className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">Vistoria iniciada</span>
+                )}
+              </div>
 
               {step === 0 && (
                 <div className="space-y-2 text-sm">
-                  <p>1) Confirme endereço, acesso e responsáveis.</p>
-                  <p>2) Defina os cômodos/áreas que serão percorridos.</p>
-                  <p>3) Em seguida avance para anexar evidências de campo.</p>
+                  <p className="font-semibold">Passo 1 — confirmação de início</p>
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={checkChegada} onChange={(e) => setCheckChegada(e.target.checked)} />Cheguei ao imóvel e confirmei o endereço.</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={checkAcesso} onChange={(e) => setCheckAcesso(e.target.checked)} />Acesso liberado (chaves/porteiro/proprietário).</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" checked={checkEscopo} onChange={(e) => setCheckEscopo(e.target.checked)} />Escopo alinhado (cômodos e itens a vistoriar).</label>
+                  {!started ? <p className="text-amber-300 text-xs">Clique em <strong>Iniciar vistoria</strong> para registrar oficialmente o início.</p> : null}
                 </div>
               )}
 
               {step === 1 && (
                 <div className="space-y-3">
+                  <p className="font-semibold text-sm">Passo 2 — evidências (foto/vídeo)</p>
                   <div className="grid md:grid-cols-2 gap-2">
                     <input value={comodo} onChange={(e) => setComodo(e.target.value)} placeholder="Cômodo / ambiente" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
                     <input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição da evidência (foto ou vídeo)" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
@@ -147,6 +189,7 @@ export default function VistoriaExecucaoWizard() {
 
               {step === 2 && (
                 <div className="space-y-3">
+                  <p className="font-semibold text-sm">Passo 3 — comentários técnicos</p>
                   <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} rows={4} placeholder="Comentário técnico (estado do imóvel, inconformidades, observações)." className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
                   <button onClick={enviarComentario} disabled={savingComment} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">{savingComment ? 'Salvando...' : 'Registrar comentário'}</button>
                   <div className="space-y-2">
@@ -162,7 +205,7 @@ export default function VistoriaExecucaoWizard() {
 
               {step === 3 && (
                 <div className="space-y-3 text-sm">
-                  <p>Checklist final:</p>
+                  <p className="font-semibold">Passo 4 — concluir vistoria</p>
                   <p>- Evidências anexadas: <strong>{mediaResumo.total}</strong></p>
                   <p>- Comentários registrados: <strong>{(vistoria?.comentarios || []).length}</strong></p>
                   <p className="text-muted-foreground">Se estiver tudo ok, conclua a vistoria para encerrar o fluxo operacional.</p>
@@ -172,7 +215,7 @@ export default function VistoriaExecucaoWizard() {
 
               <div className="flex justify-between pt-2">
                 <button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} className="rounded-xl border border-white/10 px-4 py-2 text-sm disabled:opacity-40">Anterior</button>
-                <button onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))} disabled={step === steps.length - 1} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Próximo</button>
+                <button onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))} disabled={step === steps.length - 1 || !started || !canAdvance} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Próximo</button>
               </div>
             </div>
           )}
