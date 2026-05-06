@@ -17,6 +17,7 @@ const Leads = lazy(() => import("./pages/Leads"));
 const Properties = lazy(() => import("./pages/Properties"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Login = lazy(() => import("./pages/Login"));
+const PrimeiroAcessoSenha = lazy(() => import("./pages/PrimeiroAcessoSenha"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ClientPortal = lazy(() => import("./pages/ClientPortal"));
@@ -41,6 +42,8 @@ const VistoriaSolicitacoes = lazy(() => import("./pages/VistoriaSolicitacoes"));
 const VistoriaSolicitacoesKanban = lazy(() => import("./pages/VistoriaSolicitacoesKanban"));
 const VistoriaSolicitacoesCalendario = lazy(() => import("./pages/VistoriaSolicitacoesCalendario"));
 const VistoriaContestacoes = lazy(() => import("./pages/VistoriaContestacoes"));
+const VistoriaCadastroWizard = lazy(() => import("./pages/VistoriaCadastroWizard"));
+const VistoriaExecucaoWizard = lazy(() => import("./pages/VistoriaExecucaoWizard"));
 const LeadProfile = lazy(() => import("./pages/LeadProfile"));
 const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
 const ImovelFormWizard = lazy(() => import("./pages/ImovelFormWizard"));
@@ -113,6 +116,7 @@ function Router() {
       <Route path="/chat" component={Chat} />
       <Route path="/notifications" component={NotificationCenter} />
       <Route path="/login" component={Login} />
+      <Route path="/primeiro-acesso" component={PrimeiroAcessoSenha} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/portal/imovel/:id" component={PropertyDetail} />
@@ -133,11 +137,13 @@ function Router() {
       <Route path="/financeiro/contas" component={AdminContasFinanceirasGate} />
       <Route path="/portal/meu-financeiro" component={PortalFinanceiroGate} />
       <Route path="/vistorias" component={Vistorias} />
+      <Route path="/vistorias/wizard" component={VistoriaCadastroWizard} />
       <Route path="/vistorias/solicitacoes" component={VistoriaSolicitacoes} />
       <Route path="/vistorias/solicitacoes/kanban" component={VistoriaSolicitacoesKanban} />
       <Route path="/vistorias/solicitacoes/calendario" component={VistoriaSolicitacoesCalendario} />
       <Route path="/vistorias/solicitacoes/nova" component={VistoriaSolicitacaoNova} />
       <Route path="/vistorias/contestacoes" component={VistoriaContestacoes} />
+      <Route path="/vistorias/:id/execucao" component={VistoriaExecucaoWizard} />
       <Route path="/vistorias/:id" component={VistoriaDetail} />
       <Route path="/assinaturas" component={Assinaturas} />
       <Route path="/pessoas/:id" component={PessoaPerfil} />

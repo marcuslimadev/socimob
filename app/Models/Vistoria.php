@@ -50,6 +50,11 @@ class Vistoria extends Model
         return $this->hasMany(VistoriaFoto::class, 'vistoria_id')->orderBy('comodo')->orderBy('ordem');
     }
 
+    public function comentarios()
+    {
+        return $this->hasMany(VistoriaComentario::class, 'vistoria_id')->orderByDesc('created_at');
+    }
+
     public function contrato()
     {
         return $this->belongsTo(ContratoLocacao::class, 'contrato_id');

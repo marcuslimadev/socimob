@@ -55,9 +55,11 @@ class VistoriaFotosApiController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'foto' => 'required|file|mimes:jpg,jpeg,png,webp|max:10240',
+            'foto' => 'sometimes|file|mimes:jpg,jpeg,png,webp,mp4,mov,webm|max:102400',
+            'arquivo' => 'sometimes|file|mimes:jpg,jpeg,png,webp,mp4,mov,webm|max:102400',
             'comodo' => 'nullable|string|max:100',
             'descricao' => 'nullable|string|max:500',
+            'legenda' => 'nullable|string|max:500',
             'destaque' => 'nullable|boolean',
             'ordem' => 'nullable|integer|min:0',
         ]);
@@ -66,7 +68,10 @@ class VistoriaFotosApiController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $file = $request->file('foto');
+        $file = $request->file('arquivo') ?: $request->file('foto');
+        if (!$file) {
+            return response()->json(['success' => false, 'message' => 'Arquivo é obrigatório'], 422);
+        }
         $ext = $file->getClientOriginalExtension();
         $filename = 'vistorias/' . $vistoria->tenant_id . '/' . $vistoriaId . '/' . Str::uuid() . '.' . $ext;
         $path = Storage::disk('public')->putFileAs(dirname($filename), $file, basename($filename));
@@ -78,7 +83,10 @@ class VistoriaFotosApiController extends Controller
             'vistoria_id' => $vistoriaId,
             'comodo' => $validator->validated()['comodo'] ?? null,
             'descricao' => $validator->validated()['descricao'] ?? null,
+            'legenda' => $validator->validated()['legenda'] ?? null,
             'arquivo_path' => $path,
+            'mime_type' => $file->getMimeType(),
+            'tamanho_bytes' => $file->getSize(),
             'destaque' => $validator->validated()['destaque'] ?? false,
             'ordem' => $validator->validated()['ordem'] ?? 0,
             'enviado_por_user_id' => $authUser?->id,
@@ -108,6 +116,7 @@ class VistoriaFotosApiController extends Controller
         $validator = Validator::make($request->all(), [
             'comodo' => 'nullable|string|max:100',
             'descricao' => 'nullable|string|max:500',
+            'legenda' => 'nullable|string|max:500',
             'destaque' => 'nullable|boolean',
             'ordem' => 'nullable|integer|min:0',
         ]);

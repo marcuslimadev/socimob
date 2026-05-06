@@ -56,6 +56,11 @@ export default function Login() {
         localStorage.setItem('user', JSON.stringify(response.data.user));
         toast.success('Login realizado com sucesso!');
 
+        if (response.data.user?.must_change_password) {
+          setLocation('/primeiro-acesso');
+          return;
+        }
+
         const role = (response.data.user?.role || '').toLowerCase();
         if (role === 'corretor' || role === 'agent') {
           setLocation('/chat');

@@ -367,6 +367,7 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     // Auth
     $router->get('/auth/me', 'App\Http\Controllers\AuthController@me');
     $router->post('/auth/logout', 'App\Http\Controllers\AuthController@logout');
+    $router->post('/auth/change-password-first-access', 'App\Http\Controllers\AuthController@changePasswordFirstAccess');
 
     // Importação de imóveis
     $router->group(['prefix' => 'importacoes/imoveis'], function () use ($router) {
@@ -390,6 +391,7 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
 
     // Vistorias
     $router->get('/vistorias/meta', 'App\Http\Controllers\VistoriasController@meta');
+    $router->post('/vistorias/participantes', 'App\Http\Controllers\VistoriasController@storeParticipante');
     $router->get('/vistorias', 'App\Http\Controllers\VistoriasController@index');
     $router->post('/vistorias', 'App\Http\Controllers\VistoriasController@store');
     $router->get('/vistorias/export', 'App\Http\Controllers\VistoriasController@export');
@@ -410,6 +412,8 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->post('/vistorias/{vistoriaId}/fotos', 'App\Http\Controllers\VistoriaFotosApiController@store');
     $router->patch('/vistorias/{vistoriaId}/fotos/{fotoId}', 'App\Http\Controllers\VistoriaFotosApiController@update');
     $router->delete('/vistorias/{vistoriaId}/fotos/{fotoId}', 'App\Http\Controllers\VistoriaFotosApiController@destroy');
+    $router->get('/vistorias/{vistoriaId}/comentarios', 'App\Http\Controllers\VistoriaComentariosApiController@index');
+    $router->post('/vistorias/{vistoriaId}/comentarios', 'App\Http\Controllers\VistoriaComentariosApiController@store');
 
     $router->get('/vistorias/{id}', 'App\Http\Controllers\VistoriasController@show');
 

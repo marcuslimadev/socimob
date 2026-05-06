@@ -21,6 +21,7 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
         'is_active',
         'tenant_id',
         'pessoa_id',
+        'must_change_password',
     ];
 
     protected $hidden = [
@@ -29,6 +30,7 @@ class User extends Model implements AuthenticatableContract, AuthorizableContrac
 
     protected $casts = [
         'is_active' => 'boolean',
+        'must_change_password' => 'boolean',
     ];
 
     /**

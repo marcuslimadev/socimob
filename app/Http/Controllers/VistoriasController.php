@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 use App\Models\ContratoLocacao;
 use App\Models\Pessoa;
 use App\Models\Property;
+use App\Models\User;
 use App\Models\Vistoria;
 use App\Models\VistoriaSolicitacao;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -202,6 +204,96 @@ class VistoriasController extends Controller
             'success' => true,
             'message' => 'Vistoria deletada com sucesso',
         ]);
+    }
+
+    /**
+     * Cadastra participante avulso no fluxo da vistoria.
+     * Pode criar usuário "vistoriador" já com senha padrão e troca obrigatória no primeiro acesso.
+     * POST /api/vistorias/participantes
+     */
+    public function storeParticipante(Request $request)
+    {
+        $tenantId = $this->resolveTenantId($request);
+
+        $validator = app('validator')->make($request->all(), [
+            'nome' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'telefone' => 'nullable|string|max:50',
+            'celular' => 'nullable|string|max:50',
+            'tipo_pessoa' => 'nullable|string|in:fisica,juridica',
+            'create_vistoriador_user' => 'nullable|boolean',
+            'user_email' => 'nullable|email|max:255',
+            'user_name' => 'nullable|string|max:255',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
+
+        $pessoa = Pessoa::query()->create([
+            'tenant_id' => $tenantId,
+            'nome' => $data['nome'],
+            'email' => $data['email'] ?? null,
+            'telefone' => $data['telefone'] ?? null,
+            'celular' => $data['celular'] ?? null,
+            'tipo' => $data['tipo_pessoa'] ?? 'fisica',
+            'ativo' => true,
+            'papeis' => ['vistoriador'],
+        ]);
+
+        $userPayload = null;
+        $createUser = filter_var($data['create_vistoriador_user'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if ($createUser) {
+            $email = $data['user_email'] ?? $data['email'] ?? null;
+            if (!$email) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Para criar login do vistoriador, informe um email.',
+                ], 422);
+            }
+
+            $exists = User::query()
+                ->where('tenant_id', $tenantId)
+                ->where('email', $email)
+                ->exists();
+            if ($exists) {
+                return response()->json(['success' => false, 'message' => 'Já existe usuário com este email no tenant.'], 422);
+            }
+
+            $defaultPassword = env('DEFAULT_VISTORIADOR_PASSWORD', 'exclusiva123');
+            $user = User::query()->create([
+                'tenant_id' => $tenantId,
+                'pessoa_id' => $pessoa->id,
+                'name' => $data['user_name'] ?? $pessoa->nome,
+                'email' => $email,
+                'password' => Hash::make($defaultPassword),
+                'role' => 'corretor',
+                'is_active' => true,
+                'must_change_password' => true,
+            ]);
+
+            $userPayload = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'default_password' => $defaultPassword,
+                'must_change_password' => true,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'pessoa' => [
+                'id' => $pessoa->id,
+                'nome' => $pessoa->nome,
+                'email' => $pessoa->email,
+                'telefone' => $pessoa->telefone,
+                'celular' => $pessoa->celular,
+            ],
+            'user' => $userPayload,
+        ], 201);
     }
 
     /**
@@ -720,6 +812,7 @@ class VistoriasController extends Controller
     {
         return [
             'fotos',
+            'comentarios',
             'responsavel:id,nome,email,telefone,celular',
             'imovel:id,codigo,titulo,logradouro,bairro,cidade,estado,area_total,dormitorios,banheiros,garagem',
             'contrato:id,numero_contrato,status,inicio,fim,imovel_id,locador_pessoa_id,locatario_pessoa_id',
@@ -781,6 +874,9 @@ class VistoriasController extends Controller
             'contrato' => $contrato ? $this->serializeContrato($contrato) : null,
             'fotos' => $vistoria->relationLoaded('fotos')
                 ? $vistoria->fotos->map(fn ($foto) => $foto->toArray())->values()->all()
+                : [],
+            'comentarios' => $vistoria->relationLoaded('comentarios')
+                ? $vistoria->comentarios->map(fn ($c) => $c->toArray())->values()->all()
                 : [],
         ];
     }

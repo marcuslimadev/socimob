@@ -117,6 +117,7 @@ class AuthController extends Controller
                 'tipo' => $user->role === 'super_admin' ? 'Super Admin' : ucfirst($user->role),
                 'pessoa_id' => $user->pessoa_id,
                 'pessoa_nome' => $user->pessoa?->nome,
+                'must_change_password' => (bool) ($user->must_change_password ?? false),
             ],
             'message' => 'Login realizado com sucesso!'
         ]);
@@ -176,8 +177,36 @@ class AuthController extends Controller
                 'is_active' => $user->is_active,
                 'pessoa_id' => $user->pessoa_id,
                 'pessoa_nome' => $user->pessoa?->nome,
+                'must_change_password' => (bool) ($user->must_change_password ?? false),
             ]
         ]);
+    }
+
+    /**
+     * Troca de senha obrigatória no primeiro acesso.
+     * POST /api/auth/change-password-first-access
+     */
+    public function changePasswordFirstAccess(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Usuário não autenticado'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'password' => 'required|string|min:8|max:255|confirmed',
+        ], [
+            'password.confirmed' => 'Confirmação de senha não confere',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $user->password = Hash::make((string) $request->input('password'));
+        $user->must_change_password = false;
+        $user->save();
+
+        return response()->json(['success' => true, 'message' => 'Senha atualizada com sucesso']);
     }
     
     /**

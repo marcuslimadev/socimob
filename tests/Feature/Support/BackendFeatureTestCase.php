@@ -67,6 +67,7 @@ abstract class BackendFeatureTestCase extends TestCase
         foreach ([
             'contratos_documentos',
             'contratos_compra_venda',
+            'vistoria_comentarios',
             'vistoria_fotos',
             'vistoria_solicitacoes',
             'vistorias',
@@ -97,6 +98,7 @@ abstract class BackendFeatureTestCase extends TestCase
             $table->string('name');
             $table->string('email')->nullable();
             $table->string('password')->nullable();
+            $table->boolean('must_change_password')->default(false);
             $table->string('role')->default('admin');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
@@ -270,6 +272,17 @@ abstract class BackendFeatureTestCase extends TestCase
             $table->unsignedBigInteger('enviado_por_user_id')->nullable();
             $table->unsignedBigInteger('enviado_por_pessoa_id')->nullable();
             $table->string('enviado_por_tipo')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('vistoria_comentarios', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('tenant_id')->nullable();
+            $table->unsignedBigInteger('vistoria_id')->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->unsignedBigInteger('pessoa_id')->nullable();
+            $table->string('autor_nome')->nullable();
+            $table->text('comentario');
             $table->timestamps();
         });
 
