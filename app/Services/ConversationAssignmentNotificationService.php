@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\Notification;
 use App\Models\TenantConfig;
 use App\Models\User;
+use App\Models\WhatsApp\WhatsAppTemplate;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -299,7 +300,12 @@ class ConversationAssignmentNotificationService
         }
 
         $body = $this->buildOperationalWhatsAppMessage($event, $title, $message, $lead, $conversa);
-        $result = $this->sendWhatsAppMessage((int) $user->tenant_id, $phone, $body);
+        $result = $this->sendOperationalWhatsAppMessage(
+            (int) $user->tenant_id,
+            $phone,
+            $body,
+            $this->buildOperationalTemplateVariables($event, $message, $lead, $conversa)
+        );
 
         if (!($result['success'] ?? false)) {
             Log::warning('[ConversationAssignmentNotification] Falha ao enviar WhatsApp operacional', [
@@ -327,7 +333,12 @@ class ConversationAssignmentNotificationService
         }
 
         $body = $this->buildLeadCreatedOperationalWhatsAppMessage($title, $message, $lead);
-        $result = $this->sendWhatsAppMessage((int) $user->tenant_id, $phone, $body);
+        $result = $this->sendOperationalWhatsAppMessage(
+            (int) $user->tenant_id,
+            $phone,
+            $body,
+            $this->buildLeadCreatedTemplateVariables($message, $lead)
+        );
 
         if (!($result['success'] ?? false)) {
             Log::warning('[ConversationAssignmentNotification] Falha ao enviar WhatsApp operacional de lead criado', [
@@ -410,6 +421,23 @@ class ConversationAssignmentNotificationService
             . "Abrir chat: {$actionUrl}";
     }
 
+    private function buildOperationalTemplateVariables(
+        string $event,
+        string $message,
+        ?Lead $lead,
+        Conversa $conversa
+    ): array {
+        $phone = $lead?->telefone ?: $lead?->whatsapp ?: $conversa->telefone;
+        $headline = $event === 'ai_conversation_started'
+            ? 'Atendimento iniciado pela Teresa'
+            : 'Atendimento precisa de humano';
+        $customer = $this->leadName($lead) . ($phone ? " ({$phone})" : '');
+        $summary = $this->compactTemplateText($message . ' ' . $this->leadCriteriaSummary($lead));
+        $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?conversationId={$conversa->id}";
+
+        return [$headline, $customer, $summary, $actionUrl];
+    }
+
     private function buildLeadCreatedOperationalWhatsAppMessage(string $title, string $message, Lead $lead): string
     {
         $name = $this->leadName($lead);
@@ -426,6 +454,80 @@ class ConversationAssignmentNotificationService
             . ($interest ? "\nInteresse: {$interest}" : '')
             . ($criteria ? "\nCritérios: {$criteria}" : '')
             . "\nAbrir chat: {$actionUrl}";
+    }
+
+    private function buildLeadCreatedTemplateVariables(string $message, Lead $lead): array
+    {
+        $phone = $lead->telefone ?: $lead->whatsapp;
+        $customer = $this->leadName($lead) . ($phone ? " ({$phone})" : '');
+        $summary = $this->compactTemplateText($message . ' ' . $this->leadInterestSummary($lead) . ' ' . $this->leadCriteriaSummary($lead));
+        $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?leadId={$lead->id}";
+
+        return ['Novo lead criado', $customer, $summary, $actionUrl];
+    }
+
+    private function compactTemplateText(?string $value): string
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', (string) $value) ?? '');
+
+        return mb_substr($text !== '' ? $text : 'Abra o painel para conferir o contexto completo.', 0, 180);
+    }
+
+    private function sendOperationalWhatsAppMessage(int $tenantId, string $phone, string $body, array $templateVariables): array
+    {
+        $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
+        $template = $this->resolveOperationalTemplate($tenantId);
+
+        if ($driver === 'meta_cloud' && $template) {
+            $result = $this->sendWhatsAppTemplate($tenantId, $phone, $template['name'], $template['language'], $templateVariables);
+            if ($result['success'] ?? false) {
+                return $result;
+            }
+
+            Log::warning('[ConversationAssignmentNotification] Falha ao enviar template WhatsApp operacional', [
+                'tenant_id' => $tenantId,
+                'template' => $template['name'],
+                'language' => $template['language'],
+                'error' => $result['error'] ?? null,
+                'http_code' => $result['http_code'] ?? null,
+            ]);
+        }
+
+        return $this->sendWhatsAppMessage($tenantId, $phone, $body);
+    }
+
+    private function resolveOperationalTemplate(int $tenantId): ?array
+    {
+        $config = TenantConfig::where('tenant_id', $tenantId)->first();
+        $metadata = is_array($config?->metadata) ? $config->metadata : [];
+        $name = trim((string) (
+            env("TENANT_{$tenantId}_OPERATIONAL_WHATSAPP_TEMPLATE", '')
+            ?: env('OPERATIONAL_WHATSAPP_TEMPLATE', '')
+            ?: ($metadata['operational_whatsapp_template_name'] ?? '')
+            ?: ($metadata['alexsandra_whatsapp_template_name'] ?? '')
+        ));
+
+        if ($name === '') {
+            return null;
+        }
+
+        $language = trim((string) (
+            env("TENANT_{$tenantId}_OPERATIONAL_WHATSAPP_TEMPLATE_LANGUAGE", '')
+            ?: env('OPERATIONAL_WHATSAPP_TEMPLATE_LANGUAGE', '')
+            ?: ($metadata['operational_whatsapp_template_language'] ?? 'pt_BR')
+        )) ?: 'pt_BR';
+
+        $knownTemplate = WhatsAppTemplate::query()
+            ->where('tenant_id', $tenantId)
+            ->where('name', $name)
+            ->where('language', $language)
+            ->first();
+
+        if ($knownTemplate && strtoupper((string) $knownTemplate->status) !== 'APPROVED') {
+            return null;
+        }
+
+        return ['name' => $name, 'language' => $language];
     }
 
     private function sendWhatsAppMessage(int $tenantId, string $phone, string $body): array
@@ -450,6 +552,18 @@ class ConversationAssignmentNotificationService
                 $config?->twilio_account_sid,
                 $config?->twilio_auth_token
             );
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    private function sendWhatsAppTemplate(int $tenantId, string $phone, string $templateName, string $language, array $variables): array
+    {
+        try {
+            return app(MetaCloudGateway::class)->sendTemplate($phone, $templateName, $language, $variables, $tenantId);
         } catch (\Throwable $e) {
             return [
                 'success' => false,
