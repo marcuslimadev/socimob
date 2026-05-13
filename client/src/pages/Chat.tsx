@@ -30,8 +30,9 @@ import {
   Tag,
   Bot,
   AlertTriangle,
-  Megaphone
-  ,X
+  Megaphone,
+  CalendarDays,
+  X
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -691,6 +692,18 @@ export default function Chat() {
     return new Date(year, month - 1, day).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: 'short',
+    });
+  };
+
+  const formatDispatchDateLong = (dateString?: string | null) => {
+    if (!dateString) return 'Selecione um dia';
+    const [year, month, day] = dateString.split('-').map(Number);
+    if (!year || !month || !day) return dateString;
+
+    return new Date(year, month - 1, day).toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'long',
     });
   };
 
@@ -1752,13 +1765,9 @@ export default function Chat() {
                   <div className="flex gap-2 items-center">
                     {(currentUserRole === 'admin' || currentUserRole === 'super_admin') && (
                       <>
-                        <Button variant="outline" size="sm" onClick={handleDispararAtendimentos} disabled={isDisparandoAtendimentos || !selectedDispatchDate} className="rounded-2xl border border-[#ffc51a] bg-[#ffc51a] text-[#0a0a12] hover:bg-[#ffd84d] hover:text-[#0a0a12] h-10">
-                          {isDisparandoAtendimentos ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Megaphone className="h-4 w-4 mr-2" />}
-                          <span className="hidden xl:inline">Disparar {selectedDispatchDay ? `(${selectedDispatchDay.total})` : 'Atendimentos'}</span>
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={handleReprocessarPendentes} disabled={isReprocessando} className="rounded-2xl border border-[#365e8f] bg-[#1d3f69] text-white hover:bg-[#2d6fab] hover:text-white h-10">
+                        <Button variant="outline" size="sm" onClick={handleReprocessarPendentes} disabled={isReprocessando} className="h-10 rounded-2xl border border-[#365e8f] bg-[#1d3f69] px-3 text-white hover:bg-[#2d6fab] hover:text-white">
                           {isReprocessando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                          <span className="hidden xl:inline">Reprocessar Pendentes</span>
+                          <span className="hidden 2xl:inline">Reprocessar</span>
                         </Button>
                       </>
                     )}
@@ -1797,35 +1806,82 @@ export default function Chat() {
                   <span className="rounded-full bg-[#ff1d2d] px-2 py-0.5 font-semibold text-white">{filteredContacts.length}</span>
                 </div>
                 {(currentUserRole === 'admin' || currentUserRole === 'super_admin') && (
-                  <div className="mt-3 rounded-2xl border border-[#274d7b] bg-[#102744] p-2">
-                    <div className="mb-2 flex items-center justify-between gap-2 px-1">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9fb2c9]">Elegíveis por dia</span>
-                      {isLoadingDispatchDays && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#ffc51a]" />}
+                  <div className="mt-3 rounded-[18px] border border-[#365e8f]/80 bg-[#0f2744] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#ffc51a] text-[#0a0a12]">
+                          <CalendarDays className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9fb2c9]">Disparos por dia</p>
+                          <p className="truncate text-sm font-semibold text-white">
+                            {selectedDispatchDay ? `${formatDispatchDateLong(selectedDispatchDay.date)} selecionado` : 'Nenhum dia disponível'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="rounded-full border border-[#365e8f] bg-[#173153] px-2.5 py-1 text-[11px] font-semibold text-[#dbe4ef]">
+                        {dispatchDays.length} dias
+                      </span>
                     </div>
                     {dispatchDays.length > 0 ? (
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {dispatchDays.slice(0, 9).map((day) => {
-                          const active = selectedDispatchDate === day.date;
-                          return (
-                            <button
-                              key={day.date}
-                              type="button"
-                              onClick={() => setSelectedDispatchDate(day.date)}
-                              className={cn(
-                                'rounded-xl border px-2 py-2 text-left transition',
-                                active
-                                  ? 'border-[#ffc51a] bg-[#ffc51a] text-[#0a0a12]'
-                                  : 'border-[#365e8f] bg-[#173153] text-[#dbe4ef] hover:bg-[#1d3f69]'
-                              )}
-                            >
-                              <span className="block text-[11px] font-semibold leading-none">{formatDispatchDate(day.date)}</span>
-                              <span className="mt-1 block text-[10px]">{day.total} conversa(s)</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <>
+                        <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-2 rounded-2xl border border-[#274d7b] bg-[#0a1b30] p-2.5">
+                          <div className="min-w-0">
+                            <p className="text-[11px] text-[#9fb2c9]">Selecionado para envio</p>
+                            <p className="truncate text-sm font-semibold text-white">{formatDispatchDateLong(selectedDispatchDay?.date)}</p>
+                          </div>
+                          <div className="rounded-xl bg-[#f2f2f0] px-3 py-2 text-center text-[#0a0a12]">
+                            <span className="block text-base font-bold leading-none">{selectedDispatchDay?.total ?? 0}</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wide">leads</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-2 grid max-h-40 grid-cols-2 gap-1.5 overflow-y-auto pr-1">
+                          {dispatchDays.map((day) => {
+                            const active = selectedDispatchDate === day.date;
+                            return (
+                              <button
+                                key={day.date}
+                                type="button"
+                                onClick={() => setSelectedDispatchDate(day.date)}
+                                className={cn(
+                                  'flex min-h-[48px] items-center justify-between gap-2 rounded-xl border px-2.5 py-2 text-left transition',
+                                  active
+                                    ? 'border-[#ffc51a] bg-[#ffc51a] text-[#0a0a12] shadow-[0_8px_20px_rgba(255,197,26,0.22)]'
+                                    : 'border-[#365e8f] bg-[#173153] text-[#dbe4ef] hover:border-[#4c83bc] hover:bg-[#1d3f69]'
+                                )}
+                              >
+                                <span className="min-w-0">
+                                  <span className="block truncate text-[11px] font-semibold leading-none">{formatDispatchDate(day.date)}</span>
+                                  <span className={cn('mt-1 block text-[10px]', active ? 'text-[#3a3210]' : 'text-[#b8c7d8]')}>elegíveis</span>
+                                </span>
+                                <span className={cn('inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-bold', active ? 'bg-[#0a0a12] text-white' : 'bg-[#2d6fab] text-white')}>
+                                  {day.total}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDispararAtendimentos}
+                          disabled={isDisparandoAtendimentos || !selectedDispatchDate}
+                          className="mt-3 h-10 w-full rounded-2xl border border-[#ffc51a] bg-[#ffc51a] text-sm font-semibold text-[#0a0a12] hover:bg-[#ffd84d] hover:text-[#0a0a12]"
+                        >
+                          {isDisparandoAtendimentos ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Megaphone className="mr-2 h-4 w-4" />}
+                          Disparar {selectedDispatchDay?.total ?? 0} atendimento(s)
+                        </Button>
+                      </>
                     ) : (
-                      <p className="px-1 py-2 text-xs leading-5 text-[#b8c7d8]">Nenhum dia elegível para disparo agora.</p>
+                      <div className="mt-3 rounded-2xl border border-dashed border-[#365e8f] bg-[#0a1b30] px-3 py-4 text-center">
+                        {isLoadingDispatchDays ? (
+                          <Loader2 className="mx-auto h-5 w-5 animate-spin text-[#ffc51a]" />
+                        ) : (
+                          <p className="text-xs leading-5 text-[#b8c7d8]">Nenhum dia elegível para disparo agora.</p>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
