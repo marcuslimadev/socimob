@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\Lead;
 use App\Models\Pessoa;
 use App\Services\ChavesNaMaoService;
+use App\Services\ConversationAssignmentNotificationService;
 use App\Services\LeadCustomerService;
 use App\Services\LeadAutomationService;
 use App\Services\LeadEmailService;
@@ -16,17 +17,20 @@ class LeadObserver
     private LeadCustomerService $leadCustomerService;
     private LeadAutomationService $leadAutomationService;
     private LeadEmailService $leadEmailService;
+    private ConversationAssignmentNotificationService $assignmentNotificationService;
 
     public function __construct(
         ChavesNaMaoService $chavesNaMaoService,
         LeadCustomerService $leadCustomerService,
         LeadAutomationService $leadAutomationService,
-        LeadEmailService $leadEmailService
+        LeadEmailService $leadEmailService,
+        ConversationAssignmentNotificationService $assignmentNotificationService
     ) {
         $this->chavesNaMaoService = $chavesNaMaoService;
         $this->leadCustomerService = $leadCustomerService;
         $this->leadAutomationService = $leadAutomationService;
         $this->leadEmailService = $leadEmailService;
+        $this->assignmentNotificationService = $assignmentNotificationService;
     }
 
     /**
@@ -53,6 +57,9 @@ class LeadObserver
 
         // 0. Criar ou atualizar registro em Pessoas PRIMEIRO
         $this->criarOuAtualizarPessoa($lead);
+
+        // 0.1. Todo lead criado deve avisar a Alexsandra/distribuidora pelo WhatsApp operacional.
+        $this->notificarLeadCriado($lead);
 
         // 1. SEMPRE iniciar atendimento IA automaticamente para TODOS os leads
         if ($this->deveIniciarAtendimento($lead)) {
@@ -95,6 +102,19 @@ class LeadObserver
             Log::info('[LeadObserver] Lead recebido do Chaves na Mão, ignorando envio de retorno', [
                 'lead_id' => $lead->id,
                 'nome' => $lead->nome
+            ]);
+        }
+    }
+
+    private function notificarLeadCriado(Lead $lead): void
+    {
+        try {
+            $this->assignmentNotificationService->notifyLeadCreated($lead);
+        } catch (\Throwable $e) {
+            Log::warning('[LeadObserver] Falha ao notificar lead criado para distribuidor', [
+                'lead_id' => $lead->id,
+                'tenant_id' => $lead->tenant_id,
+                'error' => $e->getMessage(),
             ]);
         }
     }

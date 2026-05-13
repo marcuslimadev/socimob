@@ -91,7 +91,7 @@ class SyncLeadsPessoas extends Command
                 $this->info("✓ Lead #{$lead->id} ({$lead->nome}) associado à pessoa existente #{$pessoa->id}");
             } else {
                 // Usar LeadObserver para criar pessoa com todos os dados do Chaves na Mão
-                $observer = new LeadObserver();
+                $observer = app(LeadObserver::class);
                 $observer->criarOuAtualizarPessoa($lead);
                 
                 $this->info("✓ Nova pessoa #{$lead->pessoa_id} criada para lead #{$lead->id} ({$lead->nome}) com dados completos");
