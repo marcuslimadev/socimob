@@ -170,6 +170,7 @@ export default function Chat() {
   const [dispatchDays, setDispatchDays] = useState<DispatchDay[]>([]);
   const [selectedDispatchDate, setSelectedDispatchDate] = useState<string | null>(null);
   const [isLoadingDispatchDays, setIsLoadingDispatchDays] = useState(false);
+  const [isRepescagemModalOpen, setIsRepescagemModalOpen] = useState(false);
 
   const handleReprocessarPendentes = async () => {
     try {
@@ -208,6 +209,7 @@ export default function Chat() {
       }
 
       await handleRefresh();
+      setIsRepescagemModalOpen(false);
     } catch (e: any) {
       toast.error(e.response?.data?.message || e.response?.data?.error || 'Erro ao disparar atendimentos');
     } finally {
@@ -736,6 +738,11 @@ export default function Chat() {
     } finally {
       setIsLoadingDispatchDays(false);
     }
+  };
+
+  const openRepescagemModal = () => {
+    setIsRepescagemModalOpen(true);
+    void fetchDispatchDays();
   };
 
   const fetchContacts = async (options: { silent?: boolean } = {}) => {
@@ -1765,6 +1772,10 @@ export default function Chat() {
                   <div className="flex gap-2 items-center">
                     {(currentUserRole === 'admin' || currentUserRole === 'super_admin') && (
                       <>
+                        <Button variant="outline" size="sm" onClick={openRepescagemModal} className="h-10 rounded-2xl border border-[#ffc51a] bg-[#ffc51a] px-3 text-[#0a0a12] hover:bg-[#ffd84d] hover:text-[#0a0a12]">
+                          <Megaphone className="h-4 w-4 mr-2" />
+                          <span className="hidden 2xl:inline">Repescagem</span>
+                        </Button>
                         <Button variant="outline" size="sm" onClick={handleReprocessarPendentes} disabled={isReprocessando} className="h-10 rounded-2xl border border-[#365e8f] bg-[#1d3f69] px-3 text-white hover:bg-[#2d6fab] hover:text-white">
                           {isReprocessando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                           <span className="hidden 2xl:inline">Reprocessar</span>
@@ -1805,73 +1816,6 @@ export default function Chat() {
                   <span className="text-[#f2f2f0]">Exibindo {visibleContacts.length} de {filteredContacts.length}</span>
                   <span className="rounded-full bg-[#ff1d2d] px-2 py-0.5 font-semibold text-white">{filteredContacts.length}</span>
                 </div>
-                {(currentUserRole === 'admin' || currentUserRole === 'super_admin') && (
-                  <div className="mt-3 rounded-2xl border border-[#365e8f]/80 bg-[#0f2744] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#ffc51a] text-[#0a0a12]">
-                          <CalendarDays className="h-4 w-4" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9fb2c9]">Disparos por dia</p>
-                          <p className="truncate text-sm font-semibold text-white">
-                            {selectedDispatchDay ? `${formatDispatchDateLong(selectedDispatchDay.date)} · ${selectedDispatchDay.total} leads` : 'Nenhum dia disponível'}
-                          </p>
-                        </div>
-                      </div>
-                      {isLoadingDispatchDays && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#ffc51a]" />}
-                    </div>
-                    {dispatchDays.length > 0 ? (
-                      <>
-                        <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
-                          {dispatchDays.map((day) => {
-                            const active = selectedDispatchDate === day.date;
-                            return (
-                              <button
-                                key={day.date}
-                                type="button"
-                                onClick={() => setSelectedDispatchDate(day.date)}
-                                className={cn(
-                                  'flex h-12 min-w-[88px] shrink-0 items-center justify-between gap-2 rounded-xl border px-2.5 text-left transition',
-                                  active
-                                    ? 'border-[#ffc51a] bg-[#ffc51a] text-[#0a0a12] shadow-[0_8px_20px_rgba(255,197,26,0.22)]'
-                                    : 'border-[#365e8f] bg-[#173153] text-[#dbe4ef] hover:border-[#4c83bc] hover:bg-[#1d3f69]'
-                                )}
-                              >
-                                <span className="min-w-0">
-                                  <span className="block truncate text-[11px] font-semibold leading-none">{formatDispatchDate(day.date)}</span>
-                                  <span className={cn('mt-1 block text-[10px]', active ? 'text-[#3a3210]' : 'text-[#b8c7d8]')}>elegíveis</span>
-                                </span>
-                                <span className={cn('inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-bold', active ? 'bg-[#0a0a12] text-white' : 'bg-[#2d6fab] text-white')}>
-                                  {day.total}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleDispararAtendimentos}
-                          disabled={isDisparandoAtendimentos || !selectedDispatchDate}
-                          className="mt-1.5 h-9 w-full rounded-xl border border-[#ffc51a] bg-[#ffc51a] text-xs font-semibold text-[#0a0a12] hover:bg-[#ffd84d] hover:text-[#0a0a12]"
-                        >
-                          {isDisparandoAtendimentos ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Megaphone className="mr-2 h-4 w-4" />}
-                          Disparar {selectedDispatchDay?.total ?? 0} atendimento(s)
-                        </Button>
-                      </>
-                    ) : (
-                      <div className="mt-2 rounded-xl border border-dashed border-[#365e8f] bg-[#0a1b30] px-3 py-2 text-center">
-                        {isLoadingDispatchDays ? (
-                          <Loader2 className="mx-auto h-4 w-4 animate-spin text-[#ffc51a]" />
-                        ) : (
-                          <p className="text-xs leading-5 text-[#b8c7d8]">Nenhum dia elegível para disparo agora.</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
                 <div className="relative mt-3">
                   <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#b8c7d8]" />
                   <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar pessoas ou trechos..." className="h-10 w-full rounded-2xl border border-[#365e8f] bg-[#f2f2f0] py-2 pl-11 pr-4 text-sm text-[#0a0a12] placeholder:text-[#7a838d] outline-none focus:border-[#ffc51a] focus:ring-4 focus:ring-[#ffc51a]/20" />
@@ -2136,6 +2080,89 @@ export default function Chat() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog open={isRepescagemModalOpen} onOpenChange={setIsRepescagemModalOpen}>
+        <DialogContent className="max-h-[88vh] overflow-hidden border border-[#d7e2f0] bg-white p-0 text-[#132b4c] sm:max-w-3xl">
+          <DialogHeader className="border-b border-[#e5edf7] bg-[#f8fafc] px-6 py-5">
+            <DialogTitle className="flex items-center gap-3 text-xl text-[#132b4c]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#ffc51a] text-[#0a0a12]">
+                <Megaphone className="h-5 w-5" />
+              </span>
+              Repescagem
+            </DialogTitle>
+            <DialogDescription className="text-[#617489]">
+              Escolha um dia para retomar somente os atendimentos elegíveis daquela data.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 px-6 py-5 md:grid-cols-[1fr_240px]">
+            <section className="min-w-0">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a8aa0]">Dias elegíveis</p>
+                  <p className="mt-1 text-sm text-[#617489]">{dispatchDays.length} dia(s) com conversas disponíveis</p>
+                </div>
+                {isLoadingDispatchDays && <Loader2 className="h-5 w-5 animate-spin text-[#2d6fab]" />}
+              </div>
+
+              {dispatchDays.length > 0 ? (
+                <div className="grid max-h-[46vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
+                  {dispatchDays.map((day) => {
+                    const active = selectedDispatchDate === day.date;
+                    return (
+                      <button
+                        key={day.date}
+                        type="button"
+                        onClick={() => setSelectedDispatchDate(day.date)}
+                        className={cn(
+                          'rounded-2xl border p-3 text-left transition',
+                          active
+                            ? 'border-[#ffc51a] bg-[#fff4c6] text-[#0a0a12] shadow-[0_12px_28px_rgba(255,197,26,0.22)]'
+                            : 'border-[#d7e2f0] bg-white text-[#132b4c] hover:border-[#2d6fab] hover:bg-[#f4f8fd]'
+                        )}
+                      >
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold">{formatDispatchDate(day.date)}</span>
+                          <span className={cn('rounded-full px-2 py-0.5 text-xs font-bold', active ? 'bg-[#0a0a12] text-white' : 'bg-[#e8f1fb] text-[#2d6fab]')}>
+                            {day.total}
+                          </span>
+                        </span>
+                        <span className="mt-1 block text-xs text-[#617489]">conversa(s) elegíveis</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex min-h-48 items-center justify-center rounded-2xl border border-dashed border-[#cbd8e8] bg-[#f8fafc] p-6 text-center">
+                  <div>
+                    <CalendarDays className="mx-auto h-8 w-8 text-[#7a8aa0]" />
+                    <p className="mt-3 text-sm font-semibold text-[#132b4c]">Nenhum dia elegível agora</p>
+                    <p className="mt-1 text-xs text-[#617489]">Quando houver conversas sem atendimento humano, elas aparecerão aqui.</p>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <aside className="rounded-2xl border border-[#d7e2f0] bg-[#f8fafc] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a8aa0]">Selecionado</p>
+              <p className="mt-2 text-lg font-semibold text-[#132b4c]">{formatDispatchDateLong(selectedDispatchDay?.date)}</p>
+              <div className="mt-4 rounded-2xl bg-white p-4 text-center shadow-[inset_0_0_0_1px_rgba(215,226,240,0.9)]">
+                <span className="block text-4xl font-bold text-[#2d6fab]">{selectedDispatchDay?.total ?? 0}</span>
+                <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.16em] text-[#617489]">atendimentos</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDispararAtendimentos}
+                disabled={isDisparandoAtendimentos || !selectedDispatchDate}
+                className="mt-4 h-11 w-full rounded-2xl border border-[#ffc51a] bg-[#ffc51a] text-sm font-semibold text-[#0a0a12] hover:bg-[#ffd84d] hover:text-[#0a0a12]"
+              >
+                {isDisparandoAtendimentos ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Megaphone className="mr-2 h-4 w-4" />}
+                Fazer repescagem
+              </Button>
+            </aside>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={isObservacoesModalOpen} onOpenChange={setIsObservacoesModalOpen}>
         <DialogContent className="max-h-[85vh] overflow-hidden border border-[#e5d9c9] bg-white p-0 sm:max-w-2xl">
           <DialogHeader className="border-b border-[#ece2d3] px-6 py-4">
