@@ -503,10 +503,12 @@ class WhatsAppService
             $companyName = $this->getCompanyName($contextTenantId);
             $nomePreferido = $this->extractPreferredName($lead->nome ?? null);
             $property = $this->findPropertyFromMessage($body);
-            if ($property) {
+            if ($property && !$this->propertyConflictsWithLeadIntent($property, $lead)) {
                 $this->hydrateLeadFromPropertyInterest($lead, $property);
                 $lead->refresh();
                 $this->classifyLead($lead);
+            } elseif ($property) {
+                $property = null;
             }
 
             if ($property) {
@@ -590,6 +592,10 @@ class WhatsAppService
         $assistantName = $this->getAssistantName();
         $nomePreferido = $this->extractPreferredName($lead->nome ?? $conversa->lead->nome ?? null);
         $property = $mensagemInicial ? $this->findPropertyFromMessage($mensagemInicial) : null;
+        if ($property && $this->propertyConflictsWithLeadIntent($property, $lead)) {
+            $property = null;
+        }
+
         $mensagemBoasVindas = $property
             ? $this->buildPropertyWelcomeMessage($assistantName, $nomePreferido, $property)
             : $this->buildGenericWelcomeMessage($assistantName, $nomePreferido);
@@ -639,10 +645,12 @@ class WhatsAppService
         $companyName = $this->getCompanyName($contextTenantId);
         $nomePreferido = $this->extractPreferredName($lead->nome ?? $dados['profile_name'] ?? null);
         $property = $this->findPropertyFromMessage($mensagemOriginal);
-        if ($property) {
+        if ($property && !$this->propertyConflictsWithLeadIntent($property, $lead)) {
             $this->hydrateLeadFromPropertyInterest($lead, $property);
             $lead->refresh();
             $this->classifyLead($lead);
+        } elseif ($property) {
+            $property = null;
         }
 
         if ($property) {
@@ -1045,12 +1053,13 @@ class WhatsAppService
     private function buildNoMatchRefinementAckMessage(?Lead $lead, ?string $message = null): string
     {
         $text = $this->normalizeIntentText($message);
+        $criteria = $this->summarizeLeadCriteria($lead);
 
         if (preg_match('/\b(ok|obrigad|valeu|beleza|certo)\b/u', $text)) {
-            return 'Certo. Vou deixar seus critérios registrados para um corretor conferir opções próximas e seguir com você.';
+            return "Certo, deixei sua busca registrada{$criteria}. Vou pedir para nossa equipe conferir opções próximas com cuidado e seguir com você.";
         }
 
-        return "Anotei esses ajustes nos critérios.\nSe quiser, me peça para enviar opções novamente; se não aparecer uma boa opção, vou acionar um corretor para conferir manualmente.";
+        return "Anotei esse ajuste na sua busca{$criteria}.\nNão quero te mandar imóvel fora do que você pediu. Vou pedir para nossa equipe conferir opções próximas manualmente e seguir com você.";
     }
 
     private function isHumanContactRequest(?string $message): bool
@@ -1074,6 +1083,50 @@ class WhatsAppService
         }
 
         return "Perfeito. Vou acionar um corretor da {$companyName} para falar com você e seguir o atendimento.";
+    }
+
+    private function propertyConflictsWithLeadIntent(Property $property, ?Lead $lead): bool
+    {
+        if (!$lead || empty($lead->objetivo_compra)) {
+            return false;
+        }
+
+        $propertyFinality = $this->normalizeIntentText($property->finalidade_imovel);
+        if ($propertyFinality === '') {
+            return false;
+        }
+
+        $propertyIsRent = preg_match('/\b(aluguel|alugar|locacao|locar)\b/u', $propertyFinality) === 1;
+        $propertyIsSale = preg_match('/\b(venda|vender|compra|comprar)\b/u', $propertyFinality) === 1;
+
+        return ($this->isRentIntent($lead) && $propertyIsSale)
+            || ($this->isSaleIntent($lead) && $propertyIsRent);
+    }
+
+    private function summarizeLeadCriteria(?Lead $lead): string
+    {
+        if (!$lead) {
+            return '';
+        }
+
+        $parts = [];
+        if (!empty($lead->objetivo_compra)) {
+            $parts[] = Str::lower((string) $lead->objetivo_compra);
+        }
+        if (!empty($lead->preferencia_tipo_imovel)) {
+            $parts[] = Str::lower((string) $lead->preferencia_tipo_imovel);
+        }
+        if (!empty($lead->preferencia_bairro) || !empty($lead->localizacao)) {
+            $parts[] = $lead->preferencia_bairro ?: $lead->localizacao;
+        }
+        if (!empty($lead->budget_max)) {
+            $parts[] = 'até ' . $this->formatCurrencyValue($lead->budget_max);
+        }
+        if (!empty($lead->quartos)) {
+            $parts[] = $lead->quartos . ' quarto(s)';
+        }
+
+        return $parts ? ': ' . implode(', ', $parts) : '';
     }
 
     private function hasPresentedMatches($conversa, ?Lead $lead = null): bool
@@ -3174,13 +3227,15 @@ class WhatsAppService
             Log::info('─────────────────────────────────────────────────────────────────');
         } else {
             // NENHUM IMÓVEL ENCONTRADO
+            $criteria = $this->summarizeLeadCriteria($lead);
+            $companyName = $this->getCompanyName($conversa->tenant_id ?? $lead->tenant_id ?? null);
+
             if ($wasNoMatchStage) {
-                $companyName = $this->getCompanyName($conversa->tenant_id ?? $lead->tenant_id ?? null);
-                $mensagem = "Mesmo com os ajustes, não encontrei uma opção exata agora.\n";
+                $mensagem = "Mesmo com os ajustes, ainda não apareceu uma opção boa o suficiente no cadastro automático{$criteria}.\n";
                 $mensagem .= "Vou acionar um corretor da {$companyName} para conferir opções próximas manualmente e seguir com você.";
             } else {
-                $mensagem = "Não encontrei uma opção exata agora.\n";
-                $mensagem .= "Posso tentar com região próxima ou ajustar a faixa de valor. O que prefere?";
+                $mensagem = "Entendi sua busca{$criteria}.\n";
+                $mensagem .= "Não quero te mandar imóvel fora do que você pediu. Vou pedir para nossa equipe conferir opções próximas manualmente e seguir com você.";
             }
             
             $this->sendMessage($conversa->id, $conversa->telefone, $mensagem);
@@ -3193,9 +3248,7 @@ class WhatsAppService
         ]);
         $this->updateLeadStatusFromStage($lead, $wasNoMatchStage ? 'atendimento_humano' : 'sem_match');
 
-            if ($wasNoMatchStage) {
-                $this->notifyConversationAwaitingDistribution($conversa->fresh(), $lead);
-            }
+            $this->notifyConversationAwaitingDistribution($conversa->fresh(), $lead);
             
             Log::info('╔════════════════════════════════════════════════════════════════╗');
             Log::info('║           😔 NENHUM IMÓVEL ENCONTRADO                         ║');
