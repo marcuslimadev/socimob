@@ -217,6 +217,249 @@ class ConversasController extends Controller
         $clean = @iconv('UTF-8', 'UTF-8//IGNORE', $text);
         return $clean === false ? preg_replace('/[\x00-\x1F\x7F]/u', '', $text) : $clean;
     }
+
+    public function dispararAtendimentos(Request $request)
+    {
+        $user = $request->user();
+        if (!$this->isAdminRole($user->role ?? null)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Apenas administradores podem disparar retomadas de atendimento',
+            ], 403);
+        }
+
+        $tenantId = (int) $request->attributes->get('tenant_id');
+        $limit = min(max((int) $request->input('limit', 500), 1), 1000);
+        $todayStart = Carbon::now()->startOfDay();
+        $todayEnd = Carbon::now()->endOfDay();
+
+        $conversas = DB::table('conversas')
+            ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+            ->where(function ($q) use ($tenantId) {
+                $q->where('conversas.tenant_id', $tenantId)
+                    ->orWhere('leads.tenant_id', $tenantId);
+            })
+            ->whereNull('conversas.corretor_id')
+            ->whereNotNull('conversas.telefone')
+            ->where('conversas.telefone', '<>', '')
+            ->where(function ($q) {
+                $q->whereNull('conversas.status')
+                    ->orWhereNotIn('conversas.status', ['finalizada', 'fechada', 'cancelada']);
+            })
+            ->where(function ($q) {
+                $q->whereNull('leads.status')
+                    ->orWhereNotIn('leads.status', ['fechado', 'perdido']);
+            })
+            ->whereNotExists(function ($q) use ($todayStart, $todayEnd) {
+                $q->select(DB::raw(1))
+                    ->from('mensagens as retomadas')
+                    ->whereColumn('retomadas.conversa_id', 'conversas.id')
+                    ->where('retomadas.direction', 'outgoing')
+                    ->where('retomadas.status', 'sent')
+                    ->whereBetween('retomadas.created_at', [$todayStart, $todayEnd])
+                    ->where('retomadas.content', 'like', '%Quero seguir te ajudando com opções compatíveis%');
+            })
+            ->select(
+                'conversas.*',
+                'leads.nome as lead_nome',
+                'leads.telefone as lead_telefone',
+                'leads.whatsapp as lead_whatsapp',
+                'leads.observacoes as lead_observacoes',
+                'leads.observacoes_cliente as lead_observacoes_cliente',
+                'leads.caracteristicas_desejadas as lead_caracteristicas',
+                'leads.localizacao as lead_localizacao',
+                'leads.preferencia_bairro as lead_preferencia_bairro',
+                'leads.preferencia_tipo_imovel as lead_tipo',
+                'leads.objetivo_compra as lead_objetivo',
+                'leads.budget_max as lead_budget_max',
+                'leads.quartos as lead_quartos'
+            )
+            ->orderByRaw('COALESCE(conversas.ultima_atividade, conversas.created_at) ASC')
+            ->limit($limit)
+            ->get();
+
+        $sent = 0;
+        $failed = 0;
+        $skipped = 0;
+        $errors = [];
+
+        foreach ($conversas as $conversa) {
+            $message = $this->buildAiReengagementMessage($conversa);
+            $result = $this->sendAutomatedConversationMessage((int) $tenantId, $conversa, $message);
+
+            if (($result['success'] ?? false) === true) {
+                $sent++;
+            } else {
+                $failed++;
+                $errors[] = [
+                    'conversa_id' => (int) $conversa->id,
+                    'error' => $result['error'] ?? 'Falha desconhecida',
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => $failed === 0,
+            'message' => $sent > 0
+                ? "Retomada enviada para {$sent} atendimento(s)."
+                : 'Nenhum atendimento elegível para retomada agora.',
+            'data' => [
+                'eligible' => $conversas->count(),
+                'sent' => $sent,
+                'failed' => $failed,
+                'skipped' => $skipped,
+                'errors' => array_slice($errors, 0, 10),
+            ],
+        ], $failed > 0 && $sent === 0 ? 502 : 200);
+    }
+
+    private function buildAiReengagementMessage($conversa): string
+    {
+        $name = trim((string) ($conversa->lead_nome ?? ''));
+        $firstName = $name !== '' ? preg_split('/\s+/', $name)[0] : '';
+        $greetingName = $firstName !== '' ? ", {$firstName}" : '';
+        $context = $this->buildConversationContextLine($conversa);
+        $criteria = $this->buildConversationCriteriaLine($conversa);
+
+        $message = "Bom dia{$greetingName}! Tudo bem?\n";
+        $message .= "Aqui é a Teresa, da Exclusiva Lar Imóveis. ";
+        $message .= $context ?: 'Vi seu cadastro e quero retomar seu atendimento com cuidado.';
+        if ($criteria) {
+            $message .= "\nTenho anotado: {$criteria}.";
+        }
+        $message .= "\nQuero seguir te ajudando com opções compatíveis. Você ainda está buscando esse imóvel?";
+
+        return $message;
+    }
+
+    private function buildConversationContextLine($conversa): string
+    {
+        $observations = trim(strip_tags((string) ($conversa->lead_observacoes_cliente ?: $conversa->lead_observacoes ?: '')));
+        $observations = html_entity_decode($observations, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $observations = preg_replace('/\s+/u', ' ', $observations) ?? $observations;
+
+        if (preg_match('/(?:Imóvel|Imovel):\s*([^|\.]{3,120})/iu', $observations, $matches)) {
+            return 'Vi seu interesse no imóvel ' . trim($matches[1]) . ' e quero continuar de onde paramos.';
+        }
+
+        if (preg_match('/Refer[êe]ncia(?: do imóvel)?:\s*([A-Za-z0-9\-\/]+)/iu', $observations, $matches)) {
+            return 'Vi seu interesse no imóvel de referência ' . trim($matches[1]) . ' e quero continuar de onde paramos.';
+        }
+
+        if (stripos($observations, 'Chaves') !== false) {
+            return 'Vi que você chegou pelo Chaves na Mão e quero continuar de onde paramos.';
+        }
+
+        return '';
+    }
+
+    private function buildConversationCriteriaLine($conversa): string
+    {
+        $parts = [];
+
+        if (!empty($conversa->lead_objetivo)) {
+            $parts[] = mb_strtolower((string) $conversa->lead_objetivo);
+        }
+
+        $location = trim((string) ($conversa->lead_preferencia_bairro ?: $conversa->lead_localizacao ?: ''));
+        if ($location !== '') {
+            $parts[] = $location;
+        }
+
+        if (!empty($conversa->lead_tipo)) {
+            $parts[] = $conversa->lead_tipo;
+        }
+
+        if (!empty($conversa->lead_budget_max)) {
+            $parts[] = 'até R$ ' . number_format((float) $conversa->lead_budget_max, 0, ',', '.');
+        }
+
+        if (!empty($conversa->lead_quartos)) {
+            $parts[] = ((int) $conversa->lead_quartos) . ' quarto(s)';
+        }
+
+        if (!empty($conversa->lead_caracteristicas)) {
+            $parts[] = $conversa->lead_caracteristicas;
+        }
+
+        return implode(', ', array_filter($parts));
+    }
+
+    private function sendAutomatedConversationMessage(int $tenantId, $conversa, string $content): array
+    {
+        $payload = [
+            'tenant_id' => $tenantId,
+            'conversa_id' => $conversa->id,
+            'direction' => 'outgoing',
+            'message_type' => 'text',
+            'content' => $content,
+            'status' => 'queued',
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ];
+
+        if (Schema::hasColumn('mensagens', 'sent_at')) {
+            $payload['sent_at'] = Carbon::now();
+        }
+
+        $mensagemId = DB::table('mensagens')->insertGetId($payload);
+
+        try {
+            $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
+            if ($driver === 'meta_cloud') {
+                $resultado = app(MetaCloudGateway::class)->sendMessage($conversa->telefone, $content, $tenantId);
+            } else {
+                $gateway = $driver === 'evolution'
+                    ? app(EvolutionApiService::class)
+                    : app(TwilioService::class);
+
+                $resultado = $gateway->sendMessage($conversa->telefone, $content);
+            }
+
+            if (empty($resultado['success'])) {
+                DB::table('mensagens')->where('id', $mensagemId)->update([
+                    'status' => 'failed',
+                    'updated_at' => Carbon::now(),
+                ]);
+
+                return [
+                    'success' => false,
+                    'error' => $resultado['error'] ?? 'Provider recusou o envio',
+                ];
+            }
+
+            DB::table('mensagens')->where('id', $mensagemId)->update([
+                'message_sid' => $resultado['message_sid'] ?? null,
+                'status' => 'sent',
+                'sent_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]);
+
+            DB::table('conversas')->where('id', $conversa->id)->update([
+                'stage' => $conversa->stage ?: 'coleta_dados',
+                'status' => 'ativa',
+                'ultima_atividade' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]);
+
+            return ['success' => true];
+        } catch (\Throwable $e) {
+            DB::table('mensagens')->where('id', $mensagemId)->update([
+                'status' => 'failed',
+                'updated_at' => Carbon::now(),
+            ]);
+
+            Log::error('[ConversasController] Falha na retomada automatica', [
+                'conversa_id' => $conversa->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
     
     /**
      * Pegar próxima conversa da fila (sistema de fila de táxi)

@@ -29,7 +29,8 @@ import {
   Info,
   Tag,
   Bot,
-  AlertTriangle
+  AlertTriangle,
+  Megaphone
   ,X
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
@@ -159,6 +160,7 @@ export default function Chat() {
   const [isLoadingClientFiles, setIsLoadingClientFiles] = useState(false);
   const [isClientFilesOpen, setIsClientFilesOpen] = useState(true);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const [isDisparandoAtendimentos, setIsDisparandoAtendimentos] = useState(false);
 
   const handleReprocessarPendentes = async () => {
     try {
@@ -170,6 +172,30 @@ export default function Chat() {
       toast.error(e.response?.data?.error || 'Erro ao reprocessar leads');
     } finally {
       setIsReprocessando(false);
+    }
+  };
+
+  const handleDispararAtendimentos = async () => {
+    try {
+      setIsDisparandoAtendimentos(true);
+      const res = await api.post('/admin/conversas/disparar-atendimentos');
+      const data = res.data?.data;
+      const sent = Number(data?.sent ?? 0);
+      const failed = Number(data?.failed ?? 0);
+
+      if (sent > 0 && failed > 0) {
+        toast.warning(`Retomada enviada para ${sent} atendimento(s), com ${failed} falha(s).`);
+      } else if (sent > 0) {
+        toast.success(res.data?.message || `Retomada enviada para ${sent} atendimento(s).`);
+      } else {
+        toast.info(res.data?.message || 'Nenhum atendimento elegível para retomada agora.');
+      }
+
+      handleRefresh();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || e.response?.data?.error || 'Erro ao disparar atendimentos');
+    } finally {
+      setIsDisparandoAtendimentos(false);
     }
   };
 
@@ -1666,10 +1692,16 @@ export default function Chat() {
                   </div>
                   <div className="flex gap-2 items-center">
                     {(currentUserRole === 'admin' || currentUserRole === 'super_admin') && (
-                      <Button variant="outline" size="sm" onClick={handleReprocessarPendentes} disabled={isReprocessando} className="rounded-2xl border border-[#365e8f] bg-[#1d3f69] text-white hover:bg-[#2d6fab] hover:text-white h-10">
-                        {isReprocessando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                        <span className="hidden xl:inline">Reprocessar Pendentes</span>
-                      </Button>
+                      <>
+                        <Button variant="outline" size="sm" onClick={handleDispararAtendimentos} disabled={isDisparandoAtendimentos} className="rounded-2xl border border-[#ffc51a] bg-[#ffc51a] text-[#0a0a12] hover:bg-[#ffd84d] hover:text-[#0a0a12] h-10">
+                          {isDisparandoAtendimentos ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Megaphone className="h-4 w-4 mr-2" />}
+                          <span className="hidden xl:inline">Disparar Atendimentos</span>
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleReprocessarPendentes} disabled={isReprocessando} className="rounded-2xl border border-[#365e8f] bg-[#1d3f69] text-white hover:bg-[#2d6fab] hover:text-white h-10">
+                          {isReprocessando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                          <span className="hidden xl:inline">Reprocessar Pendentes</span>
+                        </Button>
+                      </>
                     )}
                     <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-10 w-10 rounded-2xl border border-[#365e8f] bg-[#1d3f69] text-white hover:bg-[#2d6fab]">
                       <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />

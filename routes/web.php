@@ -575,6 +575,7 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->group(['prefix' => 'admin'], function () use ($router) {
         $router->get('/conversas', 'App\Http\Controllers\Admin\ConversasController@index');
         $router->get('/conversas/fila/estatisticas', 'App\Http\Controllers\Admin\ConversasController@estatisticasFila');
+        $router->post('/conversas/disparar-atendimentos', 'App\Http\Controllers\Admin\ConversasController@dispararAtendimentos');
         $router->post('/conversas/fila/pegar-proxima', 'App\Http\Controllers\Admin\ConversasController@pegarProxima');
         $router->post('/conversas/{id}/devolver-fila', 'App\Http\Controllers\Admin\ConversasController@devolverParaFila');
         $router->post('/conversas/{id}/atribuir', 'App\Http\Controllers\Admin\ConversasController@atribuirCorretor');
