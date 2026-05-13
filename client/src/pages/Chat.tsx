@@ -1806,37 +1806,24 @@ export default function Chat() {
                   <span className="rounded-full bg-[#ff1d2d] px-2 py-0.5 font-semibold text-white">{filteredContacts.length}</span>
                 </div>
                 {(currentUserRole === 'admin' || currentUserRole === 'super_admin') && (
-                  <div className="mt-3 rounded-[18px] border border-[#365e8f]/80 bg-[#0f2744] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#ffc51a] text-[#0a0a12]">
+                  <div className="mt-3 rounded-2xl border border-[#365e8f]/80 bg-[#0f2744] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#ffc51a] text-[#0a0a12]">
                           <CalendarDays className="h-4 w-4" />
                         </span>
                         <div className="min-w-0">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9fb2c9]">Disparos por dia</p>
                           <p className="truncate text-sm font-semibold text-white">
-                            {selectedDispatchDay ? `${formatDispatchDateLong(selectedDispatchDay.date)} selecionado` : 'Nenhum dia disponível'}
+                            {selectedDispatchDay ? `${formatDispatchDateLong(selectedDispatchDay.date)} · ${selectedDispatchDay.total} leads` : 'Nenhum dia disponível'}
                           </p>
                         </div>
                       </div>
-                      <span className="rounded-full border border-[#365e8f] bg-[#173153] px-2.5 py-1 text-[11px] font-semibold text-[#dbe4ef]">
-                        {dispatchDays.length} dias
-                      </span>
+                      {isLoadingDispatchDays && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#ffc51a]" />}
                     </div>
                     {dispatchDays.length > 0 ? (
                       <>
-                        <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-2 rounded-2xl border border-[#274d7b] bg-[#0a1b30] p-2.5">
-                          <div className="min-w-0">
-                            <p className="text-[11px] text-[#9fb2c9]">Selecionado para envio</p>
-                            <p className="truncate text-sm font-semibold text-white">{formatDispatchDateLong(selectedDispatchDay?.date)}</p>
-                          </div>
-                          <div className="rounded-xl bg-[#f2f2f0] px-3 py-2 text-center text-[#0a0a12]">
-                            <span className="block text-base font-bold leading-none">{selectedDispatchDay?.total ?? 0}</span>
-                            <span className="text-[10px] font-semibold uppercase tracking-wide">leads</span>
-                          </div>
-                        </div>
-
-                        <div className="mt-2 grid max-h-40 grid-cols-2 gap-1.5 overflow-y-auto pr-1">
+                        <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
                           {dispatchDays.map((day) => {
                             const active = selectedDispatchDate === day.date;
                             return (
@@ -1845,7 +1832,7 @@ export default function Chat() {
                                 type="button"
                                 onClick={() => setSelectedDispatchDate(day.date)}
                                 className={cn(
-                                  'flex min-h-[48px] items-center justify-between gap-2 rounded-xl border px-2.5 py-2 text-left transition',
+                                  'flex h-12 min-w-[88px] shrink-0 items-center justify-between gap-2 rounded-xl border px-2.5 text-left transition',
                                   active
                                     ? 'border-[#ffc51a] bg-[#ffc51a] text-[#0a0a12] shadow-[0_8px_20px_rgba(255,197,26,0.22)]'
                                     : 'border-[#365e8f] bg-[#173153] text-[#dbe4ef] hover:border-[#4c83bc] hover:bg-[#1d3f69]'
@@ -1868,16 +1855,16 @@ export default function Chat() {
                           size="sm"
                           onClick={handleDispararAtendimentos}
                           disabled={isDisparandoAtendimentos || !selectedDispatchDate}
-                          className="mt-3 h-10 w-full rounded-2xl border border-[#ffc51a] bg-[#ffc51a] text-sm font-semibold text-[#0a0a12] hover:bg-[#ffd84d] hover:text-[#0a0a12]"
+                          className="mt-1.5 h-9 w-full rounded-xl border border-[#ffc51a] bg-[#ffc51a] text-xs font-semibold text-[#0a0a12] hover:bg-[#ffd84d] hover:text-[#0a0a12]"
                         >
                           {isDisparandoAtendimentos ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Megaphone className="mr-2 h-4 w-4" />}
                           Disparar {selectedDispatchDay?.total ?? 0} atendimento(s)
                         </Button>
                       </>
                     ) : (
-                      <div className="mt-3 rounded-2xl border border-dashed border-[#365e8f] bg-[#0a1b30] px-3 py-4 text-center">
+                      <div className="mt-2 rounded-xl border border-dashed border-[#365e8f] bg-[#0a1b30] px-3 py-2 text-center">
                         {isLoadingDispatchDays ? (
-                          <Loader2 className="mx-auto h-5 w-5 animate-spin text-[#ffc51a]" />
+                          <Loader2 className="mx-auto h-4 w-4 animate-spin text-[#ffc51a]" />
                         ) : (
                           <p className="text-xs leading-5 text-[#b8c7d8]">Nenhum dia elegível para disparo agora.</p>
                         )}
