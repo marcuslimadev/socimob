@@ -583,6 +583,8 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
         $router->delete('/conversas/{id}', 'App\Http\Controllers\ConversasController@destroy');
         $router->get('/conversas/tempo-real', 'App\Http\Controllers\ConversasController@tempoReal');
         $router->get('/conversas/por-telefone/{telefone}', 'App\Http\Controllers\ConversasController@porTelefone');
+        $router->post('/conversas/{id}/repescagem/sugerir', 'App\Http\Controllers\Admin\ConversasController@sugerirRepescagemConversa');
+        $router->post('/conversas/{id}/repescagem/enviar', 'App\Http\Controllers\Admin\ConversasController@enviarRepescagemConversa');
         $router->get('/conversas/{id}', 'App\Http\Controllers\Admin\ConversasController@show');
         $router->get('/conversas/{id}/mensagens', 'App\Http\Controllers\Admin\ConversasController@mensagens');
         $router->post('/conversas/{id}/mensagens', 'App\Http\Controllers\Admin\ConversasController@enviarMensagem');

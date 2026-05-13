@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\ConversationAssignmentNotificationService;
 use App\Services\EvolutionApiService;
 use App\Services\MetaCloudGateway;
+use App\Services\OpenAIService;
 use App\Services\TwilioService;
 
 use Illuminate\Http\Request;
@@ -172,7 +173,7 @@ class ConversasController extends Controller
                 $ultimaMensagem = $ultimasMensagensMap[$conversa->id] ?? null;
                 $conversa->ultima_mensagem = $ultimaMensagem
                     ? $this->sanitizeUtf8(substr((string) $ultimaMensagem->content, 0, 100))
-                    : null;
+                    : $this->summarizeLeadObservationForQueue($conversa->lead_observacoes ?? null);
 
                 // Não lidas (batch)
                 $conversa->mensagens_nao_lidas = (int) ($naoLidasMap[$conversa->id] ?? 0);
@@ -201,6 +202,20 @@ class ConversasController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    private function summarizeLeadObservationForQueue(?string $observations): ?string
+    {
+        $text = $this->compactText((string) $observations, 220);
+        if ($text === '') {
+            return null;
+        }
+
+        if (preg_match('/Mensagem:\s*(.+?)(?:\s+Origem:|\s+Im[oó]vel:|\s+Refer[êe]ncia:|\s+An[uú]ncio:|$)/iu', $text, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return $text;
     }
 
     private function sanitizeUtf8($value): ?string
@@ -312,6 +327,76 @@ class ConversasController extends Controller
         ]);
     }
 
+    public function sugerirRepescagemConversa(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$this->isAdminRole($user->role ?? null)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Apenas administradores podem sugerir repescagem',
+            ], 403);
+        }
+
+        $tenantId = (int) $request->attributes->get('tenant_id');
+        $conversa = $this->findConversationForRepescagem($tenantId, $id);
+
+        if (!$conversa) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Conversa não encontrada',
+            ], 404);
+        }
+
+        $message = $this->buildContextualReengagementMessage($tenantId, $conversa);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'message' => $message,
+            ],
+        ]);
+    }
+
+    public function enviarRepescagemConversa(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$this->isAdminRole($user->role ?? null)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Apenas administradores podem enviar repescagem',
+            ], 403);
+        }
+
+        $request->validate([
+            'content' => 'required|string|min:10|max:1200',
+        ]);
+
+        $tenantId = (int) $request->attributes->get('tenant_id');
+        $conversa = $this->findConversationForRepescagem($tenantId, $id);
+
+        if (!$conversa) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Conversa não encontrada',
+            ], 404);
+        }
+
+        $result = $this->sendAutomatedConversationMessage($tenantId, $conversa, trim((string) $request->input('content')));
+
+        if (($result['success'] ?? false) !== true) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Falha ao enviar repescagem via WhatsApp',
+                'error' => $result['error'] ?? null,
+            ], 502);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Repescagem enviada para esta conversa',
+        ]);
+    }
+
     private function eligibleDispatchConversationsQuery(int $tenantId, ?Carbon $targetDate = null)
     {
         $todayStart = Carbon::now()->startOfDay();
@@ -369,6 +454,147 @@ class ConversasController extends Controller
                 'message' => 'Data de disparo inválida.',
             ], 422));
         }
+    }
+
+    private function findConversationForRepescagem(int $tenantId, $id)
+    {
+        return DB::table('conversas')
+            ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+            ->select(
+                'conversas.*',
+                'leads.nome as lead_nome',
+                'leads.telefone as lead_telefone',
+                'leads.whatsapp as lead_whatsapp',
+                'leads.observacoes as lead_observacoes',
+                'leads.observacoes_cliente as lead_observacoes_cliente',
+                'leads.caracteristicas_desejadas as lead_caracteristicas',
+                'leads.localizacao as lead_localizacao',
+                'leads.preferencia_bairro as lead_preferencia_bairro',
+                'leads.preferencia_tipo_imovel as lead_tipo',
+                'leads.objetivo_compra as lead_objetivo',
+                'leads.budget_max as lead_budget_max',
+                'leads.quartos as lead_quartos'
+            )
+            ->where('conversas.id', $id)
+            ->where(function ($q) use ($tenantId) {
+                $q->where('conversas.tenant_id', $tenantId)
+                    ->orWhere('leads.tenant_id', $tenantId);
+            })
+            ->first();
+    }
+
+    private function buildContextualReengagementMessage(int $tenantId, $conversa): string
+    {
+        $history = $this->buildRepescagemConversationHistory((int) $conversa->id);
+        $leadContext = $this->buildRepescagemLeadContext($conversa);
+        $fallback = $this->buildAiReengagementMessage($conversa);
+
+        try {
+            $systemPrompt = "Você é Teresa, atendente da Exclusiva Lar Imóveis no WhatsApp.\n"
+                . "Escreva UMA mensagem curta de repescagem para retomar uma conversa real.\n"
+                . "Use somente informações confirmadas no histórico e nos dados do lead.\n"
+                . "Seja cordial, humana e objetiva. Não invente imóveis disponíveis.\n"
+                . "Reconheça o que o cliente pediu, especialmente orçamento, bairros, quantidade de quartos, pagamento à vista, armários, área privativa ou outras preferências.\n"
+                . "Se a IA anterior falhou ou repetiu mensagem genérica, retome com cuidado sem criticar o atendimento.\n"
+                . "Termine com uma pergunta simples que facilite a resposta do cliente.\n"
+                . "Não use markdown, listas, links, aspas, emojis em excesso ou texto promocional.\n"
+                . "Limite a 3 frases e até 650 caracteres.";
+
+            $userPrompt = "Dados do lead:\n{$leadContext}\n\nHistórico recente da conversa:\n{$history}\n\nMensagem de repescagem:";
+            $generated = trim(app(OpenAIService::class)->generateSimpleMessage($systemPrompt, $userPrompt));
+            $generated = $this->sanitizeGeneratedRepescagemMessage($generated);
+
+            if ($generated !== '') {
+                return $generated;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[ConversasController] Falha ao gerar repescagem contextual com IA', [
+                'tenant_id' => $tenantId,
+                'conversa_id' => $conversa->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $fallback;
+    }
+
+    private function buildRepescagemConversationHistory(int $conversaId): string
+    {
+        $messages = DB::table('mensagens')
+            ->where('conversa_id', $conversaId)
+            ->whereNotNull('content')
+            ->where('content', '<>', '')
+            ->orderByDesc('created_at')
+            ->limit(24)
+            ->get()
+            ->reverse()
+            ->values();
+
+        if ($messages->isEmpty()) {
+            return 'Sem mensagens registradas.';
+        }
+
+        return $messages
+            ->map(function ($message) {
+                $sender = ($message->direction ?? null) === 'incoming'
+                    ? 'Cliente'
+                    : (empty($message->user_id ?? null) ? 'Teresa/IA' : 'Atendente');
+                $content = $this->compactText((string) $message->content, 700);
+                return "{$sender}: {$content}";
+            })
+            ->implode("\n");
+    }
+
+    private function buildRepescagemLeadContext($conversa): string
+    {
+        $parts = [];
+
+        if (!empty($conversa->lead_nome)) {
+            $parts[] = 'Nome: ' . $conversa->lead_nome;
+        }
+
+        $context = $this->buildConversationContextLine($conversa);
+        if ($context !== '') {
+            $parts[] = 'Origem/interesse: ' . $context;
+        }
+
+        $criteria = $this->buildConversationCriteriaLine($conversa);
+        if ($criteria !== '') {
+            $parts[] = 'Critérios registrados: ' . $criteria;
+        }
+
+        $observations = $this->compactText(strip_tags((string) ($conversa->lead_observacoes_cliente ?: $conversa->lead_observacoes ?: '')), 900);
+        if ($observations !== '') {
+            $parts[] = 'Observações: ' . $observations;
+        }
+
+        return $parts ? implode("\n", $parts) : 'Sem dados estruturados além do histórico.';
+    }
+
+    private function compactText(string $value, int $limit = 600): string
+    {
+        $text = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+        $text = trim($text);
+
+        if (mb_strlen($text) <= $limit) {
+            return $text;
+        }
+
+        return rtrim(mb_substr($text, 0, $limit - 1)) . '...';
+    }
+
+    private function sanitizeGeneratedRepescagemMessage(string $message): string
+    {
+        $message = trim(strip_tags($message));
+        $message = preg_replace('/^["\'`]+|["\'`]+$/u', '', $message) ?? $message;
+        $message = preg_replace('/\s{3,}/u', "\n\n", $message) ?? $message;
+
+        if ($message === '' || mb_strlen($message) < 20) {
+            return '';
+        }
+
+        return $this->compactText($message, 900);
     }
 
     private function buildAiReengagementMessage($conversa): string

@@ -40,6 +40,7 @@ import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -171,6 +172,10 @@ export default function Chat() {
   const [selectedDispatchDate, setSelectedDispatchDate] = useState<string | null>(null);
   const [isLoadingDispatchDays, setIsLoadingDispatchDays] = useState(false);
   const [isRepescagemModalOpen, setIsRepescagemModalOpen] = useState(false);
+  const [isConversationRepescagemOpen, setIsConversationRepescagemOpen] = useState(false);
+  const [conversationRepescagemText, setConversationRepescagemText] = useState('');
+  const [isGeneratingConversationRepescagem, setIsGeneratingConversationRepescagem] = useState(false);
+  const [isSendingConversationRepescagem, setIsSendingConversationRepescagem] = useState(false);
 
   const handleReprocessarPendentes = async () => {
     try {
@@ -743,6 +748,49 @@ export default function Chat() {
   const openRepescagemModal = () => {
     setIsRepescagemModalOpen(true);
     void fetchDispatchDays();
+  };
+
+  const openConversationRepescagemModal = async () => {
+    if (!selectedContactId) return;
+
+    setIsConversationRepescagemOpen(true);
+    setConversationRepescagemText('');
+    setIsGeneratingConversationRepescagem(true);
+
+    try {
+      const response = await api.post(`/admin/conversas/${selectedContactId}/repescagem/sugerir`);
+      const suggestion = String(response.data?.data?.message || '').trim();
+      if (!suggestion) {
+        throw new Error('Sugestão vazia');
+      }
+      setConversationRepescagemText(suggestion);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Erro ao gerar repescagem contextual');
+      setIsConversationRepescagemOpen(false);
+    } finally {
+      setIsGeneratingConversationRepescagem(false);
+    }
+  };
+
+  const handleSendConversationRepescagem = async () => {
+    if (!selectedContactId || !conversationRepescagemText.trim() || isSendingConversationRepescagem) return;
+
+    try {
+      setIsSendingConversationRepescagem(true);
+      await api.post(`/admin/conversas/${selectedContactId}/repescagem/enviar`, {
+        content: conversationRepescagemText.trim(),
+      });
+      toast.success('Repescagem enviada para esta conversa');
+      setIsConversationRepescagemOpen(false);
+      setConversationRepescagemText('');
+      await fetchMessages(selectedContactId);
+      void fetchContacts({ silent: true });
+      scrollToBottom('auto');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Erro ao enviar repescagem');
+    } finally {
+      setIsSendingConversationRepescagem(false);
+    }
   };
 
   const fetchContacts = async (options: { silent?: boolean } = {}) => {
@@ -1950,6 +1998,16 @@ export default function Chat() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => void openConversationRepescagemModal()}
+                          disabled={isGeneratingConversationRepescagem}
+                          className="h-10 rounded-full border border-[#ffc51a] bg-[#ffc51a] px-3 font-semibold text-[#0a0a12] hover:bg-[#ffd84d] hover:text-[#0a0a12] disabled:opacity-70"
+                        >
+                          {isGeneratingConversationRepescagem ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Megaphone className="mr-2 h-4 w-4" />}
+                          <span className="hidden lg:inline">Repescagem</span>
+                        </Button>
                         {observacoesText && (
                           <Button
                             type="button"
@@ -1983,7 +2041,34 @@ export default function Chat() {
                         {isLoadingMessages ? (
                           <div className="flex justify-center py-12"><Loader2 className="h-7 w-7 animate-spin text-[#2d6fab]" /></div>
                         ) : filteredMessages.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center gap-4 py-14 text-center"><div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-[#ffc51a] bg-white"><MessageCircle className="h-7 w-7 text-[#2d6fab]" /></div><div><p className="font-medium text-[#132b4c]">{searchTerm ? 'Nenhum trecho encontrado' : 'Nenhuma mensagem ainda'}</p><p className="mt-1 text-sm text-[#5a646f]">{searchTerm ? 'Tente outro termo para localizar a conversa.' : 'Envie uma mensagem para iniciar o atendimento.'}</p></div></div>
+                          <div className="flex justify-center py-10">
+                            <div className="w-full max-w-2xl rounded-[24px] border border-[#d7e2f0] bg-white/94 p-5 text-left shadow-[0_18px_42px_rgba(19,43,76,0.10)]">
+                              <div className="flex items-start gap-3">
+                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-[#ffc51a] bg-[#fff4c6] text-[#132b4c]">
+                                  <Info className="h-5 w-5" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-[#132b4c]">
+                                    {searchTerm ? 'Nenhum trecho encontrado' : 'Contexto do lead'}
+                                  </p>
+                                  <p className="mt-1 text-sm leading-6 text-[#5a646f]">
+                                    {searchTerm
+                                      ? 'Tente outro termo para localizar a conversa.'
+                                      : 'Esta conversa ainda não tem mensagens no histórico, mas o lead possui informações de origem.'}
+                                  </p>
+                                </div>
+                              </div>
+                              {observacoesText ? (
+                                <div className="mt-4 rounded-[18px] border border-[#ffc51a]/70 bg-[#fffdf6] p-4">
+                                  <p className="whitespace-pre-wrap text-sm leading-7 text-[#132b4c]">{observacoesText}</p>
+                                </div>
+                              ) : (
+                                <div className="mt-4 rounded-[18px] border border-dashed border-[#cbd8e8] bg-[#f8fafc] p-4 text-sm text-[#617489]">
+                                  Nenhuma observação registrada para este lead.
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         ) : (
                           groupedFilteredMessages.map((group) => (
                             <div key={group.date} className="space-y-4">
@@ -2160,6 +2245,72 @@ export default function Chat() {
                 Fazer repescagem
               </Button>
             </aside>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isConversationRepescagemOpen} onOpenChange={setIsConversationRepescagemOpen}>
+        <DialogContent className="max-h-[88vh] overflow-hidden border border-[#d7e2f0] bg-white p-0 text-[#132b4c] sm:max-w-2xl">
+          <DialogHeader className="border-b border-[#e5edf7] bg-[#f8fafc] px-6 py-5">
+            <DialogTitle className="flex items-center gap-3 text-xl text-[#132b4c]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#ffc51a] text-[#0a0a12]">
+                <Megaphone className="h-5 w-5" />
+              </span>
+              Repescagem da conversa
+            </DialogTitle>
+            <DialogDescription className="text-[#617489]">
+              Mensagem sugerida com base no histórico e nas observações deste lead.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 px-6 py-5">
+            <div className="rounded-2xl border border-[#d7e2f0] bg-[#f8fafc] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a8aa0]">Contexto usado</p>
+              <p className="mt-2 text-sm font-semibold text-[#132b4c]">{selectedContact?.name || 'Lead selecionado'}</p>
+              <p className="mt-1 text-sm leading-6 text-[#617489]">
+                {observacoesText
+                  ? observacoesText.split('\n').filter(Boolean).slice(0, 3).join(' · ')
+                  : selectedContact?.lastMessage || 'Sem observações registradas.'}
+              </p>
+            </div>
+
+            {isGeneratingConversationRepescagem ? (
+              <div className="flex min-h-44 items-center justify-center rounded-2xl border border-dashed border-[#cbd8e8] bg-[#f8fafc]">
+                <div className="text-center">
+                  <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#2d6fab]" />
+                  <p className="mt-3 text-sm font-semibold text-[#132b4c]">Gerando mensagem contextual...</p>
+                </div>
+              </div>
+            ) : (
+              <label className="block">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7a8aa0]">Mensagem para enviar</span>
+                <Textarea
+                  value={conversationRepescagemText}
+                  onChange={(event) => setConversationRepescagemText(event.target.value)}
+                  className="mt-2 min-h-40 rounded-2xl border-[#d7e2f0] bg-white text-sm leading-7 text-[#132b4c] focus:border-[#ffc51a] focus:ring-[#ffc51a]/20"
+                  placeholder="A mensagem contextual aparecerá aqui..."
+                />
+              </label>
+            )}
+
+            <div className="flex flex-wrap justify-end gap-2 border-t border-[#e5edf7] pt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsConversationRepescagemOpen(false)}
+                className="rounded-2xl text-[#617489] hover:bg-[#f1f5f9] hover:text-[#132b4c]"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSendConversationRepescagem}
+                disabled={isGeneratingConversationRepescagem || isSendingConversationRepescagem || !conversationRepescagemText.trim()}
+                className="rounded-2xl bg-[#ffc51a] px-5 font-semibold text-[#0a0a12] hover:bg-[#ffd84d]"
+              >
+                {isSendingConversationRepescagem ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Enviar repescagem
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
