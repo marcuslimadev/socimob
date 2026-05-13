@@ -230,35 +230,9 @@ class ConversasController extends Controller
 
         $tenantId = (int) $request->attributes->get('tenant_id');
         $limit = min(max((int) $request->input('limit', 500), 1), 1000);
-        $todayStart = Carbon::now()->startOfDay();
-        $todayEnd = Carbon::now()->endOfDay();
+        $targetDate = $this->parseDispatchDate($request->input('target_date'));
 
-        $conversas = DB::table('conversas')
-            ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
-            ->where(function ($q) use ($tenantId) {
-                $q->where('conversas.tenant_id', $tenantId)
-                    ->orWhere('leads.tenant_id', $tenantId);
-            })
-            ->whereNull('conversas.corretor_id')
-            ->whereNotNull('conversas.telefone')
-            ->where('conversas.telefone', '<>', '')
-            ->where(function ($q) {
-                $q->whereNull('conversas.status')
-                    ->orWhereNotIn('conversas.status', ['finalizada', 'fechada', 'cancelada']);
-            })
-            ->where(function ($q) {
-                $q->whereNull('leads.status')
-                    ->orWhereNotIn('leads.status', ['fechado', 'perdido']);
-            })
-            ->whereNotExists(function ($q) use ($todayStart, $todayEnd) {
-                $q->select(DB::raw(1))
-                    ->from('mensagens as retomadas')
-                    ->whereColumn('retomadas.conversa_id', 'conversas.id')
-                    ->where('retomadas.direction', 'outgoing')
-                    ->where('retomadas.status', 'sent')
-                    ->whereBetween('retomadas.created_at', [$todayStart, $todayEnd])
-                    ->where('retomadas.content', 'like', '%Quero seguir te ajudando com opções compatíveis%');
-            })
+        $conversas = $this->eligibleDispatchConversationsQuery($tenantId, $targetDate)
             ->select(
                 'conversas.*',
                 'leads.nome as lead_nome',
@@ -301,9 +275,10 @@ class ConversasController extends Controller
         return response()->json([
             'success' => $failed === 0,
             'message' => $sent > 0
-                ? "Retomada enviada para {$sent} atendimento(s)."
+                ? "Retomada enviada para {$sent} atendimento(s)" . ($targetDate ? ' de ' . $targetDate->format('d/m/Y') : '') . "."
                 : 'Nenhum atendimento elegível para retomada agora.',
             'data' => [
+                'target_date' => $targetDate?->toDateString(),
                 'eligible' => $conversas->count(),
                 'sent' => $sent,
                 'failed' => $failed,
@@ -311,6 +286,89 @@ class ConversasController extends Controller
                 'errors' => array_slice($errors, 0, 10),
             ],
         ], $failed > 0 && $sent === 0 ? 502 : 200);
+    }
+
+    public function diasElegiveisDisparo(Request $request)
+    {
+        $user = $request->user();
+        if (!$this->isAdminRole($user->role ?? null)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Apenas administradores podem ver o calendário de disparos',
+            ], 403);
+        }
+
+        $tenantId = (int) $request->attributes->get('tenant_id');
+        $rows = $this->eligibleDispatchConversationsQuery($tenantId)
+            ->selectRaw('DATE(COALESCE(conversas.iniciada_em, conversas.created_at)) as date, COUNT(*) as total')
+            ->groupBy('date')
+            ->orderByDesc('date')
+            ->limit(90)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $rows,
+        ]);
+    }
+
+    private function eligibleDispatchConversationsQuery(int $tenantId, ?Carbon $targetDate = null)
+    {
+        $todayStart = Carbon::now()->startOfDay();
+        $todayEnd = Carbon::now()->endOfDay();
+
+        $query = DB::table('conversas')
+            ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+            ->where(function ($q) use ($tenantId) {
+                $q->where('conversas.tenant_id', $tenantId)
+                    ->orWhere('leads.tenant_id', $tenantId);
+            })
+            ->whereNull('conversas.corretor_id')
+            ->whereNotNull('conversas.telefone')
+            ->where('conversas.telefone', '<>', '')
+            ->where(function ($q) {
+                $q->whereNull('conversas.status')
+                    ->orWhereNotIn('conversas.status', ['finalizada', 'fechada', 'cancelada']);
+            })
+            ->where(function ($q) {
+                $q->whereNull('leads.status')
+                    ->orWhereNotIn('leads.status', ['fechado', 'perdido']);
+            })
+            ->whereNotExists(function ($q) use ($todayStart, $todayEnd) {
+                $q->select(DB::raw(1))
+                    ->from('mensagens as retomadas')
+                    ->whereColumn('retomadas.conversa_id', 'conversas.id')
+                    ->where('retomadas.direction', 'outgoing')
+                    ->where('retomadas.status', 'sent')
+                    ->whereBetween('retomadas.created_at', [$todayStart, $todayEnd])
+                    ->where('retomadas.content', 'like', '%Quero seguir te ajudando com opções compatíveis%');
+            });
+
+        if ($targetDate) {
+            $query->whereDate(DB::raw('COALESCE(conversas.iniciada_em, conversas.created_at)'), $targetDate->toDateString());
+        }
+
+        return $query;
+    }
+
+    private function parseDispatchDate($value): Carbon
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            abort(response()->json([
+                'success' => false,
+                'message' => 'Selecione um dia para disparar os atendimentos.',
+            ], 422));
+        }
+
+        try {
+            return Carbon::parse($value)->startOfDay();
+        } catch (\Throwable) {
+            abort(response()->json([
+                'success' => false,
+                'message' => 'Data de disparo inválida.',
+            ], 422));
+        }
     }
 
     private function buildAiReengagementMessage($conversa): string

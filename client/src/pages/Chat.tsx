@@ -121,6 +121,11 @@ interface ClientFile {
   created_at: string;
 }
 
+interface DispatchDay {
+  date: string;
+  total: number;
+}
+
 type LeadStatus = 'novo' | 'em_atendimento' | 'qualificado' | 'proposta' | 'fechado' | 'perdido';
 type ContactFilter = 'all' | 'unread' | 'priority';
 const CONTACTS_BATCH_SIZE = 40;
@@ -161,6 +166,9 @@ export default function Chat() {
   const [isClientFilesOpen, setIsClientFilesOpen] = useState(true);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [isDisparandoAtendimentos, setIsDisparandoAtendimentos] = useState(false);
+  const [dispatchDays, setDispatchDays] = useState<DispatchDay[]>([]);
+  const [selectedDispatchDate, setSelectedDispatchDate] = useState<string | null>(null);
+  const [isLoadingDispatchDays, setIsLoadingDispatchDays] = useState(false);
 
   const handleReprocessarPendentes = async () => {
     try {
@@ -176,9 +184,16 @@ export default function Chat() {
   };
 
   const handleDispararAtendimentos = async () => {
+    if (!selectedDispatchDate) {
+      toast.error('Selecione um dia com conversas elegíveis para disparar.');
+      return;
+    }
+
     try {
       setIsDisparandoAtendimentos(true);
-      const res = await api.post('/admin/conversas/disparar-atendimentos');
+      const res = await api.post('/admin/conversas/disparar-atendimentos', {
+        target_date: selectedDispatchDate,
+      });
       const data = res.data?.data;
       const sent = Number(data?.sent ?? 0);
       const failed = Number(data?.failed ?? 0);
@@ -191,7 +206,7 @@ export default function Chat() {
         toast.info(res.data?.message || 'Nenhum atendimento elegível para retomada agora.');
       }
 
-      handleRefresh();
+      await handleRefresh();
     } catch (e: any) {
       toast.error(e.response?.data?.message || e.response?.data?.error || 'Erro ao disparar atendimentos');
     } finally {
@@ -459,6 +474,7 @@ export default function Chat() {
   useEffect(() => {
     if (canAssignConversation) {
       void fetchAssignableUsers();
+      void fetchDispatchDays();
     }
   }, [canAssignConversation]);
 
@@ -664,6 +680,48 @@ export default function Chat() {
       toast.error('Erro ao carregar atendentes');
     } finally {
       setIsLoadingAssignableUsers(false);
+    }
+  };
+
+  const formatDispatchDate = (dateString?: string | null) => {
+    if (!dateString) return 'Sem data';
+    const [year, month, day] = dateString.split('-').map(Number);
+    if (!year || !month || !day) return dateString;
+
+    return new Date(year, month - 1, day).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+    });
+  };
+
+  const selectedDispatchDay = useMemo(
+    () => dispatchDays.find((day) => day.date === selectedDispatchDate) || null,
+    [dispatchDays, selectedDispatchDate]
+  );
+
+  const fetchDispatchDays = async () => {
+    if (!(currentUserRole === 'admin' || currentUserRole === 'super_admin')) return;
+
+    try {
+      setIsLoadingDispatchDays(true);
+      const response = await api.get('/admin/conversas/disparar-atendimentos/dias');
+      const days = Array.isArray(response.data?.data)
+        ? response.data.data.map((item: any) => ({
+            date: String(item.date),
+            total: Number(item.total || 0),
+          })).filter((item: DispatchDay) => item.date && item.total > 0)
+        : [];
+
+      setDispatchDays(days);
+      setSelectedDispatchDate((current) => {
+        if (current && days.some((day: DispatchDay) => day.date === current)) return current;
+        return days[0]?.date || null;
+      });
+    } catch (error) {
+      setDispatchDays([]);
+      setSelectedDispatchDate(null);
+    } finally {
+      setIsLoadingDispatchDays(false);
     }
   };
 
@@ -1102,6 +1160,7 @@ export default function Chat() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await fetchContacts();
+    await fetchDispatchDays();
     if (selectedContactId) {
       await fetchMessages(selectedContactId);
     }
@@ -1693,9 +1752,9 @@ export default function Chat() {
                   <div className="flex gap-2 items-center">
                     {(currentUserRole === 'admin' || currentUserRole === 'super_admin') && (
                       <>
-                        <Button variant="outline" size="sm" onClick={handleDispararAtendimentos} disabled={isDisparandoAtendimentos} className="rounded-2xl border border-[#ffc51a] bg-[#ffc51a] text-[#0a0a12] hover:bg-[#ffd84d] hover:text-[#0a0a12] h-10">
+                        <Button variant="outline" size="sm" onClick={handleDispararAtendimentos} disabled={isDisparandoAtendimentos || !selectedDispatchDate} className="rounded-2xl border border-[#ffc51a] bg-[#ffc51a] text-[#0a0a12] hover:bg-[#ffd84d] hover:text-[#0a0a12] h-10">
                           {isDisparandoAtendimentos ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Megaphone className="h-4 w-4 mr-2" />}
-                          <span className="hidden xl:inline">Disparar Atendimentos</span>
+                          <span className="hidden xl:inline">Disparar {selectedDispatchDay ? `(${selectedDispatchDay.total})` : 'Atendimentos'}</span>
                         </Button>
                         <Button variant="outline" size="sm" onClick={handleReprocessarPendentes} disabled={isReprocessando} className="rounded-2xl border border-[#365e8f] bg-[#1d3f69] text-white hover:bg-[#2d6fab] hover:text-white h-10">
                           {isReprocessando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
@@ -1737,6 +1796,39 @@ export default function Chat() {
                   <span className="text-[#f2f2f0]">Exibindo {visibleContacts.length} de {filteredContacts.length}</span>
                   <span className="rounded-full bg-[#ff1d2d] px-2 py-0.5 font-semibold text-white">{filteredContacts.length}</span>
                 </div>
+                {(currentUserRole === 'admin' || currentUserRole === 'super_admin') && (
+                  <div className="mt-3 rounded-2xl border border-[#274d7b] bg-[#102744] p-2">
+                    <div className="mb-2 flex items-center justify-between gap-2 px-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9fb2c9]">Elegíveis por dia</span>
+                      {isLoadingDispatchDays && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#ffc51a]" />}
+                    </div>
+                    {dispatchDays.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {dispatchDays.slice(0, 9).map((day) => {
+                          const active = selectedDispatchDate === day.date;
+                          return (
+                            <button
+                              key={day.date}
+                              type="button"
+                              onClick={() => setSelectedDispatchDate(day.date)}
+                              className={cn(
+                                'rounded-xl border px-2 py-2 text-left transition',
+                                active
+                                  ? 'border-[#ffc51a] bg-[#ffc51a] text-[#0a0a12]'
+                                  : 'border-[#365e8f] bg-[#173153] text-[#dbe4ef] hover:bg-[#1d3f69]'
+                              )}
+                            >
+                              <span className="block text-[11px] font-semibold leading-none">{formatDispatchDate(day.date)}</span>
+                              <span className="mt-1 block text-[10px]">{day.total} conversa(s)</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="px-1 py-2 text-xs leading-5 text-[#b8c7d8]">Nenhum dia elegível para disparo agora.</p>
+                    )}
+                  </div>
+                )}
                 <div className="relative mt-3">
                   <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#b8c7d8]" />
                   <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar pessoas ou trechos..." className="h-10 w-full rounded-2xl border border-[#365e8f] bg-[#f2f2f0] py-2 pl-11 pr-4 text-sm text-[#0a0a12] placeholder:text-[#7a838d] outline-none focus:border-[#ffc51a] focus:ring-4 focus:ring-[#ffc51a]/20" />
