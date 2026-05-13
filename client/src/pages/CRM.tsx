@@ -231,6 +231,8 @@ function filterClients(
           client.telefone?.toLowerCase().includes(term) ||
           (client.email || '').toLowerCase().includes(term) ||
           (client.corretor_nome || '').toLowerCase().includes(term) ||
+          (client.property_code || '').toLowerCase().includes(term) ||
+          (client.property_title || '').toLowerCase().includes(term) ||
           origin.includes(term)
         );
       })
@@ -1772,7 +1774,7 @@ export default function CRM() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-[11px]">
-              <span className="px-2 py-0.5 rounded-full border border-white/10 bg-white/5 text-muted-foreground">
+              <span className="px-2 py-0.5 rounded-full border border-border bg-muted/40 text-muted-foreground dark:border-white/10 dark:bg-white/5">
                 Total: {allSelectableIds.length}
               </span>
               <span className="px-2 py-0.5 rounded-full border border-violet-500/30 bg-violet-500/15 text-violet-400">
@@ -1887,10 +1889,10 @@ export default function CRM() {
     return (
       <div
         className={cn(
-          'relative bg-background border border-border flex flex-col overflow-hidden',
+          'relative flex flex-col overflow-hidden border border-border bg-card/95 shadow-sm',
           isDesktopPanel
-            ? 'h-full min-h-0 rounded-[28px] border-white/8 bg-[#0b1322]/88 shadow-[0_18px_42px_rgba(2,6,23,0.24)]'
-            : 'ml-auto w-full h-full rounded-none border-l lg:w-[55%] xl:w-[50%]'
+            ? 'h-full min-h-0 rounded-[28px] dark:border-white/8 dark:bg-[#0b1322]/88 dark:shadow-[0_18px_42px_rgba(2,6,23,0.24)]'
+            : 'ml-auto h-full w-full rounded-none border-l bg-background lg:w-[55%] xl:w-[50%] dark:bg-transparent'
         )}
       >
         <div className="flex items-start gap-3 px-4 py-3 border-b border-border bg-card/80">
@@ -2052,13 +2054,13 @@ export default function CRM() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#050814] text-foreground">
+    <div className="flex min-h-screen bg-background text-foreground dark:bg-[#050814]">
       <Sidebar />
 
       <div className="page-shell relative flex min-h-screen flex-col overflow-hidden">
         {/* Top Bar */}
         <div className="page-content">
-          <div className="rounded-[28px] border border-white/8 bg-[#0b1322]/88 px-5 py-4 shadow-[0_18px_42px_rgba(2,6,23,0.28)]">
+          <div className="rounded-[28px] border border-border bg-card/95 px-5 py-4 shadow-sm dark:border-white/8 dark:bg-[#0b1322]/88 dark:shadow-[0_18px_42px_rgba(2,6,23,0.28)]">
             <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
@@ -2074,7 +2076,7 @@ export default function CRM() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar cliente..."
+                placeholder="Buscar por nome, tel. ou código do imóvel..."
                 className="w-full pl-9 pr-3 py-2 bg-muted/40 border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
@@ -2114,7 +2116,7 @@ export default function CRM() {
             <div className="page-content hidden lg:flex flex-1 min-h-0 pt-4">
               <div className="flex w-full min-h-0 gap-4">
               <div className={cn(
-                'flex min-h-0 flex-col gap-3 rounded-[28px] border border-white/8 bg-[#0b1322]/82 p-4 shadow-[0_18px_42px_rgba(2,6,23,0.24)] transition-all duration-200',
+                'flex min-h-0 flex-col gap-3 rounded-[28px] border border-border bg-card/95 p-4 shadow-sm transition-all duration-200 dark:border-white/8 dark:bg-[#0b1322]/82 dark:shadow-[0_18px_42px_rgba(2,6,23,0.24)]',
                 selectedClient ? 'flex-[1.15] min-w-0' : 'flex-1'
               )}>
                 <div className="flex flex-wrap items-center gap-2">
@@ -2125,7 +2127,7 @@ export default function CRM() {
                       type="text"
                       value={tableSearch}
                       onChange={(e) => setTableSearch(e.target.value)}
-                      placeholder="Buscar clientes..."
+                      placeholder="Buscar por cliente, telefone ou código do imóvel..."
                       className="w-full pl-9 pr-3 py-2.5 bg-muted/30 border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40"
                     />
                   </div>
@@ -2259,7 +2261,7 @@ export default function CRM() {
                     </button>
                   ))}
                 </div>
-                <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[#07111d]/62">
+                <div className="overflow-hidden rounded-[24px] border border-border bg-muted/20 dark:border-white/10 dark:bg-[#07111d]/62">
                   <ScrollArea className="max-h-[calc(100vh-24rem)]">
                     <table className="w-full text-left">
                       <thead className="sticky top-0 bg-card border-b border-border z-10">
@@ -2402,7 +2404,7 @@ export default function CRM() {
 
             {/* Mobile: Tabs + List */}
             <div className="page-content flex flex-1 min-h-0 flex-col pt-4 lg:hidden">
-              <div className="overflow-hidden rounded-[28px] border border-white/8 bg-[#0b1322]/82 shadow-[0_18px_42px_rgba(2,6,23,0.24)]">
+              <div className="overflow-hidden rounded-[28px] border border-border bg-card/95 shadow-sm dark:border-white/8 dark:bg-[#0b1322]/82 dark:shadow-[0_18px_42px_rgba(2,6,23,0.24)]">
               <div className="flex border-b border-border bg-card overflow-x-auto scrollbar-hide">
                 {ALL_STATUSES.map((s) => {
                   const count = isMobile

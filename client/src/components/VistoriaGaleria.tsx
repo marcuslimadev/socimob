@@ -150,9 +150,7 @@ export default function VistoriaGaleria({ contratoId, onClose }: Props) {
         fd.append('foto', file);
         fd.append('comodo', fotoForm.comodo);
         if (fotoForm.descricao) fd.append('descricao', fotoForm.descricao);
-        await api.post(`/admin/vistorias/${vistoriaId}/fotos`, fd, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        await api.post(`/admin/vistorias/${vistoriaId}/fotos`, fd);
         uploaded++;
       }
       toast.success(`${uploaded} foto(s) enviada(s).`);

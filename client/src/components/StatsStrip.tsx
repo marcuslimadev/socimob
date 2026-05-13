@@ -32,14 +32,14 @@ export default function StatsStrip({ stats, loading }: StatsStripProps) {
   }
 
   const badges = [
-    { label: 'Leads', value: stats?.leads.total ?? 0, icon: <Users size={14} />, color: 'text-blue-400' },
-    { label: 'Conversas', value: stats?.conversas.ativas ?? 0, icon: <MessageSquare size={14} />, color: 'text-green-400' },
-    { label: 'Imoveis', value: stats?.imoveis.ativos ?? 0, icon: <Home size={14} />, color: 'text-purple-400' },
-    { label: 'Aguardando', value: stats?.conversas.aguardando ?? 0, icon: <Clock size={14} />, color: 'text-cyan-400' },
-    { label: 'Vistorias', value: stats?.vistorias.solicitacoes_pendentes ?? 0, icon: <ClipboardCheck size={14} />, color: 'text-orange-400' },
-    { label: 'Pessoas', value: stats?.pessoas.total ?? 0, icon: <UserRound size={14} />, color: 'text-pink-400' },
-    { label: 'Contestacoes', value: stats?.contestacoes.apontadas ?? 0, icon: <Activity size={14} />, color: 'text-yellow-400' },
-    { label: 'Assinaturas', value: stats?.assinaturas.pendentes ?? 0, icon: <FileSignature size={14} />, color: 'text-indigo-400' },
+    { label: 'Leads', value: stats?.leads.total ?? 0, icon: <Users size={14} />, color: 'text-blue-700 dark:text-blue-400' },
+    { label: 'Conversas', value: stats?.conversas.ativas ?? 0, icon: <MessageSquare size={14} />, color: 'text-green-700 dark:text-green-400' },
+    { label: 'Imoveis', value: stats?.imoveis.ativos ?? 0, icon: <Home size={14} />, color: 'text-purple-700 dark:text-purple-400' },
+    { label: 'Aguardando', value: stats?.conversas.aguardando ?? 0, icon: <Clock size={14} />, color: 'text-cyan-700 dark:text-cyan-400' },
+    { label: 'Vistorias', value: stats?.vistorias.solicitacoes_pendentes ?? 0, icon: <ClipboardCheck size={14} />, color: 'text-orange-700 dark:text-orange-400' },
+    { label: 'Pessoas', value: stats?.pessoas.total ?? 0, icon: <UserRound size={14} />, color: 'text-pink-700 dark:text-pink-400' },
+    { label: 'Contestacoes', value: stats?.contestacoes.apontadas ?? 0, icon: <Activity size={14} />, color: 'text-amber-700 dark:text-yellow-400' },
+    { label: 'Assinaturas', value: stats?.assinaturas.pendentes ?? 0, icon: <FileSignature size={14} />, color: 'text-indigo-700 dark:text-indigo-400' },
   ];
 
   return (

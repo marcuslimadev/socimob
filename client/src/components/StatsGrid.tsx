@@ -24,8 +24,8 @@ export default function StatsGrid({ stats, loading }: StatsGridProps) {
       icon: <Users size={20} />,
       gradient: 'from-blue-500/20 to-blue-600/20',
       border: 'border-blue-500/30',
-      color: 'text-blue-400',
-      bgColor: 'bg-blue-500/10',
+      color: 'text-blue-700 dark:text-blue-400',
+      bgColor: 'bg-blue-500/15 dark:bg-blue-500/10',
     },
     {
       label: 'Conversas',
@@ -33,8 +33,8 @@ export default function StatsGrid({ stats, loading }: StatsGridProps) {
       icon: <MessageSquare size={20} />,
       gradient: 'from-green-500/20 to-green-600/20',
       border: 'border-green-500/30',
-      color: 'text-green-400',
-      bgColor: 'bg-green-500/10',
+      color: 'text-green-700 dark:text-green-400',
+      bgColor: 'bg-green-500/15 dark:bg-green-500/10',
     },
     {
       label: 'Imóveis',
@@ -42,8 +42,8 @@ export default function StatsGrid({ stats, loading }: StatsGridProps) {
       icon: <Home size={20} />,
       gradient: 'from-purple-500/20 to-purple-600/20',
       border: 'border-purple-500/30',
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-500/10',
+      color: 'text-purple-700 dark:text-purple-400',
+      bgColor: 'bg-purple-500/15 dark:bg-purple-500/10',
     },
     {
       label: 'Aguardando',
@@ -51,8 +51,8 @@ export default function StatsGrid({ stats, loading }: StatsGridProps) {
       icon: <Clock size={20} />,
       gradient: 'from-cyan-500/20 to-cyan-600/20',
       border: 'border-cyan-500/30',
-      color: 'text-cyan-400',
-      bgColor: 'bg-cyan-500/10',
+      color: 'text-cyan-700 dark:text-cyan-400',
+      bgColor: 'bg-cyan-500/15 dark:bg-cyan-500/10',
     },
     {
       label: 'Vistorias',
@@ -60,8 +60,8 @@ export default function StatsGrid({ stats, loading }: StatsGridProps) {
       icon: <ClipboardCheck size={20} />,
       gradient: 'from-orange-500/20 to-orange-600/20',
       border: 'border-orange-500/30',
-      color: 'text-orange-400',
-      bgColor: 'bg-orange-500/10',
+      color: 'text-orange-700 dark:text-orange-400',
+      bgColor: 'bg-orange-500/15 dark:bg-orange-500/10',
     },
     {
       label: 'Pessoas',
@@ -69,8 +69,8 @@ export default function StatsGrid({ stats, loading }: StatsGridProps) {
       icon: <UserRound size={20} />,
       gradient: 'from-pink-500/20 to-pink-600/20',
       border: 'border-pink-500/30',
-      color: 'text-pink-400',
-      bgColor: 'bg-pink-500/10',
+      color: 'text-pink-700 dark:text-pink-400',
+      bgColor: 'bg-pink-500/15 dark:bg-pink-500/10',
     },
   ];
 

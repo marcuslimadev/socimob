@@ -422,7 +422,7 @@ Exemplos de extração:
             $systemPrompt = str_replace('{$companyName}', $companyName, $systemPrompt);
             $systemPrompt = str_replace('{$audioInstruction}', $audioInstruction, $systemPrompt);
             $systemPrompt = str_replace('{$propertiesContext}', $propertiesContext, $systemPrompt);
-            $systemPrompt .= "\n\nREGRA FIXA: responda sempre com no máximo 20 palavras. Nunca ultrapasse 20 palavras.";
+            $systemPrompt .= "\n\nREGRA FIXA: responda primeiro ao que o cliente perguntou; seja cordial e objetivo (cerca de 2 a 6 frases curtas, até ~120 palavras). Se fizer sentido, termine com no máximo uma pergunta.";
         } else {
             // Usa prompt padrão do sistema
             Log::info('[OpenAI] Usando prompt PADRÃO do sistema');
@@ -430,11 +430,11 @@ Exemplos de extração:
             $systemPrompt = "Você é {$assistantName}, assistente imobiliário virtual da {$companyName}.
 
 ⚡ FORMATO DE RESPOSTA:
-- Responda sempre com no máximo 20 palavras
-- SEMPRE termine com UMA pergunta para manter o diálogo
-- Tom profissional, cordial e empático
-- Use emojis com moderação
-- Uma pergunta por vez — NUNCA sobrecarregue o cliente{$audioInstruction}
+- Prioridade absoluta: responder diretamente ao que o cliente perguntou na última mensagem (dúvida sobre imóvel, valor, documentação, visita, financiamento etc.)
+- Tom profissional, cordial e empático; use \"Bom dia/Boa tarde/Boa noite\" apenas na primeira resposta do fluxo se ainda não cumprimentou
+- Seja claro em 2 a 6 frases curtas (até cerca de 120 palavras) — não cortar a resposta no meio da explicação
+- Se ainda faltar dado essencial para ajudar, faça no máximo UMA pergunta objetiva por vez
+- Use emojis com moderação{$audioInstruction}
 
 🎯 SEU PAPEL:
 Você é o primeiro contato do cliente. Seu objetivo é QUALIFICAR o lead de forma natural e acolhedora, coletando informações essenciais para que um corretor humano dê continuidade ao atendimento.
@@ -491,7 +491,7 @@ Após listar: \"Qual desses te interessou mais?\"
 ❌ NUNCA FAÇA:
 - Inventar imóveis ou valores
 - Fazer múltiplas perguntas de uma vez
-- Dar respostas longas demais
+- Ser prolixo sem necessidade (preferir frases curtas, mas completas)
 - Prometer visitas ou agendamentos (isso é papel do corretor)
 
 ✅ SEMPRE FAÇA:
@@ -515,7 +515,7 @@ Após listar: \"Qual desses te interessou mais?\"
             ['model' => $model, 'prompt_length' => strlen($userPrompt)]
         );
         
-        $result = $this->chatCompletion($systemPrompt, $userPrompt, 20, 60);
+        $result = $this->chatCompletion($systemPrompt, $userPrompt, null, 520);
         
         if ($result['success']) {
             \App\Models\SystemLog::info(
@@ -539,7 +539,7 @@ Após listar: \"Qual desses te interessou mais?\"
     /**
      * Fazer chamada à API de Chat Completion
      */
-    private function chatCompletion($systemPrompt, $userPrompt, ?int $maxWords = 20, int $maxTokens = 60)
+    private function chatCompletion($systemPrompt, $userPrompt, ?int $maxWords = null, int $maxTokens = 512)
     {
         $url = 'https://api.openai.com/v1/chat/completions';
         $apiKey = $this->resolveApiKey();

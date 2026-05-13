@@ -56,7 +56,8 @@ class VistoriaFotoController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'foto' => 'required|file|mimes:jpg,jpeg,png,webp|max:10240',
+            'foto' => 'sometimes|file|mimes:jpg,jpeg,png,webp,heic,heif|max:102400',
+            'arquivo' => 'sometimes|file|mimes:jpg,jpeg,png,webp,heic,heif|max:102400',
             'comodo' => 'nullable|string|max:100',
             'descricao' => 'nullable|string|max:500',
             'destaque' => 'nullable|boolean',
@@ -67,7 +68,10 @@ class VistoriaFotoController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $file = $request->file('foto');
+        $file = $request->file('arquivo') ?: $request->file('foto');
+        if (!$file) {
+            return response()->json(['success' => false, 'message' => 'Selecione um arquivo de imagem (foto ou arquivo).'], 422);
+        }
         $ext = $file->getClientOriginalExtension();
         $filename = 'vistorias/' . $vistoria->tenant_id . '/' . $vistoriaId . '/' . Str::uuid() . '.' . $ext;
         $path = Storage::disk('public')->putFileAs(dirname($filename), $file, basename($filename));

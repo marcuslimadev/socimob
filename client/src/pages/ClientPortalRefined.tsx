@@ -63,6 +63,10 @@ interface Property {
   imagem_destaque?: string;
   finalidade_imovel?: string;
   endereco_publico?: string;
+  codigo?: string;
+  codigo_imovel?: string;
+  referencia?: string;
+  referencia_imovel?: string;
 }
 
 interface TenantConfig extends TenantBranding {
@@ -440,13 +444,26 @@ export default function ClientPortalRefined() {
   const filteredProperties = useMemo(() => {
     return properties
       .filter((property) => {
-      const term = searchTerm.toLowerCase();
+      const term = searchTerm.toLowerCase().replace(/\s+/g, ' ').trim();
+      const termCompact = term.replace(/\s/g, '');
+      const codeHaystack = [
+        property.codigo,
+        property.codigo_imovel,
+        property.referencia,
+        property.referencia_imovel,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      const codeHaystackCompact = codeHaystack.replace(/\s/g, '');
       const matchesSearch = !searchTerm
         || property.titulo?.toLowerCase().includes(term)
         || property.endereco_publico?.toLowerCase().includes(term)
         || property.bairro?.toLowerCase().includes(term)
         || property.cidade?.toLowerCase().includes(term)
-        || property.tipo_imovel?.toLowerCase().includes(term);
+        || property.tipo_imovel?.toLowerCase().includes(term)
+        || (!!term && codeHaystack.includes(term))
+        || (!!termCompact && termCompact.length >= 2 && codeHaystackCompact.includes(termCompact));
 
       const purpose = getPurposeKind(property);
       const matchesBusiness = !businessType

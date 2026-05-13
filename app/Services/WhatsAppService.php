@@ -107,6 +107,28 @@ class WhatsAppService
             ]);
         }
     }
+
+    private function notifyAiConversationStarted($conversa, ?Lead $lead = null): void
+    {
+        try {
+            $conversation = $conversa instanceof Conversa
+                ? ($conversa->exists ? $conversa->fresh(['lead']) : $conversa)
+                : Conversa::with('lead')->find($conversa->id ?? null);
+
+            if (!$conversation) {
+                return;
+            }
+
+            app(ConversationAssignmentNotificationService::class)
+                ->notifyAiConversationStarted($conversation, $lead ?: $conversation->lead);
+        } catch (\Throwable $e) {
+            Log::warning('[WhatsAppService] Falha ao notificar primeiro contato com IA', [
+                'conversa_id' => $conversa->id ?? null,
+                'lead_id' => $lead?->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
     
     /**
      * Processar mensagem recebida do webhook (Twilio ou Evolution API)
@@ -268,16 +290,7 @@ class WhatsAppService
                 $this->hydrateLeadProfileFromSnippet($leadModel, $body);
 
                 if ($isFirstIncomingMessage) {
-                    try {
-                        app(ConversationAssignmentNotificationService::class)
-                            ->notifyAiConversationStarted($conversa->fresh(['lead']) ?: $conversa, $leadModel);
-                    } catch (\Throwable $e) {
-                        Log::warning('[WhatsAppService] Falha ao notificar primeiro contato com IA', [
-                            'conversa_id' => $conversa->id,
-                            'lead_id' => $leadModel->id,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
+                    $this->notifyAiConversationStarted($conversa, $leadModel);
                 }
                 
                 Log::info('📋 Chamando handleIncomingDocument', [
@@ -560,6 +573,8 @@ class WhatsAppService
         if ($contentSid !== '') {
             $resultadoTemplate = $this->sendTemplateMessage($conversa->id, $conversa->telefone, $contentSid);
             if (!empty($resultadoTemplate['success'])) {
+                $this->notifyAiConversationStarted($conversa, $lead);
+
                 return [
                     'success' => true,
                     'message' => 'Atendimento iniciado com template aprovado',
@@ -580,6 +595,7 @@ class WhatsAppService
             : $this->buildGenericWelcomeMessage($assistantName, $nomePreferido);
 
         $this->sendMessage($conversa->id, $conversa->telefone, $mensagemBoasVindas);
+        $this->notifyAiConversationStarted($conversa, $lead);
 
         return [
             'success' => true,
@@ -702,9 +718,25 @@ class WhatsAppService
         return $partes ? $partes[0] : $nome;
     }
 
+    /** Saudação por horário (Brasil) para primeiro contato mais cordial. */
+    private function greetingForNow(?string $timezone = null): string
+    {
+        $tz = $timezone ?: (string) config('app.timezone', 'America/Sao_Paulo');
+        $hour = (int) Carbon::now($tz)->format('G');
+        if ($hour >= 5 && $hour < 12) {
+            return 'Bom dia';
+        }
+        if ($hour >= 12 && $hour < 18) {
+            return 'Boa tarde';
+        }
+
+        return 'Boa noite';
+    }
+
     private function buildGenericWelcomeMessage(string $assistantName, ?string $preferredName, string $companyName = 'Imobiliária'): string
     {
-        $saudacao = $preferredName ? "Oi, *{$preferredName}*!" : 'Olá!';
+        $cumprimento = $this->greetingForNow() . '! Tudo bem?';
+        $saudacao = $preferredName ? "{$cumprimento} É um prazer falar com você, *{$preferredName}*!" : "{$cumprimento} É um prazer falar com você!";
         $nomePergunta = $preferredName ? '' : "\nComo posso te chamar?";
 
         return $saudacao . " Sou {$assistantName}, da *{$companyName}*.\n" .
@@ -718,7 +750,8 @@ class WhatsAppService
 
     private function buildPropertyWelcomeMessage(string $assistantName, ?string $preferredName, Property $property, string $companyName = 'Imobiliária'): string
     {
-        $saudacao = $preferredName ? "Oi, *{$preferredName}*!" : 'Olá!';
+        $cumprimento = $this->greetingForNow() . '! Tudo bem?';
+        $saudacao = $preferredName ? "{$cumprimento} Oi, *{$preferredName}*!" : "{$cumprimento} Olá!";
         $referencia = $property->referencia_imovel ?: $property->codigo_imovel;
         $localizacao = trim(collect([$property->bairro, $property->cidade])->filter()->implode(', '));
         $isRent = preg_match('/\b(aluguel|locacao|locar)\b/u', $this->normalizeIntentText($property->finalidade_imovel)) === 1;
@@ -780,7 +813,7 @@ class WhatsAppService
 
         $criteria = array_filter([$intent, $location, $budget, $rooms]);
 
-        $message = "Oi{$nome}! Eu sou {$assistantName}, da *{$companyName}*.\n";
+        $message = "{$this->greetingForNow()}! Tudo bem? Oi{$nome}! Eu sou {$assistantName}, da *{$companyName}*.\n";
         $message .= 'Entendi sua busca: ' . implode(', ', $criteria) . ".\n";
         $message .= 'Vou te mostrar opções compatíveis agora.';
 
@@ -991,6 +1024,33 @@ class WhatsAppService
         }
 
         return preg_match('/\b(mostra|mostrar|mande|manda|envia|enviar|veja|ver|opcoes|opcao|imoveis|compativeis|abaixo|preco|valor|dentro do orcamento)\b/u', $text) === 1;
+    }
+
+    private function isExplicitShowOptionsRequest(?string $message): bool
+    {
+        $text = $this->normalizeIntentText($message);
+
+        if ($text === '') {
+            return false;
+        }
+
+        return preg_match('/\b(mostra|mostrar|mande|manda|envia|enviar|me manda|me envie|opcoes|opcao|imoveis|compativeis)\b/u', $text) === 1;
+    }
+
+    private function isNoMatchStage($conversa): bool
+    {
+        return in_array($conversa?->stage, ['sem_match', 'refinamento'], true);
+    }
+
+    private function buildNoMatchRefinementAckMessage(?Lead $lead, ?string $message = null): string
+    {
+        $text = $this->normalizeIntentText($message);
+
+        if (preg_match('/\b(ok|obrigad|valeu|beleza|certo)\b/u', $text)) {
+            return 'Certo. Vou deixar seus critérios registrados para um corretor conferir opções próximas e seguir com você.';
+        }
+
+        return "Anotei esses ajustes nos critérios.\nSe quiser, me peça para enviar opções novamente; se não aparecer uma boa opção, vou acionar um corretor para conferir manualmente.";
     }
 
     private function isHumanContactRequest(?string $message): bool
@@ -1220,6 +1280,18 @@ class WhatsAppService
                 'success' => true,
                 'message' => 'Cliente encaminhado para atendimento humano',
                 'ai_response' => $handoffMessage,
+                'current_stage' => $conversa->fresh()->stage,
+            ];
+        }
+
+        if ($lead && $this->isNoMatchStage($conversa) && !$this->isExplicitShowOptionsRequest($message)) {
+            $ackMessage = $this->buildNoMatchRefinementAckMessage($lead, $message);
+            $this->sendMessage($conversa->id, $conversa->telefone, $ackMessage);
+
+            return [
+                'success' => true,
+                'message' => 'Refinamento pós-sem-match anotado sem repetir busca',
+                'ai_response' => $ackMessage,
                 'current_stage' => $conversa->fresh()->stage,
             ];
         }
@@ -1930,6 +2002,10 @@ class WhatsAppService
                 continue;
             }
 
+            if (in_array($field, ['localizacao', 'preferencia_bairro'], true) && $this->isInvalidLocationValue((string) $value)) {
+                continue;
+            }
+
             $clean[$field] = $value;
         }
 
@@ -2113,7 +2189,7 @@ class WhatsAppService
         $value = $this->cleanExtractedPhrase($message);
         $normalized = $this->normalizeIntentText($value);
 
-        if ($normalized === '' || mb_strlen($value) > 60) {
+        if ($normalized === '' || mb_strlen($value) > 60 || $this->isInvalidLocationValue($value)) {
             return null;
         }
 
@@ -2122,6 +2198,21 @@ class WhatsAppService
         }
 
         return mb_convert_case($value, MB_CASE_TITLE, 'UTF-8');
+    }
+
+    private function isInvalidLocationValue(string $value): bool
+    {
+        $text = $this->normalizeIntentText($value);
+
+        if ($text === '') {
+            return true;
+        }
+
+        if (preg_match('/\b(chaves na mao|chavesnamao|referencia|ref)\b/u', $text)) {
+            return true;
+        }
+
+        return in_array($text, ['tudo bem', 'ola', 'oi', 'obrigado', 'obrigada', 'imovel', 'apartamento', 'casa'], true);
     }
 
     private function extractFinancingStatusFromText(string $text): ?string
@@ -2296,6 +2387,12 @@ class WhatsAppService
             }
         }
 
+        $features = $this->extractDesiredFeaturesFromText($messageLower);
+        if (!empty($features)) {
+            $existingFeatures = array_filter(array_map('trim', explode(',', (string) $lead->caracteristicas_desejadas)));
+            $updates['caracteristicas_desejadas'] = implode(', ', array_values(array_unique(array_merge($existingFeatures, $features))));
+        }
+
         if (empty($lead->prazo_compra)) {
             $prazo = $this->extractPurchaseTimelineFromText($messageLower);
             if ($prazo) {
@@ -2312,6 +2409,22 @@ class WhatsAppService
                 'data' => $updates,
             ]);
         }
+    }
+
+    private function extractDesiredFeaturesFromText(string $messageLower): array
+    {
+        $messageLower = $this->normalizeIntentText($messageLower);
+        $features = [];
+
+        if (preg_match('/\b(armario|armarios|armario embutido|armarios embutidos|planejado|planejados)\b/u', $messageLower)) {
+            $features[] = 'armários embutidos';
+        }
+
+        if (preg_match('/\b(area privativa|area externa|privativa|garden)\b/u', $messageLower)) {
+            $features[] = 'área privativa';
+        }
+
+        return $features;
     }
 
     private function extractPropertyTypeFromText(string $messageLower): ?string
@@ -2338,6 +2451,13 @@ class WhatsAppService
 
     private function extractLocationFromText(string $message): ?string
     {
+        if (preg_match('/\b(?:pode ser|aceito|tamb[ée]m pode ser)\s+([a-záàâãéèêíïóôõöúçñ\s,;\'-]{2,120})/iu', $message, $matches)) {
+            $locationList = $this->cleanExtractedLocationList($matches[1]);
+            if ($locationList !== '' && !$this->isInvalidLocationValue($locationList)) {
+                return mb_convert_case($locationList, MB_CASE_TITLE, 'UTF-8');
+            }
+        }
+
         $patterns = [
             '/\b(?:bairro|regi[ãa]o)\s+(?:de|da|do)?\s*([a-záàâãéèêíïóôõöúçñ\s\'-]{2,50})/iu',
             '/\b(?:na|no)\s+([a-záàâãéèêíïóôõöúçñ\s\'-]{2,50})/iu',
@@ -2348,13 +2468,22 @@ class WhatsAppService
             if (preg_match($pattern, $message, $matches)) {
                 $location = $this->cleanExtractedPhrase($matches[1]);
 
-                if ($location !== '') {
+                if ($location !== '' && !$this->isInvalidLocationValue($location)) {
                     return mb_convert_case($location, MB_CASE_TITLE, 'UTF-8');
                 }
             }
         }
 
         return null;
+    }
+
+    private function cleanExtractedLocationList(string $value): string
+    {
+        $value = trim($value);
+        $value = preg_split('/\s+(?:com|at[ée]|ate|para|por|quero|pretendo)(?:\s+|$)/iu', $value)[0] ?? $value;
+        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+
+        return trim($value, " \t\n\r\0\x0B,.;!?");
     }
 
     private function extractPurchaseTimelineFromText(string $messageLower): ?string
@@ -2928,6 +3057,7 @@ class WhatsAppService
      */
     private function performPropertyMatching($lead, $conversa)
     {
+        $wasNoMatchStage = $this->isNoMatchStage($conversa);
         $isRent = $this->isRentIntent($lead);
         $priceColumn = $isRent ? 'valor_aluguel' : 'valor_venda';
 
@@ -2973,11 +3103,16 @@ class WhatsAppService
         $location = $lead->preferencia_bairro ?: $lead->localizacao;
         if (!empty($location)) {
             $locationQuery = clone $candidateQuery;
-            $locationQuery->where(function ($query) use ($location) {
-                $needle = '%' . Str::lower($location) . '%';
-                $query->whereRaw('LOWER(bairro) LIKE ?', [$needle])
-                    ->orWhereRaw('LOWER(cidade) LIKE ?', [$needle]);
-            });
+            $locationTerms = $this->splitLocationTerms((string) $location);
+            if (!empty($locationTerms)) {
+                $locationQuery->where(function ($query) use ($locationTerms) {
+                    foreach ($locationTerms as $term) {
+                        $needle = '%' . Str::lower($term) . '%';
+                        $query->orWhereRaw('LOWER(bairro) LIKE ?', [$needle])
+                            ->orWhereRaw('LOWER(cidade) LIKE ?', [$needle]);
+                    }
+                });
+            }
 
             if ((clone $locationQuery)->exists()) {
                 $candidateQuery = $locationQuery;
@@ -3039,14 +3174,28 @@ class WhatsAppService
             Log::info('─────────────────────────────────────────────────────────────────');
         } else {
             // NENHUM IMÓVEL ENCONTRADO
-            $mensagem = "Não encontrei uma opção exata agora.\n";
-            $mensagem .= "Posso tentar com região próxima ou ajustar a faixa de valor. O que prefere?";
+            if ($wasNoMatchStage) {
+                $companyName = $this->getCompanyName($conversa->tenant_id ?? $lead->tenant_id ?? null);
+                $mensagem = "Mesmo com os ajustes, não encontrei uma opção exata agora.\n";
+                $mensagem .= "Vou acionar um corretor da {$companyName} para conferir opções próximas manualmente e seguir com você.";
+            } else {
+                $mensagem = "Não encontrei uma opção exata agora.\n";
+                $mensagem .= "Posso tentar com região próxima ou ajustar a faixa de valor. O que prefere?";
+            }
             
             $this->sendMessage($conversa->id, $conversa->telefone, $mensagem);
             
         // Atualizar stage para sem_match
-        $conversa->update(['stage' => 'sem_match']);
-        $this->updateLeadStatusFromStage($lead, 'sem_match');
+        $conversa->update([
+            'stage' => $wasNoMatchStage ? 'atendimento_humano' : 'sem_match',
+            'status' => $wasNoMatchStage ? 'aguardando_corretor' : ($conversa->status ?? 'ativa'),
+            'ultima_atividade' => Carbon::now(),
+        ]);
+        $this->updateLeadStatusFromStage($lead, $wasNoMatchStage ? 'atendimento_humano' : 'sem_match');
+
+            if ($wasNoMatchStage) {
+                $this->notifyConversationAwaitingDistribution($conversa->fresh(), $lead);
+            }
             
             Log::info('╔════════════════════════════════════════════════════════════════╗');
             Log::info('║           😔 NENHUM IMÓVEL ENCONTRADO                         ║');
@@ -3059,6 +3208,18 @@ class WhatsAppService
             Log::info('💡 Ação: Oferecendo refinamento de critérios');
             Log::info('─────────────────────────────────────────────────────────────────');
         }
+    }
+
+    private function splitLocationTerms(string $location): array
+    {
+        $parts = preg_split('/\s*(?:,|;|\/|\bou\b|\be\b)\s*/iu', $location) ?: [];
+
+        return array_values(array_filter(array_map(function ($part) {
+            $part = trim($part);
+            $part = preg_replace('/\s+/u', ' ', $part) ?? $part;
+
+            return mb_strlen($part) >= 2 ? $part : null;
+        }, $parts)));
     }
 
     private function rankPropertiesForLead($lead, $properties)

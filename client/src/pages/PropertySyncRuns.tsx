@@ -316,7 +316,12 @@ export default function PropertySyncRuns() {
                             )}
                           </td>
                           <td className="max-w-[280px] px-4 py-3 text-xs text-rose-700 dark:text-rose-300">
-                            {run.error_message || run.result_payload?.error || '-'}
+                            <div>{run.error_message || run.result_payload?.error || '-'}</div>
+                            {run.status === 'failed' && progress?.current_code ? (
+                              <div className="mt-1 text-muted-foreground">
+                                Referência ao falhar: código <span className="font-mono font-semibold text-foreground">{progress.current_code}</span>
+                              </div>
+                            ) : null}
                           </td>
                         </tr>
                       );

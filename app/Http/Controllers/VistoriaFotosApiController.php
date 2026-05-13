@@ -55,8 +55,8 @@ class VistoriaFotosApiController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'foto' => 'sometimes|file|mimes:jpg,jpeg,png,webp,mp4,mov,webm|max:102400',
-            'arquivo' => 'sometimes|file|mimes:jpg,jpeg,png,webp,mp4,mov,webm|max:102400',
+            'foto' => 'sometimes|file|mimes:jpg,jpeg,png,webp,heic,heif,mp4,mov,webm|max:102400',
+            'arquivo' => 'sometimes|file|mimes:jpg,jpeg,png,webp,heic,heif,mp4,mov,webm|max:102400',
             'comodo' => 'nullable|string|max:100',
             'descricao' => 'nullable|string|max:500',
             'legenda' => 'nullable|string|max:500',
