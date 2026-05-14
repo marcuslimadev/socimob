@@ -75,6 +75,7 @@ class VistoriaFotoController extends Controller
         $ext = $file->getClientOriginalExtension();
         $filename = 'vistorias/' . $vistoria->tenant_id . '/' . $vistoriaId . '/' . Str::uuid() . '.' . $ext;
         $path = Storage::disk('public')->putFileAs(dirname($filename), $file, basename($filename));
+        $url = Storage::disk('public')->url($path);
 
         $authUser = $request->user();
 
@@ -84,6 +85,9 @@ class VistoriaFotoController extends Controller
             'comodo' => $validator->validated()['comodo'] ?? null,
             'descricao' => $validator->validated()['descricao'] ?? null,
             'arquivo_path' => $path,
+            'url' => $url,
+            'mime_type' => $file->getMimeType(),
+            'tamanho_bytes' => $file->getSize(),
             'destaque' => $validator->validated()['destaque'] ?? false,
             'ordem' => $validator->validated()['ordem'] ?? 0,
             'enviado_por_user_id' => $authUser?->id,

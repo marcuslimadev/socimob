@@ -75,6 +75,7 @@ class VistoriaFotosApiController extends Controller
         $ext = $file->getClientOriginalExtension();
         $filename = 'vistorias/' . $vistoria->tenant_id . '/' . $vistoriaId . '/' . Str::uuid() . '.' . $ext;
         $path = Storage::disk('public')->putFileAs(dirname($filename), $file, basename($filename));
+        $url = Storage::disk('public')->url($path);
 
         $authUser = $request->user();
 
@@ -85,6 +86,7 @@ class VistoriaFotosApiController extends Controller
             'descricao' => $validator->validated()['descricao'] ?? null,
             'legenda' => $validator->validated()['legenda'] ?? null,
             'arquivo_path' => $path,
+            'url' => $url,
             'mime_type' => $file->getMimeType(),
             'tamanho_bytes' => $file->getSize(),
             'destaque' => $validator->validated()['destaque'] ?? false,
