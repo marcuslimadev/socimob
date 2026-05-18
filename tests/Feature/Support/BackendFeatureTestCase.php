@@ -67,6 +67,17 @@ abstract class BackendFeatureTestCase extends TestCase
         foreach ([
             'contratos_documentos',
             'contratos_compra_venda',
+            'vistoria_templates',
+            'vistoria_historicos',
+            'vistoria_contestacao_midias',
+            'vistoria_contestacao_itens',
+            'vistoria_contestacoes',
+            'vistoria_chaves',
+            'vistoria_midias',
+            'vistoria_inconformidades',
+            'vistoria_itens',
+            'vistoria_ambientes',
+            'vistoria_partes',
             'vistoria_comentarios',
             'vistoria_fotos',
             'vistoria_solicitacoes',
@@ -232,12 +243,189 @@ abstract class BackendFeatureTestCase extends TestCase
             $table->decimal('metragem', 12, 2)->nullable();
             $table->boolean('mobiliado')->nullable();
             $table->dateTime('data_vistoria')->nullable();
+            $table->dateTime('data_agendada')->nullable();
+            $table->dateTime('data_inicio')->nullable();
+            $table->dateTime('data_fim')->nullable();
+            $table->unsignedBigInteger('vistoriador_id')->nullable();
             $table->text('observacoes')->nullable();
+            $table->text('observacoes_gerais')->nullable();
+            $table->text('introducao_texto')->nullable();
+            $table->json('criterios_avaliacao_json')->nullable();
+            $table->json('criterios_pintura_json')->nullable();
+            $table->json('criterios_limpeza_json')->nullable();
+            $table->unsignedSmallInteger('prazo_contestacao_dias')->nullable();
+            $table->dateTime('data_limite_contestacao')->nullable();
+            $table->string('link_publico_midias_token')->nullable();
+            $table->string('link_contestacao_token')->nullable();
+            $table->string('pdf_path')->nullable();
+            $table->string('hash_pdf')->nullable();
+            $table->unsignedBigInteger('criado_por')->nullable();
+            $table->unsignedBigInteger('atualizado_por')->nullable();
             $table->json('comodos')->nullable();
             $table->string('assinatura_inquilino_status')->nullable();
             $table->string('assinatura_proprietario_status')->nullable();
             $table->timestamps();
             $table->softDeletes();
+        });
+
+        Schema::create('vistoria_partes', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('vistoria_id');
+            $table->unsignedBigInteger('pessoa_id')->nullable();
+            $table->string('nome');
+            $table->string('documento')->nullable();
+            $table->string('email')->nullable();
+            $table->string('telefone')->nullable();
+            $table->string('funcao')->nullable();
+            $table->integer('ordem_assinatura')->default(0);
+            $table->boolean('assinou')->default(false);
+            $table->dateTime('data_assinatura')->nullable();
+            $table->string('assinatura_path')->nullable();
+            $table->string('ip_assinatura')->nullable();
+            $table->text('user_agent_assinatura')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('vistoria_ambientes', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('vistoria_id');
+            $table->string('nome');
+            $table->integer('ordem')->default(0);
+            $table->string('estado_geral')->nullable();
+            $table->string('pintura_estado')->nullable();
+            $table->string('limpeza_estado')->nullable();
+            $table->text('observacoes')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('vistoria_itens', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('vistoria_ambiente_id');
+            $table->string('nome');
+            $table->text('descricao')->nullable();
+            $table->string('estado')->nullable();
+            $table->boolean('possui_inconformidade')->default(false);
+            $table->text('observacoes')->nullable();
+            $table->integer('ordem')->default(0);
+            $table->timestamps();
+        });
+
+        Schema::create('vistoria_inconformidades', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('vistoria_id');
+            $table->unsignedBigInteger('ambiente_id');
+            $table->unsignedBigInteger('item_id')->nullable();
+            $table->text('descricao');
+            $table->string('severidade')->nullable();
+            $table->string('responsabilidade_sugerida')->nullable();
+            $table->string('status')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('vistoria_midias', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('vistoria_id');
+            $table->unsignedBigInteger('ambiente_id')->nullable();
+            $table->unsignedBigInteger('item_id')->nullable();
+            $table->unsignedBigInteger('inconformidade_id')->nullable();
+            $table->string('tipo')->nullable();
+            $table->string('path_original');
+            $table->string('path_thumb')->nullable();
+            $table->string('mime_type')->nullable();
+            $table->integer('tamanho_bytes')->nullable();
+            $table->integer('duracao_segundos')->nullable();
+            $table->string('legenda')->nullable();
+            $table->integer('ordem')->default(0);
+            $table->json('metadata_json')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('vistoria_chaves', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('vistoria_id');
+            $table->string('tipo');
+            $table->integer('quantidade')->default(1);
+            $table->string('estado')->nullable();
+            $table->text('observacoes')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('vistoria_contestacoes', function (Blueprint $table) {
+            $table->id();
+            $table->integer('tenant_id');
+            $table->unsignedBigInteger('vistoria_id')->nullable();
+            $table->unsignedBigInteger('parte_id')->nullable();
+            $table->string('codigo')->nullable();
+            $table->string('status')->nullable();
+            $table->string('tipo')->nullable();
+            $table->text('descricao')->nullable();
+            $table->string('nome')->nullable();
+            $table->string('documento')->nullable();
+            $table->string('email')->nullable();
+            $table->string('telefone')->nullable();
+            $table->text('texto')->nullable();
+            $table->string('cliente_nome')->nullable();
+            $table->string('imovel_referencia')->nullable();
+            $table->json('fotos')->nullable();
+            $table->json('documentos')->nullable();
+            $table->text('resolucao')->nullable();
+            $table->dateTime('data_envio')->nullable();
+            $table->string('ip')->nullable();
+            $table->text('user_agent')->nullable();
+            $table->text('resposta_admin')->nullable();
+            $table->dateTime('data_resposta')->nullable();
+            $table->unsignedBigInteger('respondido_por')->nullable();
+            $table->dateTime('data_contestacao')->nullable();
+            $table->dateTime('data_resolucao')->nullable();
+            $table->integer('user_id')->nullable();
+            $table->json('historico')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('vistoria_contestacao_itens', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('contestacao_id');
+            $table->unsignedBigInteger('ambiente_id')->nullable();
+            $table->unsignedBigInteger('item_id')->nullable();
+            $table->unsignedBigInteger('inconformidade_id')->nullable();
+            $table->text('descricao');
+            $table->timestamps();
+        });
+
+        Schema::create('vistoria_contestacao_midias', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('contestacao_id');
+            $table->unsignedBigInteger('contestacao_item_id')->nullable();
+            $table->string('tipo')->nullable();
+            $table->string('path');
+            $table->string('mime_type')->nullable();
+            $table->integer('tamanho_bytes')->nullable();
+            $table->string('legenda')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('vistoria_historicos', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('vistoria_id');
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->string('acao');
+            $table->text('descricao')->nullable();
+            $table->json('dados_antes_json')->nullable();
+            $table->json('dados_depois_json')->nullable();
+            $table->string('ip')->nullable();
+            $table->text('user_agent')->nullable();
+            $table->dateTime('created_at')->nullable();
+        });
+
+        Schema::create('vistoria_templates', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('tenant_id');
+            $table->string('nome');
+            $table->string('tipo_vistoria')->nullable();
+            $table->json('conteudo_json');
+            $table->boolean('ativo')->default(true);
+            $table->timestamps();
         });
 
         Schema::create('vistoria_solicitacoes', function (Blueprint $table) {

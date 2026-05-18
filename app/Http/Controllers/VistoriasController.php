@@ -7,9 +7,12 @@ use App\Models\Property;
 use App\Models\User;
 use App\Models\Vistoria;
 use App\Models\VistoriaSolicitacao;
+use App\Services\VistoriaPdfService;
+use App\Services\VistoriaService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -155,7 +158,14 @@ class VistoriasController extends Controller
             $payload['codigo'] = 'VST-' . now()->format('Ymd-His');
         }
 
+        $payload = array_merge($payload, $this->laudoPayload($validated, $request));
+        $payload['link_publico_midias_token'] = $payload['link_publico_midias_token'] ?? app(VistoriaService::class)->token();
+        $payload['link_contestacao_token'] = $payload['link_contestacao_token'] ?? app(VistoriaService::class)->token();
+        $payload['criado_por'] = $request->user()?->id;
+        $payload['atualizado_por'] = $request->user()?->id;
+
         $vistoria = Vistoria::create($payload)->load($this->detailRelations());
+        app(VistoriaService::class)->registrarHistorico($vistoria, 'vistoria_criada', 'Vistoria criada.', $request);
 
         return response()->json([
             'success' => true,
@@ -174,6 +184,9 @@ class VistoriasController extends Controller
 
         $validated = $this->validatePayload($request, true);
         $payload = $this->preparePayload($validated, $this->resolveTenantId($request), $vistoria);
+
+        $payload = array_merge($payload, $this->laudoPayload($validated, $request));
+        $payload['atualizado_por'] = $request->user()?->id;
 
         $vistoria->update($payload);
         $vistoria->load($this->detailRelations());
@@ -204,6 +217,71 @@ class VistoriasController extends Controller
             'success' => true,
             'message' => 'Vistoria deletada com sucesso',
         ]);
+    }
+
+    public function iniciar(Request $request, $id)
+    {
+        $vistoria = $this->applyTenantScope(Vistoria::query(), $request)->find($id);
+        if (!$vistoria) {
+            return response()->json(['error' => 'Vistoria not found'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'vistoria' => $this->serializeVistoria(app(VistoriaService::class)->iniciar($vistoria, $request)),
+        ]);
+    }
+
+    public function finalizar(Request $request, $id)
+    {
+        $vistoria = $this->applyTenantScope(Vistoria::query(), $request)->find($id);
+        if (!$vistoria) {
+            return response()->json(['error' => 'Vistoria not found'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'vistoria' => $this->serializeVistoria(app(VistoriaService::class)->finalizar($vistoria, $request)),
+        ]);
+    }
+
+    public function cancelar(Request $request, $id)
+    {
+        $vistoria = $this->applyTenantScope(Vistoria::query(), $request)->find($id);
+        if (!$vistoria) {
+            return response()->json(['error' => 'Vistoria not found'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'vistoria' => $this->serializeVistoria(app(VistoriaService::class)->cancelar($vistoria, $request)),
+        ]);
+    }
+
+    public function gerarPdf(Request $request, $id)
+    {
+        $vistoria = $this->applyTenantScope(Vistoria::query()->with($this->detailRelations()), $request)->find($id);
+        if (!$vistoria) {
+            return response()->json(['error' => 'Vistoria not found'], 404);
+        }
+
+        $vistoria = app(VistoriaPdfService::class)->gerar($vistoria, $request);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'PDF gerado com sucesso',
+            'vistoria' => $this->serializeVistoria($vistoria),
+        ]);
+    }
+
+    public function downloadPdf(Request $request, $id)
+    {
+        $vistoria = $this->applyTenantScope(Vistoria::query(), $request)->find($id);
+        if (!$vistoria || !$vistoria->pdf_path || !Storage::disk('public')->exists($vistoria->pdf_path)) {
+            return response()->json(['error' => 'PDF not found'], 404);
+        }
+
+        return Storage::disk('public')->download($vistoria->pdf_path, ($vistoria->codigo ?: 'vistoria') . '.pdf');
     }
 
     /**
@@ -502,7 +580,7 @@ class VistoriasController extends Controller
     {
         $rules = [
             'codigo' => 'nullable|string|max:50',
-            'status' => [$partial ? 'sometimes' : 'required', 'string', 'in:solicitada,designada,andamento,concluida,cancelada'],
+            'status' => [$partial ? 'sometimes' : 'required', 'string', 'in:solicitada,designada,andamento,concluida,cancelada,rascunho,agendada,em_andamento,aguardando_assinatura,finalizada,contestada,revisada'],
             'cliente_nome' => 'nullable|string|max:255',
             'contrato_id' => 'nullable|integer|exists:contratos_locacao,id',
             'imovel_id' => 'nullable|integer|exists:imo_properties,id',
@@ -515,7 +593,7 @@ class VistoriasController extends Controller
             'imovel_livre.tipo_imovel' => 'nullable|string|max:120',
             'imovel_livre.referencia' => 'nullable|string|max:1000',
             'responsavel_pessoa_id' => 'nullable|integer|exists:pessoas,id',
-            'tipo' => [$partial ? 'sometimes' : 'required', 'string', 'in:entrada,saida,periodica'],
+            'tipo' => [$partial ? 'sometimes' : 'required', 'string', 'in:entrada,saida,periodica,conferencia,manutencao,avulsa'],
             'vistoriadores' => 'nullable|array',
             'vistoriadores.*' => 'nullable|string|max:120',
             'participantes_ids' => 'nullable|array',
@@ -527,6 +605,17 @@ class VistoriasController extends Controller
             'comodos' => 'nullable|array',
             'assinatura_inquilino_status' => 'nullable|string|max:30',
             'assinatura_proprietario_status' => 'nullable|string|max:30',
+            'data_agendada' => 'nullable|date',
+            'data_inicio' => 'nullable|date',
+            'data_fim' => 'nullable|date',
+            'vistoriador_id' => 'nullable|integer|exists:pessoas,id',
+            'observacoes_gerais' => 'nullable|string',
+            'introducao_texto' => 'nullable|string',
+            'criterios_avaliacao_json' => 'nullable|array',
+            'criterios_pintura_json' => 'nullable|array',
+            'criterios_limpeza_json' => 'nullable|array',
+            'prazo_contestacao_dias' => 'nullable|integer|min:1|max:90',
+            'data_limite_contestacao' => 'nullable|date',
         ];
 
         $validator = app('validator')->make($request->all(), $rules);
@@ -640,6 +729,28 @@ class VistoriasController extends Controller
         }
 
         return $validated;
+    }
+
+    private function laudoPayload(array $validated, Request $request): array
+    {
+        $fields = [
+            'data_agendada', 'data_inicio', 'data_fim', 'vistoriador_id', 'observacoes_gerais',
+            'introducao_texto', 'criterios_avaliacao_json', 'criterios_pintura_json',
+            'criterios_limpeza_json', 'prazo_contestacao_dias', 'data_limite_contestacao',
+        ];
+
+        $payload = [];
+        foreach ($fields as $field) {
+            if (array_key_exists($field, $validated)) {
+                $payload[$field] = $validated[$field];
+            }
+        }
+
+        if (!empty($payload['data_agendada']) && empty($validated['data_vistoria'])) {
+            $payload['data_vistoria'] = $payload['data_agendada'];
+        }
+
+        return $payload;
     }
 
     /** @param  array<string, mixed>|null  $raw */
@@ -813,6 +924,16 @@ class VistoriasController extends Controller
         return [
             'fotos',
             'comentarios',
+            'partes',
+            'ambientes.itens',
+            'ambientes.midias',
+            'ambientes.inconformidades',
+            'inconformidades',
+            'midias',
+            'chaves',
+            'contestacoes.itens',
+            'contestacoes.midias',
+            'historicos',
             'responsavel:id,nome,email,telefone,celular',
             'imovel:id,codigo,titulo,logradouro,bairro,cidade,estado,area_total,dormitorios,banheiros,garagem',
             'contrato:id,numero_contrato,status,inicio,fim,imovel_id,locador_pessoa_id,locatario_pessoa_id',
@@ -860,6 +981,24 @@ class VistoriasController extends Controller
             'comodos' => $vistoria->comodos ?? [],
             'assinatura_inquilino_status' => $vistoria->assinatura_inquilino_status,
             'assinatura_proprietario_status' => $vistoria->assinatura_proprietario_status,
+            'data_agendada' => optional($vistoria->data_agendada)->toIso8601String(),
+            'data_inicio' => optional($vistoria->data_inicio)->toIso8601String(),
+            'data_fim' => optional($vistoria->data_fim)->toIso8601String(),
+            'vistoriador_id' => $vistoria->vistoriador_id,
+            'observacoes_gerais' => $vistoria->observacoes_gerais,
+            'introducao_texto' => $vistoria->introducao_texto,
+            'criterios_avaliacao_json' => $vistoria->criterios_avaliacao_json,
+            'criterios_pintura_json' => $vistoria->criterios_pintura_json,
+            'criterios_limpeza_json' => $vistoria->criterios_limpeza_json,
+            'prazo_contestacao_dias' => $vistoria->prazo_contestacao_dias,
+            'data_limite_contestacao' => optional($vistoria->data_limite_contestacao)->toIso8601String(),
+            'links_publicos' => [
+                'midias' => $vistoria->link_publico_midias_token ? url('/vistorias/publico/' . $vistoria->link_publico_midias_token . '/midias') : null,
+                'contestacao' => $vistoria->link_contestacao_token ? url('/vistorias/publico/' . $vistoria->link_contestacao_token . '/contestacao') : null,
+                'pdf' => $vistoria->link_publico_midias_token ? url('/vistorias/publico/' . $vistoria->link_publico_midias_token . '/pdf') : null,
+            ],
+            'pdf_path' => $vistoria->pdf_path,
+            'hash_pdf' => $vistoria->hash_pdf,
             'imovel_livre' => $this->normalizeImovelLivre($vistoria->imovel_livre),
             'created_at' => optional($vistoria->created_at)->toIso8601String(),
             'updated_at' => optional($vistoria->updated_at)->toIso8601String(),
@@ -878,6 +1017,13 @@ class VistoriasController extends Controller
             'comentarios' => $vistoria->relationLoaded('comentarios')
                 ? $vistoria->comentarios->map(fn ($c) => $c->toArray())->values()->all()
                 : [],
+            'partes' => $vistoria->relationLoaded('partes') ? $vistoria->partes->values()->all() : [],
+            'ambientes' => $vistoria->relationLoaded('ambientes') ? $vistoria->ambientes->values()->all() : [],
+            'inconformidades' => $vistoria->relationLoaded('inconformidades') ? $vistoria->inconformidades->values()->all() : [],
+            'midias' => $vistoria->relationLoaded('midias') ? $vistoria->midias->values()->all() : [],
+            'chaves' => $vistoria->relationLoaded('chaves') ? $vistoria->chaves->values()->all() : [],
+            'contestacoes' => $vistoria->relationLoaded('contestacoes') ? $vistoria->contestacoes->values()->all() : [],
+            'historicos' => $vistoria->relationLoaded('historicos') ? $vistoria->historicos->values()->all() : [],
         ];
     }
 

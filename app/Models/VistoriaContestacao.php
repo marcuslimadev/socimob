@@ -15,15 +15,27 @@ class VistoriaContestacao extends Model
     protected $fillable = [
         'tenant_id',
         'vistoria_id',
+        'parte_id',
         'codigo',
         'status',
         'tipo',
         'descricao',
+        'nome',
+        'documento',
+        'email',
+        'telefone',
+        'texto',
         'cliente_nome',
         'imovel_referencia',
         'fotos',
         'documentos',
         'resolucao',
+        'data_envio',
+        'ip',
+        'user_agent',
+        'resposta_admin',
+        'data_resposta',
+        'respondido_por',
         'data_contestacao',
         'data_resolucao',
         'user_id',
@@ -36,6 +48,8 @@ class VistoriaContestacao extends Model
         'historico' => 'array',
         'data_contestacao' => 'datetime',
         'data_resolucao' => 'datetime',
+        'data_envio' => 'datetime',
+        'data_resposta' => 'datetime',
     ];
 
     /**
@@ -52,5 +66,15 @@ class VistoriaContestacao extends Model
     public function responsavel()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function itens()
+    {
+        return $this->hasMany(VistoriaContestacaoItem::class, 'contestacao_id');
+    }
+
+    public function midias()
+    {
+        return $this->hasMany(VistoriaContestacaoMidia::class, 'contestacao_id');
     }
 }

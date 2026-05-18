@@ -362,6 +362,11 @@ $router->group(['prefix' => 'api/auth'], function () use ($router) {
 // Rotas protegidas (AUTENTICADAS COM TENANT ISOLATION)
 // ===========================
 // CRITICAL: resolve-tenant MUST come before simple-auth to enforce domain-based tenant isolation
+$router->get('/vistorias/publico/{token}/midias', 'App\Http\Controllers\PublicVistoriasController@midias');
+$router->get('/vistorias/publico/{token}/contestacao', 'App\Http\Controllers\PublicVistoriasController@contestacao');
+$router->post('/vistorias/publico/{token}/contestacao', 'App\Http\Controllers\PublicVistoriasController@enviarContestacao');
+$router->get('/vistorias/publico/{token}/pdf', 'App\Http\Controllers\PublicVistoriasController@pdf');
+
 $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-auth']], function () use ($router) {
 
     // Auth
@@ -395,6 +400,11 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->get('/vistorias', 'App\Http\Controllers\VistoriasController@index');
     $router->post('/vistorias', 'App\Http\Controllers\VistoriasController@store');
     $router->get('/vistorias/export', 'App\Http\Controllers\VistoriasController@export');
+    $router->post('/vistorias/{id}/iniciar', 'App\Http\Controllers\VistoriasController@iniciar');
+    $router->post('/vistorias/{id}/finalizar', 'App\Http\Controllers\VistoriasController@finalizar');
+    $router->post('/vistorias/{id}/cancelar', 'App\Http\Controllers\VistoriasController@cancelar');
+    $router->post('/vistorias/{id}/gerar-pdf', 'App\Http\Controllers\VistoriasController@gerarPdf');
+    $router->get('/vistorias/{id}/download-pdf', 'App\Http\Controllers\VistoriasController@downloadPdf');
     $router->put('/vistorias/{id}', 'App\Http\Controllers\VistoriasController@update');
     $router->delete('/vistorias/{id}', 'App\Http\Controllers\VistoriasController@destroy');
     $router->get('/vistorias/solicitacoes', 'App\Http\Controllers\VistoriaSolicitacoesController@index');
@@ -406,6 +416,25 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->get('/vistorias/contestacoes/{id}', 'App\Http\Controllers\VistoriaContestacoesController@show');
     $router->put('/vistorias/contestacoes/{id}/status', 'App\Http\Controllers\VistoriaContestacoesController@updateStatus');
     $router->delete('/vistorias/contestacoes/{id}', 'App\Http\Controllers\VistoriaContestacoesController@destroy');
+
+    $router->get('/vistorias/{id}/ambientes', 'App\Http\Controllers\VistoriaOperacionalController@ambientes');
+    $router->post('/vistorias/{id}/ambientes', 'App\Http\Controllers\VistoriaOperacionalController@storeAmbiente');
+    $router->put('/vistorias/{id}/ambientes/{ambienteId}', 'App\Http\Controllers\VistoriaOperacionalController@updateAmbiente');
+    $router->delete('/vistorias/{id}/ambientes/{ambienteId}', 'App\Http\Controllers\VistoriaOperacionalController@destroyAmbiente');
+    $router->post('/vistorias/{id}/ambientes/{ambienteId}/itens', 'App\Http\Controllers\VistoriaOperacionalController@storeItem');
+    $router->put('/vistorias/{id}/itens/{itemId}', 'App\Http\Controllers\VistoriaOperacionalController@updateItem');
+    $router->delete('/vistorias/{id}/itens/{itemId}', 'App\Http\Controllers\VistoriaOperacionalController@destroyItem');
+    $router->post('/vistorias/{id}/inconformidades', 'App\Http\Controllers\VistoriaOperacionalController@storeInconformidade');
+    $router->put('/vistorias/{id}/inconformidades/{inconformidadeId}', 'App\Http\Controllers\VistoriaOperacionalController@updateInconformidade');
+    $router->delete('/vistorias/{id}/inconformidades/{inconformidadeId}', 'App\Http\Controllers\VistoriaOperacionalController@destroyInconformidade');
+    $router->post('/vistorias/{id}/midias', 'App\Http\Controllers\VistoriaOperacionalController@storeMidia');
+    $router->delete('/vistorias/{id}/midias/{midiaId}', 'App\Http\Controllers\VistoriaOperacionalController@destroyMidia');
+    $router->post('/vistorias/{id}/chaves', 'App\Http\Controllers\VistoriaOperacionalController@storeChave');
+    $router->put('/vistorias/{id}/chaves/{chaveId}', 'App\Http\Controllers\VistoriaOperacionalController@updateChave');
+    $router->delete('/vistorias/{id}/chaves/{chaveId}', 'App\Http\Controllers\VistoriaOperacionalController@destroyChave');
+    $router->post('/vistorias/{id}/assinaturas', 'App\Http\Controllers\VistoriaOperacionalController@assinar');
+    $router->get('/vistorias/{id}/contestacoes', 'App\Http\Controllers\VistoriaOperacionalController@contestacoes');
+    $router->post('/vistorias/{id}/contestacoes/{contestacaoId}/responder', 'App\Http\Controllers\VistoriaOperacionalController@responderContestacao');
 
     // Fotos da vistoria (mesmo auth/tenant das demais rotas de vistoria — uso em campo e app)
     $router->get('/vistorias/{vistoriaId}/fotos', 'App\Http\Controllers\VistoriaFotosApiController@index');

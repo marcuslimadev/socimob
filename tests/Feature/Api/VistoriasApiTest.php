@@ -270,4 +270,97 @@ class VistoriasApiTest extends BackendFeatureTestCase
             'comodo' => 'Sala',
         ]);
     }
+
+    public function test_it_creates_laudo_structure_and_uploads_tenant_scoped_media(): void
+    {
+        Storage::fake('public');
+
+        $tenant = $this->createTenant(['domain' => 'laudo.local', 'slug' => 'laudo']);
+        $user = $this->createUser($tenant);
+
+        $vistoria = Vistoria::query()->create([
+            'tenant_id' => $tenant->id,
+            'codigo' => 'VST-L1',
+            'status' => 'agendada',
+            'tipo' => 'entrada',
+            'link_publico_midias_token' => str_repeat('a', 80),
+            'link_contestacao_token' => str_repeat('b', 80),
+        ]);
+
+        $ambienteResponse = $this->postJson("/api/vistorias/{$vistoria->id}/ambientes", [
+            'nome' => 'Sala',
+            'estado_geral' => 'bom',
+        ], $this->adminHeaders($user, $tenant));
+
+        $ambienteResponse->assertCreated()->assertJsonPath('item.nome', 'Sala');
+        $ambienteId = $ambienteResponse->json('item.id');
+
+        $this->postJson("/api/vistorias/{$vistoria->id}/ambientes/{$ambienteId}/itens", [
+            'nome' => 'Piso',
+            'estado' => 'regular',
+        ], $this->adminHeaders($user, $tenant))->assertCreated();
+
+        $this->postJson("/api/vistorias/{$vistoria->id}/inconformidades", [
+            'ambiente_id' => $ambienteId,
+            'descricao' => 'Risco visível no piso.',
+            'severidade' => 'media',
+        ], $this->adminHeaders($user, $tenant))->assertCreated();
+
+        $file = UploadedFile::fake()->image('sala.jpg', 500, 300);
+        $this->withHeaders($this->adminHeaders($user, $tenant))
+            ->post("/api/vistorias/{$vistoria->id}/midias", [
+                'arquivo' => $file,
+                'ambiente_id' => $ambienteId,
+                'legenda' => 'Sala principal',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('item.tipo', 'foto');
+
+        $this->assertDatabaseHas('vistoria_midias', [
+            'vistoria_id' => $vistoria->id,
+            'ambiente_id' => $ambienteId,
+            'legenda' => 'Sala principal',
+        ]);
+
+        $path = \App\Models\VistoriaMidia::query()->firstOrFail()->path_original;
+        $this->assertStringStartsWith("tenants/{$tenant->id}/vistorias/{$vistoria->id}/midias/", $path);
+        Storage::disk('public')->assertExists($path);
+    }
+
+    public function test_public_contestacao_respects_deadline_and_updates_status(): void
+    {
+        $tenant = $this->createTenant(['domain' => 'contestacao.local', 'slug' => 'contestacao']);
+        $token = str_repeat('c', 80);
+        $vistoria = Vistoria::query()->create([
+            'tenant_id' => $tenant->id,
+            'codigo' => 'VST-C1',
+            'status' => 'finalizada',
+            'tipo' => 'saida',
+            'link_publico_midias_token' => str_repeat('d', 80),
+            'link_contestacao_token' => $token,
+            'data_limite_contestacao' => now()->addDay(),
+        ]);
+
+        $response = $this->post("/vistorias/publico/{$token}/contestacao", [
+            'nome' => 'Cliente Contestante',
+            'email' => 'cliente@example.com',
+            'texto' => 'Há divergência no registro da pintura.',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('vistoria_contestacoes', [
+            'tenant_id' => $tenant->id,
+            'vistoria_id' => $vistoria->id,
+            'nome' => 'Cliente Contestante',
+            'status' => 'enviada',
+        ]);
+        $this->assertSame('contestada', $vistoria->fresh()->status);
+
+        $vistoria->update(['status' => 'finalizada', 'data_limite_contestacao' => now()->subMinute()]);
+
+        $this->post("/vistorias/publico/{$token}/contestacao", [
+            'nome' => 'Cliente Contestante',
+            'texto' => 'Nova tentativa fora do prazo.',
+        ])->assertStatus(422);
+    }
 }

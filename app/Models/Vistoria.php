@@ -32,6 +32,23 @@ class Vistoria extends Model
         'comodos',
         'assinatura_inquilino_status',
         'assinatura_proprietario_status',
+        'data_agendada',
+        'data_inicio',
+        'data_fim',
+        'vistoriador_id',
+        'observacoes_gerais',
+        'introducao_texto',
+        'criterios_avaliacao_json',
+        'criterios_pintura_json',
+        'criterios_limpeza_json',
+        'prazo_contestacao_dias',
+        'data_limite_contestacao',
+        'link_publico_midias_token',
+        'link_contestacao_token',
+        'pdf_path',
+        'hash_pdf',
+        'criado_por',
+        'atualizado_por',
     ];
 
     protected $casts = [
@@ -43,6 +60,13 @@ class Vistoria extends Model
         'metragem' => 'decimal:2',
         'mobiliado' => 'boolean',
         'data_vistoria' => 'datetime',
+        'data_agendada' => 'datetime',
+        'data_inicio' => 'datetime',
+        'data_fim' => 'datetime',
+        'criterios_avaliacao_json' => 'array',
+        'criterios_pintura_json' => 'array',
+        'criterios_limpeza_json' => 'array',
+        'data_limite_contestacao' => 'datetime',
     ];
 
     public function fotos()
@@ -53,6 +77,46 @@ class Vistoria extends Model
     public function comentarios()
     {
         return $this->hasMany(VistoriaComentario::class, 'vistoria_id')->orderByDesc('created_at');
+    }
+
+    public function partes()
+    {
+        return $this->hasMany(VistoriaParte::class, 'vistoria_id')->orderBy('ordem_assinatura')->orderBy('id');
+    }
+
+    public function ambientes()
+    {
+        return $this->hasMany(VistoriaAmbiente::class, 'vistoria_id')->orderBy('ordem')->orderBy('id');
+    }
+
+    public function itens()
+    {
+        return $this->hasManyThrough(VistoriaItem::class, VistoriaAmbiente::class, 'vistoria_id', 'vistoria_ambiente_id');
+    }
+
+    public function inconformidades()
+    {
+        return $this->hasMany(VistoriaInconformidade::class, 'vistoria_id')->orderByDesc('id');
+    }
+
+    public function midias()
+    {
+        return $this->hasMany(VistoriaMidia::class, 'vistoria_id')->orderBy('ambiente_id')->orderBy('ordem')->orderBy('id');
+    }
+
+    public function chaves()
+    {
+        return $this->hasMany(VistoriaChave::class, 'vistoria_id')->orderBy('tipo');
+    }
+
+    public function contestacoes()
+    {
+        return $this->hasMany(VistoriaContestacao::class, 'vistoria_id')->orderByDesc('created_at');
+    }
+
+    public function historicos()
+    {
+        return $this->hasMany(VistoriaHistorico::class, 'vistoria_id')->orderByDesc('created_at');
     }
 
     public function contrato()
