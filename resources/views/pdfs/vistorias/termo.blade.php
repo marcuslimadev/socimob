@@ -68,6 +68,9 @@
         ['titulo' => 'Imóvel com poeira superficial', 'texto' => 'Imóvel fechado por algum tempo, com poeira em vidros e superfícies.'],
         ['titulo' => 'Imóvel sujo', 'texto' => 'Poeira ou sujeira em banheiros, rejuntes, lixos, restos de obras ou áreas internas.'],
     ];
+    $normalizaCompartimento = fn ($nome) => mb_strtolower(trim((string) ($nome ?: 'Sem compartimento')));
+    $fotosPorCompartimento = $vistoria->fotos->groupBy(fn ($foto) => $normalizaCompartimento($foto->comodo));
+    $ambientesRenderizados = collect();
 @endphp
 
 <div class="footer">
@@ -189,6 +192,11 @@
 <div class="page-break"></div>
 <h2>Ambientes</h2>
 @forelse($vistoria->ambientes as $ambienteIndex => $ambiente)
+    @php
+        $ambienteKey = $normalizaCompartimento($ambiente->nome);
+        $ambientesRenderizados->push($ambienteKey);
+        $fotosLegadas = $fotosPorCompartimento->get($ambienteKey, collect());
+    @endphp
     <div class="avoid-break">
         <h3>{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}</h3>
         <p>
@@ -219,7 +227,7 @@
         </table>
     @endif
 
-    @if($ambiente->midias->count())
+    @if($ambiente->midias->count() || $fotosLegadas->count())
         <div class="photo-grid">
             @foreach($ambiente->midias as $midiaIndex => $midia)
                 @php($src = $midia->path_thumb && \Illuminate\Support\Facades\Storage::disk('public')->exists($midia->path_thumb) ? $midia->path_thumb : $midia->path_original)
@@ -235,13 +243,41 @@
                     </div>
                 @endif
             @endforeach
+            @foreach($fotosLegadas as $foto)
+                @if($foto->arquivo_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($foto->arquivo_path))
+                    <div class="photo-box">
+                        <img class="photo" src="{{ public_path('storage/'.$foto->arquivo_path) }}" alt="">
+                        <div class="caption">{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}<br>{{ optional($foto->created_at)->format('d/m/y H:i:s') }} {{ $foto->descricao ? ' - '.$foto->descricao : ($foto->legenda ? ' - '.$foto->legenda : '') }}</div>
+                    </div>
+                @endif
+            @endforeach
         </div>
     @else
         <p class="muted">Nenhuma foto ou vídeo vinculado a este ambiente.</p>
     @endif
 @empty
-    <p>Nenhum ambiente cadastrado.</p>
+    @if($fotosPorCompartimento->isEmpty())
+        <p>Nenhum ambiente cadastrado.</p>
+    @endif
 @endforelse
+
+@foreach($fotosPorCompartimento as $compartimentoKey => $fotosCompartimento)
+    @continue($ambientesRenderizados->contains($compartimentoKey))
+    <div class="avoid-break">
+        <h3>{{ $loop->iteration }}. {{ $fotosCompartimento->first()->comodo ?: 'Sem compartimento' }}</h3>
+        <p class="muted">Fotos agrupadas pelo compartimento informado na execução da vistoria.</p>
+        <div class="photo-grid">
+            @foreach($fotosCompartimento as $foto)
+                @if($foto->arquivo_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($foto->arquivo_path))
+                    <div class="photo-box">
+                        <img class="photo" src="{{ public_path('storage/'.$foto->arquivo_path) }}" alt="">
+                        <div class="caption">{{ $foto->comodo ?: 'Sem compartimento' }}<br>{{ optional($foto->created_at)->format('d/m/y H:i:s') }} {{ $foto->descricao ? ' - '.$foto->descricao : ($foto->legenda ? ' - '.$foto->legenda : '') }}</div>
+                    </div>
+                @endif
+            @endforeach
+        </div>
+    </div>
+@endforeach
 
 <div class="page-break"></div>
 <h2>Termos de Responsabilidade</h2>

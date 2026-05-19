@@ -7,6 +7,7 @@ use App\Models\Pessoa;
 use App\Models\Property;
 use App\Models\User;
 use App\Models\Vistoria;
+use App\Models\VistoriaFoto;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\Feature\Support\BackendFeatureTestCase;
@@ -400,6 +401,17 @@ class VistoriasApiTest extends BackendFeatureTestCase
             'severidade' => 'media',
         ]);
         $vistoria->chaves()->create(['tipo' => 'comum', 'quantidade' => 7, 'estado' => 'bom']);
+        $fotoPath = UploadedFile::fake()->image('sala.jpg', 320, 220)
+            ->storeAs("tenants/{$tenant->id}/vistorias/{$vistoria->id}/fotos", 'sala.jpg', 'public');
+        VistoriaFoto::query()->create([
+            'tenant_id' => $tenant->id,
+            'vistoria_id' => $vistoria->id,
+            'comodo' => 'Sala estar / jantar',
+            'descricao' => 'Foto geral da sala',
+            'arquivo_path' => $fotoPath,
+            'mime_type' => 'image/jpeg',
+            'ordem' => 1,
+        ]);
 
         $response = $this->postJson("/api/vistorias/{$vistoria->id}/gerar-pdf", [], $this->adminHeaders($user, $tenant));
 
