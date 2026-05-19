@@ -26,10 +26,16 @@
         .section-title { font-weight: 700; color: #111827; }
         .photo-grid { margin-top: 4px; }
         .photo-box { display: inline-block; width: 31.5%; margin: 0 1% 8px 0; vertical-align: top; page-break-inside: avoid; }
-        .photo { width: 100%; height: 108px; object-fit: cover; border: 1px solid #cfd6dd; }
-        .caption { font-size: 8.6px; color: #59636e; margin-top: 2px; }
-        .video-box { border: 1px solid #cfd6dd; background: #f8fafc; padding: 8px; margin: 0 0 7px; }
-        .play { display: inline-block; border-left: 12px solid {{ $tenant?->primary_color ?? '#1f4e79' }}; border-top: 8px solid transparent; border-bottom: 8px solid transparent; width: 0; height: 0; margin-right: 6px; vertical-align: middle; }
+        .media-frame { position: relative; width: 100%; height: 132px; overflow: hidden; background: #f1f5f9; border: 1px solid #cfd6dd; }
+        .photo { width: 100%; height: 132px; object-fit: cover; }
+        .caption { font-size: 8.6px; color: #111827; margin-top: 2px; text-align: center; font-weight: 700; font-style: italic; }
+        .media-date { position: absolute; left: 0; top: 0; background: #fff; border: 1px solid #111827; padding: 3px 6px; font-size: 8.2px; font-weight: 700; color: #111827; z-index: 2; }
+        .video-tile { position: relative; width: 100%; height: 132px; overflow: hidden; background: #d1d5db; border: 1px solid #111827; }
+        .video-thumb { width: 100%; height: 132px; object-fit: cover; }
+        .video-placeholder { width: 100%; height: 132px; background: #d1d5db; }
+        .video-qr { position: absolute; left: 4px; bottom: 4px; width: 48px; height: 48px; background: #fff; border: 1px solid #111827; padding: 1px; z-index: 2; }
+        .play-circle { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin-left: -26px; margin-top: -26px; border: 5px solid rgba(255,255,255,.92); border-radius: 50%; background: rgba(255,255,255,.26); z-index: 3; }
+        .play-triangle { position: absolute; left: 19px; top: 13px; width: 0; height: 0; border-left: 19px solid rgba(255,255,255,.94); border-top: 13px solid transparent; border-bottom: 13px solid transparent; }
         .sign { height: 54px; border-bottom: 1px solid #59636e; text-align: center; margin-bottom: 3px; }
         .signature-grid { width: 100%; border-collapse: separate; border-spacing: 10px 18px; margin-top: 8px; }
         .signature-grid td { width: 50%; border: 0; vertical-align: bottom; padding: 0 8px 8px; }
@@ -78,6 +84,7 @@
     $normalizaCompartimento = fn ($nome) => mb_strtolower(trim((string) ($nome ?: 'Sem compartimento')));
     $fotosPorCompartimento = $vistoria->fotos->groupBy(fn ($foto) => $normalizaCompartimento($foto->comodo));
     $ambientesRenderizados = collect();
+    $mediaQr = fn (string $url) => 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . rawurlencode($url);
 @endphp
 
 <div class="footer">
@@ -238,27 +245,60 @@
         <div class="photo-grid">
             @foreach($ambiente->midias as $midiaIndex => $midia)
                 @php
+                    $isVideo = str_starts_with((string) $midia->mime_type, 'video/') || $midia->tipo === 'video';
+                    $thumb = $midia->path_thumb ? $pdfImageSrc($midia->path_thumb, 'image/jpeg', null) : null;
                     $srcPath = $midia->path_thumb ?: $midia->path_original;
-                    $src = $pdfImageSrc($srcPath, $midia->mime_type, $midia->url);
+                    $src = $isVideo ? $thumb : $pdfImageSrc($srcPath, $midia->mime_type, $midia->url);
+                    $midiaPublicUrl = $midiasUrl . '#midia-' . $midia->id;
+                    $midiaQrUrl = $mediaQr($midiaPublicUrl);
                 @endphp
-                @if(str_starts_with((string) $midia->mime_type, 'image/') && $src)
+                @if($isVideo)
                     <div class="photo-box">
-                        <img class="photo" src="{{ $src }}" alt="">
-                        <div class="caption">{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}<br>{{ optional($midia->created_at)->format('d/m/y H:i:s') }} {{ $midia->legenda ? ' - '.$midia->legenda : '' }}</div>
+                        <div class="video-tile">
+                            <div class="media-date">{{ optional($midia->created_at)->format('d/m/y H:i:s') }}</div>
+                            @if($src)
+                                <img class="video-thumb" src="{{ $src }}" alt="">
+                            @else
+                                <div class="video-placeholder"></div>
+                            @endif
+                            <div class="play-circle"><div class="play-triangle"></div></div>
+                            <img class="video-qr" src="{{ $midiaQrUrl }}" alt="QR vídeo">
+                        </div>
+                        <div class="caption">{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}</div>
                     </div>
-                @else
-                    <div class="video-box">
-                        <span class="play"></span><strong>{{ strtoupper($midia->tipo ?: 'MÍDIA') }}</strong>
-                        <div class="caption">{{ $midia->legenda ?: basename($midia->path_original) }} | {{ optional($midia->created_at)->format('d/m/y H:i:s') }}</div>
+                @elseif($src)
+                    <div class="photo-box">
+                        <div class="media-frame">
+                            <div class="media-date">{{ optional($midia->created_at)->format('d/m/y H:i:s') }}</div>
+                            <img class="photo" src="{{ $src }}" alt="">
+                        </div>
+                        <div class="caption">{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}</div>
                     </div>
                 @endif
             @endforeach
             @foreach($fotosLegadas as $foto)
-                @php($fotoSrc = $pdfImageSrc($foto->arquivo_path, $foto->mime_type, $foto->url_signed ?: $foto->url))
-                @if($fotoSrc)
+                @php
+                    $isVideoFoto = str_starts_with((string) $foto->mime_type, 'video/');
+                    $fotoSrc = $isVideoFoto ? null : $pdfImageSrc($foto->arquivo_path, $foto->mime_type, $foto->url_signed ?: $foto->url);
+                    $fotoQrUrl = $mediaQr($midiasUrl . '#foto-' . $foto->id);
+                @endphp
+                @if($isVideoFoto)
                     <div class="photo-box">
-                        <img class="photo" src="{{ $fotoSrc }}" alt="">
-                        <div class="caption">{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}<br>{{ optional($foto->created_at)->format('d/m/y H:i:s') }} {{ $foto->descricao ? ' - '.$foto->descricao : ($foto->legenda ? ' - '.$foto->legenda : '') }}</div>
+                        <div class="video-tile">
+                            <div class="media-date">{{ optional($foto->created_at)->format('d/m/y H:i:s') }}</div>
+                            <div class="video-placeholder"></div>
+                            <div class="play-circle"><div class="play-triangle"></div></div>
+                            <img class="video-qr" src="{{ $fotoQrUrl }}" alt="QR vídeo">
+                        </div>
+                        <div class="caption">{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}</div>
+                    </div>
+                @elseif($fotoSrc)
+                    <div class="photo-box">
+                        <div class="media-frame">
+                            <div class="media-date">{{ optional($foto->created_at)->format('d/m/y H:i:s') }}</div>
+                            <img class="photo" src="{{ $fotoSrc }}" alt="">
+                        </div>
+                        <div class="caption">{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}</div>
                     </div>
                 @endif
             @endforeach
@@ -279,11 +319,28 @@
         <p class="muted">Fotos agrupadas pelo compartimento informado na execução da vistoria.</p>
         <div class="photo-grid">
             @foreach($fotosCompartimento as $foto)
-                @php($fotoSrc = $pdfImageSrc($foto->arquivo_path, $foto->mime_type, $foto->url_signed ?: $foto->url))
-                @if($fotoSrc)
+                @php
+                    $isVideoFoto = str_starts_with((string) $foto->mime_type, 'video/');
+                    $fotoSrc = $isVideoFoto ? null : $pdfImageSrc($foto->arquivo_path, $foto->mime_type, $foto->url_signed ?: $foto->url);
+                    $fotoQrUrl = $mediaQr($midiasUrl . '#foto-' . $foto->id);
+                @endphp
+                @if($isVideoFoto)
                     <div class="photo-box">
-                        <img class="photo" src="{{ $fotoSrc }}" alt="">
-                        <div class="caption">{{ $foto->comodo ?: 'Sem compartimento' }}<br>{{ optional($foto->created_at)->format('d/m/y H:i:s') }} {{ $foto->descricao ? ' - '.$foto->descricao : ($foto->legenda ? ' - '.$foto->legenda : '') }}</div>
+                        <div class="video-tile">
+                            <div class="media-date">{{ optional($foto->created_at)->format('d/m/y H:i:s') }}</div>
+                            <div class="video-placeholder"></div>
+                            <div class="play-circle"><div class="play-triangle"></div></div>
+                            <img class="video-qr" src="{{ $fotoQrUrl }}" alt="QR vídeo">
+                        </div>
+                        <div class="caption">{{ $foto->comodo ?: 'Sem compartimento' }}</div>
+                    </div>
+                @elseif($fotoSrc)
+                    <div class="photo-box">
+                        <div class="media-frame">
+                            <div class="media-date">{{ optional($foto->created_at)->format('d/m/y H:i:s') }}</div>
+                            <img class="photo" src="{{ $fotoSrc }}" alt="">
+                        </div>
+                        <div class="caption">{{ $foto->comodo ?: 'Sem compartimento' }}</div>
                     </div>
                 @endif
             @endforeach
