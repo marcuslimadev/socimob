@@ -3,175 +3,291 @@
 <head>
     <meta charset="utf-8">
     <style>
-        @page { margin: 22mm 15mm 18mm; }
-        body { font-family: DejaVu Sans, sans-serif; color: #1f2933; font-size: 11px; line-height: 1.45; }
-        .header { border-bottom: 2px solid {{ $tenant->primary_color ?? '#1f4e79' }}; padding-bottom: 10px; margin-bottom: 18px; }
-        .brand { font-size: 19px; font-weight: 700; color: {{ $tenant->primary_color ?? '#1f4e79' }}; }
-        .muted { color: #667085; }
-        h1 { text-align: center; font-size: 22px; margin: 22px 0; letter-spacing: .06em; }
-        h2 { font-size: 14px; color: {{ $tenant->primary_color ?? '#1f4e79' }}; margin: 18px 0 8px; border-bottom: 1px solid #d9e2ec; padding-bottom: 4px; }
-        h3 { font-size: 12px; margin: 12px 0 6px; }
-        table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; }
-        th, td { border: 1px solid #d9e2ec; padding: 6px; vertical-align: top; }
-        th { background: #f3f6f9; text-align: left; }
-        .grid { display: table; width: 100%; }
-        .col { display: table-cell; width: 50%; vertical-align: top; padding-right: 10px; }
-        .badge { display: inline-block; border: 1px solid #d9e2ec; border-radius: 4px; padding: 2px 6px; background: #f8fafc; }
-        .photo { width: 31%; height: 120px; object-fit: cover; margin: 0 1% 8px 0; border: 1px solid #d9e2ec; }
+        @page { margin: 16mm 14mm 18mm; }
+        body { font-family: DejaVu Sans, sans-serif; color: #202124; font-size: 10.8px; line-height: 1.42; }
+        .footer { position: fixed; left: 0; right: 0; bottom: -11mm; border-top: 1px solid #cfd6dd; padding-top: 4px; color: #59636e; font-size: 8.8px; }
+        .footer .page:after { content: "Página " counter(page) " de " counter(pages); }
+        .top { width: 100%; border-bottom: 2px solid {{ $tenant?->primary_color ?? '#1f4e79' }}; padding-bottom: 8px; margin-bottom: 12px; }
+        .logo { width: 86px; max-height: 48px; object-fit: contain; }
+        .brand { font-size: 15px; font-weight: 700; color: {{ $tenant?->primary_color ?? '#1f4e79' }}; }
+        .muted { color: #65717d; }
+        h1 { text-align: center; font-size: 21px; margin: 16px 0 18px; letter-spacing: .08em; }
+        h2 { font-size: 13px; margin: 14px 0 7px; color: {{ $tenant?->primary_color ?? '#1f4e79' }}; border-bottom: 1px solid #d9e0e7; padding-bottom: 3px; }
+        h3 { font-size: 11.5px; margin: 10px 0 5px; color: #202124; }
+        table { width: 100%; border-collapse: collapse; margin: 5px 0 9px; }
+        th, td { border: 1px solid #d9e0e7; padding: 5px 6px; vertical-align: top; }
+        th { background: #eef3f7; font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: #394650; text-align: left; }
+        .no-border td, .no-border th { border: 0; padding: 0; }
+        .two-col { display: table; width: 100%; table-layout: fixed; }
+        .col { display: table-cell; width: 50%; vertical-align: top; padding-right: 9px; }
+        .pill { display: inline-block; border: 1px solid #cfd6dd; background: #f8fafc; border-radius: 3px; padding: 2px 5px; margin: 0 4px 4px 0; }
         .page-break { page-break-before: always; }
-        .sign { height: 58px; border-bottom: 1px solid #667085; margin-bottom: 4px; text-align: center; }
-        .qr { width: 110px; height: 110px; }
-        .footer { position: fixed; bottom: -11mm; left: 0; right: 0; font-size: 9px; color: #667085; border-top: 1px solid #d9e2ec; padding-top: 4px; }
+        .avoid-break { page-break-inside: avoid; }
+        .section-title { font-weight: 700; color: #111827; }
+        .photo-grid { margin-top: 4px; }
+        .photo-box { display: inline-block; width: 31.5%; margin: 0 1% 8px 0; vertical-align: top; page-break-inside: avoid; }
+        .photo { width: 100%; height: 108px; object-fit: cover; border: 1px solid #cfd6dd; }
+        .caption { font-size: 8.6px; color: #59636e; margin-top: 2px; }
+        .video-box { border: 1px solid #cfd6dd; background: #f8fafc; padding: 8px; margin: 0 0 7px; }
+        .play { display: inline-block; border-left: 12px solid {{ $tenant?->primary_color ?? '#1f4e79' }}; border-top: 8px solid transparent; border-bottom: 8px solid transparent; width: 0; height: 0; margin-right: 6px; vertical-align: middle; }
+        .sign { height: 54px; border-bottom: 1px solid #59636e; text-align: center; margin-bottom: 3px; }
+        .qr { width: 112px; height: 112px; border: 1px solid #d9e0e7; padding: 3px; }
+        .tiny { font-size: 8.8px; }
+        ol { margin: 5px 0 6px 17px; padding: 0; }
+        p { margin: 4px 0 7px; }
     </style>
 </head>
 <body>
+@php
+    $imovel = $vistoria->contrato?->imovel ?: $vistoria->imovel;
+    $tenantName = $tenant?->name ?? $tenant?->razao_social ?? 'Imobiliária';
+    $tenantPhone = $tenant?->contact_phone ?? '';
+    $tenantEmail = $tenant?->contact_email ?? '';
+    $numero = $vistoria->codigo ?: '#'.$vistoria->id;
+    $tipo = ucfirst(str_replace(['_', '-'], ' ', $vistoria->tipo_vistoria ?: $vistoria->tipo ?: 'entrada'));
+    $dataVistoria = $vistoria->data_inicio ?: $vistoria->data_vistoria ?: $vistoria->data_agendada;
+    $endereco = collect([
+        $imovel->logradouro ?? $vistoria->imovel_livre['logradouro'] ?? null,
+        $imovel->bairro ?? $vistoria->imovel_livre['bairro'] ?? null,
+        $imovel->cidade ?? $vistoria->imovel_livre['cidade'] ?? null,
+        $imovel->estado ?? $vistoria->imovel_livre['estado'] ?? null,
+    ])->filter()->implode(' - ');
+    $criterios = $vistoria->criterios_avaliacao_json ?: [
+        ['titulo' => 'NOVO', 'texto' => 'Nunca foi utilizado ou imóvel novo.'],
+        ['titulo' => 'BOM', 'texto' => 'Apresenta pouco desgaste.'],
+        ['titulo' => 'REGULAR', 'texto' => 'Apresenta sinais de desgastes aparentes.'],
+        ['titulo' => 'MAU', 'texto' => 'Apresenta grandes sinais de deterioração.'],
+    ];
+    $criteriosPintura = $vistoria->criterios_pintura_json ?: [
+        ['titulo' => 'Pintura NOVA', 'texto' => 'Pintura recente, sem manchas, falhas ou marcas.'],
+        ['titulo' => 'Pintura em BOM estado de conservação', 'texto' => 'Pintura com pequenas manchas, falhas de acabamento, coberturas, recortes e uso.'],
+        ['titulo' => 'Pintura em estado REGULAR', 'texto' => 'Pintura com manchas, furos, falhas, descascamentos ou sinais evidentes de uso.'],
+    ];
+    $criteriosLimpeza = $vistoria->criterios_limpeza_json ?: [
+        ['titulo' => 'Imóvel limpo', 'texto' => 'Imóvel faxinado recentemente, sem poeiras ou vestígios relevantes de sujeira.'],
+        ['titulo' => 'Imóvel com poeira superficial', 'texto' => 'Imóvel fechado por algum tempo, com poeira em vidros e superfícies.'],
+        ['titulo' => 'Imóvel sujo', 'texto' => 'Poeira ou sujeira em banheiros, rejuntes, lixos, restos de obras ou áreas internas.'],
+    ];
+@endphp
+
 <div class="footer">
-    {{ $tenant->name ?? 'Imobiliária' }} | Gerado em {{ $geradoEm->format('d/m/Y H:i') }} | Vistoria {{ $vistoria->codigo ?? '#'.$vistoria->id }}
+    {{ $tenantName }} | Gerado em {{ url('/vistorias') }} no dia {{ $geradoEm->format('d/m/Y') }} às {{ $geradoEm->format('H:i:s') }}
+    <span style="float:right;"><span class="page"></span> | Vistoria: {{ $numero }}</span>
 </div>
 
-<div class="header">
-    <div class="brand">{{ $tenant->name ?? 'Imobiliária' }}</div>
-    <div class="muted">{{ $tenant->contact_phone ?? '' }} {{ $tenant->contact_email ? ' | '.$tenant->contact_email : '' }}</div>
-</div>
+<table class="top no-border">
+    <tr>
+        <td style="width: 100px;">
+            @if($tenantLogo)
+                <img class="logo" src="{{ $tenantLogo }}" alt="">
+            @endif
+        </td>
+        <td>
+            <div class="brand">{{ $tenantName }}</div>
+            <div class="muted">{{ collect([$tenantPhone, $tenantEmail])->filter()->implode(' | ') }}</div>
+            @if($tenant?->creci || $tenant?->cnpj)
+                <div class="muted tiny">{{ collect([$tenant?->creci ? 'CRECI '.$tenant->creci : null, $tenant?->cnpj ? 'CNPJ '.$tenant->cnpj : null])->filter()->implode(' | ') }}</div>
+            @endif
+        </td>
+    </tr>
+</table>
 
 <h1>TERMO DE VISTORIA</h1>
 
 <h2>Dados da Vistoria</h2>
 <table>
     <tr>
-        <th>Número</th><td>{{ $vistoria->codigo ?? '#'.$vistoria->id }}</td>
-        <th>Tipo</th><td>{{ ucfirst(str_replace('_', ' ', $vistoria->tipo ?? 'entrada')) }}</td>
+        <th>Data</th><th>Vistoriador</th><th>Tipo</th>
     </tr>
     <tr>
-        <th>Status</th><td>{{ ucfirst(str_replace('_', ' ', $vistoria->status ?? '')) }}</td>
-        <th>Data/Hora</th><td>{{ optional($vistoria->data_vistoria ?: $vistoria->data_agendada)->format('d/m/Y H:i') }}</td>
-    </tr>
-    <tr>
-        <th>Vistoriador</th><td colspan="3">{{ $vistoria->responsavel->nome ?? implode(', ', $vistoria->vistoriadores ?? []) }}</td>
+        <td>{{ optional($dataVistoria)->format('d/m/Y H:i:s') ?: '-' }}</td>
+        <td>{{ $vistoria->responsavel->nome ?? implode(', ', $vistoria->vistoriadores ?? []) ?: '-' }}</td>
+        <td>{{ $tipo }}</td>
     </tr>
 </table>
 
-<h2>Dados do Imóvel</h2>
-@php($imovel = $vistoria->contrato?->imovel ?: $vistoria->imovel)
+<h2>Imóvel</h2>
 <table>
     <tr><th>Identificação</th><td>{{ $imovel->titulo ?? $vistoria->imovel_livre['titulo'] ?? $imovel->codigo ?? 'Imóvel informado na vistoria' }}</td></tr>
-    <tr><th>Endereço</th><td>{{ collect([$imovel->logradouro ?? $vistoria->imovel_livre['logradouro'] ?? null, $imovel->bairro ?? $vistoria->imovel_livre['bairro'] ?? null, $imovel->cidade ?? $vistoria->imovel_livre['cidade'] ?? null, $imovel->estado ?? $vistoria->imovel_livre['estado'] ?? null])->filter()->implode(', ') }}</td></tr>
-    <tr><th>Metragem</th><td>{{ $vistoria->metragem ?: $imovel->area_total ?? '-' }} m²</td></tr>
-    <tr><th>Mobiliado</th><td>{{ $vistoria->mobiliado ? 'Sim' : 'Não' }}</td></tr>
+    <tr><th>Endereço</th><td>{{ $endereco ?: '-' }}</td></tr>
+    <tr>
+        <th>Metragem</th><td>{{ $vistoria->metragem ?: $imovel->area_total ?? '-' }} m²</td>
+    </tr>
+    <tr><th>Mobiliado</th><td>{{ $vistoria->mobiliado ? 'SIM' : 'NÃO' }}</td></tr>
 </table>
 
-<h2>Partes</h2>
+<h2>Pessoas (partes)</h2>
 <table>
     <tr><th>Nome</th><th>Função</th><th>Documento</th><th>Contato</th></tr>
     @forelse($vistoria->partes as $parte)
         <tr>
             <td>{{ $parte->nome }}</td>
-            <td>{{ ucfirst($parte->funcao) }}</td>
-            <td>{{ $parte->documento }}</td>
-            <td>{{ collect([$parte->email, $parte->telefone])->filter()->implode(' | ') }}</td>
+            <td>{{ strtoupper(str_replace('_', ' ', $parte->funcao)) }}</td>
+            <td>{{ $parte->documento ?: '-' }}</td>
+            <td>{{ collect([$parte->email, $parte->telefone])->filter()->implode(' | ') ?: '-' }}</td>
         </tr>
     @empty
         @foreach(($vistoria->pessoas ?? []) as $nome)
-            <tr><td>{{ $nome }}</td><td>Parte</td><td></td><td></td></tr>
+            <tr><td>{{ $nome }}</td><td>PARTE</td><td>-</td><td>-</td></tr>
         @endforeach
-    @endforelse
-</table>
-
-<h2>Introdução e Critérios</h2>
-<p>{{ $vistoria->introducao_texto ?: 'A presente vistoria descreve o estado aparente do imóvel na data registrada, com avaliação visual de ambientes, itens, chaves, mídias e inconformidades.' }}</p>
-<p><strong>Critérios:</strong> Novo, Bom, Regular, Mau e Não aplicável. Pintura e limpeza seguem os mesmos parâmetros quando informados.</p>
-<p><strong>Contestação:</strong> o prazo é de {{ $vistoria->prazo_contestacao_dias ?: 5 }} dia(s), até {{ optional($vistoria->data_limite_contestacao)->format('d/m/Y H:i') ?: 'data não definida' }}.</p>
-
-<div class="page-break"></div>
-<h2>Chaves e Observações</h2>
-<table>
-    <tr><th>Tipo</th><th>Quantidade</th><th>Estado</th><th>Observações</th></tr>
-    @forelse($vistoria->chaves as $chave)
-        <tr><td>{{ $chave->tipo }}</td><td>{{ $chave->quantidade }}</td><td>{{ $chave->estado }}</td><td>{{ $chave->observacoes }}</td></tr>
-    @empty
-        <tr><td colspan="4">Nenhuma chave registrada.</td></tr>
-    @endforelse
-</table>
-<p>{{ $vistoria->observacoes_gerais ?: $vistoria->observacoes }}</p>
-
-@foreach($vistoria->ambientes as $ambiente)
-    <div class="page-break"></div>
-    <h2>{{ $ambiente->nome }}</h2>
-    <p>
-        <span class="badge">Estado: {{ $ambiente->estado_geral ?: '-' }}</span>
-        <span class="badge">Pintura: {{ $ambiente->pintura_estado ?: '-' }}</span>
-        <span class="badge">Limpeza: {{ $ambiente->limpeza_estado ?: '-' }}</span>
-    </p>
-    <p>{{ $ambiente->observacoes }}</p>
-
-    <h3>Itens</h3>
-    <table>
-        <tr><th>Item</th><th>Estado</th><th>Observação</th><th>Inconformidade</th></tr>
-        @forelse($ambiente->itens as $item)
-            <tr><td>{{ $item->nome }}</td><td>{{ $item->estado }}</td><td>{{ $item->observacoes }}</td><td>{{ $item->possui_inconformidade ? 'Sim' : 'Não' }}</td></tr>
-        @empty
-            <tr><td colspan="4">Nenhum item registrado.</td></tr>
-        @endforelse
-    </table>
-
-    <h3>Inconformidades</h3>
-    @forelse($ambiente->inconformidades as $inc)
-        <p><strong>{{ ucfirst($inc->severidade) }}:</strong> {{ $inc->descricao }}</p>
-    @empty
-        <p>Nenhuma inconformidade registrada neste ambiente.</p>
-    @endforelse
-
-    <h3>Fotos e vídeos</h3>
-    @forelse($ambiente->midias as $midia)
-        @if(str_starts_with((string) $midia->mime_type, 'image/'))
-            <img class="photo" src="{{ public_path('storage/'.$midia->path_original) }}" alt="">
-        @else
-            <p><strong>{{ strtoupper($midia->tipo) }}:</strong> {{ $midia->legenda ?: basename($midia->path_original) }}</p>
+        @if(empty($vistoria->pessoas))
+            <tr><td colspan="4">Nenhuma parte cadastrada.</td></tr>
         @endif
-    @empty
-        <p>Nenhuma mídia vinculada ao ambiente.</p>
     @endforelse
+</table>
+
+<h2>Introdução</h2>
+<p>{{ $vistoria->introducao_texto ?: 'As informações constantes neste relatório trazem uma descrição fiel do atual estado aparente do imóvel vistoriado. Além das informações escritas, as fotos, vídeos e anexos servem como prova da vistoria realizada e da condição do imóvel.' }}</p>
+
+<h2>Parâmetros de Avaliação / Condição do Imóvel / Estado</h2>
+@foreach($criterios as $criterio)
+    <p><strong>{{ $criterio['titulo'] ?? '' }}:</strong> {{ $criterio['texto'] ?? '' }}</p>
 @endforeach
 
 <div class="page-break"></div>
+<h2>Chaves</h2>
+@forelse($vistoria->chaves as $idx => $chave)
+    <div class="avoid-break">
+        <p><strong>{{ $idx + 1 }}. {{ ucfirst(str_replace('_', ' ', $chave->tipo)) }}:</strong></p>
+        <p>{{ ucfirst($chave->estado ?: 'estado não informado') }} &nbsp; <strong>Quantidade:</strong> {{ $chave->quantidade ?: 0 }}</p>
+        @if($chave->observacoes)<p><strong>Observação:</strong> {{ $chave->observacoes }}</p>@endif
+    </div>
+@empty
+    <p>Nenhuma chave registrada.</p>
+@endforelse
+
+<h2>Inconformidades Gerais</h2>
+@forelse($vistoria->inconformidades->whereNull('ambiente_id') as $idx => $inc)
+    <p><strong>{{ $idx + 1 }}.</strong> {{ $inc->descricao }} <span class="muted">({{ ucfirst($inc->severidade ?: 'media') }})</span></p>
+@empty
+    <p>Nenhuma inconformidade geral registrada.</p>
+@endforelse
+
+<h2>Critérios de Avaliação de Pintura</h2>
+@foreach($criteriosPintura as $criterio)
+    <p><strong>{{ $criterio['titulo'] ?? '' }}:</strong> {{ $criterio['texto'] ?? '' }}</p>
+@endforeach
+
+<h2>Critérios de Avaliação da Limpeza</h2>
+@foreach($criteriosLimpeza as $criterio)
+    <p><strong>{{ $criterio['titulo'] ?? '' }}:</strong> {{ $criterio['texto'] ?? '' }}</p>
+@endforeach
+
+<h2>Contestação</h2>
+<p>Na eventualidade de encontrar incompatibilidades no relatório referente à condição do imóvel no momento da vistoria, é possível abrir CONTESTAÇÃO, desde que seguidas as diretrizes abaixo:</p>
+<ol>
+    <li>O prazo para apresentar a contestação é de {{ $vistoria->prazo_contestacao_dias ?: 5 }} dia(s) a partir da data da vistoria.</li>
+    <li>Aponte especificamente a(s) incompatibilidade(s) identificada(s) por escrito.</li>
+    <li>Anexe foto(s) ou vídeo(s) que comprovem a(s) incompatibilidade(s) identificada(s).</li>
+    <li>Não serão aceitas contestações fora do prazo.</li>
+</ol>
+<p><strong>Data limite:</strong> {{ optional($vistoria->data_limite_contestacao)->format('d/m/Y H:i') ?: 'não definida' }}</p>
+
+<h2>Observações</h2>
+<p>{{ $vistoria->observacoes_gerais ?: $vistoria->observacoes ?: 'Sem observações gerais.' }}</p>
+
+<div class="page-break"></div>
+<h2>Ambientes</h2>
+@forelse($vistoria->ambientes as $ambienteIndex => $ambiente)
+    <div class="avoid-break">
+        <h3>{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}</h3>
+        <p>
+            <span class="pill">Estado: {{ $ambiente->estado_geral ?: '-' }}</span>
+            <span class="pill">Pintura: {{ $ambiente->pintura_estado ?: '-' }}</span>
+            <span class="pill">Limpeza: {{ $ambiente->limpeza_estado ?: '-' }}</span>
+        </p>
+        @if($ambiente->observacoes)<p>{{ $ambiente->observacoes }}</p>@endif
+        <p class="section-title">Inconformidade:</p>
+        @forelse($ambiente->inconformidades as $idx => $inc)
+            <p>{{ $idx + 1 }}. {{ $inc->descricao }} <span class="muted">({{ ucfirst($inc->severidade ?: 'media') }})</span></p>
+        @empty
+            <p>Nenhuma inconformidade registrada neste ambiente.</p>
+        @endforelse
+    </div>
+
+    @if($ambiente->itens->count())
+        <table>
+            <tr><th>Item</th><th>Estado</th><th>Observação</th><th>Inconf.</th></tr>
+            @foreach($ambiente->itens as $item)
+                <tr>
+                    <td>{{ $item->nome }}</td>
+                    <td>{{ strtoupper(str_replace('_', ' ', $item->estado ?: '-')) }}</td>
+                    <td>{{ $item->observacoes ?: $item->descricao ?: '-' }}</td>
+                    <td>{{ $item->possui_inconformidade ? 'Sim' : 'Não' }}</td>
+                </tr>
+            @endforeach
+        </table>
+    @endif
+
+    @if($ambiente->midias->count())
+        <div class="photo-grid">
+            @foreach($ambiente->midias as $midiaIndex => $midia)
+                @php($src = $midia->path_thumb && \Illuminate\Support\Facades\Storage::disk('public')->exists($midia->path_thumb) ? $midia->path_thumb : $midia->path_original)
+                @if(str_starts_with((string) $midia->mime_type, 'image/') && \Illuminate\Support\Facades\Storage::disk('public')->exists($src))
+                    <div class="photo-box">
+                        <img class="photo" src="{{ public_path('storage/'.$src) }}" alt="">
+                        <div class="caption">{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}<br>{{ optional($midia->created_at)->format('d/m/y H:i:s') }} {{ $midia->legenda ? ' - '.$midia->legenda : '' }}</div>
+                    </div>
+                @else
+                    <div class="video-box">
+                        <span class="play"></span><strong>{{ strtoupper($midia->tipo ?: 'MÍDIA') }}</strong>
+                        <div class="caption">{{ $midia->legenda ?: basename($midia->path_original) }} | {{ optional($midia->created_at)->format('d/m/y H:i:s') }}</div>
+                    </div>
+                @endif
+            @endforeach
+        </div>
+    @else
+        <p class="muted">Nenhuma foto ou vídeo vinculado a este ambiente.</p>
+    @endif
+@empty
+    <p>Nenhum ambiente cadastrado.</p>
+@endforelse
+
+<div class="page-break"></div>
 <h2>Termos de Responsabilidade</h2>
-<p>As partes declaram ciência de que este termo reflete o estado aparente do imóvel na data da vistoria, podendo contestar divergências no prazo informado. Alterações posteriores, mau uso, ausência de comunicação ou danos não registrados deverão ser avaliados conforme contrato e legislação aplicável.</p>
+<p>As partes declaram ciência de que este termo reflete o estado aparente do imóvel na data da vistoria, podendo contestar divergências no prazo informado. Alterações posteriores, mau uso, ausência de comunicação, danos não registrados ou incompatibilidades sem comprovação serão avaliados conforme contrato e legislação aplicável.</p>
+<p>As mídias vinculadas a este termo integram o laudo e podem ser acessadas por QR Code ou link público protegido por token.</p>
 
 <h2>Assinaturas</h2>
 <table>
-    <tr><th>Parte</th><th>Função</th><th>Assinatura</th></tr>
+    <tr><th>Nome</th><th>Documento</th><th>Função</th><th>Assinatura</th></tr>
     @forelse($vistoria->partes as $parte)
         <tr>
-            <td>{{ $parte->nome }}<br><span class="muted">{{ $parte->documento }}</span></td>
-            <td>{{ ucfirst($parte->funcao) }}</td>
+            <td>{{ $parte->nome }}</td>
+            <td>{{ $parte->documento ?: '-' }}</td>
+            <td>{{ strtoupper(str_replace('_', ' ', $parte->funcao)) }}</td>
             <td>
                 <div class="sign">
-                    @if($parte->assinatura_path)
-                        <img src="{{ public_path('storage/'.$parte->assinatura_path) }}" style="max-height:54px; max-width:220px;">
+                    @if($parte->assinatura_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($parte->assinatura_path))
+                        <img src="{{ public_path('storage/'.$parte->assinatura_path) }}" style="max-height:50px; max-width:190px;">
                     @endif
                 </div>
-                {{ $parte->assinou ? 'Assinado em '.optional($parte->data_assinatura)->format('d/m/Y H:i') : 'Pendente' }}
+                <span class="tiny">{{ $parte->assinou ? 'Assinado em '.optional($parte->data_assinatura)->format('d/m/Y H:i') : 'Pendente de assinatura' }}</span>
             </td>
         </tr>
     @empty
-        <tr><td colspan="3">Nenhuma parte de assinatura cadastrada.</td></tr>
+        <tr><td colspan="4">Nenhuma parte de assinatura cadastrada.</td></tr>
     @endforelse
 </table>
 
 <div class="page-break"></div>
-<h2>Acesso às Mídias e Contestação</h2>
-<div class="grid">
+<h2>Página Final - Acesso às Mídias e Contestação</h2>
+<div class="two-col">
     <div class="col">
-        <h3>Mídias da vistoria</h3>
+        <h3>QR Code para mídias</h3>
         <img class="qr" src="{{ $midiasQrUrl }}" alt="QR mídias">
-        <p>{{ $midiasUrl }}</p>
+        <p class="tiny">{{ $midiasUrl }}</p>
     </div>
     <div class="col">
-        <h3>Contestação</h3>
+        <h3>QR Code para contestação</h3>
         <img class="qr" src="{{ $contestacaoQrUrl }}" alt="QR contestação">
-        <p>{{ $contestacaoUrl }}</p>
+        <p class="tiny">{{ $contestacaoUrl }}</p>
     </div>
 </div>
-<p class="muted">Número da vistoria: {{ $vistoria->codigo ?? '#'.$vistoria->id }} | Gerado em {{ $geradoEm->format('d/m/Y H:i') }}</p>
+<table>
+    <tr><th>Número da vistoria</th><td>{{ $numero }}</td></tr>
+    <tr><th>Data de geração</th><td>{{ $geradoEm->format('d/m/Y H:i:s') }}</td></tr>
+    <tr><th>Hash do PDF anterior</th><td>{{ $vistoria->hash_pdf ?: 'Primeira geração' }}</td></tr>
+</table>
 </body>
 </html>

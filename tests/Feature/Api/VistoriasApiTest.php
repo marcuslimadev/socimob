@@ -363,4 +363,55 @@ class VistoriasApiTest extends BackendFeatureTestCase
             'texto' => 'Nova tentativa fora do prazo.',
         ])->assertStatus(422);
     }
+
+    public function test_it_generates_professional_laudo_pdf_and_exposes_download(): void
+    {
+        Storage::fake('public');
+
+        $tenant = $this->createTenant([
+            'domain' => 'pdf.local',
+            'slug' => 'pdf',
+            'name' => 'Imobiliária PDF',
+        ]);
+        $user = $this->createUser($tenant);
+
+        $vistoria = Vistoria::query()->create([
+            'tenant_id' => $tenant->id,
+            'codigo' => 'VST-PDF',
+            'status' => 'finalizada',
+            'tipo' => 'entrada',
+            'cliente_nome' => 'Cliente do Laudo',
+            'observacoes_gerais' => 'Apartamento entregue com pintura nova.',
+            'link_publico_midias_token' => str_repeat('m', 80),
+            'link_contestacao_token' => str_repeat('n', 80),
+            'data_limite_contestacao' => now()->addDays(10),
+        ]);
+
+        $ambiente = $vistoria->ambientes()->create([
+            'nome' => 'Sala estar / jantar',
+            'estado_geral' => 'bom',
+            'pintura_estado' => 'nova',
+            'limpeza_estado' => 'limpo',
+        ]);
+        $ambiente->itens()->create(['nome' => 'Piso', 'estado' => 'regular', 'possui_inconformidade' => true]);
+        $vistoria->inconformidades()->create([
+            'ambiente_id' => $ambiente->id,
+            'descricao' => 'Desgaste em duas cerâmicas do piso.',
+            'severidade' => 'media',
+        ]);
+        $vistoria->chaves()->create(['tipo' => 'comum', 'quantidade' => 7, 'estado' => 'bom']);
+
+        $response = $this->postJson("/api/vistorias/{$vistoria->id}/gerar-pdf", [], $this->adminHeaders($user, $tenant));
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('vistoria.codigo', 'VST-PDF');
+
+        $pdfPath = $response->json('vistoria.pdf_path');
+        $this->assertNotEmpty($pdfPath);
+        Storage::disk('public')->assertExists($pdfPath);
+
+        $this->get("/api/vistorias/{$vistoria->id}/download-pdf", $this->adminHeaders($user, $tenant))
+            ->assertOk();
+    }
 }
