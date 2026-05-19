@@ -28,6 +28,7 @@ export default function VistoriaExecucaoWizard() {
   const [savingMedia, setSavingMedia] = useState(false);
   const [savingComment, setSavingComment] = useState(false);
   const [gerandoLaudo, setGerandoLaudo] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [vistoria, setVistoria] = useState<Vistoria | null>(null);
   const [comentario, setComentario] = useState('');
   const [comodo, setComodo] = useState('');
@@ -142,13 +143,21 @@ export default function VistoriaExecucaoWizard() {
     return () => window.clearTimeout(timer);
   }, [comentario, step, savingComment]);
 
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) window.URL.revokeObjectURL(pdfUrl);
+    };
+  }, [pdfUrl]);
+
   const abrirPdf = async () => {
     if (!id) return;
     const response = await api.get(`/vistorias/${id}/download-pdf`, { responseType: 'blob' });
     const blob = new Blob([response.data], { type: response.headers?.['content-type'] || 'application/pdf' });
     const url = window.URL.createObjectURL(blob);
-    window.open(url, '_blank', 'noopener,noreferrer');
-    window.setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+    setPdfUrl((previous) => {
+      if (previous) window.URL.revokeObjectURL(previous);
+      return url;
+    });
   };
 
   const gerarAbrirLaudo = async () => {
@@ -159,7 +168,7 @@ export default function VistoriaExecucaoWizard() {
         await api.post(`/vistorias/${id}/finalizar`);
       }
       await api.post(`/vistorias/${id}/gerar-pdf`);
-      toast.success('Laudo gerado. Abrindo PDF...');
+      toast.success('Laudo gerado.');
       await refresh();
       await abrirPdf();
     } catch (e: any) {
@@ -590,7 +599,7 @@ export default function VistoriaExecucaoWizard() {
                   </section>
                   <button onClick={gerarAbrirLaudo} disabled={gerandoLaudo || !canAdvance} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white disabled:opacity-50">
                     {gerandoLaudo ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
-                    {gerandoLaudo ? 'Gerando laudo...' : isFinalizada ? 'Gerar e abrir laudo PDF' : 'Concluir e abrir laudo PDF'}
+                    {gerandoLaudo ? 'Gerando laudo...' : isFinalizada ? 'Gerar e visualizar laudo' : 'Concluir e visualizar laudo'}
                   </button>
                 </div>
               )}
@@ -605,6 +614,27 @@ export default function VistoriaExecucaoWizard() {
           )}
         </div>
       </div>
+      {pdfUrl ? (
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/95">
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Laudo da vistoria</p>
+              <p className="text-xs text-muted-foreground">{vistoria?.codigo || `Vistoria #${id}`}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPdfUrl((previous) => {
+                if (previous) window.URL.revokeObjectURL(previous);
+                return null;
+              })}
+              className="rounded-xl border border-white/10 px-4 py-2 text-sm text-foreground"
+            >
+              Fechar
+            </button>
+          </div>
+          <iframe title="Laudo PDF" src={pdfUrl} className="h-full w-full flex-1 bg-white" />
+        </div>
+      ) : null}
     </div>
   );
 }
