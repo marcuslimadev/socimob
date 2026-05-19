@@ -412,12 +412,10 @@
     <div class="col">
         <h3>QRCODE PARA ACESSO ÀS MÍDIAS</h3>
         <img class="qr" src="{{ $midiasQrUrl }}" alt="QR mídias">
-        <p class="tiny">{{ $midiasUrl }}</p>
     </div>
     <div class="col">
         <h3>QRCODE PARA REALIZAR CONTESTAÇÃO</h3>
         <img class="qr" src="{{ $contestacaoQrUrl }}" alt="QR contestação">
-        <p class="tiny">{{ $contestacaoUrl }}</p>
     </div>
 </div>
 <table>
