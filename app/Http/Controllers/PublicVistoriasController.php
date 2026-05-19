@@ -22,8 +22,8 @@ class PublicVistoriasController extends Controller
 
         return view('vistorias.publico.midias', [
             'vistoria' => $vistoria,
-            'midiasUrl' => url('/vistorias/publico/' . $vistoria->link_publico_midias_token . '/midias'),
-            'contestacaoUrl' => url('/vistorias/publico/' . $vistoria->link_contestacao_token . '/contestacao'),
+            'midiasUrl' => url('/api/vistorias/publico/' . $vistoria->link_publico_midias_token . '/midias'),
+            'contestacaoUrl' => url('/api/vistorias/publico/' . $vistoria->link_contestacao_token . '/contestacao'),
         ]);
     }
 
@@ -61,15 +61,15 @@ class PublicVistoriasController extends Controller
         app(VistoriaContestacaoService::class)->receber($vistoria, $data, $request);
 
         return redirect()
-            ->to('/vistorias/publico/' . $token . '/contestacao')
+            ->to('/api/vistorias/publico/' . $token . '/contestacao')
             ->with('success', 'Contestação enviada com sucesso.');
     }
 
-    public function pdf(string $token)
+    public function pdf(Request $request, string $token)
     {
         $vistoria = $this->vistoriaPorMidiasToken($token);
         if (!$vistoria->pdf_path) {
-            $vistoria = app(VistoriaPdfService::class)->gerar($vistoria);
+            $vistoria = app(VistoriaPdfService::class)->gerar($vistoria, $request);
         }
 
         if (!$vistoria->pdf_path || !Storage::disk('public')->exists($vistoria->pdf_path)) {

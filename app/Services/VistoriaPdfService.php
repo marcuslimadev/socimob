@@ -17,8 +17,9 @@ class VistoriaPdfService
         $vistoria->loadMissing(app(VistoriaService::class)->relacoesDetalhe());
 
         $tenant = Tenant::withoutGlobalScopes()->find($vistoria->tenant_id);
-        $midiasUrl = url('/vistorias/publico/' . $vistoria->link_publico_midias_token . '/midias');
-        $contestacaoUrl = url('/vistorias/publico/' . $vistoria->link_contestacao_token . '/contestacao');
+        $publicBaseUrl = $this->publicBaseUrl($request);
+        $midiasUrl = $publicBaseUrl . '/api/vistorias/publico/' . $vistoria->link_publico_midias_token . '/midias';
+        $contestacaoUrl = $publicBaseUrl . '/api/vistorias/publico/' . $vistoria->link_contestacao_token . '/contestacao';
         $tenantLogo = $this->logoPath($tenant);
 
         $pdf = Pdf::loadView('pdfs.vistorias.termo', [
@@ -73,6 +74,15 @@ class VistoriaPdfService
     public function qrUrl(string $url): string
     {
         return 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . rawurlencode($url);
+    }
+
+    private function publicBaseUrl(?Request $request = null): string
+    {
+        if ($request) {
+            return rtrim($request->getSchemeAndHttpHost(), '/');
+        }
+
+        return rtrim((string) config('app.url'), '/');
     }
 
     private function logoPath(?Tenant $tenant): ?string

@@ -306,7 +306,9 @@ class VistoriasController extends Controller
             $conteudo = Storage::disk('public')->get($vistoria->pdf_path);
             return str_contains($conteudo, '/vistorias/publico//midias')
                 || str_contains($conteudo, '/vistorias/publico//contestacao')
-                || str_contains($conteudo, '/vistorias/publico//pdf');
+                || str_contains($conteudo, '/vistorias/publico//pdf')
+                || str_contains($conteudo, 'https://exclusivalarimoveis.com/vistorias/publico/')
+                || str_contains($conteudo, 'http://exclusivalarimoveis.com/vistorias/publico/');
         } catch (\Throwable) {
             return false;
         }
@@ -1021,9 +1023,9 @@ class VistoriasController extends Controller
             'prazo_contestacao_dias' => $vistoria->prazo_contestacao_dias,
             'data_limite_contestacao' => optional($vistoria->data_limite_contestacao)->toIso8601String(),
             'links_publicos' => [
-                'midias' => $vistoria->link_publico_midias_token ? url('/vistorias/publico/' . $vistoria->link_publico_midias_token . '/midias') : null,
-                'contestacao' => $vistoria->link_contestacao_token ? url('/vistorias/publico/' . $vistoria->link_contestacao_token . '/contestacao') : null,
-                'pdf' => $vistoria->link_publico_midias_token ? url('/vistorias/publico/' . $vistoria->link_publico_midias_token . '/pdf') : null,
+                'midias' => $vistoria->link_publico_midias_token ? url('/api/vistorias/publico/' . $vistoria->link_publico_midias_token . '/midias') : null,
+                'contestacao' => $vistoria->link_contestacao_token ? url('/api/vistorias/publico/' . $vistoria->link_contestacao_token . '/contestacao') : null,
+                'pdf' => $vistoria->link_publico_midias_token ? url('/api/vistorias/publico/' . $vistoria->link_publico_midias_token . '/pdf') : null,
             ],
             'pdf_path' => $vistoria->pdf_path,
             'hash_pdf' => $vistoria->hash_pdf,

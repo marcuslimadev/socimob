@@ -24,7 +24,7 @@
         </div>
         <div class="actions">
             <a class="btn" href="{{ $contestacaoUrl }}">Realizar contestação</a>
-            <a class="btn secondary" href="/vistorias/publico/{{ $vistoria->link_publico_midias_token }}/pdf">Baixar laudo PDF</a>
+            <a class="btn secondary" href="/api/vistorias/publico/{{ $vistoria->link_publico_midias_token }}/pdf">Baixar laudo PDF</a>
         </div>
     </section>
 

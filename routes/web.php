@@ -372,6 +372,16 @@ $router->get('/vistorias/publico/{token}/midias', 'App\Http\Controllers\PublicVi
 $router->get('/vistorias/publico/{token}/contestacao', 'App\Http\Controllers\PublicVistoriasController@contestacao');
 $router->post('/vistorias/publico/{token}/contestacao', 'App\Http\Controllers\PublicVistoriasController@enviarContestacao');
 $router->get('/vistorias/publico/{token}/pdf', 'App\Http\Controllers\PublicVistoriasController@pdf');
+$router->get('/api/vistorias/publico/midias', 'App\Http\Controllers\PublicVistoriasController@linkInvalido');
+$router->get('/api/vistorias/publico//midias', 'App\Http\Controllers\PublicVistoriasController@linkInvalido');
+$router->get('/api/vistorias/publico/contestacao', 'App\Http\Controllers\PublicVistoriasController@linkInvalido');
+$router->get('/api/vistorias/publico//contestacao', 'App\Http\Controllers\PublicVistoriasController@linkInvalido');
+$router->get('/api/vistorias/publico/pdf', 'App\Http\Controllers\PublicVistoriasController@linkInvalido');
+$router->get('/api/vistorias/publico//pdf', 'App\Http\Controllers\PublicVistoriasController@linkInvalido');
+$router->get('/api/vistorias/publico/{token}/midias', 'App\Http\Controllers\PublicVistoriasController@midias');
+$router->get('/api/vistorias/publico/{token}/contestacao', 'App\Http\Controllers\PublicVistoriasController@contestacao');
+$router->post('/api/vistorias/publico/{token}/contestacao', 'App\Http\Controllers\PublicVistoriasController@enviarContestacao');
+$router->get('/api/vistorias/publico/{token}/pdf', 'App\Http\Controllers\PublicVistoriasController@pdf');
 
 $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-auth']], function () use ($router) {
 
