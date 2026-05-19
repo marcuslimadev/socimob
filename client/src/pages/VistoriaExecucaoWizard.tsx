@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useRoute } from 'wouter';
-import { Camera, Check, ChevronRight, Loader2, Plus } from 'lucide-react';
+import { Camera, Check, ChevronRight, FileText, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -22,6 +22,7 @@ export default function VistoriaExecucaoWizard() {
   const [loading, setLoading] = useState(true);
   const [savingMedia, setSavingMedia] = useState(false);
   const [savingComment, setSavingComment] = useState(false);
+  const [gerandoLaudo, setGerandoLaudo] = useState(false);
   const [vistoria, setVistoria] = useState<Vistoria | null>(null);
   const [comentario, setComentario] = useState('');
   const [comodo, setComodo] = useState('');
@@ -79,6 +80,7 @@ export default function VistoriaExecucaoWizard() {
         : step === 2
           ? (vistoria?.comentarios || []).length > 0
           : true;
+  const isFinalizada = ['concluida', 'finalizada'].includes(vistoria?.status || '');
 
   const upload = async (files: FileList | null) => {
     if (!id || !files?.length) return;
@@ -108,18 +110,53 @@ export default function VistoriaExecucaoWizard() {
     }
   };
 
-  const enviarComentario = async () => {
-    if (!id || !comentario.trim()) return;
+  const enviarComentario = async (texto = comentario) => {
+    if (!id || !texto.trim()) return;
     setSavingComment(true);
     try {
-      await api.post(`/vistorias/${id}/comentarios`, { comentario });
+      await api.post(`/vistorias/${id}/comentarios`, { comentario: texto.trim() });
       setComentario('');
-      toast.success('Comentário registrado.');
       await refresh();
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Erro ao salvar comentário.');
     } finally {
       setSavingComment(false);
+    }
+  };
+
+  useEffect(() => {
+    const texto = comentario.trim();
+    if (step !== 2 || texto.length < 3 || savingComment) return;
+    const timer = window.setTimeout(() => {
+      enviarComentario(texto);
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [comentario, step, savingComment]);
+
+  const abrirPdf = async () => {
+    if (!id) return;
+    const response = await api.get(`/vistorias/${id}/download-pdf`, { responseType: 'blob' });
+    const blob = new Blob([response.data], { type: response.headers?.['content-type'] || 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+  };
+
+  const gerarAbrirLaudo = async () => {
+    if (!id) return;
+    setGerandoLaudo(true);
+    try {
+      if (!isFinalizada) {
+        await api.post(`/vistorias/${id}/finalizar`);
+      }
+      await api.post(`/vistorias/${id}/gerar-pdf`);
+      toast.success('Laudo gerado. Abrindo PDF...');
+      await refresh();
+      await abrirPdf();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao gerar laudo PDF.');
+    } finally {
+      setGerandoLaudo(false);
     }
   };
 
@@ -214,6 +251,14 @@ export default function VistoriaExecucaoWizard() {
       <Sidebar />
       <div className="page-shell">
         <div className="max-w-5xl mx-auto space-y-6">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <Link to="/vistorias" className="hover:text-foreground">Vistorias</Link>
+            <ChevronRight size={14} />
+            <span>Execução</span>
+            <ChevronRight size={14} />
+            <span className="text-foreground">{vistoria?.codigo || (id ? `#${id}` : 'Vistoria')}</span>
+          </div>
+
           <div className="page-header">
             <div>
               <h1 className="page-title">Execução de Vistoria</h1>
@@ -222,16 +267,27 @@ export default function VistoriaExecucaoWizard() {
             <Link to={id ? `/vistorias/${id}` : '/vistorias'} className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm">Voltar</Link>
           </div>
 
-          <div className="glass-panel rounded-2xl p-4 flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+          <div className="glass-panel rounded-2xl p-4">
+            <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${((step + 1) / steps.length) * 100}%` }} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
             {steps.map((name, idx) => (
               <div key={name} className="flex items-center gap-2">
-                <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full border ${idx <= step ? 'border-emerald-400 bg-emerald-500/20 text-emerald-200' : 'border-white/15 text-muted-foreground'}`}>
-                  {idx < step ? <Check size={14} /> : idx + 1}
-                </span>
-                <span className={idx === step ? 'text-foreground font-semibold' : 'text-muted-foreground'}>{name}</span>
+                <button
+                  type="button"
+                  onClick={() => idx <= step || started ? setStep(idx) : null}
+                  className="inline-flex items-center gap-2 rounded-xl px-1 py-1"
+                >
+                  <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full border ${idx <= step ? 'border-emerald-400 bg-emerald-500/20 text-emerald-200' : 'border-white/15 text-muted-foreground'}`}>
+                    {idx < step ? <Check size={14} /> : idx + 1}
+                  </span>
+                  <span className={idx === step ? 'text-foreground font-semibold' : 'text-muted-foreground'}>{name}</span>
+                </button>
                 {idx < steps.length - 1 ? <ChevronRight size={16} className="text-muted-foreground" /> : null}
               </div>
             ))}
+            </div>
           </div>
 
           {loading ? <div className="glass-panel rounded-2xl p-10 flex justify-center"><Loader2 className="animate-spin" /></div> : (
@@ -360,8 +416,8 @@ export default function VistoriaExecucaoWizard() {
               {step === 2 && (
                 <div className="space-y-3">
                   <p className="font-semibold text-sm">Passo 3 — comentários técnicos</p>
-                  <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} rows={4} placeholder="Comentário técnico (estado do imóvel, inconformidades, observações)." className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
-                  <button onClick={enviarComentario} disabled={savingComment} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">{savingComment ? 'Salvando...' : 'Registrar comentário'}</button>
+                  <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} rows={4} placeholder="Digite e pare um instante: o comentário será salvo automaticamente." className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
+                  <p className="text-xs text-muted-foreground">{savingComment ? 'Salvando automaticamente...' : comentario.trim().length >= 3 ? 'Auto save ativo.' : 'Comentários técnicos são salvos automaticamente.'}</p>
                   <div className="space-y-2">
                     {(vistoria?.comentarios || []).slice(0, 5).map((c) => (
                       <div key={c.id} className="rounded-lg border border-white/10 bg-black/10 p-2 text-sm">
@@ -374,19 +430,28 @@ export default function VistoriaExecucaoWizard() {
               )}
 
               {step === 3 && (
-                <div className="space-y-3 text-sm">
-                  <p className="font-semibold">Passo 4 — concluir vistoria</p>
-                  <p>- Ambientes cadastrados: <strong>{ambientes.length}</strong></p>
-                  <p>- Evidências anexadas: <strong>{mediaResumoNovo.total}</strong></p>
-                  <p>- Comentários registrados: <strong>{(vistoria?.comentarios || []).length}</strong></p>
-                  <p className="text-muted-foreground">Se estiver tudo ok, conclua a vistoria para encerrar o fluxo operacional.</p>
-                  <button onClick={concluir} className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white">Concluir vistoria</button>
+                <div className="space-y-4 text-sm">
+                  <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-4">
+                    <p className="font-semibold text-emerald-100">Fechamento inteligente</p>
+                    <p className="mt-1 text-xs text-emerald-50/80">Ao finalizar, o sistema gera o laudo PDF e abre o documento automaticamente.</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="text-xs text-muted-foreground">Ambientes</p><p className="mt-1 text-2xl font-semibold">{ambientes.length}</p></div>
+                    <div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="text-xs text-muted-foreground">Evidências</p><p className="mt-1 text-2xl font-semibold">{mediaResumoNovo.total}</p></div>
+                    <div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="text-xs text-muted-foreground">Comentários</p><p className="mt-1 text-2xl font-semibold">{(vistoria?.comentarios || []).length}</p></div>
+                  </div>
+                  <button onClick={gerarAbrirLaudo} disabled={gerandoLaudo || !canAdvance} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white disabled:opacity-50">
+                    {gerandoLaudo ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
+                    {gerandoLaudo ? 'Gerando laudo...' : isFinalizada ? 'Gerar e abrir laudo PDF' : 'Concluir e abrir laudo PDF'}
+                  </button>
                 </div>
               )}
 
               <div className="flex justify-between pt-2">
-                <button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} className="rounded-xl border border-white/10 px-4 py-2 text-sm disabled:opacity-40">Anterior</button>
-                <button onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))} disabled={step === steps.length - 1 || !started || !canAdvance} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Próximo</button>
+                <button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} className="rounded-xl border border-white/10 px-4 py-2 text-sm disabled:opacity-40">Voltar etapa</button>
+                {step < steps.length - 1 ? (
+                  <button onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))} disabled={!started || !canAdvance} className="rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Continuar</button>
+                ) : null}
               </div>
             </div>
           )}
