@@ -383,8 +383,6 @@ class VistoriasApiTest extends BackendFeatureTestCase
             'tipo' => 'entrada',
             'cliente_nome' => 'Cliente do Laudo',
             'observacoes_gerais' => 'Apartamento entregue com pintura nova.',
-            'link_publico_midias_token' => str_repeat('m', 80),
-            'link_contestacao_token' => str_repeat('n', 80),
             'data_limite_contestacao' => now()->addDays(10),
         ]);
 
@@ -419,10 +417,17 @@ class VistoriasApiTest extends BackendFeatureTestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('vistoria.codigo', 'VST-PDF');
 
+        $this->assertNotEmpty($response->json('vistoria.links_publicos.midias'));
+        $this->assertNotEmpty($response->json('vistoria.links_publicos.contestacao'));
+        $this->assertStringNotContainsString('/vistorias/publico//', $response->json('vistoria.links_publicos.midias'));
+        $this->assertStringNotContainsString('/vistorias/publico//', $response->json('vistoria.links_publicos.contestacao'));
+
         $pdfPath = $response->json('vistoria.pdf_path');
         $this->assertNotEmpty($pdfPath);
         Storage::disk('public')->assertExists($pdfPath);
         $this->assertStringContainsString('/Subtype /Image', Storage::disk('public')->get($pdfPath));
+        $this->assertStringNotContainsString('/vistorias/publico//midias', Storage::disk('public')->get($pdfPath));
+        $this->assertStringNotContainsString('/vistorias/publico//contestacao', Storage::disk('public')->get($pdfPath));
 
         $this->get("/api/vistorias/{$vistoria->id}/download-pdf", $this->adminHeaders($user, $tenant))
             ->assertOk();

@@ -13,6 +13,7 @@ class VistoriaPdfService
 {
     public function gerar(Vistoria $vistoria, ?Request $request = null): Vistoria
     {
+        $this->garantirTokensPublicos($vistoria);
         $vistoria->loadMissing(app(VistoriaService::class)->relacoesDetalhe());
 
         $tenant = Tenant::withoutGlobalScopes()->find($vistoria->tenant_id);
@@ -49,6 +50,24 @@ class VistoriaPdfService
         app(VistoriaService::class)->registrarHistorico($vistoria, 'pdf_gerado', 'PDF do termo de vistoria gerado.', $request);
 
         return $vistoria->fresh(app(VistoriaService::class)->relacoesDetalhe());
+    }
+
+    private function garantirTokensPublicos(Vistoria $vistoria): void
+    {
+        $updates = [];
+
+        if (blank($vistoria->link_publico_midias_token)) {
+            $updates['link_publico_midias_token'] = app(VistoriaService::class)->token();
+        }
+
+        if (blank($vistoria->link_contestacao_token)) {
+            $updates['link_contestacao_token'] = app(VistoriaService::class)->token();
+        }
+
+        if ($updates) {
+            $vistoria->forceFill($updates)->save();
+            $vistoria->refresh();
+        }
     }
 
     public function qrUrl(string $url): string
