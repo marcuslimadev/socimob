@@ -31,6 +31,13 @@
         .video-box { border: 1px solid #cfd6dd; background: #f8fafc; padding: 8px; margin: 0 0 7px; }
         .play { display: inline-block; border-left: 12px solid {{ $tenant?->primary_color ?? '#1f4e79' }}; border-top: 8px solid transparent; border-bottom: 8px solid transparent; width: 0; height: 0; margin-right: 6px; vertical-align: middle; }
         .sign { height: 54px; border-bottom: 1px solid #59636e; text-align: center; margin-bottom: 3px; }
+        .signature-grid { width: 100%; border-collapse: separate; border-spacing: 10px 18px; margin-top: 8px; }
+        .signature-grid td { width: 50%; border: 0; vertical-align: bottom; padding: 0 8px 8px; }
+        .signature-box { min-height: 92px; text-align: center; page-break-inside: avoid; }
+        .signature-image { height: 44px; text-align: center; }
+        .signature-image img { max-height: 42px; max-width: 230px; margin: 0 auto; }
+        .signature-line { border-top: 1px solid #202124; padding-top: 5px; font-weight: 700; font-size: 9.5px; }
+        .signature-sub { color: #59636e; font-size: 8.8px; margin-top: 2px; }
         .qr { width: 112px; height: 112px; border: 1px solid #d9e0e7; padding: 3px; }
         .tiny { font-size: 8.8px; }
         ol { margin: 5px 0 6px 17px; padding: 0; }
@@ -286,41 +293,72 @@
 
 <div class="page-break"></div>
 <h2>Termos de Responsabilidade</h2>
-<p>As partes declaram ciência de que este termo reflete o estado aparente do imóvel na data da vistoria, podendo contestar divergências no prazo informado. Alterações posteriores, mau uso, ausência de comunicação, danos não registrados ou incompatibilidades sem comprovação serão avaliados conforme contrato e legislação aplicável.</p>
+<p>Cabe ao CLIENTE e seus FIADORES a inteira responsabilidade por quaisquer danos causados no imóvel no decorrer da locação, os quais serão apurados na vistoria final, devendo às suas expensas serem corrigidos, ficando ainda acertado que só será extinta a relação locatícia após concluídos os reparos necessários.</p>
+<p>Declaramos para os devidos fins que estamos cientes que, se neste imóvel existirem aparelhos eletrodomésticos ou equipamentos não novos, caso venham a apresentar problema ou não estejam funcionando perfeitamente, o LOCADOR fica isento de repor aparelho para substituição, incluindo despesa com descarte, salvo disposição contratual em contrário.</p>
+<p>Para o bom funcionamento e integridade da vida útil dos aparelhos de ar condicionado e aquecedor de água, quando entregues funcionando no início da locação, deverão ser revisados e limpos periodicamente conforme orientação técnica.</p>
+<p>Nós, abaixo assinados, DECLARAMOS, para quaisquer fins de direito, estarmos plenamente de acordo com o presente termo e suas condições. Fluído o prazo de contestação sem manifestação expressa por parte do locatário, subentende-se aceita a vistoria na sua integralidade.</p>
 <p>As mídias vinculadas a este termo integram o laudo e podem ser acessadas por QR Code ou link público protegido por token.</p>
 
 <h2>Assinaturas</h2>
-<table>
-    <tr><th>Nome</th><th>Documento</th><th>Função</th><th>Assinatura</th></tr>
-    @forelse($vistoria->partes as $parte)
-        <tr>
-            <td>{{ $parte->nome }}</td>
-            <td>{{ $parte->documento ?: '-' }}</td>
-            <td>{{ strtoupper(str_replace('_', ' ', $parte->funcao)) }}</td>
-            <td>
-                <div class="sign">
-                    @if($parte->assinatura_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($parte->assinatura_path))
-                        <img src="{{ public_path('storage/'.$parte->assinatura_path) }}" style="max-height:50px; max-width:190px;">
-                    @endif
-                </div>
-                <span class="tiny">{{ $parte->assinou ? 'Assinado em '.optional($parte->data_assinatura)->format('d/m/Y H:i') : 'Pendente de assinatura' }}</span>
-            </td>
-        </tr>
-    @empty
-        <tr><td colspan="4">Nenhuma parte de assinatura cadastrada.</td></tr>
-    @endforelse
-</table>
+@if($vistoria->partes->count())
+    <table class="signature-grid">
+        @foreach($vistoria->partes->chunk(2) as $linha)
+            <tr>
+                @foreach($linha as $parte)
+                    @php($assinaturaSrc = $pdfImageSrc($parte->assinatura_path, 'image/png'))
+                    <td>
+                        <div class="signature-box">
+                            <div class="signature-image">
+                                @if($assinaturaSrc)
+                                    <img src="{{ $assinaturaSrc }}" alt="">
+                                @endif
+                            </div>
+                            <div class="signature-line">{{ $parte->nome }}</div>
+                            <div class="signature-sub">{{ $parte->documento ?: 'Documento não informado' }}</div>
+                            <div class="signature-sub">{{ ucfirst(str_replace('_', ' ', $parte->funcao ?: 'parte')) }}</div>
+                            @if($parte->assinou)
+                                <div class="signature-sub">Assinado em {{ optional($parte->data_assinatura)->format('d/m/Y H:i') }}</div>
+                            @endif
+                        </div>
+                    </td>
+                @endforeach
+                @if($linha->count() === 1)
+                    <td></td>
+                @endif
+            </tr>
+        @endforeach
+    </table>
+@elseif(!empty($vistoria->pessoas))
+    <table class="signature-grid">
+        @foreach(collect($vistoria->pessoas)->chunk(2) as $linha)
+            <tr>
+                @foreach($linha as $nome)
+                    <td>
+                        <div class="signature-box">
+                            <div class="signature-image"></div>
+                            <div class="signature-line">{{ $nome }}</div>
+                            <div class="signature-sub">Parte</div>
+                        </div>
+                    </td>
+                @endforeach
+                @if($linha->count() === 1)<td></td>@endif
+            </tr>
+        @endforeach
+    </table>
+@else
+    <p>Nenhuma parte de assinatura cadastrada.</p>
+@endif
 
 <div class="page-break"></div>
 <h2>Página Final - Acesso às Mídias e Contestação</h2>
 <div class="two-col">
     <div class="col">
-        <h3>QR Code para mídias</h3>
+        <h3>QRCODE PARA ACESSO ÀS MÍDIAS</h3>
         <img class="qr" src="{{ $midiasQrUrl }}" alt="QR mídias">
         <p class="tiny">{{ $midiasUrl }}</p>
     </div>
     <div class="col">
-        <h3>QR Code para contestação</h3>
+        <h3>QRCODE PARA REALIZAR CONTESTAÇÃO</h3>
         <img class="qr" src="{{ $contestacaoQrUrl }}" alt="QR contestação">
         <p class="tiny">{{ $contestacaoUrl }}</p>
     </div>

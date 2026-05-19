@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { Link, useRoute } from 'wouter';
-import { Camera, Check, ChevronRight, FileText, Loader2, Plus } from 'lucide-react';
+import { Camera, Check, ChevronRight, FileText, Loader2, PenLine, Plus, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -11,13 +11,18 @@ type Midia = { id: number; url?: string; mime_type?: string | null; legenda?: st
 type Item = { id: number; nome: string; estado?: string | null; observacoes?: string | null; possui_inconformidade?: boolean };
 type Inconformidade = { id: number; descricao: string; severidade?: string | null; status?: string | null };
 type Ambiente = { id: number; nome: string; estado_geral?: string | null; observacoes?: string | null; itens?: Item[]; midias?: Midia[]; inconformidades?: Inconformidade[] };
-type Vistoria = { id: number; codigo?: string | null; status: string; fotos?: Foto[]; comentarios?: Comentario[]; ambientes?: Ambiente[]; midias?: Midia[] };
+type Parte = { id: number; nome: string; documento?: string | null; funcao?: string | null; assinou?: boolean; data_assinatura?: string | null };
+type Vistoria = { id: number; codigo?: string | null; status: string; fotos?: Foto[]; comentarios?: Comentario[]; ambientes?: Ambiente[]; midias?: Midia[]; partes?: Parte[] };
 
 const steps = ['Início', 'Ambientes e evidências', 'Comentários', 'Fechamento'];
+const ambientesRapidos = ['Sala', 'Cozinha', 'Banho social', 'Quarto 1', 'Quarto 2', 'Área de serviço', 'Garagem'];
+const itensRapidos = ['Porta', 'Piso', 'Parede', 'Pintura', 'Janela', 'Tomadas', 'Luminária', 'Armário', 'Registro', 'Fechadura'];
 
 export default function VistoriaExecucaoWizard() {
   const [, params] = useRoute<{ id: string }>('/vistorias/:id/execucao');
   const fileRef = useRef<HTMLInputElement>(null);
+  const assinaturaCanvasRef = useRef<HTMLCanvasElement>(null);
+  const desenhandoRef = useRef(false);
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [savingMedia, setSavingMedia] = useState(false);
@@ -33,6 +38,8 @@ export default function VistoriaExecucaoWizard() {
   const [itemEstado, setItemEstado] = useState('bom');
   const [inconformidade, setInconformidade] = useState('');
   const [iniciando, setIniciando] = useState(false);
+  const [assinando, setAssinando] = useState(false);
+  const [parteAssinaturaId, setParteAssinaturaId] = useState('');
   const [checkChegada, setCheckChegada] = useState(false);
   const [checkAcesso, setCheckAcesso] = useState(false);
   const [checkEscopo, setCheckEscopo] = useState(false);
@@ -61,6 +68,7 @@ export default function VistoriaExecucaoWizard() {
     };
   }, [vistoria]);
   const ambientes = vistoria?.ambientes || [];
+  const partes = vistoria?.partes || [];
   const ambienteSelecionado = ambientes.find((ambiente) => String(ambiente.id) === selectedAmbiente) || null;
   const fotosDoAmbienteSelecionado = ambienteSelecionado
     ? (vistoria?.fotos || []).filter((foto) => (foto.comodo || '').trim().toLowerCase() === ambienteSelecionado.nome.trim().toLowerCase()).length
@@ -81,6 +89,7 @@ export default function VistoriaExecucaoWizard() {
           ? (vistoria?.comentarios || []).length > 0
           : true;
   const isFinalizada = ['concluida', 'finalizada'].includes(vistoria?.status || '');
+  const parteAssinatura = partes.find((parte) => String(parte.id) === parteAssinaturaId) || partes.find((parte) => !parte.assinou) || partes[0] || null;
 
   const upload = async (files: FileList | null) => {
     if (!id || !files?.length) return;
@@ -160,17 +169,6 @@ export default function VistoriaExecucaoWizard() {
     }
   };
 
-  const concluir = async () => {
-    if (!id) return;
-    try {
-      await api.post(`/vistorias/${id}/finalizar`);
-      toast.success('Vistoria concluída.');
-      await refresh();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Erro ao concluir vistoria.');
-    }
-  };
-
   const iniciarVistoria = async () => {
     if (!id || started) return;
     setIniciando(true);
@@ -186,9 +184,19 @@ export default function VistoriaExecucaoWizard() {
   };
 
   const adicionarAmbiente = async () => {
-    if (!id || !ambienteNome.trim()) return;
+    await criarAmbiente(ambienteNome);
+  };
+
+  const criarAmbiente = async (nomeAmbiente: string) => {
+    if (!id || !nomeAmbiente.trim()) return;
+    const existente = ambientes.find((ambiente) => ambiente.nome.trim().toLowerCase() === nomeAmbiente.trim().toLowerCase());
+    if (existente) {
+      selecionarAmbiente(existente);
+      setAmbienteNome('');
+      return;
+    }
     try {
-      const nome = ambienteNome.trim();
+      const nome = nomeAmbiente.trim();
       const { data } = await api.post(`/vistorias/${id}/ambientes`, { nome, estado_geral: 'bom' });
       const novo = data?.item || data;
       if (novo?.id) {
@@ -204,13 +212,17 @@ export default function VistoriaExecucaoWizard() {
   };
 
   const adicionarItem = async () => {
+    await criarItem(itemNome);
+  };
+
+  const criarItem = async (nomeItem: string) => {
     if (!selectedAmbiente) {
       toast.error('Selecione um ambiente antes de adicionar item.');
       return;
     }
-    if (!id || !itemNome.trim()) return;
+    if (!id || !nomeItem.trim()) return;
     try {
-      await api.post(`/vistorias/${id}/ambientes/${selectedAmbiente}/itens`, { nome: itemNome.trim(), estado: itemEstado });
+      await api.post(`/vistorias/${id}/ambientes/${selectedAmbiente}/itens`, { nome: nomeItem.trim(), estado: itemEstado });
       setItemNome('');
       toast.success('Item adicionado.');
       await refresh();
@@ -245,6 +257,79 @@ export default function VistoriaExecucaoWizard() {
       selecionarAmbiente(ambientes[0]);
     }
   }, [selectedAmbiente, ambientes.length]);
+
+  useEffect(() => {
+    if (!parteAssinaturaId && partes.length) {
+      setParteAssinaturaId(String(partes.find((parte) => !parte.assinou)?.id || partes[0].id));
+    }
+  }, [parteAssinaturaId, partes.length]);
+
+  const assinaturaPoint = (event: PointerEvent<HTMLCanvasElement>) => {
+    const canvas = assinaturaCanvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: ((event.clientX - rect.left) / rect.width) * canvas.width,
+      y: ((event.clientY - rect.top) / rect.height) * canvas.height,
+    };
+  };
+
+  const iniciarAssinatura = (event: PointerEvent<HTMLCanvasElement>) => {
+    const canvas = assinaturaCanvasRef.current;
+    const point = assinaturaPoint(event);
+    if (!canvas || !point) return;
+    desenhandoRef.current = true;
+    canvas.setPointerCapture(event.pointerId);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(point.x, point.y);
+  };
+
+  const desenharAssinatura = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!desenhandoRef.current) return;
+    const canvas = assinaturaCanvasRef.current;
+    const point = assinaturaPoint(event);
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx || !point) return;
+    ctx.lineTo(point.x, point.y);
+    ctx.stroke();
+  };
+
+  const finalizarAssinatura = () => {
+    desenhandoRef.current = false;
+  };
+
+  const limparAssinatura = () => {
+    const canvas = assinaturaCanvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const salvarAssinatura = async () => {
+    if (!id || !parteAssinatura) return;
+    const canvas = assinaturaCanvasRef.current;
+    if (!canvas) return;
+    setAssinando(true);
+    try {
+      await api.post(`/vistorias/${id}/assinaturas`, {
+        parte_id: parteAssinatura.id,
+        assinatura: canvas.toDataURL('image/png'),
+      });
+      toast.success('Assinatura registrada.');
+      limparAssinatura();
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao salvar assinatura.');
+    } finally {
+      setAssinando(false);
+    }
+  };
 
   return (
     <div className="flex">
@@ -304,12 +389,29 @@ export default function VistoriaExecucaoWizard() {
               </div>
 
               {step === 0 && (
-                <div className="space-y-2 text-sm">
-                  <p className="font-semibold">Passo 1 — confirmação de início</p>
-                  <label className="flex items-center gap-2"><input type="checkbox" checked={checkChegada} onChange={(e) => setCheckChegada(e.target.checked)} />Cheguei ao imóvel e confirmei o endereço.</label>
-                  <label className="flex items-center gap-2"><input type="checkbox" checked={checkAcesso} onChange={(e) => setCheckAcesso(e.target.checked)} />Acesso liberado (chaves/porteiro/proprietário).</label>
-                  <label className="flex items-center gap-2"><input type="checkbox" checked={checkEscopo} onChange={(e) => setCheckEscopo(e.target.checked)} />Escopo alinhado (cômodos e itens a vistoriar).</label>
-                  {!started ? <p className="text-amber-300 text-xs">Clique em <strong>Iniciar vistoria</strong> para registrar oficialmente o início.</p> : null}
+                <div className="space-y-4 text-sm">
+                  <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/10 p-4">
+                    <p className="flex items-center gap-2 font-semibold text-cyan-50"><Sparkles size={16} />Checklist inicial</p>
+                    <p className="mt-1 text-xs text-cyan-50/80">Confirme o básico no celular e siga para capturar ambientes, fotos e assinatura.</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {[
+                      ['Endereço confirmado', checkChegada, setCheckChegada],
+                      ['Acesso liberado', checkAcesso, setCheckAcesso],
+                      ['Escopo alinhado', checkEscopo, setCheckEscopo],
+                    ].map(([label, checked, setter]) => (
+                      <button
+                        key={String(label)}
+                        type="button"
+                        onClick={() => (setter as (value: boolean) => void)(!(checked as boolean))}
+                        className={`rounded-2xl border p-4 text-left transition ${(checked as boolean) ? 'border-emerald-400/50 bg-emerald-500/15 text-emerald-100' : 'border-white/10 bg-white/5 text-muted-foreground'}`}
+                      >
+                        <span className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-current">{checked ? <Check size={16} /> : null}</span>
+                        <span className="block font-semibold">{String(label)}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {!started ? <button onClick={iniciarVistoria} disabled={iniciando || !canAdvance} className="w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-black disabled:opacity-50">{iniciando ? 'Iniciando...' : 'Iniciar vistoria'}</button> : null}
                 </div>
               )}
 
@@ -328,7 +430,12 @@ export default function VistoriaExecucaoWizard() {
                       </div>
                       <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-muted-foreground">{ambientes.length} ambiente(s)</span>
                     </div>
-                    <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {ambientesRapidos.map((nome) => (
+                        <button key={nome} type="button" onClick={() => criarAmbiente(nome)} className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground">{nome}</button>
+                      ))}
+                    </div>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
                       <input value={ambienteNome} onChange={(e) => setAmbienteNome(e.target.value)} placeholder="Novo ambiente (Sala, Cozinha...)" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
                       <button onClick={adicionarAmbiente} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"><Plus size={16} />Adicionar ambiente</button>
                     </div>
@@ -379,6 +486,11 @@ export default function VistoriaExecucaoWizard() {
                         <section className="rounded-2xl border border-white/10 bg-black/10 p-4">
                           <p className="text-sm font-semibold">2. Itens avaliados</p>
                           <p className="mt-1 text-xs text-muted-foreground">Exemplos: porta, piso, janela, pintura, tomada.</p>
+                          <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+                            {itensRapidos.map((nome) => (
+                              <button key={nome} type="button" onClick={() => criarItem(nome)} className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs">{nome}</button>
+                            ))}
+                          </div>
                           <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_150px]">
                             <input value={itemNome} onChange={(e) => setItemNome(e.target.value)} placeholder="Item avaliado" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
                             <select value={itemEstado} onChange={(e) => setItemEstado(e.target.value)} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
@@ -440,6 +552,42 @@ export default function VistoriaExecucaoWizard() {
                     <div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="text-xs text-muted-foreground">Evidências</p><p className="mt-1 text-2xl font-semibold">{mediaResumoNovo.total}</p></div>
                     <div className="rounded-xl border border-white/10 bg-black/10 p-3"><p className="text-xs text-muted-foreground">Comentários</p><p className="mt-1 text-2xl font-semibold">{(vistoria?.comentarios || []).length}</p></div>
                   </div>
+                  <section className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="flex items-center gap-2 font-semibold"><PenLine size={16} />Assinaturas</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{partes.filter((parte) => parte.assinou).length} de {partes.length} parte(s) assinada(s).</p>
+                      </div>
+                      {parteAssinatura ? (
+                        <select value={parteAssinaturaId || String(parteAssinatura.id)} onChange={(e) => setParteAssinaturaId(e.target.value)} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm">
+                          {partes.map((parte) => <option key={parte.id} value={parte.id}>{parte.assinou ? '✓ ' : ''}{parte.nome} - {parte.funcao || 'parte'}</option>)}
+                        </select>
+                      ) : null}
+                    </div>
+                    {parteAssinatura ? (
+                      <div className="mt-4 space-y-3">
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-muted-foreground">
+                          <strong className="text-foreground">{parteAssinatura.nome}</strong> · {parteAssinatura.documento || 'sem documento'} · {parteAssinatura.funcao || 'parte'}
+                        </div>
+                        <canvas
+                          ref={assinaturaCanvasRef}
+                          width={720}
+                          height={220}
+                          onPointerDown={iniciarAssinatura}
+                          onPointerMove={desenharAssinatura}
+                          onPointerUp={finalizarAssinatura}
+                          onPointerCancel={finalizarAssinatura}
+                          className="h-44 w-full touch-none rounded-xl border border-white/15 bg-white"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" onClick={salvarAssinatura} disabled={assinando} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{assinando ? 'Salvando...' : 'Salvar assinatura'}</button>
+                          <button type="button" onClick={limparAssinatura} className="rounded-xl border border-white/10 px-4 py-2 text-sm">Limpar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-sm text-muted-foreground">Nenhuma parte cadastrada para assinatura.</p>
+                    )}
+                  </section>
                   <button onClick={gerarAbrirLaudo} disabled={gerandoLaudo || !canAdvance} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white disabled:opacity-50">
                     {gerandoLaudo ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
                     {gerandoLaudo ? 'Gerando laudo...' : isFinalizada ? 'Gerar e abrir laudo PDF' : 'Concluir e abrir laudo PDF'}
