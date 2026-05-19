@@ -422,6 +422,7 @@ class VistoriasApiTest extends BackendFeatureTestCase
         $pdfPath = $response->json('vistoria.pdf_path');
         $this->assertNotEmpty($pdfPath);
         Storage::disk('public')->assertExists($pdfPath);
+        $this->assertStringContainsString('/Subtype /Image', Storage::disk('public')->get($pdfPath));
 
         $this->get("/api/vistorias/{$vistoria->id}/download-pdf", $this->adminHeaders($user, $tenant))
             ->assertOk();

@@ -82,6 +82,10 @@ export default function VistoriaExecucaoWizard() {
 
   const upload = async (files: FileList | null) => {
     if (!id || !files?.length) return;
+    if (!selectedAmbiente) {
+      toast.error('Selecione o ambiente antes de anexar fotos ou vídeos.');
+      return;
+    }
     setSavingMedia(true);
     try {
       for (let i = 0; i < files.length; i++) {
@@ -194,6 +198,17 @@ export default function VistoriaExecucaoWizard() {
     }
   };
 
+  const selecionarAmbiente = (ambiente: Ambiente) => {
+    setSelectedAmbiente(String(ambiente.id));
+    setComodo(ambiente.nome);
+  };
+
+  useEffect(() => {
+    if (!selectedAmbiente && ambientes.length) {
+      selecionarAmbiente(ambientes[0]);
+    }
+  }, [selectedAmbiente, ambientes.length]);
+
   return (
     <div className="flex">
       <Sidebar />
@@ -244,15 +259,15 @@ export default function VistoriaExecucaoWizard() {
 
               {step === 1 && (
                 <div className="space-y-5">
-                  <div>
-                    <p className="font-semibold text-sm">Passo 2 — ambientes e evidências</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Primeiro escolha o ambiente. Depois registre itens, inconformidades e fotos/vídeos dentro dele.</p>
+                  <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/10 p-4">
+                    <p className="font-semibold text-sm">Passo 2 — vistoria por ambiente</p>
+                    <p className="mt-1 text-xs text-cyan-50/80">A ordem agora é simples: crie ou escolha um compartimento, anexe as fotos dele e registre itens/problemas no mesmo painel.</p>
                   </div>
 
                   <section className="rounded-2xl border border-white/10 bg-black/10 p-4">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <p className="text-sm font-semibold">1. Ambientes do imóvel</p>
+                        <p className="text-sm font-semibold">Compartimentos da casa</p>
                         <p className="text-xs text-muted-foreground">Sala, cozinha, quartos, banheiros e outros compartimentos.</p>
                       </div>
                       <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-muted-foreground">{ambientes.length} ambiente(s)</span>
@@ -269,11 +284,14 @@ export default function VistoriaExecucaoWizard() {
                             <button
                               key={ambiente.id}
                               type="button"
-                              onClick={() => { setSelectedAmbiente(String(ambiente.id)); setComodo(ambiente.nome); }}
+                              onClick={() => selecionarAmbiente(ambiente)}
                               className={`rounded-xl border p-3 text-left text-sm transition ${selecionado ? 'border-cyan-400/60 bg-cyan-500/15' : 'border-white/10 bg-white/5 hover:border-white/25'}`}
                             >
-                              <p className="font-semibold">{ambiente.nome}</p>
-                              <p className="mt-1 text-xs text-muted-foreground">{ambiente.itens?.length || 0} item(ns) · {(ambiente.midias?.length || 0)} mídia(s)</p>
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="font-semibold">{ambiente.nome}</p>
+                                {selecionado ? <span className="rounded-full bg-cyan-400/20 px-2 py-0.5 text-[10px] font-semibold text-cyan-100">em edição</span> : null}
+                              </div>
+                              <p className="mt-1 text-xs text-muted-foreground">{ambiente.itens?.length || 0} item(ns) · {(ambiente.midias?.length || 0)} mídia(s) · {ambiente.inconformidades?.length || 0} inconformidade(s)</p>
                             </button>
                           );
                         })}
@@ -285,11 +303,21 @@ export default function VistoriaExecucaoWizard() {
 
                   {ambienteSelecionado ? (
                     <>
-                      <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/10 p-4">
-                        <p className="text-xs uppercase tracking-[0.16em] text-cyan-100/80">Ambiente selecionado</p>
-                        <p className="mt-1 text-lg font-semibold text-cyan-50">{ambienteSelecionado.nome}</p>
-                        <p className="mt-1 text-xs text-cyan-50/80">Tudo abaixo será vinculado a este compartimento e aparecerá agrupado no laudo.</p>
-                      </div>
+                      <section className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.16em] text-cyan-100/80">Registrando em</p>
+                            <p className="mt-1 text-lg font-semibold text-cyan-50">{ambienteSelecionado.nome}</p>
+                          </div>
+                          <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100">sai agrupado no laudo</span>
+                        </div>
+                        <div className="mt-4 grid gap-2 md:grid-cols-[1fr_auto]">
+                          <input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Legenda da foto/vídeo deste ambiente" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
+                          <button onClick={() => fileRef.current?.click()} disabled={savingMedia} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"><Camera size={16} />{savingMedia ? 'Enviando...' : 'Anexar fotos/vídeos'}</button>
+                        </div>
+                        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple className="hidden" onChange={(e) => upload(e.target.files)} />
+                        <p className="mt-3 text-xs text-muted-foreground">Neste ambiente: {(ambienteSelecionado.midias?.length || 0) + fotosDoAmbienteSelecionado} mídia(s). Total da vistoria: {mediaResumoNovo.total} mídia(s) · {mediaResumoNovo.imagens} foto(s) · {mediaResumoNovo.videos} vídeo(s).</p>
+                      </section>
 
                       <div className="grid gap-4 lg:grid-cols-2">
                         <section className="rounded-2xl border border-white/10 bg-black/10 p-4">
@@ -322,16 +350,6 @@ export default function VistoriaExecucaoWizard() {
                         </section>
                       </div>
 
-                      <section className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                        <p className="text-sm font-semibold">4. Fotos e vídeos do ambiente</p>
-                        <p className="mt-1 text-xs text-muted-foreground">As mídias serão salvas em {ambienteSelecionado.nome} e sairão agrupadas por compartimento no PDF.</p>
-                        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
-                          <input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Legenda da evidência" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
-                          <button onClick={() => fileRef.current?.click()} disabled={savingMedia} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"><Camera size={16} />{savingMedia ? 'Enviando...' : 'Anexar fotos/vídeos'}</button>
-                        </div>
-                        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple className="hidden" onChange={(e) => upload(e.target.files)} />
-                        <p className="mt-3 text-xs text-muted-foreground">Neste ambiente: {(ambienteSelecionado.midias?.length || 0) + fotosDoAmbienteSelecionado} mídia(s). Total da vistoria: {mediaResumoNovo.total} mídia(s) · {mediaResumoNovo.imagens} foto(s) · {mediaResumoNovo.videos} vídeo(s).</p>
-                      </section>
                     </>
                   ) : (
                     <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 p-6 text-center text-sm text-muted-foreground">Selecione ou crie um ambiente para liberar itens, inconformidades e fotos.</div>

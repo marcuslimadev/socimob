@@ -28,6 +28,7 @@ class VistoriaPdfService
             'contestacaoUrl' => $contestacaoUrl,
             'midiasQrUrl' => $this->qrUrl($midiasUrl),
             'contestacaoQrUrl' => $this->qrUrl($contestacaoUrl),
+            'pdfImageSrc' => fn (?string $path, ?string $mime = null, ?string $fallbackUrl = null) => $this->pdfImageSrc($path, $mime, $fallbackUrl),
             'geradoEm' => now(),
         ])->setPaper('A4', 'portrait')
             ->setOption([
@@ -73,5 +74,30 @@ class VistoriaPdfService
 
         $publicRelative = ltrim($logo, '/');
         return file_exists(public_path($publicRelative)) ? public_path($publicRelative) : null;
+    }
+
+    private function pdfImageSrc(?string $path, ?string $mime = null, ?string $fallbackUrl = null): ?string
+    {
+        $path = trim((string) $path);
+
+        if ($path !== '') {
+            try {
+                if (Storage::disk('public')->exists($path)) {
+                    $content = Storage::disk('public')->get($path);
+                    if ($content !== '') {
+                        $mime = $mime && Str::startsWith($mime, 'image/') ? $mime : 'image/jpeg';
+                        return 'data:' . $mime . ';base64,' . base64_encode($content);
+                    }
+                }
+            } catch (\Throwable) {
+                // Fallback abaixo tenta URL pública quando o storage local não estiver disponível.
+            }
+        }
+
+        if ($fallbackUrl) {
+            return $fallbackUrl;
+        }
+
+        return $path !== '' ? Storage::disk('public')->url($path) : null;
     }
 }

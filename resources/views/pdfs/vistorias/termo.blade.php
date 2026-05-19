@@ -230,10 +230,13 @@
     @if($ambiente->midias->count() || $fotosLegadas->count())
         <div class="photo-grid">
             @foreach($ambiente->midias as $midiaIndex => $midia)
-                @php($src = $midia->path_thumb && \Illuminate\Support\Facades\Storage::disk('public')->exists($midia->path_thumb) ? $midia->path_thumb : $midia->path_original)
-                @if(str_starts_with((string) $midia->mime_type, 'image/') && \Illuminate\Support\Facades\Storage::disk('public')->exists($src))
+                @php
+                    $srcPath = $midia->path_thumb ?: $midia->path_original;
+                    $src = $pdfImageSrc($srcPath, $midia->mime_type, $midia->url);
+                @endphp
+                @if(str_starts_with((string) $midia->mime_type, 'image/') && $src)
                     <div class="photo-box">
-                        <img class="photo" src="{{ public_path('storage/'.$src) }}" alt="">
+                        <img class="photo" src="{{ $src }}" alt="">
                         <div class="caption">{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}<br>{{ optional($midia->created_at)->format('d/m/y H:i:s') }} {{ $midia->legenda ? ' - '.$midia->legenda : '' }}</div>
                     </div>
                 @else
@@ -244,9 +247,10 @@
                 @endif
             @endforeach
             @foreach($fotosLegadas as $foto)
-                @if($foto->arquivo_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($foto->arquivo_path))
+                @php($fotoSrc = $pdfImageSrc($foto->arquivo_path, $foto->mime_type, $foto->url_signed ?: $foto->url))
+                @if($fotoSrc)
                     <div class="photo-box">
-                        <img class="photo" src="{{ public_path('storage/'.$foto->arquivo_path) }}" alt="">
+                        <img class="photo" src="{{ $fotoSrc }}" alt="">
                         <div class="caption">{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}<br>{{ optional($foto->created_at)->format('d/m/y H:i:s') }} {{ $foto->descricao ? ' - '.$foto->descricao : ($foto->legenda ? ' - '.$foto->legenda : '') }}</div>
                     </div>
                 @endif
@@ -268,9 +272,10 @@
         <p class="muted">Fotos agrupadas pelo compartimento informado na execução da vistoria.</p>
         <div class="photo-grid">
             @foreach($fotosCompartimento as $foto)
-                @if($foto->arquivo_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($foto->arquivo_path))
+                @php($fotoSrc = $pdfImageSrc($foto->arquivo_path, $foto->mime_type, $foto->url_signed ?: $foto->url))
+                @if($fotoSrc)
                     <div class="photo-box">
-                        <img class="photo" src="{{ public_path('storage/'.$foto->arquivo_path) }}" alt="">
+                        <img class="photo" src="{{ $fotoSrc }}" alt="">
                         <div class="caption">{{ $foto->comodo ?: 'Sem compartimento' }}<br>{{ optional($foto->created_at)->format('d/m/y H:i:s') }} {{ $foto->descricao ? ' - '.$foto->descricao : ($foto->legenda ? ' - '.$foto->legenda : '') }}</div>
                     </div>
                 @endif
