@@ -362,6 +362,12 @@ $router->group(['prefix' => 'api/auth'], function () use ($router) {
 // Rotas protegidas (AUTENTICADAS COM TENANT ISOLATION)
 // ===========================
 // CRITICAL: resolve-tenant MUST come before simple-auth to enforce domain-based tenant isolation
+$router->get('/vistorias/publico/midias', 'App\Http\Controllers\PublicVistoriasController@linkInvalido');
+$router->get('/vistorias/publico//midias', 'App\Http\Controllers\PublicVistoriasController@linkInvalido');
+$router->get('/vistorias/publico/contestacao', 'App\Http\Controllers\PublicVistoriasController@linkInvalido');
+$router->get('/vistorias/publico//contestacao', 'App\Http\Controllers\PublicVistoriasController@linkInvalido');
+$router->get('/vistorias/publico/pdf', 'App\Http\Controllers\PublicVistoriasController@linkInvalido');
+$router->get('/vistorias/publico//pdf', 'App\Http\Controllers\PublicVistoriasController@linkInvalido');
 $router->get('/vistorias/publico/{token}/midias', 'App\Http\Controllers\PublicVistoriasController@midias');
 $router->get('/vistorias/publico/{token}/contestacao', 'App\Http\Controllers\PublicVistoriasController@contestacao');
 $router->post('/vistorias/publico/{token}/contestacao', 'App\Http\Controllers\PublicVistoriasController@enviarContestacao');

@@ -277,11 +277,39 @@ class VistoriasController extends Controller
     public function downloadPdf(Request $request, $id)
     {
         $vistoria = $this->applyTenantScope(Vistoria::query(), $request)->find($id);
-        if (!$vistoria || !$vistoria->pdf_path || !Storage::disk('public')->exists($vistoria->pdf_path)) {
+        if (!$vistoria) {
+            return response()->json(['error' => 'Vistoria not found'], 404);
+        }
+
+        if ($this->deveRegenerarPdf($vistoria)) {
+            $vistoria = app(VistoriaPdfService::class)->gerar($vistoria->load($this->detailRelations()), $request);
+        }
+
+        if (!$vistoria->pdf_path || !Storage::disk('public')->exists($vistoria->pdf_path)) {
             return response()->json(['error' => 'PDF not found'], 404);
         }
 
         return Storage::disk('public')->download($vistoria->pdf_path, ($vistoria->codigo ?: 'vistoria') . '.pdf');
+    }
+
+    private function deveRegenerarPdf(Vistoria $vistoria): bool
+    {
+        if (!$vistoria->pdf_path || !Storage::disk('public')->exists($vistoria->pdf_path)) {
+            return false;
+        }
+
+        if (blank($vistoria->link_publico_midias_token) || blank($vistoria->link_contestacao_token)) {
+            return true;
+        }
+
+        try {
+            $conteudo = Storage::disk('public')->get($vistoria->pdf_path);
+            return str_contains($conteudo, '/vistorias/publico//midias')
+                || str_contains($conteudo, '/vistorias/publico//contestacao')
+                || str_contains($conteudo, '/vistorias/publico//pdf');
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**

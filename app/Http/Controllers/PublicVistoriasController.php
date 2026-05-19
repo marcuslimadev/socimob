@@ -11,6 +11,11 @@ use Illuminate\Support\Facades\Storage;
 
 class PublicVistoriasController extends Controller
 {
+    public function linkInvalido()
+    {
+        return response()->view('vistorias.publico.link-invalido', [], 200);
+    }
+
     public function midias(string $token)
     {
         $vistoria = $this->vistoriaPorMidiasToken($token);
