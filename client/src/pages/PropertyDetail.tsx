@@ -85,6 +85,40 @@ function isVideoUrl(url: string): boolean {
   return /\.(mp4|mov|m4v|avi|webm|mkv)(\?.*)?$/i.test(url);
 }
 
+function fixMojibake(value: string): string {
+  if (!/[ÃÂ�]/.test(value)) return value;
+
+  try {
+    const bytes = Uint8Array.from(Array.from(value), (char) => char.charCodeAt(0) & 0xff);
+    const decoded = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    const beforeScore = (value.match(/[ÃÂ�]/g) || []).length;
+    const afterScore = (decoded.match(/[ÃÂ�]/g) || []).length;
+    return afterScore < beforeScore ? decoded : value;
+  } catch {
+    return value;
+  }
+}
+
+function normalizeTextFields<T>(value: T): T {
+  if (typeof value === 'string') return fixMojibake(value) as T;
+  if (Array.isArray(value)) return value.map((item) => normalizeTextFields(item)) as T;
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, normalizeTextFields(item)]),
+    ) as T;
+  }
+  return value;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 type PurposeKind = 'venda' | 'aluguel' | 'venda_aluguel' | 'imovel';
 
 function getPurposeKind(property: Property): PurposeKind {
@@ -139,7 +173,7 @@ function formatPrice(property: Property): string {
 
 function formatDescription(raw: string): string {
   const textarea = document.createElement('textarea');
-  textarea.innerHTML = raw;
+  textarea.innerHTML = fixMojibake(raw);
   let text = textarea.value;
 
   text = text.replace(/<br\s*\/?>/gi, '\n');
@@ -158,7 +192,7 @@ function formatDescription(raw: string): string {
     if (currentList.length === 0) return;
     htmlParts.push(
       '<ul class="list-disc list-inside space-y-1 my-3">' +
-        currentList.map((item) => `<li>${item}</li>`).join('') +
+        currentList.map((item) => `<li>${escapeHtml(item)}</li>`).join('') +
       '</ul>',
     );
     currentList = [];
@@ -171,7 +205,7 @@ function formatDescription(raw: string): string {
     }
 
     flushList();
-    htmlParts.push(`<p class="mb-2">${line}</p>`);
+    htmlParts.push(`<p class="mb-2">${escapeHtml(line)}</p>`);
   }
 
   flushList();
@@ -232,7 +266,7 @@ export default function PropertyDetail() {
           fetchTenantBranding(),
         ]);
 
-        const propertyData = propertyResp.data?.data || propertyResp.data;
+        const propertyData = normalizeTextFields<Property>(propertyResp.data?.data || propertyResp.data);
         const images = normalizeImages(propertyData);
         setProperty(propertyData);
         setSelectedImage(images[0]?.url || null);
@@ -301,7 +335,7 @@ export default function PropertyDetail() {
       `Olá! Tenho interesse no imóvel:\n\n` +
       `Título: ${property.titulo}\n` +
       `Localização: ${location}\n` +
-      `Valor: R$ ${price.toLocaleString('pt-BR')}\n` +
+      `Valor: ${price}\n` +
       `Link: ${window.location.href}\n\n` +
       `Gostaria de mais informações.`,
     );
@@ -362,7 +396,6 @@ export default function PropertyDetail() {
   const images = normalizeImages(property);
   const displayImage = selectedImage || images[0]?.url || null;
   const displayIsVideo = displayImage ? isVideoUrl(displayImage) : false;
-  const price = formatPrice(property);
   const bedrooms = property.quartos ?? property.dormitorios;
   const area = property.area_util || property.area_privativa || property.area_total;
   const locationText = getPublicLocation(property);
@@ -501,7 +534,7 @@ export default function PropertyDetail() {
             >
               <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Valor do imóvel</p>
               <p className="mt-2 text-3xl sm:text-4xl leading-none text-slate-900">
-                R$ {price.toLocaleString('pt-BR')}
+                {formatPrice(property)}
               </p>
 
               <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
