@@ -37,7 +37,9 @@ export default function VistoriaExecucaoWizard() {
   const [selectedAmbiente, setSelectedAmbiente] = useState('');
   const [itemNome, setItemNome] = useState('');
   const [itemEstado, setItemEstado] = useState('bom');
+  const [savingItem, setSavingItem] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
+  const [cleaningDuplicateItems, setCleaningDuplicateItems] = useState(false);
   const [inconformidade, setInconformidade] = useState('');
   const [iniciando, setIniciando] = useState(false);
   const [assinando, setAssinando] = useState(false);
@@ -72,6 +74,15 @@ export default function VistoriaExecucaoWizard() {
   const ambientes = vistoria?.ambientes || [];
   const partes = vistoria?.partes || [];
   const ambienteSelecionado = ambientes.find((ambiente) => String(ambiente.id) === selectedAmbiente) || null;
+  const itensDuplicados = useMemo(() => {
+    const nomes = new Set<string>();
+    return (ambienteSelecionado?.itens || []).filter((item) => {
+      const nome = item.nome.trim().toLocaleLowerCase('pt-BR');
+      if (nomes.has(nome)) return true;
+      nomes.add(nome);
+      return false;
+    });
+  }, [ambienteSelecionado]);
   const fotosDoAmbienteSelecionado = ambienteSelecionado
     ? (vistoria?.fotos || []).filter((foto) => (foto.comodo || '').trim().toLowerCase() === ambienteSelecionado.nome.trim().toLowerCase()).length
     : 0;
@@ -230,19 +241,29 @@ export default function VistoriaExecucaoWizard() {
       toast.error('Selecione um ambiente antes de adicionar item.');
       return;
     }
-    if (!id || !nomeItem.trim()) return;
+    const nome = nomeItem.trim();
+    if (!id || !nome || savingItem) return;
+    const duplicado = (ambienteSelecionado?.itens || []).some((item) => item.nome.trim().toLocaleLowerCase('pt-BR') === nome.toLocaleLowerCase('pt-BR'));
+    if (duplicado) {
+      toast.info(`${nome} já foi adicionado neste ambiente.`);
+      return;
+    }
+    setSavingItem(true);
     try {
-      await api.post(`/vistorias/${id}/ambientes/${selectedAmbiente}/itens`, { nome: nomeItem.trim(), estado: itemEstado });
+      await api.post(`/vistorias/${id}/ambientes/${selectedAmbiente}/itens`, { nome, estado: itemEstado });
       setItemNome('');
       toast.success('Item adicionado.');
       await refresh();
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Erro ao adicionar item.');
+    } finally {
+      setSavingItem(false);
     }
   };
 
   const excluirItem = async (item: Item) => {
     if (!id) return;
+    if (!window.confirm(`Excluir o item "${item.nome}" deste ambiente?`)) return;
     setDeletingItemId(item.id);
     try {
       await api.delete(`/vistorias/${id}/itens/${item.id}`);
@@ -252,6 +273,22 @@ export default function VistoriaExecucaoWizard() {
       toast.error(e?.response?.data?.message || 'Erro ao excluir item.');
     } finally {
       setDeletingItemId(null);
+    }
+  };
+
+  const removerItensDuplicados = async () => {
+    if (!id || !itensDuplicados.length) return;
+    if (!window.confirm(`Remover ${itensDuplicados.length} item(ns) repetido(s) deste ambiente?`)) return;
+    setCleaningDuplicateItems(true);
+    try {
+      await Promise.all(itensDuplicados.map((item) => api.delete(`/vistorias/${id}/itens/${item.id}`)));
+      toast.success('Itens repetidos removidos.');
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao remover itens repetidos.');
+      await refresh();
+    } finally {
+      setCleaningDuplicateItems(false);
     }
   };
 
@@ -508,12 +545,29 @@ export default function VistoriaExecucaoWizard() {
 
                       <div className="grid gap-4 lg:grid-cols-2">
                         <section className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                          <p className="text-sm font-semibold">2. Itens avaliados</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Exemplos: porta, piso, janela, pintura, tomada.</p>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold">2. Itens deste ambiente</p>
+                              <p className="mt-1 text-xs text-muted-foreground">Adicione cada item uma vez. Corrija registros usando Excluir.</p>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-muted-foreground">{ambienteSelecionado.itens?.length || 0} item(ns)</span>
+                              {itensDuplicados.length ? (
+                                <button type="button" disabled={cleaningDuplicateItems} onClick={removerItensDuplicados} className="inline-flex items-center gap-1 rounded-lg border border-amber-400/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-100 disabled:opacity-50">
+                                  {cleaningDuplicateItems ? <Loader2 size={12} className="animate-spin" /> : null}Remover {itensDuplicados.length} repetido(s)
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
                           <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
-                            {itensRapidos.map((nome) => (
-                              <button key={nome} type="button" onClick={() => criarItem(nome)} className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs">{nome}</button>
-                            ))}
+                            {itensRapidos.map((nome) => {
+                              const cadastrado = (ambienteSelecionado.itens || []).some((item) => item.nome.trim().toLocaleLowerCase('pt-BR') === nome.toLocaleLowerCase('pt-BR'));
+                              return (
+                                <button key={nome} type="button" disabled={cadastrado || savingItem} onClick={() => criarItem(nome)} className={`shrink-0 rounded-full border px-3 py-2 text-xs ${cadastrado ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-200' : 'border-white/10 bg-white/5'} disabled:cursor-not-allowed`}>
+                                  {cadastrado ? <Check size={12} className="mr-1 inline" /> : null}{nome}
+                                </button>
+                              );
+                            })}
                           </div>
                           <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_150px]">
                             <input value={itemNome} onChange={(e) => setItemNome(e.target.value)} placeholder="Item avaliado" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
@@ -521,22 +575,22 @@ export default function VistoriaExecucaoWizard() {
                               <option value="novo">Novo</option><option value="bom">Bom</option><option value="regular">Regular</option><option value="mau">Mau</option><option value="nao_aplicavel">N/A</option>
                             </select>
                           </div>
-                          <button onClick={adicionarItem} className="mt-3 rounded-xl border border-white/10 px-4 py-2 text-sm">Adicionar item</button>
-                          <div className="mt-3 flex flex-wrap gap-1.5">
+                          <button disabled={savingItem || !itemNome.trim()} onClick={adicionarItem} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm disabled:opacity-50">{savingItem ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}Adicionar item</button>
+                          <div className="mt-4 space-y-2">
                             {(ambienteSelecionado.itens || []).length ? (ambienteSelecionado.itens || []).map((item) => (
-                              <div key={item.id} className="inline-flex items-center gap-1 rounded-lg bg-white/5 pl-2 pr-1 py-1 text-xs">
-                                <span>{item.nome}: {item.estado || 'sem estado'}</span>
+                              <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">
+                                <span><strong>{item.nome}</strong> · {item.estado || 'sem estado'}</span>
                                 <button
                                   type="button"
                                   aria-label={`Excluir item ${item.nome}`}
                                   disabled={deletingItemId === item.id}
                                   onClick={() => excluirItem(item)}
-                                  className="rounded-md p-1 text-red-300 hover:bg-red-500/15 disabled:opacity-50"
+                                  className="inline-flex items-center gap-1 rounded-md border border-red-500/25 px-2 py-1 text-xs text-red-300 hover:bg-red-500/15 disabled:opacity-50"
                                 >
-                                  {deletingItemId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                                  {deletingItemId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}Excluir
                                 </button>
                               </div>
-                            )) : <span className="text-xs text-muted-foreground">Nenhum item cadastrado neste ambiente.</span>}
+                            )) : <p className="text-xs text-muted-foreground">Nenhum item cadastrado neste ambiente.</p>}
                           </div>
                         </section>
 
