@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { Link, useRoute } from 'wouter';
-import { Camera, Check, ChevronRight, FileText, Loader2, PenLine, Plus, Sparkles } from 'lucide-react';
+import { Camera, Check, ChevronRight, FileText, Loader2, PenLine, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
@@ -37,6 +37,7 @@ export default function VistoriaExecucaoWizard() {
   const [selectedAmbiente, setSelectedAmbiente] = useState('');
   const [itemNome, setItemNome] = useState('');
   const [itemEstado, setItemEstado] = useState('bom');
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
   const [inconformidade, setInconformidade] = useState('');
   const [iniciando, setIniciando] = useState(false);
   const [assinando, setAssinando] = useState(false);
@@ -237,6 +238,20 @@ export default function VistoriaExecucaoWizard() {
       await refresh();
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Erro ao adicionar item.');
+    }
+  };
+
+  const excluirItem = async (item: Item) => {
+    if (!id) return;
+    setDeletingItemId(item.id);
+    try {
+      await api.delete(`/vistorias/${id}/itens/${item.id}`);
+      toast.success('Item excluído.');
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao excluir item.');
+    } finally {
+      setDeletingItemId(null);
     }
   };
 
@@ -509,7 +524,18 @@ export default function VistoriaExecucaoWizard() {
                           <button onClick={adicionarItem} className="mt-3 rounded-xl border border-white/10 px-4 py-2 text-sm">Adicionar item</button>
                           <div className="mt-3 flex flex-wrap gap-1.5">
                             {(ambienteSelecionado.itens || []).length ? (ambienteSelecionado.itens || []).map((item) => (
-                              <span key={item.id} className="rounded-lg bg-white/5 px-2 py-1 text-xs">{item.nome}: {item.estado || 'sem estado'}</span>
+                              <div key={item.id} className="inline-flex items-center gap-1 rounded-lg bg-white/5 pl-2 pr-1 py-1 text-xs">
+                                <span>{item.nome}: {item.estado || 'sem estado'}</span>
+                                <button
+                                  type="button"
+                                  aria-label={`Excluir item ${item.nome}`}
+                                  disabled={deletingItemId === item.id}
+                                  onClick={() => excluirItem(item)}
+                                  className="rounded-md p-1 text-red-300 hover:bg-red-500/15 disabled:opacity-50"
+                                >
+                                  {deletingItemId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                                </button>
+                              </div>
                             )) : <span className="text-xs text-muted-foreground">Nenhum item cadastrado neste ambiente.</span>}
                           </div>
                         </section>
