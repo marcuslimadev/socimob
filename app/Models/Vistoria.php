@@ -109,6 +109,11 @@ class Vistoria extends Model
         return $this->hasMany(VistoriaChave::class, 'vistoria_id')->orderBy('tipo');
     }
 
+    public function medidores()
+    {
+        return $this->hasMany(VistoriaMedidor::class, 'vistoria_id')->orderBy('tipo')->orderBy('id');
+    }
+
     public function contestacoes()
     {
         return $this->hasMany(VistoriaContestacao::class, 'vistoria_id')->orderByDesc('created_at');

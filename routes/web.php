@@ -448,6 +448,9 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->post('/vistorias/{id}/chaves', 'App\Http\Controllers\VistoriaOperacionalController@storeChave');
     $router->put('/vistorias/{id}/chaves/{chaveId}', 'App\Http\Controllers\VistoriaOperacionalController@updateChave');
     $router->delete('/vistorias/{id}/chaves/{chaveId}', 'App\Http\Controllers\VistoriaOperacionalController@destroyChave');
+    $router->post('/vistorias/{id}/medidores', 'App\Http\Controllers\VistoriaOperacionalController@storeMedidor');
+    $router->put('/vistorias/{id}/medidores/{medidorId}', 'App\Http\Controllers\VistoriaOperacionalController@updateMedidor');
+    $router->delete('/vistorias/{id}/medidores/{medidorId}', 'App\Http\Controllers\VistoriaOperacionalController@destroyMedidor');
     $router->post('/vistorias/{id}/assinaturas', 'App\Http\Controllers\VistoriaOperacionalController@assinar');
     $router->get('/vistorias/{id}/contestacoes', 'App\Http\Controllers\VistoriaOperacionalController@contestacoes');
     $router->post('/vistorias/{id}/contestacoes/{contestacaoId}/responder', 'App\Http\Controllers\VistoriaOperacionalController@responderContestacao');
@@ -459,6 +462,8 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
     $router->delete('/vistorias/{vistoriaId}/fotos/{fotoId}', 'App\Http\Controllers\VistoriaFotosApiController@destroy');
     $router->get('/vistorias/{vistoriaId}/comentarios', 'App\Http\Controllers\VistoriaComentariosApiController@index');
     $router->post('/vistorias/{vistoriaId}/comentarios', 'App\Http\Controllers\VistoriaComentariosApiController@store');
+    $router->put('/vistorias/{vistoriaId}/comentarios/{comentarioId}', 'App\Http\Controllers\VistoriaComentariosApiController@update');
+    $router->delete('/vistorias/{vistoriaId}/comentarios/{comentarioId}', 'App\Http\Controllers\VistoriaComentariosApiController@destroy');
 
     $router->get('/vistorias/{id}', 'App\Http\Controllers\VistoriasController@show');
 

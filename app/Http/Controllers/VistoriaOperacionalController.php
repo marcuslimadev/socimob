@@ -8,6 +8,7 @@ use App\Models\VistoriaChave;
 use App\Models\VistoriaInconformidade;
 use App\Models\VistoriaItem;
 use App\Models\VistoriaMidia;
+use App\Models\VistoriaMedidor;
 use App\Models\VistoriaParte;
 use App\Services\VistoriaAssinaturaService;
 use App\Services\VistoriaContestacaoService;
@@ -165,6 +166,8 @@ class VistoriaOperacionalController extends Controller
             'ambiente_id' => 'nullable|integer',
             'item_id' => 'nullable|integer',
             'inconformidade_id' => 'nullable|integer',
+            'chave_id' => 'nullable|integer',
+            'medidor_id' => 'nullable|integer',
             'legenda' => 'nullable|string|max:500',
             'descricao' => 'nullable|string|max:500',
             'ordem' => 'nullable|integer|min:0',
@@ -180,6 +183,16 @@ class VistoriaOperacionalController extends Controller
                 abort(422, 'A inconformidade não pertence ao ambiente informado.');
             }
             $data['ambiente_id'] = $inconformidade->ambiente_id;
+        }
+        if (!empty($data['chave_id'])) {
+            VistoriaChave::query()
+                ->where('vistoria_id', $vistoria->id)
+                ->findOrFail((int) $data['chave_id']);
+        }
+        if (!empty($data['medidor_id'])) {
+            VistoriaMedidor::query()
+                ->where('vistoria_id', $vistoria->id)
+                ->findOrFail((int) $data['medidor_id']);
         }
 
         $midia = app(VistoriaMidiaService::class)->upload($vistoria, $request->file('arquivo'), $data, $request);
@@ -206,7 +219,7 @@ class VistoriaOperacionalController extends Controller
             'observacoes' => 'nullable|string|max:1000',
         ]));
 
-        return response()->json(['success' => true, 'item' => $chave], 201);
+        return response()->json(['success' => true, 'item' => $chave->load('midias')], 201);
     }
 
     public function updateChave(Request $request, int $vistoriaId, int $chaveId)
@@ -220,13 +233,56 @@ class VistoriaOperacionalController extends Controller
             'observacoes' => 'nullable|string|max:1000',
         ]));
 
-        return response()->json(['success' => true, 'item' => $chave->fresh()]);
+        return response()->json(['success' => true, 'item' => $chave->fresh('midias')]);
     }
 
     public function destroyChave(Request $request, int $vistoriaId, int $chaveId)
     {
         $vistoria = $this->vistoria($request, $vistoriaId);
-        VistoriaChave::query()->where('vistoria_id', $vistoria->id)->findOrFail($chaveId)->delete();
+        $chave = VistoriaChave::query()->where('vistoria_id', $vistoria->id)->findOrFail($chaveId);
+        foreach ($chave->midias as $midia) {
+            app(VistoriaMidiaService::class)->excluir($vistoria, $midia, $request);
+        }
+        $chave->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function storeMedidor(Request $request, int $vistoriaId)
+    {
+        $vistoria = $this->vistoria($request, $vistoriaId);
+        $medidor = $vistoria->medidores()->create($request->validate([
+            'tipo' => 'required|string|in:copasa,cemig',
+            'leitura' => 'required|string|max:100',
+            'unidade' => 'nullable|string|max:30',
+            'observacoes' => 'nullable|string|max:1000',
+        ]));
+
+        return response()->json(['success' => true, 'item' => $medidor->load('midias')], 201);
+    }
+
+    public function updateMedidor(Request $request, int $vistoriaId, int $medidorId)
+    {
+        $vistoria = $this->vistoria($request, $vistoriaId);
+        $medidor = VistoriaMedidor::query()->where('vistoria_id', $vistoria->id)->findOrFail($medidorId);
+        $medidor->update($request->validate([
+            'tipo' => 'sometimes|required|string|in:copasa,cemig',
+            'leitura' => 'sometimes|required|string|max:100',
+            'unidade' => 'nullable|string|max:30',
+            'observacoes' => 'nullable|string|max:1000',
+        ]));
+
+        return response()->json(['success' => true, 'item' => $medidor->fresh('midias')]);
+    }
+
+    public function destroyMedidor(Request $request, int $vistoriaId, int $medidorId)
+    {
+        $vistoria = $this->vistoria($request, $vistoriaId);
+        $medidor = VistoriaMedidor::query()->where('vistoria_id', $vistoria->id)->findOrFail($medidorId);
+        foreach ($medidor->midias as $midia) {
+            app(VistoriaMidiaService::class)->excluir($vistoria, $midia, $request);
+        }
+        $medidor->delete();
 
         return response()->json(['success' => true]);
     }

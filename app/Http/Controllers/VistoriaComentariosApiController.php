@@ -73,5 +73,38 @@ class VistoriaComentariosApiController extends Controller
 
         return response()->json(['success' => true, 'item' => $item], 201);
     }
-}
 
+    public function update(Request $request, int $vistoriaId, int $comentarioId)
+    {
+        $vistoria = $this->vistoriaForTenant($request, $vistoriaId);
+        if (!$vistoria) {
+            return response()->json(['success' => false, 'message' => 'Vistoria não encontrada'], 404);
+        }
+
+        $item = VistoriaComentario::query()
+            ->where('tenant_id', $vistoria->tenant_id)
+            ->where('vistoria_id', $vistoria->id)
+            ->findOrFail($comentarioId);
+
+        $data = $request->validate(['comentario' => 'required|string|max:4000']);
+        $item->update($data);
+
+        return response()->json(['success' => true, 'item' => $item->fresh()]);
+    }
+
+    public function destroy(Request $request, int $vistoriaId, int $comentarioId)
+    {
+        $vistoria = $this->vistoriaForTenant($request, $vistoriaId);
+        if (!$vistoria) {
+            return response()->json(['success' => false, 'message' => 'Vistoria não encontrada'], 404);
+        }
+
+        VistoriaComentario::query()
+            ->where('tenant_id', $vistoria->tenant_id)
+            ->where('vistoria_id', $vistoria->id)
+            ->findOrFail($comentarioId)
+            ->delete();
+
+        return response()->json(['success' => true]);
+    }
+}

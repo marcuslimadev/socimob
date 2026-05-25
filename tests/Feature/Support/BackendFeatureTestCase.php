@@ -72,6 +72,7 @@ abstract class BackendFeatureTestCase extends TestCase
             'vistoria_contestacao_midias',
             'vistoria_contestacao_itens',
             'vistoria_contestacoes',
+            'vistoria_medidores',
             'vistoria_chaves',
             'vistoria_midias',
             'vistoria_inconformidades',
@@ -328,6 +329,8 @@ abstract class BackendFeatureTestCase extends TestCase
             $table->unsignedBigInteger('ambiente_id')->nullable();
             $table->unsignedBigInteger('item_id')->nullable();
             $table->unsignedBigInteger('inconformidade_id')->nullable();
+            $table->unsignedBigInteger('chave_id')->nullable();
+            $table->unsignedBigInteger('medidor_id')->nullable();
             $table->string('tipo')->nullable();
             $table->string('path_original');
             $table->string('path_thumb')->nullable();
@@ -346,6 +349,16 @@ abstract class BackendFeatureTestCase extends TestCase
             $table->string('tipo');
             $table->integer('quantidade')->default(1);
             $table->string('estado')->nullable();
+            $table->text('observacoes')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('vistoria_medidores', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('vistoria_id');
+            $table->string('tipo');
+            $table->string('leitura');
+            $table->string('unidade')->nullable();
             $table->text('observacoes')->nullable();
             $table->timestamps();
         });

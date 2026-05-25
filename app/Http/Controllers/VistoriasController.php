@@ -961,7 +961,8 @@ class VistoriasController extends Controller
             'inconformidades.ambiente',
             'inconformidades.midias',
             'midias',
-            'chaves',
+            'chaves.midias',
+            'medidores.midias',
             'contestacoes.itens',
             'contestacoes.midias',
             'historicos',
@@ -1053,6 +1054,7 @@ class VistoriasController extends Controller
             'inconformidades' => $vistoria->relationLoaded('inconformidades') ? $vistoria->inconformidades->values()->all() : [],
             'midias' => $vistoria->relationLoaded('midias') ? $vistoria->midias->values()->all() : [],
             'chaves' => $vistoria->relationLoaded('chaves') ? $vistoria->chaves->values()->all() : [],
+            'medidores' => $vistoria->relationLoaded('medidores') ? $vistoria->medidores->values()->all() : [],
             'contestacoes' => $vistoria->relationLoaded('contestacoes') ? $vistoria->contestacoes->values()->all() : [],
             'historicos' => $vistoria->relationLoaded('historicos') ? $vistoria->historicos->values()->all() : [],
         ];

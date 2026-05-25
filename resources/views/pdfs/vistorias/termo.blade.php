@@ -170,9 +170,57 @@
         <p><strong>{{ $idx + 1 }}. {{ ucfirst(str_replace('_', ' ', $chave->tipo)) }}:</strong></p>
         <p>{{ ucfirst($chave->estado ?: 'estado não informado') }} &nbsp; <strong>Quantidade:</strong> {{ $chave->quantidade ?: 0 }}</p>
         @if($chave->observacoes)<p><strong>Observação:</strong> {{ $chave->observacoes }}</p>@endif
+        @if($chave->midias->count())
+            <div class="photo-grid">
+                @foreach($chave->midias as $midia)
+                    @php
+                        $src = $pdfImageSrc($midia->path_original, $midia->mime_type, $midia->url);
+                    @endphp
+                    @if($src)
+                        <div class="photo-box">
+                            <div class="media-frame">
+                                <div class="media-date">{{ optional($midia->created_at)->format('d/m/y H:i:s') }}</div>
+                                <img class="photo" src="{{ $src }}" alt="">
+                            </div>
+                            <div class="caption">Foto das chaves</div>
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+        @endif
     </div>
 @empty
     <p>Nenhuma chave registrada.</p>
+@endforelse
+
+<h2>Leituras de Copasa e Cemig</h2>
+@forelse($vistoria->medidores as $medidor)
+    <div class="avoid-break">
+        <p><strong>{{ strtoupper($medidor->tipo) }}:</strong> {{ $medidor->leitura }} {{ $medidor->unidade }}</p>
+        @if($medidor->observacoes)<p><strong>Observação:</strong> {{ $medidor->observacoes }}</p>@endif
+        @if($medidor->midias->count())
+            <div class="photo-grid">
+                @foreach($medidor->midias as $midia)
+                    @php
+                        $src = $pdfImageSrc($midia->path_original, $midia->mime_type, $midia->url);
+                    @endphp
+                    @if($src)
+                        <div class="photo-box">
+                            <div class="media-frame">
+                                <div class="media-date">{{ optional($midia->created_at)->format('d/m/y H:i:s') }}</div>
+                                <img class="photo" src="{{ $src }}" alt="">
+                            </div>
+                            <div class="caption">Foto do medidor {{ strtoupper($medidor->tipo) }}</div>
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+        @else
+            <p class="muted">Sem foto anexada a esta leitura.</p>
+        @endif
+    </div>
+@empty
+    <p>Nenhuma leitura de Copasa ou Cemig registrada.</p>
 @endforelse
 
 <h2>Inconformidades Registradas</h2>
@@ -248,7 +296,7 @@
         $ambienteKey = $normalizaCompartimento($ambiente->nome);
         $ambientesRenderizados->push($ambienteKey);
         $fotosLegadas = $fotosPorCompartimento->get($ambienteKey, collect());
-        $midiasGeraisAmbiente = $ambiente->midias->whereNull('inconformidade_id');
+        $midiasGeraisAmbiente = $ambiente->midias->whereNull('inconformidade_id')->whereNull('chave_id')->whereNull('medidor_id');
     @endphp
     <div class="avoid-break">
         <h3>{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}</h3>
@@ -401,7 +449,9 @@
         @foreach($vistoria->partes->chunk(2) as $linha)
             <tr>
                 @foreach($linha as $parte)
-                    @php($assinaturaSrc = $pdfImageSrc($parte->assinatura_path, 'image/png'))
+                    @php
+                        $assinaturaSrc = $pdfImageSrc($parte->assinatura_path, 'image/png');
+                    @endphp
                     <td>
                         <div class="signature-box">
                             <div class="signature-image">

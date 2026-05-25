@@ -10,7 +10,7 @@ class VistoriaMidia extends Model
     protected $table = 'vistoria_midias';
 
     protected $fillable = [
-        'vistoria_id', 'ambiente_id', 'item_id', 'inconformidade_id', 'tipo',
+        'vistoria_id', 'ambiente_id', 'item_id', 'inconformidade_id', 'chave_id', 'medidor_id', 'tipo',
         'path_original', 'path_thumb', 'mime_type', 'tamanho_bytes',
         'duracao_segundos', 'legenda', 'ordem', 'metadata_json',
     ];

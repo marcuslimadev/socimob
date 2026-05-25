@@ -7,12 +7,15 @@ import { api } from '@/lib/api';
 
 type Foto = { id: number; url_signed?: string; descricao?: string | null; mime_type?: string | null; comodo?: string | null };
 type Comentario = { id: number; comentario: string; autor_nome?: string | null; created_at?: string };
-type Midia = { id: number; url?: string; mime_type?: string | null; legenda?: string | null; inconformidade_id?: number | null };
+type Midia = { id: number; url?: string; mime_type?: string | null; legenda?: string | null; inconformidade_id?: number | null; chave_id?: number | null; medidor_id?: number | null };
 type Item = { id: number; nome: string; estado?: string | null; observacoes?: string | null; possui_inconformidade?: boolean };
 type Inconformidade = { id: number; descricao: string; severidade?: string | null; status?: string | null; midias?: Midia[] };
 type Ambiente = { id: number; nome: string; estado_geral?: string | null; observacoes?: string | null; itens?: Item[]; midias?: Midia[]; inconformidades?: Inconformidade[] };
 type Parte = { id: number; nome: string; documento?: string | null; funcao?: string | null; assinou?: boolean; data_assinatura?: string | null };
-type Vistoria = { id: number; codigo?: string | null; status: string; fotos?: Foto[]; comentarios?: Comentario[]; ambientes?: Ambiente[]; midias?: Midia[]; partes?: Parte[] };
+type Chave = { id: number; tipo: string; quantidade?: number | null; estado?: string | null; observacoes?: string | null; midias?: Midia[] };
+type Medidor = { id: number; tipo: 'copasa' | 'cemig'; leitura: string; unidade?: string | null; observacoes?: string | null; midias?: Midia[] };
+type EvidenciaTarget = { tipo: 'chave' | 'medidor'; id: number; label: string };
+type Vistoria = { id: number; codigo?: string | null; status: string; fotos?: Foto[]; comentarios?: Comentario[]; ambientes?: Ambiente[]; midias?: Midia[]; partes?: Parte[]; chaves?: Chave[]; medidores?: Medidor[] };
 
 const steps = ['Início', 'Ambientes e evidências', 'Comentários', 'Fechamento'];
 const ambientesRapidos = ['Sala', 'Cozinha', 'Banho social', 'Quarto 1', 'Quarto 2', 'Área de serviço', 'Garagem'];
@@ -22,6 +25,7 @@ export default function VistoriaExecucaoWizard() {
   const [, params] = useRoute<{ id: string }>('/vistorias/:id/execucao');
   const fileRef = useRef<HTMLInputElement>(null);
   const inconformidadeFileRef = useRef<HTMLInputElement>(null);
+  const evidenciaFileRef = useRef<HTMLInputElement>(null);
   const assinaturaCanvasRef = useRef<HTMLCanvasElement>(null);
   const desenhandoRef = useRef(false);
   const [step, setStep] = useState(0);
@@ -30,6 +34,10 @@ export default function VistoriaExecucaoWizard() {
   const [uploadingInconformidadeId, setUploadingInconformidadeId] = useState<number | null>(null);
   const [inconformidadeUploadTarget, setInconformidadeUploadTarget] = useState<Inconformidade | null>(null);
   const [savingComment, setSavingComment] = useState(false);
+  const [editingComentarioId, setEditingComentarioId] = useState<number | null>(null);
+  const [editingComentarioTexto, setEditingComentarioTexto] = useState('');
+  const [savingComentarioId, setSavingComentarioId] = useState<number | null>(null);
+  const [deletingComentarioId, setDeletingComentarioId] = useState<number | null>(null);
   const [gerandoLaudo, setGerandoLaudo] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [vistoria, setVistoria] = useState<Vistoria | null>(null);
@@ -44,6 +52,15 @@ export default function VistoriaExecucaoWizard() {
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
   const [cleaningDuplicateItems, setCleaningDuplicateItems] = useState(false);
   const [inconformidade, setInconformidade] = useState('');
+  const [medidorTipo, setMedidorTipo] = useState<'copasa' | 'cemig'>('copasa');
+  const [medidorLeitura, setMedidorLeitura] = useState('');
+  const [savingMedidor, setSavingMedidor] = useState(false);
+  const [deletingMedidorId, setDeletingMedidorId] = useState<number | null>(null);
+  const [chaveQuantidade, setChaveQuantidade] = useState('1');
+  const [savingChave, setSavingChave] = useState(false);
+  const [deletingChaveId, setDeletingChaveId] = useState<number | null>(null);
+  const [evidenciaTarget, setEvidenciaTarget] = useState<EvidenciaTarget | null>(null);
+  const [uploadingEvidencia, setUploadingEvidencia] = useState(false);
   const [iniciando, setIniciando] = useState(false);
   const [assinando, setAssinando] = useState(false);
   const [parteAssinaturaId, setParteAssinaturaId] = useState('');
@@ -76,6 +93,8 @@ export default function VistoriaExecucaoWizard() {
   }, [vistoria]);
   const ambientes = vistoria?.ambientes || [];
   const partes = vistoria?.partes || [];
+  const chaves = vistoria?.chaves || [];
+  const medidores = vistoria?.medidores || [];
   const ambienteSelecionado = ambientes.find((ambiente) => String(ambiente.id) === selectedAmbiente) || null;
   const itensDuplicados = useMemo(() => {
     const nomes = new Set<string>();
@@ -174,6 +193,138 @@ export default function VistoriaExecucaoWizard() {
       toast.error(e?.response?.data?.message || 'Erro ao salvar comentário.');
     } finally {
       setSavingComment(false);
+    }
+  };
+
+  const iniciarEdicaoComentario = (item: Comentario) => {
+    setEditingComentarioId(item.id);
+    setEditingComentarioTexto(item.comentario);
+  };
+
+  const salvarEdicaoComentario = async () => {
+    if (!id || !editingComentarioId || !editingComentarioTexto.trim()) return;
+    setSavingComentarioId(editingComentarioId);
+    try {
+      await api.put(`/vistorias/${id}/comentarios/${editingComentarioId}`, { comentario: editingComentarioTexto.trim() });
+      setEditingComentarioId(null);
+      setEditingComentarioTexto('');
+      toast.success('Comentário atualizado.');
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao atualizar comentário.');
+    } finally {
+      setSavingComentarioId(null);
+    }
+  };
+
+  const excluirComentario = async (item: Comentario) => {
+    if (!id || !window.confirm('Excluir este comentário?')) return;
+    setDeletingComentarioId(item.id);
+    try {
+      await api.delete(`/vistorias/${id}/comentarios/${item.id}`);
+      if (editingComentarioId === item.id) {
+        setEditingComentarioId(null);
+        setEditingComentarioTexto('');
+      }
+      toast.success('Comentário excluído.');
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao excluir comentário.');
+    } finally {
+      setDeletingComentarioId(null);
+    }
+  };
+
+  const registrarMedidor = async () => {
+    if (!id || !medidorLeitura.trim()) return;
+    setSavingMedidor(true);
+    try {
+      await api.post(`/vistorias/${id}/medidores`, {
+        tipo: medidorTipo,
+        leitura: medidorLeitura.trim(),
+        unidade: medidorTipo === 'copasa' ? 'm³' : 'kWh',
+      });
+      setMedidorLeitura('');
+      toast.success('Leitura registrada. Agora você pode anexar a foto.');
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao registrar leitura.');
+    } finally {
+      setSavingMedidor(false);
+    }
+  };
+
+  const excluirMedidor = async (item: Medidor) => {
+    if (!id || !window.confirm(`Excluir a leitura de ${item.tipo.toUpperCase()}?`)) return;
+    setDeletingMedidorId(item.id);
+    try {
+      await api.delete(`/vistorias/${id}/medidores/${item.id}`);
+      toast.success('Leitura excluída.');
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao excluir leitura.');
+    } finally {
+      setDeletingMedidorId(null);
+    }
+  };
+
+  const registrarChaves = async () => {
+    if (!id || Number(chaveQuantidade) < 1) return;
+    setSavingChave(true);
+    try {
+      await api.post(`/vistorias/${id}/chaves`, {
+        tipo: 'chaves_entregues',
+        quantidade: Number(chaveQuantidade),
+        estado: 'bom',
+      });
+      setChaveQuantidade('1');
+      toast.success('Chaves registradas. Agora você pode anexar a foto.');
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao registrar chaves.');
+    } finally {
+      setSavingChave(false);
+    }
+  };
+
+  const excluirChave = async (item: Chave) => {
+    if (!id || !window.confirm('Excluir este registro de chaves?')) return;
+    setDeletingChaveId(item.id);
+    try {
+      await api.delete(`/vistorias/${id}/chaves/${item.id}`);
+      toast.success('Registro de chaves excluído.');
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao excluir chaves.');
+    } finally {
+      setDeletingChaveId(null);
+    }
+  };
+
+  const selecionarEvidencia = (target: EvidenciaTarget) => {
+    setEvidenciaTarget(target);
+    evidenciaFileRef.current?.click();
+  };
+
+  const uploadEvidencia = async (files: FileList | null) => {
+    if (!id || !evidenciaTarget || !files?.length) return;
+    setUploadingEvidencia(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const fd = new FormData();
+        fd.append('arquivo', files[i]);
+        fd.append(`${evidenciaTarget.tipo}_id`, String(evidenciaTarget.id));
+        fd.append('legenda', `Foto: ${evidenciaTarget.label}`);
+        await api.post(`/vistorias/${id}/midias`, fd);
+      }
+      toast.success('Foto anexada.');
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao anexar foto.');
+    } finally {
+      setUploadingEvidencia(false);
+      setEvidenciaTarget(null);
+      if (evidenciaFileRef.current) evidenciaFileRef.current.value = '';
     }
   };
 
@@ -652,8 +803,9 @@ export default function VistoriaExecucaoWizard() {
               )}
 
               {step === 2 && (
-                <div className="space-y-3">
+                <div className="space-y-5">
                   <p className="font-semibold text-sm">Passo 3 — comentários técnicos</p>
+                  <p className="text-xs text-muted-foreground">O texto somente será registrado quando você clicar em salvar.</p>
                   <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} rows={4} placeholder="Digite o comentário técnico e salve quando terminar." className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
                   <button
                     type="button"
@@ -665,13 +817,76 @@ export default function VistoriaExecucaoWizard() {
                     {savingComment ? 'Salvando...' : 'Salvar comentário'}
                   </button>
                   <div className="space-y-2">
-                    {(vistoria?.comentarios || []).slice(0, 5).map((c) => (
+                    {(vistoria?.comentarios || []).map((c) => (
                       <div key={c.id} className="rounded-lg border border-white/10 bg-black/10 p-2 text-sm">
-                        <p>{c.comentario}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{c.autor_nome || 'Equipe'} · {c.created_at ? new Date(c.created_at).toLocaleString('pt-BR') : ''}</p>
+                        {editingComentarioId === c.id ? (
+                          <div className="space-y-2">
+                            <textarea value={editingComentarioTexto} onChange={(e) => setEditingComentarioTexto(e.target.value)} rows={3} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2" />
+                            <div className="flex flex-wrap gap-2">
+                              <button type="button" onClick={salvarEdicaoComentario} disabled={savingComentarioId === c.id || !editingComentarioTexto.trim()} className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50">
+                                {savingComentarioId === c.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}Salvar edição
+                              </button>
+                              <button type="button" onClick={() => { setEditingComentarioId(null); setEditingComentarioTexto(''); }} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs">Cancelar</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p>{c.comentario}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{c.autor_nome || 'Equipe'} · {c.created_at ? new Date(c.created_at).toLocaleString('pt-BR') : ''}</p>
+                            <div className="mt-2 flex gap-2">
+                              <button type="button" onClick={() => iniciarEdicaoComentario(c)} className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-xs"><PenLine size={12} />Editar</button>
+                              <button type="button" onClick={() => excluirComentario(c)} disabled={deletingComentarioId === c.id} className="inline-flex items-center gap-1 rounded-lg border border-red-400/25 px-2.5 py-1 text-xs text-red-200 disabled:opacity-50">
+                                {deletingComentarioId === c.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}Excluir
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
+                  <input ref={evidenciaFileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => uploadEvidencia(e.target.files)} />
+                  <section className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                    <p className="font-semibold text-sm">Leituras de Copasa e Cemig</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Registre a leitura e anexe uma foto do medidor.</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <select value={medidorTipo} onChange={(e) => setMedidorTipo(e.target.value as 'copasa' | 'cemig')} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
+                        <option value="copasa">Copasa</option>
+                        <option value="cemig">Cemig</option>
+                      </select>
+                      <input value={medidorLeitura} onChange={(e) => setMedidorLeitura(e.target.value)} placeholder="Leitura do medidor" className="min-w-48 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" />
+                      <button type="button" onClick={registrarMedidor} disabled={savingMedidor || !medidorLeitura.trim()} className="rounded-xl border border-white/10 px-4 py-2 text-sm disabled:opacity-50">{savingMedidor ? 'Salvando...' : 'Adicionar leitura'}</button>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {medidores.map((item) => (
+                        <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 p-3 text-sm">
+                          <span><strong>{item.tipo.toUpperCase()}:</strong> {item.leitura} {item.unidade || ''} · {item.midias?.length || 0} foto(s)</span>
+                          <div className="flex gap-2">
+                            <button type="button" disabled={uploadingEvidencia} onClick={() => selecionarEvidencia({ tipo: 'medidor', id: item.id, label: `${item.tipo.toUpperCase()} ${item.leitura}` })} className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-xs disabled:opacity-50"><Camera size={12} />Anexar foto</button>
+                            <button type="button" disabled={deletingMedidorId === item.id} onClick={() => excluirMedidor(item)} className="inline-flex items-center gap-1 rounded-lg border border-red-400/25 px-2.5 py-1 text-xs text-red-200 disabled:opacity-50">{deletingMedidorId === item.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}Excluir</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                  <section className="rounded-2xl border border-white/10 bg-black/10 p-4">
+                    <p className="font-semibold text-sm">Chaves entregues</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Informe a quantidade de chaves e anexe uma foto.</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <input type="number" min="1" value={chaveQuantidade} onChange={(e) => setChaveQuantidade(e.target.value)} placeholder="Quantidade" className="w-36 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" />
+                      <button type="button" onClick={registrarChaves} disabled={savingChave || Number(chaveQuantidade) < 1} className="rounded-xl border border-white/10 px-4 py-2 text-sm disabled:opacity-50">{savingChave ? 'Salvando...' : 'Adicionar chaves'}</button>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {chaves.map((item) => (
+                        <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 p-3 text-sm">
+                          <span><strong>Chaves:</strong> {item.quantidade || 0} unidade(s) · {item.midias?.length || 0} foto(s)</span>
+                          <div className="flex gap-2">
+                            <button type="button" disabled={uploadingEvidencia} onClick={() => selecionarEvidencia({ tipo: 'chave', id: item.id, label: `${item.quantidade || 0} chave(s)` })} className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1 text-xs disabled:opacity-50"><Camera size={12} />Anexar foto</button>
+                            <button type="button" disabled={deletingChaveId === item.id} onClick={() => excluirChave(item)} className="inline-flex items-center gap-1 rounded-lg border border-red-400/25 px-2.5 py-1 text-xs text-red-200 disabled:opacity-50">{deletingChaveId === item.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}Excluir</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
                 </div>
               )}
 

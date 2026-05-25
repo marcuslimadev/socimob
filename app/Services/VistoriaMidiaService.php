@@ -49,6 +49,8 @@ class VistoriaMidiaService
             'ambiente_id' => $data['ambiente_id'] ?? null,
             'item_id' => $data['item_id'] ?? null,
             'inconformidade_id' => $data['inconformidade_id'] ?? null,
+            'chave_id' => $data['chave_id'] ?? null,
+            'medidor_id' => $data['medidor_id'] ?? null,
             'tipo' => $tipo,
             'path_original' => $path,
             'path_thumb' => null,

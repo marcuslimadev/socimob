@@ -127,7 +127,8 @@ class VistoriaService
     {
         return [
             'partes', 'ambientes.itens', 'ambientes.midias', 'ambientes.inconformidades.midias',
-            'inconformidades.ambiente', 'inconformidades.midias', 'midias', 'chaves', 'contestacoes.itens', 'contestacoes.midias',
+            'inconformidades.ambiente', 'inconformidades.midias', 'midias', 'chaves.midias', 'medidores.midias',
+            'contestacoes.itens', 'contestacoes.midias',
             'fotos', 'comentarios', 'responsavel', 'imovel', 'contrato.locador', 'contrato.locatario', 'contrato.imovel',
         ];
     }
