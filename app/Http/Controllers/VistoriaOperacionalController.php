@@ -21,7 +21,7 @@ class VistoriaOperacionalController extends Controller
     {
         $vistoria = $this->vistoria($request, $vistoriaId);
 
-        return response()->json(['success' => true, 'items' => $vistoria->ambientes()->with(['itens', 'midias', 'inconformidades'])->get()]);
+        return response()->json(['success' => true, 'items' => $vistoria->ambientes()->with(['itens', 'midias', 'inconformidades.midias'])->get()]);
     }
 
     public function storeAmbiente(Request $request, int $vistoriaId)
@@ -39,7 +39,7 @@ class VistoriaOperacionalController extends Controller
         $ambiente = $vistoria->ambientes()->create($data);
         app(VistoriaService::class)->registrarHistorico($vistoria, 'ambiente_adicionado', "Ambiente {$ambiente->nome} adicionado.", $request);
 
-        return response()->json(['success' => true, 'item' => $ambiente->load(['itens', 'midias', 'inconformidades'])], 201);
+        return response()->json(['success' => true, 'item' => $ambiente->load(['itens', 'midias', 'inconformidades.midias'])], 201);
     }
 
     public function updateAmbiente(Request $request, int $vistoriaId, int $ambienteId)
@@ -56,7 +56,7 @@ class VistoriaOperacionalController extends Controller
         ]);
         $ambiente->update($data);
 
-        return response()->json(['success' => true, 'item' => $ambiente->fresh(['itens', 'midias', 'inconformidades'])]);
+        return response()->json(['success' => true, 'item' => $ambiente->fresh(['itens', 'midias', 'inconformidades.midias'])]);
     }
 
     public function destroyAmbiente(Request $request, int $vistoriaId, int $ambienteId)
@@ -169,6 +169,18 @@ class VistoriaOperacionalController extends Controller
             'descricao' => 'nullable|string|max:500',
             'ordem' => 'nullable|integer|min:0',
         ]);
+        if (!empty($data['ambiente_id'])) {
+            $this->ambiente($vistoria, (int) $data['ambiente_id']);
+        }
+        if (!empty($data['inconformidade_id'])) {
+            $inconformidade = VistoriaInconformidade::query()
+                ->where('vistoria_id', $vistoria->id)
+                ->findOrFail((int) $data['inconformidade_id']);
+            if (!empty($data['ambiente_id']) && (int) $inconformidade->ambiente_id !== (int) $data['ambiente_id']) {
+                abort(422, 'A inconformidade não pertence ao ambiente informado.');
+            }
+            $data['ambiente_id'] = $inconformidade->ambiente_id;
+        }
 
         $midia = app(VistoriaMidiaService::class)->upload($vistoria, $request->file('arquivo'), $data, $request);
 

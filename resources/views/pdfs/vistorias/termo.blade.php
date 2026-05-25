@@ -21,6 +21,8 @@
         .two-col { display: table; width: 100%; table-layout: fixed; }
         .col { display: table-cell; width: 50%; vertical-align: top; padding-right: 9px; }
         .pill { display: inline-block; border: 1px solid #cfd6dd; background: #f8fafc; border-radius: 3px; padding: 2px 5px; margin: 0 4px 4px 0; }
+        .finding { border: 1px solid #ead7aa; background: #fffbeb; padding: 7px 8px; margin: 6px 0 10px; }
+        .finding-title { color: #92400e; font-weight: 700; }
         .page-break { page-break-before: always; }
         .avoid-break { page-break-inside: avoid; }
         .section-title { font-weight: 700; color: #111827; }
@@ -173,11 +175,47 @@
     <p>Nenhuma chave registrada.</p>
 @endforelse
 
-<h2>Inconformidades Gerais</h2>
-@forelse($vistoria->inconformidades->whereNull('ambiente_id') as $idx => $inc)
-    <p><strong>{{ $idx + 1 }}.</strong> {{ $inc->descricao }} <span class="muted">({{ ucfirst($inc->severidade ?: 'media') }})</span></p>
+<h2>Inconformidades Registradas</h2>
+@forelse($vistoria->inconformidades as $idx => $inc)
+    <div class="finding avoid-break">
+        <p class="finding-title">{{ $idx + 1 }}. {{ $inc->ambiente?->nome ?: 'Geral' }} - {{ ucfirst($inc->severidade ?: 'media') }}</p>
+        <p>{{ $inc->descricao }}</p>
+        @if($inc->midias->count())
+            <p class="section-title">Evidências da inconformidade:</p>
+            <div class="photo-grid">
+                @foreach($inc->midias as $midia)
+                    @php
+                        $isVideo = str_starts_with((string) $midia->mime_type, 'video/') || $midia->tipo === 'video';
+                        $srcPath = $midia->path_thumb ?: $midia->path_original;
+                        $src = $isVideo
+                            ? ($midia->path_thumb ? $pdfImageSrc($midia->path_thumb, 'image/jpeg', null) : null)
+                            : $pdfImageSrc($srcPath, $midia->mime_type, $midia->url);
+                        $midiaQrUrl = $mediaQr($midiasUrl . '#midia-' . $midia->id);
+                    @endphp
+                    <div class="photo-box">
+                        @if($isVideo)
+                            <div class="video-tile">
+                                <div class="media-date">{{ optional($midia->created_at)->format('d/m/y H:i:s') }}</div>
+                                @if($src)<img class="video-thumb" src="{{ $src }}" alt="">@else<div class="video-placeholder"></div>@endif
+                                <div class="play-circle"><div class="play-triangle"></div></div>
+                                <img class="video-qr" src="{{ $midiaQrUrl }}" alt="QR vídeo">
+                            </div>
+                        @elseif($src)
+                            <div class="media-frame">
+                                <div class="media-date">{{ optional($midia->created_at)->format('d/m/y H:i:s') }}</div>
+                                <img class="photo" src="{{ $src }}" alt="">
+                            </div>
+                        @endif
+                        <div class="caption">Evidência da inconformidade</div>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <p class="muted">Sem foto ou vídeo anexado a esta inconformidade.</p>
+        @endif
+    </div>
 @empty
-    <p>Nenhuma inconformidade geral registrada.</p>
+    <p>Nenhuma inconformidade registrada.</p>
 @endforelse
 
 <h2>Critérios de Avaliação de Pintura</h2>
@@ -210,6 +248,7 @@
         $ambienteKey = $normalizaCompartimento($ambiente->nome);
         $ambientesRenderizados->push($ambienteKey);
         $fotosLegadas = $fotosPorCompartimento->get($ambienteKey, collect());
+        $midiasGeraisAmbiente = $ambiente->midias->whereNull('inconformidade_id');
     @endphp
     <div class="avoid-break">
         <h3>{{ $ambienteIndex + 1 }}. {{ $ambiente->nome }}</h3>
@@ -241,9 +280,9 @@
         </table>
     @endif
 
-    @if($ambiente->midias->count() || $fotosLegadas->count())
+    @if($midiasGeraisAmbiente->count() || $fotosLegadas->count())
         <div class="photo-grid">
-            @foreach($ambiente->midias as $midiaIndex => $midia)
+            @foreach($midiasGeraisAmbiente as $midiaIndex => $midia)
                 @php
                     $isVideo = str_starts_with((string) $midia->mime_type, 'video/') || $midia->tipo === 'video';
                     $thumb = $midia->path_thumb ? $pdfImageSrc($midia->path_thumb, 'image/jpeg', null) : null;

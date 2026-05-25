@@ -126,8 +126,8 @@ class VistoriaService
     public function relacoesDetalhe(): array
     {
         return [
-            'partes', 'ambientes.itens', 'ambientes.midias', 'ambientes.inconformidades',
-            'inconformidades', 'midias', 'chaves', 'contestacoes.itens', 'contestacoes.midias',
+            'partes', 'ambientes.itens', 'ambientes.midias', 'ambientes.inconformidades.midias',
+            'inconformidades.ambiente', 'inconformidades.midias', 'midias', 'chaves', 'contestacoes.itens', 'contestacoes.midias',
             'fotos', 'comentarios', 'responsavel', 'imovel', 'contrato.locador', 'contrato.locatario', 'contrato.imovel',
         ];
     }

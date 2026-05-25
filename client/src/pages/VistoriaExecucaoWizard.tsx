@@ -7,9 +7,9 @@ import { api } from '@/lib/api';
 
 type Foto = { id: number; url_signed?: string; descricao?: string | null; mime_type?: string | null; comodo?: string | null };
 type Comentario = { id: number; comentario: string; autor_nome?: string | null; created_at?: string };
-type Midia = { id: number; url?: string; mime_type?: string | null; legenda?: string | null };
+type Midia = { id: number; url?: string; mime_type?: string | null; legenda?: string | null; inconformidade_id?: number | null };
 type Item = { id: number; nome: string; estado?: string | null; observacoes?: string | null; possui_inconformidade?: boolean };
-type Inconformidade = { id: number; descricao: string; severidade?: string | null; status?: string | null };
+type Inconformidade = { id: number; descricao: string; severidade?: string | null; status?: string | null; midias?: Midia[] };
 type Ambiente = { id: number; nome: string; estado_geral?: string | null; observacoes?: string | null; itens?: Item[]; midias?: Midia[]; inconformidades?: Inconformidade[] };
 type Parte = { id: number; nome: string; documento?: string | null; funcao?: string | null; assinou?: boolean; data_assinatura?: string | null };
 type Vistoria = { id: number; codigo?: string | null; status: string; fotos?: Foto[]; comentarios?: Comentario[]; ambientes?: Ambiente[]; midias?: Midia[]; partes?: Parte[] };
@@ -21,11 +21,14 @@ const itensRapidos = ['Porta', 'Piso', 'Parede', 'Pintura', 'Janela', 'Tomadas',
 export default function VistoriaExecucaoWizard() {
   const [, params] = useRoute<{ id: string }>('/vistorias/:id/execucao');
   const fileRef = useRef<HTMLInputElement>(null);
+  const inconformidadeFileRef = useRef<HTMLInputElement>(null);
   const assinaturaCanvasRef = useRef<HTMLCanvasElement>(null);
   const desenhandoRef = useRef(false);
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [savingMedia, setSavingMedia] = useState(false);
+  const [uploadingInconformidadeId, setUploadingInconformidadeId] = useState<number | null>(null);
+  const [inconformidadeUploadTarget, setInconformidadeUploadTarget] = useState<Inconformidade | null>(null);
   const [savingComment, setSavingComment] = useState(false);
   const [gerandoLaudo, setGerandoLaudo] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -132,6 +135,34 @@ export default function VistoriaExecucaoWizard() {
     }
   };
 
+  const selecionarFotoInconformidade = (item: Inconformidade) => {
+    setInconformidadeUploadTarget(item);
+    inconformidadeFileRef.current?.click();
+  };
+
+  const uploadInconformidade = async (files: FileList | null) => {
+    if (!id || !selectedAmbiente || !inconformidadeUploadTarget || !files?.length) return;
+    setUploadingInconformidadeId(inconformidadeUploadTarget.id);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const fd = new FormData();
+        fd.append('arquivo', files[i]);
+        fd.append('ambiente_id', selectedAmbiente);
+        fd.append('inconformidade_id', String(inconformidadeUploadTarget.id));
+        fd.append('legenda', `Evidência: ${inconformidadeUploadTarget.descricao}`);
+        await api.post(`/vistorias/${id}/midias`, fd);
+      }
+      toast.success('Foto da inconformidade anexada.');
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Erro ao anexar foto da inconformidade.');
+    } finally {
+      setUploadingInconformidadeId(null);
+      setInconformidadeUploadTarget(null);
+      if (inconformidadeFileRef.current) inconformidadeFileRef.current.value = '';
+    }
+  };
+
   const enviarComentario = async (texto = comentario) => {
     if (!id || !texto.trim()) return;
     setSavingComment(true);
@@ -145,15 +176,6 @@ export default function VistoriaExecucaoWizard() {
       setSavingComment(false);
     }
   };
-
-  useEffect(() => {
-    const texto = comentario.trim();
-    if (step !== 2 || texto.length < 3 || savingComment) return;
-    const timer = window.setTimeout(() => {
-      enviarComentario(texto);
-    }, 1200);
-    return () => window.clearTimeout(timer);
-  }, [comentario, step, savingComment]);
 
   useEffect(() => {
     return () => {
@@ -596,12 +618,27 @@ export default function VistoriaExecucaoWizard() {
 
                         <section className="rounded-2xl border border-amber-400/20 bg-amber-500/5 p-4">
                           <p className="text-sm font-semibold">3. Inconformidades</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Registre apenas problemas encontrados neste ambiente.</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Registre o problema e anexe a foto comprobatória no próprio registro.</p>
                           <textarea value={inconformidade} onChange={(e) => setInconformidade(e.target.value)} rows={3} placeholder="Ex.: parede com infiltração próxima à janela" className="mt-3 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
                           <button onClick={registrarInconformidade} className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-100">Registrar inconformidade</button>
+                          <input ref={inconformidadeFileRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple className="hidden" onChange={(e) => uploadInconformidade(e.target.files)} />
                           <div className="mt-3 space-y-2">
                             {(ambienteSelecionado.inconformidades || []).length ? (ambienteSelecionado.inconformidades || []).map((item) => (
-                              <div key={item.id} className="rounded-lg border border-white/10 bg-black/10 p-2 text-xs">{item.descricao}</div>
+                              <div key={item.id} className="rounded-lg border border-white/10 bg-black/10 p-3 text-xs">
+                                <p>{item.descricao}</p>
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={uploadingInconformidadeId === item.id}
+                                    onClick={() => selecionarFotoInconformidade(item)}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-amber-400/30 bg-amber-500/10 px-2.5 py-1.5 text-amber-100 disabled:opacity-50"
+                                  >
+                                    {uploadingInconformidadeId === item.id ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                                    {uploadingInconformidadeId === item.id ? 'Enviando...' : 'Anexar foto'}
+                                  </button>
+                                  <span className="text-muted-foreground">{item.midias?.length || 0} evidência(s)</span>
+                                </div>
+                              </div>
                             )) : <p className="text-xs text-muted-foreground">Nenhuma inconformidade registrada neste ambiente.</p>}
                           </div>
                         </section>
@@ -617,8 +654,16 @@ export default function VistoriaExecucaoWizard() {
               {step === 2 && (
                 <div className="space-y-3">
                   <p className="font-semibold text-sm">Passo 3 — comentários técnicos</p>
-                  <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} rows={4} placeholder="Digite e pare um instante: o comentário será salvo automaticamente." className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
-                  <p className="text-xs text-muted-foreground">{savingComment ? 'Salvando automaticamente...' : comentario.trim().length >= 3 ? 'Auto save ativo.' : 'Comentários técnicos são salvos automaticamente.'}</p>
+                  <textarea value={comentario} onChange={(e) => setComentario(e.target.value)} rows={4} placeholder="Digite o comentário técnico e salve quando terminar." className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5" />
+                  <button
+                    type="button"
+                    onClick={() => enviarComentario()}
+                    disabled={savingComment || !comentario.trim()}
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm disabled:opacity-50"
+                  >
+                    {savingComment ? <Loader2 size={14} className="animate-spin" /> : null}
+                    {savingComment ? 'Salvando...' : 'Salvar comentário'}
+                  </button>
                   <div className="space-y-2">
                     {(vistoria?.comentarios || []).slice(0, 5).map((c) => (
                       <div key={c.id} className="rounded-lg border border-white/10 bg-black/10 p-2 text-sm">

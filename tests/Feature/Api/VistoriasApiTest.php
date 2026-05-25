@@ -301,17 +301,20 @@ class VistoriasApiTest extends BackendFeatureTestCase
             'estado' => 'regular',
         ], $this->adminHeaders($user, $tenant))->assertCreated();
 
-        $this->postJson("/api/vistorias/{$vistoria->id}/inconformidades", [
+        $inconformidadeResponse = $this->postJson("/api/vistorias/{$vistoria->id}/inconformidades", [
             'ambiente_id' => $ambienteId,
             'descricao' => 'Risco visível no piso.',
             'severidade' => 'media',
-        ], $this->adminHeaders($user, $tenant))->assertCreated();
+        ], $this->adminHeaders($user, $tenant));
+        $inconformidadeResponse->assertCreated();
+        $inconformidadeId = $inconformidadeResponse->json('item.id');
 
         $file = UploadedFile::fake()->image('sala.jpg', 500, 300);
         $this->withHeaders($this->adminHeaders($user, $tenant))
             ->post("/api/vistorias/{$vistoria->id}/midias", [
                 'arquivo' => $file,
                 'ambiente_id' => $ambienteId,
+                'inconformidade_id' => $inconformidadeId,
                 'legenda' => 'Sala principal',
             ])
             ->assertCreated()
@@ -320,12 +323,17 @@ class VistoriasApiTest extends BackendFeatureTestCase
         $this->assertDatabaseHas('vistoria_midias', [
             'vistoria_id' => $vistoria->id,
             'ambiente_id' => $ambienteId,
+            'inconformidade_id' => $inconformidadeId,
             'legenda' => 'Sala principal',
         ]);
 
         $path = \App\Models\VistoriaMidia::query()->firstOrFail()->path_original;
         $this->assertStringStartsWith("tenants/{$tenant->id}/vistorias/{$vistoria->id}/midias/", $path);
         Storage::disk('public')->assertExists($path);
+
+        $this->getJson("/api/vistorias/{$vistoria->id}", $this->adminHeaders($user, $tenant))
+            ->assertOk()
+            ->assertJsonPath('ambientes.0.inconformidades.0.midias.0.inconformidade_id', $inconformidadeId);
     }
 
     public function test_public_contestacao_respects_deadline_and_updates_status(): void
@@ -393,7 +401,7 @@ class VistoriasApiTest extends BackendFeatureTestCase
             'limpeza_estado' => 'limpo',
         ]);
         $ambiente->itens()->create(['nome' => 'Piso', 'estado' => 'regular', 'possui_inconformidade' => true]);
-        $vistoria->inconformidades()->create([
+        $inconformidade = $vistoria->inconformidades()->create([
             'ambiente_id' => $ambiente->id,
             'descricao' => 'Desgaste em duas cerâmicas do piso.',
             'severidade' => 'media',
@@ -410,12 +418,26 @@ class VistoriasApiTest extends BackendFeatureTestCase
             'mime_type' => 'image/jpeg',
             'ordem' => 1,
         ]);
+        $evidenciaPath = UploadedFile::fake()->image('evidencia-piso.jpg', 320, 220)
+            ->storeAs("tenants/{$tenant->id}/vistorias/{$vistoria->id}/midias", 'evidencia-piso.jpg', 'public');
+        \App\Models\VistoriaMidia::query()->create([
+            'vistoria_id' => $vistoria->id,
+            'ambiente_id' => $ambiente->id,
+            'inconformidade_id' => $inconformidade->id,
+            'tipo' => 'foto',
+            'path_original' => $evidenciaPath,
+            'mime_type' => 'image/jpeg',
+            'tamanho_bytes' => Storage::disk('public')->size($evidenciaPath),
+            'legenda' => 'Evidência do desgaste no piso',
+            'ordem' => 1,
+        ]);
 
         $response = $this->postJson("/api/vistorias/{$vistoria->id}/gerar-pdf", [], $this->adminHeaders($user, $tenant));
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('vistoria.codigo', 'VST-PDF');
+            ->assertJsonPath('vistoria.codigo', 'VST-PDF')
+            ->assertJsonPath('vistoria.inconformidades.0.midias.0.inconformidade_id', $inconformidade->id);
 
         $this->assertNotEmpty($response->json('vistoria.links_publicos.midias'));
         $this->assertNotEmpty($response->json('vistoria.links_publicos.contestacao'));

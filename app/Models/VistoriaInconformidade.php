@@ -22,4 +22,9 @@ class VistoriaInconformidade extends Model
     {
         return $this->belongsTo(VistoriaAmbiente::class, 'ambiente_id');
     }
+
+    public function midias()
+    {
+        return $this->hasMany(VistoriaMidia::class, 'inconformidade_id')->orderBy('ordem')->orderBy('id');
+    }
 }
