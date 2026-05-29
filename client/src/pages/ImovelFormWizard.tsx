@@ -1988,7 +1988,7 @@ export default function ImovelFormWizard() {
                 <input
                   type="file"
                   multiple
-                  accept="image/*,video/*"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
                   onChange={handleMediaUpload}
                   className="hidden"
                   id="media-upload"

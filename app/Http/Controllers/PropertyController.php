@@ -888,11 +888,23 @@ class PropertyController extends Controller
             }
             
             // Gerar nome único
-            $extension = $file->getClientOriginalExtension();
+            $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'bin');
             $filename = uniqid() . '_' . time() . '.' . $extension;
             
             // Mover arquivo
             $file->move($uploadPath, $filename);
+            $absolutePath = $uploadPath . '/' . $filename;
+
+            $normalizedExtension = $this->normalizeImageForBrowser($absolutePath, $extension);
+            if ($normalizedExtension && $normalizedExtension !== $extension) {
+                $newFilename = preg_replace('/\.[^.]+$/', '.' . $normalizedExtension, $filename);
+                $newPath = $uploadPath . '/' . $newFilename;
+                if ($newFilename && @rename($absolutePath, $newPath)) {
+                    $filename = $newFilename;
+                    $extension = $normalizedExtension;
+                    $absolutePath = $newPath;
+                }
+            }
 
             // Aplicar marca d'água do tenant (se configurada e imagem suportada)
             $imageExts = ['jpg', 'jpeg', 'png', 'webp'];
@@ -905,7 +917,7 @@ class PropertyController extends Controller
                     if (!file_exists($wmPath)) {
                         $wmPath = $tenant->watermark_url; // may be absolute or full URL
                     }
-                    \App\Services\WatermarkService::apply($uploadPath . '/' . $filename, $wmPath);
+                    \App\Services\WatermarkService::apply($absolutePath, $wmPath);
                 }
             }
 
@@ -914,6 +926,68 @@ class PropertyController extends Controller
         }
         
         return $uploadedUrls;
+    }
+
+    private function normalizeImageForBrowser(string $imagePath, string $extension): ?string
+    {
+        $extension = strtolower($extension);
+        if (!in_array($extension, ['jpg', 'jpeg', 'jfif', 'pjpeg', 'pjp'], true)) {
+            return null;
+        }
+
+        if (!extension_loaded('gd')) {
+            Log::warning('Property upload: GD not available to normalize JPEG', [
+                'path' => $imagePath,
+            ]);
+            return null;
+        }
+
+        $image = @imagecreatefromjpeg($imagePath);
+        if (!$image) {
+            Log::warning('Property upload: JPEG could not be decoded for normalization', [
+                'path' => $imagePath,
+            ]);
+            return null;
+        }
+
+        $image = $this->applyJpegExifOrientation($imagePath, $image);
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $canvas = imagecreatetruecolor($width, $height);
+        $white = imagecolorallocate($canvas, 255, 255, 255);
+        imagefill($canvas, 0, 0, $white);
+        imagecopy($canvas, $image, 0, 0, 0, 0, $width, $height);
+
+        $saved = imagejpeg($canvas, $imagePath, 88);
+        imagedestroy($image);
+        imagedestroy($canvas);
+
+        return $saved ? 'jpg' : null;
+    }
+
+    private function applyJpegExifOrientation(string $imagePath, \GdImage $image): \GdImage
+    {
+        if (!function_exists('exif_read_data')) {
+            return $image;
+        }
+
+        $exif = @exif_read_data($imagePath);
+        $orientation = (int) ($exif['Orientation'] ?? 1);
+
+        $rotated = match ($orientation) {
+            3 => imagerotate($image, 180, 0),
+            6 => imagerotate($image, -90, 0),
+            8 => imagerotate($image, 90, 0),
+            default => false,
+        };
+
+        if ($rotated instanceof \GdImage) {
+            imagedestroy($image);
+            return $rotated;
+        }
+
+        return $image;
     }
 
     /**

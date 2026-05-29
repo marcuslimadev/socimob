@@ -126,55 +126,14 @@ function PropertyThumbnail({
   fallbackClassName: string;
   iconClassName: string;
 }) {
-  const [index, setIndex] = useState(0);
-  const [proxySrc, setProxySrc] = useState<string | null>(null);
   const [exhausted, setExhausted] = useState(images.length === 0);
+  const src = images[0] || '';
 
   useEffect(() => {
-    setIndex(0);
-    setProxySrc(null);
     setExhausted(images.length === 0);
   }, [images.join('|')]);
 
-  useEffect(() => {
-    return () => {
-      if (proxySrc?.startsWith('blob:')) {
-        URL.revokeObjectURL(proxySrc);
-      }
-    };
-  }, [proxySrc]);
-
   const showFallback = exhausted || images.length === 0;
-  const currentSrc = proxySrc || images[index];
-
-  const handleImageError = async () => {
-    const failedUrl = images[index];
-
-    if (!proxySrc && /^https?:\/\//i.test(failedUrl || '')) {
-      try {
-        const response = await api.get('/admin/property-ads/proxy-image', {
-          params: { url: failedUrl },
-          responseType: 'blob',
-        });
-        const objectUrl = URL.createObjectURL(response.data);
-        setProxySrc(objectUrl);
-        return;
-      } catch {
-        // Try the next stored image below.
-      }
-    }
-
-    if (proxySrc?.startsWith('blob:')) {
-      URL.revokeObjectURL(proxySrc);
-    }
-    setProxySrc(null);
-
-    if (index + 1 < images.length) {
-      setIndex((value) => value + 1);
-    } else {
-      setExhausted(true);
-    }
-  };
 
   if (showFallback) {
     return (
@@ -186,10 +145,10 @@ function PropertyThumbnail({
 
   return (
     <img
-      src={currentSrc}
+      src={src}
       alt={title}
       className={className}
-      onError={handleImageError}
+      onError={() => setExhausted(true)}
     />
   );
 }
