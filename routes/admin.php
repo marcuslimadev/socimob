@@ -27,6 +27,12 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     // Analytics
     $router->get('/analytics/overview', 'App\Http\Controllers\Admin\AnalyticsController@overview');
 
+    // Links importantes do CRM
+    $router->get('/important-links', 'App\Http\Controllers\Admin\ImportantLinksController@index');
+    $router->post('/important-links', 'App\Http\Controllers\Admin\ImportantLinksController@store');
+    $router->put('/important-links/{id}', 'App\Http\Controllers\Admin\ImportantLinksController@update');
+    $router->delete('/important-links/{id}', 'App\Http\Controllers\Admin\ImportantLinksController@destroy');
+
     // AI Prompt Settings
     $router->get('/settings/ai-prompt', 'App\Http\Controllers\Admin\TenantSettingsController@getAiPrompt');
     $router->post('/settings/ai-prompt', 'App\Http\Controllers\Admin\TenantSettingsController@saveAiPrompt');
