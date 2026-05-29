@@ -14,6 +14,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -2550,5 +2551,108 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Remove uma imagem que retornou erro 404 (reportada pelo frontend).
+     * 
+     * POST /api/imoveis/report-dead-image
+     */
+    public function reportDeadImage(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'property_id' => 'required|integer',
+            'image_url'   => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Dados inválidos'], 422);
+        }
+
+        $tenantId = $this->resolveTenantId($request);
+        if (!$tenantId) {
+            return response()->json(['error' => 'Tenant não identificado'], 400);
+        }
+
+        $property = Property::where('tenant_id', $tenantId)->find($request->property_id);
+        if (!$property) {
+            return response()->json(['error' => 'Imóvel não encontrado'], 404);
+        }
+
+        $imageUrl = $request->image_url;
+
+        // Verificação de segurança: confirmar que é 404 antes de apagar do banco
+        $isDead = false;
+        try {
+            if (str_starts_with($imageUrl, 'http')) {
+                // Teste rápido com HEAD para não baixar o corpo da imagem
+                $response = Http::timeout(3)->head($imageUrl);
+                if ($response->status() === 404) {
+                    $isDead = true;
+                }
+            } else {
+                // Verificação local para arquivos no /storage ou /uploads
+                $path = public_path(ltrim(parse_url($imageUrl, PHP_URL_PATH), '/'));
+                if (!file_exists($path)) {
+                    $isDead = true;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Em caso de erro de conexão ou timeout: não apagamos pois pode ser instabilidade temporária
+            return response()->json(['success' => false, 'message' => 'Não foi possível validar o status da imagem agora.']);
+        }
+
+        if (!$isDead) {
+            return response()->json(['success' => false, 'message' => 'A imagem ainda está acessível.']);
+        }
+
+        $removed = false;
+
+        // 1. Limpar no campo JSON 'imagens' da tabela imo_properties
+        $imagens = $property->imagens;
+        if (is_array($imagens)) {
+            $originalCount = count($imagens);
+            $imagens = array_values(array_filter($imagens, function($url) use ($imageUrl) {
+                return $url !== $imageUrl && parse_url((string)$url, PHP_URL_PATH) !== parse_url($imageUrl, PHP_URL_PATH);
+            }));
+
+            if (count($imagens) !== $originalCount) {
+                $property->imagens = $imagens;
+                // Se era a imagem de destaque, troca para a primeira disponível
+                if ($property->imagem_destaque === $imageUrl) {
+                    $property->imagem_destaque = !empty($imagens) ? $imagens[0] : null;
+                }
+                $property->save();
+                $removed = true;
+            }
+        }
+
+        // 2. Limpar na tabela auxiliar 'imovel_imagens'
+        try {
+            $deleted = DB::table('imovel_imagens')
+                ->where('codigo', $property->codigo)
+                ->where(function($q) use ($imageUrl) {
+                    $q->where('url', $imageUrl)
+                      ->orWhere('imagem', $imageUrl)
+                      ->orWhere('url', 'like', '%' . basename($imageUrl));
+                })
+                ->delete();
+            if ($deleted > 0) $removed = true;
+        } catch (\Exception $e) { /* Tabela opcional */ }
+
+        if ($removed) {
+            $this->flushPortalCache((int)$tenantId);
+            Log::info("Imagem morta removida do imóvel", [
+                'property_id' => $property->id, 
+                'codigo' => $property->codigo, 
+                'url' => $imageUrl
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'removed' => $removed,
+            'message' => $removed ? 'Imagem morta removida com sucesso.' : 'Imagem não encontrada nos registros.'
+        ]);
     }
 }
