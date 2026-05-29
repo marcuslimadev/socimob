@@ -26,6 +26,7 @@ interface ImovelRow {
   proprietario_telefone: string | null;
   imobi_brasil_sent: boolean;
   imagem: string;
+  imagens: string[];
   ativo: boolean;
   exibir: boolean;
   destaque: boolean;
@@ -85,6 +86,21 @@ const resolvePropertyPrice = (item: any) => {
   return salePrice || rentPrice || 0;
 };
 
+const collectPropertyImages = (item: any): string[] => {
+  const urls = [
+    item.imagem_destaque,
+    item.foto_capa,
+    ...(Array.isArray(item.imagens) ? item.imagens : []),
+  ];
+
+  return Array.from(new Set(
+    urls
+      .filter((url): url is string => typeof url === 'string')
+      .map((url) => url.trim())
+      .filter(Boolean),
+  ));
+};
+
 const tipoLabel = (tipo: string) => {
   const map: Record<string, string> = {
     apartamento: 'Apartamento',
@@ -96,6 +112,87 @@ const tipoLabel = (tipo: string) => {
 };
 
 type AdsStatus = 'ACTIVE' | 'PUBLISHING' | 'PAUSED' | 'ERROR' | null;
+
+function PropertyThumbnail({
+  images,
+  title,
+  className,
+  fallbackClassName,
+  iconClassName,
+}: {
+  images: string[];
+  title: string;
+  className: string;
+  fallbackClassName: string;
+  iconClassName: string;
+}) {
+  const [index, setIndex] = useState(0);
+  const [proxySrc, setProxySrc] = useState<string | null>(null);
+  const [exhausted, setExhausted] = useState(images.length === 0);
+
+  useEffect(() => {
+    setIndex(0);
+    setProxySrc(null);
+    setExhausted(images.length === 0);
+  }, [images.join('|')]);
+
+  useEffect(() => {
+    return () => {
+      if (proxySrc?.startsWith('blob:')) {
+        URL.revokeObjectURL(proxySrc);
+      }
+    };
+  }, [proxySrc]);
+
+  const showFallback = exhausted || images.length === 0;
+  const currentSrc = proxySrc || images[index];
+
+  const handleImageError = async () => {
+    const failedUrl = images[index];
+
+    if (!proxySrc && /^https?:\/\//i.test(failedUrl || '')) {
+      try {
+        const response = await api.get('/admin/property-ads/proxy-image', {
+          params: { url: failedUrl },
+          responseType: 'blob',
+        });
+        const objectUrl = URL.createObjectURL(response.data);
+        setProxySrc(objectUrl);
+        return;
+      } catch {
+        // Try the next stored image below.
+      }
+    }
+
+    if (proxySrc?.startsWith('blob:')) {
+      URL.revokeObjectURL(proxySrc);
+    }
+    setProxySrc(null);
+
+    if (index + 1 < images.length) {
+      setIndex((value) => value + 1);
+    } else {
+      setExhausted(true);
+    }
+  };
+
+  if (showFallback) {
+    return (
+      <div className={fallbackClassName}>
+        <span className={iconClassName}>🏢</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={currentSrc}
+      alt={title}
+      className={className}
+      onError={handleImageError}
+    />
+  );
+}
 
 export default function Properties() {
   const [, setLocation] = useLocation();
@@ -132,38 +229,40 @@ export default function Properties() {
       });
       const rows = Array.isArray(response.data?.data) ? response.data.data : [];
       setImoveis(
-        rows.map((item: any) => ({
-          id: String(item.id),
-          codigo: item.codigo_imovel || item.codigo || '-',
-          referencia: item.referencia_imovel || '-',
-          titulo: item.titulo || item.codigo_imovel || 'Sem título',
-          tipo: (item.tipo_imovel || '').toLowerCase(),
-          finalidade: (item.finalidade_imovel || 'venda').toLowerCase().includes('aluguel')
-            ? 'aluguel'
-            : 'venda',
-          preco: resolvePropertyPrice(item),
-          dormitorios: parseInt(item.dormitorios) || 0,
-          banheiros: parseInt(item.banheiros) || 0,
-          area: parseFloat(item.area_total) || 0,
-          localizacao: [item.bairro, item.cidade].filter(Boolean).join(', ') || '-',
-          captador_nome: item.captador_nome || null,
-          inserido_por_nome: item.inserido_por_nome || null,
-          proprietario_nome: item.proprietario_nome || null,
-          proprietario_telefone: item.proprietario_telefone || null,
-          imobi_brasil_sent: Boolean(item.imobi_brasil_sent),
-          created_at: item.created_at || '',
-          updated_at: item.updated_at || item.created_at || '',
-          imagem:
-            Array.isArray(item.imagens) && item.imagens.length > 0
-              ? item.imagens[0]
-              : item.imagem_destaque || item.foto_capa || '',
-          ativo: Boolean(item.active),
-          exibir: Boolean(item.exibir_imovel),
-          destaque: Boolean(item.destaque),
-          deleted_at: item.deleted_at || null,
-          trash_source: item.trash_source || null,
-          trash_reason: item.trash_reason || null,
-        })),
+        rows.map((item: any) => {
+          const imagens = collectPropertyImages(item);
+
+          return {
+            id: String(item.id),
+            codigo: item.codigo_imovel || item.codigo || '-',
+            referencia: item.referencia_imovel || '-',
+            titulo: item.titulo || item.codigo_imovel || 'Sem título',
+            tipo: (item.tipo_imovel || '').toLowerCase(),
+            finalidade: (item.finalidade_imovel || 'venda').toLowerCase().includes('aluguel')
+              ? 'aluguel'
+              : 'venda',
+            preco: resolvePropertyPrice(item),
+            dormitorios: parseInt(item.dormitorios) || 0,
+            banheiros: parseInt(item.banheiros) || 0,
+            area: parseFloat(item.area_total) || 0,
+            localizacao: [item.bairro, item.cidade].filter(Boolean).join(', ') || '-',
+            captador_nome: item.captador_nome || null,
+            inserido_por_nome: item.inserido_por_nome || null,
+            proprietario_nome: item.proprietario_nome || null,
+            proprietario_telefone: item.proprietario_telefone || null,
+            imobi_brasil_sent: Boolean(item.imobi_brasil_sent),
+            created_at: item.created_at || '',
+            updated_at: item.updated_at || item.created_at || '',
+            imagem: imagens[0] || '',
+            imagens,
+            ativo: Boolean(item.active),
+            exibir: Boolean(item.exibir_imovel),
+            destaque: Boolean(item.destaque),
+            deleted_at: item.deleted_at || null,
+            trash_source: item.trash_source || null,
+            trash_reason: item.trash_reason || null,
+          };
+        }),
       );
     } catch {
       toast.error('Erro ao carregar imóveis');
@@ -633,17 +732,13 @@ export default function Properties() {
                   >
                     {/* Foto */}
                     <div className="shrink-0">
-                      {im.imagem ? (
-                        <img
-                          src={im.imagem}
-                          alt={im.titulo}
-                          className="w-20 h-16 object-cover rounded-xl"
-                        />
-                      ) : (
-                        <div className="w-20 h-16 rounded-xl bg-muted flex items-center justify-center text-2xl">
-                          🏢
-                        </div>
-                      )}
+                      <PropertyThumbnail
+                        images={im.imagens}
+                        title={im.titulo}
+                        className="w-20 h-16 object-cover rounded-xl"
+                        fallbackClassName="w-20 h-16 rounded-xl bg-muted flex items-center justify-center"
+                        iconClassName="text-2xl"
+                      />
                     </div>
 
                     {/* Conteúdo */}
@@ -894,17 +989,13 @@ export default function Properties() {
                         {/* Coluna 1: Foto + Código/Ref + Título */}
                         <td className="p-3">
                           <div className="flex items-center gap-3">
-                            {im.imagem ? (
-                              <img
-                                src={im.imagem}
-                                alt={im.titulo}
-                                className="shrink-0 w-16 h-12 object-cover rounded-xl"
-                              />
-                            ) : (
-                              <div className="shrink-0 w-16 h-12 rounded-xl bg-muted flex items-center justify-center text-xl">
-                                🏢
-                              </div>
-                            )}
+                            <PropertyThumbnail
+                              images={im.imagens}
+                              title={im.titulo}
+                              className="shrink-0 w-16 h-12 object-cover rounded-xl"
+                              fallbackClassName="shrink-0 w-16 h-12 rounded-xl bg-muted flex items-center justify-center"
+                              iconClassName="text-xl"
+                            />
                             <div className="min-w-0">
                               <p
                                 className="text-sm font-medium leading-snug line-clamp-2 mb-0.5"

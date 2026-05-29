@@ -104,7 +104,10 @@ class SecurityMiddleware
             $response->header('X-XSS-Protection', '1; mode=block');
 
             // Content Security Policy
-            $response->header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';");
+            $response->header(
+                'Content-Security-Policy',
+                "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:;"
+            );
 
             // Referrer Policy
             $response->header('Referrer-Policy', 'strict-origin-when-cross-origin');
