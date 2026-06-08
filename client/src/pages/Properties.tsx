@@ -20,6 +20,7 @@ interface ImovelRow {
   banheiros: number;
   area: number;
   localizacao: string;
+  endereco: string;
   captador_nome: string | null;
   inserido_por_nome: string | null;
   proprietario_nome: string | null;
@@ -100,6 +101,31 @@ const collectPropertyImages = (item: any): string[] => {
       .filter(Boolean),
   ));
 };
+
+const formatPropertyAddress = (item: any): string => {
+  const streetLine = [
+    item.logradouro,
+    item.numero,
+    item.complemento,
+  ].filter(Boolean).join(', ');
+
+  const cityLine = [
+    item.bairro,
+    item.cidade,
+    item.estado,
+  ].filter(Boolean).join(', ');
+
+  const address = [
+    streetLine,
+    cityLine,
+    item.cep ? `CEP ${item.cep}` : '',
+  ].filter(Boolean).join(' - ');
+
+  return address || item.endereco_publico || '-';
+};
+
+const hasDetailedAddress = (im: ImovelRow) =>
+  im.endereco !== '-' && im.endereco !== im.localizacao;
 
 const tipoLabel = (tipo: string) => {
   const map: Record<string, string> = {
@@ -205,6 +231,7 @@ export default function Properties() {
             banheiros: parseInt(item.banheiros) || 0,
             area: parseFloat(item.area_total) || 0,
             localizacao: [item.bairro, item.cidade].filter(Boolean).join(', ') || '-',
+            endereco: formatPropertyAddress(item),
             captador_nome: item.captador_nome || null,
             inserido_por_nome: item.inserido_por_nome || null,
             proprietario_nome: item.proprietario_nome || null,
@@ -284,7 +311,7 @@ export default function Properties() {
     return imoveis.filter((im) => {
       if (
         termo &&
-        !`${im.titulo} ${im.codigo} ${im.referencia} ${im.localizacao}`
+        !`${im.titulo} ${im.codigo} ${im.referencia} ${im.localizacao} ${im.endereco}`
           .toLowerCase()
           .includes(termo)
       )
@@ -749,6 +776,16 @@ export default function Properties() {
                         {im.area > 0 && <span>{im.area}m²</span>}
                         {im.localizacao !== '-' && <span>{im.localizacao}</span>}
                       </div>
+                      {hasDetailedAddress(im) && (
+                        <button
+                          type="button"
+                          onClick={() => copyText(im.endereco, 'Endereço')}
+                          className="text-left text-xs leading-snug text-muted-foreground hover:text-foreground transition-colors"
+                          title="Copiar endereço"
+                        >
+                          {im.endereco}
+                        </button>
+                      )}
 
                       <p className="text-sm font-semibold">R$ {formatMoney(im.preco)}</p>
 
@@ -1017,9 +1054,21 @@ export default function Properties() {
 
                         {/* Coluna 4: Localização */}
                         <td className="p-3">
-                          <span className="text-sm text-foreground/90 leading-snug">
-                            {im.localizacao}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyText(hasDetailedAddress(im) ? im.endereco : im.localizacao, 'Endereço')}
+                            className="block max-w-[210px] text-left transition-colors hover:text-foreground"
+                            title={hasDetailedAddress(im) ? im.endereco : im.localizacao}
+                          >
+                            <span className="block text-sm text-foreground/90 leading-snug">
+                              {im.localizacao}
+                            </span>
+                            {hasDetailedAddress(im) && (
+                              <span className="mt-1 block text-xs leading-snug text-muted-foreground line-clamp-2">
+                                {im.endereco}
+                              </span>
+                            )}
+                          </button>
                         </td>
 
                         {/* Coluna 4b: Captador / Proprietário */}

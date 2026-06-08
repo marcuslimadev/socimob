@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { useLocation, useRoute } from 'wouter';
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   ArrowUpRight,
   Bath,
   BedDouble,
@@ -14,6 +16,7 @@ import {
   MessageCircle,
   Share2,
   Square,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -232,6 +235,7 @@ export default function PropertyDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [isLiked, setIsLiked] = useState(false);
 
   const brandDark = '#0f172a';
@@ -396,6 +400,29 @@ export default function PropertyDetail() {
   const images = normalizeImages(property);
   const displayImage = selectedImage || images[0]?.url || null;
   const displayIsVideo = displayImage ? isVideoUrl(displayImage) : false;
+  const selectedIndex = Math.max(0, images.findIndex((item) => item.url === displayImage));
+  const viewerImage = viewerIndex !== null ? images[viewerIndex] : null;
+  const openViewer = (index: number) => {
+    if (!images[index]) return;
+    setSelectedImage(images[index].url);
+    setViewerIndex(index);
+  };
+  const showPreviousImage = () => {
+    setViewerIndex((current) => {
+      if (current === null || images.length === 0) return current;
+      const next = current === 0 ? images.length - 1 : current - 1;
+      setSelectedImage(images[next].url);
+      return next;
+    });
+  };
+  const showNextImage = () => {
+    setViewerIndex((current) => {
+      if (current === null || images.length === 0) return current;
+      const next = current === images.length - 1 ? 0 : current + 1;
+      setSelectedImage(images[next].url);
+      return next;
+    });
+  };
   const bedrooms = property.quartos ?? property.dormitorios;
   const area = property.area_util || property.area_privativa || property.area_total;
   const locationText = getPublicLocation(property);
@@ -455,7 +482,14 @@ export default function PropertyDetail() {
                       className="w-full h-full object-contain bg-black"
                     />
                   ) : (
-                    <img src={displayImage} alt={property.titulo} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => openViewer(selectedIndex)}
+                      className="h-full w-full cursor-zoom-in"
+                      aria-label="Abrir foto em tamanho grande"
+                    >
+                      <img src={displayImage} alt={property.titulo} className="w-full h-full object-cover" />
+                    </button>
                   )
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
@@ -483,7 +517,7 @@ export default function PropertyDetail() {
                   <button
                     key={foto.url + index}
                     type="button"
-                    onClick={() => setSelectedImage(foto.url)}
+                    onClick={() => openViewer(index)}
                     className={`relative h-20 w-24 shrink-0 sm:w-auto sm:h-24 rounded-xl overflow-hidden border transition ${
                       selectedImage === foto.url
                         ? 'border-slate-800'
@@ -500,10 +534,15 @@ export default function PropertyDetail() {
                   </button>
                 ))}
                 {images.length > 10 && (
-                  <div className="h-20 w-24 shrink-0 sm:w-auto sm:h-24 rounded-xl border border-black/10 bg-white flex flex-col items-center justify-center text-slate-500">
+                  <button
+                    type="button"
+                    onClick={() => openViewer(10)}
+                    className="h-20 w-24 shrink-0 sm:w-auto sm:h-24 rounded-xl border border-black/10 bg-white flex flex-col items-center justify-center text-slate-500 transition hover:border-slate-800 hover:text-slate-900"
+                    aria-label={`Abrir mais ${images.length - 10} fotos`}
+                  >
                     <Eye size={16} />
                     <span className="text-[11px] mt-1">+{images.length - 10}</span>
-                  </div>
+                  </button>
                 )}
               </motion.div>
             )}
@@ -659,6 +698,68 @@ export default function PropertyDetail() {
           </div>
         </div>
       </section>
+
+      {viewerImage && (
+        <div
+          className="fixed inset-0 z-[80] bg-black/90 px-3 py-4 sm:px-6 sm:py-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Galeria de fotos"
+        >
+          <button
+            type="button"
+            onClick={() => setViewerIndex(null)}
+            className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/12 text-white transition hover:bg-white/20"
+            aria-label="Fechar galeria"
+          >
+            <X size={22} />
+          </button>
+
+          {images.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={showPreviousImage}
+                className="absolute left-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/12 text-white transition hover:bg-white/20 sm:left-6 sm:h-12 sm:w-12"
+                aria-label="Foto anterior"
+              >
+                <ChevronLeft size={28} />
+              </button>
+              <button
+                type="button"
+                onClick={showNextImage}
+                className="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/12 text-white transition hover:bg-white/20 sm:right-6 sm:h-12 sm:w-12"
+                aria-label="Próxima foto"
+              >
+                <ChevronRight size={28} />
+              </button>
+            </>
+          )}
+
+          <div className="flex h-full flex-col items-center justify-center gap-4">
+            <div className="max-h-[calc(100vh-8rem)] w-full">
+              {isVideoUrl(viewerImage.url) ? (
+                <video
+                  src={viewerImage.url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="mx-auto max-h-[calc(100vh-8rem)] max-w-full rounded-lg bg-black object-contain"
+                />
+              ) : (
+                <img
+                  src={viewerImage.url}
+                  alt={`${property.titulo} - foto ${(viewerIndex || 0) + 1}`}
+                  className="mx-auto max-h-[calc(100vh-8rem)] max-w-full rounded-lg object-contain"
+                />
+              )}
+            </div>
+            <div className="rounded-full bg-white/12 px-4 py-2 text-sm text-white">
+              {(viewerIndex || 0) + 1} / {images.length}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
