@@ -631,6 +631,79 @@ export default function ImovelFormWizard() {
   }, [formData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const MAX_FILES_PER_UPLOAD = 180; // server max_file_uploads = 200 (.user.ini), leave buffer
+  const MAX_FILE_SIZE_BYTES = 40 * 1024 * 1024; // upload_max_filesize = 40M
+  const MAX_BATCH_BYTES = 120 * 1024 * 1024; // keep well below post_max_size = 200M
+  const MAX_FILES_PER_BATCH = 8;
+
+  const appendPropertyPayload = (fd: FormData) => {
+    fd.append('tipo_imovel', formData.tipo_imovel);
+    fd.append('finalidade_imovel', formData.finalidade_imovel);
+    fd.append('valor_venda', parseCurrencyInput(formData.valor_venda));
+    fd.append('valor_aluguel', parseCurrencyInput(formData.valor_aluguel) || '0');
+
+    if (formData.valor_condominio) fd.append('valor_condominio', parseCurrencyInput(formData.valor_condominio));
+    if (formData.valor_iptu) fd.append('valor_iptu', parseCurrencyInput(formData.valor_iptu));
+    fd.append('cep', formData.cep);
+    fd.append('estado', formData.estado);
+    fd.append('cidade', formData.cidade);
+    fd.append('bairro', formData.bairro);
+    fd.append('logradouro', formData.logradouro);
+    if (formData.numero) fd.append('numero', formData.numero);
+    if (formData.complemento) fd.append('complemento', formData.complemento);
+    if (formData.dormitorios) fd.append('dormitorios', formData.dormitorios);
+    if (formData.suites) fd.append('suites', formData.suites);
+    if (formData.banheiros) fd.append('banheiros', formData.banheiros);
+    if (formData.garagem) fd.append('garagem', formData.garagem);
+    if (formData.area_total) fd.append('area_total', parseAreaInput(formData.area_total));
+    if (formData.area_privativa) fd.append('area_privativa', parseAreaInput(formData.area_privativa));
+    if (formData.area_terreno) fd.append('area_terreno', parseAreaInput(formData.area_terreno));
+    fd.append('em_condominio', formData.em_condominio ? '1' : '0');
+    fd.append('caracteristicas', stringifySelections(formData.caracteristicas));
+    fd.append('classificacoes', stringifySelections(formData.classificacoes));
+    if (formData.em_condominio && formData.nome_condominio) fd.append('nome_condominio', formData.nome_condominio);
+    if (formData.descricao) fd.append('descricao', formData.descricao);
+    if (formData.descricao_resumida) fd.append('descricao_resumida', formData.descricao_resumida);
+    if (formData.local_chaves) fd.append('local_chaves', formData.local_chaves);
+    if (formData.status_chaves) fd.append('status_chaves', formData.status_chaves);
+    if (formData.captador_user_id) fd.append('captador_user_id', formData.captador_user_id);
+    if (formData.construtora_pessoa_id) fd.append('construtora_pessoa_id', formData.construtora_pessoa_id);
+    if (formData.proprietario_nome) fd.append('proprietario_nome', formData.proprietario_nome);
+    if (formData.proprietario_telefone) fd.append('proprietario_telefone', formData.proprietario_telefone);
+    if (formData.proprietario_email) fd.append('proprietario_email', formData.proprietario_email);
+    if (formData.proprietario_observacoes) fd.append('proprietario_observacoes', formData.proprietario_observacoes);
+    if (formData.visibilidade_endereco) fd.append('visibilidade_endereco', formData.visibilidade_endereco);
+    formData.portal_tenant_ids.forEach((tenantId) => {
+      fd.append('portal_tenant_ids[]', String(tenantId));
+    });
+    fd.append('active', formData.active ? '1' : '0');
+    fd.append('exibir_imovel', formData.exibir_imovel ? '1' : '0');
+    fd.append('exclusividade', formData.exclusividade ? '1' : '0');
+  };
+
+  const buildMediaBatches = (files: MediaFile[]) => {
+    const batches: MediaFile[][] = [];
+    let current: MediaFile[] = [];
+    let currentSize = 0;
+
+    files.forEach((media) => {
+      const fileSize = media.file?.size || 0;
+      const wouldOverflow =
+        current.length >= MAX_FILES_PER_BATCH ||
+        (current.length > 0 && currentSize + fileSize > MAX_BATCH_BYTES);
+
+      if (wouldOverflow) {
+        batches.push(current);
+        current = [];
+        currentSize = 0;
+      }
+
+      current.push(media);
+      currentSize += fileSize;
+    });
+
+    if (current.length > 0) batches.push(current);
+    return batches;
+  };
 
   // Pre-upload new files in batches of ≤20 before the main save (edit mode only).
   // Returns the final ordered list of all image URLs stored on the server,
@@ -638,20 +711,20 @@ export default function ImovelFormWizard() {
   const preUploadNewFiles = async (
     pid: string | number,
     currentMedia: MediaFile[]
-  ): Promise<string[] | null> => {
+  ): Promise<{ urls: string[]; error?: string }> => {
     const newFiles = currentMedia.filter(m => m.file);
     if (newFiles.length === 0) {
       // Nothing to pre-upload; return current existing URLs
-      return currentMedia.filter(m => !m.file).map(m => m.url);
+      return { urls: currentMedia.filter(m => !m.file).map(m => m.url) };
     }
 
-    const BATCH = 20;
     // Start from the URLs already on the server
     let serverUrls: string[] = currentMedia.filter(m => !m.file).map(m => m.url);
+    const batches = buildMediaBatches(newFiles);
 
-    for (let i = 0; i < newFiles.length; i += BATCH) {
-      const batch = newFiles.slice(i, i + BATCH);
+    for (const batch of batches) {
       const batchForm = new FormData();
+      appendPropertyPayload(batchForm);
       // Send current server URLs as existing, so each batch accumulates
       if (serverUrls.length > 0) {
         batchForm.append('existing_images', JSON.stringify(serverUrls));
@@ -666,20 +739,34 @@ export default function ImovelFormWizard() {
         if (Array.isArray(saved)) {
           serverUrls = saved;
         }
-      } catch {
-        return null; // caller will report the error
+      } catch (error: any) {
+        const message =
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          'Falha ao enviar um dos lotes de mídia.';
+        return { urls: serverUrls, error: message };
       }
     }
 
-    return serverUrls;
+    return { urls: serverUrls };
   };
 
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     let files = Array.from(e.target.files || []);
+    const oversizedFiles = files.filter((file) => file.size > MAX_FILE_SIZE_BYTES);
+    if (oversizedFiles.length > 0) {
+      toast.error(`Arquivo acima de 40 MB: ${oversizedFiles[0].name}. Reduza o arquivo antes de enviar.`);
+      files = files.filter((file) => file.size <= MAX_FILE_SIZE_BYTES);
+    }
 
     if (files.length > MAX_FILES_PER_UPLOAD) {
       toast.warning(`Limite de ${MAX_FILES_PER_UPLOAD} arquivos por envio. Apenas os primeiros ${MAX_FILES_PER_UPLOAD} foram adicionados. Salve e adicione o restante em seguida.`);
       files = files.slice(0, MAX_FILES_PER_UPLOAD);
+    }
+
+    if (files.length === 0) {
+      e.target.value = '';
+      return;
     }
 
     const newMedia: MediaFile[] = files.map((file) => {
@@ -950,6 +1037,7 @@ export default function ImovelFormWizard() {
 
         if (includeMedia) {
           const destaqueFile = effectiveMediaFiles.find(m => m.destaque);
+          const destaqueIndex = effectiveMediaFiles.findIndex(m => m.destaque);
           effectiveMediaFiles.forEach((media, index) => {
             if (media.file) {
               fd.append(`media[]`, media.file);
@@ -962,6 +1050,9 @@ export default function ImovelFormWizard() {
           const existingUrls = effectiveMediaFiles.filter(m => !m.file).map(m => m.url);
           if (existingUrls.length > 0) {
             fd.append('existing_images', JSON.stringify(existingUrls));
+          }
+          if (destaqueIndex >= 0 && !destaqueFile?.file) {
+            fd.append('destaque_index', String(destaqueIndex));
           }
         }
         
@@ -987,24 +1078,23 @@ export default function ImovelFormWizard() {
       // Isso evita que o limite de max_file_uploads e post_max_size do PHP falhe silenciosamente.
       if (effectivePropertyId && mediaFiles.some(m => m.file)) {
         toast.info('Enviando fotos e vídeos...');
-        const allUrls = await preUploadNewFiles(effectivePropertyId, mediaFiles);
-        if (allUrls === null) {
-          toast.error('Grave: Falha ao enviar fotos. O imóvel foi salvo mas as imagens podem estar incompletas.');
+        const uploadResult = await preUploadNewFiles(effectivePropertyId, mediaFiles);
+        if (uploadResult.error) {
+          toast.error(uploadResult.error || 'Falha ao enviar fotos. O imóvel foi salvo, mas as imagens podem estar incompletas.');
           setIsSubmitting(false);
-          setLocation('/properties');
           return;
         }
+        const allUrls = uploadResult.urls;
         
         // Reconstrói a lista com as novas imagens convertidas em 'existing' URLs
-        const destaqueUrl = mediaFiles.find(m => m.destaque)?.url ||
-          mediaFiles.find(m => m.destaque)?.preview || '';
+        const originalDestaqueIndex = Math.max(0, mediaFiles.findIndex(m => m.destaque));
         
         effectiveMediaFiles = allUrls.map((url, i) => ({
           id: `existing-${i}`,
           url,
           type: isVideoUrl(url) ? 'video' : 'image',
           preview: url,
-          destaque: destaqueUrl ? url === destaqueUrl : i === 0,
+          destaque: i === originalDestaqueIndex,
         }));
         
         // Atualiza a interface (opcional, pois já vamos redirecionar)
