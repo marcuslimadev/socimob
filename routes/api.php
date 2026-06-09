@@ -1,21 +1,34 @@
+<?php
 
+use App\Http\Controllers\Api\Atendimento\ConversationController;
+use App\Http\Controllers\Api\Atendimento\ConversationEventController;
+use App\Http\Controllers\Api\Atendimento\ConversationMessageController;
+use App\Http\Controllers\Api\Atendimento\ConversationProposalController;
+use App\Http\Controllers\Api\Atendimento\ConversationTaskController;
+use App\Http\Controllers\Api\Atendimento\ConversationVisitController;
+use App\Http\Controllers\Api\Extension\ExtensionAuthController;
+use App\Http\Controllers\Api\Extension\ExtensionConsentController;
+use App\Http\Controllers\Api\Extension\ExtensionConversationController;
+use App\Http\Controllers\Api\Extension\ExtensionLeadController;
+use App\Http\Controllers\Api\Extension\ExtensionTemplateController;
+use Illuminate\Support\Facades\Route;
 
-Route::middleware([\'auth:sanctum\', \'tenant\'])->prefix(\'atendimento\')->group(function () {
-    Route::get(\'conversations\', [\App\Http\Controllers\Api\Atendimento\ConversationController::class, \'index\']);
-    Route::get(\'conversations/{crm_conversation}\, [\App\Http\Controllers\Api\Atendimento\ConversationController::class, \'show\']);
-    Route::post(\'conversations/{crm_conversation}/summary\', [\App\Http\Controllers\Api\Atendimento\ConversationController::class, \'storeSummary\']);
-    Route::post(\'conversations/{crm_conversation}/messages\', [\App\Http\Controllers\Api\Atendimento\ConversationMessageController::class, \'store\']);
-    Route::post(\'conversations/{crm_conversation}/events\', [\App\Http\Controllers\Api\Atendimento\ConversationEventController::class, \'store\']);
-    Route::post(\'conversations/{crm_conversation}/tasks\', [\App\Http\Controllers\Api\Atendimento\ConversationTaskController::class, \'store\']);
-    Route::post(\'conversations/{crm_conversation}/visits\', [\App\Http\Controllers\Api\Atendimento\ConversationVisitController::class, \'store\']);
-    Route::post(\'conversations/{crm_conversation}/proposals\', [\App\Http\Controllers\Api\Atendimento\ConversationProposalController::class, \'store\']);
+Route::middleware(['resolve-tenant', 'simple-auth'])->prefix('atendimento')->group(function () {
+    Route::get('conversations', [ConversationController::class, 'index']);
+    Route::get('conversations/{crm_conversation}', [ConversationController::class, 'show']);
+    Route::post('conversations/{crm_conversation}/summary', [ConversationController::class, 'storeSummary']);
+    Route::post('conversations/{crm_conversation}/messages', [ConversationMessageController::class, 'store']);
+    Route::post('conversations/{crm_conversation}/events', [ConversationEventController::class, 'store']);
+    Route::post('conversations/{crm_conversation}/tasks', [ConversationTaskController::class, 'store']);
+    Route::post('conversations/{crm_conversation}/visits', [ConversationVisitController::class, 'store']);
+    Route::post('conversations/{crm_conversation}/proposals', [ConversationProposalController::class, 'store']);
 });
 
-Route::middleware([\'auth:sanctum\', \'tenant\'])->prefix(\'extension\')->group(function () {
-    Route::post(\'auth/check\', [\App\Http\Controllers\Api\Extension\ExtensionAuthController::class, \'check\']);
-    Route::post(\'consent\', [\App\Http\Controllers\Api\Extension\ExtensionConsentController::class, \'store\']);
-    Route::get(\'leads/search\', [\App\Http\Controllers\Api\Extension\ExtensionLeadController::class, \'search\']);
-    Route::post(\'leads\', [\App\Http\Controllers\Api\Extension\ExtensionLeadController::class, \'store\']);
-    Route::post(\'conversations/link\', [\App\Http\Controllers\Api\Extension\ExtensionConversationController::class, \'link\']);
-    Route::get(\'message-templates\', [\App\Http\Controllers\Api\Extension\ExtensionTemplateController::class, \'index\']);
+Route::middleware(['resolve-tenant', 'simple-auth'])->prefix('extension')->group(function () {
+    Route::post('auth/check', [ExtensionAuthController::class, 'check']);
+    Route::post('consent', [ExtensionConsentController::class, 'store']);
+    Route::get('leads/search', [ExtensionLeadController::class, 'search']);
+    Route::post('leads', [ExtensionLeadController::class, 'store']);
+    Route::post('conversations/link', [ExtensionConversationController::class, 'link']);
+    Route::get('message-templates', [ExtensionTemplateController::class, 'index']);
 });

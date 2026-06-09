@@ -6,10 +6,15 @@
   "permissions": [
     "storage",
     "tabs",
-    "scripting"
+    "scripting",
+    "sidePanel"
   ],
   "host_permissions": [
-    "https://web.whatsapp.com/*"
+    "https://web.whatsapp.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "http://*/*",
+    "https://*/*"
   ],
   "background": {
     "service_worker": "background.js"

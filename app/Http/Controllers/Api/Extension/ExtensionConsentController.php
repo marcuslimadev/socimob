@@ -5,13 +5,12 @@ namespace App\Http\Controllers\Api\Extension;
 use App\Http\Controllers\Controller;
 use App\Models\ExtensionConsentLog;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class ExtensionConsentController extends Controller
 {
     public function store(Request $request)
     {
-        $user = Auth::user();
+        $user = $request->user();
 
         $request->validate([
             "consent_version" => "required|string",

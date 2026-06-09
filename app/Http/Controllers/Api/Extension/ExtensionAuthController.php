@@ -4,22 +4,20 @@ namespace App\Http\Controllers\Api\Extension;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use App\Models\ExtensionSession;
 
 class ExtensionAuthController extends Controller
 {
     public function check(Request $request)
     {
-        $user = Auth::user();
+        $user = $request->user();
         if (!$user) {
             return response()->json(["success" => false, "message" => "Não autenticado."], 401);
         }
 
-        // Assuming Tenant and Permissions are accessible via the User model or a service
-        $tenant = $user->tenant; // Placeholder for tenant access
-        $permissions = $user->getPermissions(); // Placeholder for permissions access
-        $moduleConfig = []; // Placeholder for module configurations
+        $tenant = $user->tenant;
+        $permissions = [$user->role];
+        $moduleConfig = [];
 
         // Optionally, update extension session last seen
         ExtensionSession::updateOrCreate(

@@ -28,7 +28,7 @@ Extensão Chrome Manifest V3 que funciona como assistente de produtividade para 
 
 1. Usuário abre o popup da extensão
 2. Insere URL do Socimob, email e senha
-3. Extensão faz POST em `/api/login` para obter token
+3. Extensão faz POST em `/api/auth/login` para obter token
 4. Token é armazenado em `chrome.storage.local` com expiração de 24h
 5. Background service worker monitora expiração a cada 5 minutos
 
@@ -65,7 +65,7 @@ npm run build
 A extensão espera os seguintes endpoints no Socimob:
 
 ### Autenticação
-- `POST /api/login` - Login e obtenção de token
+- `POST /api/auth/login` - Login e obtenção de token
 
 ### Leads
 - `GET /api/extension/leads/search?q=` - Buscar leads

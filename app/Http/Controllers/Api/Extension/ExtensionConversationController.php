@@ -5,14 +5,12 @@ namespace App\Http\Controllers\Api\Extension;
 use App\Http\Controllers\Controller;
 use App\Models\CrmConversation;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
 class ExtensionConversationController extends Controller
 {
     public function link(Request $request)
     {
-        $user = Auth::user();
+        $user = $request->user();
 
         $request->validate([
             "lead_id" => "required|exists:leads,id",
