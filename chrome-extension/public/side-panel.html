@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socimob Atendimento 360</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100%;
+      max-width: 400px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #fff;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 0;
+    }
+
+    .header {
+      background: #25d366;
+      color: white;
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .section {
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .conversation-info {
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+
+    .conversation-info p {
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .conversation-info strong {
+      color: #25d366;
+    }
+
+    .search-box {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .lead-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .lead-item {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .lead-item:hover {
+      background: #f9f9f9;
+    }
+
+    .lead-item.selected {
+      background: #e8f5e9;
+      border-left: 3px solid #25d366;
+    }
+
+    .textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .btn-primary {
+      background: #25d366;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1fa857;
+    }
+
+    .btn-secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #d0d0d0;
+    }
+
+    .status {
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .templates-list {
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .template-item {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .template-item:hover {
+      background: #f9f9f9;
+    }
+
+    .copy-btn {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .copy-btn:hover {
+      background: #2980b9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📱 Socimob Atendimento 360</h1>
+    </div>
+
+    <div class="content">
+      <div id="statusMessage"></div>
+
+      <!-- Informações da Conversa -->
+      <div class="section">
+        <div class="section-title">Conversa Atual</div>
+        <div class="conversation-info">
+          <p><strong>Contato:</strong> <span id="contactName">-</span></p>
+          <p><strong>Telefone:</strong> <span id="contactPhone">-</span></p>
+          <p><strong>Mensagens:</strong> <span id="messageCount">0</span></p>
+        </div>
+      </div>
+
+      <!-- Busca e Vinculação de Lead -->
+      <div class="section">
+        <div class="section-title">Vincular a Lead</div>
+        <input type="text" id="leadSearch" class="search-box" placeholder="Buscar lead por nome, telefone ou email..." />
+        <div class="lead-list" id="leadList"></div>
+        <button class="btn btn-primary" id="createLeadBtn" style="width: 100%; margin-top: 8px;">+ Criar Novo Lead</button>
+      </div>
+
+      <!-- Resumo Comercial -->
+      <div class="section">
+        <div class="section-title">Resumo da Conversa</div>
+        <textarea id="summaryText" class="textarea" placeholder="Escreva o resumo comercial..."></textarea>
+        <div class="button-group">
+          <button class="btn btn-primary" id="saveSummaryBtn">Salvar Resumo</button>
+          <button class="btn btn-secondary" id="clearSummaryBtn">Limpar</button>
+        </div>
+      </div>
+
+      <!-- Próxima Ação -->
+      <div class="section">
+        <div class="section-title">Próxima Ação</div>
+        <input type="text" id="nextAction" class="search-box" placeholder="Ex: Agendar visita para segunda..." />
+        <button class="btn btn-primary" id="saveActionBtn" style="width: 100%;">Salvar Ação</button>
+      </div>
+
+      <!-- Ações Rápidas -->
+      <div class="section">
+        <div class="section-title">Ações Rápidas</div>
+        <div class="button-group">
+          <button class="btn btn-secondary" id="createTaskBtn">📋 Tarefa</button>
+          <button class="btn btn-secondary" id="scheduleVisitBtn">📅 Visita</button>
+          <button class="btn btn-secondary" id="createProposalBtn">💰 Proposta</button>
+        </div>
+      </div>
+
+      <!-- Templates de Mensagem -->
+      <div class="section">
+        <div class="section-title">Templates de Mensagem</div>
+        <div class="templates-list" id="templatesList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="side-panel.js"></script>
+</body>
+</html>
