@@ -27,11 +27,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
+
+  if (request.action === 'socimobLeadSelected') {
+    chrome.storage.local.set({ selectedSocimobLead: request.lead }, () => {
+      if (sender.tab?.id && chrome.sidePanel?.open) {
+        chrome.sidePanel.open({ tabId: sender.tab.id }).catch(() => {
+          // O Chrome pode bloquear abertura automática fora do gesto do usuário.
+        });
+      }
+      sendResponse({ success: true });
+    });
+    return true;
+  }
 });
 
 // Listener para abrir o side panel quando clicado no ícone da extensão
 chrome.action.onClicked.addListener((tab) => {
-  if (tab.url.includes('web.whatsapp.com')) {
+  if (chrome.sidePanel?.open && tab.url.includes('web.whatsapp.com')) {
     chrome.sidePanel.open({ tabId: tab.id });
   }
 });

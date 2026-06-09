@@ -1,18 +1,21 @@
 // Side Panel script para a extensão Socimob
 
 let selectedLeadId = null;
+let selectedLeadData = null;
 let currentConversationInfo = null;
 let currentSessionToken = null;
 let socimobUrl = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-  initializePanel();
+  initializePanel(() => {
+    loadSelectedLeadFromStorage();
+    loadTemplates();
+  });
   setupEventListeners();
   loadConversationInfo();
-  loadTemplates();
 });
 
-function initializePanel() {
+function initializePanel(onReady) {
   // Recuperar dados de sessão
   chrome.storage.local.get(['sessionToken', 'socimobUrl'], (data) => {
     currentSessionToken = data.sessionToken;
@@ -21,12 +24,17 @@ function initializePanel() {
     if (!currentSessionToken || !socimobUrl) {
       showStatus('Sessão expirada. Por favor, reconecte no popup.', 'error');
     }
+
+    if (typeof onReady === 'function') onReady();
   });
 }
 
 function setupEventListeners() {
   const leadSearch = document.getElementById('leadSearch');
+  const leadDropZone = document.getElementById('leadDropZone');
   const createLeadBtn = document.getElementById('createLeadBtn');
+  const pullCurrentBtn = document.getElementById('pullCurrentBtn');
+  const linkConversationBtn = document.getElementById('linkConversationBtn');
   const saveSummaryBtn = document.getElementById('saveSummaryBtn');
   const clearSummaryBtn = document.getElementById('clearSummaryBtn');
   const saveActionBtn = document.getElementById('saveActionBtn');
@@ -35,6 +43,8 @@ function setupEventListeners() {
   const createProposalBtn = document.getElementById('createProposalBtn');
 
   leadSearch.addEventListener('input', debounce(() => searchLeads(leadSearch.value), 300));
+  pullCurrentBtn.addEventListener('click', pullCurrentContext);
+  linkConversationBtn.addEventListener('click', linkCurrentConversation);
   createLeadBtn.addEventListener('click', openCreateLeadModal);
   saveSummaryBtn.addEventListener('click', saveSummary);
   clearSummaryBtn.addEventListener('click', () => {
@@ -44,19 +54,70 @@ function setupEventListeners() {
   createTaskBtn.addEventListener('click', openCreateTaskModal);
   scheduleVisitBtn.addEventListener('click', openScheduleVisitModal);
   createProposalBtn.addEventListener('click', openCreateProposalModal);
+
+  leadDropZone.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    leadDropZone.classList.add('drag-over');
+  });
+
+  leadDropZone.addEventListener('dragleave', () => {
+    leadDropZone.classList.remove('drag-over');
+  });
+
+  leadDropZone.addEventListener('drop', (event) => {
+    event.preventDefault();
+    leadDropZone.classList.remove('drag-over');
+    const raw = event.dataTransfer.getData('application/x-socimob-lead') ||
+      event.dataTransfer.getData('application/json');
+
+    if (!raw) {
+      showStatus('Não encontrei dados de lead no item solto.', 'error');
+      return;
+    }
+
+    try {
+      applySelectedLead(JSON.parse(raw), 'Lead recebido por arrastar e soltar');
+    } catch (error) {
+      showStatus('Não foi possível ler o lead arrastado.', 'error');
+    }
+  });
 }
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.selectedSocimobLead?.newValue) {
+    applySelectedLead(changes.selectedSocimobLead.newValue, 'Lead recebido do CRM');
+  }
+});
+
+chrome.runtime.onMessage.addListener((request) => {
+  if (request.action === 'conversationUpdated' && request.data) {
+    setConversationInfo(request.data);
+  }
+});
 
 function loadConversationInfo() {
   // Obter informações da conversa atual da content script
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     chrome.tabs.sendMessage(tabs[0].id, { action: 'getConversationInfo' }, (response) => {
       if (response) {
-        currentConversationInfo = response;
-        document.getElementById('contactName').textContent = response.contactName || '-';
-        document.getElementById('contactPhone').textContent = response.contactPhone || '-';
-        document.getElementById('messageCount').textContent = response.messageCount || 0;
+        setConversationInfo(response);
       }
     });
+  });
+}
+
+function setConversationInfo(response) {
+  currentConversationInfo = response;
+  document.getElementById('contactName').textContent = response.contactName || '-';
+  document.getElementById('contactPhone').textContent = response.contactPhone || '-';
+  document.getElementById('messageCount').textContent = response.messageCount || 0;
+}
+
+function loadSelectedLeadFromStorage() {
+  chrome.storage.local.get(['selectedSocimobLead'], (data) => {
+    if (data.selectedSocimobLead) {
+      applySelectedLead(data.selectedSocimobLead, null);
+    }
   });
 }
 
@@ -78,13 +139,14 @@ function searchLeads(query) {
 
       if (data.data && data.data.length > 0) {
         data.data.forEach((lead) => {
+          const normalizedLead = normalizeLead(lead);
           const leadItem = document.createElement('div');
           leadItem.className = 'lead-item';
-          if (lead.id === selectedLeadId) {
+          if (normalizedLead.id === selectedLeadId) {
             leadItem.classList.add('selected');
           }
-          leadItem.textContent = `${lead.name} (${lead.phone})`;
-          leadItem.addEventListener('click', () => selectLead(lead.id, leadItem));
+          leadItem.textContent = `${normalizedLead.name} (${normalizedLead.phone || 'sem telefone'})`;
+          leadItem.addEventListener('click', () => selectLead(normalizedLead, leadItem));
           leadList.appendChild(leadItem);
         });
       } else {
@@ -96,13 +158,102 @@ function searchLeads(query) {
     });
 }
 
-function selectLead(leadId, element) {
-  selectedLeadId = leadId;
+function normalizeLead(lead) {
+  return {
+    id: Number(lead.id || lead.leadId),
+    leadId: Number(lead.leadId || lead.id),
+    name: lead.name || lead.nome || 'Lead sem nome',
+    phone: lead.phone || lead.telefone || lead.whatsapp || '',
+    email: lead.email || null,
+    propertyId: lead.propertyId || lead.property_id || null,
+    source: lead.source || 'extension_search',
+  };
+}
+
+function selectLead(lead, element) {
+  applySelectedLead(lead, 'Lead selecionado com sucesso');
   document.querySelectorAll('.lead-item').forEach((item) => {
     item.classList.remove('selected');
   });
-  element.classList.add('selected');
-  showStatus('Lead selecionado com sucesso!', 'success');
+  if (element) element.classList.add('selected');
+}
+
+function applySelectedLead(lead, successMessage) {
+  const normalizedLead = normalizeLead(lead);
+  if (!normalizedLead.id) {
+    showStatus('Lead inválido: id não encontrado.', 'error');
+    return;
+  }
+
+  selectedLeadId = normalizedLead.id;
+  selectedLeadData = normalizedLead;
+  chrome.storage.local.set({ selectedSocimobLead: normalizedLead });
+
+  const leadSearch = document.getElementById('leadSearch');
+  const selectedLeadCard = document.getElementById('selectedLeadCard');
+  leadSearch.value = normalizedLead.name || normalizedLead.phone || '';
+  selectedLeadCard.style.display = 'block';
+  selectedLeadCard.innerHTML = `
+    <strong>${escapeHtml(normalizedLead.name)}</strong>
+    <span>${escapeHtml(normalizedLead.phone || 'Telefone não informado')}</span>
+    ${normalizedLead.email ? `<span>${escapeHtml(normalizedLead.email)}</span>` : ''}
+  `;
+
+  if (successMessage) showStatus(successMessage, 'success');
+}
+
+function pullCurrentContext() {
+  loadConversationInfo();
+  loadSelectedLeadFromStorage();
+
+  if (currentConversationInfo?.contactPhone || currentConversationInfo?.contactName) {
+    const term = currentConversationInfo.contactPhone || currentConversationInfo.contactName;
+    document.getElementById('leadSearch').value = term;
+    searchLeads(term);
+    showStatus('Conversa aberta puxada para busca de lead.', 'info');
+    return;
+  }
+
+  showStatus('Abra uma conversa no WhatsApp Web ou envie um lead pelo CRM.', 'info');
+}
+
+function linkCurrentConversation() {
+  if (!selectedLeadId || !selectedLeadData) {
+    showStatus('Selecione ou envie um lead primeiro.', 'error');
+    return;
+  }
+
+  if (!currentConversationInfo?.url || !currentConversationInfo.url.includes('web.whatsapp.com')) {
+    showStatus('Abra a conversa no WhatsApp Web para vincular.', 'error');
+    return;
+  }
+
+  const payload = {
+    lead_id: selectedLeadId,
+    property_id: selectedLeadData.propertyId || null,
+    contact_name: currentConversationInfo.contactName || selectedLeadData.name,
+    contact_phone: currentConversationInfo.contactPhone || selectedLeadData.phone,
+    whatsapp_chat_identifier: currentConversationInfo.url,
+    source: 'chrome_extension',
+  };
+
+  fetch(`${socimobUrl}/api/extension/conversations/link`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${currentSessionToken}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+    .then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || 'Erro ao vincular conversa');
+      showStatus(data.message || 'Conversa vinculada ao lead.', 'success');
+    })
+    .catch((error) => {
+      showStatus(error.message, 'error');
+    });
 }
 
 function saveSummary() {
@@ -215,4 +366,13 @@ function debounce(func, delay) {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func(...args), delay);
   };
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

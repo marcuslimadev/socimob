@@ -1,4 +1,25 @@
-// Content Script para detectar conversas do WhatsApp Web
+// Content Script para detectar conversas do WhatsApp Web e integrar o CRM Socimob
+
+const isWhatsAppWeb = window.location.hostname === 'web.whatsapp.com';
+const isSocimobCrm = /(^|\.)exclusivalarimoveis\.com$/.test(window.location.hostname) ||
+  /(^|\.)lojadaesquina\.store$/.test(window.location.hostname) ||
+  ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+if (isSocimobCrm) {
+  window.addEventListener('socimob:sendLeadToExtension', (event) => {
+    const lead = event.detail;
+    if (!lead || !lead.id) return;
+
+    chrome.storage.local.set({ selectedSocimobLead: lead }, () => {
+      chrome.runtime.sendMessage({
+        action: 'socimobLeadSelected',
+        lead,
+      }).catch(() => {
+        // O painel pode estar fechado; o dado já ficou salvo no storage.
+      });
+    });
+  });
+}
 
 // Função para extrair informações da conversa atual
 function extractConversationInfo() {
@@ -33,6 +54,10 @@ function extractConversationInfo() {
 // Listener para mensagens do background/popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'getConversationInfo') {
+    if (!isWhatsAppWeb) {
+      sendResponse(null);
+      return;
+    }
     const conversationInfo = extractConversationInfo();
     sendResponse(conversationInfo);
   }
@@ -48,24 +73,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Monitorar mudanças na conversa atual
-const observer = new MutationObserver(() => {
-  const conversationInfo = extractConversationInfo();
-  if (conversationInfo) {
-    // Enviar informações para o side panel
-    chrome.runtime.sendMessage({
-      action: 'conversationUpdated',
-      data: conversationInfo,
-    }).catch(() => {
-      // Silenciar erros se nenhum listener estiver pronto
-    });
-  }
-});
+if (isWhatsAppWeb) {
+  // Monitorar mudanças na conversa atual
+  const observer = new MutationObserver(() => {
+    const conversationInfo = extractConversationInfo();
+    if (conversationInfo) {
+      // Enviar informações para o side panel
+      chrome.runtime.sendMessage({
+        action: 'conversationUpdated',
+        data: conversationInfo,
+      }).catch(() => {
+        // Silenciar erros se nenhum listener estiver pronto
+      });
+    }
+  });
 
-// Observar mudanças no DOM
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-  attributes: true,
-  attributeFilter: ['data-testid'],
-});
+  // Observar mudanças no DOM
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['data-testid'],
+  });
+}

@@ -89,6 +89,46 @@
       border-radius: 4px;
     }
 
+    .lead-drop-zone {
+      border: 1px dashed #9ca3af;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #f9fafb;
+      color: #4b5563;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .lead-drop-zone.drag-over {
+      border-color: #25d366;
+      background: #e8f5e9;
+      color: #166534;
+    }
+
+    .selected-lead-card {
+      display: none;
+      margin-bottom: 8px;
+      padding: 10px;
+      border: 1px solid #bbf7d0;
+      border-left: 4px solid #25d366;
+      border-radius: 6px;
+      background: #f0fdf4;
+      font-size: 12px;
+    }
+
+    .selected-lead-card strong {
+      display: block;
+      color: #14532d;
+      margin-bottom: 3px;
+    }
+
+    .selected-lead-card span {
+      display: block;
+      color: #166534;
+      line-height: 1.35;
+    }
+
     .lead-item {
       padding: 8px;
       border-bottom: 1px solid #eee;
@@ -232,8 +272,12 @@
       <!-- Busca e Vinculação de Lead -->
       <div class="section">
         <div class="section-title">Vincular a Lead</div>
+        <div class="lead-drop-zone" id="leadDropZone">Solte aqui um lead do CRM ou use o botão "Extensão" no lead aberto.</div>
+        <div class="selected-lead-card" id="selectedLeadCard"></div>
         <input type="text" id="leadSearch" class="search-box" placeholder="Buscar lead por nome, telefone ou email..." />
         <div class="lead-list" id="leadList"></div>
+        <button class="btn btn-secondary" id="pullCurrentBtn" style="width: 100%; margin-top: 8px;">Puxar conversa/lead aberto</button>
+        <button class="btn btn-primary" id="linkConversationBtn" style="width: 100%; margin-top: 8px;">Vincular conversa aberta</button>
         <button class="btn btn-primary" id="createLeadBtn" style="width: 100%; margin-top: 8px;">+ Criar Novo Lead</button>
       </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, memo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, memo, type DragEvent } from 'react';
 import {
   Search,
   Send,
@@ -1143,6 +1143,45 @@ export default function CRM() {
     window.open(chatUrl, '_blank', 'noopener,noreferrer');
   }, []);
 
+  const buildExtensionLeadPayload = useCallback((client: CRMClient) => ({
+    id: client.id,
+    leadId: client.id,
+    pessoaId: client.pessoa_id,
+    name: client.nome,
+    phone: client.telefone,
+    email: client.email,
+    status: client.status,
+    classification: client.classificacao,
+    propertyId: client.property_id,
+    propertyTitle: client.property_title,
+    propertyCode: client.property_code,
+    propertyLocation: client.property_location,
+    propertyValue: client.property_value,
+    propertyLink: client.property_link,
+    source: 'socimob_crm',
+    crmUrl: window.location.href,
+    sentAt: new Date().toISOString(),
+  }), []);
+
+  const handleSendLeadToExtension = useCallback((client: CRMClient) => {
+    const payload = buildExtensionLeadPayload(client);
+    try {
+      localStorage.setItem('socimob_atendimento_360_selected_lead', JSON.stringify(payload));
+      window.dispatchEvent(new CustomEvent('socimob:sendLeadToExtension', { detail: payload }));
+      toast.success('Lead enviado para o painel da extensão');
+    } catch {
+      toast.error('Não foi possível enviar o lead para a extensão');
+    }
+  }, [buildExtensionLeadPayload]);
+
+  const handleLeadDragStart = useCallback((event: DragEvent, client: CRMClient) => {
+    const payload = buildExtensionLeadPayload(client);
+    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.setData('application/x-socimob-lead', JSON.stringify(payload));
+    event.dataTransfer.setData('application/json', JSON.stringify(payload));
+    event.dataTransfer.setData('text/plain', `${client.nome} ${formatPhoneDisplay(client.telefone)}`.trim());
+  }, [buildExtensionLeadPayload]);
+
   const handleStatusChange = useCallback(async (clientId: number, newStatus: StatusKey) => {
     try {
       await api.patch(`/crm/clientes/${clientId}/status`, { status: newStatus });
@@ -1998,6 +2037,18 @@ export default function CRM() {
                 <span className="hidden sm:inline">WhatsApp</span>
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              draggable
+              onDragStart={(event) => handleLeadDragStart(event, selectedClient)}
+              className="h-8 px-2.5 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10"
+              onClick={() => handleSendLeadToExtension(selectedClient)}
+              title="Enviar este lead para o painel da extensão. Também dá para arrastar este botão até o painel."
+            >
+              <Send className="w-4 h-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Extensão</span>
+            </Button>
             {!isMobile && (
               <Button
                 variant="ghost"
