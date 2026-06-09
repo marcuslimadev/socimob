@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configurações - Socimob Atendimento 360</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .section:last-child {
+      border-bottom: none;
+    }
+
+    .section h2 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #25d366;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: inherit;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .btn-primary {
+      background: #25d366;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1fa857;
+    }
+
+    .btn-secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #d0d0d0;
+    }
+
+    .status {
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      font-size: 12px;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚙️ Configurações - Socimob Atendimento 360</h1>
+
+    <div id="statusMessage"></div>
+
+    <!-- Seção de Consentimento -->
+    <div class="section">
+      <h2>Consentimento e Privacidade</h2>
+      <p style="font-size: 12px; margin-bottom: 12px; color: #666;">
+        Esta extensão registra resumos comerciais e informações de atendimento no Socimob. Ao usar esta extensão, você concorda com a coleta e armazenamento desses dados.
+      </p>
+      <div class="form-group">
+        <div class="checkbox-group">
+          <input type="checkbox" id="consentCheckbox" />
+          <label for="consentCheckbox" style="margin: 0;">Eu concordo em usar esta extensão e aceito a política de privacidade.</label>
+        </div>
+      </div>
+      <button class="btn-primary" id="saveConsentBtn">Salvar Consentimento</button>
+    </div>
+
+    <!-- Seção de Notificações -->
+    <div class="section">
+      <h2>Notificações</h2>
+      <div class="form-group">
+        <div class="checkbox-group">
+          <input type="checkbox" id="notificationsCheckbox" checked />
+          <label for="notificationsCheckbox" style="margin: 0;">Ativar notificações de sucesso</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="checkbox-group">
+          <input type="checkbox" id="errorNotificationsCheckbox" checked />
+          <label for="errorNotificationsCheckbox" style="margin: 0;">Ativar notificações de erro</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seção de Segurança -->
+    <div class="section">
+      <h2>Segurança</h2>
+      <div class="form-group">
+        <label for="sessionTimeout">Tempo de expiração da sessão (minutos):</label>
+        <input type="number" id="sessionTimeout" value="1440" min="5" max="10080" />
+      </div>
+      <p style="font-size: 12px; color: #666; margin-top: 8px;">
+        A sessão será automaticamente encerrada após o tempo especificado de inatividade.
+      </p>
+    </div>
+
+    <!-- Seção de Dados -->
+    <div class="section">
+      <h2>Dados</h2>
+      <p style="font-size: 12px; margin-bottom: 12px; color: #666;">
+        Limpar todos os dados armazenados localmente pela extensão.
+      </p>
+      <button class="btn-secondary" id="clearDataBtn">Limpar Dados Locais</button>
+    </div>
+
+    <!-- Botões de Ação -->
+    <div class="button-group">
+      <button class="btn-primary" id="saveSettingsBtn">Salvar Configurações</button>
+      <button class="btn-secondary" id="resetSettingsBtn">Restaurar Padrões</button>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

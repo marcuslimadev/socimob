@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Socimob Atendimento 360",
+  "version": "1.0.0",
+  "description": "Assistente de produtividade para corretores imobiliários no WhatsApp Web",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://web.whatsapp.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Socimob Atendimento 360"
+  },
+  "options_page": "options.html",
+  "side_panel": {
+    "default_path": "side-panel.html"
+  }
+}
