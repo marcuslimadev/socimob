@@ -1177,41 +1177,41 @@ class WhatsAppService
 
         $summary = $parts ? implode(', ', $parts) : 'o que você busca';
 
-        return "Perfeito, já tenho o essencial: *{$summary}*.\nVou separar opções compatíveis.";
+        return "Perfeito, obrigado por me passar esses detalhes. Já tenho o essencial: *{$summary}*.\nVou separar opções compatíveis para você com cuidado.";
     }
 
     private function buildNextQualificationMessage(?Lead $lead, bool $afterMatching = false): ?string
     {
         if (!$lead) {
-            return 'Me diga se você busca *compra* ou *aluguel* e a região de interesse.';
+            return 'Claro, vou te ajudar. Você busca *compra* ou *aluguel* e em qual região?';
         }
 
         if (empty($lead->objetivo_compra)) {
-            return 'Você busca *compra* ou *aluguel*?';
+            return 'Para eu te orientar melhor, você busca *compra* ou *aluguel*?';
         }
 
         if (!$lead->budget_min && !$lead->budget_max) {
             return $this->isRentIntent($lead)
-                ? 'Qual faixa de aluguel mensal você quer considerar? Ex.: `até R$ 2.500`.'
+                ? 'Qual faixa de aluguel mensal fica confortável para você? Ex.: `até R$ 2.500`.'
                 : 'Qual faixa de investimento você quer considerar? Ex.: `até R$ 600 mil`.';
         }
 
         if (empty($lead->localizacao) && empty($lead->preferencia_bairro)) {
-            return 'Qual bairro ou região você prefere?';
+            return 'Tem algum bairro ou região de preferência?';
         }
 
         if (empty($lead->preferencia_tipo_imovel)) {
-            return 'Prefere *apartamento*, *casa* ou outro tipo de imóvel?';
+            return 'Você prefere *apartamento*, *casa* ou outro tipo de imóvel?';
         }
 
         if (empty($lead->quartos)) {
-            return 'Quantos quartos você precisa?';
+            return 'Quantos quartos seriam ideais para você?';
         }
 
         if (empty($lead->prazo_compra)) {
             return $this->isRentIntent($lead)
-                ? 'Para quando você precisa se mudar?'
-                : 'Qual seu prazo para comprar: agora, próximos meses ou pesquisa inicial?';
+                ? 'Para quando você gostaria de se mudar? Pode ser uma data aproximada.'
+                : 'Qual é o seu prazo para comprar: agora, próximos meses ou pesquisa inicial?';
         }
 
         if ($this->isSaleIntent($lead) && empty($lead->financiamento_status)) {
@@ -1219,11 +1219,11 @@ class WhatsAppService
         }
 
         if (empty($lead->renda_mensal)) {
-            return 'Qual sua renda mensal aproximada?';
+            return 'Para avançarmos com segurança, qual é sua renda mensal aproximada?';
         }
 
         if (empty($lead->fonte_renda)) {
-            return 'Sua renda vem de CLT, autônomo, empresa/PJ ou outra fonte?';
+            return 'E sua renda vem de CLT, autônomo, empresa/PJ ou outra fonte?';
         }
 
         return null;
@@ -1242,12 +1242,12 @@ class WhatsAppService
         }
 
         if (!empty($lead->fonte_renda)) {
-            $summary[] = 'renda ' . $lead->fonte_renda;
+            $summary[] = 'fonte de renda ' . $lead->fonte_renda;
         }
 
         $details = $summary ? "\nAnotei: " . implode(', ', $summary) . '.' : '';
 
-        return "Perfeito, obrigado.{$details}\nSe algum dos imóveis fizer sentido, me diga o código ou posso chamar um corretor para seguir com você.";
+        return "Perfeito, obrigado.{$details}\nSe algum desses imóveis fizer sentido para você, me diga o código. Se preferir, também posso chamar um corretor para seguir com seu atendimento.";
     }
 
     private function hasAnyQualificationData(Lead $lead): bool
@@ -2283,20 +2283,27 @@ class WhatsAppService
 
     private function extractIncomeSourceFromText(string $text): ?string
     {
+        $text = $this->normalizeIntentText($text);
+        $sources = [];
+
         if (preg_match('/\b(clt|carteira assinada|registrado|registrada)\b/u', $text)) {
-            return 'CLT';
+            $sources[] = 'CLT';
         }
 
-        if (preg_match('/\b(autonomo|autonoma|freelancer|por conta|informal|diarista)\b/u', $text)) {
-            return 'autônomo';
+        if (preg_match('/\b(autonomo|autonoma|automono|automona|freelancer|por conta|informal|diarista)\b/u', $text)) {
+            $sources[] = 'autônomo';
         }
 
         if (preg_match('/\b(empresario|empresaria|empresa|mei|pj|pro labore|comercio|loja)\b/u', $text)) {
-            return 'empresa/PJ';
+            $sources[] = 'empresa/PJ';
         }
 
         if (preg_match('/\b(aposentado|aposentada|aposentadoria|pensionista)\b/u', $text)) {
-            return 'aposentadoria/pensão';
+            $sources[] = 'aposentadoria/pensão';
+        }
+
+        if (!empty($sources)) {
+            return implode(' e ', array_values(array_unique($sources)));
         }
 
         if (preg_match('/\b(servidor|servidora|funcionario publico|funcionaria publica|concursado|concursada)\b/u', $text)) {
@@ -2342,14 +2349,9 @@ class WhatsAppService
         }
 
         if (empty($lead->fonte_renda)) {
-            if (preg_match('/\b(clt|carteira assinada|registrado|registrada)\b/u', $text)) {
-                $updates['fonte_renda'] = 'CLT';
-            } elseif (preg_match('/\b(autonomo|autonoma|autônomo|autônoma|freelancer|por conta)\b/u', $text)) {
-                $updates['fonte_renda'] = 'autônomo';
-            } elseif (preg_match('/\b(empresario|empresaria|empresário|empresária|empresa|mei|pj)\b/u', $text)) {
-                $updates['fonte_renda'] = 'empresa/PJ';
-            } elseif (preg_match('/\b(aposentado|aposentada|aposentadoria|pensionista)\b/u', $text)) {
-                $updates['fonte_renda'] = 'aposentadoria/pensão';
+            $incomeSource = $this->extractIncomeSourceFromText($text);
+            if ($incomeSource) {
+                $updates['fonte_renda'] = $incomeSource;
             }
         }
 
@@ -2541,8 +2543,26 @@ class WhatsAppService
 
     private function extractPurchaseTimelineFromText(string $messageLower): ?string
     {
+        $text = $this->normalizeIntentText($messageLower);
+
         if (preg_match('/^\s*(\d+)\s*(dia|dias)\s*$/iu', $messageLower, $matches)) {
             return 'até ' . $matches[1] . ' ' . ((int) $matches[1] === 1 ? 'dia' : 'dias');
+        }
+
+        if (preg_match('/\b(?:ate\s+)?(?:o\s+)?dia\s+(\d{1,2})\b/u', $text, $matches)) {
+            return 'até dia ' . (int) $matches[1];
+        }
+
+        if (preg_match('/^\s*(\d{1,2})\s+de\s+(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s*$/u', $text, $matches)) {
+            return (int) $matches[1] . ' de ' . $matches[2];
+        }
+
+        if (preg_match('/\b(?:este|esse)\s+mes\b/u', $text)) {
+            return 'este mês';
+        }
+
+        if (preg_match('/\b(?:mes\s+que\s+vem|proximo\s+mes)\b/u', $text)) {
+            return 'próximo mês';
         }
 
         if (preg_match('/^\s*(\d+)\s*(semana|semanas)\s*$/iu', $messageLower, $matches)) {
@@ -4249,6 +4269,3 @@ class WhatsAppService
         ]);
     }
 }
-
-
-
