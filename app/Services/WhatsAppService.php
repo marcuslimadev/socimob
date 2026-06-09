@@ -50,6 +50,7 @@ class WhatsAppService
     private LocalEmbeddingService $localEmbeddingService;
     private HuggingFaceService $huggingFaceService;
     private AiAtendimentoProviderService $aiProviderService;
+    private SocimobAiService $socimobAiService;
     
     public function __construct(
         TwilioService $twilio,
@@ -61,7 +62,8 @@ class WhatsAppService
         SmsShortLinkService $smsShortLinkService,
         LocalEmbeddingService $localEmbeddingService,
         HuggingFaceService $huggingFaceService,
-        AiAtendimentoProviderService $aiProviderService
+        AiAtendimentoProviderService $aiProviderService,
+        SocimobAiService $socimobAiService
     ) {
         $this->twilio = $twilio;
         $this->evolution = $evolution;
@@ -73,6 +75,7 @@ class WhatsAppService
         $this->localEmbeddingService = $localEmbeddingService;
         $this->huggingFaceService = $huggingFaceService;
         $this->aiProviderService = $aiProviderService;
+        $this->socimobAiService = $socimobAiService;
     }
 
     private function resolveWhatsAppGateway(): TwilioService|EvolutionApiService|MetaCloudGateway
@@ -1516,12 +1519,16 @@ class WhatsAppService
             'huggingface_model' => $aiProvider === AiAtendimentoProviderService::HUGGINGFACE
                 ? $this->huggingFaceService->getModel()
                 : null,
+            'socimob_ai_model' => $aiProvider === AiAtendimentoProviderService::SOCIMOB_AI
+                ? $this->socimobAiService->getModel($conversa->tenant_id ?? null)
+                : null,
         ]);
 
-        // Processar com IA (OpenAI ou Hugging Face, conforme configuração do admin)
-        $aiResponse = $aiProvider === AiAtendimentoProviderService::HUGGINGFACE
-            ? $this->huggingFaceService->processMessage($message, $historico, $isFromAudio, $properties, $leadData)
-            : $this->openai->processMessage($message, $historico, $isFromAudio, $properties, $leadData);
+        $aiResponse = match ($aiProvider) {
+            AiAtendimentoProviderService::HUGGINGFACE => $this->huggingFaceService->processMessage($message, $historico, $isFromAudio, $properties, $leadData),
+            AiAtendimentoProviderService::SOCIMOB_AI => $this->socimobAiService->processMessage($message, $historico, $isFromAudio, $properties, $leadData, $conversa->tenant_id ?? null),
+            default => $this->openai->processMessage($message, $historico, $isFromAudio, $properties, $leadData),
+        };
         
         Log::info('🤖 Resposta da IA', [
             'success' => $aiResponse['success'] ?? false,

@@ -66,7 +66,7 @@ interface LeadProfile {
   observacoes_cliente?: string | null;
 }
 
-type AiProvider = 'openai' | 'huggingface';
+type AiProvider = 'openai' | 'huggingface' | 'socimob_ai';
 
 // ── Watermark upload helper component ────────────────────────────────────────
 function WatermarkUploadSection({
@@ -406,7 +406,7 @@ export default function Settings() {
     try {
       setIsLoadingAiProvider(true);
       const response = await api.get('/admin/settings/ai-provider', { params: getTenantParams() });
-      const provider = response.data?.provider === 'huggingface' ? 'huggingface' : 'openai';
+      const provider = normalizeAiProvider(response.data?.provider);
       setAiProvider(provider);
       setAiProviderStatus(response.data || null);
     } catch (error) {
@@ -427,7 +427,7 @@ export default function Settings() {
         ...getTenantParams(),
       });
 
-      const savedProvider = response.data?.provider === 'huggingface' ? 'huggingface' : 'openai';
+      const savedProvider = normalizeAiProvider(response.data?.provider);
       setAiProvider(savedProvider);
       toast.success(response.data?.message || 'Provedor de IA atualizado');
       fetchAiProvider();
@@ -437,6 +437,11 @@ export default function Settings() {
     } finally {
       setIsSavingAiProvider(false);
     }
+  };
+
+  const normalizeAiProvider = (provider: unknown): AiProvider => {
+    if (provider === 'huggingface' || provider === 'socimob_ai') return provider;
+    return 'openai';
   };
 
   const fetchProfile = async () => {
@@ -1039,9 +1044,11 @@ export default function Settings() {
                             <div>
                               <p className="text-sm font-semibold text-foreground">Provedor do atendimento automático</p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {aiProvider === 'huggingface'
-                                  ? `Hugging Face com ${aiProviderStatus?.huggingface?.model || 'meta-llama/Llama-3.1-8B-Instruct'} para respostas e embeddings locais para matching.`
-                                  : 'OpenAI para respostas, extração de dados e condução do atendimento.'}
+                                {aiProvider === 'socimob_ai'
+                                  ? `Socimob IA hospedada${aiProviderStatus?.socimob_ai?.model ? ` com ${aiProviderStatus.socimob_ai.model}` : ''}, servida por API própria.`
+                                  : aiProvider === 'huggingface'
+                                    ? `Hugging Face com ${aiProviderStatus?.huggingface?.model || 'meta-llama/Llama-3.1-8B-Instruct'} para respostas e embeddings locais para matching.`
+                                    : 'OpenAI para respostas, extração de dados e condução do atendimento.'}
                               </p>
                               <p className="mt-2 text-xs text-muted-foreground">
                                 Você pode alternar a qualquer momento. A mudança é salva automaticamente.
@@ -1051,21 +1058,33 @@ export default function Settings() {
                                   Configure HUGGINGFACE_API_KEY em produção para usar o Llama; sem isso o fluxo usa fallback guiado.
                                 </p>
                               )}
+                              {aiProvider === 'socimob_ai' && aiProviderStatus?.socimob_ai?.configured === false && (
+                                <p className="mt-2 text-xs text-amber-300">
+                                  Configure SOCIMOB_AI_BASE_URL em produção para usar a IA própria hospedada.
+                                </p>
+                              )}
                             </div>
 
-                            <div className="flex items-center gap-3">
-                              <span className={`text-sm font-semibold ${aiProvider === 'openai' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                OpenAI
-                              </span>
-                              <Switch
-                                checked={aiProvider === 'huggingface'}
-                                disabled={isLoadingAiProvider || isSavingAiProvider}
-                                onCheckedChange={(checked) => handleAiProviderChange(checked ? 'huggingface' : 'openai')}
-                                aria-label="Selecionar provedor do atendimento IA"
-                              />
-                              <span className={`text-sm font-semibold ${aiProvider === 'huggingface' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                Hugging Face
-                              </span>
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                              {[
+                                ['openai', 'OpenAI'],
+                                ['huggingface', 'Hugging Face'],
+                                ['socimob_ai', 'Socimob IA'],
+                              ].map(([value, label]) => (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  disabled={isLoadingAiProvider || isSavingAiProvider}
+                                  onClick={() => handleAiProviderChange(value as AiProvider)}
+                                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                                    aiProvider === value
+                                      ? 'border-blue-400 bg-blue-500/20 text-blue-100'
+                                      : 'border-white/10 bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground'
+                                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
                               {(isLoadingAiProvider || isSavingAiProvider) && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
                             </div>
                           </div>

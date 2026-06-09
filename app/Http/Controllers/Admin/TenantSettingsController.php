@@ -8,6 +8,7 @@ use App\Models\TenantConfig;
 use App\Services\AiAtendimentoProviderService;
 use App\Services\HuggingFaceService;
 use App\Services\LocalEmbeddingService;
+use App\Services\SocimobAiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -901,6 +902,7 @@ class TenantSettingsController extends Controller
         $tenant = Tenant::find($tenantId);
         $providerService = app(AiAtendimentoProviderService::class);
         $huggingFaceService = app(HuggingFaceService::class);
+        $socimobAiService = app(SocimobAiService::class);
         $embeddingHealth = app(LocalEmbeddingService::class)->health();
 
         $provider = $providerService->resolve($tenantId);
@@ -920,6 +922,12 @@ class TenantSettingsController extends Controller
                 'embedding_service_available' => (bool) ($embeddingHealth['success'] ?? false),
                 'embedding_model' => $embeddingHealth['model'] ?? null,
             ],
+            'socimob_ai' => [
+                'configured' => $socimobAiService->isConfigured($tenantId),
+                'model' => $socimobAiService->getModel($tenantId),
+                'health' => $socimobAiService->health($tenantId),
+                'chat_endpoint' => 'Socimob IA hospedada',
+            ],
         ]);
     }
 
@@ -936,7 +944,7 @@ class TenantSettingsController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'provider' => 'required|string|in:openai,huggingface,hf,hugging-face,hugginface,huggin-face',
+            'provider' => 'required|string|in:openai,huggingface,hf,hugging-face,hugginface,huggin-face,socimob_ai,socimob-ai,socimobai,propria,propria-hospedada,self-hosted',
         ]);
 
         if ($validator->fails()) {
@@ -950,9 +958,11 @@ class TenantSettingsController extends Controller
         return response()->json([
             'success' => true,
             'provider' => $provider,
-            'message' => $provider === AiAtendimentoProviderService::HUGGINGFACE
-                ? 'Atendimento configurado para Hugging Face'
-                : 'Atendimento configurado para OpenAI',
+            'message' => match ($provider) {
+                AiAtendimentoProviderService::HUGGINGFACE => 'Atendimento configurado para Hugging Face',
+                AiAtendimentoProviderService::SOCIMOB_AI => 'Atendimento configurado para Socimob IA',
+                default => 'Atendimento configurado para OpenAI',
+            },
         ]);
     }
 
