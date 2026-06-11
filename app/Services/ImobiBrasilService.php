@@ -678,6 +678,58 @@ class ImobiBrasilService
     }
 
     /**
+     * Converte qualquer texto ou HTML para texto plano limpo.
+     * Remove todas as tags HTML, emojis, ícones, aspas tipográficas,
+     * travessões e qualquer caractere que possa causar problemas no Imobi Brasil.
+     */
+    private static function cleanToPlainText(string $text): string
+    {
+        if (empty($text)) return '';
+
+        // Garante UTF-8 válido
+        $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+
+        // Converte tags de quebra de linha HTML em newlines antes de remover as tags
+        $text = preg_replace('/<br\s*\/?>/i', "\n", $text);
+        $text = preg_replace('/<\/p>/i', "\n", $text);
+        $text = preg_replace('/<\/li>/i', "\n", $text);
+        $text = preg_replace('/<\/h[1-6]>/i', "\n", $text);
+
+        // Remove todas as tags HTML
+        $text = strip_tags($text);
+
+        // Decodifica entidades HTML (&amp; → &, &nbsp; → espaço, etc.)
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        // Substitui aspas tipográficas por aspas normais
+        $text = str_replace(["\u{2018}", "\u{2019}", "\u{201A}", "\u{201B}"], "'", $text);
+        $text = str_replace(["\u{201C}", "\u{201D}", "\u{201E}", "\u{201F}"], '"', $text);
+
+        // Substitui travessões e traços especiais por hífen
+        $text = str_replace(["\u{2013}", "\u{2014}", "\u{2015}", "\u{2212}"], '-', $text);
+
+        // Remove caracteres de controle invisíveis (zero-width, BOM, etc.)
+        $text = preg_replace('/[\x{200B}-\x{200F}\x{FEFF}\x{00AD}]/u', '', $text);
+
+        // Normaliza quebras de linha
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
+
+        // Remove emojis, símbolos e caracteres fora do range Latin (mantém acentos)
+        $text = preg_replace('/[^\x{000A}\x{000D}\x{0020}-\x{007E}\x{00C0}-\x{024F}]/u', '', $text);
+
+        // Substitui espaços não-quebráveis e tabulações por espaço normal
+        $text = preg_replace('/[\x{00A0}\x{0009}]/u', ' ', $text);
+
+        // Limpa espaços múltiplos na mesma linha
+        $text = preg_replace('/[ ]{2,}/', ' ', $text);
+
+        // Limpa linhas em branco excessivas (máximo 2 quebras seguidas)
+        $text = preg_replace('/\n{3,}/', "\n\n", $text);
+
+        return trim($text);
+    }
+
+    /**
      * Converte texto plano (com quebras de linha e *negrito*) para HTML formatado.
      * Se o conteúdo já contiver tags HTML, apenas sanitiza emojis e retorna.
      * Imobi Brasil renderiza HTML na descricaoImovel e campos similares.
@@ -826,10 +878,10 @@ class ImobiBrasilService
             'nomeCondominio' => $property->nome_condominio ?? '',
             'anoConstrucao' => $property->ano_construcao ?? '',
             'mobiliado' => ($property->mobiliado ?? false) ? 'sim' : 'nao',
-            'descricaoImovel' => self::formatDescriptionAsHtml($property->descricao ?? $property->titulo ?? ''),
-            'observacaoImovel' => self::formatDescriptionAsHtml($property->observacao ?? ''),
-            'pontosFortesImovel' => self::formatDescriptionAsHtml($property->pontos_fortes ?? ''),
-            'outrasInformacoesImovel' => self::formatDescriptionAsHtml($property->outras_informacoes ?? ''),
+            'descricaoImovel' => self::cleanToPlainText($property->descricao ?? $property->titulo ?? ''),
+            'observacaoImovel' => self::cleanToPlainText($property->observacao ?? ''),
+            'pontosFortesImovel' => self::cleanToPlainText($property->pontos_fortes ?? ''),
+            'outrasInformacoesImovel' => self::cleanToPlainText($property->outras_informacoes ?? ''),
             'destaqueInicial' => ($property->destaque ?? false) ? 'sim' : 'nao',
             'destaquesSuperDestaqueInicial' => ($property->super_destaque ?? false) ? 'sim' : 'nao',
             'valorImovel' => (int) ($listingValue ?? 0),
