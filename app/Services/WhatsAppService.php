@@ -1594,25 +1594,7 @@ class WhatsAppService
                 'error' => $aiResponse['error'] ?? 'Erro desconhecido'
             ]);
 
-            if ($conversa->lead) {
-                $this->hydrateLeadFromMessage($conversa->lead, $message);
-                $conversa->load('lead');
-                $this->progressStage($conversa);
-
-                if ($conversa->lead && $this->hasEnoughDataForMatching($conversa->lead) && !$this->hasPresentedMatches($conversa, $conversa->lead)) {
-                    $this->performPropertyMatching($conversa->lead, $conversa);
-
-                    return [
-                        'success' => true,
-                        'message' => 'Mensagem processada com fallback local e matching',
-                        'ai_response' => 'Fallback local: critérios coletados e matching executado',
-                        'current_stage' => $conversa->fresh()->stage,
-                        'ai_provider' => $aiProvider,
-                    ];
-                }
-            }
-
-            $fallbackMessage = $this->buildLocalFallbackMessage($conversa->lead ?? null);
+            $fallbackMessage = 'Obrigado pelo contato! 😊 Um de nossos corretores habilitados vai entrar em contato com você em breve para te ajudar da melhor forma possível.';
             $fallbackResult = $this->sendMessage($conversa->id, $conversa->telefone, $fallbackMessage);
 
             if (!($fallbackResult['success'] ?? false)) {
@@ -3482,31 +3464,6 @@ class WhatsAppService
         return trim($value);
     }
 
-    private function buildLocalFallbackMessage(?Lead $lead): string
-    {
-        if (!$lead) {
-            return 'Certo, vou te ajudar. Em qual bairro ou região você está buscando?';
-        }
-
-        if (empty($lead->localizacao) && empty($lead->preferencia_bairro)) {
-            return 'Anotei. Em qual bairro ou região você está buscando?';
-        }
-
-        if (!$lead->budget_min && !$lead->budget_max) {
-            return 'Perfeito. Qual faixa de valor você está considerando?';
-        }
-
-        if (empty($lead->quartos)) {
-            return 'Entendi. Quantos quartos você precisa?';
-        }
-
-        if (empty($lead->prazo_compra)) {
-            return 'Ótimo. Busca para os próximos meses ou é pesquisa inicial?';
-        }
-
-        return 'Perfeito, anotei seus critérios. Vou buscar opções compatíveis para você.';
-    }
-    
     /**
      * Obter histórico da conversa
      */
