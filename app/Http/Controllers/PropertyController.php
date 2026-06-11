@@ -1354,15 +1354,18 @@ class PropertyController extends Controller
             Log::error('Property store failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
+                'class' => get_class($e),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
+                'trace' => array_slice($e->getTrace(), 0, 5),
             ]);
+
+            $hint = get_class($e) . ' em ' . basename($e->getFile()) . ':' . $e->getLine();
+            $msg = substr($e->getMessage(), 0, 300);
 
             return response()->json([
                 'error' => 'Property store failed',
-                'message' => app()->environment('production')
-                    ? 'Erro interno ao salvar imóvel.'
-                    : $e->getMessage(),
+                'message' => "Erro ao salvar imóvel: {$msg} [{$hint}]",
             ], 500);
         }
     }
@@ -1633,9 +1636,10 @@ class PropertyController extends Controller
             
             $this->flushPortalCaches($selectedPortalTenantIds);
 
+            $freshProperty = $property->fresh() ?? $property;
             return response()->json([
                 'success' => true,
-                'data' => array_merge($property->fresh()->toArray(), [
+                'data' => array_merge($freshProperty->toArray(), [
                     'portal_tenant_ids' => $selectedPortalTenantIds,
                 ]),
                 'message' => $mediaUploadWarning ?: "Imóvel {$property->codigo_imovel} atualizado com sucesso!",
@@ -1646,15 +1650,18 @@ class PropertyController extends Controller
                 'tenant_id' => $tenantId,
                 'property_id' => $id,
                 'error' => $e->getMessage(),
+                'class' => get_class($e),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
+                'trace' => array_slice($e->getTrace(), 0, 5),
             ]);
+
+            $hint = get_class($e) . ' em ' . basename($e->getFile()) . ':' . $e->getLine();
+            $msg = substr($e->getMessage(), 0, 300);
 
             return response()->json([
                 'error' => 'Property update failed',
-                'message' => app()->environment('production')
-                    ? 'Erro interno ao atualizar imóvel.'
-                    : $e->getMessage(),
+                'message' => "Erro ao atualizar imóvel: {$msg} [{$hint}]",
             ], 500);
         }
     }
