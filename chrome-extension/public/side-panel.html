@@ -1,320 +1,550 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Socimob Atendimento 360</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #25d366;
+      --green-dark: #128c7e;
+      --green-light: #e8f5e9;
+      --green-border: #a5d6a7;
+      --red: #ef5350;
+      --orange: #ffa726;
+      --blue: #42a5f5;
+      --gray: #9e9e9e;
+      --text: #212121;
+      --text-light: #757575;
+      --bg: #f5f5f5;
+      --card: #ffffff;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,.12);
     }
 
     body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--text);
       width: 100%;
-      max-width: 400px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #fff;
-      color: #333;
-      font-size: 14px;
+      height: 100vh;
+      overflow: hidden;
     }
 
     .container {
       display: flex;
       flex-direction: column;
       height: 100vh;
-      padding: 0;
     }
 
+    /* Header */
     .header {
-      background: #25d366;
-      color: white;
-      padding: 12px;
-      border-bottom: 1px solid #ddd;
-    }
-
-    .header h1 {
-      font-size: 16px;
-      font-weight: 600;
-    }
-
-    .content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px;
-    }
-
-    .section {
-      margin-bottom: 16px;
-    }
-
-    .section-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: #666;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-    }
-
-    .conversation-info {
-      background: #f5f5f5;
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 12px;
-    }
-
-    .conversation-info p {
-      font-size: 12px;
-      margin-bottom: 4px;
-    }
-
-    .conversation-info strong {
-      color: #25d366;
-    }
-
-    .search-box {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
-
-    .lead-list {
-      max-height: 200px;
-      overflow-y: auto;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-    }
-
-    .lead-drop-zone {
-      border: 1px dashed #9ca3af;
-      border-radius: 6px;
-      padding: 10px;
-      margin-bottom: 8px;
-      background: #f9fafb;
-      color: #4b5563;
-      font-size: 12px;
-      text-align: center;
-    }
-
-    .lead-drop-zone.drag-over {
-      border-color: #25d366;
-      background: #e8f5e9;
-      color: #166534;
-    }
-
-    .selected-lead-card {
-      display: none;
-      margin-bottom: 8px;
-      padding: 10px;
-      border: 1px solid #bbf7d0;
-      border-left: 4px solid #25d366;
-      border-radius: 6px;
-      background: #f0fdf4;
-      font-size: 12px;
-    }
-
-    .selected-lead-card strong {
-      display: block;
-      color: #14532d;
-      margin-bottom: 3px;
-    }
-
-    .selected-lead-card span {
-      display: block;
-      color: #166534;
-      line-height: 1.35;
-    }
-
-    .lead-item {
-      padding: 8px;
-      border-bottom: 1px solid #eee;
-      cursor: pointer;
-      font-size: 12px;
-    }
-
-    .lead-item:hover {
-      background: #f9f9f9;
-    }
-
-    .lead-item.selected {
-      background: #e8f5e9;
-      border-left: 3px solid #25d366;
-    }
-
-    .textarea {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 12px;
-      font-family: inherit;
-      resize: vertical;
-      min-height: 60px;
-    }
-
-    .button-group {
+      background: var(--green-dark);
+      color: #fff;
+      padding: 10px 14px;
       display: flex;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .btn {
-      flex: 1;
-      padding: 8px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .btn-primary {
-      background: #25d366;
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: #1fa857;
-    }
-
-    .btn-secondary {
-      background: #e0e0e0;
-      color: #333;
-    }
-
-    .btn-secondary:hover {
-      background: #d0d0d0;
-    }
-
-    .status {
-      padding: 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      margin-bottom: 8px;
-    }
-
-    .status.success {
-      background: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
-    }
-
-    .status.error {
-      background: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
-    }
-
-    .status.info {
-      background: #d1ecf1;
-      color: #0c5460;
-      border: 1px solid #bee5eb;
-    }
-
-    .templates-list {
-      max-height: 150px;
-      overflow-y: auto;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-    }
-
-    .template-item {
-      padding: 8px;
-      border-bottom: 1px solid #eee;
-      font-size: 12px;
-      display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
     }
-
-    .template-item:hover {
-      background: #f9f9f9;
-    }
-
-    .copy-btn {
-      background: #3498db;
-      color: white;
-      border: none;
-      padding: 4px 8px;
-      border-radius: 3px;
+    .header-logo { font-size: 20px; }
+    .header-text h1 { font-size: 14px; font-weight: 700; }
+    .header-text p { font-size: 11px; opacity: .8; }
+    .header-refresh {
+      margin-left: auto;
+      background: none;
+      border: 1px solid rgba(255,255,255,.4);
+      color: #fff;
+      border-radius: 4px;
+      padding: 3px 8px;
       cursor: pointer;
       font-size: 11px;
     }
+    .header-refresh:hover { background: rgba(255,255,255,.15); }
 
-    .copy-btn:hover {
-      background: #2980b9;
+    /* Status */
+    #statusMessage {
+      display: none;
+      padding: 8px 12px;
+      font-size: 12px;
+      border-left: 3px solid;
+      margin: 0;
+    }
+    .status.success { background: #e8f5e9; color: #2e7d32; border-color: var(--green); }
+    .status.error   { background: #ffebee; color: #b71c1c; border-color: var(--red); }
+    .status.info    { background: #e3f2fd; color: #0d47a1; border-color: var(--blue); }
+    .status.warning { background: #fff8e1; color: #f57f17; border-color: var(--orange); }
+
+    /* Scroll area */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* No session */
+    #noSession {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 24px;
+      text-align: center;
+      gap: 12px;
+    }
+    #noSession .lock-icon { font-size: 44px; }
+    #noSession p { color: var(--text-light); font-size: 13px; line-height: 1.5; }
+
+    /* Card */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 10px 12px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--text-light);
+      margin-bottom: 8px;
+    }
+
+    /* Conversa info */
+    .conv-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 8px;
+      font-size: 12px;
+    }
+    .conv-grid .label { color: var(--text-light); }
+    .conv-grid .value { font-weight: 600; color: var(--green-dark); }
+
+    /* Mensagens recentes */
+    #recentMessagesSection { display: none; }
+    .messages-area {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 130px;
+      overflow-y: auto;
+      margin-top: 6px;
+    }
+    .msg-bubble {
+      padding: 5px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      max-width: 90%;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .msg-in  { background: #fff; border: 1px solid #e0e0e0; align-self: flex-start; }
+    .msg-out { background: #dcf8c6; align-self: flex-end; }
+
+    /* Banner de auto-match */
+    #autoMatchBanner {
+      display: none;
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .match-banner.match-success { background: #e8f5e9; border: 1px solid var(--green-border); color: #2e7d32; }
+    .match-banner.match-match   { background: #e3f2fd; border: 1px solid #90caf9; color: #0d47a1; }
+    .match-banner.match-warning { background: #fff8e1; border: 1px solid #ffe082; color: #f57f17; }
+    .match-banner.match-info    { background: #f3e5f5; border: 1px solid #ce93d8; color: #6a1b9a; }
+    .banner-link {
+      font-weight: 600;
+      text-decoration: underline;
+      cursor: pointer;
+      color: inherit;
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: inherit;
+      font-family: inherit;
+    }
+    .banner-link:hover { opacity: .8; }
+
+    /* Lead card selecionado */
+    #selectedLeadCard {
+      display: none;
+      border: 1px solid var(--green-border);
+      border-left: 4px solid var(--green);
+      border-radius: var(--radius);
+      padding: 10px;
+      background: var(--green-light);
+    }
+    .lead-card-header { display: flex; align-items: flex-start; gap: 6px; }
+    .lead-card-info { flex: 1; }
+    .lead-card-info strong { display: block; color: #1b5e20; font-size: 13px; }
+    .lead-card-info span   { display: block; color: #2e7d32; font-size: 11px; line-height: 1.4; }
+
+    .qualif-row { display: flex; align-items: center; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+    .qualif-label { font-size: 10px; color: var(--text-light); white-space: nowrap; }
+    .qualif-btn {
+      border: 1px solid #e0e0e0;
+      background: #fff;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .qualif-btn:hover { border-color: var(--green); }
+    .qualif-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+
+    /* Linked conversation */
+    #linkedConversationInfo { display: none; }
+    .linked-conv-tag {
+      font-size: 11px;
+      color: #388e3c;
+      background: #f1f8e9;
+      border: 1px solid #c5e1a5;
+      border-radius: 4px;
+      padding: 4px 8px;
+    }
+
+    /* Search & list */
+    .search-input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: var(--radius);
+      font-size: 12px;
+      outline: none;
+      transition: border .15s;
+    }
+    .search-input:focus { border-color: var(--green); }
+
+    .lead-list {
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid #e0e0e0;
+      border-radius: var(--radius);
+      margin-top: 6px;
+    }
+    .lead-item {
+      padding: 8px 10px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background .1s;
+    }
+    .lead-item:last-child { border-bottom: none; }
+    .lead-item:hover { background: #f5f5f5; }
+    .lead-item.selected { background: var(--green-light); border-left: 3px solid var(--green); }
+    .lead-item-name  { font-weight: 600; font-size: 12px; }
+    .lead-item-phone { font-size: 11px; color: var(--text-light); }
+    .empty-list { padding: 10px; text-align: center; color: var(--text-light); font-size: 12px; }
+
+    /* Drop zone */
+    .lead-drop-zone {
+      border: 1.5px dashed #bdbdbd;
+      border-radius: var(--radius);
+      padding: 9px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-light);
+      background: #fafafa;
+      transition: all .15s;
+    }
+    .lead-drop-zone.drag-over { border-color: var(--green); background: var(--green-light); color: #2e7d32; }
+
+    /* Create lead form */
+    #createLeadForm { display: none; margin-top: 8px; }
+    .form-field { margin-bottom: 6px; }
+    .form-field label { display: block; font-size: 11px; color: var(--text-light); margin-bottom: 2px; }
+    .form-field input {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      font-size: 12px;
+      outline: none;
+    }
+    .form-field input:focus { border-color: var(--green); }
+
+    /* Textarea */
+    .textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #e0e0e0;
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 64px;
+      outline: none;
+    }
+    .textarea:focus { border-color: var(--green); }
+
+    /* Select */
+    .select {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #e0e0e0;
+      border-radius: var(--radius);
+      font-size: 12px;
+      outline: none;
+      background: #fff;
+      margin-bottom: 6px;
+    }
+    .select:focus { border-color: var(--green); }
+
+    /* Buttons */
+    .btn {
+      padding: 7px 12px;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all .15s;
+      width: 100%;
+    }
+    .btn-primary   { background: var(--green); color: #fff; }
+    .btn-primary:hover { background: var(--green-dark); }
+    .btn-secondary { background: #e0e0e0; color: var(--text); }
+    .btn-secondary:hover { background: #bdbdbd; }
+    .btn-danger    { background: #ffebee; color: var(--red); border: 1px solid #ffcdd2; }
+    .btn:disabled  { opacity: .55; cursor: not-allowed; }
+
+    .btn-row { display: flex; gap: 6px; margin-top: 6px; }
+    .btn-row .btn { flex: 1; }
+
+    .icon-btn {
+      background: none;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 3px 7px;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .icon-btn:hover { background: #f5f5f5; }
+
+    /* Quick actions */
+    .quick-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+
+    /* Templates */
+    .templates-list {
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid #e0e0e0;
+      border-radius: var(--radius);
+    }
+    .template-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-bottom: 1px solid #f0f0f0;
+      gap: 6px;
+    }
+    .template-item:last-child { border-bottom: none; }
+    .template-item:hover { background: #fafafa; }
+    .template-name {
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    .template-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+    /* Session badge */
+    #sessionBadge {
+      font-size: 10px;
+      color: rgba(255,255,255,.7);
+      margin-left: auto;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 140px;
     }
   </style>
 </head>
 <body>
   <div class="container">
+
+    <!-- Header -->
     <div class="header">
-      <h1>📱 Socimob Atendimento 360</h1>
+      <div class="header-logo">🏠</div>
+      <div class="header-text">
+        <h1>Socimob 360</h1>
+        <p>Atendimento Inteligente</p>
+      </div>
+      <span id="sessionBadge"></span>
+      <button class="header-refresh" id="refreshConvBtn" title="Atualizar conversa">↻</button>
     </div>
 
-    <div class="content">
-      <div id="statusMessage"></div>
+    <!-- Status global -->
+    <div id="statusMessage"></div>
 
-      <!-- Informações da Conversa -->
-      <div class="section">
-        <div class="section-title">Conversa Atual</div>
-        <div class="conversation-info">
-          <p><strong>Contato:</strong> <span id="contactName">-</span></p>
-          <p><strong>Telefone:</strong> <span id="contactPhone">-</span></p>
-          <p><strong>Mensagens:</strong> <span id="messageCount">0</span></p>
-        </div>
-      </div>
-
-      <!-- Busca e Vinculação de Lead -->
-      <div class="section">
-        <div class="section-title">Vincular a Lead</div>
-        <div class="lead-drop-zone" id="leadDropZone">Solte aqui um lead do CRM ou use o botão "Extensão" no lead aberto.</div>
-        <div class="selected-lead-card" id="selectedLeadCard"></div>
-        <input type="text" id="leadSearch" class="search-box" placeholder="Buscar lead por nome, telefone ou email..." />
-        <div class="lead-list" id="leadList"></div>
-        <button class="btn btn-secondary" id="pullCurrentBtn" style="width: 100%; margin-top: 8px;">Puxar conversa/lead aberto</button>
-        <button class="btn btn-primary" id="linkConversationBtn" style="width: 100%; margin-top: 8px;">Vincular conversa aberta</button>
-        <button class="btn btn-primary" id="createLeadBtn" style="width: 100%; margin-top: 8px;">+ Criar Novo Lead</button>
-      </div>
-
-      <!-- Resumo Comercial -->
-      <div class="section">
-        <div class="section-title">Resumo da Conversa</div>
-        <textarea id="summaryText" class="textarea" placeholder="Escreva o resumo comercial..."></textarea>
-        <div class="button-group">
-          <button class="btn btn-primary" id="saveSummaryBtn">Salvar Resumo</button>
-          <button class="btn btn-secondary" id="clearSummaryBtn">Limpar</button>
-        </div>
-      </div>
-
-      <!-- Próxima Ação -->
-      <div class="section">
-        <div class="section-title">Próxima Ação</div>
-        <input type="text" id="nextAction" class="search-box" placeholder="Ex: Agendar visita para segunda..." />
-        <button class="btn btn-primary" id="saveActionBtn" style="width: 100%;">Salvar Ação</button>
-      </div>
-
-      <!-- Ações Rápidas -->
-      <div class="section">
-        <div class="section-title">Ações Rápidas</div>
-        <div class="button-group">
-          <button class="btn btn-secondary" id="createTaskBtn">📋 Tarefa</button>
-          <button class="btn btn-secondary" id="scheduleVisitBtn">📅 Visita</button>
-          <button class="btn btn-secondary" id="createProposalBtn">💰 Proposta</button>
-        </div>
-      </div>
-
-      <!-- Templates de Mensagem -->
-      <div class="section">
-        <div class="section-title">Templates de Mensagem</div>
-        <div class="templates-list" id="templatesList"></div>
-      </div>
+    <!-- Sem sessão -->
+    <div id="noSession">
+      <div class="lock-icon">🔒</div>
+      <p>Faça login no <strong>Socimob CRM</strong>. A extensão captura a sessão automaticamente.</p>
+      <p style="font-size:11px; color:#bbb;">Se você já está logado, aguarde alguns segundos ou recarregue a página do CRM.</p>
     </div>
-  </div>
+
+    <!-- Conteúdo principal -->
+    <div id="panelContent" style="display:none;">
+      <div class="content">
+
+        <!-- 1. Conversa atual -->
+        <div class="card">
+          <div class="section-title">Conversa Aberta no WhatsApp</div>
+          <div class="conv-grid">
+            <span class="label">Contato</span>
+            <span class="value" id="contactName">-</span>
+            <span class="label">Telefone</span>
+            <span class="value" id="contactPhone">-</span>
+            <span class="label">Mensagens</span>
+            <span class="value" id="messageCount">0</span>
+          </div>
+        </div>
+
+        <!-- 2. Mensagens recentes -->
+        <div class="card" id="recentMessagesSection">
+          <div class="section-title">Últimas Mensagens</div>
+          <div class="messages-area" id="recentMessages"></div>
+        </div>
+
+        <!-- 3. Banner de auto-match -->
+        <div id="autoMatchBanner" class="match-banner"></div>
+
+        <!-- 4. Lead vinculado (card verde) -->
+        <div id="selectedLeadCard"></div>
+
+        <!-- 5. Conversa vinculada -->
+        <div id="linkedConversationInfo"></div>
+
+        <!-- 6. Busca e vinculação de lead -->
+        <div class="card">
+          <div class="section-title">Vincular Lead</div>
+
+          <div class="lead-drop-zone" id="leadDropZone">
+            Arraste um lead do CRM aqui
+          </div>
+
+          <input
+            type="text"
+            id="leadSearch"
+            class="search-input"
+            placeholder="Buscar por nome, telefone ou e-mail..."
+            style="margin-top:8px;"
+          />
+          <div class="lead-list" id="leadList"></div>
+
+          <!-- Formulário inline de criação -->
+          <div id="createLeadForm">
+            <div style="font-size:12px; font-weight:600; margin: 8px 0 6px; color: var(--green-dark);">
+              Novo Lead
+            </div>
+            <div class="form-field">
+              <label>Nome *</label>
+              <input type="text" id="newLeadName" placeholder="Nome completo" />
+            </div>
+            <div class="form-field">
+              <label>Telefone / WhatsApp *</label>
+              <input type="tel" id="newLeadPhone" placeholder="+55 11 99999-9999" />
+            </div>
+            <div class="form-field">
+              <label>E-mail</label>
+              <input type="email" id="newLeadEmail" placeholder="email@exemplo.com" />
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="confirmCreateLeadBtn">Criar Lead</button>
+              <button class="btn btn-secondary" id="cancelCreateLeadBtn">Cancelar</button>
+            </div>
+          </div>
+
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="btn btn-secondary" id="pullCurrentBtn">🔄 Puxar conversa</button>
+            <button class="btn btn-primary" id="linkConversationBtn">🔗 Vincular</button>
+          </div>
+          <button class="btn btn-secondary" id="createLeadBtn" style="margin-top:6px;">
+            ➕ Criar Novo Lead
+          </button>
+        </div>
+
+        <!-- 7. Resumo comercial -->
+        <div class="card">
+          <div class="section-title">Resumo Comercial</div>
+
+          <select class="select" id="conversationStatus">
+            <option value="open">🟢 Conversa aberta</option>
+            <option value="negotiating">🟡 Em negociação</option>
+            <option value="waiting_docs">📄 Aguardando docs</option>
+            <option value="closed_won">✅ Fechado</option>
+            <option value="closed_lost">❌ Perdido</option>
+          </select>
+
+          <textarea
+            id="summaryText"
+            class="textarea"
+            placeholder="Resuma o que foi discutido, interesse do cliente, objeções, imóveis vistos..."
+          ></textarea>
+
+          <input
+            type="text"
+            id="nextAction"
+            class="search-input"
+            placeholder="Próxima ação (ex: Agendar visita na sexta)"
+            style="margin-top:6px;"
+          />
+
+          <select class="select" id="interestLevel" style="margin-top:6px;">
+            <option value="">Nível de interesse</option>
+            <option value="1">⭐ Muito baixo</option>
+            <option value="2">⭐⭐ Baixo</option>
+            <option value="3">⭐⭐⭐ Médio</option>
+            <option value="4">⭐⭐⭐⭐ Alto</option>
+            <option value="5">⭐⭐⭐⭐⭐ Muito alto</option>
+          </select>
+
+          <div class="btn-row" style="margin-top:4px;">
+            <button class="btn btn-primary" id="saveSummaryBtn">💾 Salvar Resumo</button>
+            <button class="btn btn-secondary" id="clearSummaryBtn">Limpar</button>
+          </div>
+          <button class="btn btn-secondary" id="saveActionBtn" style="margin-top:6px;">
+            📌 Salvar Próxima Ação
+          </button>
+        </div>
+
+        <!-- 8. Ações rápidas -->
+        <div class="card">
+          <div class="section-title">Ações Rápidas</div>
+          <div class="quick-actions">
+            <button class="btn btn-secondary" id="createTaskBtn">📋<br>Tarefa</button>
+            <button class="btn btn-secondary" id="scheduleVisitBtn">📅<br>Visita</button>
+            <button class="btn btn-secondary" id="openCrmBtn">🏠<br>Abrir CRM</button>
+          </div>
+        </div>
+
+        <!-- 9. Templates de mensagem -->
+        <div class="card">
+          <div class="section-title">Templates de Mensagem</div>
+          <div class="templates-list" id="templatesList">
+            <div class="empty-list">Carregando templates...</div>
+          </div>
+        </div>
+
+      </div><!-- /.content -->
+    </div><!-- /#panelContent -->
+
+  </div><!-- /.container -->
 
   <script src="side-panel.js"></script>
 </body>

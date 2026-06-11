@@ -55,4 +55,50 @@ class ExtensionLeadController extends Controller
 
         return response()->json(["success" => true, "data" => $lead, "message" => "Lead criado com sucesso."]);
     }
+
+    /**
+     * Adiciona uma nota rápida ao lead (salva em observacoes com timestamp).
+     */
+    public function addNote(Request $request, Lead $lead)
+    {
+        $user = $request->user();
+
+        if ($lead->tenant_id !== $user->tenant_id) {
+            return response()->json(["success" => false, "message" => "Não autorizado."], 403);
+        }
+
+        $request->validate([
+            "note" => "required|string|max:2000",
+            "source" => "nullable|string",
+        ]);
+
+        $timestamp = now()->format("d/m/Y H:i");
+        $source = $request->input("source", "chrome_extension");
+        $newNote = "[{$timestamp} via extensão] " . $request->input("note");
+
+        $existingObs = $lead->observacoes ? $lead->observacoes . "\n\n" : "";
+        $lead->update(["observacoes" => $existingObs . $newNote]);
+
+        return response()->json(["success" => true, "data" => $lead, "message" => "Nota adicionada ao lead."]);
+    }
+
+    /**
+     * Atualiza a classificação (status de qualificação) do lead.
+     */
+    public function updateStatus(Request $request, Lead $lead)
+    {
+        $user = $request->user();
+
+        if ($lead->tenant_id !== $user->tenant_id) {
+            return response()->json(["success" => false, "message" => "Não autorizado."], 403);
+        }
+
+        $request->validate([
+            "classificacao" => "required|string|in:frio,morno,quente,negociando,fechado,perdido",
+        ]);
+
+        $lead->update(["classificacao" => $request->input("classificacao")]);
+
+        return response()->json(["success" => true, "data" => $lead, "message" => "Status do lead atualizado."]);
+    }
 }

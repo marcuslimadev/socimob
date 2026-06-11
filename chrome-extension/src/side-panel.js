@@ -1,161 +1,289 @@
-// Side Panel script para a extensão Socimob
+// Side Panel — Socimob Atendimento 360
 
 let selectedLeadId = null;
 let selectedLeadData = null;
+let linkedConversationId = null;
 let currentConversationInfo = null;
 let currentSessionToken = null;
 let socimobUrl = null;
+let tenantDomain = null;
+
+// ── Inicialização ──────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  initializePanel(() => {
-    loadSelectedLeadFromStorage();
-    loadTemplates();
-  });
   setupEventListeners();
-  loadConversationInfo();
+  initializePanel();
 });
 
-function initializePanel(onReady) {
-  // Recuperar dados de sessão
-  chrome.storage.local.get(['sessionToken', 'socimobUrl'], (data) => {
-    currentSessionToken = data.sessionToken;
-    socimobUrl = data.socimobUrl;
+async function initializePanel() {
+  const data = await storageGet(['sessionToken', 'socimobUrl', 'userEmail', 'selectedSocimobLead']);
+  currentSessionToken = data.sessionToken;
+  socimobUrl = data.socimobUrl;
 
-    if (!currentSessionToken || !socimobUrl) {
-      showStatus('Sessão expirada. Por favor, reconecte no popup.', 'error');
-    }
+  if (!currentSessionToken || !socimobUrl) {
+    showNoSession();
+    return;
+  }
 
-    if (typeof onReady === 'function') onReady();
-  });
+  try {
+    tenantDomain = new URL(socimobUrl).hostname;
+  } catch { tenantDomain = ''; }
+
+  const emailEl = document.getElementById('sessionEmail');
+  if (emailEl) emailEl.textContent = data.userEmail || '';
+
+  document.getElementById('panelContent').style.display = 'block';
+  document.getElementById('noSession').style.display = 'none';
+
+  // Lead já selecionado anteriormente
+  if (data.selectedSocimobLead) {
+    applySelectedLead(data.selectedSocimobLead, null);
+  }
+
+  // Carrega conversa atual e dispara auto-match
+  await refreshConversationInfo();
+
+  // Carrega templates de mensagem
+  loadTemplates();
 }
+
+function showNoSession() {
+  document.getElementById('noSession').style.display = 'flex';
+  document.getElementById('panelContent').style.display = 'none';
+}
+
+// ── Event Listeners ────────────────────────────────────────────────────────────
 
 function setupEventListeners() {
-  const leadSearch = document.getElementById('leadSearch');
-  const leadDropZone = document.getElementById('leadDropZone');
-  const createLeadBtn = document.getElementById('createLeadBtn');
-  const pullCurrentBtn = document.getElementById('pullCurrentBtn');
-  const linkConversationBtn = document.getElementById('linkConversationBtn');
-  const saveSummaryBtn = document.getElementById('saveSummaryBtn');
-  const clearSummaryBtn = document.getElementById('clearSummaryBtn');
-  const saveActionBtn = document.getElementById('saveActionBtn');
-  const createTaskBtn = document.getElementById('createTaskBtn');
-  const scheduleVisitBtn = document.getElementById('scheduleVisitBtn');
-  const createProposalBtn = document.getElementById('createProposalBtn');
-
-  leadSearch.addEventListener('input', debounce(() => searchLeads(leadSearch.value), 300));
-  pullCurrentBtn.addEventListener('click', pullCurrentContext);
-  linkConversationBtn.addEventListener('click', linkCurrentConversation);
-  createLeadBtn.addEventListener('click', openCreateLeadModal);
-  saveSummaryBtn.addEventListener('click', saveSummary);
-  clearSummaryBtn.addEventListener('click', () => {
-    document.getElementById('summaryText').value = '';
-  });
-  saveActionBtn.addEventListener('click', saveNextAction);
-  createTaskBtn.addEventListener('click', openCreateTaskModal);
-  scheduleVisitBtn.addEventListener('click', openScheduleVisitModal);
-  createProposalBtn.addEventListener('click', openCreateProposalModal);
-
-  leadDropZone.addEventListener('dragover', (event) => {
-    event.preventDefault();
-    leadDropZone.classList.add('drag-over');
+  on('leadSearch', 'input', debounce((e) => searchLeads(e.target.value), 300));
+  on('pullCurrentBtn', 'click', pullCurrentContext);
+  on('linkConversationBtn', 'click', linkCurrentConversation);
+  on('createLeadBtn', 'click', showCreateLeadForm);
+  on('cancelCreateLeadBtn', 'click', hideCreateLeadForm);
+  on('confirmCreateLeadBtn', 'click', createLeadFromForm);
+  on('saveSummaryBtn', 'click', saveSummary);
+  on('clearSummaryBtn', 'click', () => { setVal('summaryText', ''); });
+  on('saveActionBtn', 'click', saveNextAction);
+  on('createTaskBtn', 'click', createTask);
+  on('scheduleVisitBtn', 'click', scheduleVisit);
+  on('openCrmBtn', 'click', () => { if (selectedLeadId) openCrmLead(selectedLeadId); });
+  on('refreshConvBtn', 'click', async () => {
+    showStatus('Atualizando...', 'info');
+    await refreshConversationInfo();
   });
 
-  leadDropZone.addEventListener('dragleave', () => {
-    leadDropZone.classList.remove('drag-over');
-  });
-
-  leadDropZone.addEventListener('drop', (event) => {
-    event.preventDefault();
-    leadDropZone.classList.remove('drag-over');
-    const raw = event.dataTransfer.getData('application/x-socimob-lead') ||
-      event.dataTransfer.getData('application/json');
-
-    if (!raw) {
-      showStatus('Não encontrei dados de lead no item solto.', 'error');
-      return;
-    }
-
-    try {
-      applySelectedLead(JSON.parse(raw), 'Lead recebido por arrastar e soltar');
-    } catch (error) {
-      showStatus('Não foi possível ler o lead arrastado.', 'error');
-    }
-  });
+  // Drag & drop de lead do CRM
+  const dropZone = document.getElementById('leadDropZone');
+  if (dropZone) {
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', handleDrop);
+  }
 }
 
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes.selectedSocimobLead?.newValue) {
+// ── Listeners do chrome ────────────────────────────────────────────────────────
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.selectedSocimobLead?.newValue) {
     applySelectedLead(changes.selectedSocimobLead.newValue, 'Lead recebido do CRM');
+  }
+  if (changes.sessionToken?.newValue && !currentSessionToken) {
+    currentSessionToken = changes.sessionToken.newValue;
+    chrome.storage.local.get(['socimobUrl', 'userEmail'], (d) => {
+      socimobUrl = d.socimobUrl;
+      try { tenantDomain = new URL(socimobUrl).hostname; } catch { tenantDomain = ''; }
+      document.getElementById('noSession').style.display = 'none';
+      document.getElementById('panelContent').style.display = 'block';
+      const emailEl = document.getElementById('sessionEmail');
+      if (emailEl) emailEl.textContent = d.userEmail || '';
+      refreshConversationInfo();
+      loadTemplates();
+    });
   }
 });
 
 chrome.runtime.onMessage.addListener((request) => {
   if (request.action === 'conversationUpdated' && request.data) {
-    setConversationInfo(request.data);
+    const newInfo = request.data;
+    const phoneChanged = newInfo.contactPhone && newInfo.contactPhone !== currentConversationInfo?.contactPhone;
+    const nameChanged = newInfo.contactName && newInfo.contactName !== currentConversationInfo?.contactName;
+
+    setConversationInfo(newInfo);
+
+    if (phoneChanged || (nameChanged && !currentConversationInfo)) {
+      // Troca de conversa: reinicia estado
+      linkedConversationId = null;
+      selectedLeadId = null;
+      selectedLeadData = null;
+      document.getElementById('selectedLeadCard').style.display = 'none';
+      document.getElementById('linkedConversationInfo').style.display = 'none';
+      document.getElementById('leadSearch').value = '';
+      document.getElementById('leadList').innerHTML = '';
+      chrome.storage.local.remove(['selectedSocimobLead']);
+      autoFindLead(newInfo);
+    }
+  }
+  if (request.action === 'sessionExpired') {
+    currentSessionToken = null;
+    showNoSession();
+    showStatus('Sessão expirada. Faça login no CRM.', 'error');
+  }
+  if (request.action === 'sessionRestored') {
+    chrome.storage.local.get(['sessionToken', 'socimobUrl', 'userEmail'], (d) => {
+      currentSessionToken = d.sessionToken;
+      socimobUrl = d.socimobUrl;
+      try { tenantDomain = new URL(socimobUrl).hostname; } catch { tenantDomain = ''; }
+      initializePanel();
+    });
+  }
+  if (request.action === 'leadSelectedFromCrm') {
+    applySelectedLead(request.lead, 'Lead recebido do CRM');
   }
 });
 
-function loadConversationInfo() {
-  // Obter informações da conversa atual da content script
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.tabs.sendMessage(tabs[0].id, { action: 'getConversationInfo' }, (response) => {
-      if (response) {
-        setConversationInfo(response);
-      }
+// ── Conversa atual ─────────────────────────────────────────────────────────────
+
+async function refreshConversationInfo() {
+  const info = await getConversationFromTab();
+  if (info) {
+    setConversationInfo(info);
+    await autoFindLead(info);
+  }
+}
+
+function getConversationFromTab() {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tab = tabs[0];
+      if (!tab?.id || !tab.url?.includes('web.whatsapp.com')) { resolve(null); return; }
+      chrome.tabs.sendMessage(tab.id, { action: 'getConversationInfo' }, (resp) => {
+        if (chrome.runtime.lastError) { resolve(null); return; }
+        resolve(resp || null);
+      });
     });
   });
 }
 
-function setConversationInfo(response) {
-  currentConversationInfo = response;
-  document.getElementById('contactName').textContent = response.contactName || '-';
-  document.getElementById('contactPhone').textContent = response.contactPhone || '-';
-  document.getElementById('messageCount').textContent = response.messageCount || 0;
+function setConversationInfo(info) {
+  currentConversationInfo = info;
+  setText('contactName', info.contactName || '-');
+  setText('contactPhone', info.contactPhone || '-');
+  setText('messageCount', info.messageCount || 0);
+
+  const recentEl = document.getElementById('recentMessages');
+  if (recentEl && info.recentMessages?.length > 0) {
+    recentEl.innerHTML = info.recentMessages.map((m) => `
+      <div class="msg-bubble msg-${m.direction === 'out' ? 'out' : 'in'}">
+        ${escapeHtml(m.text)}
+      </div>
+    `).join('');
+    recentEl.parentElement.style.display = 'block';
+  } else if (recentEl) {
+    recentEl.parentElement.style.display = 'none';
+  }
 }
 
-function loadSelectedLeadFromStorage() {
-  chrome.storage.local.get(['selectedSocimobLead'], (data) => {
-    if (data.selectedSocimobLead) {
-      applySelectedLead(data.selectedSocimobLead, null);
+// ── Auto-match de lead ─────────────────────────────────────────────────────────
+
+async function autoFindLead(info) {
+  if (!currentSessionToken || !socimobUrl) return;
+  if (!info?.contactPhone && !info?.contactName) return;
+
+  hideBanner();
+
+  // 1. Verifica se já existe uma conversa vinculada para este URL
+  if (info.url) {
+    const existing = await apiFetch(`/api/extension/conversations/find?url=${enc(info.url)}`);
+    if (existing?.data) {
+      linkedConversationId = existing.data.id;
+      if (existing.data.lead) {
+        applySelectedLead(normalizeLead(existing.data.lead), null);
+        renderLinkedConversation(existing.data);
+        showBanner(
+          `✅ Conversa já vinculada: <strong>${escapeHtml(existing.data.lead.nome || 'Lead')}</strong>`,
+          'success'
+        );
+        return;
+      }
     }
-  });
-}
-
-function searchLeads(query) {
-  if (!query.trim()) {
-    document.getElementById('leadList').innerHTML = '';
-    return;
   }
 
-  fetch(`${socimobUrl}/api/extension/leads/search?q=${encodeURIComponent(query)}`, {
-    headers: {
-      'Authorization': `Bearer ${currentSessionToken}`,
-    },
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      const leadList = document.getElementById('leadList');
-      leadList.innerHTML = '';
+  // 2. Busca por telefone ou nome
+  const term = info.contactPhone || info.contactName;
+  const result = await apiFetch(`/api/extension/leads/search?q=${enc(term)}`);
+  const leads = result?.data || [];
 
-      if (data.data && data.data.length > 0) {
-        data.data.forEach((lead) => {
-          const normalizedLead = normalizeLead(lead);
-          const leadItem = document.createElement('div');
-          leadItem.className = 'lead-item';
-          if (normalizedLead.id === selectedLeadId) {
-            leadItem.classList.add('selected');
-          }
-          leadItem.textContent = `${normalizedLead.name} (${normalizedLead.phone || 'sem telefone'})`;
-          leadItem.addEventListener('click', () => selectLead(normalizedLead, leadItem));
-          leadList.appendChild(leadItem);
-        });
-      } else {
-        leadList.innerHTML = '<div style="padding: 8px; text-align: center; color: #999;">Nenhum lead encontrado</div>';
-      }
-    })
-    .catch((error) => {
-      showStatus(`Erro ao buscar leads: ${error.message}`, 'error');
+  if (leads.length === 0) {
+    showBanner(
+      `➕ Nenhum lead para <strong>${escapeHtml(term)}</strong> — <a href="#" class="banner-link" id="quickCreateLink">Criar lead</a>`,
+      'warning'
+    );
+    document.getElementById('quickCreateLink')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      showCreateLeadForm();
+      prefillCreateLeadForm(info);
     });
+    prefillCreateLeadForm(info);
+  } else if (leads.length === 1) {
+    const matched = normalizeLead(leads[0]);
+    window._autoMatchedLead = matched;
+    showBanner(
+      `🎯 Lead encontrado: <strong>${escapeHtml(matched.name)}</strong> — <a href="#" class="banner-link" id="autoLinkBtn">Vincular agora</a>`,
+      'match'
+    );
+    document.getElementById('autoLinkBtn')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      applySelectedLead(matched, 'Lead selecionado');
+      await linkCurrentConversation();
+    });
+    renderLeadList(leads);
+  } else {
+    showBanner(`🔍 ${leads.length} leads encontrados para <strong>${escapeHtml(term)}</strong>`, 'info');
+    renderLeadList(leads);
+    document.getElementById('leadSearch').value = term;
+  }
+}
+
+// ── Busca manual de leads ──────────────────────────────────────────────────────
+
+async function searchLeads(query) {
+  const leadList = document.getElementById('leadList');
+  if (!query.trim()) { leadList.innerHTML = ''; return; }
+  try {
+    const data = await apiFetch(`/api/extension/leads/search?q=${enc(query)}`);
+    renderLeadList(data?.data || []);
+  } catch (err) {
+    showStatus(`Erro na busca: ${err.message}`, 'error');
+  }
+}
+
+function renderLeadList(leads) {
+  const leadList = document.getElementById('leadList');
+  leadList.innerHTML = '';
+  if (leads.length === 0) {
+    leadList.innerHTML = '<div class="empty-list">Nenhum lead encontrado</div>';
+    return;
+  }
+  leads.forEach((lead) => {
+    const n = normalizeLead(lead);
+    const item = document.createElement('div');
+    item.className = `lead-item${n.id === selectedLeadId ? ' selected' : ''}`;
+    item.innerHTML = `
+      <div class="lead-item-name">${escapeHtml(n.name)}</div>
+      <div class="lead-item-phone">${escapeHtml(n.phone || 'sem telefone')}</div>
+    `;
+    item.addEventListener('click', () => {
+      selectLead(n, item);
+    });
+    leadList.appendChild(item);
+  });
+}
+
+function selectLead(lead, element) {
+  applySelectedLead(lead, 'Lead selecionado');
+  document.querySelectorAll('.lead-item').forEach((i) => i.classList.remove('selected'));
+  if (element) element.classList.add('selected');
 }
 
 function normalizeLead(lead) {
@@ -166,205 +294,469 @@ function normalizeLead(lead) {
     phone: lead.phone || lead.telefone || lead.whatsapp || '',
     email: lead.email || null,
     propertyId: lead.propertyId || lead.property_id || null,
+    classificacao: lead.classificacao || lead.classification || null,
     source: lead.source || 'extension_search',
   };
 }
 
-function selectLead(lead, element) {
-  applySelectedLead(lead, 'Lead selecionado com sucesso');
-  document.querySelectorAll('.lead-item').forEach((item) => {
-    item.classList.remove('selected');
-  });
-  if (element) element.classList.add('selected');
-}
-
 function applySelectedLead(lead, successMessage) {
-  const normalizedLead = normalizeLead(lead);
-  if (!normalizedLead.id) {
-    showStatus('Lead inválido: id não encontrado.', 'error');
-    return;
-  }
+  const n = normalizeLead(lead);
+  if (!n.id) { showStatus('Lead inválido.', 'error'); return; }
 
-  selectedLeadId = normalizedLead.id;
-  selectedLeadData = normalizedLead;
-  chrome.storage.local.set({ selectedSocimobLead: normalizedLead });
+  selectedLeadId = n.id;
+  selectedLeadData = n;
+  chrome.storage.local.set({ selectedSocimobLead: n });
 
-  const leadSearch = document.getElementById('leadSearch');
-  const selectedLeadCard = document.getElementById('selectedLeadCard');
-  leadSearch.value = normalizedLead.name || normalizedLead.phone || '';
-  selectedLeadCard.style.display = 'block';
-  selectedLeadCard.innerHTML = `
-    <strong>${escapeHtml(normalizedLead.name)}</strong>
-    <span>${escapeHtml(normalizedLead.phone || 'Telefone não informado')}</span>
-    ${normalizedLead.email ? `<span>${escapeHtml(normalizedLead.email)}</span>` : ''}
+  document.getElementById('leadSearch').value = n.name || n.phone || '';
+
+  const card = document.getElementById('selectedLeadCard');
+  card.style.display = 'block';
+  card.innerHTML = `
+    <div class="lead-card-header">
+      <div class="lead-card-info">
+        <strong>${escapeHtml(n.name)}</strong>
+        <span>${escapeHtml(n.phone || 'Sem telefone')}</span>
+        ${n.email ? `<span>${escapeHtml(n.email)}</span>` : ''}
+      </div>
+      <button class="icon-btn" id="openCrmBtn" title="Abrir no CRM">↗</button>
+    </div>
+    <div class="qualif-row">
+      <span class="qualif-label">Qualificação:</span>
+      <button class="qualif-btn ${n.classificacao === 'frio' ? 'active' : ''}" data-status="frio">🧊 Frio</button>
+      <button class="qualif-btn ${n.classificacao === 'morno' ? 'active' : ''}" data-status="morno">🌡 Morno</button>
+      <button class="qualif-btn ${n.classificacao === 'quente' ? 'active' : ''}" data-status="quente">🔥 Quente</button>
+    </div>
   `;
 
+  card.querySelectorAll('.qualif-btn').forEach((btn) => {
+    btn.addEventListener('click', () => updateLeadStatus(btn.dataset.status));
+  });
+
+  document.getElementById('openCrmBtn')?.addEventListener('click', () => openCrmLead(n.id));
+
   if (successMessage) showStatus(successMessage, 'success');
+  hideBanner();
 }
 
-function pullCurrentContext() {
-  loadConversationInfo();
-  loadSelectedLeadFromStorage();
+// ── Ações sobre o lead ─────────────────────────────────────────────────────────
 
-  if (currentConversationInfo?.contactPhone || currentConversationInfo?.contactName) {
-    const term = currentConversationInfo.contactPhone || currentConversationInfo.contactName;
-    document.getElementById('leadSearch').value = term;
-    searchLeads(term);
-    showStatus('Conversa aberta puxada para busca de lead.', 'info');
-    return;
+async function updateLeadStatus(status) {
+  if (!selectedLeadId) { showStatus('Selecione um lead primeiro.', 'error'); return; }
+  try {
+    await apiFetch(`/api/extension/leads/${selectedLeadId}/status`, 'PATCH', { classificacao: status });
+    showStatus(`Qualificação: ${status}`, 'success');
+    if (selectedLeadData) {
+      selectedLeadData.classificacao = status;
+      applySelectedLead(selectedLeadData, null);
+    }
+  } catch (err) {
+    showStatus(`Erro: ${err.message}`, 'error');
   }
-
-  showStatus('Abra uma conversa no WhatsApp Web ou envie um lead pelo CRM.', 'info');
 }
 
-function linkCurrentConversation() {
-  if (!selectedLeadId || !selectedLeadData) {
-    showStatus('Selecione ou envie um lead primeiro.', 'error');
+function openCrmLead(leadId) {
+  if (socimobUrl) chrome.tabs.create({ url: `${socimobUrl}/leads/${leadId}` });
+}
+
+// ── Vincular conversa ─────────────────────────────────────────────────────────
+
+async function pullCurrentContext() {
+  showStatus('Buscando conversa...', 'info');
+  const info = await getConversationFromTab();
+  if (!info) { showStatus('Abra o WhatsApp Web e entre numa conversa.', 'error'); return; }
+  setConversationInfo(info);
+  await autoFindLead(info);
+}
+
+async function linkCurrentConversation() {
+  if (!selectedLeadId) { showStatus('Selecione um lead primeiro.', 'error'); return; }
+  if (!currentConversationInfo?.url?.includes('web.whatsapp.com')) {
+    showStatus('Abra uma conversa no WhatsApp Web.', 'error');
     return;
   }
 
-  if (!currentConversationInfo?.url || !currentConversationInfo.url.includes('web.whatsapp.com')) {
-    showStatus('Abra a conversa no WhatsApp Web para vincular.', 'error');
-    return;
-  }
+  const btn = document.getElementById('linkConversationBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Vinculando...'; }
 
-  const payload = {
-    lead_id: selectedLeadId,
-    property_id: selectedLeadData.propertyId || null,
-    contact_name: currentConversationInfo.contactName || selectedLeadData.name,
-    contact_phone: currentConversationInfo.contactPhone || selectedLeadData.phone,
-    whatsapp_chat_identifier: currentConversationInfo.url,
-    source: 'chrome_extension',
-  };
-
-  fetch(`${socimobUrl}/api/extension/conversations/link`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${currentSessionToken}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  })
-    .then(async (response) => {
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || 'Erro ao vincular conversa');
-      showStatus(data.message || 'Conversa vinculada ao lead.', 'success');
-    })
-    .catch((error) => {
-      showStatus(error.message, 'error');
+  try {
+    const data = await apiFetch('/api/extension/conversations/link', 'POST', {
+      lead_id: selectedLeadId,
+      property_id: selectedLeadData?.propertyId || null,
+      contact_name: currentConversationInfo.contactName || selectedLeadData?.name || '',
+      contact_phone: currentConversationInfo.contactPhone || selectedLeadData?.phone || '',
+      whatsapp_chat_identifier: currentConversationInfo.url,
+      source: 'chrome_extension',
     });
-}
 
-function saveSummary() {
-  if (!selectedLeadId) {
-    showStatus('Por favor, selecione um lead primeiro.', 'error');
-    return;
+    linkedConversationId = data.data?.id;
+    renderLinkedConversation(data.data);
+
+    const msg = data.already_linked ? 'Conversa já estava vinculada.' : 'Conversa vinculada ao lead!';
+    showStatus(msg, 'success');
+  } catch (err) {
+    showStatus(err.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Vincular conversa'; }
   }
+}
 
-  const summary = document.getElementById('summaryText').value.trim();
-  if (!summary) {
-    showStatus('Por favor, escreva um resumo.', 'error');
-    return;
+function renderLinkedConversation(conv) {
+  if (!conv) return;
+  const el = document.getElementById('linkedConversationInfo');
+  if (!el) return;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="linked-conv-tag">
+      🔗 Conversa #${conv.id} · <em>${conv.status || 'aberta'}</em>
+      ${conv.stage ? ` · ${conv.stage}` : ''}
+    </div>
+  `;
+}
+
+// ── Resumo e próxima ação ──────────────────────────────────────────────────────
+
+async function saveSummary() {
+  if (!selectedLeadId) { showStatus('Selecione um lead primeiro.', 'error'); return; }
+  const summary = getVal('summaryText').trim();
+  if (!summary) { showStatus('Escreva o resumo antes de salvar.', 'error'); return; }
+
+  const nextAction = getVal('nextAction').trim();
+  const status = getVal('conversationStatus') || 'open';
+  const interestLevel = getVal('interestLevel');
+
+  const btn = document.getElementById('saveSummaryBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+
+  try {
+    if (!linkedConversationId) await linkCurrentConversation();
+
+    if (linkedConversationId) {
+      await apiFetch(`/api/atendimento/conversations/${linkedConversationId}/summary`, 'POST', {
+        summary,
+        next_action: nextAction || null,
+        interest_level: interestLevel ? Number(interestLevel) : null,
+        status,
+        event_source: 'chrome_extension',
+      });
+    } else {
+      // Sem conversa vinculada: salva como nota no lead
+      await apiFetch(`/api/extension/leads/${selectedLeadId}/note`, 'POST', {
+        note: summary + (nextAction ? `\n\nPróxima ação: ${nextAction}` : ''),
+        source: 'chrome_extension',
+      });
+    }
+
+    setVal('summaryText', '');
+    setVal('nextAction', '');
+    showStatus('Resumo salvo com sucesso!', 'success');
+  } catch (err) {
+    showStatus(err.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar Resumo'; }
   }
-
-  // Aqui você faria a chamada à API para vincular a conversa e salvar o resumo
-  showStatus('Resumo salvo com sucesso!', 'success');
-  document.getElementById('summaryText').value = '';
 }
 
-function saveNextAction() {
-  if (!selectedLeadId) {
-    showStatus('Por favor, selecione um lead primeiro.', 'error');
-    return;
+async function saveNextAction() {
+  if (!selectedLeadId) { showStatus('Selecione um lead primeiro.', 'error'); return; }
+  const nextAction = getVal('nextAction').trim();
+  if (!nextAction) { showStatus('Descreva a próxima ação.', 'error'); return; }
+
+  try {
+    if (linkedConversationId) {
+      await apiFetch(`/api/atendimento/conversations/${linkedConversationId}/events`, 'POST', {
+        event_type: 'next_action',
+        title: nextAction,
+        source: 'chrome_extension',
+      });
+    } else {
+      await apiFetch(`/api/extension/leads/${selectedLeadId}/note`, 'POST', {
+        note: `Próxima ação: ${nextAction}`,
+        source: 'chrome_extension',
+      });
+    }
+    setVal('nextAction', '');
+    showStatus('Próxima ação registrada!', 'success');
+  } catch (err) {
+    showStatus(err.message, 'error');
   }
+}
 
-  const nextAction = document.getElementById('nextAction').value.trim();
-  if (!nextAction) {
-    showStatus('Por favor, descreva a próxima ação.', 'error');
-    return;
+// ── Criar lead inline ─────────────────────────────────────────────────────────
+
+function showCreateLeadForm() {
+  document.getElementById('createLeadForm').style.display = 'block';
+  document.getElementById('createLeadBtn').style.display = 'none';
+  prefillCreateLeadForm(currentConversationInfo);
+}
+
+function hideCreateLeadForm() {
+  document.getElementById('createLeadForm').style.display = 'none';
+  document.getElementById('createLeadBtn').style.display = 'block';
+}
+
+function prefillCreateLeadForm(info) {
+  if (!info) return;
+  if (info.contactName && !getVal('newLeadName')) setVal('newLeadName', info.contactName);
+  if (info.contactPhone && !getVal('newLeadPhone')) setVal('newLeadPhone', info.contactPhone);
+}
+
+async function createLeadFromForm() {
+  const name = getVal('newLeadName').trim();
+  const phone = getVal('newLeadPhone').trim();
+  const email = getVal('newLeadEmail').trim();
+
+  if (!name || !phone) { showStatus('Nome e telefone são obrigatórios.', 'error'); return; }
+
+  const btn = document.getElementById('confirmCreateLeadBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Criando...'; }
+
+  try {
+    const data = await apiFetch('/api/extension/leads', 'POST', {
+      name,
+      phone,
+      email: email || null,
+      origin: 'whatsapp_web_extension',
+      observations: currentConversationInfo?.contactName
+        ? `Lead captado via WhatsApp Web (${currentConversationInfo.contactName})`
+        : 'Lead captado via extensão Chrome',
+    });
+
+    const lead = data.data;
+    applySelectedLead({ id: lead.id, nome: lead.nome, telefone: lead.telefone, email: lead.email }, `Lead "${lead.nome}" criado!`);
+    hideCreateLeadForm();
+    setVal('newLeadName', '');
+    setVal('newLeadPhone', '');
+    setVal('newLeadEmail', '');
+
+    // Vincula automaticamente após criar
+    await linkCurrentConversation();
+  } catch (err) {
+    showStatus(err.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Criar Lead'; }
   }
-
-  showStatus('Próxima ação salva com sucesso!', 'success');
-  document.getElementById('nextAction').value = '';
 }
 
-function openCreateLeadModal() {
-  alert('Abrir modal para criar novo lead (a implementar)');
+// ── Ações rápidas ─────────────────────────────────────────────────────────────
+
+async function createTask() {
+  if (!selectedLeadId) { showStatus('Selecione um lead primeiro.', 'error'); return; }
+  const title = prompt('Título da tarefa:');
+  if (!title?.trim()) return;
+  const dueDate = prompt('Data (YYYY-MM-DD) ou deixe vazio:') || null;
+
+  try {
+    if (linkedConversationId) {
+      await apiFetch(`/api/atendimento/conversations/${linkedConversationId}/tasks`, 'POST', {
+        title: title.trim(),
+        due_date: dueDate || null,
+        source: 'chrome_extension',
+      });
+    } else {
+      await apiFetch(`/api/extension/leads/${selectedLeadId}/note`, 'POST', {
+        note: `📋 Tarefa: ${title.trim()}${dueDate ? ' — prazo: ' + dueDate : ''}`,
+        source: 'chrome_extension',
+      });
+    }
+    showStatus('Tarefa criada!', 'success');
+  } catch (err) {
+    showStatus(err.message, 'error');
+  }
 }
 
-function openCreateTaskModal() {
-  alert('Abrir modal para criar tarefa (a implementar)');
+async function scheduleVisit() {
+  if (!selectedLeadId) { showStatus('Selecione um lead primeiro.', 'error'); return; }
+  const date = prompt('Data da visita (YYYY-MM-DD):');
+  if (!date?.trim()) return;
+  const time = (prompt('Horário (HH:MM):') || '09:00').trim();
+  const address = (prompt('Endereço ou imóvel:') || '').trim();
+
+  try {
+    if (linkedConversationId) {
+      await apiFetch(`/api/atendimento/conversations/${linkedConversationId}/visits`, 'POST', {
+        scheduled_at: `${date} ${time}:00`,
+        address: address || null,
+        notes: 'Agendado via extensão Chrome',
+        source: 'chrome_extension',
+      });
+    } else {
+      await apiFetch(`/api/extension/leads/${selectedLeadId}/note`, 'POST', {
+        note: `📅 Visita agendada: ${date} às ${time}${address ? ' — ' + address : ''}`,
+        source: 'chrome_extension',
+      });
+    }
+    showStatus('Visita agendada!', 'success');
+  } catch (err) {
+    showStatus(err.message, 'error');
+  }
 }
 
-function openScheduleVisitModal() {
-  alert('Abrir modal para agendar visita (a implementar)');
-}
-
-function openCreateProposalModal() {
-  alert('Abrir modal para criar proposta (a implementar)');
-}
+// ── Templates de mensagem ─────────────────────────────────────────────────────
 
 function loadTemplates() {
-  fetch(`${socimobUrl}/api/extension/message-templates`, {
-    headers: {
-      'Authorization': `Bearer ${currentSessionToken}`,
-    },
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      const templatesList = document.getElementById('templatesList');
-      templatesList.innerHTML = '';
+  if (!currentSessionToken || !socimobUrl) return;
 
-      if (data.data && data.data.length > 0) {
-        data.data.forEach((template) => {
-          const templateItem = document.createElement('div');
-          templateItem.className = 'template-item';
-          templateItem.innerHTML = `
-            <span>${template.name}</span>
-            <button class="copy-btn" onclick="copyTemplate('${template.content}')">Copiar</button>
-          `;
-          templatesList.appendChild(templateItem);
-        });
-      } else {
-        templatesList.innerHTML = '<div style="padding: 8px; text-align: center; color: #999;">Nenhum template disponível</div>';
-      }
-    })
-    .catch((error) => {
-      console.error('Erro ao carregar templates:', error);
+  apiFetch('/api/extension/message-templates').then((data) => {
+    const list = document.getElementById('templatesList');
+    if (!list) return;
+    list.innerHTML = '';
+    const templates = data?.data || [];
+
+    if (templates.length === 0) {
+      list.innerHTML = '<div class="empty-list">Nenhum template disponível</div>';
+      return;
+    }
+
+    templates.forEach((t) => {
+      const item = document.createElement('div');
+      item.className = 'template-item';
+      item.innerHTML = `
+        <span class="template-name" title="${escapeHtml(t.content)}">${escapeHtml(t.name)}</span>
+        <div class="template-actions">
+          <button class="icon-btn copy-btn" title="Copiar">📋</button>
+          <button class="icon-btn insert-btn" title="Inserir no WhatsApp">↪</button>
+        </div>
+      `;
+      item.querySelector('.copy-btn').addEventListener('click', () => copyToClipboard(t.content));
+      item.querySelector('.insert-btn').addEventListener('click', () => insertInWhatsApp(t.content));
+      list.appendChild(item);
     });
+  }).catch(() => {});
 }
 
-function copyTemplate(content) {
+function copyToClipboard(text) {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.tabs.sendMessage(tabs[0].id, { action: 'copyToClipboard', text: content }, (response) => {
-      if (response && response.success) {
-        showStatus('Template copiado para a área de transferência!', 'success');
-      } else {
-        showStatus('Erro ao copiar template.', 'error');
+    const tab = tabs[0];
+    if (!tab?.id) { navigator.clipboard.writeText(text).then(() => showStatus('Copiado!', 'success')); return; }
+    chrome.tabs.sendMessage(tab.id, { action: 'copyToClipboard', text }, (resp) => {
+      if (resp?.success) showStatus('Template copiado!', 'success');
+      else navigator.clipboard.writeText(text).then(() => showStatus('Copiado!', 'success'));
+    });
+  });
+}
+
+function insertInWhatsApp(text) {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tab = tabs[0];
+    if (!tab?.url?.includes('web.whatsapp.com')) {
+      showStatus('Abra o WhatsApp Web para inserir o template.', 'error');
+      return;
+    }
+    chrome.tabs.sendMessage(tab.id, { action: 'insertTextIntoInput', text }, (resp) => {
+      if (resp?.success) showStatus('Template inserido!', 'success');
+      else {
+        copyToClipboard(text);
+        showStatus('Copiado! (Cole com Ctrl+V no WhatsApp)', 'info');
       }
     });
   });
 }
 
-function showStatus(message, type) {
-  const statusMessage = document.getElementById('statusMessage');
-  statusMessage.textContent = message;
-  statusMessage.className = `status ${type}`;
-  statusMessage.style.display = 'block';
+// ── API helper ────────────────────────────────────────────────────────────────
 
-  if (type === 'success' || type === 'info') {
-    setTimeout(() => {
-      statusMessage.style.display = 'none';
-    }, 3000);
+async function apiFetch(path, method = 'GET', body = null) {
+  if (!currentSessionToken || !socimobUrl) throw new Error('Não autenticado.');
+
+  const opts = {
+    method,
+    headers: {
+      Authorization: `Bearer ${currentSessionToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-Tenant-Domain': tenantDomain || '',
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+
+  const resp = await fetch(`${socimobUrl}${path}`, opts);
+  const data = await resp.json().catch(() => ({}));
+
+  if (!resp.ok) {
+    if (resp.status === 401) {
+      currentSessionToken = null;
+      chrome.storage.local.remove(['sessionToken', 'socimobUrl', 'userEmail', 'expiresAt']);
+      showNoSession();
+      showStatus('Sessão expirada. Faça login no CRM.', 'error');
+    }
+    throw new Error(data.message || `Erro ${resp.status}`);
   }
+  return data;
+}
+
+// ── Banner de auto-match ──────────────────────────────────────────────────────
+
+function showBanner(html, type) {
+  const banner = document.getElementById('autoMatchBanner');
+  if (!banner) return;
+  banner.innerHTML = html;
+  banner.className = `match-banner match-${type}`;
+  banner.style.display = 'block';
+}
+
+function hideBanner() {
+  const banner = document.getElementById('autoMatchBanner');
+  if (banner) banner.style.display = 'none';
+}
+
+// ── Drag & drop ───────────────────────────────────────────────────────────────
+
+function handleDrop(event) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+  const raw = event.dataTransfer.getData('application/x-socimob-lead') ||
+    event.dataTransfer.getData('application/json');
+  if (!raw) { showStatus('Dados de lead não encontrados.', 'error'); return; }
+  try {
+    applySelectedLead(JSON.parse(raw), 'Lead recebido por arrastar e soltar');
+  } catch {
+    showStatus('Não foi possível ler o lead arrastado.', 'error');
+  }
+}
+
+// ── Utilitários ───────────────────────────────────────────────────────────────
+
+function showStatus(message, type) {
+  const el = document.getElementById('statusMessage');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status ${type}`;
+  el.style.display = 'block';
+  if (type === 'success' || type === 'info') {
+    setTimeout(() => { el.style.display = 'none'; }, 4000);
+  }
+}
+
+function storageGet(keys) {
+  return new Promise((resolve) => chrome.storage.local.get(keys, resolve));
+}
+
+function on(id, event, fn) {
+  document.getElementById(id)?.addEventListener(event, fn);
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function getVal(id) {
+  return document.getElementById(id)?.value || '';
+}
+
+function setVal(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value;
+}
+
+function enc(str) {
+  return encodeURIComponent(str);
 }
 
 function debounce(func, delay) {
-  let timeoutId;
+  let timer;
   return function (...args) {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), delay);
+    clearTimeout(timer);
+    timer = setTimeout(() => func(...args), delay);
   };
 }
 

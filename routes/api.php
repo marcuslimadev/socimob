@@ -29,6 +29,9 @@ Route::middleware(['resolve-tenant', 'simple-auth'])->prefix('extension')->group
     Route::post('consent', [ExtensionConsentController::class, 'store']);
     Route::get('leads/search', [ExtensionLeadController::class, 'search']);
     Route::post('leads', [ExtensionLeadController::class, 'store']);
+    Route::post('leads/{lead}/note', [ExtensionLeadController::class, 'addNote']);
+    Route::patch('leads/{lead}/status', [ExtensionLeadController::class, 'updateStatus']);
+    Route::get('conversations/find', [ExtensionConversationController::class, 'find']);
     Route::post('conversations/link', [ExtensionConversationController::class, 'link']);
     Route::get('message-templates', [ExtensionTemplateController::class, 'index']);
 });
