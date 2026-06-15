@@ -180,6 +180,11 @@ class PropertyController extends Controller
         return $user->id ?? null;
     }
 
+    private function excludedCaptadorEmails(): array
+    {
+        return ['jocineideandrade18@gmail.com'];
+    }
+
     private function resolveCaptadorData(int $tenantId, mixed $captadorUserId): array
     {
         $captadorId = (int) $captadorUserId;
@@ -190,6 +195,7 @@ class PropertyController extends Controller
         $captador = User::query()
             ->where('tenant_id', $tenantId)
             ->whereIn('role', ['corretor', 'admin'])
+            ->whereNotIn('email', $this->excludedCaptadorEmails())
             ->where('id', $captadorId)
             ->select('id', 'name')
             ->first();
@@ -506,6 +512,7 @@ class PropertyController extends Controller
         $captadores = User::query()
             ->where('tenant_id', $tenantId)
             ->whereIn('role', ['corretor', 'admin'])
+            ->whereNotIn('email', $this->excludedCaptadorEmails())
             ->where(function ($query) {
                 $query->whereNull('is_active')->orWhere('is_active', true);
             })
