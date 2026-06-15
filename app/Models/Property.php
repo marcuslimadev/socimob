@@ -219,7 +219,9 @@ class Property extends Model
     {
         return $query->where(function ($builder) {
             $builder->whereNotNull('external_id')
-                ->orWhereNotNull('imobi_brasil_external_id');
+                ->orWhereNotNull('imobi_brasil_external_id')
+                ->orWhereNotNull('codigo')
+                ->orWhereNotNull('codigo_imovel');
         });
     }
 
