@@ -59,11 +59,15 @@ class PropertyController extends Controller
     {
         $user = $request->user();
 
-        if (!$this->isPropertyPublishingAdmin($user)) {
-            return true;
+        if (!$this->tenantRequiresPropertyApproval($tenantId)) {
+            return false;
         }
 
-        return $creating && $this->tenantRequiresPropertyApproval($tenantId);
+        if ($this->isPropertyPublishingAdmin($user)) {
+            return $creating;
+        }
+
+        return true;
     }
 
     private function flushPortalCache(int $tenantId): void

@@ -36,9 +36,30 @@ class PropertyApprovalVisibilityTest extends BackendFeatureTestCase
         }
     }
 
-    public function test_broker_created_property_stays_hidden_even_when_request_asks_to_publish(): void
+    public function test_broker_created_property_can_publish_when_tenant_does_not_require_approval(): void
     {
         $tenant = $this->createTenant();
+        $broker = $this->createUser($tenant, [
+            'name' => 'Corretora Nova',
+            'email' => 'corretora+' . $tenant->id . '@teste.local',
+            'role' => 'corretor',
+        ]);
+
+        $response = $this
+            ->withHeaders($this->adminHeaders($broker, $tenant))
+            ->postJson('/api/imoveis', $this->propertyPayload(['exibir_imovel' => true]));
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.exibir_imovel', true);
+
+        $property = Property::query()->where('tenant_id', $tenant->id)->firstOrFail();
+        $this->assertTrue((bool) $property->exibir_imovel);
+    }
+
+    public function test_broker_created_property_stays_hidden_when_tenant_requires_approval(): void
+    {
+        $tenant = $this->createTenant();
+        $tenant->config()->create(['require_approval_for_properties' => true]);
         $broker = $this->createUser($tenant, [
             'name' => 'Corretora Nova',
             'email' => 'corretora+' . $tenant->id . '@teste.local',
