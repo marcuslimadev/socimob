@@ -29,6 +29,7 @@ import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 
 interface FormState {
   cpf: string;
+  titulo: string;
   tipo_imovel: string;
   finalidade: string;
   cep: string;
@@ -45,6 +46,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
   cpf: '',
+  titulo: '',
   tipo_imovel: '',
   finalidade: 'venda',
   cep: '',
@@ -243,6 +245,7 @@ export default function PortalVender() {
     try {
       setLoading(true);
       const fd = new FormData();
+      if (form.titulo.trim()) fd.append('titulo', form.titulo.trim());
       fd.append('tipo_imovel', form.tipo_imovel);
       fd.append('finalidade', form.finalidade);
       if (form.cep) fd.append('cep', form.cep);
@@ -583,6 +586,18 @@ export default function PortalVender() {
                           <p className="mt-1 text-sm text-slate-500">Selecione o tipo e informe a localização.</p>
                         </div>
 
+                        <label className="block">
+                          <span className={labelCls}>Título da publicação</span>
+                          <input
+                            type="text"
+                            value={form.titulo}
+                            onChange={set('titulo')}
+                            className={inputCls}
+                            placeholder="Ex: Apartamento reformado no Planalto"
+                            maxLength={160}
+                          />
+                        </label>
+
                         <div>
                           <span className={labelCls}>Tipo de imóvel *</span>
                           <div className="grid grid-cols-3 gap-2 mt-1">
@@ -852,6 +867,7 @@ export default function PortalVender() {
 
                         <div className="space-y-2">
                           <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">O Imóvel</p>
+                          {reviewItem(<Building2 className="w-4 h-4" />, 'Título da publicação', form.titulo)}
                           {reviewItem(
                             <Home className="w-4 h-4" />,
                             'Tipo',

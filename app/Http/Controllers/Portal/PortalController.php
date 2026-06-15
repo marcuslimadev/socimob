@@ -961,6 +961,7 @@ class PortalController extends Controller
             ]);
 
             $validator = Validator::make($request->all(), [
+                'titulo'            => 'nullable|string|max:160',
                 'tipo_imovel'       => 'required|string|max:80',
                 'finalidade'        => 'required|in:venda,aluguel,venda_aluguel',
                 'cep'               => 'nullable|string|size:8',
@@ -1000,6 +1001,10 @@ class PortalController extends Controller
             $now = now()->format('d/m/Y H:i');
             $dormitorios = $request->filled('dormitorios') ? (int) $request->dormitorios : 0;
             $finalidade = (string) $request->finalidade;
+            $tituloInformado = trim((string) $request->input('titulo', ''));
+            $tituloImovel = $tituloInformado !== ''
+                ? $tituloInformado
+                : 'Solicitação: ' . ucfirst((string) $request->tipo_imovel) . ' em ' . $request->cidade;
 
             // Criar imóvel inativo em análise
             $valorPretendido = $request->valor_pretendido ? (float) $request->valor_pretendido : 0;
@@ -1012,7 +1017,7 @@ class PortalController extends Controller
 
             $property = Property::create([
                 'tenant_id'                => $tenantId,
-                'titulo'                   => 'Solicitação: ' . ucfirst($request->tipo_imovel) . ' em ' . $request->cidade,
+                'titulo'                   => $tituloImovel,
                 'tipo_imovel'              => $request->tipo_imovel,
                 'finalidade_imovel'        => $request->finalidade,
                 'cep'                      => $request->cep,
