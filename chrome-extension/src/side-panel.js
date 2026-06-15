@@ -29,7 +29,7 @@ async function initializePanel() {
     tenantDomain = new URL(socimobUrl).hostname;
   } catch { tenantDomain = ''; }
 
-  const emailEl = document.getElementById('sessionEmail');
+  const emailEl = document.getElementById('sessionBadge');
   if (emailEl) emailEl.textContent = data.userEmail || '';
 
   document.getElementById('panelContent').style.display = 'block';
@@ -95,7 +95,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
       try { tenantDomain = new URL(socimobUrl).hostname; } catch { tenantDomain = ''; }
       document.getElementById('noSession').style.display = 'none';
       document.getElementById('panelContent').style.display = 'block';
-      const emailEl = document.getElementById('sessionEmail');
+      const emailEl = document.getElementById('sessionBadge');
       if (emailEl) emailEl.textContent = d.userEmail || '';
       refreshConversationInfo();
       loadTemplates();

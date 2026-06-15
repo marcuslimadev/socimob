@@ -386,16 +386,19 @@ export default function Properties() {
     setTogglingId(id);
     try {
       const body = field === 'exibir' ? { exibir_imovel: !current } : { destaque: !current };
-      await api.put(`/imoveis/${id}`, body);
+      const response = await api.put(`/imoveis/${id}`, body);
+      const updatedValue = field === 'exibir'
+        ? Boolean(response.data?.data?.exibir_imovel)
+        : Boolean(response.data?.data?.destaque);
       setImoveis((prev) =>
-        prev.map((im) => (im.id === id ? { ...im, [field]: !current } : im)),
+        prev.map((im) => (im.id === id ? { ...im, [field]: updatedValue } : im)),
       );
       toast.success(
         field === 'exibir'
-          ? !current
+          ? updatedValue
             ? 'Publicado no portal'
             : 'Ocultado do portal'
-          : !current
+          : updatedValue
             ? 'Marcado como destaque'
             : 'Removido dos destaques',
       );

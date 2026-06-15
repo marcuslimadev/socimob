@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\PropertyDocument;
 use App\Models\Property;
 use App\Models\Tenant;
+use App\Models\TenantConfig;
 use App\Models\User;
 use App\Jobs\SendImobiBrasilImagesJob;
 use App\Services\PropertyTrashService;
@@ -36,6 +37,33 @@ class PropertyController extends Controller
     {
         return $request->attributes->get('tenant_id')
             ?? (app()->bound('tenant') ? app('tenant')->id : null);
+    }
+
+    private function isPropertyPublishingAdmin(?User $user): bool
+    {
+        return in_array($user?->role, ['admin', 'super_admin'], true);
+    }
+
+    private function tenantRequiresPropertyApproval(int $tenantId): bool
+    {
+        if (!Schema::hasTable('tenant_configs') || !Schema::hasColumn('tenant_configs', 'require_approval_for_properties')) {
+            return false;
+        }
+
+        return (bool) TenantConfig::query()
+            ->where('tenant_id', $tenantId)
+            ->value('require_approval_for_properties');
+    }
+
+    private function shouldHoldPropertyForApproval(Request $request, int $tenantId, bool $creating): bool
+    {
+        $user = $request->user();
+
+        if (!$this->isPropertyPublishingAdmin($user)) {
+            return true;
+        }
+
+        return $creating && $this->tenantRequiresPropertyApproval($tenantId);
     }
 
     private function flushPortalCache(int $tenantId): void
@@ -1262,6 +1290,10 @@ class PropertyController extends Controller
             }
             $data['active'] = $data['active'] ?? true;
             $data['exibir_imovel'] = $data['exibir_imovel'] ?? true;
+            $heldForApproval = $this->shouldHoldPropertyForApproval($request, (int) $tenantId, true);
+            if ($heldForApproval) {
+                $data['exibir_imovel'] = false;
+            }
             
             // Título automático
             $data['titulo'] = trim($request->input('titulo') ?? '');
@@ -1338,6 +1370,7 @@ class PropertyController extends Controller
                 'tenant_id' => $tenantId,
                 'property_id' => $property->id,
                 'codigo' => $codigoImovel,
+                'held_for_approval' => $heldForApproval,
             ]);
             
             $this->flushPortalCaches($selectedPortalTenantIds);
@@ -1347,7 +1380,11 @@ class PropertyController extends Controller
                 'data' => array_merge($property->toArray(), [
                     'portal_tenant_ids' => $selectedPortalTenantIds,
                 ]),
-                'message' => $mediaUploadWarning ?: "Imóvel {$codigoImovel} cadastrado com sucesso!",
+                'message' => $mediaUploadWarning ?: (
+                    $heldForApproval
+                        ? "Imóvel {$codigoImovel} cadastrado como solicitação e oculto do portal até aprovação."
+                        : "Imóvel {$codigoImovel} cadastrado com sucesso!"
+                ),
                 'upload_warning' => $mediaUploadWarning,
             ], 201);
         } catch (\Throwable $e) {
@@ -1543,6 +1580,11 @@ class PropertyController extends Controller
             
             // GARANTIR que tenant_id NUNCA seja alterado
             unset($data['tenant_id']);
+
+            $heldForApproval = $this->shouldHoldPropertyForApproval($request, (int) $tenantId, false);
+            if ($heldForApproval && array_key_exists('exibir_imovel', $data)) {
+                $data['exibir_imovel'] = false;
+            }
             
             // Atualizar título se fornecido
             if (array_key_exists('titulo', $request->all())) {
