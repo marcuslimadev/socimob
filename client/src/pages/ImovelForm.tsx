@@ -44,6 +44,7 @@ function formatAreaOnBlur(value: string): string {
 }
 
 const defaultFormData = {
+  titulo: '',
   codigo_imovel: '',
   referencia_imovel: '',
   tipo_imovel: 'apartamento',
@@ -125,6 +126,7 @@ export default function ImovelForm() {
         }
 
         setFormData({
+          titulo: item.titulo || '',
           codigo_imovel: item.codigo_imovel || '',
           referencia_imovel: item.referencia_imovel || '',
           tipo_imovel: item.tipo_imovel || 'apartamento',
@@ -228,6 +230,17 @@ export default function ImovelForm() {
       case 'identificacao':
         return (
           <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Título da vitrine</label>
+              <input
+                type="text"
+                value={formData.titulo}
+                onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Ex.: Apartamento amplo no Centro"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Código do Imóvel *</label>

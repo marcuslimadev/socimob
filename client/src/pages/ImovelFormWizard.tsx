@@ -160,6 +160,7 @@ function formatSelectionLabel(value: string): string {
 }
 
 const defaultFormData = {
+  titulo: '',
   tipo_imovel: 'apartamento',
   finalidade_imovel: 'venda',
   valor_venda: '',
@@ -426,6 +427,7 @@ export default function ImovelFormWizard() {
         }
 
         setFormData({
+          titulo: item.titulo || '',
           tipo_imovel: item.tipo_imovel || 'apartamento',
           finalidade_imovel: item.finalidade_imovel || 'venda',
           valor_venda: numberToCurrencyInput(item.valor_venda),
@@ -636,6 +638,7 @@ export default function ImovelFormWizard() {
   const MAX_FILES_PER_BATCH = 8;
 
   const appendPropertyPayload = (fd: FormData) => {
+    fd.append('titulo', formData.titulo.trim());
     fd.append('tipo_imovel', formData.tipo_imovel);
     fd.append('finalidade_imovel', formData.finalidade_imovel);
     fd.append('valor_venda', parseCurrencyInput(formData.valor_venda));
@@ -983,6 +986,7 @@ export default function ImovelFormWizard() {
       const buildFormData = (includeMedia: boolean) => {
         const fd = new FormData();
         // Dados básicos do imóvel
+        fd.append('titulo', formData.titulo.trim());
         fd.append('tipo_imovel', formData.tipo_imovel);
         fd.append('finalidade_imovel', formData.finalidade_imovel);
         fd.append('valor_venda', parseCurrencyInput(formData.valor_venda));
@@ -1253,6 +1257,7 @@ export default function ImovelFormWizard() {
     if (!propertyId) return false;
     try {
       const formDataToSend = new FormData();
+      formDataToSend.append('titulo', formData.titulo.trim());
       formDataToSend.append('tipo_imovel', formData.tipo_imovel);
       formDataToSend.append('finalidade_imovel', formData.finalidade_imovel);
       formDataToSend.append('valor_venda', parseCurrencyInput(formData.valor_venda));
@@ -1382,6 +1387,17 @@ export default function ImovelFormWizard() {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">Título da vitrine</label>
+              <input
+                type="text"
+                value={formData.titulo}
+                onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                placeholder="Ex.: Apartamento amplo no Centro"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-semibold text-foreground mb-2">Tipo de Imóvel *</label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
