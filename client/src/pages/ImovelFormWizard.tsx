@@ -161,6 +161,7 @@ function formatSelectionLabel(value: string): string {
 
 const defaultFormData = {
   titulo: '',
+  codigo_imovel: '',
   tipo_imovel: 'apartamento',
   finalidade_imovel: 'venda',
   valor_venda: '',
@@ -428,6 +429,7 @@ export default function ImovelFormWizard() {
 
         setFormData({
           titulo: item.titulo || '',
+          codigo_imovel: item.codigo_imovel || item.codigo || '',
           tipo_imovel: item.tipo_imovel || 'apartamento',
           finalidade_imovel: item.finalidade_imovel || 'venda',
           valor_venda: numberToCurrencyInput(item.valor_venda),
@@ -1387,15 +1389,28 @@ export default function ImovelFormWizard() {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-2">Título da vitrine</label>
-              <input
-                type="text"
-                value={formData.titulo}
-                onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                placeholder="Ex.: Apartamento amplo no Centro"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_220px] gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Título da vitrine</label>
+                <input
+                  type="text"
+                  value={formData.titulo}
+                  onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  placeholder="Ex.: Apartamento amplo no Centro"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Código do imóvel</label>
+                <input
+                  type="text"
+                  value={formData.codigo_imovel}
+                  readOnly
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-muted-foreground focus:outline-none"
+                  placeholder="Gerado ao salvar"
+                />
+              </div>
             </div>
 
             <div>
