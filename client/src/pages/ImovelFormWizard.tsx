@@ -574,6 +574,7 @@ export default function ImovelFormWizard() {
         try {
           setAutoSaveStatus('saving');
           const payload = {
+            titulo: formData.titulo.trim(),
             tipo_imovel: formData.tipo_imovel,
             finalidade_imovel: formData.finalidade_imovel,
             valor_venda: parseCurrencyInput(formData.valor_venda) || '0',
@@ -613,7 +614,14 @@ export default function ImovelFormWizard() {
             exclusividade: formData.exclusividade ? 1 : 0,
           };
 
-          await api.post(`/imoveis/${propertyId}?_method=PUT`, payload);
+          const response = await api.post(`/imoveis/${propertyId}?_method=PUT`, payload);
+          const savedCode = response.data?.data?.codigo_imovel || response.data?.data?.codigo;
+          if (savedCode && savedCode !== formData.codigo_imovel) {
+            setFormData((current) => ({
+              ...current,
+              codigo_imovel: savedCode,
+            }));
+          }
           setAutoSaveStatus('saved');
           setTimeout(() => setAutoSaveStatus('idle'), 2000);
         } catch (error: any) {

@@ -1592,6 +1592,14 @@ class PropertyController extends Controller
             // GARANTIR que tenant_id NUNCA seja alterado
             unset($data['tenant_id']);
 
+            if (empty($property->codigo_imovel)) {
+                $codigoImovel = $this->generatePropertyCode((int) $tenantId);
+                $data['codigo_imovel'] = $codigoImovel;
+                if (Schema::hasColumn((new Property())->getTable(), 'codigo')) {
+                    $data['codigo'] = $codigoImovel;
+                }
+            }
+
             $heldForApproval = $this->shouldHoldPropertyForApproval($request, (int) $tenantId, false);
             if ($heldForApproval && array_key_exists('exibir_imovel', $data)) {
                 $data['exibir_imovel'] = false;
@@ -1629,7 +1637,7 @@ class PropertyController extends Controller
                         $uploadedUrls = $this->uploadMedia(
                             $uploadedFiles,
                             $tenantId,
-                            $property->codigo_imovel
+                            $data['codigo_imovel'] ?? $property->codigo_imovel
                         );
                         $imagens = array_merge($imagens, $uploadedUrls);
                     }
