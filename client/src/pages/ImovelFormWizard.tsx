@@ -651,7 +651,7 @@ export default function ImovelFormWizard() {
     fd.append('titulo', formData.titulo.trim());
     fd.append('tipo_imovel', formData.tipo_imovel);
     fd.append('finalidade_imovel', formData.finalidade_imovel);
-    fd.append('valor_venda', parseCurrencyInput(formData.valor_venda));
+    fd.append('valor_venda', parseCurrencyInput(formData.valor_venda) || '0');
     fd.append('valor_aluguel', parseCurrencyInput(formData.valor_aluguel) || '0');
 
     if (formData.valor_condominio) fd.append('valor_condominio', parseCurrencyInput(formData.valor_condominio));
@@ -999,7 +999,7 @@ export default function ImovelFormWizard() {
         fd.append('titulo', formData.titulo.trim());
         fd.append('tipo_imovel', formData.tipo_imovel);
         fd.append('finalidade_imovel', formData.finalidade_imovel);
-        fd.append('valor_venda', parseCurrencyInput(formData.valor_venda));
+        fd.append('valor_venda', parseCurrencyInput(formData.valor_venda) || '0');
         fd.append('valor_aluguel', parseCurrencyInput(formData.valor_aluguel) || '0');
 
         if (formData.valor_condominio) fd.append('valor_condominio', parseCurrencyInput(formData.valor_condominio));
@@ -1270,7 +1270,7 @@ export default function ImovelFormWizard() {
       formDataToSend.append('titulo', formData.titulo.trim());
       formDataToSend.append('tipo_imovel', formData.tipo_imovel);
       formDataToSend.append('finalidade_imovel', formData.finalidade_imovel);
-      formDataToSend.append('valor_venda', parseCurrencyInput(formData.valor_venda));
+      formDataToSend.append('valor_venda', parseCurrencyInput(formData.valor_venda) || '0');
       formDataToSend.append('valor_aluguel', parseCurrencyInput(formData.valor_aluguel) || '0');
       if (formData.valor_condominio) formDataToSend.append('valor_condominio', parseCurrencyInput(formData.valor_condominio));
       if (formData.valor_iptu) formDataToSend.append('valor_iptu', parseCurrencyInput(formData.valor_iptu));

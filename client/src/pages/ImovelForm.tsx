@@ -186,7 +186,7 @@ export default function ImovelForm() {
       // Converter strings vazias em null para números
       const dataToSend = {
         ...formData,
-        valor_venda: formData.valor_venda ? parseFloat(parseCurrencyInput(formData.valor_venda)) : null,
+        valor_venda: formData.valor_venda ? parseFloat(parseCurrencyInput(formData.valor_venda)) : 0,
         valor_condominio: formData.valor_condominio ? parseFloat(parseCurrencyInput(formData.valor_condominio)) : null,
         valor_iptu: formData.valor_iptu ? parseFloat(parseCurrencyInput(formData.valor_iptu)) : null,
         dormitorios: formData.dormitorios ? parseInt(formData.dormitorios) : null,

@@ -388,7 +388,7 @@ class PropertyController extends Controller
         return $data;
     }
 
-    private function applyPropertyNumericDefaults(array $data): array
+    private function applyPropertyNumericDefaults(array $data, bool $includeMissing = true): array
     {
         $numericDefaults = [
             'valor_venda' => 0,
@@ -405,7 +405,8 @@ class PropertyController extends Controller
         ];
 
         foreach ($numericDefaults as $field => $defaultValue) {
-            if (!array_key_exists($field, $data) || $data[$field] === null || $data[$field] === '') {
+            if (($includeMissing && !array_key_exists($field, $data))
+                || (array_key_exists($field, $data) && ($data[$field] === null || $data[$field] === ''))) {
                 $data[$field] = $defaultValue;
             }
         }
@@ -1562,7 +1563,10 @@ class PropertyController extends Controller
 
         try {
             // ========== PREPARAR DADOS ==========
-            $data = $this->normalizeStructuredPropertyData($validator->validated());
+            $data = $this->applyPropertyNumericDefaults(
+                $this->normalizeStructuredPropertyData($validator->validated()),
+                false
+            );
             [$captadorUserId, $captadorNome] = $this->resolveCaptadorData($tenantId, $data['captador_user_id'] ?? null);
             $data['captador_user_id'] = $captadorUserId;
             $data['captador_nome'] = $captadorNome;
