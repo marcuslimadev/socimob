@@ -125,7 +125,12 @@ class Property extends Model
         'area'
     ];
 
-    public function setValorVendaAttribute($value): void\n    {\n        $this->attributes['valor_venda'] = ($value === null || $value === '') ? 0 : $value;\n    }\n\n    public function getTypeAttribute()
+    public function setValorVendaAttribute($value): void
+    {
+        $this->attributes['valor_venda'] = ($value === null || $value === '') ? 0 : $value;
+    }
+
+    public function getTypeAttribute()
     {
         return $this->tipo_imovel;
     }
