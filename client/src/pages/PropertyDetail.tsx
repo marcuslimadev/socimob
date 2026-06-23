@@ -302,31 +302,20 @@ export default function PropertyDetail() {
     }
   };
 
-  const handleShare = async () => {
+  const handleShare = () => {
     if (!property) return;
 
-    const shareUrl = window.location.href;
-    const shareText = `Confira este imóvel: ${property.titulo}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: property.titulo,
-          text: shareText,
-          url: shareUrl,
-        });
-        return;
-      } catch {
-        // user canceled
-      }
+    if (!tenant?.contact_phone) {
+      toast.error('Nenhum número de WhatsApp cadastrado para compartilhamento');
+      return;
     }
 
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success('Link copiado para a área de transferência');
-    } catch {
-      toast.error('Erro ao copiar link');
-    }
+    const phone = tenant.contact_phone.replace(/\D/g, '');
+    const message = encodeURIComponent(
+      `Confira este imóvel: ${property.titulo}\n\n${window.location.href}`,
+    );
+
+    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
   };
 
   const handleWhatsApp = () => {

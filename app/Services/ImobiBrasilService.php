@@ -982,6 +982,72 @@ class ImobiBrasilService
      * Enviar imagens da propriedade para Imobi Brasil
      * Endpoint: POST /imovel/{codigoImovel}/imagem/inserir
      */
+    public static function getPropertyImageUrls(Property $property): array
+    {
+        $imageUrls = [];
+        $seenUrls = [];
+        $videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'webm', 'mkv', 'flv', 'ogv', 'm4v', '3gp', 'ts'];
+        $docExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip', 'rar'];
+
+        $addImageUrl = static function ($rawUrl) use (&$imageUrls, &$seenUrls, $videoExtensions, $docExtensions): void {
+            if (is_array($rawUrl)) {
+                $rawUrl = $rawUrl['url'] ?? $rawUrl['imagem'] ?? $rawUrl['image_url'] ?? $rawUrl['path'] ?? null;
+            }
+
+            if (!is_string($rawUrl)) {
+                return;
+            }
+
+            $url = trim($rawUrl);
+            if ($url === '' || str_starts_with($url, 'blob:') || str_starts_with($url, 'data:')) {
+                return;
+            }
+
+            $path = parse_url($url, PHP_URL_PATH) ?: $url;
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            if ($ext !== '' && (in_array($ext, $videoExtensions, true) || in_array($ext, $docExtensions, true))) {
+                return;
+            }
+
+            $key = strtolower($url);
+            if (isset($seenUrls[$key])) {
+                return;
+            }
+
+            $seenUrls[$key] = true;
+            $imageUrls[] = $url;
+        };
+
+        $addImageUrl($property->imagem_destaque);
+
+        $rawImagens = $property->imagens;
+        if (is_array($rawImagens)) {
+            foreach ($rawImagens as $url) {
+                $addImageUrl($url);
+            }
+        }
+
+        try {
+            $query = \App\Models\ImovelImagem::where('codigo', $property->codigo)
+                ->orderBy('destaque', 'desc');
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('imoveis_imagens', 'id')) {
+                $query->orderBy('id');
+            }
+
+            foreach ($query->get() as $img) {
+                $addImageUrl($img->url);
+            }
+        } catch (\Exception $dbEx) {
+            Log::warning('Tabela imoveis_imagens indisponível, usando imagens do imóvel', [
+                'property_id' => $property->id,
+                'error' => $dbEx->getMessage(),
+            ]);
+        }
+
+        return $imageUrls;
+    }
+
     public static function sendPropertyImages(Property $property, Tenant $tenant): array
     {
         try {
@@ -1029,47 +1095,9 @@ class ImobiBrasilService
                 ]);
             }
 
-            // Montar lista de URLs de imagem (apenas imagens, sem vídeos ou documentos)
-            $imageUrls = [];
-            $videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'webm', 'mkv', 'flv', 'ogv', 'm4v', '3gp', 'ts'];
-            $docExtensions   = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip', 'rar'];
-
-            // Tentar buscar da tabela imoveis_imagens (pode não existir em todos os ambientes)
-            $imagensDb = collect();
-            try {
-                $imagensDb = \App\Models\ImovelImagem::where('codigo', $property->codigo)
-                    ->orderBy('destaque', 'desc')
-                    ->get();
-            } catch (\Exception $dbEx) {
-                Log::warning('Tabela imoveis_imagens indisponível, usando fallback JSON', [
-                    'property_id' => $property->id,
-                    'error' => $dbEx->getMessage(),
-                ]);
-            }
-
-            if ($imagensDb->isNotEmpty()) {
-                // Usar tabela imoveis_imagens
-                foreach ($imagensDb as $img) {
-                    $ext = strtolower(pathinfo(parse_url($img->url, PHP_URL_PATH), PATHINFO_EXTENSION));
-                    if (!in_array($ext, $videoExtensions) && !in_array($ext, $docExtensions)) {
-                        $imageUrls[] = $img->url;
-                    }
-                }
-            }
-
-            // Fallback (ou complemento): usar JSON imagens do model
-            if (empty($imageUrls)) {
-                $rawImagens = $property->imagens;
-                if (is_array($rawImagens)) {
-                    foreach ($rawImagens as $url) {
-                        if (!is_string($url)) continue;
-                        $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
-                        if (!in_array($ext, $videoExtensions) && !in_array($ext, $docExtensions)) {
-                            $imageUrls[] = $url;
-                        }
-                    }
-                }
-            }
+            // Montar lista consolidada de imagens. Fotos recém-salvas ficam no JSON
+            // do imóvel, enquanto importações antigas podem estar em imoveis_imagens.
+            $imageUrls = static::getPropertyImageUrls($property);
 
             if (empty($imageUrls)) {
                 return [

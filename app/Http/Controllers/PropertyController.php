@@ -2383,12 +2383,7 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
                 $imagesResult = null;
                 $alreadySentImages = !empty($property->imobi_brasil_images_sent_at);
                 if (!$alreadySentImages) {
-                    $hasImagesDb = false;
-                    try {
-                        $hasImagesDb = \App\Models\ImovelImagem::where('codigo', $property->codigo)->exists();
-                    } catch (\Exception $dbEx) { /* tabela pode não existir */ }
-                    $hasImages = $hasImagesDb || (is_array($property->imagens) && count($property->imagens) > 0);
-                    if ($hasImages) {
+                    if (count(\App\Services\ImobiBrasilService::getPropertyImageUrls($property)) > 0) {
                         $imagesResult = \App\Services\ImobiBrasilService::sendPropertyImages($property, $tenant);
                     }
                 }
@@ -2463,13 +2458,7 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
                     }
 
                     // 2. Enviar todas as imagens atuais
-                    $hasImagesDb = false;
-                    try {
-                        $hasImagesDb = \App\Models\ImovelImagem::where('codigo', $property->codigo)->exists();
-                    } catch (\Exception $dbEx) { /* tabela pode não existir */ }
-                    $hasImages = $hasImagesDb || (is_array($property->imagens) && count($property->imagens) > 0);
-
-                    if ($hasImages) {
+                    if (count(\App\Services\ImobiBrasilService::getPropertyImageUrls($property)) > 0) {
                         $imagesResult = \App\Services\ImobiBrasilService::sendPropertyImages($property, $tenant);
                     }
                 }
@@ -2586,12 +2575,8 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
                 ->firstOrFail();
 
             // Validar se existem imagens
-            $imagensDb = 0;
-            try {
-                $imagensDb = \App\Models\ImovelImagem::where('codigo', $property->codigo)->count();
-            } catch (\Exception $dbEx) { /* tabela pode não existir */ }
-            $imagensJson = is_array($property->imagens) ? count($property->imagens) : 0;
-            if ($imagensDb === 0 && $imagensJson === 0) {
+            $imageUrls = \App\Services\ImobiBrasilService::getPropertyImageUrls($property);
+            if (count($imageUrls) === 0) {
                 return response()->json([
                     'success' => false,
                     'error' => 'Nenhuma imagem disponível para enviar',
@@ -2601,7 +2586,7 @@ Responda APENAS com o texto da propaganda, sem aspas ou formatação adicional."
             // Despachar job em background para evitar timeout do servidor
             SendImobiBrasilImagesJob::dispatch((int) $property->id, (int) $tenantId);
 
-            $total = $imagensDb > 0 ? $imagensDb : $imagensJson;
+            $total = count($imageUrls);
 
             return response()->json([
                 'success'     => true,
