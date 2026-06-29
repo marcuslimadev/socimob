@@ -8,6 +8,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     
     // Settings
     $router->get('/settings', 'App\Http\Controllers\Admin\TenantSettingsController@index');
+    $router->put('/settings', 'App\Http\Controllers\Admin\TenantSettingsController@update');
     $router->put('/settings/tenant', 'App\Http\Controllers\Admin\TenantSettingsController@updateTenant');
     $router->put('/settings/theme', 'App\Http\Controllers\Admin\TenantSettingsController@updateTheme');
     $router->put('/settings/domain', 'App\Http\Controllers\Admin\TenantSettingsController@updateDomain');

@@ -183,6 +183,8 @@ export default function Settings() {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isSavingTenant, setIsSavingTenant] = useState(false);
+  const [isAutoSavingVisual, setIsAutoSavingVisual] = useState(false);
+  const [visualSaveState, setVisualSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
   const [aiProvider, setAiProvider] = useState<AiProvider>('openai');
   const [isLoadingAiProvider, setIsLoadingAiProvider] = useState(false);
   const [isSavingAiProvider, setIsSavingAiProvider] = useState(false);
@@ -257,6 +259,7 @@ export default function Settings() {
   })() : undefined;
   const isAdminRole = ['admin', 'super_admin'].includes(profileUser?.role || storedRole || '');
   const sidebarVisibilitySections = getSidebarVisibilitySections(profileUser?.role || storedRole);
+  const selectedPortalTemplate = PORTAL_TEMPLATES.find((template) => template.id === tenantForm.theme) || PORTAL_TEMPLATES[0];
 
   const sections: SettingSection[] = [
     {
@@ -596,20 +599,107 @@ export default function Settings() {
     }
   };
 
+  const normalizeEmpty = (value: unknown) => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed === '' ? null : trimmed;
+    }
+
+    return value;
+  };
+
+  const buildTenantPayload = (overrides: Partial<typeof tenantForm> = {}, includeFullConfig = true) => {
+    const viewAsTenantId = localStorage.getItem('superadmin_view_as_tenant');
+    const formData = { ...tenantForm, ...overrides };
+    const configData = { ...tenantConfigForm };
+
+    const payload: Record<string, any> = {
+      name: normalizeEmpty(formData.name),
+      contact_email: normalizeEmpty(formData.contact_email),
+      contact_phone: normalizeEmpty(formData.contact_phone),
+      primary_color: normalizeEmpty(formData.primary_color),
+      secondary_color: normalizeEmpty(formData.secondary_color),
+      theme: normalizeEmpty(formData.theme),
+      logo_url: normalizeEmpty(formData.logo_url),
+      mascot_url: normalizeEmpty(formData.mascot_url),
+      watermark_url: normalizeEmpty(formData.watermark_url),
+      openai_model: normalizeEmpty(formData.openai_model),
+      ai_assistant_name: normalizeEmpty(formData.ai_assistant_name),
+      twilio_account_sid: normalizeEmpty(formData.twilio_account_sid),
+      twilio_whatsapp_from: normalizeEmpty(formData.twilio_whatsapp_from),
+      twilio_template_welcome_sid: normalizeEmpty(formData.twilio_template_welcome_sid),
+      mail_driver: normalizeEmpty(formData.mail_driver),
+      mail_host: normalizeEmpty(formData.mail_host),
+      mail_port: formData.mail_port || null,
+      mail_username: normalizeEmpty(formData.mail_username),
+      mail_encryption: normalizeEmpty(formData.mail_encryption),
+      mail_from_address: normalizeEmpty(formData.mail_from_address),
+      mail_from_name: normalizeEmpty(formData.mail_from_name),
+      ...(viewAsTenantId ? { tenant_id: parseInt(viewAsTenantId) } : {}),
+    };
+
+    if (formData.openai_api_key.trim()) payload.openai_api_key = formData.openai_api_key.trim();
+    if (formData.twilio_auth_token.trim()) payload.twilio_auth_token = formData.twilio_auth_token.trim();
+    if (formData.mail_password.trim()) payload.mail_password = formData.mail_password.trim();
+
+    if (includeFullConfig) {
+      payload.config = {
+        ...configData,
+        api_key_pagar_me: normalizeEmpty(configData.api_key_pagar_me),
+        api_key_apm_imoveis: normalizeEmpty(configData.api_key_apm_imoveis),
+        api_key_neca: normalizeEmpty(configData.api_key_neca),
+        font_primary: normalizeEmpty(configData.font_primary),
+        font_secondary: normalizeEmpty(configData.font_secondary),
+        font_url: normalizeEmpty(configData.font_url),
+        favicon_url: normalizeEmpty(configData.favicon_url),
+        smtp_host: normalizeEmpty(configData.smtp_host),
+        smtp_port: configData.smtp_port || null,
+        smtp_username: normalizeEmpty(configData.smtp_username),
+        smtp_from_email: normalizeEmpty(configData.smtp_from_email),
+        smtp_from_name: normalizeEmpty(configData.smtp_from_name),
+        notification_email: normalizeEmpty(configData.notification_email),
+        twilio_account_sid: normalizeEmpty(configData.twilio_account_sid),
+        twilio_whatsapp_from: normalizeEmpty(configData.twilio_whatsapp_from),
+        whatsapp_number: normalizeEmpty(configData.whatsapp_number),
+      };
+
+      if (!configData.smtp_password.trim()) delete payload.config.smtp_password;
+      if (!configData.twilio_auth_token.trim()) delete payload.config.twilio_auth_token;
+    }
+
+    return payload;
+  };
+
+  const saveVisualSettings = async (nextForm: Partial<typeof tenantForm>) => {
+    const mergedForm = { ...tenantForm, ...nextForm };
+
+    setTenantForm(mergedForm);
+    setIsAutoSavingVisual(true);
+    setVisualSaveState('idle');
+
+    try {
+      const response = await api.put('/admin/settings', buildTenantPayload(nextForm, false));
+      if (response.data?.success) {
+        setTenantConfig(response.data.tenant);
+        setVisualSaveState('saved');
+        toast.success('Tema salvo automaticamente');
+      } else {
+        setVisualSaveState('error');
+        toast.error(response.data?.message || 'Erro ao salvar tema');
+      }
+    } catch (error: any) {
+      setVisualSaveState('error');
+      toast.error(error?.response?.data?.message || 'Erro ao salvar tema');
+    } finally {
+      setIsAutoSavingVisual(false);
+    }
+  };
+
   const handleTenantSave = async () => {
     try {
       setIsSavingTenant(true);
-      
-      // Se super_admin, incluir tenant_id do localStorage
-      const viewAsTenantId = localStorage.getItem('superadmin_view_as_tenant');
-      
-      const payload = {
-        ...tenantForm,
-        config: tenantConfigForm,
-        ...(viewAsTenantId ? { tenant_id: parseInt(viewAsTenantId) } : {}),
-      };
-      
-      const response = await api.put('/admin/settings', payload);
+
+      const response = await api.put('/admin/settings', buildTenantPayload());
       if (response.data?.success) {
         setTenantConfig(response.data.tenant);
         toast.success('Configurações da empresa atualizadas com sucesso');
@@ -1152,13 +1242,105 @@ export default function Settings() {
                         <h3 className="text-lg font-bold text-foreground mb-4">Personalização Visual</h3>
 
                         <div className="mb-6 rounded-xl border border-white/10 bg-white/[0.04] p-4">
-                          <div className="mb-4 flex items-start gap-3">
+                          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div className="flex items-start gap-3">
                             <LayoutTemplate className="mt-0.5 h-5 w-5 text-blue-300" />
                             <div>
                               <p className="text-sm font-semibold text-foreground">Modelo premium do site</p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                A escolha muda disposição, densidade do catálogo, hero, cards e detalhamento visual do portal público.
+                                A escolha muda o layout do portal público: hero, busca, densidade do catálogo, cards, lista ou tabela.
                               </p>
+                            </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/15 px-3 py-1.5 text-[11px] text-muted-foreground">
+                              {isAutoSavingVisual ? (
+                                <>
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Salvando tema
+                                </>
+                              ) : visualSaveState === 'saved' ? (
+                                'Tema salvo automaticamente'
+                              ) : visualSaveState === 'error' ? (
+                                'Erro ao salvar tema'
+                              ) : (
+                                'Auto save ativo'
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-[0_18px_48px_rgba(2,6,23,0.30)]">
+                            <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                              </div>
+                              <span className="text-[10px] uppercase tracking-[0.16em] text-slate-400">Preview do portal</span>
+                            </div>
+                            <div className="grid md:grid-cols-[1.1fr_0.9fr]">
+                              <div
+                                className="min-h-[190px] p-4 text-white"
+                                style={{ background: selectedPortalTemplate.hero.replace('var(--portal-primary-99)', tenantForm.primary_color || '#1e293b') }}
+                              >
+                                <div className="mb-8 flex items-center justify-between">
+                                  <span className="rounded-full bg-white/14 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]">Imóveis premium</span>
+                                  <span className="h-7 w-20 rounded-full bg-white/18" />
+                                </div>
+                                <div className={
+                                  selectedPortalTemplate.heroMode === 'editorial'
+                                    ? 'max-w-[78%] border-l border-white/40 pl-4'
+                                    : selectedPortalTemplate.heroMode === 'compact'
+                                      ? 'max-w-[70%]'
+                                      : selectedPortalTemplate.heroMode === 'showcase'
+                                        ? 'max-w-[84%] rounded-2xl border border-white/20 bg-white/12 p-4'
+                                        : 'max-w-[78%]'
+                                }>
+                                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/70">{selectedPortalTemplate.accentLabel}</p>
+                                  <p className="mt-2 text-2xl font-semibold leading-tight">Encontre o imóvel certo</p>
+                                  <div className="mt-4 flex gap-2">
+                                    <span className="h-9 flex-1 rounded-lg bg-white/18" />
+                                    <span className="h-9 w-20 rounded-lg bg-white" />
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="bg-white p-4">
+                                <div className="mb-3 flex items-center justify-between">
+                                  <div>
+                                    <p className="text-sm font-bold text-slate-900">{selectedPortalTemplate.name}</p>
+                                    <p className="text-[11px] text-slate-500">{selectedPortalTemplate.inspiration}</p>
+                                  </div>
+                                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase text-slate-600">
+                                    {selectedPortalTemplate.catalogMode === 'datatable' ? 'DataTable' : selectedPortalTemplate.catalogMode}
+                                  </span>
+                                </div>
+
+                                {selectedPortalTemplate.catalogMode === 'datatable' ? (
+                                  <div className="rounded-lg border border-slate-200">
+                                    {[0, 1, 2, 3].map((row) => (
+                                      <div key={row} className="grid grid-cols-[1.2fr_0.8fr_0.7fr] gap-2 border-b border-slate-100 px-3 py-2 last:border-0">
+                                        <span className="h-2 rounded bg-slate-300" />
+                                        <span className="h-2 rounded bg-slate-200" />
+                                        <span className="h-2 rounded bg-slate-300" />
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : selectedPortalTemplate.catalogMode === 'list' ? (
+                                  <div className="space-y-2">
+                                    {[0, 1, 2].map((row) => (
+                                      <div key={row} className="flex gap-2 rounded-lg border border-slate-200 p-2">
+                                        <span className="h-12 w-16 rounded bg-slate-200" />
+                                        <span className="mt-1 h-2 flex-1 rounded bg-slate-300" />
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className={`grid gap-2 ${selectedPortalTemplate.catalogMode === 'magazine' ? 'grid-cols-[1.35fr_0.85fr]' : 'grid-cols-3'}`}>
+                                    {[0, 1, 2].map((row) => (
+                                      <div key={row} className={`${selectedPortalTemplate.catalogMode === 'magazine' && row === 0 ? 'row-span-2 min-h-[116px]' : 'min-h-[55px]'} rounded-lg bg-slate-200`} />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -1169,7 +1351,7 @@ export default function Settings() {
                                 <button
                                   key={template.id}
                                   type="button"
-                                  onClick={() => setTenantForm({ ...tenantForm, theme: template.id })}
+                                  onClick={() => saveVisualSettings({ theme: template.id })}
                                   className={`group overflow-hidden rounded-lg border text-left transition ${
                                     selected
                                       ? 'border-blue-400 bg-blue-500/15 shadow-[0_0_0_1px_rgba(96,165,250,0.55)]'
@@ -1195,7 +1377,7 @@ export default function Settings() {
                                     </div>
                                     <p className="mt-1 text-[11px] text-muted-foreground">{template.premiumUse}</p>
                                     <p className="mt-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                                      {template.catalogMode === 'datatable' ? 'Tabela/DataTable' : template.catalogMode}
+                                      {template.heroMode} · {template.catalogMode === 'datatable' ? 'Tabela/DataTable' : template.catalogMode}
                                     </p>
                                   </div>
                                 </button>
@@ -1214,12 +1396,14 @@ export default function Settings() {
                                 type="color"
                                 value={tenantForm.primary_color}
                                 onChange={(e) => setTenantForm({ ...tenantForm, primary_color: e.target.value })}
+                                onBlur={(e) => saveVisualSettings({ primary_color: e.target.value })}
                                 className="w-16 h-12 rounded-lg cursor-pointer"
                               />
                               <input
                                 type="text"
                                 value={tenantForm.primary_color}
                                 onChange={(e) => setTenantForm({ ...tenantForm, primary_color: e.target.value })}
+                                onBlur={(e) => saveVisualSettings({ primary_color: e.target.value })}
                                 className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
                                 placeholder="#1e293b"
                               />
@@ -1235,12 +1419,14 @@ export default function Settings() {
                                 type="color"
                                 value={tenantForm.secondary_color}
                                 onChange={(e) => setTenantForm({ ...tenantForm, secondary_color: e.target.value })}
+                                onBlur={(e) => saveVisualSettings({ secondary_color: e.target.value })}
                                 className="w-16 h-12 rounded-lg cursor-pointer"
                               />
                               <input
                                 type="text"
                                 value={tenantForm.secondary_color}
                                 onChange={(e) => setTenantForm({ ...tenantForm, secondary_color: e.target.value })}
+                                onBlur={(e) => saveVisualSettings({ secondary_color: e.target.value })}
                                 className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
                                 placeholder="#3b82f6"
                               />
