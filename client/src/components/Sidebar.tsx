@@ -555,6 +555,16 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
     setInternalIsOpen(false);
   };
 
+  useEffect(() => {
+    const openMobileMenu = () => setInternalIsOpen(true);
+
+    window.addEventListener('socimob:open-mobile-menu', openMobileMenu);
+
+    return () => {
+      window.removeEventListener('socimob:open-mobile-menu', openMobileMenu);
+    };
+  }, []);
+
   const primaryTabs: SidebarItem[] = [
     ...visibleSections.map((section) => ({
       key: section.id,
@@ -797,7 +807,11 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
               <button
                 type="button"
                 onClick={toggleMobileMenu}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] text-white transition-colors hover:border-white/16 hover:bg-white/[0.08]"
+                className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition-colors ${
+                  isDarkTheme
+                    ? 'border-white/10 bg-white/[0.035] text-white hover:border-white/16 hover:bg-white/[0.08]'
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                }`}
                 aria-label={actualIsOpen ? 'Fechar navegação' : 'Abrir navegação'}
               >
                 {actualIsOpen ? <X size={20} /> : <Menu size={20} />}
@@ -805,15 +819,28 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             </div>
           </div>
 
-          <div className="pb-3 md:hidden">
+          <div className="md:hidden">
             {actualIsOpen && (
-              <div className="space-y-3 border-t border-white/8 pt-3">
-                <div className={`rounded-[28px] border p-4 ${mobilePanelClass}`}>
+              <div className="fixed inset-x-0 bottom-0 top-[68px] z-50 overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-sm">
+                <div className={`mx-auto max-w-md rounded-[24px] border p-3 ${mobilePanelClass}`}>
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
                       <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${mobileSubtleTextClass}`}>Menu principal</p>
                       <p className={`text-sm font-medium ${mobileTitleClass}`}>Escolha uma área do sistema</p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={closeMobileMenu}
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+                        isDarkTheme ? 'border-white/10 bg-white/5 text-white' : 'border-slate-300 bg-white text-slate-700'
+                      }`}
+                      aria-label="Fechar menu"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <div className="mb-3 flex items-center justify-between gap-3">
                     <div className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${mobileChipClass}`}>
                       {currentSection?.label || 'Geral'}
                     </div>

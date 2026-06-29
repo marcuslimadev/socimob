@@ -4,6 +4,7 @@ import {
   BarChart3,
   Users,
   Home,
+  CalendarClock,
   MoreHorizontal,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -34,9 +35,11 @@ export default function BottomNavigation() {
   }
 
   const mainNavItems: NavItem[] = [
-    { icon: <BarChart3 size={24} />, label: 'Dashboard', href: '/dashboard' },
-    { icon: <Users size={24} />, label: 'Chat', href: '/crm' },
-    { icon: <Home size={24} />, label: 'Imóveis', href: '/properties' },
+    { icon: <BarChart3 size={21} />, label: 'Início', href: '/dashboard' },
+    { icon: <Users size={21} />, label: 'Chat', href: '/crm' },
+    { icon: <Home size={21} />, label: 'Imóveis', href: '/properties' },
+    { icon: <CalendarClock size={21} />, label: 'Agenda', href: '/agenda' },
+    { icon: <MoreHorizontal size={21} />, label: 'Menu', href: '#menu' },
   ];
 
   const moreNavItems: NavItem[] = [];
@@ -49,22 +52,26 @@ export default function BottomNavigation() {
       <motion.div
         initial={{ y: 100 }}
         animate={{ y: 0 }}
-        className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-t from-gray-900 via-gray-900 to-gray-900/95 border-t border-white/10 backdrop-blur-xl z-40 safe-area-inset-bottom"
+        className="md:hidden fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 text-slate-700 shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur-xl z-40 safe-area-inset-bottom dark:border-white/10 dark:bg-slate-950/95 dark:text-slate-300"
       >
-        <div className="flex items-center justify-between px-2 py-3">
+        <div className="grid grid-cols-5 px-1.5 pb-2 pt-2">
           {mainNavItems.map((item) => {
             const active = isActive(item.href);
+            const isMenu = item.href === '#menu';
             return (
-              <Link key={item.label} to={item.href}>
+              <Link key={item.label} to={isMenu ? location : item.href}>
                 <motion.div
                   whileTap={{ scale: 0.9 }}
-                  className={`flex flex-col items-center justify-center px-3 py-2 rounded-xl transition-all relative ${
+                  onClick={() => {
+                    if (isMenu) window.dispatchEvent(new CustomEvent('socimob:open-mobile-menu'));
+                  }}
+                  className={`relative mx-auto flex min-h-[52px] w-full max-w-[72px] flex-col items-center justify-center rounded-2xl px-1.5 py-1.5 transition-all ${
                     active
-                      ? 'bg-gradient-to-br from-blue-500/30 to-purple-500/30'
-                      : 'hover:bg-white/5'
+                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
+                      : 'text-slate-500 active:bg-slate-100 dark:text-slate-400 dark:active:bg-white/10'
                   }`}
                 >
-                  <div className={`${active ? 'text-blue-400' : 'text-muted-foreground'}`}>
+                  <div className={active ? 'text-blue-700 dark:text-blue-300' : 'text-slate-500 dark:text-slate-400'}>
                     {item.icon}
                   </div>
                   {item.badge && (
@@ -76,7 +83,7 @@ export default function BottomNavigation() {
                       {item.badge}
                     </motion.span>
                   )}
-                  <span className={`text-[10px] mt-1 font-medium ${active ? 'text-blue-400' : 'text-muted-foreground'}`}>
+                  <span className={`mt-1 max-w-full truncate text-[10px] font-semibold leading-none ${active ? 'text-blue-700 dark:text-blue-300' : 'text-slate-500 dark:text-slate-400'}`}>
                     {item.label}
                   </span>
                 </motion.div>
