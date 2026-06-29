@@ -391,6 +391,27 @@ function PwaMobilePrompt() {
   );
 }
 
+function MobileScrollUnlock() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(max-width: 767px)").matches) return;
+
+    const root = document.documentElement;
+    const body = document.body;
+
+    root.style.overflowY = "auto";
+    root.style.height = "auto";
+    body.style.overflowY = "auto";
+    body.style.height = "auto";
+    body.style.position = "";
+    body.style.touchAction = "pan-y pinch-zoom";
+  }, [location]);
+
+  return null;
+}
+
 // NOTE: About Theme
 // - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
 //   to keep consistent foreground/background color across components
@@ -406,6 +427,7 @@ function App() {
         >
           <TooltipProvider>
             <ProgressBar />
+            <MobileScrollUnlock />
             <Toaster />
             <Suspense fallback={null}>
               <AnalyticsConsentBanner />
