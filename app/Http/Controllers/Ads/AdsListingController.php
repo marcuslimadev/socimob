@@ -25,14 +25,22 @@ class AdsListingController extends Controller
 
     /**
      * POST /api/listings/{id}/ads/publish
-     * Solicita publicação do imóvel no provider (default: meta).
+     * Solicita publicação do imóvel no provider (default: google).
      */
     public function publish(Request $request, int $listingId): JsonResponse
     {
         $tenantId = $request->get('tenant_id');
-        $provider = $request->input('provider', 'meta');
+        $provider = $request->input('provider', 'google');
 
         try {
+            $metadata = $this->extractListingMetadata($request);
+            if (!empty($metadata)) {
+                AdsListing::withoutTenant()->updateOrCreate(
+                    ['tenant_id' => $tenantId, 'listing_id' => $listingId, 'provider' => $provider],
+                    ['metadata_json' => $metadata]
+                );
+            }
+
             $result = $this->orchestration->publish($tenantId, $listingId, $provider);
             return response()->json(['success' => true, ...$result]);
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
@@ -54,7 +62,7 @@ class AdsListingController extends Controller
     public function unpublish(Request $request, int $listingId): JsonResponse
     {
         $tenantId = $request->get('tenant_id');
-        $provider = $request->input('provider', 'meta');
+        $provider = $request->input('provider', 'google');
 
         try {
             $result = $this->orchestration->unpublish($tenantId, $listingId, $provider);
@@ -86,7 +94,38 @@ class AdsListingController extends Controller
                 'last_sync_at'     => $l->last_sync_at?->toISOString(),
                 'last_error'       => $l->last_error,
                 'sync_attempts'    => $l->sync_attempts,
+                'metadata'         => $l->metadata_json ?? [],
             ]),
+        ]);
+    }
+
+    public function configure(Request $request, int $listingId): JsonResponse
+    {
+        $tenantId = $request->attributes->get('tenant_id') ?? $request->user()?->tenant_id ?? $request->get('tenant_id');
+        $provider = $request->input('provider', 'google');
+
+        $metadata = $this->extractListingMetadata($request);
+
+        $adsListing = AdsListing::withoutTenant()->updateOrCreate(
+            ['tenant_id' => $tenantId, 'listing_id' => $listingId, 'provider' => $provider],
+            ['metadata_json' => $metadata]
+        );
+
+        AdsAuditLog::log($tenantId, 'LISTING_CONFIGURED', AdsAuditLog::STATUS_SUCCESS, [
+            'provider'    => $provider,
+            'entity_type' => AdsAuditLog::ENTITY_LISTING,
+            'entity_id'   => $adsListing->id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $adsListing->id,
+                'listing_id' => $adsListing->listing_id,
+                'provider' => $adsListing->provider,
+                'publish_status' => $adsListing->publish_status,
+                'metadata' => $adsListing->metadata_json ?? [],
+            ],
         ]);
     }
 
@@ -135,5 +174,26 @@ class AdsListingController extends Controller
                 'total'         => $logs->total(),
             ],
         ]);
+    }
+
+    private function extractListingMetadata(Request $request): array
+    {
+        return collect($request->only([
+            'headline_1',
+            'headline_2',
+            'headline_3',
+            'description_1',
+            'description_2',
+            'final_url',
+            'budget_daily_reais',
+            'region',
+            'keywords',
+            'negative_keywords',
+            'conversion_goal',
+            'utm_source',
+            'utm_campaign',
+        ]))
+            ->filter(fn ($value) => $value !== null && $value !== '')
+            ->toArray();
     }
 }

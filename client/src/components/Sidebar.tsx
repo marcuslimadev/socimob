@@ -30,6 +30,7 @@ import {
   Star,
   BookOpen,
   Bell,
+  Megaphone,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { normalizeHiddenSidebarKeys } from '@/lib/sidebarVisibility';
@@ -408,6 +409,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         },
         { key: 'pessoas', icon: <UserRound size={16} />, label: 'Pessoas', href: '/pessoas' },
         { key: 'links-importantes', icon: <Link2 size={16} />, label: 'Links importantes', href: '/links-importantes' },
+        { key: 'anuncios-integrados', icon: <Megaphone size={16} />, label: 'Anúncios Integrados', href: '/anuncios-integrados' },
         { key: 'ads', icon: <Zap size={16} />, label: 'Marketing / Anúncios', href: '/ads' },
         { key: 'contratos-locacao', icon: <FileSpreadsheet size={16} />, label: 'Contratos · Locação', href: '/financeiro/locacao' },
         { key: 'contratos-venda', icon: <FileSignature size={16} />, label: 'Contratos · Venda', href: '/financeiro/compra-venda' },

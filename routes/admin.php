@@ -273,6 +273,7 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->post('/ads/{provider}/accounts',           'App\Http\Controllers\Ads\AdsConnectionController@saveAccount');
     $router->get('/ads/analytics',                      'App\Http\Controllers\Ads\AdsAnalyticsController@index');
     $router->get('/ads/logs',                           'App\Http\Controllers\Ads\AdsListingController@logs');
+    $router->post('/ads/listings/{id}/configure',       'App\Http\Controllers\Ads\AdsListingController@configure');
 
     // Property Ads (Propaganda de Imóveis)
     $router->get('/property-ads/proxy-image', 'App\Http\Controllers\Admin\PropertyAdsController@proxyImage');

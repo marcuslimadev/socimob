@@ -54,6 +54,7 @@ const TenantAssociations = lazy(() => import("./pages/TenantAssociations"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const PropertyAds = lazy(() => import("./pages/PropertyAds"));
 const AdsAutomation = lazy(() => import("./pages/AdsAutomation"));
+const AnunciosIntegrados = lazy(() => import("./pages/AnunciosIntegrados"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const ControleChaves = lazy(() => import("./pages/ControleChaves"));
 const ImportantLinks = lazy(() => import("./pages/ImportantLinks"));
@@ -157,6 +158,7 @@ function Router() {
       <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/property-ads" component={PropertyAds} />
       <Route path="/ads" component={AdsAutomation} />
+      <Route path="/anuncios-integrados" component={AnunciosIntegrados} />
       <Route path="/controle-chaves" component={ControleChaves} />
       <Route path="/links-importantes" component={ImportantLinks} />
       <Route path="/analytics" component={Analytics} />

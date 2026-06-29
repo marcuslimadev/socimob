@@ -164,6 +164,13 @@ class AdsConnectionController extends Controller
                 ->where('provider', $provider)
                 ->first();
 
+            $account = AdsAccount::withoutTenant()
+                ->where('tenant_id', $tenantId)
+                ->where('provider', $provider)
+                ->where('is_active', true)
+                ->latest('id')
+                ->first();
+
             $activeListings = \App\Models\Ads\AdsListing::withoutTenant()
                 ->where('tenant_id', $tenantId)
                 ->where('provider', $provider)
@@ -178,6 +185,11 @@ class AdsConnectionController extends Controller
                 'campaign_status' => $campaign?->status ?? null,
                 'active_listings' => $activeListings,
                 'budget_daily'    => $campaign?->getBudgetInReais() ?? 0,
+                'region'          => $campaign?->region,
+                'campaign_metadata'=> $campaign?->metadata_json ?? [],
+                'external_account_id' => $account?->external_account_id,
+                'account_name'     => $account?->name,
+                'external_business_id' => $conn?->external_business_id,
             ];
         }
 
@@ -201,12 +213,21 @@ class AdsConnectionController extends Controller
     public function saveSettings(Request $request): JsonResponse
     {
         $tenantId    = $request->get('tenant_id');
-        $provider    = $request->input('provider', 'meta');
+        $provider    = $request->input('provider', 'google');
         $budgetCents = (int)($request->input('budget_daily_reais', 0) * 100);
         $region      = $request->input('region');
         $geoLat      = $request->input('geo_lat');
         $geoLng      = $request->input('geo_lng');
         $geoRadius   = $request->input('geo_radius_km', 20);
+        $metadata    = collect($request->only([
+            'campaign_name',
+            'tags',
+            'keywords',
+            'negative_keywords',
+            'conversion_tag',
+            'monthly_limit_reais',
+            'default_final_url',
+        ]))->filter(fn ($value) => $value !== null && $value !== '')->toArray();
 
         // Verificar entitlement de budget
         if ($budgetCents > 0) {
@@ -225,13 +246,18 @@ class AdsConnectionController extends Controller
                 'geo_lat'            => $geoLat,
                 'geo_lng'            => $geoLng,
                 'geo_radius_km'      => $geoRadius,
+                'metadata_json'      => $metadata ?: null,
             ]
         );
 
         return response()->json([
             'success'  => true,
             'message'  => 'Configurações salvas.',
-            'campaign' => ['budget_daily' => $campaign->getBudgetInReais(), 'region' => $campaign->region],
+            'campaign' => [
+                'budget_daily' => $campaign->getBudgetInReais(),
+                'region' => $campaign->region,
+                'metadata' => $campaign->metadata_json ?? [],
+            ],
         ]);
     }
 

@@ -140,6 +140,7 @@ class TenantSettingsController extends Controller
             'mascot_url' => 'nullable|string|max:500',
             'watermark_url' => 'nullable|string|max:500',
             'slogan' => 'nullable|string|max:500',
+            'theme' => 'nullable|string|max:80',
             'primary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
             'secondary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
             'razao_social' => 'nullable|string|max:255',
@@ -206,6 +207,7 @@ class TenantSettingsController extends Controller
             'mascot_url',
             'watermark_url',
             'slogan',
+            'theme',
             'primary_color',
             'secondary_color',
             // Integration fields from migration
@@ -595,7 +597,7 @@ class TenantSettingsController extends Controller
         }
 
         $validated = $request->validate([
-            'theme' => 'required|in:classico,bauhaus',
+            'theme' => 'required|string|max:80',
             'primary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
             'secondary_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',
             'accent_color' => 'nullable|string|regex:/^#[0-9A-F]{6}$/i',

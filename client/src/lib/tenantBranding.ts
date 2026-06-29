@@ -11,6 +11,8 @@ export interface TenantBranding {
   mascot_url?: string;
   primary_color?: string;
   secondary_color?: string;
+  theme?: string;
+  portal_template?: string;
   font_primary?: string;
   font_secondary?: string;
   font_url?: string;

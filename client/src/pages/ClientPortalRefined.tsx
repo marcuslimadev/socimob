@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Mail, MapPin, MessageCircle, Minus, Phone, Plus, Search, Shield, Square, TrendingUp } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
+import { getPortalTemplate } from '@/lib/portalTemplates';
 
 const PORTAL_RETURN_STATE_KEY = 'portal:return-state';
 const PROPERTIES_PER_PAGE = 9;
@@ -77,6 +78,8 @@ interface TenantConfig extends TenantBranding {
   services?: string[];
   endereco?: string;
   office_hours?: string;
+  theme?: string;
+  portal_template?: string;
 }
 
 const PROPERTY_TYPES = [
@@ -360,6 +363,25 @@ export default function ClientPortalRefined() {
 
   const primary = tenant?.primary_color || '#0f172a';
   const secondary = tenant?.secondary_color || '#c39a66';
+  const portalTemplate = getPortalTemplate(tenant?.portal_template || tenant?.theme);
+  const templateHeroBackground = portalTemplate.hero.replace('var(--portal-primary-99)', `${primary}99`);
+  const isLightHeader = portalTemplate.header.includes('bg-white');
+  const isDarkShell = portalTemplate.shell === '#080808';
+  const heroGridClass = portalTemplate.heroMode === 'compact' || portalTemplate.heroMode === 'search'
+    ? 'relative mx-auto max-w-7xl px-4 py-8 lg:px-8 lg:py-14'
+    : portalTemplate.heroMode === 'editorial'
+      ? 'relative mx-auto grid max-w-7xl items-end gap-6 px-4 py-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-12 lg:px-8 lg:py-24'
+      : 'relative mx-auto grid max-w-7xl items-stretch gap-6 px-4 py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-10 lg:px-8 lg:py-20';
+  const catalogGridClass = portalTemplate.catalogMode === 'list'
+    ? 'mt-2 grid gap-4'
+    : portalTemplate.catalogMode === 'magazine'
+      ? 'mt-2 grid gap-5 md:grid-cols-2 xl:grid-cols-3'
+      : 'mt-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-3';
+  const headerTextClass = isLightHeader ? 'text-slate-900' : 'text-white';
+  const headerMutedClass = isLightHeader ? 'text-slate-500 hover:text-slate-950' : 'text-white/70 hover:text-white';
+  const isLightHeroPanel = portalTemplate.heroPanel.includes('bg-white');
+  const heroTextClass = isLightHeroPanel ? 'text-slate-950' : 'text-white';
+  const heroMutedClass = isLightHeroPanel ? 'text-slate-600' : 'text-white/85';
 
   useEffect(() => {
     const loadTenant = async () => {
@@ -855,29 +877,29 @@ export default function ClientPortalRefined() {
   }
 
   return (
-    <div className="portal-public min-h-screen" style={{ backgroundColor: '#f4efe8' }}>
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b111f]/92 backdrop-blur-xl">
+    <div className="portal-public min-h-screen" style={{ backgroundColor: portalTemplate.shell }}>
+      <header className={`sticky top-0 z-40 border-b ${portalTemplate.header}`}>
         <div className="mx-auto max-w-7xl px-4 py-3.5 lg:px-8">
           <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             {tenant?.logo_url || tenant?.logo ? (
               <img src={tenant.logo_url || tenant.logo} alt={tenant?.name || 'Logo'} className="h-14 w-14 rounded-full bg-white object-contain p-1.5 sm:h-16 sm:w-16 md:h-20 md:w-20" />
             ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/30 bg-white/10 text-sm font-semibold text-white sm:h-16 sm:w-16 md:h-20 md:w-20 md:text-lg">
+              <div className={`flex h-14 w-14 items-center justify-center rounded-full border text-sm font-semibold sm:h-16 sm:w-16 md:h-20 md:w-20 md:text-lg ${isLightHeader ? 'border-slate-200 bg-slate-100 text-slate-900' : 'border-white/30 bg-white/10 text-white'}`}>
                 {(tenant?.name || 'IM').slice(0, 2).toUpperCase()}
               </div>
             )}
             <div className="min-w-0">
-              <p className="truncate text-xs uppercase tracking-[0.15em] text-white sm:text-sm">{tenant?.name || 'Imobiliária'}</p>
-              <p className="truncate text-[10px] uppercase tracking-[0.12em] text-white/65 sm:text-[11px]">Private Estates</p>
+              <p className={`truncate text-xs uppercase tracking-[0.15em] sm:text-sm ${headerTextClass}`}>{tenant?.name || 'Imobiliária'}</p>
+              <p className={`truncate text-[10px] uppercase tracking-[0.12em] sm:text-[11px] ${isLightHeader ? 'text-slate-500' : 'text-white/65'}`}>{portalTemplate.name}</p>
             </div>
           </div>
           <div className="hidden lg:flex items-center gap-6">
-            <a href="#catalogo" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Catálogo</a>
-            <a href="#servicos" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Serviços</a>
-            <a href="/portal/simulacao" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Simulação</a>
+            <a href="#catalogo" className={`text-[11px] uppercase tracking-[0.16em] ${headerMutedClass}`}>Catálogo</a>
+            <a href="#servicos" className={`text-[11px] uppercase tracking-[0.16em] ${headerMutedClass}`}>Serviços</a>
+            <a href="/portal/simulacao" className={`text-[11px] uppercase tracking-[0.16em] ${headerMutedClass}`}>Simulação</a>
             <div className="relative" onMouseEnter={() => setVenderOpen(true)} onMouseLeave={() => setVenderOpen(false)}>
-              <button type="button" className="flex items-center gap-1 text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">
+              <button type="button" className={`flex items-center gap-1 text-[11px] uppercase tracking-[0.16em] ${headerMutedClass}`}>
                 Vender <ChevronDown className="w-3 h-3 mt-0.5" />
               </button>
               {venderOpen && (
@@ -907,11 +929,11 @@ export default function ClientPortalRefined() {
                 </div>
               )}
             </div>
-            <a href="#contato" className="text-[11px] uppercase tracking-[0.16em] text-white/70 hover:text-white">Contato</a>
+            <a href="#contato" className={`text-[11px] uppercase tracking-[0.16em] ${headerMutedClass}`}>Contato</a>
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="rounded-full border border-white/30 px-4 py-2 text-xs uppercase tracking-[0.12em] text-white"
+              className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.12em] ${isLightHeader ? 'border-slate-300 text-slate-800' : 'border-white/30 text-white'}`}
             >
               Entrar
             </button>
@@ -926,7 +948,7 @@ export default function ClientPortalRefined() {
             <button
               type="button"
               onClick={() => document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' })}
-              className="rounded-full border border-white/30 px-4 py-2 text-xs uppercase tracking-[0.12em] text-white"
+              className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.12em] ${isLightHeader ? 'border-slate-300 text-slate-800' : 'border-white/30 text-white'}`}
             >
               Explorar
             </button>
@@ -966,7 +988,7 @@ export default function ClientPortalRefined() {
         </div>
       </header>
 
-      <section ref={heroRef} className="relative overflow-hidden" style={{ background: `linear-gradient(115deg, ${primary}99 0%, #0a0d1678 100%)` }}>
+      <section ref={heroRef} className="relative overflow-hidden" style={{ background: templateHeroBackground }}>
         {/* Parallax background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <img
@@ -977,16 +999,15 @@ export default function ClientPortalRefined() {
           />
         </div>
         <div className="absolute inset-0 bg-gradient-to-r from-black/46 via-black/24 to-black/30" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(255,255,255,0.16),transparent_36%)]" />
 
-        <div className="relative mx-auto grid max-w-7xl items-stretch gap-6 px-4 py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-10 lg:px-8 lg:py-20">
-          <div className="max-w-2xl rounded-[1.75rem] border border-white/30 bg-[#000000c2] p-5 backdrop-blur-[8px] shadow-[0_20px_60px_rgba(0,0,0,0.28)] md:p-8">
-            <div className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-white/85 sm:w-auto sm:justify-start sm:text-[11px] sm:tracking-[0.22em]">
+        <div className={heroGridClass}>
+          <div className={`max-w-2xl ${portalTemplate.heroPanel}`}>
+            <div className={`inline-flex w-full items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] sm:w-auto sm:justify-start sm:text-[11px] sm:tracking-[0.22em] ${isLightHeroPanel ? 'border-slate-200 bg-slate-50 text-slate-600' : 'border-white/20 bg-white/10 text-white/85'}`}>
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: secondary }} />
-              Curadoria imobiliária premium
+              {portalTemplate.accentLabel}
             </div>
-            <h1 className="mt-5 text-[2.15rem] leading-[1] tracking-[-0.03em] text-white sm:text-5xl md:text-6xl">Imóveis extraordinários para estilos de vida únicos</h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-white/85 md:text-base">{tenant?.slogan || 'Curadoria de residências e investimentos em localizações de alto potencial.'}</p>
+            <h1 className={`mt-5 text-[2.15rem] leading-[1] sm:text-5xl md:text-6xl ${heroTextClass} ${portalTemplate.heroMode === 'compact' ? 'md:text-5xl' : ''}`}>Imóveis extraordinários para estilos de vida únicos</h1>
+            <p className={`mt-4 max-w-2xl text-sm leading-6 md:text-base ${heroMutedClass}`}>{tenant?.slogan || 'Curadoria de residências e investimentos em localizações de alto potencial.'}</p>
             <div className="mt-4 flex flex-wrap gap-2.5">
               {[
                 'Compra, venda e locação',
@@ -995,7 +1016,7 @@ export default function ClientPortalRefined() {
               ].map((item) => (
                 <span
                   key={item}
-                  className="inline-flex items-center rounded-full border border-white/18 bg-white/8 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-white/78 sm:text-[11px] sm:tracking-[0.14em]"
+                  className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.12em] sm:text-[11px] sm:tracking-[0.14em] ${isLightHeroPanel ? 'border-slate-200 bg-slate-50 text-slate-600' : 'border-white/18 bg-white/8 text-white/78'}`}
                 >
                   {item}
                 </span>
@@ -1014,7 +1035,7 @@ export default function ClientPortalRefined() {
               <button
                 type="button"
                 onClick={() => navigate('/portal/vender')}
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-white/55 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/18 sm:min-h-0 sm:w-auto"
+                className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold transition-colors sm:min-h-0 sm:w-auto ${isLightHeroPanel ? 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50' : 'border-white/55 bg-white/10 text-white hover:bg-white/18'}`}
               >
                 <TrendingUp className="w-4 h-4" />
                 Quero vender
@@ -1026,15 +1047,15 @@ export default function ClientPortalRefined() {
                 { value: cityCount > 0 ? String(cityCount) : '14', label: 'cidades com operação ativa' },
                 { value: '48h', label: 'para retorno da avaliação' },
               ].map((item) => (
-                <div key={item.label} className="rounded-2xl border border-white/15 bg-[#000000c2] px-4 py-3 backdrop-blur-sm">
-                  <p className="text-lg font-semibold text-white">{item.value}</p>
-                  <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-white/68">{item.label}</p>
+                <div key={item.label} className={`rounded-2xl border px-4 py-3 backdrop-blur-sm ${isLightHeroPanel ? 'border-slate-200 bg-slate-50' : 'border-white/15 bg-[#000000c2]'}`}>
+                  <p className={`text-lg font-semibold ${heroTextClass}`}>{item.value}</p>
+                  <p className={`mt-1 text-[11px] uppercase tracking-[0.12em] ${isLightHeroPanel ? 'text-slate-500' : 'text-white/68'}`}>{item.label}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="hidden content-start grid-cols-2 gap-2.5 md:gap-3 lg:grid">
+          <div className={`hidden content-start grid-cols-2 gap-2.5 md:gap-3 ${portalTemplate.heroMode === 'compact' || portalTemplate.heroMode === 'search' ? 'lg:hidden' : 'lg:grid'}`}>
             {heroStats.map((stat, index) => (
               <div
                 key={stat.label}
@@ -1054,7 +1075,7 @@ export default function ClientPortalRefined() {
       </section>
 
       <section id="catalogo" className="mx-auto max-w-7xl px-4 py-8 lg:px-8 lg:py-10">
-        <div className="rounded-3xl border border-black/10 bg-white/80 p-4 backdrop-blur-md shadow-[0_16px_42px_rgba(15,23,42,0.10)] lg:p-5">
+        <div className={portalTemplate.filterPanel}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_180px_190px_170px]">
             <div className="relative sm:col-span-2 lg:col-span-1">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -1102,7 +1123,56 @@ export default function ClientPortalRefined() {
           </div>
         </div>
 
-        <div className="mt-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {portalTemplate.catalogMode === 'datatable' ? (
+          <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-[980px] w-full text-left text-sm">
+                <thead className="bg-slate-100 text-[11px] uppercase tracking-[0.12em] text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Imóvel</th>
+                    <th className="px-4 py-3">Finalidade</th>
+                    <th className="px-4 py-3">Localização</th>
+                    <th className="px-4 py-3">Área</th>
+                    <th className="px-4 py-3">Quartos</th>
+                    <th className="px-4 py-3">Valor</th>
+                    <th className="px-4 py-3 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paginatedProperties.map((property) => {
+                    const images = normalizeImages(property);
+                    const displayArea = getDisplayArea(property);
+                    return (
+                      <tr key={property.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <img src={images[0]} alt={property.titulo} className="h-14 w-20 rounded-md object-cover" loading="lazy" />
+                            <div>
+                              <p className="line-clamp-1 font-semibold text-slate-900">{property.titulo}</p>
+                              <p className="mt-1 text-xs text-slate-500">{property.codigo || property.codigo_imovel || property.tipo_imovel}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700">{getPurpose(property)}</td>
+                        <td className="px-4 py-3 text-slate-600">{getPublicLocation(property)}</td>
+                        <td className="px-4 py-3 text-slate-700">{formatArea(displayArea)}m²</td>
+                        <td className="px-4 py-3 text-slate-700">{property.quartos || property.dormitorios || '--'}</td>
+                        <td className="px-4 py-3 font-semibold" style={{ color: primary }}>{formatPrice(property)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-end gap-2">
+                            <button type="button" onClick={() => handleOpenPropertyDetail(property.id)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">Detalhes</button>
+                            <button type="button" onClick={() => openPropertyWhatsAppModal(property)} className="rounded-md px-3 py-2 text-xs font-semibold text-white" style={{ backgroundColor: primary }}>WhatsApp</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+        <div className={catalogGridClass}>
           {paginatedProperties.map((property, index) => {
             const images = normalizeImages(property);
             const activePhotoIndex = Math.min(catalogPhotoIndexes[property.id] ?? 0, Math.max(0, images.length - 1));
@@ -1112,12 +1182,12 @@ export default function ClientPortalRefined() {
             return (
               <motion.article
                 key={property.id}
-                className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_10px_26px_rgba(15,23,42,0.08)]"
+                className={`group ${portalTemplate.card} ${portalTemplate.catalogMode === 'list' ? 'grid md:grid-cols-[280px_1fr]' : ''}`}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.2) }}
               >
-                <div className="relative h-60 sm:h-52">
+                <div className={`relative ${portalTemplate.catalogMode === 'list' ? 'h-64 md:h-full' : portalTemplate.cardImage}`}>
                   <img src={activeImage} alt={property.titulo} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" loading="lazy" />
                   <span className="absolute left-3 top-3 rounded-full border border-white/30 bg-black/35 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-white">
                     {getPurpose(property)}
@@ -1191,6 +1261,7 @@ export default function ClientPortalRefined() {
             );
           })}
         </div>
+        )}
 
         {filteredProperties.length === 0 && (
           <div className="mt-8 rounded-2xl border border-dashed border-black/20 bg-white/70 px-6 py-10 text-center text-sm text-slate-600">

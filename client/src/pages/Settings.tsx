@@ -31,11 +31,13 @@ import {
   Save,
   Loader2,
   Building2,
+  LayoutTemplate,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/Sidebar';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
+import { PORTAL_TEMPLATES } from '@/lib/portalTemplates';
 import { getSidebarVisibilitySections, normalizeHiddenSidebarKeys } from '@/lib/sidebarVisibility';
 
 interface SettingSection {
@@ -191,6 +193,7 @@ export default function Settings() {
     contact_phone: '',
     primary_color: '',
     secondary_color: '',
+    theme: 'classico-premium',
     logo_url: '',
     mascot_url: '',
     watermark_url: '',
@@ -316,6 +319,7 @@ export default function Settings() {
         contact_phone: config.contact_phone || '',
         primary_color: config.primary_color || '#1e293b',
         secondary_color: config.secondary_color || '#3b82f6',
+        theme: config.theme || 'classico-premium',
         logo_url: config.logo_url || '',
         mascot_url: config.mascot_url || '',
         watermark_url: config.watermark_url || '',
@@ -1146,6 +1150,59 @@ export default function Settings() {
 
                       <div className="border-t border-white/10 pt-6 mt-6">
                         <h3 className="text-lg font-bold text-foreground mb-4">Personalização Visual</h3>
+
+                        <div className="mb-6 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                          <div className="mb-4 flex items-start gap-3">
+                            <LayoutTemplate className="mt-0.5 h-5 w-5 text-blue-300" />
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">Modelo premium do site</p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                A escolha muda disposição, densidade do catálogo, hero, cards e detalhamento visual do portal público.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                            {PORTAL_TEMPLATES.map((template) => {
+                              const selected = tenantForm.theme === template.id;
+                              return (
+                                <button
+                                  key={template.id}
+                                  type="button"
+                                  onClick={() => setTenantForm({ ...tenantForm, theme: template.id })}
+                                  className={`group overflow-hidden rounded-lg border text-left transition ${
+                                    selected
+                                      ? 'border-blue-400 bg-blue-500/15 shadow-[0_0_0_1px_rgba(96,165,250,0.55)]'
+                                      : 'border-white/10 bg-white/5 hover:border-white/25 hover:bg-white/8'
+                                  }`}
+                                >
+                                  <div className="flex h-20 border-b border-white/10">
+                                    <div className="w-1/3" style={{ background: template.hero.replace('var(--portal-primary-99)', tenantForm.primary_color || '#1e293b') }} />
+                                    <div className="flex flex-1 flex-col gap-1 bg-white/90 p-2">
+                                      <span className="h-2 w-3/4 rounded bg-slate-800/80" />
+                                      <span className="h-2 w-1/2 rounded bg-slate-400" />
+                                      <div className={`mt-auto grid gap-1 ${template.catalogMode === 'datatable' ? 'grid-cols-1' : template.catalogMode === 'list' ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                                        {[0, 1, 2].map((item) => (
+                                          <span key={item} className={`${template.catalogMode === 'datatable' ? 'h-1.5' : 'h-4'} rounded bg-slate-300`} />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="p-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <p className="text-sm font-semibold text-foreground">{template.name}</p>
+                                      {selected && <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-semibold text-white">Ativo</span>}
+                                    </div>
+                                    <p className="mt-1 text-[11px] text-muted-foreground">{template.premiumUse}</p>
+                                    <p className="mt-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                                      {template.catalogMode === 'datatable' ? 'Tabela/DataTable' : template.catalogMode}
+                                    </p>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                         
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>

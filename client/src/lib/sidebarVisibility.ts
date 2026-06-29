@@ -40,6 +40,7 @@ export const SIDEBAR_VISIBILITY_SECTIONS: SidebarVisibilitySectionOption[] = [
       { key: 'crm', label: 'Chat', href: '/crm' },
       { key: 'pessoas', label: 'Pessoas', href: '/pessoas' },
       { key: 'links-importantes', label: 'Links importantes', href: '/links-importantes' },
+      { key: 'anuncios-integrados', label: 'Anúncios Integrados', href: '/anuncios-integrados' },
       { key: 'ads', label: 'Marketing / Anúncios', href: '/ads' },
       { key: 'contratos-locacao', label: 'Contratos · Locação', href: '/financeiro/locacao' },
       { key: 'contratos-venda', label: 'Contratos · Venda', href: '/financeiro/compra-venda' },
