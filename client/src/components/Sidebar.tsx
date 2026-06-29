@@ -631,22 +631,22 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         }`}
       >
         <div className="mx-auto max-w-[1600px] px-4 md:px-6 lg:px-8">
-          <div className="flex min-h-[68px] items-center justify-between gap-3 py-2.5 md:min-h-[72px] md:py-3">
+          <div className="flex min-h-[60px] items-center justify-between gap-2 py-2 md:min-h-[72px] md:gap-3 md:py-3">
             <div className="flex min-w-0 items-center gap-3 md:flex-1 md:gap-4">
               {tenant?.logo_url || tenant?.logo ? (
                 <img
                   src={tenant.logo_url || tenant.logo}
                   alt={tenant.name}
-                  className={`h-10 w-10 rounded-xl border object-contain p-1.5 ${logoContainerClass}`}
+                  className={`h-9 w-9 rounded-xl border object-contain p-1.5 md:h-10 md:w-10 ${logoContainerClass}`}
                 />
               ) : (
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${logoContainerClass}`}>
+                <div className={`flex h-9 w-9 items-center justify-center rounded-xl border md:h-10 md:w-10 ${logoContainerClass}`}>
                   <Building2 size={17} />
                 </div>
               )}
 
               <div className="min-w-0 shrink-0">
-                <p className={`truncate font-sans text-[1rem] font-semibold leading-tight tracking-[0.01em] md:text-[1.12rem] ${tenantNameClass}`}>
+                <p className={`max-w-[11rem] truncate font-sans text-[0.95rem] font-semibold leading-tight tracking-[0.01em] min-[390px]:max-w-[13rem] md:max-w-none md:text-[1.12rem] ${tenantNameClass}`}>
                   {tenant?.name || 'SOCIMOB'}
                 </p>
               </div>
@@ -785,7 +785,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
             <div className="flex items-center gap-2 md:hidden">
               <Link to="/notifications">
                 <div
-                  className={`relative flex h-11 w-11 items-center justify-center rounded-2xl border text-white transition-colors ${
+                  className={`relative flex h-10 w-10 items-center justify-center rounded-xl border text-white transition-colors ${
                     notificationsActive
                       ? isDarkTheme
                         ? 'border-cyan-300/20 bg-cyan-300/10 text-white'
@@ -808,7 +808,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
               <button
                 type="button"
                 onClick={toggleMobileMenu}
-                className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition-colors ${
+                className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${
                   isDarkTheme
                     ? 'border-white/10 bg-white/[0.035] text-white hover:border-white/16 hover:bg-white/[0.08]'
                     : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
@@ -822,8 +822,8 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
           <div className="md:hidden">
             {actualIsOpen && typeof document !== 'undefined' && createPortal(
-              <div className="fixed inset-x-0 bottom-0 top-[68px] z-[90] overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-sm">
-                <div className={`relative z-[95] mx-auto max-w-md rounded-[24px] border p-3 ${mobilePanelClass}`}>
+              <div className="fixed inset-x-0 bottom-[calc(var(--mobile-bottom-nav-height)+env(safe-area-inset-bottom))] top-[60px] z-[90] overflow-y-auto bg-slate-950/70 p-2.5 backdrop-blur-sm">
+                <div className={`relative z-[95] mx-auto max-w-md rounded-2xl border p-3 ${mobilePanelClass}`}>
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
                       <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${mobileSubtleTextClass}`}>Menu principal</p>

@@ -1,5 +1,5 @@
 // Dashboard Principal - SOCIMOB v2 - Timeline Real do Sistema
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import Highcharts from 'highcharts';
@@ -95,6 +95,9 @@ function clampPercentage(value: number): number {
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { theme } = useTheme();
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false,
+  );
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard', 'stats'],
     queryFn: async () => {
@@ -146,6 +149,18 @@ export default function Dashboard() {
       setLocation('/chat');
     }
   }, [isBroker, setLocation]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const media = window.matchMedia('(max-width: 767px)');
+    const updateViewport = () => setIsMobileViewport(media.matches);
+
+    updateViewport();
+    media.addEventListener('change', updateViewport);
+
+    return () => media.removeEventListener('change', updateViewport);
+  }, []);
 
   const summaryMetrics = stats
     ? {
@@ -520,55 +535,56 @@ export default function Dashboard() {
         animate="visible"
         className="mx-auto max-w-7xl"
       >
-        <motion.div variants={itemVariants} className="mb-6 grid gap-4 xl:grid-cols-[1.7fr_1fr]">
-          <div className="relative overflow-hidden rounded-[28px] system-panel p-5 sm:p-7">
+        <motion.div variants={itemVariants} className="mb-4 grid gap-3 sm:mb-6 sm:gap-4 xl:grid-cols-[1.7fr_1fr]">
+          <div className="relative overflow-hidden rounded-2xl system-panel p-4 sm:rounded-[28px] sm:p-7">
             <div className="absolute inset-y-0 right-0 w-40 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.12),transparent_65%)]" />
             <div className="relative z-10">
-              <div className="mb-5 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                <span className="rounded-full border border-border bg-muted px-3 py-1">Radar operacional</span>
-                <span className="rounded-full border border-border bg-muted px-3 py-1">Atualiza automaticamente</span>
+              <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground sm:mb-5 sm:gap-2 sm:text-[11px] sm:tracking-[0.24em]">
+                <span className="rounded-full border border-border bg-muted px-2.5 py-1 sm:px-3">Radar operacional</span>
+                <span className="rounded-full border border-border bg-muted px-2.5 py-1 sm:px-3">Atualiza automaticamente</span>
               </div>
 
               <div className="max-w-3xl">
-                <h1 className="mb-2 text-2xl font-semibold leading-tight text-foreground sm:text-3xl md:text-4xl">
+                <h1 className="mb-2 text-xl font-semibold leading-tight text-foreground sm:text-3xl md:text-4xl">
                   {isAdmin ? 'Painel de comando da operação' : `Bom trabalho, ${firstName}`}
                 </h1>
-                <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                <p className="max-w-2xl text-sm leading-5 text-muted-foreground sm:text-base sm:leading-6">
                   {isAdmin
                     ? 'Visão executiva do pipeline comercial, gargalos operacionais e atividade recente do tenant em um único fluxo.'
                     : 'Acompanhe o ritmo da sua carteira, o que exige resposta imediata e o histórico mais recente da operação.'}
                 </p>
               </div>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-border bg-muted/50 p-4">
+              <div className="mt-4 grid gap-2.5 sm:mt-6 sm:grid-cols-3 sm:gap-3">
+                <div className="rounded-xl border border-border bg-muted/50 p-3 sm:rounded-2xl sm:p-4">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pipeline</span>
                     <Users size={16} className="text-sky-300" />
                   </div>
-                  <div className="text-3xl font-semibold text-foreground">{formatNumber(stats?.leads.total ?? 0)}</div>
+                  <div className="text-2xl font-semibold text-foreground sm:text-3xl">{formatNumber(stats?.leads.total ?? 0)}</div>
                   <p className="mt-1 text-xs text-muted-foreground">{formatNumber(stats?.leads.novos ?? 0)} novos em entrada</p>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-muted/50 p-4">
+                <div className="rounded-xl border border-border bg-muted/50 p-3 sm:rounded-2xl sm:p-4">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Fechamento do mês</span>
                     <TrendingUp size={16} className="text-emerald-300" />
                   </div>
-                  <div className="text-3xl font-semibold text-foreground">{summaryMetrics ? `${summaryMetrics.performanceRate}%` : '0%'}</div>
+                  <div className="text-2xl font-semibold text-foreground sm:text-3xl">{summaryMetrics ? `${summaryMetrics.performanceRate}%` : '0%'}</div>
                   <p className="mt-1 text-xs text-muted-foreground">{formatNumber(stats?.leads.fechados_mes ?? 0)} leads fechados neste mês</p>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-muted/50 p-4">
+                <div className="rounded-xl border border-border bg-muted/50 p-3 sm:rounded-2xl sm:p-4">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Inventário ativo</span>
                     <Building2 size={16} className="text-amber-300" />
                   </div>
-                  <div className="text-3xl font-semibold text-foreground">{summaryMetrics ? `${summaryMetrics.inventoryRate}%` : '0%'}</div>
+                  <div className="text-2xl font-semibold text-foreground sm:text-3xl">{summaryMetrics ? `${summaryMetrics.inventoryRate}%` : '0%'}</div>
                   <p className="mt-1 text-xs text-muted-foreground">{formatNumber(stats?.imoveis.ativos ?? 0)} de {formatNumber(stats?.imoveis.total ?? 0)} imóveis publicados</p>
                 </div>
               </div>
 
+              {!isMobileViewport && (
               <div className="mt-6 rounded-[24px] border border-border bg-muted/50 p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -581,11 +597,12 @@ export default function Dashboard() {
                 </div>
                 <HighchartsReact highcharts={Highcharts} options={dashboardPulseChart} />
               </div>
+              )}
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <div className="system-panel rounded-[24px] p-5">
+            <div className="system-panel rounded-2xl p-4 sm:rounded-[24px] sm:p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Saúde comercial</p>
@@ -630,7 +647,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="system-panel rounded-[24px] p-5">
+            <div className="system-panel rounded-2xl p-4 sm:rounded-[24px] sm:p-5">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Base ativa</p>
               <h2 className="mt-1 text-lg font-semibold text-foreground">Composição do cadastro</h2>
               <div className="mt-4 space-y-3">
@@ -653,8 +670,8 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="mb-6 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="system-panel rounded-[24px] p-4 sm:p-5">
+        <motion.div variants={itemVariants} className="mb-4 grid gap-3 sm:mb-6 sm:gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="system-panel rounded-2xl p-4 sm:rounded-[24px] sm:p-5">
             <div className="mb-4 flex items-end justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Panorama operacional</p>
@@ -665,7 +682,7 @@ export default function Dashboard() {
             <StatsGrid stats={stats} loading={statsLoading} />
           </div>
 
-          <div className="system-panel rounded-[24px] p-4 sm:p-5">
+          <div className="system-panel rounded-2xl p-4 sm:rounded-[24px] sm:p-5">
             <div className="mb-4">
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Foco agora</p>
               <h2 className="mt-1 text-lg font-semibold text-foreground">O que pede atenção imediata</h2>
@@ -700,12 +717,12 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="mb-6 grid gap-4 lg:grid-cols-3">
+        <motion.div variants={itemVariants} className="mb-4 grid gap-3 sm:mb-6 sm:gap-4 lg:grid-cols-3">
           {distributionCards.map((card) => {
             const Icon = card.icon;
 
             return (
-              <div key={card.label} className={`overflow-hidden rounded-[24px] border border-border p-5 ${card.accent}`}>
+              <div key={card.label} className={`overflow-hidden rounded-2xl border border-border p-4 sm:rounded-[24px] sm:p-5 ${card.accent}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{card.label}</p>
@@ -734,6 +751,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* --- Gráficos analíticos por corretor e portal --- */}
+        {!isMobileViewport && (
         <motion.div variants={itemVariants} className="mb-6 grid gap-4 xl:grid-cols-2">
           <div className="system-panel rounded-[24px] p-4 sm:p-5">
             <div className="mb-3">
@@ -765,7 +783,9 @@ export default function Dashboard() {
             )}
           </div>
         </motion.div>
+        )}
 
+        {!isMobileViewport && (
         <motion.div variants={itemVariants} className="mb-6">
           <div className="system-panel rounded-[24px] p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
@@ -787,6 +807,7 @@ export default function Dashboard() {
             )}
           </div>
         </motion.div>
+        )}
 
         <motion.div variants={itemVariants}>
           <div className="system-panel rounded-[24px] p-4 sm:p-5 md:p-6">

@@ -322,7 +322,7 @@ function PwaMobilePrompt() {
   }, []);
 
   const isAuthenticated = typeof window !== "undefined" && Boolean(localStorage.getItem("token"));
-  const isInstallRoute = !location.startsWith("/login") && !location.startsWith("/forgot-password") && !location.startsWith("/reset-password");
+  const isInstallRoute = location === "/dashboard";
   const isMobile =
     typeof window !== "undefined" &&
     (window.matchMedia("(max-width: 767px)").matches || /android|iphone|ipad|ipod|mobile/i.test(window.navigator.userAgent));
@@ -355,9 +355,9 @@ function PwaMobilePrompt() {
   };
 
   return (
-    <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.35rem)] z-[45] mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-900 shadow-[0_12px_32px_rgba(15,23,42,0.16)] md:hidden">
+    <div className="fixed inset-x-2.5 bottom-[calc(env(safe-area-inset-bottom)+4.55rem)] z-[45] mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-2 text-slate-900 shadow-[0_10px_26px_rgba(15,23,42,0.16)] md:hidden">
       <div className="flex items-center gap-2.5">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
           {updateReady ? <RefreshCw className="h-5 w-5" /> : showInstallHelp && isIos ? <Share2 className="h-5 w-5" /> : <Download className="h-5 w-5" />}
         </div>
         <div className="min-w-0 flex-1">
@@ -377,12 +377,12 @@ function PwaMobilePrompt() {
           <button
             type="button"
             onClick={() => (updateReady ? window.location.reload() : install())}
-            className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 px-3 text-xs font-semibold text-white"
+            className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 px-2.5 text-xs font-semibold text-white"
           >
             {updateReady ? "Atualizar" : "Instalar"}
           </button>
         {!updateReady && (
-          <button type="button" onClick={closeInstall} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500">
+          <button type="button" onClick={closeInstall} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500">
             <X className="h-4 w-4" />
           </button>
         )}

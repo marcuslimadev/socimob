@@ -44,7 +44,7 @@
 
 :root {
   --app-header-offset: 5rem;
-  --mobile-bottom-nav-height: 5.25rem;
+  --mobile-bottom-nav-height: 4.35rem;
   --font-primary: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-secondary: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --primary: #1d4ed8;
@@ -306,7 +306,7 @@
 
   @media (max-width: 767px) {
     body[data-sidebar='topnav'] {
-      --app-header-offset: 4.25rem;
+      --app-header-offset: 3.75rem;
     }
 
     body[data-sidebar='topnav'] .page-shell {
@@ -566,13 +566,13 @@
   }
 
   .page-shell {
-    padding-left: max(0.75rem, env(safe-area-inset-left));
-    padding-right: max(0.75rem, env(safe-area-inset-right));
+    padding-left: max(0.65rem, env(safe-area-inset-left));
+    padding-right: max(0.65rem, env(safe-area-inset-right));
     min-height: 100dvh;
   }
 
   body[data-sidebar='topnav'] .page-shell {
-    padding-top: calc(var(--app-header-offset) + 0.75rem);
+    padding-top: calc(var(--app-header-offset) + 0.55rem);
   }
 
   .min-h-screen {
@@ -600,11 +600,11 @@
   }
 
   .glass-panel {
-    padding: 0.875rem;
+    padding: 0.75rem;
   }
 
   table {
-    min-width: 680px;
+    min-width: 620px;
   }
 
   [role='dialog'],
@@ -630,8 +630,12 @@
 
 /* Prevent layout shift on mobile */
 @media (max-width: 768px) {
+  * {
+    scroll-margin-top: calc(var(--app-header-offset) + 0.75rem);
+  }
+
   .page-shell {
-    padding-bottom: calc(var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom) + 1rem);
+    padding-bottom: calc(var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom) + 0.75rem);
     overflow-x: hidden;
   }
 
@@ -647,6 +651,7 @@
   .overflow-x-auto,
   .overflow-auto {
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
   }
 
   input,
@@ -660,6 +665,23 @@
   [role='button'] svg {
     flex-shrink: 0;
   }
+
+  .system-panel,
+  .system-panel-subtle,
+  .system-table-shell,
+  .glass-panel {
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  }
+
+  .system-table-shell {
+    max-width: 100%;
+    touch-action: pan-x pan-y;
+  }
+
+  .highcharts-container,
+  .highcharts-root {
+    max-width: 100% !important;
+  }
 }
 
 /* Smooth transitions for mobile */
@@ -668,6 +690,17 @@
     transition-property: background-color, border-color, color, fill, stroke;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 150ms;
+  }
+}
+
+@media (max-width: 768px) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 80ms !important;
   }
 }
 

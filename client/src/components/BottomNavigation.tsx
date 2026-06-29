@@ -52,9 +52,9 @@ export default function BottomNavigation() {
       <motion.div
         initial={{ y: 100 }}
         animate={{ y: 0 }}
-        className="md:hidden fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 text-slate-700 shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur-xl z-40 safe-area-inset-bottom dark:border-white/10 dark:bg-slate-950/95 dark:text-slate-300"
+        className="md:hidden fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/96 text-slate-700 shadow-[0_-8px_22px_rgba(15,23,42,0.12)] backdrop-blur-xl z-40 safe-area-inset-bottom dark:border-white/10 dark:bg-slate-950/96 dark:text-slate-300"
       >
-        <div className="grid grid-cols-5 px-1.5 pb-2 pt-2">
+        <div className="grid grid-cols-5 px-1 pb-1.5 pt-1.5">
           {mainNavItems.map((item) => {
             const active = isActive(item.href);
             const isMenu = item.href === '#menu';
@@ -65,7 +65,7 @@ export default function BottomNavigation() {
                   onClick={() => {
                     if (isMenu) window.dispatchEvent(new CustomEvent('socimob:open-mobile-menu'));
                   }}
-                  className={`relative mx-auto flex min-h-[52px] w-full max-w-[72px] flex-col items-center justify-center rounded-2xl px-1.5 py-1.5 transition-all ${
+                  className={`relative mx-auto flex min-h-[46px] w-full max-w-[68px] flex-col items-center justify-center rounded-xl px-1 py-1 transition-all ${
                     active
                       ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
                       : 'text-slate-500 active:bg-slate-100 dark:text-slate-400 dark:active:bg-white/10'
@@ -83,7 +83,7 @@ export default function BottomNavigation() {
                       {item.badge}
                     </motion.span>
                   )}
-                  <span className={`mt-1 max-w-full truncate text-[10px] font-semibold leading-none ${active ? 'text-blue-700 dark:text-blue-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                  <span className={`mt-0.5 max-w-full truncate text-[10px] font-semibold leading-none ${active ? 'text-blue-700 dark:text-blue-300' : 'text-slate-500 dark:text-slate-400'}`}>
                     {item.label}
                   </span>
                 </motion.div>
@@ -139,9 +139,6 @@ export default function BottomNavigation() {
           )}
         </div>
       </motion.div>
-
-      {/* Safe area padding for mobile */}
-      <div className="md:hidden h-20" />
     </>
   );
 }
