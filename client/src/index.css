@@ -152,12 +152,17 @@
     @apply bg-background text-foreground;
     font-family: var(--font-secondary);
     min-height: 100%;
+    min-height: 100dvh;
     overflow-x: hidden;
-    overscroll-behavior-y: none;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+  }
+  #root {
+    min-height: 100dvh;
   }
   select {
     color: var(--foreground);
@@ -544,10 +549,13 @@
 @media (max-width: 640px) {
   html {
     font-size: 16px;
+    height: auto;
   }
 
   body {
     font-size: 16px;
+    min-height: 100dvh;
+    position: relative;
   }
 
   input,
@@ -559,6 +567,11 @@
   .page-shell {
     padding-left: max(1rem, env(safe-area-inset-left));
     padding-right: max(1rem, env(safe-area-inset-right));
+    min-height: 100dvh;
+  }
+
+  .min-h-screen {
+    min-height: 100dvh;
   }
 
   h1 {

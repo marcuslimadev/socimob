@@ -1,7 +1,7 @@
-const CACHE_VERSION = "socimob-pwa-v1";
+const CACHE_VERSION = "socimob-pwa-v2";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
-const APP_SHELL = ["/", "/offline.html", "/manifest.webmanifest"];
+const APP_SHELL = ["/offline.html", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -47,12 +47,8 @@ self.addEventListener("fetch", (event) => {
   if (isHtmlNavigation(request)) {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(APP_SHELL_CACHE).then((cache) => cache.put("/", copy));
-          return response;
-        })
-        .catch(() => caches.match(request).then((cached) => cached || caches.match("/") || caches.match("/offline.html"))),
+        .then((response) => response)
+        .catch(() => caches.match("/offline.html")),
     );
     return;
   }
@@ -60,14 +56,14 @@ self.addEventListener("fetch", (event) => {
   if (shouldCacheAsset(url)) {
     event.respondWith(
       caches.match(request).then((cached) => {
-        if (cached) return cached;
-
-        return fetch(request).then((response) => {
+        const fetchAndCache = fetch(request).then((response) => {
           if (!response || response.status !== 200) return response;
           const copy = response.clone();
           caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
           return response;
         });
+
+        return cached || fetchAndCache;
       }),
     );
   }

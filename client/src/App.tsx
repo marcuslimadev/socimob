@@ -10,7 +10,7 @@ import ProgressBar from "@/components/ProgressBar";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { SkeletonLoader } from "./components/SkeletonLoader";
 import BottomNavigation from "./components/BottomNavigation";
-import { Download, RefreshCw, X } from "lucide-react";
+import { Download, RefreshCw, Share2, X } from "lucide-react";
 
 // Lazy load das páginas para code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -284,12 +284,15 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 function PwaMobilePrompt() {
+  const [location] = useLocation();
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === "undefined") return true;
-    return localStorage.getItem("socimob:pwa-install-dismissed") === "1";
+    const dismissedAt = Number(localStorage.getItem("socimob:pwa-install-dismissed-at") || 0);
+    return dismissedAt > 0 && Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000;
   });
   const [updateReady, setUpdateReady] = useState(false);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -299,34 +302,55 @@ function PwaMobilePrompt() {
       setInstallPrompt(event as BeforeInstallPromptEvent);
     };
 
+    const onInstallReady = () => {
+      const prompt = (window as any).deferredPwaInstallPrompt as BeforeInstallPromptEvent | undefined;
+      if (prompt) setInstallPrompt(prompt);
+    };
+
     const onControllerChange = () => setUpdateReady(true);
 
+    onInstallReady();
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("socimob:pwa-install-ready", onInstallReady);
     navigator.serviceWorker?.addEventListener("controllerchange", onControllerChange);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("socimob:pwa-install-ready", onInstallReady);
       navigator.serviceWorker?.removeEventListener("controllerchange", onControllerChange);
     };
   }, []);
 
+  const isAuthenticated = typeof window !== "undefined" && Boolean(localStorage.getItem("token"));
+  const isInstallRoute = !location.startsWith("/login") && !location.startsWith("/forgot-password") && !location.startsWith("/reset-password");
+  const isMobile =
+    typeof window !== "undefined" &&
+    (window.matchMedia("(max-width: 767px)").matches || /android|iphone|ipad|ipod|mobile/i.test(window.navigator.userAgent));
   const isStandalone =
     typeof window !== "undefined" &&
     (window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true);
+  const isIos =
+    typeof window !== "undefined" && /iphone|ipad|ipod/i.test(window.navigator.userAgent) && !(window as any).MSStream;
+  const canShowInstall = isMobile && isAuthenticated && isInstallRoute && !dismissed && !isStandalone;
 
   if (isStandalone && !updateReady) return null;
-  if (!updateReady && (!installPrompt || dismissed)) return null;
+  if (!updateReady && !canShowInstall) return null;
 
   const closeInstall = () => {
-    localStorage.setItem("socimob:pwa-install-dismissed", "1");
+    localStorage.setItem("socimob:pwa-install-dismissed-at", String(Date.now()));
     setDismissed(true);
   };
 
   const install = async () => {
-    if (!installPrompt) return;
+    if (!installPrompt) {
+      setShowInstallHelp(true);
+      return;
+    }
+
     await installPrompt.prompt();
     const choice = await installPrompt.userChoice;
     if (choice.outcome !== "dismissed") closeInstall();
+    (window as any).deferredPwaInstallPrompt = undefined;
     setInstallPrompt(null);
   };
 
@@ -334,12 +358,20 @@ function PwaMobilePrompt() {
     <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-[80] mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-[0_18px_48px_rgba(15,23,42,0.18)] md:hidden">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
-          {updateReady ? <RefreshCw className="h-5 w-5" /> : <Download className="h-5 w-5" />}
+          {updateReady ? <RefreshCw className="h-5 w-5" /> : showInstallHelp && isIos ? <Share2 className="h-5 w-5" /> : <Download className="h-5 w-5" />}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{updateReady ? "Nova versão disponível" : "Instalar SOCIMOB"}</p>
+          <p className="text-sm font-semibold">
+            {updateReady ? "Nova versão disponível" : showInstallHelp ? "Adicionar na tela inicial" : "Instalar SOCIMOB"}
+          </p>
           <p className="mt-0.5 text-xs leading-5 text-slate-600">
-            {updateReady ? "Atualize para carregar os últimos recursos." : "Abra mais rápido, em tela cheia e com acesso direto no celular."}
+            {updateReady
+              ? "Atualize para carregar os últimos recursos."
+              : showInstallHelp
+                ? isIos
+                  ? "Toque em Compartilhar e depois em Adicionar a Tela de Inicio."
+                  : "No menu do navegador, toque em Instalar app ou Adicionar a tela inicial."
+                : "Abra mais rápido, em tela cheia e com acesso direto no celular."}
           </p>
           <button
             type="button"

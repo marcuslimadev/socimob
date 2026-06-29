@@ -8,6 +8,12 @@ const LEGACY_BRANDING_CACHE_KEY = "tenant_branding_cache";
 const EXCLUSIVA_HOSTS = new Set(["exclusivalarimoveis.com", "www.exclusivalarimoveis.com"]);
 const EXCLUSIVA_GOOGLE_SITE_VERIFICATION = "daGiw9u34wtS7Jiizz0xPq5_Z03he3yi9ic2zEzmIhQ";
 
+declare global {
+  interface Window {
+    deferredPwaInstallPrompt?: Event;
+  }
+}
+
 const applyTenantMetaTags = () => {
   if (typeof document === "undefined") return;
 
@@ -141,6 +147,12 @@ if (typeof window !== "undefined" && "serviceWorker" in navigator) {
 }
 
 if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    window.deferredPwaInstallPrompt = event;
+    window.dispatchEvent(new CustomEvent("socimob:pwa-install-ready"));
+  });
+
   const chunkReloadFlag = "socimob:chunk-reload";
 
   const reloadOnceForChunkError = () => {
