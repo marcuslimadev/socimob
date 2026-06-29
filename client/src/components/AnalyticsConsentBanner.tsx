@@ -1,13 +1,29 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'wouter';
 import { getConsent, setConsent, trackEvent } from '@/lib/analytics';
 
 export default function AnalyticsConsentBanner() {
+  const [location] = useLocation();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    const isAuthenticated = Boolean(localStorage.getItem('token'));
+    const isPublicPortal =
+      location === '/' ||
+      location === '/portal' ||
+      location.startsWith('/portal/') ||
+      location.startsWith('/login') ||
+      location.startsWith('/forgot-password') ||
+      location.startsWith('/reset-password');
+
+    if (isAuthenticated && !isPublicPortal) {
+      setVisible(false);
+      return;
+    }
+
     const consent = getConsent();
     setVisible(consent === null);
-  }, []);
+  }, [location]);
 
   if (!visible) return null;
 

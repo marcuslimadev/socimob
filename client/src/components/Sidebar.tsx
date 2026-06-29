@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, Link } from 'wouter';
 import {
   BarChart3,
@@ -820,9 +821,9 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
           </div>
 
           <div className="md:hidden">
-            {actualIsOpen && (
-              <div className="fixed inset-x-0 bottom-0 top-[68px] z-50 overflow-y-auto bg-slate-950/45 p-3 backdrop-blur-sm">
-                <div className={`mx-auto max-w-md rounded-[24px] border p-3 ${mobilePanelClass}`}>
+            {actualIsOpen && typeof document !== 'undefined' && createPortal(
+              <div className="fixed inset-x-0 bottom-0 top-[68px] z-[90] overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-sm">
+                <div className={`relative z-[95] mx-auto max-w-md rounded-[24px] border p-3 ${mobilePanelClass}`}>
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
                       <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${mobileSubtleTextClass}`}>Menu principal</p>
@@ -939,7 +940,8 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                     </div>
                   )}
                 </div>
-              </div>
+              </div>,
+              document.body,
             )}
           </div>
         </div>

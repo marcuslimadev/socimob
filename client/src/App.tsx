@@ -355,16 +355,16 @@ function PwaMobilePrompt() {
   };
 
   return (
-    <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-[80] mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-[0_18px_48px_rgba(15,23,42,0.18)] md:hidden">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
+    <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.35rem)] z-[45] mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-900 shadow-[0_12px_32px_rgba(15,23,42,0.16)] md:hidden">
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
           {updateReady ? <RefreshCw className="h-5 w-5" /> : showInstallHelp && isIos ? <Share2 className="h-5 w-5" /> : <Download className="h-5 w-5" />}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">
+          <p className="truncate text-sm font-semibold">
             {updateReady ? "Nova versão disponível" : showInstallHelp ? "Adicionar na tela inicial" : "Instalar SOCIMOB"}
           </p>
-          <p className="mt-0.5 text-xs leading-5 text-slate-600">
+          <p className="truncate text-xs leading-5 text-slate-600">
             {updateReady
               ? "Atualize para carregar os últimos recursos."
               : showInstallHelp
@@ -373,16 +373,16 @@ function PwaMobilePrompt() {
                   : "No menu do navegador, toque em Instalar app ou Adicionar a tela inicial."
                 : "Abra mais rápido, em tela cheia e com acesso direto no celular."}
           </p>
+        </div>
           <button
             type="button"
             onClick={() => (updateReady ? window.location.reload() : install())}
-            className="mt-2 inline-flex min-h-10 items-center justify-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white"
+            className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 px-3 text-xs font-semibold text-white"
           >
             {updateReady ? "Atualizar" : "Instalar"}
           </button>
-        </div>
         {!updateReady && (
-          <button type="button" onClick={closeInstall} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500">
+          <button type="button" onClick={closeInstall} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500">
             <X className="h-4 w-4" />
           </button>
         )}
