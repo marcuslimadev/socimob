@@ -32,6 +32,11 @@ const applyBrandingToDocument = (data: any) => {
 
   if (data?.name) {
     document.title = data.name;
+
+    const appleTitle = document.querySelector("meta[name='apple-mobile-web-app-title']") as HTMLMetaElement | null;
+    if (appleTitle) {
+      appleTitle.content = data.name;
+    }
   }
 
   const faviconUrl = data?.favicon_url || data?.logo_url || data?.logo;
@@ -53,6 +58,11 @@ const applyBrandingToDocument = (data: any) => {
     root.style.setProperty("--ring", data.primary_color);
     root.style.setProperty("--chart-3", data.primary_color);
     root.style.setProperty("--chart-4", data.primary_color);
+
+    const themeColor = document.querySelector("meta[name='theme-color']") as HTMLMetaElement | null;
+    if (themeColor) {
+      themeColor.content = data.primary_color;
+    }
   }
   if (data?.secondary_color) {
     root.style.setProperty("--secondary", data.secondary_color);
@@ -122,20 +132,11 @@ if (typeof document !== "undefined") {
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .getRegistrations()
-      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .register("/sw.js")
+      .then((registration) => registration.update())
       .catch(() => {
-        // ignore service worker cleanup errors
+        // PWA support is progressive; keep the app usable if registration fails.
       });
-
-    if ("caches" in window) {
-      caches
-        .keys()
-        .then((cacheNames) => Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName))))
-        .catch(() => {
-          // ignore cache cleanup errors
-        });
-    }
   });
 }
 

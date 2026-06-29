@@ -10,6 +10,7 @@ import ProgressBar from "@/components/ProgressBar";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { SkeletonLoader } from "./components/SkeletonLoader";
 import BottomNavigation from "./components/BottomNavigation";
+import { Download, RefreshCw, X } from "lucide-react";
 
 // Lazy load das páginas para code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -277,6 +278,87 @@ function LoginRedirect() {
   return null;
 }
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
+function PwaMobilePrompt() {
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("socimob:pwa-install-dismissed") === "1";
+  });
+  const [updateReady, setUpdateReady] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    const onControllerChange = () => setUpdateReady(true);
+
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    navigator.serviceWorker?.addEventListener("controllerchange", onControllerChange);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      navigator.serviceWorker?.removeEventListener("controllerchange", onControllerChange);
+    };
+  }, []);
+
+  const isStandalone =
+    typeof window !== "undefined" &&
+    (window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true);
+
+  if (isStandalone && !updateReady) return null;
+  if (!updateReady && (!installPrompt || dismissed)) return null;
+
+  const closeInstall = () => {
+    localStorage.setItem("socimob:pwa-install-dismissed", "1");
+    setDismissed(true);
+  };
+
+  const install = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    if (choice.outcome !== "dismissed") closeInstall();
+    setInstallPrompt(null);
+  };
+
+  return (
+    <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-[80] mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-[0_18px_48px_rgba(15,23,42,0.18)] md:hidden">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
+          {updateReady ? <RefreshCw className="h-5 w-5" /> : <Download className="h-5 w-5" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">{updateReady ? "Nova versão disponível" : "Instalar SOCIMOB"}</p>
+          <p className="mt-0.5 text-xs leading-5 text-slate-600">
+            {updateReady ? "Atualize para carregar os últimos recursos." : "Abra mais rápido, em tela cheia e com acesso direto no celular."}
+          </p>
+          <button
+            type="button"
+            onClick={() => (updateReady ? window.location.reload() : install())}
+            className="mt-2 inline-flex min-h-10 items-center justify-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white"
+          >
+            {updateReady ? "Atualizar" : "Instalar"}
+          </button>
+        </div>
+        {!updateReady && (
+          <button type="button" onClick={closeInstall} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500">
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // NOTE: About Theme
 // - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
 //   to keep consistent foreground/background color across components
@@ -298,6 +380,7 @@ function App() {
               <AnalyticsTracker />
             </Suspense>
             <Router />
+            <PwaMobilePrompt />
             <BottomNavigation />
           </TooltipProvider>
         </ThemeProvider>
