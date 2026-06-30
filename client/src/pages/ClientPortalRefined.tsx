@@ -98,6 +98,7 @@ const BUSINESS_TYPES = [
 ];
 
 type PurposeKind = 'venda' | 'aluguel' | 'venda_aluguel' | 'imovel';
+type PortalSortKey = 'preco_asc' | 'preco_desc' | 'titulo_asc' | 'titulo_desc' | 'area_desc' | 'area_asc';
 
 function getPurposeKind(property: Property): PurposeKind {
   const value = `${property.finalidade_imovel || ''} ${property.tipo_negocio || ''}`.toLowerCase();
@@ -213,6 +214,12 @@ function getDisplayArea(property: Property): number | null {
   return null;
 }
 
+function getPropertyDescription(property: Property): string {
+  return property.descricao?.trim()
+    || [property.tipo_imovel, getPublicLocation(property)].filter(Boolean).join(' em ')
+    || property.titulo;
+}
+
 function formatArea(area: number | null): string {
   if (!area) return '--';
 
@@ -326,7 +333,11 @@ export default function ClientPortalRefined() {
   const [searchTerm, setSearchTerm] = useState(initialFilters.searchTerm);
   const [businessType, setBusinessType] = useState(initialFilters.businessType);
   const [propertyType, setPropertyType] = useState(initialFilters.propertyType);
-  const [sortBy, setSortBy] = useState(initialFilters.sortBy);
+  const [sortBy, setSortBy] = useState<PortalSortKey>(
+    ['preco_asc', 'preco_desc', 'titulo_asc', 'titulo_desc', 'area_desc', 'area_asc'].includes(initialFilters.sortBy)
+      ? initialFilters.sortBy as PortalSortKey
+      : 'preco_desc',
+  );
   const [currentPage, setCurrentPage] = useState(initialFilters.currentPage);
   const [venderOpen, setVenderOpen] = useState(false);
   const [catalogPhotoIndexes, setCatalogPhotoIndexes] = useState<Record<number, number>>({});
@@ -498,17 +509,34 @@ export default function ClientPortalRefined() {
       .sort((a, b) => {
         const aPrice = getPriceValue(a);
         const bPrice = getPriceValue(b);
-        if (sortBy === 'preco_desc') {
+        const comparePrice = (direction: 'asc' | 'desc') => {
           if (!aPrice && !bPrice) return 0;
           if (!aPrice) return 1;
           if (!bPrice) return -1;
-          return bPrice - aPrice;
+          return direction === 'desc' ? bPrice - aPrice : aPrice - bPrice;
+        };
+        const compareTitle = (direction: 'asc' | 'desc') => {
+          const result = (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR', { sensitivity: 'base' });
+          return direction === 'desc' ? -result : result;
+        };
+        const compareArea = (direction: 'asc' | 'desc') => {
+          const aArea = getDisplayArea(a) || 0;
+          const bArea = getDisplayArea(b) || 0;
+          if (!aArea && !bArea) return 0;
+          if (!aArea) return 1;
+          if (!bArea) return -1;
+          return direction === 'desc' ? bArea - aArea : aArea - bArea;
+        };
+
+        if (sortBy === 'titulo_asc') return compareTitle('asc');
+        if (sortBy === 'titulo_desc') return compareTitle('desc');
+        if (sortBy === 'area_desc') return compareArea('desc');
+        if (sortBy === 'area_asc') return compareArea('asc');
+        if (sortBy === 'preco_desc') {
+          return comparePrice('desc');
         }
-        // preco_asc (default)
-        if (!aPrice && !bPrice) return 0;
-        if (!aPrice) return 1;
-        if (!bPrice) return -1;
-        return aPrice - bPrice;
+
+        return comparePrice('asc');
       });
   }, [properties, searchTerm, businessType, propertyType, sortBy]);
 
@@ -863,6 +891,22 @@ export default function ClientPortalRefined() {
     window.addEventListener('pointercancel', onUp);
   };
 
+  const renderSortButton = (label: string, asc: PortalSortKey, desc: PortalSortKey, align: 'left' | 'right' = 'left') => {
+    const active = sortBy === asc || sortBy === desc;
+    const isDesc = sortBy === desc;
+
+    return (
+      <button
+        type="button"
+        onClick={() => setSortBy(sortBy === desc ? asc : desc)}
+        className={`inline-flex items-center gap-1.5 font-semibold ${align === 'right' ? 'justify-end text-right' : ''} ${active ? 'text-slate-900' : 'text-slate-500 hover:text-slate-900'}`}
+      >
+        {label}
+        <ChevronDown className={`h-3.5 w-3.5 transition ${active && !isDesc ? 'rotate-180' : ''}`} />
+      </button>
+    );
+  };
+
   if (loading) {
     return (
       <div className="portal-public min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0f172a' }}>
@@ -1100,9 +1144,13 @@ export default function ClientPortalRefined() {
               ))}
             </select>
 
-            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="h-12 rounded-xl border border-black/10 bg-white px-3 text-base text-slate-900 sm:text-sm">
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value as PortalSortKey)} className="h-12 rounded-xl border border-black/10 bg-white px-3 text-base text-slate-900 sm:text-sm">
               <option value="preco_asc">Menor preço</option>
               <option value="preco_desc">Maior preço</option>
+              <option value="titulo_asc">Descrição A-Z</option>
+              <option value="titulo_desc">Descrição Z-A</option>
+              <option value="area_desc">Maior área</option>
+              <option value="area_asc">Menor área</option>
             </select>
           </div>
         </div>
@@ -1125,40 +1173,67 @@ export default function ClientPortalRefined() {
 
         {portalTemplate.catalogMode === 'datatable' ? (
           <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="min-w-[980px] w-full text-left text-sm">
+            <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-3 sm:px-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tabela inteligente</p>
+                  <p className="mt-0.5 text-sm text-slate-600">Pesquisa global ativa e ordenação pelos cabeçalhos.</p>
+                </div>
+                <select
+                  value={sortBy}
+                  onChange={(event) => setSortBy(event.target.value as PortalSortKey)}
+                  className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800"
+                >
+                  <option value="preco_desc">Maior preço</option>
+                  <option value="preco_asc">Menor preço</option>
+                  <option value="titulo_asc">Descrição A-Z</option>
+                  <option value="titulo_desc">Descrição Z-A</option>
+                  <option value="area_desc">Maior área</option>
+                  <option value="area_asc">Menor área</option>
+                </select>
+              </div>
+            </div>
+            <div className="w-full overflow-x-auto md:overflow-visible">
+              <table className="w-full table-fixed text-left text-sm md:table-auto">
                 <thead className="bg-slate-100 text-[11px] uppercase tracking-[0.12em] text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Imóvel</th>
-                    <th className="px-4 py-3">Finalidade</th>
-                    <th className="px-4 py-3">Localização</th>
-                    <th className="px-4 py-3">Área</th>
-                    <th className="px-4 py-3">Quartos</th>
-                    <th className="px-4 py-3">Valor</th>
-                    <th className="px-4 py-3 text-right">Ações</th>
+                    <th className="w-[82px] px-2 py-3 sm:w-[116px] sm:px-4">Imagem</th>
+                    <th className="px-2 py-3 sm:px-4">{renderSortButton('Descrição', 'titulo_asc', 'titulo_desc')}</th>
+                    <th className="hidden px-4 py-3 md:table-cell">Finalidade</th>
+                    <th className="hidden px-4 py-3 lg:table-cell">Localização</th>
+                    <th className="hidden px-4 py-3 md:table-cell">{renderSortButton('Área', 'area_asc', 'area_desc')}</th>
+                    <th className="hidden px-4 py-3 lg:table-cell">Quartos</th>
+                    <th className="w-[118px] px-2 py-3 text-right sm:w-[170px] sm:px-4">{renderSortButton('Valor', 'preco_asc', 'preco_desc', 'right')}</th>
+                    <th className="hidden px-4 py-3 text-right md:table-cell">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {paginatedProperties.map((property) => {
                     const images = normalizeImages(property);
                     const displayArea = getDisplayArea(property);
+                    const description = getPropertyDescription(property);
                     return (
-                      <tr key={property.id} className="hover:bg-slate-50">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <img src={images[0]} alt={property.titulo} className="h-14 w-20 rounded-md object-cover" loading="lazy" />
-                            <div>
-                              <p className="line-clamp-1 font-semibold text-slate-900">{property.titulo}</p>
-                              <p className="mt-1 text-xs text-slate-500">{property.codigo || property.codigo_imovel || property.tipo_imovel}</p>
-                            </div>
-                          </div>
+                      <tr key={property.id} className="align-top hover:bg-slate-50">
+                        <td className="px-2 py-3 sm:px-4">
+                          <button type="button" onClick={() => handleOpenPropertyDetail(property.id)} className="block overflow-hidden rounded-md border border-slate-200">
+                            <img src={images[0]} alt={property.titulo} className="h-16 w-[70px] object-cover sm:h-16 sm:w-24" loading="lazy" />
+                          </button>
                         </td>
-                        <td className="px-4 py-3 text-slate-700">{getPurpose(property)}</td>
-                        <td className="px-4 py-3 text-slate-600">{getPublicLocation(property)}</td>
-                        <td className="px-4 py-3 text-slate-700">{formatArea(displayArea)}m²</td>
-                        <td className="px-4 py-3 text-slate-700">{property.quartos || property.dormitorios || '--'}</td>
-                        <td className="px-4 py-3 font-semibold" style={{ color: primary }}>{formatPrice(property)}</td>
-                        <td className="px-4 py-3">
+                        <td className="min-w-0 px-2 py-3 sm:px-4">
+                          <button type="button" onClick={() => handleOpenPropertyDetail(property.id)} className="block w-full text-left">
+                            <span className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900 sm:text-base">{property.titulo}</span>
+                            <span className="mt-1 line-clamp-2 text-xs leading-snug text-slate-500 sm:text-sm">{description}</span>
+                            <span className="mt-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                              {property.codigo || property.codigo_imovel || property.tipo_imovel}
+                            </span>
+                          </button>
+                        </td>
+                        <td className="hidden px-4 py-3 text-slate-700 md:table-cell">{getPurpose(property)}</td>
+                        <td className="hidden px-4 py-3 text-slate-600 lg:table-cell">{getPublicLocation(property)}</td>
+                        <td className="hidden px-4 py-3 text-slate-700 md:table-cell">{formatArea(displayArea)}m²</td>
+                        <td className="hidden px-4 py-3 text-slate-700 lg:table-cell">{property.quartos || property.dormitorios || '--'}</td>
+                        <td className="px-2 py-3 text-right text-sm font-bold leading-snug sm:px-4 sm:text-base" style={{ color: primary }}>{formatPrice(property)}</td>
+                        <td className="hidden px-4 py-3 md:table-cell">
                           <div className="flex justify-end gap-2">
                             <button type="button" onClick={() => handleOpenPropertyDetail(property.id)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">Detalhes</button>
                             <button type="button" onClick={() => openPropertyWhatsAppModal(property)} className="rounded-md px-3 py-2 text-xs font-semibold text-white" style={{ backgroundColor: primary }}>WhatsApp</button>
