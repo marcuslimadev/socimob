@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('slug', 255)->unique()->notNullable();
             
             // Tema e aparência
-            $table->enum('theme', ['classico', 'bauhaus'])->default('classico');
+            $table->string('theme', 80)->default('classico-premium');
             $table->string('primary_color', 7)->default('#000000')->nullable();
             $table->string('secondary_color', 7)->default('#FFFFFF')->nullable();
             $table->string('logo_url', 500)->nullable();
