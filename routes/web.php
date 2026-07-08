@@ -142,6 +142,8 @@ $router->post('/webhook/chaves-na-mao', 'App\Http\Controllers\ChavesNaMaoWebhook
 $router->group(['middleware' => 'resolve-tenant'], function () use ($router) {
     $router->get('/w/{code}', 'App\Http\Controllers\ShortLinkController@redirectWhatsApp');
     $router->get('/hl/{code}', 'App\Http\Controllers\ShortLinkController@redirectHandoff');
+    // Página do imóvel com metatags Open Graph dinâmicas (prévia rica ao compartilhar no WhatsApp)
+    $router->get('/portal/imovel/{id}', 'App\Http\Controllers\Portal\PropertyShareController@show');
 });
 
 // Auth API routes
