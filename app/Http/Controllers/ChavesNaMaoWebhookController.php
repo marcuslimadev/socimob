@@ -103,9 +103,8 @@ class ChavesNaMaoWebhookController extends Controller
 
             // Processar e salvar lead
             // O LeadObserver irá automaticamente:
-            // 1. Iniciar atendimento IA com template WhatsApp
-            // 2. Criar conversa no sistema
-            // 3. Criar usuário cliente se tiver email
+            // 1. Notificar Alexsandra e Roberto por WhatsApp (mensagem recebida + link wa.me do cliente)
+            // 2. Criar usuário cliente se tiver email
             $lead = $this->processLead($leadData);
 
             Log::info('✅ Lead processado com sucesso', [

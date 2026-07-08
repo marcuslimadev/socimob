@@ -530,7 +530,7 @@ class ConversationAssignmentNotificationService
         return ['name' => $name, 'language' => $language];
     }
 
-    private function sendWhatsAppMessage(int $tenantId, string $phone, string $body): array
+    public function sendWhatsAppMessage(int $tenantId, string $phone, string $body): array
     {
         $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
 

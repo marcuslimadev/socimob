@@ -16,6 +16,7 @@ use App\Services\LeadCustomerService;
 use App\Services\MetaCloudGateway;
 use App\Services\MetaWhatsAppService;
 use App\Services\ConversationAssignmentNotificationService;
+use App\Services\LeadHandoffNotificationService;
 use App\Services\TwilioService;
 use App\Services\EvolutionApiService;
 use App\Services\SmsShortLinkService;
@@ -178,9 +179,18 @@ class WhatsAppService
             
             // Normalizar telefone
             $telefone = $this->normalizePhoneE164($from) ?? $this->cleanPhoneNumber($from);
-            
-            // 1. Obter ou criar conversa
+
             $tenantId = $this->resolveTenantId($webhookData['tenant_id'] ?? null);
+
+            // Comando especial: Alexsandra/Roberto pedindo "Relatório" de leads.
+            // Intercepta antes de criar conversa/lead - eles não devem virar leads no sistema.
+            $handoffCommandResult = app(LeadHandoffNotificationService::class)
+                ->handleInboundCommand($telefone, (string) $body, (int) $tenantId);
+            if ($handoffCommandResult !== null) {
+                return $handoffCommandResult;
+            }
+
+            // 1. Obter ou criar conversa
             $conversaData = [
                 'profile_name' => $profileName,
                 'city' => $city,

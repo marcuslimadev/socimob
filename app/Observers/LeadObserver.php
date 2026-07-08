@@ -9,6 +9,7 @@ use App\Services\ConversationAssignmentNotificationService;
 use App\Services\LeadCustomerService;
 use App\Services\LeadAutomationService;
 use App\Services\LeadEmailService;
+use App\Services\LeadHandoffNotificationService;
 use Illuminate\Support\Facades\Log;
 
 class LeadObserver
@@ -18,24 +19,28 @@ class LeadObserver
     private LeadAutomationService $leadAutomationService;
     private LeadEmailService $leadEmailService;
     private ConversationAssignmentNotificationService $assignmentNotificationService;
+    private LeadHandoffNotificationService $leadHandoffNotificationService;
 
     public function __construct(
         ChavesNaMaoService $chavesNaMaoService,
         LeadCustomerService $leadCustomerService,
         LeadAutomationService $leadAutomationService,
         LeadEmailService $leadEmailService,
-        ConversationAssignmentNotificationService $assignmentNotificationService
+        ConversationAssignmentNotificationService $assignmentNotificationService,
+        LeadHandoffNotificationService $leadHandoffNotificationService
     ) {
         $this->chavesNaMaoService = $chavesNaMaoService;
         $this->leadCustomerService = $leadCustomerService;
         $this->leadAutomationService = $leadAutomationService;
         $this->leadEmailService = $leadEmailService;
         $this->assignmentNotificationService = $assignmentNotificationService;
+        $this->leadHandoffNotificationService = $leadHandoffNotificationService;
     }
 
     /**
      * Handle the Lead "created" event.
-     * SEMPRE iniciar atendimento IA automaticamente para TODOS os leads
+     * Atendimento automático via IA desativado globalmente (2026-07-08).
+     * Leads do Chaves na Mão disparam notificação de handoff para atendimento humano (Alexsandra/Roberto).
      */
     public function created(Lead $lead): void
     {
@@ -59,9 +64,10 @@ class LeadObserver
         $this->criarOuAtualizarPessoa($lead);
 
         // 0.1. Todo lead criado deve avisar a Alexsandra/distribuidora pelo WhatsApp operacional.
+        // Leads do Chaves na Mão recebem, em vez disso, o handoff dedicado (mensagem original + link wa.me do cliente).
         $this->notificarLeadCriado($lead);
 
-        // 1. SEMPRE iniciar atendimento IA automaticamente para TODOS os leads
+        // 1. Iniciar atendimento IA automaticamente (desativado globalmente - ver isAtendimentoAutomaticoAtivo)
         if ($this->deveIniciarAtendimento($lead)) {
             Log::info('[LeadObserver] INICIANDO atendimento IA para lead criado', [
                 'lead_id' => $lead->id,
@@ -109,6 +115,11 @@ class LeadObserver
     private function notificarLeadCriado(Lead $lead): void
     {
         try {
+            if ($this->isFromChavesNaMao($lead)) {
+                $this->leadHandoffNotificationService->notify($lead);
+                return;
+            }
+
             $this->assignmentNotificationService->notifyLeadCreated($lead);
         } catch (\Throwable $e) {
             Log::warning('[LeadObserver] Falha ao notificar lead criado para distribuidor', [
@@ -131,7 +142,20 @@ class LeadObserver
         
         // 0. Criar ou atualizar registro em Pessoas PRIMEIRO
         $this->criarOuAtualizarPessoa($lead);
-        
+
+        // 0.1. Lead do Chaves na Mão que ainda não recebeu o handoff (ex.: primeira notificação falhou,
+        // ou o lead já existia sob outra origem e passou a receber mensagens do Chaves na Mão)
+        if ($this->isFromChavesNaMao($lead) && empty($lead->atendimento_notificado_em)) {
+            try {
+                $this->leadHandoffNotificationService->notify($lead);
+            } catch (\Throwable $e) {
+                Log::warning('[LeadObserver] Falha ao notificar handoff em atualização de lead', [
+                    'lead_id' => $lead->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         // 1. Verificar se precisa iniciar atendimento (mesmo que seja update)
         // Se o lead não tem conversas ainda, iniciar atendimento automático
         if ($this->deveIniciarAtendimento($lead) && !$this->leadTemConversas($lead)) {
@@ -286,13 +310,13 @@ class LeadObserver
 
     /**
      * Verificar se atendimento automático está ativo para o tenant
-     * PADRÃO: ATIVO (true) - diferente da implementação antiga que era desativado por padrão
+     * PADRÃO: INATIVO (false) - IA de atendimento automático desativada globalmente (2026-07-08).
+     * Pode ser reativada por tenant em /admin/settings/atendimento-automatico.
      */
     private function isAtendimentoAutomaticoAtivo($tenantId): bool
     {
         try {
-            // ATIVO por padrão - Admin pode desativar no painel se necessário
-            $ativo = \App\Models\AppSetting::getValue('atendimento_automatico_ativo', true, $tenantId);
+            $ativo = \App\Models\AppSetting::getValue('atendimento_automatico_ativo', false, $tenantId);
 
             \App\Models\SystemLog::debug(
                 \App\Models\SystemLog::CATEGORY_AUTOMATION,
@@ -303,8 +327,8 @@ class LeadObserver
 
             return (bool) $ativo;
         } catch (\Exception $e) {
-            // Se houver erro, retorna true (ativo por padrão)
-            Log::info('[LeadObserver] Erro ao verificar config atendimento automático, usando padrão (ATIVO)', [
+            // Se houver erro, retorna false (inativo por padrão)
+            Log::info('[LeadObserver] Erro ao verificar config atendimento automático, usando padrão (INATIVO)', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage()
             ]);
@@ -317,7 +341,7 @@ class LeadObserver
                 $e
             );
 
-            return true; // ATIVO por padrão
+            return false; // INATIVO por padrão
         }
     }
 

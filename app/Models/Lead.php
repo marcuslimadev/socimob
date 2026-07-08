@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $status
  * @property string|null $classificacao
  * @property string|null $observacoes
+ * @property \Carbon\Carbon|null $atendimento_notificado_em
+ * @property string|null $atendimento_notificado_para
  * @property int|null $user_id
  * @property int|null $pessoa_id
  * @property int|null $corretor_id
@@ -83,6 +85,8 @@ class Lead extends Model
         'chaves_na_mao_retries',
         'sms_enviado',
         'sms_enviado_em',
+        'atendimento_notificado_em',
+        'atendimento_notificado_para',
     ];
 
     protected $casts = [
@@ -94,6 +98,7 @@ class Lead extends Model
         'chaves_na_mao_sent_at' => 'datetime',
         'sms_enviado' => 'boolean',
         'sms_enviado_em' => 'datetime',
+        'atendimento_notificado_em' => 'datetime',
     ];
 
     public function corretor()

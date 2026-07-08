@@ -141,6 +141,7 @@ $router->post('/webhook/chaves-na-mao', 'App\Http\Controllers\ChavesNaMaoWebhook
 // Short link para WhatsApp (resolve tenant pelo domínio)
 $router->group(['middleware' => 'resolve-tenant'], function () use ($router) {
     $router->get('/w/{code}', 'App\Http\Controllers\ShortLinkController@redirectWhatsApp');
+    $router->get('/hl/{code}', 'App\Http\Controllers\ShortLinkController@redirectHandoff');
 });
 
 // Auth API routes
