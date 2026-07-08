@@ -57,8 +57,11 @@ class LeadHandoffNotificationService
         }
 
         if (!empty($notifiedTo)) {
+            // Não regride o status de leads que já avançaram no funil (ex.: qualificado, proposta)
+            $status = in_array($lead->status, ['novo', null, ''], true) ? 'em_atendimento' : $lead->status;
+
             $lead->updateQuietly([
-                'status' => 'em_atendimento',
+                'status' => $status,
                 'atendimento_notificado_em' => now(),
                 'atendimento_notificado_para' => implode(', ', $notifiedTo),
             ]);
@@ -93,7 +96,11 @@ class LeadHandoffNotificationService
             'tenant_id' => $tenantId,
         ]);
 
-        $this->sendReportAndPendingHandoffs($tenantId, $recipient);
+        $this->assignmentNotificationService->sendWhatsAppMessage(
+            $tenantId,
+            $recipient['phone'],
+            $this->buildReportMessage($tenantId)
+        );
 
         return [
             'success' => true,
@@ -115,30 +122,6 @@ class LeadHandoffNotificationService
         }
 
         return null;
-    }
-
-    private function sendReportAndPendingHandoffs(int $tenantId, array $recipient): void
-    {
-        $this->assignmentNotificationService->sendWhatsAppMessage(
-            $tenantId,
-            $recipient['phone'],
-            $this->buildReportMessage($tenantId)
-        );
-
-        $pendentes = $this->pendingLeads($tenantId);
-
-        if ($pendentes->isEmpty()) {
-            $this->assignmentNotificationService->sendWhatsAppMessage(
-                $tenantId,
-                $recipient['phone'],
-                'Nenhum lead do Chaves na Mão pendente de atendimento no momento. ✅'
-            );
-            return;
-        }
-
-        foreach ($pendentes as $lead) {
-            $this->sendHandoffMessage($lead, $recipient);
-        }
     }
 
     /**
