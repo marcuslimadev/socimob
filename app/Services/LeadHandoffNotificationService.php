@@ -205,12 +205,17 @@ class LeadHandoffNotificationService
 
     public function buildMessage(Lead $lead, array $recipient): string
     {
+        $interesse = $this->extractPropertyInterest($lead);
         $mensagemOriginal = $this->extractOriginalMessage($lead);
         $clientPhone = $this->leadService->normalizePhone($lead->telefone);
         $clientPhoneDigits = $clientPhone ? ltrim($clientPhone, '+') : null;
 
         $lines = ['📥 Novo contato via Chaves na Mão'];
         $lines[] = "Cliente: {$lead->nome}";
+
+        if ($interesse !== '') {
+            $lines[] = "Cliente ficou interessado no imóvel: {$interesse}";
+        }
 
         if ($mensagemOriginal !== '') {
             $lines[] = "Mensagem: {$mensagemOriginal}";
@@ -222,6 +227,46 @@ class LeadHandoffNotificationService
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Monta o contexto do imóvel de interesse do lead (título/tipo do anúncio no
+     * Chaves na Mão, com referência quando disponível; senão usa os campos
+     * estruturados do lead - tipo, bairro e orçamento - como fallback).
+     */
+    public function extractPropertyInterest(Lead $lead): string
+    {
+        $observacoes = (string) $lead->observacoes;
+
+        $titulo = null;
+        if (preg_match('/📝\s*Anúncio:\s*(.+?)(?=\n|$)/u', $observacoes, $matches) && trim($matches[1]) !== '') {
+            $titulo = trim($matches[1]);
+        } elseif (preg_match('/🏠\s*Imóvel:\s*(.+?)(?=\n|$)/u', $observacoes, $matches) && trim($matches[1]) !== '') {
+            $titulo = trim($matches[1]);
+        }
+
+        $referencia = null;
+        if (preg_match('/📋\s*Referência:\s*(.+?)(?=\n|$)/u', $observacoes, $matches) && trim($matches[1]) !== '') {
+            $referencia = trim($matches[1]);
+        } elseif (!empty($lead->observacoes_cliente) && preg_match('/Refer[êe]ncia:\s*(.+)/iu', (string) $lead->observacoes_cliente, $matches)) {
+            $referencia = trim($matches[1]);
+        }
+
+        if ($titulo) {
+            return $referencia ? "{$titulo} (Ref: {$referencia})" : $titulo;
+        }
+
+        $criterios = array_filter([
+            $lead->preferencia_tipo_imovel,
+            $lead->preferencia_bairro ?: $lead->localizacao,
+            $lead->budget_max ? 'até R$ ' . number_format((float) $lead->budget_max, 0, ',', '.') : null,
+        ]);
+
+        if (!empty($criterios)) {
+            return implode(', ', $criterios) . ($referencia ? " (Ref: {$referencia})" : '');
+        }
+
+        return $referencia ?? '';
     }
 
     /**
