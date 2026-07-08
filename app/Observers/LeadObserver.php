@@ -115,7 +115,7 @@ class LeadObserver
     private function notificarLeadCriado(Lead $lead): void
     {
         try {
-            if ($this->isFromChavesNaMao($lead)) {
+            if ($this->isFromChavesNaMao($lead) || $this->isFromPortalMascot($lead)) {
                 $this->leadHandoffNotificationService->notify($lead);
                 return;
             }
@@ -131,6 +131,15 @@ class LeadObserver
     }
 
     /**
+     * Lead capturado pelo mascote flutuante do portal público (ClientPortalRefined),
+     * identificado pelo texto fixo enviado pelo frontend em PortalController::createChatLead().
+     */
+    private function isFromPortalMascot(Lead $lead): bool
+    {
+        return stripos($lead->observacoes ?? '', 'mascote do portal') !== false;
+    }
+
+    /**
      * Handle the Lead "updated" event.
      */
     public function updated(Lead $lead): void
@@ -143,9 +152,9 @@ class LeadObserver
         // 0. Criar ou atualizar registro em Pessoas PRIMEIRO
         $this->criarOuAtualizarPessoa($lead);
 
-        // 0.1. Lead do Chaves na Mão que ainda não recebeu o handoff (ex.: primeira notificação falhou,
-        // ou o lead já existia sob outra origem e passou a receber mensagens do Chaves na Mão)
-        if ($this->isFromChavesNaMao($lead) && empty($lead->atendimento_notificado_em)) {
+        // 0.1. Lead do Chaves na Mão ou do mascote do portal que ainda não recebeu o handoff
+        // (ex.: primeira notificação falhou, ou o lead já existia sob outra origem)
+        if (($this->isFromChavesNaMao($lead) || $this->isFromPortalMascot($lead)) && empty($lead->atendimento_notificado_em)) {
             try {
                 $this->leadHandoffNotificationService->notify($lead);
             } catch (\Throwable $e) {

@@ -300,14 +300,20 @@ class LeadHandoffNotificationService
     }
 
     /**
-     * Extrai a mensagem original enviada pelo cliente a partir das observações
-     * montadas pelo ChavesNaMaoWebhookController::buildObservacoes().
+     * Extrai a mensagem/contexto do lead a partir das observações. Reconhece o formato
+     * do ChavesNaMaoWebhookController::buildObservacoes() ("💬 Mensagem: ...") e, como
+     * fallback, o formato do mascote do portal (PortalController::createChatLead(),
+     * "[Chat Portal dd/mm/yyyy HH:mm] {texto}").
      */
     public function extractOriginalMessage(Lead $lead): string
     {
-        $observacoes = (string) $lead->observacoes;
+        $observacoes = trim((string) $lead->observacoes);
 
         if (preg_match('/💬\s*Mensagem:\s*(.+?)(?=\n[🔗🚗🏠]|$)/us', $observacoes, $matches)) {
+            return trim($matches[1]);
+        }
+
+        if (preg_match('/^\[Chat Portal[^\]]*\]\s*(.+)$/us', $observacoes, $matches)) {
             return trim($matches[1]);
         }
 
