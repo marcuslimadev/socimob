@@ -34,6 +34,15 @@ class LeadHandoffNotificationService
         ],
     ];
 
+    /**
+     * Template aprovado pela Meta (entrega garantida mesmo com a janela de 24h fechada).
+     * O texto já vem fixo endereçado à Alexsandra e aponta para o painel interno (não para
+     * o wa.me direto do cliente), então só é usado para o envio dela; Roberto e Marcus
+     * continuam em texto livre até termos um template equivalente aprovado para os dois.
+     */
+    private const ALEXSANDRA_TEMPLATE_NAME = 'alerta_operacional_socimob';
+    private const ALEXSANDRA_TEMPLATE_LANGUAGE = 'pt_BR';
+
     public function __construct(
         private ConversationAssignmentNotificationService $assignmentNotificationService,
         private LeadService $leadService
@@ -163,6 +172,19 @@ class LeadHandoffNotificationService
 
     public function sendHandoffMessage(Lead $lead, array $recipient): array
     {
+        if ($recipient['name'] === 'Alexsandra') {
+            $templateResult = $this->sendAlexsandraTemplateAlert($lead, $recipient['phone']);
+            if ($templateResult['success'] ?? false) {
+                return $templateResult;
+            }
+
+            Log::warning('[LeadHandoffNotificationService] Falha ao enviar via template aprovado, tentando texto livre', [
+                'lead_id' => $lead->id,
+                'recipient' => $recipient['name'],
+                'error' => $templateResult['error'] ?? 'Erro desconhecido',
+            ]);
+        }
+
         $body = $this->buildMessage($lead, $recipient);
 
         try {
@@ -184,6 +206,55 @@ class LeadHandoffNotificationService
         }
 
         return $result;
+    }
+
+    /**
+     * Envia o alerta via template aprovado (funciona mesmo com a janela de 24h fechada).
+     * Variáveis do template: {{1}} tipo de alerta, {{2}} cliente, {{3}} resumo, {{4}} link do painel.
+     */
+    private function sendAlexsandraTemplateAlert(Lead $lead, string $phone): array
+    {
+        $telefone = $lead->telefone ? " ({$lead->telefone})" : '';
+        $cliente = $this->compactText($lead->nome . $telefone, 120);
+
+        $contexto = trim($this->extractPropertyInterest($lead) . ' ' . $this->extractOriginalMessage($lead));
+        $resumo = $contexto !== '' ? $this->compactText($contexto, 250) : 'Sem detalhes adicionais.';
+
+        $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?leadId={$lead->id}";
+
+        try {
+            return $this->assignmentNotificationService->sendWhatsAppTemplate(
+                (int) $lead->tenant_id,
+                $phone,
+                self::ALEXSANDRA_TEMPLATE_NAME,
+                self::ALEXSANDRA_TEMPLATE_LANGUAGE,
+                [$this->alertTypeLabel($lead), $cliente, $resumo, $actionUrl]
+            );
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    private function alertTypeLabel(Lead $lead): string
+    {
+        $observacoes = (string) $lead->observacoes;
+
+        if (stripos($observacoes, 'Chaves na') !== false) {
+            return 'Novo lead - Chaves na Mão';
+        }
+
+        if (stripos($observacoes, 'mascote do portal') !== false) {
+            return 'Novo lead - Mascote do Portal';
+        }
+
+        return 'Novo lead';
+    }
+
+    private function compactText(string $text, int $limit): string
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', $text) ?? $text);
+
+        return $text !== '' ? mb_substr($text, 0, $limit) : '';
     }
 
     public function buildMessage(Lead $lead, array $recipient): string

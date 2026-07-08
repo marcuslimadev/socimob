@@ -560,7 +560,7 @@ class ConversationAssignmentNotificationService
         }
     }
 
-    private function sendWhatsAppTemplate(int $tenantId, string $phone, string $templateName, string $language, array $variables): array
+    public function sendWhatsAppTemplate(int $tenantId, string $phone, string $templateName, string $language, array $variables): array
     {
         try {
             return app(MetaCloudGateway::class)->sendTemplate($phone, $templateName, $language, $variables, $tenantId);
