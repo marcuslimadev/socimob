@@ -39,7 +39,7 @@ php_value post_max_size 110M
     RewriteRule ^ - [L]
 
     # Backend routes go to Laravel
-    RewriteCond %{REQUEST_URI} ^/(api|api-public|webhook|webhooks|github|debug|test|db-test|migrate-now-please|sync) [NC]
+    RewriteCond %{REQUEST_URI} ^/(api|api-public|webhook|webhooks|github|debug|test|db-test|migrate-now-please|sync|w|hl) [NC]
     RewriteRule ^(.*)$ public/index.php [L]
 
     # SPA fallback for React routes
