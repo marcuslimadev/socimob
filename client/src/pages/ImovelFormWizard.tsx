@@ -1539,6 +1539,21 @@ export default function ImovelFormWizard() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Área Privativa (m²)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.area_privativa}
+                  onChange={(e) => setFormData({ ...formData, area_privativa: e.target.value })}
+                  onBlur={(e) => setFormData({ ...formData, area_privativa: formatAreaOnBlur(e.target.value) })}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-6 pt-2">
               <label className="flex items-center gap-3 cursor-pointer group">
                 <input
