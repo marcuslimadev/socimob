@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Notifica Alexsandra, Roberto e Marcus por WhatsApp sobre leads do Chaves na Mão
+ * Notifica Alexsandra e Roberto por WhatsApp sobre leads do Chaves na Mão
  * (mensagem do cliente + link wa.me com resposta automática) e atende ao
  * comando "Relatório" que qualquer um deles pode mandar para a Teresa
  * para receber um resumo de leads e reenviar os handoffs ainda pendentes.
@@ -27,18 +27,13 @@ class LeadHandoffNotificationService
             'phone' => '5531997803274',
             'greeting' => 'Oi, sou o Roberto, recebi seu contato e estou disponível para iniciar seu atendimento.',
         ],
-        [
-            'name' => 'Marcus',
-            'phone' => '5592992287144',
-            'greeting' => 'Oi, sou o Marcus, recebi seu contato e estou disponível para iniciar seu atendimento.',
-        ],
     ];
 
     /**
      * Template aprovado pela Meta (entrega garantida mesmo com a janela de 24h fechada).
      * O texto já vem fixo endereçado à Alexsandra e aponta para o painel interno (não para
-     * o wa.me direto do cliente), então só é usado para o envio dela; Roberto e Marcus
-     * continuam em texto livre até termos um template equivalente aprovado para os dois.
+     * o wa.me direto do cliente), então só é usado para o envio dela; Roberto
+     * continua em texto livre até termos um template equivalente aprovado para ele.
      */
     private const ALEXSANDRA_TEMPLATE_NAME = 'alerta_operacional_socimob';
     private const ALEXSANDRA_TEMPLATE_LANGUAGE = 'pt_BR';
