@@ -156,6 +156,7 @@ function formatPurposeLabel(finalidade: string): string {
 }
 
 function formatSelectionLabel(value: string): string {
+  if (value === 'area_privativa') return 'Área Privativa';
   return value.replace(/_/g, ' ');
 }
 
@@ -1539,19 +1540,19 @@ export default function ImovelFormWizard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">Área Privativa (m²)</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={formData.area_privativa}
-                  onChange={(e) => setFormData({ ...formData, area_privativa: e.target.value })}
-                  onBlur={(e) => setFormData({ ...formData, area_privativa: formatAreaOnBlur(e.target.value) })}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                  placeholder="0,00"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">Área Privativa</label>
+              <button
+                type="button"
+                onClick={() => handleToggleSelection('caracteristicas', 'area_privativa')}
+                className={`rounded-xl border px-4 py-3 text-sm font-semibold transition ${
+                  formData.caracteristicas.includes('area_privativa')
+                    ? 'border-blue-400 bg-blue-500/15 text-blue-100'
+                    : 'border-white/10 bg-white/5 text-muted-foreground hover:border-white/20 hover:text-foreground'
+                }`}
+              >
+                Área Privativa
+              </button>
             </div>
 
             <div className="flex flex-wrap gap-6 pt-2">
@@ -1875,7 +1876,7 @@ export default function ImovelFormWizard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Área Total (m²)</label>
                 <input
@@ -1884,19 +1885,6 @@ export default function ImovelFormWizard() {
                   value={formData.area_total}
                   onChange={(e) => setFormData({ ...formData, area_total: e.target.value })}
                   onBlur={(e) => setFormData({ ...formData, area_total: formatAreaOnBlur(e.target.value) })}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                  placeholder="0,00"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">Área Privativa (m²)</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={formData.area_privativa}
-                  onChange={(e) => setFormData({ ...formData, area_privativa: e.target.value })}
-                  onBlur={(e) => setFormData({ ...formData, area_privativa: formatAreaOnBlur(e.target.value) })}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   placeholder="0,00"
                 />
