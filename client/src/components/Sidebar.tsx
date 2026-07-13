@@ -32,10 +32,11 @@ import {
   BookOpen,
   Bell,
   Megaphone,
+  Palette,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { normalizeHiddenSidebarKeys } from '@/lib/sidebarVisibility';
-import { useTheme } from '@/contexts/ThemeContext';
+import { INTERNAL_THEMES, type Theme, useTheme } from '@/contexts/ThemeContext';
 import TenantSelector from './TenantSelector';
 
 interface SidebarProps {
@@ -130,7 +131,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [hiddenSidebarKeys, setHiddenSidebarKeys] = useState<string[]>([]);
   const { theme, setTheme } = useTheme();
-  const isDarkTheme = theme === 'dark';
+  const isDarkTheme = theme === 'dark' || theme === 'navy';
   const badgePollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const badgePollingInFlightRef = useRef(false);
   const badgePollingFailureCountRef = useRef(0);
@@ -139,10 +140,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const notificationPollingFailureCountRef = useRef(0);
   const desktopNavRef = useRef<HTMLDivElement | null>(null);
 
-  const handleThemeToggle = () => {
-    const nextTheme = isDarkTheme ? 'light' : 'dark';
-    setTheme(nextTheme);
-  };
+  const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Palette;
 
   const actualIsOpen = onClose ? isOpen : internalIsOpen;
 
@@ -758,17 +756,24 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                   ) : null}
                 </div>
               </Link>
-              <button
-                onClick={handleThemeToggle}
+              <label
                 className={`flex h-10 items-center gap-2 rounded-full border px-3 text-[12px] transition-colors ${
                   isDarkTheme
                     ? 'border-white/10 bg-white/[0.035] text-slate-200 hover:border-white/16 hover:bg-white/[0.08]'
                     : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
                 }`}
               >
-                {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
-                <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
-              </button>
+                <ThemeIcon size={16} />
+                <span className="sr-only">Tema interno</span>
+                <select
+                  aria-label="Tema interno"
+                  value={theme}
+                  onChange={(event) => setTheme(event.target.value as Theme)}
+                  className="h-auto min-h-0 border-0 bg-transparent p-0 text-[12px] font-semibold text-inherit shadow-none outline-none"
+                >
+                  {INTERNAL_THEMES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
               <button
                 onClick={handleLogout}
                 className={`flex h-10 items-center gap-2 rounded-full border px-3 text-[12px] transition-colors ${
@@ -903,20 +908,23 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
                   )}
 
                   <div className="mt-4 grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => {
-                        handleThemeToggle();
-                        closeMobileMenu();
-                      }}
+                    <label
                       className={`flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border px-3 text-sm ${
                         isDarkTheme
                           ? 'border-white/10 bg-white/5 text-slate-200'
                           : 'border-slate-300 bg-white text-slate-700'
                       }`}
                     >
-                      {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
-                      <span>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</span>
-                    </button>
+                      <ThemeIcon size={15} />
+                      <select
+                        aria-label="Tema interno"
+                        value={theme}
+                        onChange={(event) => setTheme(event.target.value as Theme)}
+                        className="h-auto min-h-0 border-0 bg-transparent p-0 text-sm font-semibold text-inherit shadow-none outline-none"
+                      >
+                        {INTERNAL_THEMES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    </label>
                     <button
                       onClick={handleLogout}
                       className={`flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border px-3 text-sm ${

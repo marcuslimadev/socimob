@@ -142,7 +142,7 @@ export default function Dashboard() {
   const isAdmin = role === 'admin' || role === 'super_admin';
   const isBroker = role === 'corretor' || role === 'agent';
   const firstName = String(user?.name || '').trim().split(' ')[0] || 'Equipe';
-  const isLightTheme = theme === 'light';
+  const isLightTheme = theme !== 'dark';
 
   useEffect(() => {
     if (isBroker) {

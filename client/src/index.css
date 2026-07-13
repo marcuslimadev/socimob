@@ -40,6 +40,15 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-subtle: var(--info-subtle);
 }
 
 :root {
@@ -94,6 +103,15 @@
   --surface-elevated: #ffffff;
   --border-strong: #d3dbe7;
   --text-strong: #0f172a;
+  --success: #047857;
+  --success-foreground: #ffffff;
+  --success-subtle: #d1fae5;
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --warning-subtle: #fef3c7;
+  --info: #1d4ed8;
+  --info-foreground: #ffffff;
+  --info-subtle: #dbeafe;
 }
 
 .dark {
@@ -135,6 +153,64 @@
   --surface-elevated: #111a2b;
   --border-strong: rgba(148, 163, 184, 0.32);
   --text-strong: #e2e8f0;
+  --success: #34d399;
+  --success-foreground: #052e22;
+  --success-subtle: #123c32;
+  --warning: #fbbf24;
+  --warning-foreground: #451a03;
+  --warning-subtle: #422f12;
+  --info: #60a5fa;
+  --info-foreground: #0b1220;
+  --info-subtle: #172d4f;
+}
+
+/* Tema interno azul-marinho e branco: superfícies claras com navegação institucional. */
+.navy {
+  --primary: #0b2a4a;
+  --primary-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #0b2a4a;
+  --background: #eef3f8;
+  --foreground: #0b1f33;
+  --card: #ffffff;
+  --card-foreground: #0b1f33;
+  --popover: #ffffff;
+  --popover-foreground: #0b1f33;
+  --secondary: #174a7c;
+  --secondary-foreground: #ffffff;
+  --muted: #e7eef6;
+  --muted-foreground: #40566d;
+  --accent: #dce9f6;
+  --accent-foreground: #0b2a4a;
+  --border: #c9d6e3;
+  --input: #aebfd0;
+  --ring: #2563a6;
+  --sidebar: #071f36;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-accent: #123b61;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.18);
+  --sidebar-ring: #93c5fd;
+  --shell-bg: #eef3f8;
+  --shell-top-bg: #071f36;
+  --surface-subtle: #edf3f8;
+  --surface-elevated: #ffffff;
+  --border-strong: #b8c8d8;
+  --text-strong: #0b1f33;
+  --chart-1: #0b2a4a;
+  --chart-2: #2563a6;
+  --chart-3: #0891b2;
+  --chart-4: #047857;
+  --chart-5: #b45309;
+  --success: #047857;
+  --success-foreground: #ffffff;
+  --success-subtle: #d1fae5;
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --warning-subtle: #fef3c7;
+  --info: #174a7c;
+  --info-foreground: #ffffff;
+  --info-subtle: #dce9f6;
 }
 
 @layer base {
@@ -916,39 +992,13 @@ body[data-theme='light'] .page-shell hr {
   border-color: var(--border) !important;
 }
 
-body[data-theme='light'] .page-shell :is([class*='bg-blue-'], [class*='bg-indigo-'], [class*='bg-purple-']) {
-  background-color: var(--primary) !important;
-  border-color: color-mix(in srgb, var(--primary) 72%, white 28%) !important;
-}
-
-body[data-theme='light'] .page-shell :is(button, [role='button']):is([class*='bg-blue-'], [class*='bg-indigo-'], [class*='bg-purple-']):hover {
-  background-color: color-mix(in srgb, var(--primary) 88%, black 12%) !important;
-}
-
-.page-shell :is([class*='text-blue-'], [class*='text-indigo-'], [class*='text-purple-']) {
-  color: var(--secondary) !important;
-}
-
-.page-shell :is([class*='border-blue-'], [class*='border-indigo-'], [class*='border-purple-']) {
-  border-color: color-mix(in srgb, var(--secondary) 48%, transparent) !important;
-}
-
-.page-shell :is([class*='from-blue-'], [class*='from-indigo-'], [class*='from-purple-']) {
-  --tw-gradient-from: var(--primary) var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: color-mix(in srgb, var(--secondary) 18%, transparent) var(--tw-gradient-to-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
-}
-
-.page-shell :is([class*='to-blue-'], [class*='to-indigo-'], [class*='to-purple-']) {
-  --tw-gradient-to: var(--secondary) var(--tw-gradient-to-position) !important;
-}
-
-.page-shell :is([class*='via-blue-'], [class*='via-indigo-'], [class*='via-purple-']) {
-  --tw-gradient-stops: var(--tw-gradient-from), color-mix(in srgb, var(--accent) 78%, var(--secondary) 22%) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
-}
-
-.page-shell :is([class*='shadow-blue-'], [class*='shadow-indigo-'], [class*='shadow-purple-']) {
-  --tw-shadow-color: color-mix(in srgb, var(--primary) 30%, transparent) !important;
+/* Cores de estado devem preservar seu significado; não normalizar azul, roxo e índigo globalmente. */
+body[data-theme='light'] .page-shell :is(
+  [class*='bg-blue-'], [class*='bg-indigo-'], [class*='bg-purple-'],
+  [class*='bg-green-'], [class*='bg-emerald-'], [class*='bg-red-'],
+  [class*='bg-orange-'], [class*='bg-amber-']
+)[class*='text-white'] {
+  color: #ffffff !important;
 }
 
 /* Shared internal system surfaces */
@@ -1036,6 +1086,97 @@ body[data-theme='light'] .page-shell [data-slot='select-content'] {
 body[data-theme='light'] .page-shell .glass-panel {
   background: var(--surface-elevated) !important;
   border-color: var(--border) !important;
+}
+
+/* Compatibilidade das telas internas legadas com o tema azul-marinho e branco. */
+body[data-theme='navy'] .page-shell {
+  color: var(--foreground);
+  background: var(--shell-bg) !important;
+}
+
+body[data-theme='navy'] .page-shell :is(
+  .glass-panel,
+  [class*='bg-[#0f0f0f]'], [class*='bg-[#07111d]'], [class*='bg-[#07111f]'],
+  [class*='bg-[#0d0f14]'], [class*='bg-[#0b1627]'],
+  [class*='bg-white/3'], [class*='bg-white/4'], [class*='bg-white/5'],
+  [class*='bg-white/6'], [class*='bg-white/8'], [class*='bg-white/10'], [class*='bg-white/12']
+) {
+  background: var(--surface-elevated) !important;
+  border-color: var(--border) !important;
+}
+
+body[data-theme='navy'] .page-shell :is(
+  [class*='text-white'], [class*='text-slate-100'], [class*='text-slate-200'],
+  [class*='text-slate-300'], [class*='text-gray-300'], [class*='text-gray-400']
+) {
+  color: var(--foreground) !important;
+}
+
+body[data-theme='navy'] .page-shell :is(
+  [class*='bg-blue-'], [class*='bg-indigo-'], [class*='bg-purple-'],
+  [class*='bg-green-'], [class*='bg-emerald-'], [class*='bg-red-'],
+  [class*='bg-orange-'], [class*='bg-amber-']
+)[class*='text-white'] {
+  color: #ffffff !important;
+}
+
+/* Superfícies deliberadamente escuras preservam texto claro dentro dos temas de conteúdo claro. */
+body:is([data-theme='light'], [data-theme='navy']) .page-shell .chat-dark-surface [class*='text-white'] {
+  color: #ffffff !important;
+}
+
+body:is([data-theme='light'], [data-theme='navy']) .page-shell .chat-dark-surface :is(
+  [class*='text-slate-200'], [class*='text-slate-300'], [class*='text-gray-300'], [class*='text-gray-400']
+) {
+  color: #dbe4ef !important;
+}
+
+body[data-theme='navy'] .page-shell :is(input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea) {
+  background: #ffffff !important;
+  border-color: var(--input) !important;
+  color: var(--foreground) !important;
+}
+
+body[data-theme='navy'] .page-shell :is(input, textarea)::placeholder {
+  color: var(--muted-foreground) !important;
+  opacity: 1;
+}
+
+body[data-theme='navy'][data-sidebar='topnav'] .fixed.inset-x-0.top-0,
+body[data-theme='navy'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='bg-white/'],
+body[data-theme='navy'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 [class*='bg-[#0b1627]'] {
+  background: var(--sidebar) !important;
+  border-color: var(--sidebar-border) !important;
+  color: var(--sidebar-foreground) !important;
+}
+
+body[data-theme='navy'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 :is(
+  [class*='text-white'], [class*='text-slate-200'], [class*='text-slate-300'], [class*='text-slate-400']
+) {
+  color: var(--sidebar-foreground) !important;
+}
+
+/* Reforço de legibilidade para cinzas originalmente desenhados só para o tema claro. */
+.dark .page-shell :is([class*='text-gray-500'], [class*='text-gray-600'], [class*='text-slate-500'], [class*='text-slate-600']) {
+  color: var(--muted-foreground) !important;
+}
+
+.status-success {
+  color: var(--success);
+  background: var(--success-subtle);
+  border-color: color-mix(in srgb, var(--success) 35%, transparent);
+}
+
+.status-warning {
+  color: var(--warning);
+  background: var(--warning-subtle);
+  border-color: color-mix(in srgb, var(--warning) 35%, transparent);
+}
+
+.status-info {
+  color: var(--info);
+  background: var(--info-subtle);
+  border-color: color-mix(in srgb, var(--info) 35%, transparent);
 }
 
 .dark body[data-sidebar='topnav'] .fixed.inset-x-0.top-0,

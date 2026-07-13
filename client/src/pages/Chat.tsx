@@ -1809,7 +1809,7 @@ export default function Chat() {
           className="box-border flex h-[calc(100dvh-var(--app-header-offset,0px))] min-h-0 flex-1 overflow-hidden p-2 md:p-3"
         >
           <div className="flex min-h-0 flex-1 overflow-hidden rounded-[20px] border border-[#dbe5f2] bg-[#ffffff] shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
-            <aside className={cn('min-h-0 w-full flex-shrink-0 flex-col border-r border-[#274d7b] bg-[linear-gradient(180deg,#132b4c_0%,#0d2038_100%)] md:flex md:w-[360px] lg:w-[380px]', showMobileContacts ? 'flex' : 'hidden md:flex')}>
+            <aside className={cn('chat-dark-surface min-h-0 w-full flex-shrink-0 flex-col border-r border-[#274d7b] bg-[linear-gradient(180deg,#132b4c_0%,#0d2038_100%)] md:flex md:w-[360px] lg:w-[380px]', showMobileContacts ? 'flex' : 'hidden md:flex')}>
               <div className="border-b border-[#274d7b] p-3.5 md:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>

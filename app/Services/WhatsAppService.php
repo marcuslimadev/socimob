@@ -220,6 +220,20 @@ class WhatsAppService
                 'status' => 'received'
             ]);
 
+            if (!$this->isAiReplyEnabled()) {
+                Log::info('🔒 Atendimento manual ativo - Teresa IA não responderá', [
+                    'conversa_id' => $conversa->id,
+                    'tenant_id' => $tenantId,
+                    'mensagem_id' => $mensagem->id ?? null,
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => 'Mensagem recebida para atendimento manual',
+                    'conversa_id' => $conversa->id,
+                ];
+            }
+
             $isFirstIncomingMessage = $conversa->mensagens()
                 ->where('direction', 'incoming')
                 ->count() === 1;
@@ -502,6 +516,14 @@ class WhatsAppService
             'status' => 'received'
         ]);
 
+        if (!$this->isAiReplyEnabled()) {
+            return [
+                'success' => true,
+                'message' => 'Mensagem recebida para atendimento manual',
+                'lead_id' => $lead->id,
+            ];
+        }
+
         $conversa->update(['ultima_atividade' => Carbon::now()]);
 
         $totalMensagens = $conversa->mensagens()->count();
@@ -558,6 +580,10 @@ class WhatsAppService
         array $options = []
     ): array
     {
+        if (!$this->isAiReplyEnabled()) {
+            return ['success' => false, 'message' => 'Atendimento por IA desativado; atendimento somente manual'];
+        }
+
         if (!$conversa->telefone) {
             return ['success' => false, 'message' => 'Conversa sem telefone'];
         }
@@ -1304,6 +1330,18 @@ class WhatsAppService
      */
     public function handleRegularMessage($conversa, $message, $isFromAudio = false)
     {
+        if (!$this->isAiReplyEnabled()) {
+            Log::info('🔒 Resposta da Teresa IA bloqueada - atendimento somente manual', [
+                'conversa_id' => $conversa->id,
+                'tenant_id' => $conversa->tenant_id ?? null,
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Mensagem aguardando atendimento manual',
+            ];
+        }
+
         Log::info('📨 Processando mensagem regular', [
             'conversa_id' => $conversa->id,
             'stage_atual' => $conversa->stage,
@@ -1792,6 +1830,15 @@ class WhatsAppService
                 'prazo_curto' => $prazoCurto,
             ]);
         }
+    }
+
+    /**
+     * Respostas da Teresa ficam bloqueadas por padrão.
+     * A reativação exige uma mudança operacional explícita no ambiente.
+     */
+    private function isAiReplyEnabled(): bool
+    {
+        return (bool) config('services.whatsapp.ai_replies_enabled', false);
     }
 
     private function resolveTenantId(?int $tenantId = null, ?int $conversaId = null): ?int

@@ -1,6 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = "light" | "dark";
+export type Theme = "light" | "dark" | "navy";
+
+export const INTERNAL_THEMES: Array<{ value: Theme; label: string }> = [
+  { value: "light", label: "Claro" },
+  { value: "dark", label: "Escuro" },
+  { value: "navy", label: "Azul-marinho" },
+];
+
+export function getNextTheme(theme: Theme): Theme {
+  const index = INTERNAL_THEMES.findIndex(option => option.value === theme);
+  return INTERNAL_THEMES[(index + 1) % INTERNAL_THEMES.length].value;
+}
 
 interface ThemeContextType {
   theme: Theme;
@@ -25,7 +36,9 @@ export function ThemeProvider({
   const [theme, setThemeState] = useState<Theme>(() => {
     if (switchable) {
       const stored = localStorage.getItem("theme");
-      return (stored as Theme) || defaultTheme;
+      return INTERNAL_THEMES.some(option => option.value === stored)
+        ? (stored as Theme)
+        : defaultTheme;
     }
     return defaultTheme;
   });
@@ -39,11 +52,8 @@ export function ThemeProvider({
     const root = document.documentElement;
     const body = document.body;
 
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
+    root.classList.remove("light", "dark", "navy");
+    root.classList.add(theme);
 
     root.dataset.theme = theme;
     if (body) {
@@ -57,7 +67,7 @@ export function ThemeProvider({
 
   const toggleTheme = () => {
     if (!switchable) return;
-    setThemeState(prev => (prev === "light" ? "dark" : "light"));
+    setThemeState(getNextTheme);
   };
 
   return (

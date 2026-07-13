@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        // Atendimento da Teresa IA permanece desligado; Roberto e Alexsandra respondem manualmente.
+        'ai_replies_enabled' => env('WHATSAPP_AI_REPLIES_ENABLED', false),
+    ],
+
 ];

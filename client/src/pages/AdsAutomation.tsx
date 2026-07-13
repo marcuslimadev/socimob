@@ -426,9 +426,9 @@ export default function AdsAutomation() {
 
   if (statusLoading) {
     return (
-      <div className="flex min-h-screen bg-[#0d0f14]">
+      <div className="flex min-h-screen bg-background text-foreground">
         <Sidebar />
-        <div className="page-shell !bg-[#0d0f14] !pb-0 flex items-center justify-center">
+        <div className="page-shell !pb-0 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
         </div>
       </div>
@@ -436,9 +436,9 @@ export default function AdsAutomation() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#0d0f14] text-white overflow-hidden">
+    <div className="flex min-h-screen bg-background text-foreground overflow-hidden">
       <Sidebar />
-      <div className="page-shell !bg-[#0d0f14] overflow-auto">
+      <div className="page-shell overflow-auto">
         <div className="max-w-6xl mx-auto space-y-6">
 
           {/* Header */}
