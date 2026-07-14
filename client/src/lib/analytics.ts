@@ -3,7 +3,13 @@ type ConsentState = 'granted' | 'denied' | null;
 const CONSENT_KEY = 'analytics_consent';
 const CONSENT_DATE_KEY = 'analytics_consent_at';
 const SESSION_KEY = 'analytics_session_id';
-const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID?.trim();
+const DEFAULT_GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID?.trim();
+const DOMAIN_GA_MEASUREMENT_IDS: Record<string, string> = {
+  'exclusivalarimoveis.com': 'G-YWN4E0Q53Z',
+  'www.exclusivalarimoveis.com': 'G-YWN4E0Q53Z',
+  'exclusivarlarimoveis.com': 'G-YWN4E0Q53Z',
+  'www.exclusivarlarimoveis.com': 'G-YWN4E0Q53Z',
+};
 
 type GoogleAnalyticsEventValue = string | number | boolean;
 
@@ -15,6 +21,11 @@ declare global {
 }
 
 let googleAnalyticsLoadPromise: Promise<void> | null = null;
+
+const getGoogleAnalyticsId = () => {
+  if (typeof window === 'undefined') return DEFAULT_GA_MEASUREMENT_ID;
+  return DOMAIN_GA_MEASUREMENT_IDS[window.location.hostname.toLowerCase()] || DEFAULT_GA_MEASUREMENT_ID;
+};
 
 const getCookie = (name: string) => {
   const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
@@ -31,7 +42,7 @@ const generateId = () => {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 };
 
-const isGoogleAnalyticsEnabled = () => Boolean(GA_MEASUREMENT_ID);
+const isGoogleAnalyticsEnabled = () => Boolean(getGoogleAnalyticsId());
 
 const getGoogleConsentPayload = (state: Exclude<ConsentState, null>) => ({
   analytics_storage: state,
@@ -55,6 +66,9 @@ const loadGoogleAnalytics = async () => {
     return;
   }
 
+  const measurementId = getGoogleAnalyticsId();
+  if (!measurementId) return;
+
   if (googleAnalyticsLoadPromise) {
     return googleAnalyticsLoadPromise;
   }
@@ -62,12 +76,12 @@ const loadGoogleAnalytics = async () => {
   installGoogleAnalyticsStub();
   window.gtag?.('consent', 'default', getGoogleConsentPayload('denied'));
   window.gtag?.('js', new Date());
-  window.gtag?.('config', GA_MEASUREMENT_ID, {
+  window.gtag?.('config', measurementId, {
     send_page_view: false,
     anonymize_ip: true,
   });
 
-  const existingScript = document.querySelector(`script[data-google-analytics="${GA_MEASUREMENT_ID}"]`);
+  const existingScript = document.querySelector(`script[data-google-analytics="${measurementId}"]`);
   if (existingScript) {
     googleAnalyticsLoadPromise = Promise.resolve();
     return googleAnalyticsLoadPromise;
@@ -76,8 +90,8 @@ const loadGoogleAnalytics = async () => {
   googleAnalyticsLoadPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.async = true;
-    script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_MEASUREMENT_ID || '')}`;
-    script.setAttribute('data-google-analytics', GA_MEASUREMENT_ID || '');
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`;
+    script.setAttribute('data-google-analytics', measurementId);
     script.onload = () => resolve();
     script.onerror = () => {
       googleAnalyticsLoadPromise = null;
