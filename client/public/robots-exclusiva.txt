@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /crm
+Disallow: /settings
+Disallow: /financeiro
+Disallow: /api/
+
+Sitemap: https://exclusivalarimoveis.com/sitemap.xml

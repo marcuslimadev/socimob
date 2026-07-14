@@ -14,6 +14,15 @@ php_value post_max_size 110M
 
     RewriteEngine On
 
+    # SEO por domínio: a home e o sitemap da Exclusiva são renderizados pelo
+    # Laravel para entregar metadados corretos também a crawlers sem JavaScript.
+    RewriteCond %{HTTP_HOST} ^(www\.)?exclusiva(r)?larimoveis\.com$ [NC]
+    RewriteRule ^$ public/index.php [L]
+    RewriteCond %{HTTP_HOST} ^(www\.)?exclusiva(r)?larimoveis\.com$ [NC]
+    RewriteRule ^robots\.txt$ robots-exclusiva.txt [L]
+    RewriteCond %{HTTP_HOST} ^(www\.)?exclusiva(r)?larimoveis\.com$ [NC]
+    RewriteRule ^sitemap\.xml$ public/index.php [L]
+
     # Exceção para Portal Svelte (servir arquivos estáticos)
     RewriteCond %{REQUEST_URI} ^/portal/svelte/
     RewriteRule ^ - [L]

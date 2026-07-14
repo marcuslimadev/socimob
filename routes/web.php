@@ -140,6 +140,8 @@ $router->post('/webhook/chaves-na-mao', 'App\Http\Controllers\ChavesNaMaoWebhook
 
 // Short link para WhatsApp (resolve tenant pelo domínio)
 $router->group(['middleware' => 'resolve-tenant'], function () use ($router) {
+    $router->get('/', 'App\Http\Controllers\Portal\SiteSeoController@home');
+    $router->get('/sitemap.xml', 'App\Http\Controllers\Portal\SiteSeoController@sitemap');
     $router->get('/w/{code}', 'App\Http\Controllers\ShortLinkController@redirectWhatsApp');
     $router->get('/hl/{code}', 'App\Http\Controllers\ShortLinkController@redirectHandoff');
     // Página do imóvel com metatags Open Graph dinâmicas (prévia rica ao compartilhar no WhatsApp)

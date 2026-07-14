@@ -271,14 +271,29 @@ export default function SocimobLanding() {
   ]);
 
   useEffect(() => {
-    document.title = "SOCIMOB | Sistema imobiliário com CRM, portal, financeiro e automação";
-    const description = document.querySelector("meta[name='description']") || document.createElement("meta");
-    description.setAttribute("name", "description");
-    description.setAttribute(
-      "content",
-      "Sistema imobiliário com CRM, imóveis, portal, financeiro, contratos, anúncios, WhatsApp e automações em planos modulares."
-    );
-    if (!description.parentNode) document.head.appendChild(description);
+    const title = "SOCIMOB | Sistema imobiliário com CRM e gestão completa";
+    const description = "Sistema imobiliário completo com CRM, gestão de imóveis, locação, financeiro, contratos, portais, anúncios, WhatsApp e automações.";
+    const canonicalUrl = `https://socimob.com${window.location.pathname === "/" ? "/" : window.location.pathname}`;
+    const setMeta = (selector: string, attribute: "name" | "property", key: string, content: string) => {
+      const element = document.head.querySelector<HTMLMetaElement>(selector) || document.createElement("meta");
+      element.setAttribute(attribute, key);
+      element.setAttribute("content", content);
+      if (!element.parentNode) document.head.appendChild(element);
+    };
+
+    document.title = title;
+    setMeta("meta[name='description']", "name", "description", description);
+    setMeta("meta[property='og:title']", "property", "og:title", title);
+    setMeta("meta[property='og:description']", "property", "og:description", description);
+    setMeta("meta[property='og:url']", "property", "og:url", canonicalUrl);
+    setMeta("meta[name='twitter:title']", "name", "twitter:title", title);
+    setMeta("meta[name='twitter:description']", "name", "twitter:description", description);
+
+    const canonical = document.head.querySelector<HTMLLinkElement>("link[rel='canonical']") || document.createElement("link");
+    canonical.setAttribute("rel", "canonical");
+    canonical.setAttribute("href", canonicalUrl);
+    if (!canonical.parentNode) document.head.appendChild(canonical);
+
     delete document.body.dataset.sidebar;
     delete document.body.dataset.sectionTabs;
   }, []);

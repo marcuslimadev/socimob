@@ -422,6 +422,88 @@ export default function ClientPortalRefined() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !tenant) return;
+
+    const host = window.location.hostname.toLowerCase();
+    const isExclusiva = host === 'exclusivalarimoveis.com'
+      || host === 'www.exclusivalarimoveis.com'
+      || host === 'exclusivarlarimoveis.com'
+      || host === 'www.exclusivarlarimoveis.com'
+      || tenant.name?.toLowerCase().includes('exclusiva');
+    const brandName = tenant.name || 'Imobiliária';
+    const city = isExclusiva ? 'Belo Horizonte' : properties.find((property) => property.cidade)?.cidade;
+    const title = isExclusiva
+      ? 'Exclusiva Lar Imóveis | Imóveis em Belo Horizonte'
+      : `${brandName} | Imóveis para comprar e alugar${city ? ` em ${city}` : ''}`;
+    const description = isExclusiva
+      ? 'Encontre imóveis para comprar, vender ou alugar em Belo Horizonte com atendimento personalizado da Exclusiva Lar Imóveis.'
+      : `${brandName}: imóveis para compra, venda e locação${city ? ` em ${city}` : ''}, com atendimento especializado.`;
+    const canonicalUrl = isExclusiva
+      ? 'https://exclusivalarimoveis.com/'
+      : `${window.location.origin}${window.location.pathname === '/portal' ? '/' : window.location.pathname}`;
+    const toAbsoluteUrl = (value?: string) => {
+      if (!value) return '';
+      try {
+        return new URL(value, window.location.origin).toString();
+      } catch {
+        return '';
+      }
+    };
+    const socialImage = isExclusiva
+      ? 'https://exclusivalarimoveis.com/images/og-exclusiva.png'
+      : toAbsoluteUrl(tenant.logo_url || tenant.logo || normalizeImages(properties[0] || {} as Property)[0]);
+    const setMeta = (selector: string, attribute: 'name' | 'property', key: string, content: string) => {
+      const element = document.head.querySelector<HTMLMetaElement>(selector) || document.createElement('meta');
+      element.setAttribute(attribute, key);
+      element.setAttribute('content', content);
+      if (!element.parentNode) document.head.appendChild(element);
+    };
+
+    document.title = title;
+    setMeta("meta[name='description']", 'name', 'description', description);
+    setMeta("meta[name='robots']", 'name', 'robots', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
+    setMeta("meta[property='og:site_name']", 'property', 'og:site_name', brandName);
+    setMeta("meta[property='og:title']", 'property', 'og:title', title);
+    setMeta("meta[property='og:description']", 'property', 'og:description', description);
+    setMeta("meta[property='og:url']", 'property', 'og:url', canonicalUrl);
+    setMeta("meta[name='twitter:title']", 'name', 'twitter:title', title);
+    setMeta("meta[name='twitter:description']", 'name', 'twitter:description', description);
+    if (socialImage) {
+      setMeta("meta[property='og:image']", 'property', 'og:image', socialImage);
+      setMeta("meta[property='og:image:alt']", 'property', 'og:image:alt', `${brandName} — imóveis${city ? ` em ${city}` : ''}`);
+      setMeta("meta[name='twitter:image']", 'name', 'twitter:image', socialImage);
+      setMeta("meta[name='twitter:image:alt']", 'name', 'twitter:image:alt', `${brandName} — imóveis${city ? ` em ${city}` : ''}`);
+    }
+
+    const canonical = document.head.querySelector<HTMLLinkElement>("link[rel='canonical']") || document.createElement('link');
+    canonical.setAttribute('rel', 'canonical');
+    canonical.setAttribute('href', canonicalUrl);
+    if (!canonical.parentNode) document.head.appendChild(canonical);
+
+    const structuredData = document.head.querySelector<HTMLScriptElement>('#site-structured-data') || document.createElement('script');
+    structuredData.id = 'site-structured-data';
+    structuredData.type = 'application/ld+json';
+    structuredData.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'RealEstateAgent',
+      '@id': `${canonicalUrl}#organization`,
+      name: brandName,
+      url: canonicalUrl,
+      logo: toAbsoluteUrl(tenant.logo_url || tenant.logo),
+      image: socialImage,
+      description,
+      telephone: tenant.tenant_phone || tenant.contact_phone,
+      email: tenant.contact_email,
+      address: tenant.endereco
+        ? { '@type': 'PostalAddress', streetAddress: tenant.endereco, addressLocality: city, addressRegion: isExclusiva ? 'MG' : undefined, addressCountry: 'BR' }
+        : undefined,
+      areaServed: city ? { '@type': 'City', name: city } : undefined,
+      priceRange: '$$'
+    });
+    if (!structuredData.parentNode) document.head.appendChild(structuredData);
+  }, [properties, tenant]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const params = new URLSearchParams();

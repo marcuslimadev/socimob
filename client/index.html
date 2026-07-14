@@ -17,7 +17,29 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="format-detection" content="telephone=no" />
-    <title>SOCIMOB | Portal Imobiliário</title>
+    <title>SOCIMOB | Sistema imobiliário com CRM e gestão completa</title>
+    <meta name="description" content="Sistema imobiliário completo com CRM, gestão de imóveis, locação, financeiro, contratos, portais, anúncios, WhatsApp e automações." />
+    <meta name="google-site-verification" content="daGiw9u34wtS7Jiizz0xPq5_Z03he3yi9ic2zEzmIhQ" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="author" content="SOCIMOB" />
+    <link rel="canonical" href="https://socimob.com/" />
+
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SOCIMOB" />
+    <meta property="og:title" content="SOCIMOB | Gestão imobiliária completa em uma base só" />
+    <meta property="og:description" content="CRM, imóveis, financeiro, contratos, portais, marketing e automações para imobiliárias que querem crescer sem remendos." />
+    <meta property="og:url" content="https://socimob.com/" />
+    <meta property="og:image" content="https://socimob.com/images/og-socimob.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="SOCIMOB — Gestão imobiliária completa em uma base só" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SOCIMOB | Gestão imobiliária completa" />
+    <meta name="twitter:description" content="CRM, imóveis, financeiro, contratos, portais, marketing e automações em uma base só." />
+    <meta name="twitter:image" content="https://socimob.com/images/og-socimob.png" />
+    <meta name="twitter:image:alt" content="SOCIMOB — Gestão imobiliária completa em uma base só" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="/assets/logo-socimob.svg" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
@@ -27,6 +49,129 @@
     <link href="https://fonts.cdnfonts.com/css/bauhaus-modern" rel="stylesheet" />
     <link href="https://fonts.cdnfonts.com/css/constructium" rel="stylesheet" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script id="site-structured-data" type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://socimob.com/#organization",
+            "name": "SOCIMOB",
+            "url": "https://socimob.com/",
+            "logo": "https://socimob.com/icons/icon-512.png",
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "telephone": "+55-92-99228-7144",
+              "contactType": "sales",
+              "availableLanguage": "Portuguese"
+            }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://socimob.com/#website",
+            "url": "https://socimob.com/",
+            "name": "SOCIMOB",
+            "inLanguage": "pt-BR",
+            "publisher": { "@id": "https://socimob.com/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "SOCIMOB",
+            "url": "https://socimob.com/",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "pt-BR",
+            "description": "Sistema imobiliário completo com CRM, imóveis, locação, financeiro, contratos, portais, marketing e automações.",
+            "offers": {
+              "@type": "AggregateOffer",
+              "priceCurrency": "BRL",
+              "lowPrice": "349",
+              "highPrice": "1290",
+              "offerCount": "3"
+            },
+            "publisher": { "@id": "https://socimob.com/#organization" }
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Preciso contratar todos os módulos de uma vez?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Não. Você entra com a base certa e ativa módulos conforme a operação amadurece."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Serve para venda e para locação?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Sim. A base cobre CRM e imóveis; os módulos expandem compra e venda, locação, financeiro, vistorias e relacionamento."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+    <script>
+      (() => {
+        const host = window.location.hostname.toLowerCase();
+        const exclusivaHosts = new Set([
+          "exclusivalarimoveis.com",
+          "www.exclusivalarimoveis.com",
+          "exclusivarlarimoveis.com",
+          "www.exclusivarlarimoveis.com"
+        ]);
+        if (!exclusivaHosts.has(host) || !["/", "/portal"].includes(window.location.pathname)) return;
+
+        const title = "Exclusiva Lar Imóveis | Imóveis em Belo Horizonte";
+        const description = "Encontre imóveis para comprar, vender ou alugar em Belo Horizonte com atendimento personalizado da Exclusiva Lar Imóveis.";
+        const canonical = "https://exclusivalarimoveis.com/";
+        const image = "https://exclusivalarimoveis.com/images/og-exclusiva.png";
+        const setMeta = (selector, attribute, key, content) => {
+          const element = document.head.querySelector(selector) || document.createElement("meta");
+          element.setAttribute(attribute, key);
+          element.setAttribute("content", content);
+          if (!element.parentNode) document.head.appendChild(element);
+        };
+
+        document.title = title;
+        setMeta("meta[name='description']", "name", "description", description);
+        setMeta("meta[property='og:site_name']", "property", "og:site_name", "Exclusiva Lar Imóveis");
+        setMeta("meta[property='og:title']", "property", "og:title", title);
+        setMeta("meta[property='og:description']", "property", "og:description", description);
+        setMeta("meta[property='og:url']", "property", "og:url", canonical);
+        setMeta("meta[property='og:image']", "property", "og:image", image);
+        setMeta("meta[property='og:image:alt']", "property", "og:image:alt", "Exclusiva Lar Imóveis — imóveis em Belo Horizonte");
+        setMeta("meta[name='twitter:title']", "name", "twitter:title", title);
+        setMeta("meta[name='twitter:description']", "name", "twitter:description", description);
+        setMeta("meta[name='twitter:image']", "name", "twitter:image", image);
+        setMeta("meta[name='twitter:image:alt']", "name", "twitter:image:alt", "Exclusiva Lar Imóveis — imóveis em Belo Horizonte");
+
+        const canonicalElement = document.head.querySelector("link[rel='canonical']") || document.createElement("link");
+        canonicalElement.setAttribute("rel", "canonical");
+        canonicalElement.setAttribute("href", canonical);
+        if (!canonicalElement.parentNode) document.head.appendChild(canonicalElement);
+
+        const structuredData = document.getElementById("site-structured-data");
+        if (structuredData) {
+          structuredData.textContent = JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "RealEstateAgent",
+            "@id": "https://exclusivalarimoveis.com/#organization",
+            "name": "Exclusiva Lar Imóveis",
+            "url": canonical,
+            "logo": "https://exclusivalarimoveis.com/assets/logo-exclusiva.png",
+            "image": image,
+            "description": description,
+            "areaServed": { "@type": "City", "name": "Belo Horizonte" },
+            "address": { "@type": "PostalAddress", "addressLocality": "Belo Horizonte", "addressRegion": "MG", "addressCountry": "BR" }
+          });
+        }
+      })();
+    </script>
   </head>
 
   <body>

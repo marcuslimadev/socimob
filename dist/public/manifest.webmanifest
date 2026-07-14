@@ -1,7 +1,7 @@
 {
   "name": "SOCIMOB",
   "short_name": "SOCIMOB",
-  "description": "CRM e portal imobiliario Socimob",
+  "description": "Sistema imobiliário completo com CRM, imóveis, financeiro, contratos, portais, marketing e automações.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
