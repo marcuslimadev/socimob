@@ -1,0 +1,1 @@
+import{u as e,r as t}from"./index-YHf0RD_X.js";import{i,a as r}from"./analytics-BtFIPsej.js";function c(){const[a]=e();return t.useEffect(()=>{i()},[]),t.useEffect(()=>{r()},[a]),null}export{c as default};
