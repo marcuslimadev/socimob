@@ -18,9 +18,9 @@ const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(
 
 export default function SocimobLanding() {
   useEffect(() => {
-    const title = "SOCIMOB | Gestão imobiliária em um só lugar";
+    const title = "SOCIMOB | Toda a gestão da sua imobiliária em um único sistema";
     const description =
-      "Centralize atendimento, imóveis, contratos e financeiro da sua imobiliária com o SOCIMOB.";
+      "Centralize CRM, imóveis, locação, financeiro, contratos, vistorias e atendimento da sua imobiliária no SOCIMOB.";
     const canonicalUrl = "https://socimob.com/";
     const setMeta = (selector: string, attribute: "name" | "property", key: string, content: string) => {
       const element = document.head.querySelector<HTMLMetaElement>(selector) || document.createElement("meta");
@@ -55,7 +55,7 @@ export default function SocimobLanding() {
               <img src="/assets/logo-socimob.svg" alt="" className="h-6 w-6" />
             </span>
             <div>
-              <p className="text-sm font-bold tracking-[0.23em]">SOCIMOB</p>
+              <p className="text-sm font-bold tracking-[0.23em]" style={{ fontFamily: "'Bauhaus Modern', 'Constructium', sans-serif" }}><span className="text-white">SOC</span><span className="text-[#f1132b]">IMOB</span></p>
               <p className="mt-0.5 text-[10px] tracking-wide text-slate-400">GESTÃO IMOBILIÁRIA</p>
             </div>
           </a>
@@ -83,9 +83,9 @@ export default function SocimobLanding() {
               <ShieldCheck size={14} /> Sua operação, conectada
             </div>
 
-            <h1 className="mt-6 text-[clamp(2.75rem,5.4vw,5.15rem)] font-semibold leading-[0.96] tracking-[-0.06em]">
-              Sua imobiliária<br />
-              <span className="text-[#f9bf0a]">em um só lugar.</span>
+            <h1 className="mt-6 text-[clamp(2.65rem,4.5vw,4.45rem)] font-semibold leading-[0.96] tracking-[-0.06em]">
+              Toda a gestão<br />da sua imobiliária<br />
+              <span className="text-[#f9bf0a]">em um único sistema!</span>
             </h1>
 
             <p className="mt-6 max-w-xl text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">
