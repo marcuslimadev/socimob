@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Mail, MapPin, MessageCircle, Minus, Phone, Plus, Search, Shield, Square, TrendingUp } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
@@ -325,6 +325,7 @@ function getFloatingActionDefaultPosition(viewportWidth: number, viewportHeight:
 }
 
 export default function ClientPortalRefined() {
+  const prefersReducedMotion = useReducedMotion();
   const [, navigate] = useLocation();
   const initialFilters = getInitialPortalFilters();
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
@@ -350,6 +351,7 @@ export default function ClientPortalRefined() {
   const [leadModalError, setLeadModalError] = useState('');
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [floatingActionDragging, setFloatingActionDragging] = useState(false);
+  const [mascotAutoWalkPaused, setMascotAutoWalkPaused] = useState(false);
   const [floatingActionScale, setFloatingActionScale] = useState(1);
   const [floatingActionPos, setFloatingActionPos] = useState<{ x: number; y: number }>(() => {
     if (typeof window === 'undefined') return { x: 16, y: 16 };
@@ -838,6 +840,10 @@ export default function ClientPortalRefined() {
   };
 
   const hasMascot = Boolean(tenant?.mascot_url);
+  const isExclusivaMascot = typeof window !== 'undefined' && (
+    ['exclusivalarimoveis.com', 'www.exclusivalarimoveis.com', 'exclusivalarimoveis.com.br', 'www.exclusivalarimoveis.com.br'].includes(window.location.hostname.toLowerCase())
+    || Boolean(tenant?.name?.toLowerCase().includes('exclusiva'))
+  );
   const floatingActionMetrics = useMemo(() => {
     if (typeof window === 'undefined') return getFloatingActionMetrics(1280, hasMascot, floatingActionScale);
     return getFloatingActionMetrics(window.innerWidth, hasMascot, floatingActionScale);
@@ -915,6 +921,7 @@ export default function ClientPortalRefined() {
   };
 
   const handleFloatingActionPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    setMascotAutoWalkPaused(true);
     const startX = e.clientX;
     const startY = e.clientY;
     const offsetX = e.clientX - floatingActionPosRef.current.x;
@@ -1667,18 +1674,40 @@ export default function ClientPortalRefined() {
       </button>
 
       {tenant?.mascot_url ? (
-        <div
+        <motion.div
           className="fixed z-50 select-none"
+          animate={!prefersReducedMotion && !mascotAutoWalkPaused && !floatingActionDragging && isExclusivaMascot
+            ? {
+                x: [
+                  0,
+                  floatingActionPos.x + (floatingActionMetrics.width / 2) >= (window.innerWidth / 2)
+                    ? -(floatingActionPos.x - 12)
+                    : window.innerWidth - floatingActionMetrics.width - 12 - floatingActionPos.x,
+                  floatingActionPos.x + (floatingActionMetrics.width / 2) >= (window.innerWidth / 2)
+                    ? -(floatingActionPos.x - 12)
+                    : window.innerWidth - floatingActionMetrics.width - 12 - floatingActionPos.x,
+                  0,
+                  0,
+                ],
+              }
+            : { x: 0 }}
+          transition={!prefersReducedMotion && !mascotAutoWalkPaused && isExclusivaMascot
+            ? { duration: 26, times: [0, 0.38, 0.52, 0.9, 1], ease: 'easeInOut', repeat: Infinity, repeatDelay: 5 }
+            : { duration: 0.2 }}
           style={{
             left: floatingActionPos.x,
             top: floatingActionPos.y,
             width: floatingActionMetrics.width,
             height: floatingActionMetrics.height + 52,
-            transform: floatingActionDragging ? 'scale(1.03)' : 'scale(1)',
-            transition: floatingActionDragging ? 'none' : 'transform 0.2s ease, width 0.2s ease, height 0.2s ease',
           }}
         >
-          <div className="relative h-full w-full">
+          <div
+            className="relative h-full w-full"
+            style={{
+              transform: floatingActionDragging ? 'scale(1.03)' : 'scale(1)',
+              transition: floatingActionDragging ? 'none' : 'transform 0.2s ease, width 0.2s ease, height 0.2s ease',
+            }}
+          >
             <button
               type="button"
               onClick={handleFloatingActionClick}
@@ -1691,12 +1720,18 @@ export default function ClientPortalRefined() {
                 touchAction: 'none',
               }}
             >
-              <img
-                src={tenant.mascot_url}
-                alt="Mascote"
-                draggable={false}
-                className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
-              />
+              <motion.div
+                className="h-full w-full"
+                animate={!prefersReducedMotion && !mascotAutoWalkPaused && isExclusivaMascot ? { y: [0, -6, 0], rotate: [-1.5, 1.5, -1.5] } : { y: 0, rotate: 0 }}
+                transition={!prefersReducedMotion && !mascotAutoWalkPaused && isExclusivaMascot ? { duration: 0.48, ease: 'easeInOut', repeat: Infinity } : { duration: 0.2 }}
+              >
+                <img
+                  src={tenant.mascot_url}
+                  alt="Mascote da Exclusiva Lar"
+                  draggable={false}
+                  className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
+                />
+              </motion.div>
             </button>
             <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/55 bg-white/88 px-1.5 py-1 text-slate-700 shadow-[0_10px_28px_rgba(15,23,42,0.18)] backdrop-blur-md sm:gap-1.5 sm:px-2 sm:py-1.5">
               <button
@@ -1728,7 +1763,7 @@ export default function ClientPortalRefined() {
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       ) : whatsappLink ? (
         <div
           className="fixed z-50 select-none"
