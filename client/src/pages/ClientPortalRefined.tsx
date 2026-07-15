@@ -1711,7 +1711,7 @@ export default function ClientPortalRefined() {
                   <div
                     role="img"
                     aria-label="Mascote da Exclusiva Lar caminhando"
-                    className="exclusive-mascot-walk-sprite pointer-events-none mx-auto h-full drop-shadow-xl"
+                    className="exclusive-mascot-animated pointer-events-none mx-auto h-full drop-shadow-xl"
                   />
                 ) : (
                   <img
