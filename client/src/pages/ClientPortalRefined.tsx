@@ -1704,8 +1704,8 @@ export default function ClientPortalRefined() {
             >
               <motion.div
                 className="h-full w-full"
-                animate={!prefersReducedMotion && !mascotAutoWalkPaused && isExclusivaMascot ? { y: [0, -6, 0], rotate: [-1.5, 1.5, -1.5] } : { y: 0, rotate: 0 }}
-                transition={!prefersReducedMotion && !mascotAutoWalkPaused && isExclusivaMascot ? { duration: 0.48, ease: 'easeInOut', repeat: Infinity } : { duration: 0.2 }}
+                animate={!prefersReducedMotion && !mascotAutoWalkPaused && isExclusivaMascot ? { y: [0, -2, 0], rotate: [-0.35, 0.35, -0.35] } : { y: 0, rotate: 0 }}
+                transition={!prefersReducedMotion && !mascotAutoWalkPaused && isExclusivaMascot ? { duration: 1.84, ease: 'easeInOut', repeat: Infinity } : { duration: 0.2 }}
               >
                 {isExclusivaMascot ? (
                   <div

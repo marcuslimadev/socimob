@@ -68,7 +68,7 @@ def main() -> None:
         format="WEBP",
         save_all=True,
         append_images=frames[1:],
-        duration=105,
+        duration=230,
         loop=0,
         lossless=False,
         quality=88,
