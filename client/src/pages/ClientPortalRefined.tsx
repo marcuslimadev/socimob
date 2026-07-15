@@ -1674,26 +1674,8 @@ export default function ClientPortalRefined() {
       </button>
 
       {tenant?.mascot_url ? (
-        <motion.div
+        <div
           className="fixed z-50 select-none"
-          animate={!prefersReducedMotion && !mascotAutoWalkPaused && !floatingActionDragging && isExclusivaMascot
-            ? {
-                x: [
-                  0,
-                  floatingActionPos.x + (floatingActionMetrics.width / 2) >= (window.innerWidth / 2)
-                    ? -(floatingActionPos.x - 12)
-                    : window.innerWidth - floatingActionMetrics.width - 12 - floatingActionPos.x,
-                  floatingActionPos.x + (floatingActionMetrics.width / 2) >= (window.innerWidth / 2)
-                    ? -(floatingActionPos.x - 12)
-                    : window.innerWidth - floatingActionMetrics.width - 12 - floatingActionPos.x,
-                  0,
-                  0,
-                ],
-              }
-            : { x: 0 }}
-          transition={!prefersReducedMotion && !mascotAutoWalkPaused && isExclusivaMascot
-            ? { duration: 26, times: [0, 0.38, 0.52, 0.9, 1], ease: 'easeInOut', repeat: Infinity, repeatDelay: 5 }
-            : { duration: 0.2 }}
           style={{
             left: floatingActionPos.x,
             top: floatingActionPos.y,
@@ -1771,7 +1753,7 @@ export default function ClientPortalRefined() {
               </button>
             </div>
           </div>
-        </motion.div>
+        </div>
       ) : whatsappLink ? (
         <div
           className="fixed z-50 select-none"
