@@ -7,7 +7,7 @@ from scipy import ndimage
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "client/public/assets/turtle-walk-sheet.png"
-OUTPUT = ROOT / "client/public/assets/turtle-walk-32.webp"
+OUTPUT = ROOT / "client/public/assets/turtle-walk-smooth.webp"
 
 COLS = 4
 ROWS = 2
@@ -58,18 +58,17 @@ def main() -> None:
         crop = sheet.crop((col * frame_w, row * frame_h, (col + 1) * frame_w, (row + 1) * frame_h))
         keyframes.append(isolate_character(crop))
 
-    frames = []
-    for index, current in enumerate(keyframes):
-        following = keyframes[(index + 1) % len(keyframes)]
-        for step in range(4):
-            frames.append(Image.blend(current, following, step / 4))
+    # Use somente poses próximas e inteiras. Misturar imagens por opacidade cria
+    # rostos, chaves e membros duplicados; a sequência espelhada mantém o passo
+    # contínuo sem qualquer quadro fantasma.
+    frames = [keyframes[index] for index in (0, 1, 2, 3, 2, 1, 0, 1)]
 
     frames[0].save(
         OUTPUT,
         format="WEBP",
         save_all=True,
         append_images=frames[1:],
-        duration=55,
+        duration=105,
         loop=0,
         lossless=False,
         quality=88,

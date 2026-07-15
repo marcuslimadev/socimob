@@ -1190,7 +1190,7 @@ body[data-theme='navy'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 :is(
    mudam de quadro enquanto o componente atravessa a tela. */
 .exclusive-mascot-animated {
   width: 75%;
-  background-image: url('/assets/turtle-walk-32.webp');
+  background-image: url('/assets/turtle-walk-smooth.webp');
   background-repeat: no-repeat;
   background-position: center bottom;
   background-size: contain;
