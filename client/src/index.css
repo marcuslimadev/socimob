@@ -1185,3 +1185,31 @@ body[data-theme='navy'][data-sidebar='topnav'] .fixed.inset-x-0.top-0 :is(
   background: color-mix(in srgb, var(--shell-top-bg) 94%, black 6%) !important;
   border-color: var(--border) !important;
 }
+
+/* Ciclo real de caminhada do mascote da Exclusiva: pernas, braço, mão e olhos
+   mudam de quadro enquanto o componente atravessa a tela. */
+.exclusive-mascot-walk-sprite {
+  width: 75%;
+  background-image: url('/assets/turtle-walk-sheet.png');
+  background-repeat: no-repeat;
+  background-size: 400% 200%;
+  background-position: 0% 0%;
+  animation: exclusive-mascot-walk-cycle 0.96s steps(1, end) infinite;
+}
+
+@keyframes exclusive-mascot-walk-cycle {
+  0%, 12.49% { background-position: 0% 0%; }
+  12.5%, 24.99% { background-position: 33.333% 0%; }
+  25%, 37.49% { background-position: 66.666% 0%; }
+  37.5%, 49.99% { background-position: 100% 0%; }
+  50%, 62.49% { background-position: 0% 100%; }
+  62.5%, 74.99% { background-position: 33.333% 100%; }
+  75%, 87.49% { background-position: 66.666% 100%; }
+  87.5%, 100% { background-position: 100% 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exclusive-mascot-walk-sprite {
+    animation: none;
+  }
+}
