@@ -427,6 +427,8 @@ export default function ClientPortalRefined() {
     const host = window.location.hostname.toLowerCase();
     const isExclusiva = host === 'exclusivalarimoveis.com'
       || host === 'www.exclusivalarimoveis.com'
+      || host === 'exclusivalarimoveis.com.br'
+      || host === 'www.exclusivalarimoveis.com.br'
       || host === 'exclusivarlarimoveis.com'
       || host === 'www.exclusivarlarimoveis.com'
       || tenant.name?.toLowerCase().includes('exclusiva');

@@ -19,6 +19,8 @@ class SiteSeoController extends Controller
         if (!in_array($host, [
             'exclusivalarimoveis.com',
             'www.exclusivalarimoveis.com',
+            'exclusivalarimoveis.com.br',
+            'www.exclusivalarimoveis.com.br',
             'exclusivarlarimoveis.com',
             'www.exclusivarlarimoveis.com',
         ], true)) {

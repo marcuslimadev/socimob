@@ -77,6 +77,8 @@ class ResolveTenant
         $domainAliases = [
             'lojadaesquina.store' => 'exclusivalarimoveis.com',
             'www.lojadaesquina.store' => 'exclusivalarimoveis.com',
+            'exclusivalarimoveis.com.br' => 'exclusivalarimoveis.com',
+            'www.exclusivalarimoveis.com.br' => 'exclusivalarimoveis.com',
         ];
 
         // Buscar tenant pelo dominio

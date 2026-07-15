@@ -5,7 +5,12 @@ import "./index.css";
 const TENANT_HOST = typeof window !== "undefined" ? window.location.hostname : "default";
 const TENANT_BRANDING_CACHE_KEY = `tenant_branding_cache:${TENANT_HOST}`;
 const LEGACY_BRANDING_CACHE_KEY = "tenant_branding_cache";
-const EXCLUSIVA_HOSTS = new Set(["exclusivalarimoveis.com", "www.exclusivalarimoveis.com"]);
+const EXCLUSIVA_HOSTS = new Set([
+  "exclusivalarimoveis.com",
+  "www.exclusivalarimoveis.com",
+  "exclusivalarimoveis.com.br",
+  "www.exclusivalarimoveis.com.br",
+]);
 const EXCLUSIVA_GOOGLE_SITE_VERIFICATION = "daGiw9u34wtS7Jiizz0xPq5_Z03he3yi9ic2zEzmIhQ";
 
 declare global {

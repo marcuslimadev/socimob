@@ -7,6 +7,8 @@ const DEFAULT_GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID?.trim()
 const DOMAIN_GA_MEASUREMENT_IDS: Record<string, string> = {
   'exclusivalarimoveis.com': 'G-YWN4E0Q53Z',
   'www.exclusivalarimoveis.com': 'G-YWN4E0Q53Z',
+  'exclusivalarimoveis.com.br': 'G-YWN4E0Q53Z',
+  'www.exclusivalarimoveis.com.br': 'G-YWN4E0Q53Z',
   'exclusivarlarimoveis.com': 'G-YWN4E0Q53Z',
   'www.exclusivarlarimoveis.com': 'G-YWN4E0Q53Z',
 };
