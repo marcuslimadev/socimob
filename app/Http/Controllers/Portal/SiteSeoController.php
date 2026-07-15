@@ -27,33 +27,47 @@ class SiteSeoController extends Controller
             return response($html)->header('Content-Type', 'text/html; charset=UTF-8');
         }
 
-        $title = 'Exclusiva Lar Imóveis | Imóveis em Belo Horizonte';
-        $description = 'Encontre imóveis para comprar, vender ou alugar em Belo Horizonte com atendimento personalizado da Exclusiva Lar Imóveis.';
+        $title = 'Exclusiva Lar Imóveis | Comprar e Alugar em Belo Horizonte';
+        $description = 'Encontre apartamentos, casas e imóveis para comprar ou alugar em Belo Horizonte. Consulte ofertas atualizadas e fale com a Exclusiva Lar Imóveis.';
         $canonical = 'https://exclusivalarimoveis.com/';
         $image = $canonical . 'images/og-exclusiva.png';
         $escape = static fn (string $value) => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 
         $html = preg_replace('/<title>.*?<\/title>/s', '<title>' . $escape($title) . '</title>', $html, 1) ?? $html;
         $html = preg_replace('/<meta\s+(?:name|property)=["\'](?:description|og:[^"\']+|twitter:[^"\']+)["\'][^>]*>\s*/i', '', $html) ?? $html;
+        $html = preg_replace('/<meta\s+name=["\'](?:author|application-name|apple-mobile-web-app-title)["\'][^>]*>\s*/i', '', $html) ?? $html;
         $html = preg_replace('/<link\s+rel=["\']canonical["\'][^>]*>\s*/i', '', $html) ?? $html;
+        $html = preg_replace('/<link\s+rel=["\'](?:icon|apple-touch-icon)["\'][^>]*>\s*/i', '', $html) ?? $html;
         $html = preg_replace('/<script\s+id=["\']site-structured-data["\'][^>]*>.*?<\/script>\s*/si', '', $html) ?? $html;
 
         $structuredData = json_encode([
             '@context' => 'https://schema.org',
-            '@type' => 'RealEstateAgent',
-            '@id' => $canonical . '#organization',
-            'name' => 'Exclusiva Lar Imóveis',
-            'url' => $canonical,
-            'logo' => $canonical . 'assets/logo-exclusiva.png',
-            'image' => $image,
-            'description' => $description,
-            'areaServed' => ['@type' => 'City', 'name' => 'Belo Horizonte'],
-            'address' => ['@type' => 'PostalAddress', 'addressLocality' => 'Belo Horizonte', 'addressRegion' => 'MG', 'addressCountry' => 'BR'],
+            '@graph' => [[
+                '@type' => ['RealEstateAgent', 'LocalBusiness'],
+                '@id' => $canonical . '#organization',
+                'name' => 'Exclusiva Lar Imóveis',
+                'url' => $canonical,
+                'logo' => $canonical . 'assets/logo-exclusiva.png',
+                'image' => $image,
+                'description' => $description,
+                'areaServed' => ['@type' => 'City', 'name' => 'Belo Horizonte'],
+                'address' => ['@type' => 'PostalAddress', 'addressLocality' => 'Belo Horizonte', 'addressRegion' => 'MG', 'addressCountry' => 'BR'],
+                'priceRange' => '$$',
+            ], [
+                '@type' => 'WebSite',
+                '@id' => $canonical . '#website',
+                'url' => $canonical,
+                'name' => 'Exclusiva Lar Imóveis',
+                'inLanguage' => 'pt-BR',
+                'publisher' => ['@id' => $canonical . '#organization'],
+            ]],
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $tags = '<meta name="description" content="' . $escape($description) . '">' . "\n"
             . '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">' . "\n"
+            . '<meta name="author" content="Exclusiva Lar Imóveis"><meta name="application-name" content="Exclusiva Lar Imóveis"><meta name="apple-mobile-web-app-title" content="Exclusiva Lar">' . "\n"
             . '<link rel="canonical" href="' . $canonical . '">' . "\n"
+            . '<link rel="icon" type="image/png" href="/assets/logo-exclusiva.png"><link rel="apple-touch-icon" href="/assets/logo-exclusiva.png">' . "\n"
             . '<meta property="og:locale" content="pt_BR"><meta property="og:type" content="website">' . "\n"
             . '<meta property="og:site_name" content="Exclusiva Lar Imóveis"><meta property="og:title" content="' . $escape($title) . '">' . "\n"
             . '<meta property="og:description" content="' . $escape($description) . '"><meta property="og:url" content="' . $canonical . '">' . "\n"

@@ -435,10 +435,10 @@ export default function ClientPortalRefined() {
     const brandName = tenant.name || 'Imobiliária';
     const city = isExclusiva ? 'Belo Horizonte' : properties.find((property) => property.cidade)?.cidade;
     const title = isExclusiva
-      ? 'Exclusiva Lar Imóveis | Imóveis em Belo Horizonte'
+      ? 'Exclusiva Lar Imóveis | Comprar e Alugar em Belo Horizonte'
       : `${brandName} | Imóveis para comprar e alugar${city ? ` em ${city}` : ''}`;
     const description = isExclusiva
-      ? 'Encontre imóveis para comprar, vender ou alugar em Belo Horizonte com atendimento personalizado da Exclusiva Lar Imóveis.'
+      ? 'Encontre apartamentos, casas e imóveis para comprar ou alugar em Belo Horizonte. Consulte ofertas atualizadas e fale com a Exclusiva Lar Imóveis.'
       : `${brandName}: imóveis para compra, venda e locação${city ? ` em ${city}` : ''}, com atendimento especializado.`;
     const canonicalUrl = isExclusiva
       ? 'https://exclusivalarimoveis.com/'

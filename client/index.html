@@ -130,8 +130,8 @@
         ]);
         if (!exclusivaHosts.has(host) || !["/", "/portal"].includes(window.location.pathname)) return;
 
-        const title = "Exclusiva Lar Imóveis | Imóveis em Belo Horizonte";
-        const description = "Encontre imóveis para comprar, vender ou alugar em Belo Horizonte com atendimento personalizado da Exclusiva Lar Imóveis.";
+        const title = "Exclusiva Lar Imóveis | Comprar e Alugar em Belo Horizonte";
+        const description = "Encontre apartamentos, casas e imóveis para comprar ou alugar em Belo Horizonte. Consulte ofertas atualizadas e fale com a Exclusiva Lar Imóveis.";
         const canonical = "https://exclusivalarimoveis.com/";
         const image = "https://exclusivalarimoveis.com/images/og-exclusiva.png";
         const setMeta = (selector, attribute, key, content) => {
@@ -142,6 +142,9 @@
         };
 
         document.title = title;
+        document.querySelector("meta[name='application-name']")?.setAttribute("content", "Exclusiva Lar Imóveis");
+        document.querySelector("meta[name='apple-mobile-web-app-title']")?.setAttribute("content", "Exclusiva Lar");
+        document.querySelector("meta[name='author']")?.setAttribute("content", "Exclusiva Lar Imóveis");
         setMeta("meta[name='description']", "name", "description", description);
         setMeta("meta[property='og:site_name']", "property", "og:site_name", "Exclusiva Lar Imóveis");
         setMeta("meta[property='og:title']", "property", "og:title", title);
