@@ -838,10 +838,6 @@ export default function ClientPortalRefined() {
   };
 
   const hasMascot = Boolean(tenant?.mascot_url);
-  const isExclusivaMascot = typeof window !== 'undefined' && (
-    ['exclusivalarimoveis.com', 'www.exclusivalarimoveis.com', 'exclusivalarimoveis.com.br', 'www.exclusivalarimoveis.com.br'].includes(window.location.hostname.toLowerCase())
-    || Boolean(tenant?.name?.toLowerCase().includes('exclusiva'))
-  );
   const floatingActionMetrics = useMemo(() => {
     if (typeof window === 'undefined') return getFloatingActionMetrics(1280, hasMascot, floatingActionScale);
     return getFloatingActionMetrics(window.innerWidth, hasMascot, floatingActionScale);
@@ -1700,7 +1696,7 @@ export default function ClientPortalRefined() {
               }}
             >
               <img
-                src={isExclusivaMascot ? '/assets/exclusiva-mascot-hq-preview.webp' : tenant.mascot_url}
+                src={tenant.mascot_url}
                 alt="Mascote"
                 draggable={false}
                 className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
