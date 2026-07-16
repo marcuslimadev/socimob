@@ -838,10 +838,6 @@ export default function ClientPortalRefined() {
   };
 
   const hasMascot = Boolean(tenant?.mascot_url);
-  const isExclusivaMascot = typeof window !== 'undefined' && (
-    ['exclusivalarimoveis.com', 'www.exclusivalarimoveis.com', 'exclusivalarimoveis.com.br', 'www.exclusivalarimoveis.com.br'].includes(window.location.hostname.toLowerCase())
-    || Boolean(tenant?.name?.toLowerCase().includes('exclusiva'))
-  );
   const floatingActionMetrics = useMemo(() => {
     if (typeof window === 'undefined') return getFloatingActionMetrics(1280, hasMascot, floatingActionScale);
     return getFloatingActionMetrics(window.innerWidth, hasMascot, floatingActionScale);
@@ -1699,21 +1695,12 @@ export default function ClientPortalRefined() {
                 touchAction: 'none',
               }}
             >
-              {isExclusivaMascot ? (
-                <img
-                  src="/assets/exclusiva-mascot-once.webp"
-                  alt="Mascote da Exclusiva Lar Imóveis"
-                  draggable={false}
-                  className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
-                />
-              ) : (
-                <img
-                  src={tenant.mascot_url}
-                  alt="Mascote"
-                  draggable={false}
-                  className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
-                />
-              )}
+              <img
+                src={tenant.mascot_url}
+                alt="Mascote"
+                draggable={false}
+                className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
+              />
             </button>
             <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/55 bg-white/88 px-1.5 py-1 text-slate-700 shadow-[0_10px_28px_rgba(15,23,42,0.18)] backdrop-blur-md sm:gap-1.5 sm:px-2 sm:py-1.5">
               <button
