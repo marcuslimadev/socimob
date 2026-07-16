@@ -1700,13 +1700,9 @@ export default function ClientPortalRefined() {
               }}
             >
               {isExclusivaMascot ? (
-                <video
-                  src="/assets/exclusiva-mascot-once.mp4"
-                  aria-label="Mascote da Exclusiva Lar Imóveis"
-                  autoPlay
-                  muted
-                  playsInline
-                  preload="auto"
+                <img
+                  src="/assets/exclusiva-mascot-once.webp"
+                  alt="Mascote da Exclusiva Lar Imóveis"
                   draggable={false}
                   className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
                 />
