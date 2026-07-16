@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Mail, MapPin, MessageCircle, Minus, Phone, Plus, Search, Shield, Square, TrendingUp } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
@@ -325,7 +325,6 @@ function getFloatingActionDefaultPosition(viewportWidth: number, viewportHeight:
 }
 
 export default function ClientPortalRefined() {
-  const prefersReducedMotion = useReducedMotion();
   const [, navigate] = useLocation();
   const initialFilters = getInitialPortalFilters();
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
@@ -351,7 +350,6 @@ export default function ClientPortalRefined() {
   const [leadModalError, setLeadModalError] = useState('');
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [floatingActionDragging, setFloatingActionDragging] = useState(false);
-  const [mascotAutoWalkPaused, setMascotAutoWalkPaused] = useState(false);
   const [floatingActionScale, setFloatingActionScale] = useState(1);
   const [floatingActionPos, setFloatingActionPos] = useState<{ x: number; y: number }>(() => {
     if (typeof window === 'undefined') return { x: 16, y: 16 };
@@ -921,7 +919,6 @@ export default function ClientPortalRefined() {
   };
 
   const handleFloatingActionPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
-    setMascotAutoWalkPaused(true);
     const startX = e.clientX;
     const startY = e.clientY;
     const offsetX = e.clientX - floatingActionPosRef.current.x;
@@ -1702,12 +1699,25 @@ export default function ClientPortalRefined() {
                 touchAction: 'none',
               }}
             >
-              <img
-                src={tenant.mascot_url}
-                alt="Mascote"
-                draggable={false}
-                className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
-              />
+              {isExclusivaMascot ? (
+                <video
+                  src="/assets/exclusiva-mascot-once.mp4"
+                  aria-label="Mascote da Exclusiva Lar Imóveis"
+                  autoPlay
+                  muted
+                  playsInline
+                  preload="auto"
+                  draggable={false}
+                  className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
+                />
+              ) : (
+                <img
+                  src={tenant.mascot_url}
+                  alt="Mascote"
+                  draggable={false}
+                  className="h-full w-full object-contain drop-shadow-xl pointer-events-none"
+                />
+              )}
             </button>
             <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/55 bg-white/88 px-1.5 py-1 text-slate-700 shadow-[0_10px_28px_rgba(15,23,42,0.18)] backdrop-blur-md sm:gap-1.5 sm:px-2 sm:py-1.5">
               <button
