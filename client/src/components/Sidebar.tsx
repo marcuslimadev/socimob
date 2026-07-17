@@ -425,6 +425,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
         { key: 'properties-propaganda', icon: <Image size={16} />, label: 'Propaganda', href: '/properties/propaganda' },
         { key: 'controle-chaves', icon: <KeyRound size={16} />, label: 'Controle de Chaves', href: '/controle-chaves' },
         { key: 'imobi-brasil', icon: <Building2 size={16} />, label: 'ImobiBrasil', href: '/imobi-brasil' },
+        { key: 'chaves-na-mao', icon: <KeyRound size={16} />, label: 'Chaves na Mão', href: '/integracoes/chaves-na-mao' },
       ],
     },
     {

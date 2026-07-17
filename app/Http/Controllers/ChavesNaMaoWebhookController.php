@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lead;
+use App\Models\Tenant;
 use App\Services\LeadConversationService;
 use App\Services\LeadCustomerService;
 use App\Services\LeadService;
@@ -9,6 +10,7 @@ use App\Services\SmsShortLinkService;
 use App\Services\TwilioService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 
 class ChavesNaMaoWebhookController extends Controller
@@ -51,10 +53,10 @@ class ChavesNaMaoWebhookController extends Controller
      */
     public function receive(Request $request)
     {
-        // Validar autenticação
-        $authResult = $this->validateAuthentication($request);
-        if ($authResult !== true) {
-            return $authResult;
+        // A autenticação também identifica o cliente/tenant destinatário.
+        $tenant = $this->authenticateTenant($request);
+        if ($tenant instanceof \Illuminate\Http\JsonResponse) {
+            return $tenant;
         }
 
         try {
@@ -77,27 +79,25 @@ class ChavesNaMaoWebhookController extends Controller
                 $leadData = $rawData;
             }
 
-            // LOG COMPLETO - EXATAMENTE como chegou do Chaves na Mão
-            Log::channel('daily')->info('========================================');
-            Log::channel('daily')->info('📥 WEBHOOK CHAVES NA MÃO - PAYLOAD COMPLETO');
-            Log::channel('daily')->info('========================================');
-            Log::channel('daily')->info('RAW REQUEST BODY:', [
-                'raw_content' => $request->getContent(),
-                'headers' => $request->headers->all()
-            ]);
-            Log::channel('daily')->info('LEAD DATA PARSED:', $leadData);
-            Log::channel('daily')->info('========================================');
+            $payloadError = $this->validatePayload($leadData);
+            if ($payloadError !== null) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Dados inválidos',
+                    'details' => $payloadError,
+                ], 422);
+            }
 
             Log::info('📥 Lead recebido do Chaves na Mão', [
                 'lead_id' => $leadData['id'] ?? 'N/A',
+                'tenant_id' => $tenant->id,
                 'segment' => $leadData['segment'] ?? 'N/A',
                 'name' => $leadData['name'] ?? 'N/A',
                 'phone' => $leadData['phone'] ?? 'N/A',
                 'message' => $leadData['message'] ?? 'N/A',
                 'ad_title' => $leadData['ad']['title'] ?? 'N/A',
                 'ad_reference' => $leadData['ad']['reference'] ?? 'N/A',
-                'ad_city' => $leadData['ad']['city'] ?? 'N/A',
-                'ad_price' => $leadData['ad']['price'] ?? 'N/A',
+                'ad_value' => $leadData['ad']['value'] ?? 'N/A',
                 'payload_keys' => array_keys($leadData)
             ]);
 
@@ -105,7 +105,7 @@ class ChavesNaMaoWebhookController extends Controller
             // O LeadObserver irá automaticamente:
             // 1. Notificar Alexsandra e Roberto por WhatsApp (mensagem recebida + link wa.me do cliente)
             // 2. Criar usuário cliente se tiver email
-            $lead = $this->processLead($leadData);
+            $lead = $this->processLead($leadData, $tenant);
 
             Log::info('✅ Lead processado com sucesso', [
                 'internal_id' => $lead->id,
@@ -137,7 +137,7 @@ class ChavesNaMaoWebhookController extends Controller
     /**
      * Valida autenticação Basic Auth
      */
-    private function validateAuthentication(Request $request)
+    private function authenticateTenant(Request $request)
     {
         $authHeader = $request->header('Authorization');
 
@@ -147,63 +147,120 @@ class ChavesNaMaoWebhookController extends Controller
         ]);
 
         if (!$authHeader || !str_starts_with($authHeader, 'Basic ')) {
-            Log::warning('⚠️ Webhook sem autenticação', [
-                'auth_header' => $authHeader,
-                'ip' => $request->ip()
-            ]);
-            return response()->json(['error' => 'Autenticação necessária'], 401);
+            return response()->json(['error' => 'Autenticação necessária'], 401)
+                ->header('WWW-Authenticate', 'Basic realm="Chaves na Mao Leads"');
         }
 
-        // Decodificar credenciais
-        $authToken = str_replace('Basic ', '', $authHeader);
-        $credentials = base64_decode($authToken);
+        $credentials = base64_decode(substr($authHeader, 6), true);
         
-        if (!str_contains($credentials, ':')) {
-            Log::warning('⚠️ Formato inválido', [
-                'credentials_length' => strlen($credentials)
-            ]);
+        if (!is_string($credentials) || !str_contains($credentials, ':')) {
             return response()->json(['error' => 'Formato de autenticação inválido'], 401);
         }
 
         [$email, $token] = explode(':', $credentials, 2);
+        $tenant = $this->resolveTenant($request, trim($email));
 
-        // Validar credenciais
-        $expectedEmail = env('EXCLUSIVA_MAIL_CHAVES_NA_MAO');
-        $expectedToken = env('EXCLUSIVA_CHAVES_NA_MAO');
+        if (!$tenant) {
+            return response()->json(['error' => 'Credenciais inválidas'], 401);
+        }
 
-        Log::info('🔍 Comparando credenciais', [
-            'email_recebido' => $email,
-            'email_esperado' => $expectedEmail,
-            'token_recebido_length' => strlen($token),
-            'token_esperado_length' => strlen($expectedToken),
-            'emails_match' => $email === $expectedEmail,
-            'tokens_match' => $token === $expectedToken
-        ]);
+        $expectedEmail = (string) ($tenant->getIntegrationValue('chaves_na_mao_email')
+            ?: ($tenant->id === 1 ? env('EXCLUSIVA_MAIL_CHAVES_NA_MAO') : ''));
+        $expectedToken = $this->resolveTenantToken($tenant);
 
-        if ($email !== $expectedEmail || $token !== $expectedToken) {
+        if ($expectedEmail === '' || $expectedToken === ''
+            || !hash_equals($expectedEmail, trim($email))
+            || !hash_equals($expectedToken, $token)) {
             Log::warning('🔒 Credenciais inválidas', [
                 'email_received' => $email,
-                'email_expected' => $expectedEmail,
-                'token_match' => $token === $expectedToken,
+                'tenant_id' => $tenant->id,
                 'ip' => $request->ip()
             ]);
             return response()->json(['error' => 'Credenciais inválidas'], 401);
         }
 
-        return true;
+        app()->instance('tenant', $tenant);
+        $request->attributes->set('tenant_id', $tenant->id);
+
+        return $tenant;
+    }
+
+    private function resolveTenantToken(Tenant $tenant): string
+    {
+        $encrypted = $tenant->metadata['chaves_na_mao_token_encrypted'] ?? null;
+        if (is_string($encrypted) && $encrypted !== '') {
+            try {
+                return Crypt::decryptString($encrypted);
+            } catch (\Throwable $e) {
+                Log::error('Token Chaves na Mão inválido no tenant', ['tenant_id' => $tenant->id]);
+                return '';
+            }
+        }
+
+        return (string) ($tenant->getIntegrationValue('chaves_na_mao_token')
+            ?: ($tenant->id === 1 ? env('EXCLUSIVA_CHAVES_NA_MAO') : ''));
+    }
+
+    private function resolveTenant(Request $request, string $email): ?Tenant
+    {
+        $host = strtolower(preg_replace('/^www\./i', '', $request->getHost()));
+        $aliases = [
+            'lojadaesquina.store' => 'exclusivalarimoveis.com',
+            'exclusivalarimoveis.com.br' => 'exclusivalarimoveis.com',
+        ];
+        $host = $aliases[$host] ?? $host;
+
+        $tenant = Tenant::active()->where(function ($query) use ($host) {
+            $query->where('domain', $host)->orWhere('domain', 'www.' . $host);
+        })->first();
+
+        if ($tenant) {
+            return $tenant;
+        }
+
+        // Em domínio compartilhado, as credenciais Basic identificam o cliente.
+        return Tenant::active()->get()->first(function (Tenant $candidate) use ($email) {
+            $configuredEmail = (string) $candidate->getIntegrationValue('chaves_na_mao_email');
+            return $configuredEmail !== '' && hash_equals($configuredEmail, $email);
+        });
+    }
+
+    private function validatePayload(array $data): ?string
+    {
+        foreach (['id', 'name', 'email', 'phone', 'createdAt', 'sendAt', 'segment', 'proposeTypeName'] as $field) {
+            if (!isset($data[$field]) || trim((string) $data[$field]) === '') {
+                return "Campo '{$field}' é obrigatório";
+            }
+        }
+
+        if (($data['segment'] ?? null) !== 'REALTY') {
+            return "Campo 'segment' deve ser REALTY";
+        }
+
+        if (!isset($data['ad']) || !is_array($data['ad'])) {
+            return "Objeto 'ad' é obrigatório";
+        }
+
+        foreach (['id', 'title', 'realtyType', 'purpose', 'url', 'value'] as $field) {
+            if (!array_key_exists($field, $data['ad']) || $data['ad'][$field] === '' || $data['ad'][$field] === null) {
+                return "Campo 'ad.{$field}' é obrigatório";
+            }
+        }
+
+        return null;
     }
 
     /**
      * Processa dados do lead e salva no banco
      */
-    private function processLead(array $data): Lead
+    private function processLead(array $data, Tenant $tenant): Lead
     {
         $segment = $data['segment'] ?? 'REAL_ESTATE';
         $isVehicle = $segment === 'VEHICLE';
 
         // Preparar dados do lead
         $leadData = [
-            'tenant_id' => 1, // Exclusiva
+            'tenant_id' => $tenant->id,
             'nome' => $data['name'] ?? 'Lead Chaves na Mão',
             'email' => $data['email'] ?? '',
             'telefone' => $data['phone'] ?? '00000000000', // Telefone obrigatório no banco
@@ -220,8 +277,8 @@ class ChavesNaMaoWebhookController extends Controller
             $ad = $data['ad'];
             
             // Tipo de imóvel (Casa, Apartamento, etc)
-            if (isset($ad['type'])) {
-                $leadData['preferencia_tipo_imovel'] = $ad['type'];
+            if (isset($ad['realtyType'])) {
+                $leadData['preferencia_tipo_imovel'] = $ad['realtyType'];
             }
 
             if (isset($ad['purpose'])) {
@@ -258,8 +315,8 @@ class ChavesNaMaoWebhookController extends Controller
             }
             
             // Preço do anúncio
-            if (isset($ad['price'])) {
-                $leadData['budget_max'] = (float) $ad['price'];
+            if (isset($ad['value'])) {
+                $leadData['budget_max'] = (float) $ad['value'];
             }
             
             // Referência do imóvel (salvar nas observações do cliente)
@@ -309,7 +366,7 @@ class ChavesNaMaoWebhookController extends Controller
             } else {
                 // Imóvel
                 $obs[] = "🏠 Imóvel: " . 
-                    ($ad['type'] ?? 'Não especificado') . 
+                    ($ad['realtyType'] ?? 'Não especificado') .
                     ' - ' . 
                     ($ad['purpose'] ?? '');
                 
@@ -320,6 +377,10 @@ class ChavesNaMaoWebhookController extends Controller
 
             if (isset($ad['title'])) {
                 $obs[] = "📝 Anúncio: " . $ad['title'];
+            }
+
+            if (isset($ad['url'])) {
+                $obs[] = "🌐 URL: " . $ad['url'];
             }
         }
 

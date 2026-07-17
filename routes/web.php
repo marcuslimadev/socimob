@@ -134,7 +134,7 @@ $router->get('/versao', function () use ($router) {
 
 $router->post('/github/webhook',  'App\Http\Controllers\GitHubWebhookController@handle');
 
-// Webhook Chaves na Mão - Receber leads
+// Webhook Chaves na Mão - o controller valida Basic Auth e resolve o tenant.
 $router->get('/webhook/chaves-na-mao', 'App\Http\Controllers\ChavesNaMaoWebhookController@methodNotAllowed');
 $router->post('/webhook/chaves-na-mao', 'App\Http\Controllers\ChavesNaMaoWebhookController@receive');
 

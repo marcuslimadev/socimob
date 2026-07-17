@@ -13,6 +13,8 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     $router->put('/settings/theme', 'App\Http\Controllers\Admin\TenantSettingsController@updateTheme');
     $router->put('/settings/domain', 'App\Http\Controllers\Admin\TenantSettingsController@updateDomain');
     $router->post('/settings/assets', 'App\Http\Controllers\Admin\TenantSettingsController@uploadAssets');
+    $router->get('/integrations/chaves-na-mao', 'App\Http\Controllers\Admin\ChavesNaMaoIntegrationController@show');
+    $router->put('/integrations/chaves-na-mao', 'App\Http\Controllers\Admin\ChavesNaMaoIntegrationController@update');
     
     // Tenant Config - Salvar configurações da empresa (nome, logo, etc)
     $router->post('/tenant/config', 'App\Http\Controllers\Admin\TenantSettingsController@updateConfig');
