@@ -9,6 +9,13 @@ use XMLWriter;
 
 class ChavesNaMaoXmlService
 {
+    private const SUPPORTED_STATES = [
+        'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
+        'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
+    ];
+
+    private const SUPPORTED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'webp'];
+
     private const PROPERTY_TYPES = [
         'apartamento' => ['RE', 'Apartamento'],
         'casa' => ['RE', 'Casa / Sobrado'],
@@ -54,6 +61,7 @@ class ChavesNaMaoXmlService
             ->where('active', true)
             ->where('exibir_imovel', true)
             ->whereNull('deleted_at')
+            ->with('fotos')
             ->orderBy('id')
             ->get();
     }
@@ -143,10 +151,10 @@ class ChavesNaMaoXmlService
             'estado' => strtoupper(trim((string) $property->estado)),
             'cidade' => trim((string) $property->cidade),
             'bairro' => trim((string) $property->bairro),
-            'cep' => trim((string) $property->cep),
-            'endereco' => trim((string) $property->logradouro),
-            'numero' => trim((string) $property->numero),
-            'complemento' => mb_substr(trim((string) $property->complemento), 0, 50),
+            'cep' => mb_substr(trim((string) $property->cep), 0, 9),
+            'endereco' => mb_substr(trim((string) $property->logradouro), 0, 200),
+            'numero' => mb_substr(trim((string) $property->numero), 0, 10),
+            'complemento' => mb_substr(trim((string) $property->complemento), 0, 20),
             'esconder_endereco_imovel' => $property->visibilidade_endereco === 'completo' ? '0' : '1',
             'descritivo' => mb_substr(trim((string) $property->descricao), 0, 3000),
             'fotos' => $this->imageUrls($property, $baseUrl),
@@ -158,7 +166,11 @@ class ChavesNaMaoXmlService
             'area_comum' => [],
             'area_privativa' => [],
             'aceita_troca' => in_array('aceita_permuta', $features, true) ? '1' : '0',
-            'periodo_locacao' => in_array($purpose, ['temporada', 'aluguel_temporada'], true) ? '2' : '',
+            'periodo_locacao' => match ($purpose) {
+                'temporada', 'aluguel_temporada' => '2',
+                'aluguel', 'venda_aluguel' => '1',
+                default => '',
+            },
         ];
 
         $errors = [];
@@ -170,8 +182,8 @@ class ChavesNaMaoXmlService
         if ($price <= 0) {
             $errors[] = 'valor obrigatório e maior que zero';
         }
-        if (mb_strlen($data['estado']) !== 2) {
-            $errors[] = 'estado deve ser uma UF com 2 caracteres';
+        if (!in_array($data['estado'], self::SUPPORTED_STATES, true)) {
+            $errors[] = 'estado deve ser uma UF brasileira válida';
         }
 
         return ['valid' => $errors === [], 'errors' => $errors, 'data' => $data];
@@ -233,6 +245,16 @@ class ChavesNaMaoXmlService
         }
 
         return collect($urls)
+            ->filter(function ($rawUrl) {
+                if (!is_string($rawUrl) || trim($rawUrl) === '') {
+                    return false;
+                }
+                $path = parse_url(trim($rawUrl), PHP_URL_PATH) ?: '';
+                $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+                // Sem extensão é aceito pelo portal, que aplica o tratamento padrão JPG.
+                return $extension === '' || in_array($extension, self::SUPPORTED_IMAGE_EXTENSIONS, true);
+            })
             ->map(function (string $url) use ($baseUrl) {
                 if (preg_match('#^https?://#i', $url)) {
                     return $url;
@@ -240,6 +262,7 @@ class ChavesNaMaoXmlService
                 return rtrim($baseUrl, '/') . '/' . ltrim($url, '/');
             })
             ->unique(fn (string $url) => strtolower($url))
+            ->take(30)
             ->values()
             ->all();
     }

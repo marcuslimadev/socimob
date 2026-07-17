@@ -1028,14 +1028,22 @@ class ImobiBrasilService
         }
 
         try {
-            $query = \App\Models\ImovelImagem::where('codigo', $property->codigo)
-                ->orderBy('destaque', 'desc');
+            if ($property->relationLoaded('fotos')) {
+                $storedImages = $property->getRelation('fotos')
+                    ->sortByDesc('destaque')
+                    ->values();
+            } else {
+                $query = \App\Models\ImovelImagem::where('codigo', $property->codigo)
+                    ->orderBy('destaque', 'desc');
 
-            if (\Illuminate\Support\Facades\Schema::hasColumn('imoveis_imagens', 'id')) {
-                $query->orderBy('id');
+                if (\Illuminate\Support\Facades\Schema::hasColumn('imoveis_imagens', 'id')) {
+                    $query->orderBy('id');
+                }
+
+                $storedImages = $query->get();
             }
 
-            foreach ($query->get() as $img) {
+            foreach ($storedImages as $img) {
                 $addImageUrl($img->url);
             }
         } catch (\Exception $dbEx) {

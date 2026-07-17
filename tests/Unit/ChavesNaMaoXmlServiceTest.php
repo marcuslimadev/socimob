@@ -92,4 +92,33 @@ class ChavesNaMaoXmlServiceTest extends TestCase
         $this->assertSame('EX-XML', (string) $xml->imoveis->imovel->referencia);
         $this->assertSame('https://example.com/storage/imoveis/foto-1.jpg', (string) $xml->imoveis->imovel->fotos_imovel->foto->url);
     }
+
+    public function test_limits_photos_and_removes_unsupported_formats(): void
+    {
+        $images = array_map(
+            fn (int $index) => "/storage/imoveis/foto-{$index}.jpg",
+            range(1, 35)
+        );
+        $images[] = '/storage/imoveis/planta.png';
+
+        $property = new Property([
+            'codigo_imovel' => 'EX-FOTOS',
+            'titulo' => 'Apartamento com fotos',
+            'tipo_imovel' => 'apartamento',
+            'finalidade_imovel' => 'venda',
+            'valor_venda' => 300000,
+            'descricao' => 'Descrição do imóvel.',
+            'estado' => 'MG',
+            'cidade' => 'Belo Horizonte',
+            'bairro' => 'Centro',
+            'imagens' => $images,
+        ]);
+        $property->id = 500;
+
+        $result = (new ChavesNaMaoXmlService())->mapProperty($property, 'https://example.com');
+
+        $this->assertTrue($result['valid']);
+        $this->assertCount(30, $result['data']['fotos']);
+        $this->assertNotContains('https://example.com/storage/imoveis/planta.png', $result['data']['fotos']);
+    }
 }
