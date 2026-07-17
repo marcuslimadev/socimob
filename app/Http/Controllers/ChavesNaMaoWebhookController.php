@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Lead;
 use App\Models\Tenant;
+use App\Jobs\ProcessChavesNaMaoLeadJob;
 use App\Services\LeadConversationService;
 use App\Services\LeadCustomerService;
 use App\Services\LeadService;
@@ -106,6 +107,7 @@ class ChavesNaMaoWebhookController extends Controller
             // 1. Notificar Alexsandra e Roberto por WhatsApp (mensagem recebida + link wa.me do cliente)
             // 2. Criar usuário cliente se tiver email
             $lead = $this->processLead($leadData, $tenant);
+            ProcessChavesNaMaoLeadJob::dispatch($lead->id);
 
             Log::info('✅ Lead processado com sucesso', [
                 'internal_id' => $lead->id,
@@ -333,7 +335,9 @@ class ChavesNaMaoWebhookController extends Controller
         }
 
         // Criar ou atualizar lead
-        $lead = $this->leadService->saveUnique($leadData);
+        // Persistir imediatamente e executar notificações/automações na fila.
+        // O portal reenvia quando a resposta passa de 30 segundos.
+        $lead = Lead::withoutEvents(fn () => $this->leadService->saveUnique($leadData));
 
         return $lead;
     }
