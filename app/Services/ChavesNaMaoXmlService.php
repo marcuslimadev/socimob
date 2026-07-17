@@ -15,6 +15,7 @@ class ChavesNaMaoXmlService
     ];
 
     private const SUPPORTED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'webp'];
+    private const CONVERTIBLE_IMAGE_EXTENSIONS = ['png', 'gif', 'bmp'];
 
     private const PROPERTY_TYPES = [
         'apartamento' => ['RE', 'Apartamento'],
@@ -232,6 +233,37 @@ class ChavesNaMaoXmlService
 
     private function imageUrls(Property $property, string $baseUrl): array
     {
+        $version = optional($property->updated_at)->format('YmdHis') ?: 'current';
+
+        return collect($this->sourceImageUrls($property))
+            ->map(function (string $rawUrl, int $index) use ($baseUrl, $property, $version) {
+                $path = parse_url(trim($rawUrl), PHP_URL_PATH) ?: '';
+                $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+                if (in_array($extension, self::CONVERTIBLE_IMAGE_EXTENSIONS, true)) {
+                    return rtrim($baseUrl, '/')
+                        . "/integracoes/chaves-na-mao/imagens/{$property->id}/{$version}/{$index}.jpg";
+                }
+
+                if ($extension !== '' && !in_array($extension, self::SUPPORTED_IMAGE_EXTENSIONS, true)) {
+                    return null;
+                }
+
+                if (preg_match('#^https?://#i', $rawUrl)) {
+                    return $rawUrl;
+                }
+
+                return rtrim($baseUrl, '/') . '/' . ltrim($rawUrl, '/');
+            })
+            ->filter()
+            ->unique(fn (string $url) => strtolower($url))
+            ->take(30)
+            ->values()
+            ->all();
+    }
+
+    public function sourceImageUrls(Property $property): array
+    {
         $urls = [];
         if ($property->exists) {
             $urls = ImobiBrasilService::getPropertyImageUrls($property);
@@ -245,24 +277,9 @@ class ChavesNaMaoXmlService
         }
 
         return collect($urls)
-            ->filter(function ($rawUrl) {
-                if (!is_string($rawUrl) || trim($rawUrl) === '') {
-                    return false;
-                }
-                $path = parse_url(trim($rawUrl), PHP_URL_PATH) ?: '';
-                $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-
-                // Sem extensão é aceito pelo portal, que aplica o tratamento padrão JPG.
-                return $extension === '' || in_array($extension, self::SUPPORTED_IMAGE_EXTENSIONS, true);
-            })
-            ->map(function (string $url) use ($baseUrl) {
-                if (preg_match('#^https?://#i', $url)) {
-                    return $url;
-                }
-                return rtrim($baseUrl, '/') . '/' . ltrim($url, '/');
-            })
+            ->filter(fn ($url) => is_string($url) && trim($url) !== '')
+            ->map(fn (string $url) => trim($url))
             ->unique(fn (string $url) => strtolower($url))
-            ->take(30)
             ->values()
             ->all();
     }

@@ -143,6 +143,7 @@ $router->group(['middleware' => 'resolve-tenant'], function () use ($router) {
     $router->get('/', 'App\Http\Controllers\Portal\SiteSeoController@home');
     $router->get('/sitemap.xml', 'App\Http\Controllers\Portal\SiteSeoController@sitemap');
     $router->get('/integracoes/chaves-na-mao/imoveis.xml', 'App\Http\Controllers\ChavesNaMaoXmlController@feed');
+    $router->get('/integracoes/chaves-na-mao/imagens/{property}/{version}/{position}.jpg', 'App\Http\Controllers\ChavesNaMaoXmlController@image');
     $router->get('/w/{code}', 'App\Http\Controllers\ShortLinkController@redirectWhatsApp');
     $router->get('/hl/{code}', 'App\Http\Controllers\ShortLinkController@redirectHandoff');
     // Página do imóvel com metatags Open Graph dinâmicas (prévia rica ao compartilhar no WhatsApp)

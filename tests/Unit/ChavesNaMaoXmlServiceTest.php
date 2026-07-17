@@ -120,5 +120,12 @@ class ChavesNaMaoXmlServiceTest extends TestCase
         $this->assertTrue($result['valid']);
         $this->assertCount(30, $result['data']['fotos']);
         $this->assertNotContains('https://example.com/storage/imoveis/planta.png', $result['data']['fotos']);
+
+        $property->imagens = ['/storage/imoveis/planta.png'];
+        $converted = (new ChavesNaMaoXmlService())->mapProperty($property, 'https://example.com');
+        $this->assertSame(
+            'https://example.com/integracoes/chaves-na-mao/imagens/500/current/0.jpg',
+            $converted['data']['fotos'][0]
+        );
     }
 }
