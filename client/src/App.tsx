@@ -161,7 +161,7 @@ function Router() {
       <Route path="/admin/property-ads" component={PropertyAds} />
       <Route path="/ads" component={AdsAutomation} />
       <Route path="/anuncios-integrados" component={AnunciosIntegrados} />
-      <Route path="/integracoes/chaves-na-mao" component={ChavesNaMaoIntegration} />
+      <Route path="/chaves-na-mao" component={ChavesNaMaoIntegration} />
       <Route path="/controle-chaves" component={ControleChaves} />
       <Route path="/links-importantes" component={ImportantLinks} />
       <Route path="/analytics" component={Analytics} />
