@@ -100,6 +100,11 @@ class PropertyShareController extends Controller
     {
         $escape = fn (string $value) => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 
+        // Remove as metatags estáticas do index.html (og:*, twitter:*, description) para
+        // não deixar duplicatas no <head> - crawlers como o do WhatsApp usam a primeira
+        // ocorrência de cada tag, então a genérica do SOCIMOB "vencia" a do imóvel.
+        $html = preg_replace('/<meta\s+(?:name|property)=["\'](?:description|og:[^"\']+|twitter:[^"\']+)["\'][^>]*>\s*/i', '', $html) ?? $html;
+
         $tags = [
             '<meta property="og:type" content="website" />',
             '<meta property="og:site_name" content="' . $escape($siteName) . '" />',
