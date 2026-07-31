@@ -7,7 +7,7 @@ import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 import { getPortalTemplate } from '@/lib/portalTemplates';
 
 const PORTAL_RETURN_STATE_KEY = 'portal:return-state';
-const PROPERTIES_PER_PAGE = 9;
+const PROPERTIES_PER_PAGE = 12;
 const MASCOT_SCALE_STORAGE_KEY = 'portal_mascot_scale';
 const MASCOT_MIN_SCALE = 0.55;
 const MASCOT_MAX_SCALE = 1;
@@ -97,12 +97,6 @@ const PROPERTY_TYPES = [
   { value: 'cobertura', label: 'Cobertura' },
   { value: 'comercial', label: 'Comercial' },
   { value: 'terreno', label: 'Terreno' },
-];
-
-const BUSINESS_TYPES = [
-  { value: '', label: 'Comprar e alugar' },
-  { value: 'venda', label: 'Comprar' },
-  { value: 'aluguel', label: 'Alugar' },
 ];
 
 type PurposeKind = 'venda' | 'aluguel' | 'venda_aluguel' | 'imovel';
@@ -338,7 +332,7 @@ export default function ClientPortalRefined() {
   const [tenant, setTenant] = useState<TenantConfig | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState(initialFilters.searchTerm);
+  const [searchTerm] = useState(initialFilters.searchTerm);
   const [businessType, setBusinessType] = useState(initialFilters.businessType);
   const [propertyType, setPropertyType] = useState(initialFilters.propertyType);
   const [propertyCode, setPropertyCode] = useState(initialFilters.propertyCode);
@@ -400,7 +394,7 @@ export default function ClientPortalRefined() {
     ? 'mt-2 grid gap-4'
     : portalTemplate.catalogMode === 'magazine'
       ? 'mt-2 grid gap-5 md:grid-cols-2 xl:grid-cols-3'
-      : 'mt-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-3';
+      : 'mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
   const headerTextClass = isLightHeader ? 'text-slate-900' : 'text-white';
   const headerMutedClass = isLightHeader ? 'text-slate-500 hover:text-slate-950' : 'text-white/70 hover:text-white';
   const isLightHeroPanel = portalTemplate.heroPanel.includes('bg-white');
@@ -1364,44 +1358,8 @@ export default function ClientPortalRefined() {
         </div>
       </section>
 
-      <section id="catalogo" className="mx-auto max-w-7xl px-4 py-8 lg:px-8 lg:py-10">
-        <div className={portalTemplate.filterPanel}>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_180px_190px_170px]">
-            <div className="relative sm:col-span-2 lg:col-span-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Buscar por bairro, cidade ou tipo"
-                className="h-12 w-full rounded-xl border border-black/10 bg-white pl-10 pr-3 text-base text-slate-900 placeholder:text-slate-500 outline-none sm:text-sm"
-              />
-            </div>
-
-            <select value={businessType} onChange={(event) => setBusinessType(event.target.value)} className="h-12 rounded-xl border border-black/10 bg-white px-3 text-base text-slate-900 sm:text-sm">
-              {BUSINESS_TYPES.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-
-            <select value={propertyType} onChange={(event) => setPropertyType(event.target.value)} className="h-12 rounded-xl border border-black/10 bg-white px-3 text-base text-slate-900 sm:text-sm">
-              {PROPERTY_TYPES.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-
-            <select value={sortBy} onChange={(event) => setSortBy(event.target.value as PortalSortKey)} className="h-12 rounded-xl border border-black/10 bg-white px-3 text-base text-slate-900 sm:text-sm">
-              <option value="preco_asc">Menor preço</option>
-              <option value="preco_desc">Maior preço</option>
-              <option value="titulo_asc">Descrição A-Z</option>
-              <option value="titulo_desc">Descrição Z-A</option>
-              <option value="area_desc">Maior área</option>
-              <option value="area_asc">Menor área</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="mt-8 mb-2 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
+      <section id="catalogo" className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
+        <div className="mb-3 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Catálogo</p>
             <h2 className="mt-1 text-xl text-slate-900 sm:text-2xl">

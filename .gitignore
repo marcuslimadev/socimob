@@ -23,6 +23,7 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+/.codex-remote-attachments/
 
 nul
 deploy.ps1
