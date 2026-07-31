@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Mail, MapPin, MessageCircle, Minus, Phone, Plus, Search, Shield, Square, TrendingUp } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, Bath, BedDouble, Calculator, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Hash, Mail, MapPin, MessageCircle, Minus, Phone, Plus, Search, Shield, Square, TrendingUp } from 'lucide-react';
 import api from '@/lib/api';
 import { fetchTenantBranding, TenantBranding } from '@/lib/tenantBranding';
 import { getPortalTemplate } from '@/lib/portalTemplates';
@@ -21,6 +21,10 @@ function getInitialPortalFilters() {
       searchTerm: '',
       businessType: '',
       propertyType: '',
+      propertyCode: '',
+      selectedCity: '',
+      selectedNeighborhood: '',
+      maxPrice: '',
       sortBy: 'preco_desc',
       currentPage: 1,
     };
@@ -33,6 +37,10 @@ function getInitialPortalFilters() {
     searchTerm: params.get('q') || '',
     businessType: params.get('business') || '',
     propertyType: params.get('type') || '',
+    propertyCode: params.get('code') || '',
+    selectedCity: params.get('city') || '',
+    selectedNeighborhood: params.get('neighborhood') || '',
+    maxPrice: params.get('max_price') || '',
     sortBy: params.get('sort') || 'preco_desc',
     currentPage: Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1,
   };
@@ -333,6 +341,11 @@ export default function ClientPortalRefined() {
   const [searchTerm, setSearchTerm] = useState(initialFilters.searchTerm);
   const [businessType, setBusinessType] = useState(initialFilters.businessType);
   const [propertyType, setPropertyType] = useState(initialFilters.propertyType);
+  const [propertyCode, setPropertyCode] = useState(initialFilters.propertyCode);
+  const [selectedCity, setSelectedCity] = useState(initialFilters.selectedCity);
+  const [selectedNeighborhood, setSelectedNeighborhood] = useState(initialFilters.selectedNeighborhood);
+  const [maxPrice, setMaxPrice] = useState(initialFilters.maxPrice);
+  const [searchMode, setSearchMode] = useState<'quick' | 'code'>(initialFilters.propertyCode ? 'code' : 'quick');
   const [sortBy, setSortBy] = useState<PortalSortKey>(
     ['preco_asc', 'preco_desc', 'titulo_asc', 'titulo_desc', 'area_desc', 'area_asc'].includes(initialFilters.sortBy)
       ? initialFilters.sortBy as PortalSortKey
@@ -512,6 +525,10 @@ export default function ClientPortalRefined() {
     if (searchTerm) params.set('q', searchTerm);
     if (businessType) params.set('business', businessType);
     if (propertyType) params.set('type', propertyType);
+    if (propertyCode) params.set('code', propertyCode);
+    if (selectedCity) params.set('city', selectedCity);
+    if (selectedNeighborhood) params.set('neighborhood', selectedNeighborhood);
+    if (maxPrice) params.set('max_price', maxPrice);
     if (sortBy && sortBy !== 'preco_desc') params.set('sort', sortBy);
     if (currentPage > 1) params.set('page', String(currentPage));
 
@@ -520,11 +537,11 @@ export default function ClientPortalRefined() {
       : window.location.pathname;
 
     window.history.replaceState(window.history.state, '', nextUrl);
-  }, [searchTerm, businessType, propertyType, sortBy, currentPage]);
+  }, [searchTerm, businessType, propertyType, propertyCode, selectedCity, selectedNeighborhood, maxPrice, sortBy, currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, businessType, propertyType, sortBy]);
+  }, [searchTerm, businessType, propertyType, propertyCode, selectedCity, selectedNeighborhood, maxPrice, sortBy]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || loading || restoredReturnStateRef.current) return;
@@ -573,6 +590,7 @@ export default function ClientPortalRefined() {
         .join(' ')
         .toLowerCase();
       const codeHaystackCompact = codeHaystack.replace(/\s/g, '');
+      const codeTerm = propertyCode.toLowerCase().replace(/\s+/g, '').trim();
       const matchesSearch = !searchTerm
         || property.titulo?.toLowerCase().includes(term)
         || property.endereco_publico?.toLowerCase().includes(term)
@@ -587,8 +605,13 @@ export default function ClientPortalRefined() {
         || (businessType === 'venda' && (purpose === 'venda' || purpose === 'venda_aluguel'))
         || (businessType === 'aluguel' && (purpose === 'aluguel' || purpose === 'venda_aluguel'));
       const matchesType = !propertyType || property.tipo_imovel?.toLowerCase().includes(propertyType.toLowerCase());
+      const matchesCode = !codeTerm || codeHaystackCompact.includes(codeTerm);
+      const matchesCity = !selectedCity || property.cidade === selectedCity;
+      const matchesNeighborhood = !selectedNeighborhood || property.bairro === selectedNeighborhood;
+      const propertyPrice = getPriceValue(property);
+      const matchesPrice = !maxPrice || (propertyPrice > 0 && propertyPrice <= Number(maxPrice));
 
-      return matchesSearch && matchesBusiness && matchesType;
+      return matchesSearch && matchesBusiness && matchesType && matchesCode && matchesCity && matchesNeighborhood && matchesPrice;
     })
       .sort((a, b) => {
         const aPrice = getPriceValue(a);
@@ -622,7 +645,7 @@ export default function ClientPortalRefined() {
 
         return comparePrice('asc');
       });
-  }, [properties, searchTerm, businessType, propertyType, sortBy]);
+  }, [properties, searchTerm, businessType, propertyType, propertyCode, selectedCity, selectedNeighborhood, maxPrice, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProperties.length / PROPERTIES_PER_PAGE));
   const paginatedProperties = useMemo(() => {
@@ -633,6 +656,27 @@ export default function ClientPortalRefined() {
     () => new Set(properties.map((property) => property.cidade).filter(Boolean)).size,
     [properties],
   );
+  const cityOptions = useMemo(
+    () => Array.from(new Set(properties.map((property) => property.cidade).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [properties],
+  );
+  const neighborhoodOptions = useMemo(
+    () => Array.from(new Set(properties
+      .filter((property) => !selectedCity || property.cidade === selectedCity)
+      .map((property) => property.bairro)
+      .filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [properties, selectedCity],
+  );
+
+  useEffect(() => {
+    if (selectedNeighborhood && !neighborhoodOptions.includes(selectedNeighborhood)) {
+      setSelectedNeighborhood('');
+    }
+  }, [neighborhoodOptions, selectedNeighborhood]);
+
+  const showCatalogResults = () => {
+    document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   const heroStats = useMemo(() => ([
     {
       label: 'Imóveis no catálogo',
@@ -1115,6 +1159,124 @@ export default function ClientPortalRefined() {
           </div>
         </div>
       </header>
+
+      <section className="relative z-30 border-b border-slate-200 bg-white shadow-[0_10px_32px_rgba(15,23,42,0.12)]" aria-label="Busca de imóveis">
+        <div className="mx-auto max-w-7xl px-4 lg:px-8">
+          <div className="flex overflow-x-auto border-b border-slate-200">
+            <button
+              type="button"
+              onClick={() => {
+                setSearchMode('quick');
+                setPropertyCode('');
+              }}
+              className={`inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-xs font-semibold uppercase tracking-[0.08em] transition-colors sm:px-6 ${searchMode === 'quick' ? 'text-white' : 'border-transparent text-slate-600 hover:text-slate-900'}`}
+              style={searchMode === 'quick' ? { backgroundColor: primary, borderBottomColor: secondary } : undefined}
+            >
+              <Search className="h-4 w-4" />
+              Busca rápida
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchMode('code');
+                setBusinessType('');
+                setPropertyType('');
+                setSelectedCity('');
+                setSelectedNeighborhood('');
+                setMaxPrice('');
+              }}
+              className={`inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-xs font-semibold uppercase tracking-[0.08em] transition-colors sm:px-6 ${searchMode === 'code' ? 'text-white' : 'border-transparent text-slate-600 hover:text-slate-900'}`}
+              style={searchMode === 'code' ? { backgroundColor: primary, borderBottomColor: secondary } : undefined}
+            >
+              <Hash className="h-4 w-4" />
+              Busca por código
+            </button>
+          </div>
+
+          {searchMode === 'quick' ? (
+            <form
+              className="grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.1fr_1.1fr_1.1fr_auto] lg:items-end"
+              onSubmit={(event) => {
+                event.preventDefault();
+                showCatalogResults();
+              }}
+            >
+              <label className="grid gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">
+                Finalidade
+                <select value={businessType} onChange={(event) => setBusinessType(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal normal-case tracking-normal text-slate-900 outline-none focus:border-slate-400">
+                  <option value="">Geral</option>
+                  <option value="venda">Comprar</option>
+                  <option value="aluguel">Alugar</option>
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">
+                Tipo de imóvel
+                <select value={propertyType} onChange={(event) => setPropertyType(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal normal-case tracking-normal text-slate-900 outline-none focus:border-slate-400">
+                  {PROPERTY_TYPES.map((option) => (
+                    <option key={option.value} value={option.value}>{option.value ? option.label : 'Geral'}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">
+                Cidade
+                <select value={selectedCity} onChange={(event) => setSelectedCity(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal normal-case tracking-normal text-slate-900 outline-none focus:border-slate-400">
+                  <option value="">Geral</option>
+                  {cityOptions.map((city) => <option key={city} value={city}>{city}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">
+                Bairro
+                <select value={selectedNeighborhood} onChange={(event) => setSelectedNeighborhood(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal normal-case tracking-normal text-slate-900 outline-none focus:border-slate-400">
+                  <option value="">Geral</option>
+                  {neighborhoodOptions.map((neighborhood) => <option key={neighborhood} value={neighborhood}>{neighborhood}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">
+                Faixa de preço
+                <select value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal normal-case tracking-normal text-slate-900 outline-none focus:border-slate-400">
+                  <option value="">Geral</option>
+                  <option value="300000">Até R$ 300 mil</option>
+                  <option value="500000">Até R$ 500 mil</option>
+                  <option value="750000">Até R$ 750 mil</option>
+                  <option value="1000000">Até R$ 1 milhão</option>
+                  <option value="2000000">Até R$ 2 milhões</option>
+                  <option value="5000000">Até R$ 5 milhões</option>
+                </select>
+              </label>
+              <button type="submit" className="inline-flex h-11 items-center justify-center gap-2 rounded-lg px-6 text-sm font-semibold text-white shadow-sm transition hover:brightness-105 lg:min-w-28" style={{ backgroundColor: secondary }}>
+                <Search className="h-4 w-4" />
+                Buscar
+              </button>
+            </form>
+          ) : (
+            <form
+              className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
+              onSubmit={(event) => {
+                event.preventDefault();
+                showCatalogResults();
+              }}
+            >
+              <label className="grid gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">
+                Código do imóvel
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="search"
+                    value={propertyCode}
+                    onChange={(event) => setPropertyCode(event.target.value)}
+                    placeholder="Digite o código ou a referência"
+                    className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-base font-normal normal-case tracking-normal text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-400 sm:text-sm"
+                  />
+                </div>
+              </label>
+              <button type="submit" className="inline-flex h-11 items-center justify-center gap-2 rounded-lg px-6 text-sm font-semibold text-white shadow-sm transition hover:brightness-105 sm:min-w-32" style={{ backgroundColor: secondary }}>
+                <Search className="h-4 w-4" />
+                Buscar
+              </button>
+            </form>
+          )}
+        </div>
+      </section>
 
       <section ref={heroRef} className="relative overflow-hidden" style={{ background: templateHeroBackground }}>
         {/* Parallax background */}

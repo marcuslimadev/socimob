@@ -205,6 +205,11 @@ abstract class BackendFeatureTestCase extends TestCase
             $table->string('cep')->nullable();
             $table->decimal('area_total', 12, 2)->nullable();
             $table->decimal('area_privativa', 12, 2)->nullable();
+            $table->unsignedSmallInteger('ano_construcao')->nullable();
+            $table->decimal('renda_sugerida_compra', 15, 2)->nullable();
+            $table->longText('vantagens')->nullable();
+            $table->longText('lazer')->nullable();
+            $table->longText('proximidades')->nullable();
             $table->integer('dormitorios')->nullable();
             $table->integer('banheiros')->nullable();
             $table->integer('garagem')->nullable();

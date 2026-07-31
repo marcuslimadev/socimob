@@ -24,6 +24,8 @@ use Illuminate\Validation\Rule;
 
 class PropertyController extends Controller
 {
+    private ?array $propertyTableColumnsCache = null;
+
     private $syncService;
     private PropertyTrashService $trashService;
     
@@ -327,11 +329,10 @@ class PropertyController extends Controller
      */
     private function propertyTableColumns(): array
     {
-        static $columns = null;
-        if ($columns === null) {
-            $columns = Schema::getColumnListing((new Property())->getTable());
+        if ($this->propertyTableColumnsCache === null) {
+            $this->propertyTableColumnsCache = Schema::getColumnListing((new Property())->getTable());
         }
-        return $columns;
+        return $this->propertyTableColumnsCache;
     }
 
     /**
@@ -382,6 +383,13 @@ class PropertyController extends Controller
         foreach (['caracteristicas', 'classificacoes'] as $field) {
             if (array_key_exists($field, $data)) {
                 $data[$field] = $this->normalizeStringListInput($data[$field]);
+            }
+        }
+
+        foreach (['vantagens', 'lazer', 'proximidades'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $normalized = $this->normalizeStringListInput($data[$field]);
+                $data[$field] = json_decode($normalized ?? '[]', true) ?: [];
             }
         }
 
@@ -1215,6 +1223,7 @@ class PropertyController extends Controller
             'area_total' => 'nullable|numeric|min:0',
             'area_privativa' => 'nullable|numeric|min:0',
             'area_terreno' => 'nullable|numeric|min:0',
+            'ano_construcao' => 'nullable|integer|min:1000|max:' . (date('Y') + 10),
             'cep' => 'required|string|max:20',
             'estado' => 'required|string|max:2',
             'cidade' => 'required|string|max:100',
@@ -1228,6 +1237,10 @@ class PropertyController extends Controller
             'descricao_resumida' => 'nullable|string|max:3000',
             'caracteristicas' => 'nullable|string',
             'classificacoes' => 'nullable|string',
+            'vantagens' => 'nullable|string',
+            'lazer' => 'nullable|string',
+            'proximidades' => 'nullable|string',
+            'renda_sugerida_compra' => 'nullable|numeric|min:0',
             'local_chaves' => 'nullable|string|max:255',
             'status_chaves' => 'nullable|string|in:disponivel,retirada,reserva',
             'visibilidade_endereco' => 'nullable|string|in:completo,bairro_cidade,cidade_estado,oculto',
@@ -1513,6 +1526,7 @@ class PropertyController extends Controller
             'area_total' => 'nullable|numeric|min:0',
             'area_privativa' => 'nullable|numeric|min:0',
             'area_terreno' => 'nullable|numeric|min:0',
+            'ano_construcao' => 'nullable|integer|min:1000|max:' . (date('Y') + 10),
             'cep' => 'nullable|string|max:20',
             'estado' => 'nullable|string|max:2',
             'cidade' => 'nullable|string|max:100',
@@ -1526,6 +1540,10 @@ class PropertyController extends Controller
             'descricao_resumida' => 'nullable|string|max:3000',
             'caracteristicas' => 'nullable|string',
             'classificacoes' => 'nullable|string',
+            'vantagens' => 'nullable|string',
+            'lazer' => 'nullable|string',
+            'proximidades' => 'nullable|string',
+            'renda_sugerida_compra' => 'nullable|numeric|min:0',
             'local_chaves' => 'nullable|string|max:255',
             'status_chaves' => 'nullable|string|in:disponivel,retirada,reserva',
             'visibilidade_endereco' => 'nullable|string|in:completo,bairro_cidade,cidade_estado,oculto',

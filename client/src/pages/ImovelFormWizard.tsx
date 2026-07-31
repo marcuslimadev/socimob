@@ -113,6 +113,54 @@ const PROPERTY_CLASSIFICATION_OPTIONS = [
   { value: 'aceita_pets', label: 'Aceita pets' },
 ];
 
+const PROPERTY_ADVANTAGE_OPTIONS = [
+  { value: 'energia_fotovoltaica', label: 'Energia fotovoltaica' },
+  { value: 'painel_solar', label: 'Painel solar' },
+  { value: 'aquecimento', label: 'Aquecimento' },
+  { value: 'misturador_agua_quente_fria', label: 'Misturador de água quente e fria' },
+  { value: 'carregamento_carro_eletrico', label: 'Carregamento para carro elétrico' },
+];
+
+const PROPERTY_LEISURE_OPTIONS = [
+  { value: 'piscina', label: 'Piscina' },
+  { value: 'piscina_aquecida', label: 'Piscina aquecida' },
+  { value: 'piscina_privativa', label: 'Piscina privativa' },
+  { value: 'espaco_gourmet', label: 'Espaço gourmet' },
+  { value: 'quadra_poliesportiva', label: 'Quadra poliesportiva' },
+  { value: 'quadra_areia', label: 'Quadra de areia' },
+  { value: 'sauna', label: 'Sauna' },
+  { value: 'salao_festas', label: 'Salão de festas' },
+  { value: 'sala_jogos', label: 'Sala de jogos' },
+  { value: 'brinquedoteca', label: 'Brinquedoteca' },
+  { value: 'academia', label: 'Academia' },
+  { value: 'jardim', label: 'Jardim' },
+  { value: 'pista_caminhada', label: 'Pista de caminhada' },
+  { value: 'permite_animais', label: 'Permite animais' },
+  { value: 'playground', label: 'Playground' },
+  { value: 'portaria_24_horas', label: 'Portaria 24 horas' },
+];
+
+const PROPERTY_NEARBY_OPTIONS = [
+  { value: 'sacolao_acougue', label: 'Sacolão/açougue' },
+  { value: 'supermercado', label: 'Supermercado' },
+  { value: 'shopping', label: 'Shopping' },
+  { value: 'banco', label: 'Banco' },
+  { value: 'escolas', label: 'Escolas' },
+  { value: 'faculdades', label: 'Faculdades' },
+  { value: 'farmacias', label: 'Farmácias' },
+  { value: 'hospital', label: 'Hospital' },
+  { value: 'ponto_onibus', label: 'Ponto de ônibus' },
+  { value: 'posto_saude', label: 'Posto de saúde' },
+];
+
+const ALL_SELECTION_OPTIONS = [
+  ...PROPERTY_CHARACTERISTIC_OPTIONS,
+  ...PROPERTY_CLASSIFICATION_OPTIONS,
+  ...PROPERTY_ADVANTAGE_OPTIONS,
+  ...PROPERTY_LEISURE_OPTIONS,
+  ...PROPERTY_NEARBY_OPTIONS,
+];
+
 function parseStoredSelections(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value
@@ -156,8 +204,8 @@ function formatPurposeLabel(finalidade: string): string {
 }
 
 function formatSelectionLabel(value: string): string {
-  if (value === 'area_privativa') return 'Área Privativa';
-  return value.replace(/_/g, ' ');
+  return ALL_SELECTION_OPTIONS.find((option) => option.value === value)?.label
+    || (value === 'area_privativa' ? 'Área Privativa' : value.replace(/_/g, ' '));
 }
 
 const defaultFormData = {
@@ -176,6 +224,7 @@ const defaultFormData = {
   area_total: '',
   area_privativa: '',
   area_terreno: '',
+  ano_construcao: '',
   cep: '',
   estado: '',
   cidade: '',
@@ -197,6 +246,10 @@ const defaultFormData = {
   proprietario_observacoes: '',
   caracteristicas: [] as string[],
   classificacoes: [] as string[],
+  vantagens: [] as string[],
+  lazer: [] as string[],
+  proximidades: [] as string[],
+  renda_sugerida_compra: '',
   visibilidade_endereco: 'bairro_cidade',
   portal_tenant_ids: [] as number[],
   active: true,
@@ -444,6 +497,7 @@ export default function ImovelFormWizard() {
           area_total: numberToCurrencyInput(item.area_total),
           area_privativa: numberToCurrencyInput(item.area_privativa),
           area_terreno: numberToCurrencyInput(item.area_terreno),
+          ano_construcao: item.ano_construcao != null ? String(item.ano_construcao) : '',
           cep: item.cep || '',
           estado: item.estado || '',
           cidade: item.cidade || '',
@@ -468,6 +522,10 @@ export default function ImovelFormWizard() {
             ...(item.em_condominio ? ['condominio'] : []),
           ])),
           classificacoes: parseStoredSelections(item.classificacoes),
+          vantagens: parseStoredSelections(item.vantagens),
+          lazer: parseStoredSelections(item.lazer),
+          proximidades: parseStoredSelections(item.proximidades),
+          renda_sugerida_compra: numberToCurrencyInput(item.renda_sugerida_compra),
           visibilidade_endereco: item.visibilidade_endereco || 'bairro_cidade',
           portal_tenant_ids: Array.isArray(item.portal_tenant_ids)
             ? item.portal_tenant_ids.map((id: unknown) => Number(id)).filter((id: number) => Number.isFinite(id))
@@ -596,6 +654,7 @@ export default function ImovelFormWizard() {
             area_total: parseAreaInput(formData.area_total) || null,
             area_privativa: parseAreaInput(formData.area_privativa) || null,
             area_terreno: parseAreaInput(formData.area_terreno) || null,
+            ano_construcao: formData.ano_construcao || null,
             em_condominio: formData.em_condominio ? 1 : 0,
             nome_condominio: formData.nome_condominio,
             descricao: formData.descricao,
@@ -608,6 +667,10 @@ export default function ImovelFormWizard() {
             proprietario_observacoes: formData.proprietario_observacoes,
             caracteristicas: stringifySelections(formData.caracteristicas),
             classificacoes: stringifySelections(formData.classificacoes),
+            vantagens: stringifySelections(formData.vantagens),
+            lazer: stringifySelections(formData.lazer),
+            proximidades: stringifySelections(formData.proximidades),
+            renda_sugerida_compra: parseCurrencyInput(formData.renda_sugerida_compra) || null,
             visibilidade_endereco: formData.visibilidade_endereco,
             portal_tenant_ids: Array.isArray(formData.portal_tenant_ids) ? formData.portal_tenant_ids.filter((id) => Number.isFinite(id)) : [],
             active: formData.active ? 1 : 0,
@@ -671,9 +734,14 @@ export default function ImovelFormWizard() {
     if (formData.area_total) fd.append('area_total', parseAreaInput(formData.area_total));
     if (formData.area_privativa) fd.append('area_privativa', parseAreaInput(formData.area_privativa));
     if (formData.area_terreno) fd.append('area_terreno', parseAreaInput(formData.area_terreno));
+    if (formData.ano_construcao) fd.append('ano_construcao', formData.ano_construcao);
     fd.append('em_condominio', formData.em_condominio ? '1' : '0');
     fd.append('caracteristicas', stringifySelections(formData.caracteristicas));
     fd.append('classificacoes', stringifySelections(formData.classificacoes));
+    fd.append('vantagens', stringifySelections(formData.vantagens));
+    fd.append('lazer', stringifySelections(formData.lazer));
+    fd.append('proximidades', stringifySelections(formData.proximidades));
+    if (formData.renda_sugerida_compra) fd.append('renda_sugerida_compra', parseCurrencyInput(formData.renda_sugerida_compra));
     if (formData.em_condominio && formData.nome_condominio) fd.append('nome_condominio', formData.nome_condominio);
     if (formData.descricao) fd.append('descricao', formData.descricao);
     if (formData.descricao_resumida) fd.append('descricao_resumida', formData.descricao_resumida);
@@ -952,7 +1020,10 @@ export default function ImovelFormWizard() {
     setCurrentStep(targetStep);
   };
 
-  const handleToggleSelection = (field: 'caracteristicas' | 'classificacoes', value: string) => {
+  const handleToggleSelection = (
+    field: 'caracteristicas' | 'classificacoes' | 'vantagens' | 'lazer' | 'proximidades',
+    value: string,
+  ) => {
     setFormData((prev) => {
       const currentValues = prev[field];
       const exists = currentValues.includes(value);
@@ -1023,10 +1094,15 @@ export default function ImovelFormWizard() {
         if (formData.area_total) fd.append('area_total', parseAreaInput(formData.area_total));
         if (formData.area_privativa) fd.append('area_privativa', parseAreaInput(formData.area_privativa));
         if (formData.area_terreno) fd.append('area_terreno', parseAreaInput(formData.area_terreno));
+        if (formData.ano_construcao) fd.append('ano_construcao', formData.ano_construcao);
         
         fd.append('em_condominio', formData.em_condominio ? '1' : '0');
         fd.append('caracteristicas', stringifySelections(formData.caracteristicas));
         fd.append('classificacoes', stringifySelections(formData.classificacoes));
+        fd.append('vantagens', stringifySelections(formData.vantagens));
+        fd.append('lazer', stringifySelections(formData.lazer));
+        fd.append('proximidades', stringifySelections(formData.proximidades));
+        if (formData.renda_sugerida_compra) fd.append('renda_sugerida_compra', parseCurrencyInput(formData.renda_sugerida_compra));
         if (formData.em_condominio && formData.nome_condominio) {
           fd.append('nome_condominio', formData.nome_condominio);
         }
@@ -1289,9 +1365,14 @@ export default function ImovelFormWizard() {
       if (formData.area_total) formDataToSend.append('area_total', parseAreaInput(formData.area_total));
       if (formData.area_privativa) formDataToSend.append('area_privativa', parseAreaInput(formData.area_privativa));
       if (formData.area_terreno) formDataToSend.append('area_terreno', parseAreaInput(formData.area_terreno));
+      if (formData.ano_construcao) formDataToSend.append('ano_construcao', formData.ano_construcao);
       formDataToSend.append('em_condominio', formData.em_condominio ? '1' : '0');
       formDataToSend.append('caracteristicas', stringifySelections(formData.caracteristicas));
       formDataToSend.append('classificacoes', stringifySelections(formData.classificacoes));
+      formDataToSend.append('vantagens', stringifySelections(formData.vantagens));
+      formDataToSend.append('lazer', stringifySelections(formData.lazer));
+      formDataToSend.append('proximidades', stringifySelections(formData.proximidades));
+      if (formData.renda_sugerida_compra) formDataToSend.append('renda_sugerida_compra', parseCurrencyInput(formData.renda_sugerida_compra));
       if (formData.em_condominio && formData.nome_condominio) formDataToSend.append('nome_condominio', formData.nome_condominio);
       if (formData.descricao) formDataToSend.append('descricao', formData.descricao);
       if (formData.descricao_resumida) formDataToSend.append('descricao_resumida', formData.descricao_resumida);
@@ -1826,7 +1907,7 @@ export default function ImovelFormWizard() {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Dormitórios</label>
                 <input
@@ -1874,9 +1955,21 @@ export default function ImovelFormWizard() {
                   placeholder="0"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Ano de construção</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formData.ano_construcao}
+                  onChange={(e) => setFormData({ ...formData, ano_construcao: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-center"
+                  placeholder="Ex: 2020"
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Área Total (m²)</label>
                 <input
@@ -1901,6 +1994,21 @@ export default function ImovelFormWizard() {
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   placeholder="0,00"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Renda sugerida para compra</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.renda_sugerida_compra}
+                    onChange={(e) => setFormData({ ...formData, renda_sugerida_compra: formatCurrencyInput(e.target.value) })}
+                    className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    placeholder="0,00"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1944,6 +2052,34 @@ export default function ImovelFormWizard() {
                   })}
                 </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {[
+                { field: 'vantagens' as const, title: 'Vantagens', options: PROPERTY_ADVANTAGE_OPTIONS },
+                { field: 'lazer' as const, title: 'Lazer', options: PROPERTY_LEISURE_OPTIONS },
+                { field: 'proximidades' as const, title: 'Proximidades', options: PROPERTY_NEARBY_OPTIONS },
+              ].map((group) => (
+                <div key={group.field} className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm font-semibold text-foreground mb-3">{group.title}</p>
+                  <div className="space-y-2">
+                    {group.options.map((option) => {
+                      const checked = formData[group.field].includes(option.value);
+                      return (
+                        <label key={option.value} className="flex items-center gap-3 rounded-lg border border-white/10 px-3 py-2 cursor-pointer hover:bg-white/5">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => handleToggleSelection(group.field, option.value)}
+                            className="w-4 h-4 rounded border-white/20 bg-white/10"
+                          />
+                          <span className="text-sm text-foreground">{option.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div>
@@ -2509,6 +2645,18 @@ export default function ImovelFormWizard() {
                     <span className="ml-2 text-foreground font-medium">{formData.area_terreno} m²</span>
                   </div>
                 )}
+                {formData.ano_construcao && (
+                  <div>
+                    <span className="text-muted-foreground">Ano de construção:</span>
+                    <span className="ml-2 text-foreground font-medium">{formData.ano_construcao}</span>
+                  </div>
+                )}
+                {formData.renda_sugerida_compra && (
+                  <div>
+                    <span className="text-muted-foreground">Renda sugerida:</span>
+                    <span className="ml-2 text-foreground font-medium">R$ {formData.renda_sugerida_compra}</span>
+                  </div>
+                )}
               </div>
 
               {formData.caracteristicas.length > 0 && (
@@ -2528,6 +2676,19 @@ export default function ImovelFormWizard() {
                   </p>
                 </div>
               )}
+
+              {[
+                { label: 'Vantagens', values: formData.vantagens },
+                { label: 'Lazer', values: formData.lazer },
+                { label: 'Proximidades', values: formData.proximidades },
+              ].map((group) => group.values.length > 0 && (
+                <div key={group.label} className="mt-4">
+                  <span className="text-muted-foreground text-sm">{group.label}:</span>
+                  <p className="mt-1 text-sm text-foreground">
+                    {group.values.map(formatSelectionLabel).join(', ')}
+                  </p>
+                </div>
+              ))}
 
               {(formData.valor_condominio || formData.valor_iptu) && (
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">

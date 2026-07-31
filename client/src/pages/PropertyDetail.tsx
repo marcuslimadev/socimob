@@ -45,6 +45,11 @@ interface Property {
   area_total?: number;
   area_util?: number;
   area_privativa?: number;
+  ano_construcao?: number;
+  renda_sugerida_compra?: number;
+  vantagens?: string[];
+  lazer?: string[];
+  proximidades?: string[];
   descricao?: string;
   destaque?: boolean;
   active?: boolean;
@@ -225,6 +230,44 @@ function businessLabel(property: Property): string {
 
 function getPublicLocation(property: Property): string {
   return property.endereco_publico || [property.bairro, property.cidade].filter(Boolean).join(', ') || 'Localização sob consulta';
+}
+
+function formatFeatureLabel(value: string): string {
+  const labels: Record<string, string> = {
+    energia_fotovoltaica: 'Energia fotovoltaica',
+    painel_solar: 'Painel solar',
+    aquecimento: 'Aquecimento',
+    misturador_agua_quente_fria: 'Misturador de água quente e fria',
+    carregamento_carro_eletrico: 'Carregamento para carro elétrico',
+    piscina: 'Piscina',
+    piscina_aquecida: 'Piscina aquecida',
+    piscina_privativa: 'Piscina privativa',
+    espaco_gourmet: 'Espaço gourmet',
+    quadra_poliesportiva: 'Quadra poliesportiva',
+    quadra_areia: 'Quadra de areia',
+    sauna: 'Sauna',
+    salao_festas: 'Salão de festas',
+    sala_jogos: 'Sala de jogos',
+    brinquedoteca: 'Brinquedoteca',
+    academia: 'Academia',
+    jardim: 'Jardim',
+    pista_caminhada: 'Pista de caminhada',
+    permite_animais: 'Permite animais',
+    playground: 'Playground',
+    portaria_24_horas: 'Portaria 24 horas',
+    sacolao_acougue: 'Sacolão/açougue',
+    supermercado: 'Supermercado',
+    shopping: 'Shopping',
+    banco: 'Banco',
+    escolas: 'Escolas',
+    faculdades: 'Faculdades',
+    farmacias: 'Farmácias',
+    hospital: 'Hospital',
+    ponto_onibus: 'Ponto de ônibus',
+    posto_saude: 'Posto de saúde',
+  };
+
+  return labels[value] || value.replace(/_/g, ' ');
 }
 
 export default function PropertyDetail() {
@@ -495,6 +538,35 @@ export default function PropertyDetail() {
               </div>
             </motion.article>
 
+            {[
+              { title: 'Vantagens', items: property.vantagens },
+              { title: 'Lazer', items: property.lazer },
+              { title: 'Proximidades', items: property.proximidades },
+            ].some((group) => group.items?.length) && (
+              <motion.article
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="rounded-2xl border border-black/10 bg-white p-4 sm:p-6 shadow-[0_10px_32px_rgba(15,23,42,0.08)]"
+              >
+                <h2 className="text-xl mb-4 text-slate-900">Diferenciais do imóvel</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {[
+                    { title: 'Vantagens', items: property.vantagens },
+                    { title: 'Lazer', items: property.lazer },
+                    { title: 'Proximidades', items: property.proximidades },
+                  ].map((group) => group.items?.length ? (
+                    <div key={group.title}>
+                      <h3 className="text-sm font-semibold text-slate-900 mb-2">{group.title}</h3>
+                      <ul className="space-y-1.5 text-sm text-slate-600">
+                        {group.items.map((item) => <li key={item}>• {formatFeatureLabel(item)}</li>)}
+                      </ul>
+                    </div>
+                  ) : null)}
+                </div>
+              </motion.article>
+            )}
+
             {images.length > 0 && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -602,9 +674,15 @@ export default function PropertyDetail() {
                     </p>
                   </div>
                 ) : null}
+                {property.ano_construcao ? (
+                  <div className="rounded-xl border border-black/10 bg-slate-50 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Construção</p>
+                    <p className="mt-1 text-sm text-slate-800">{property.ano_construcao}</p>
+                  </div>
+                ) : null}
               </div>
 
-              {(property.condominio || property.iptu || property.codigo) && (
+              {(property.condominio || property.iptu || property.codigo || property.renda_sugerida_compra) && (
                 <div className="mt-5 rounded-xl border border-black/10 p-4 space-y-2">
                   {property.condominio ? (
                     <div className="flex items-center justify-between text-sm">
@@ -622,6 +700,14 @@ export default function PropertyDetail() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-500">Código</span>
                       <span className="font-mono text-slate-800">{property.codigo}</span>
+                    </div>
+                  ) : null}
+                  {property.renda_sugerida_compra ? (
+                    <div className="flex items-center justify-between gap-4 text-sm">
+                      <span className="text-slate-500">Renda sugerida</span>
+                      <span className="text-right text-slate-800">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(property.renda_sugerida_compra)}
+                      </span>
                     </div>
                   ) : null}
                 </div>

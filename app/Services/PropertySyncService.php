@@ -546,6 +546,7 @@ class PropertySyncService
             'area_total' => $areaTotal,
             'area_privativa' => $areaPrivativa,
             'area_terreno' => $areaTerreno,
+            'ano_construcao' => !empty($imovel['anoConstrucao']) ? (int) $imovel['anoConstrucao'] : null,
             'imagens' => $imagensData, // Array será convertido automaticamente pelo cast
             'imagem_destaque' => $imagemDestaque,
             'latitude' => $latitude,
