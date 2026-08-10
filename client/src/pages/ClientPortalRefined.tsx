@@ -340,6 +340,7 @@ export default function ClientPortalRefined() {
   const [selectedNeighborhood, setSelectedNeighborhood] = useState(initialFilters.selectedNeighborhood);
   const [maxPrice, setMaxPrice] = useState(initialFilters.maxPrice);
   const [searchMode, setSearchMode] = useState<'quick' | 'code'>(initialFilters.propertyCode ? 'code' : 'quick');
+  const [isSearchDocked, setIsSearchDocked] = useState(false);
   const [sortBy, setSortBy] = useState<PortalSortKey>(
     ['preco_asc', 'preco_desc', 'titulo_asc', 'titulo_desc', 'area_desc', 'area_asc'].includes(initialFilters.sortBy)
       ? initialFilters.sortBy as PortalSortKey
@@ -364,6 +365,7 @@ export default function ClientPortalRefined() {
   });
 
   const heroRef = useRef<HTMLElement>(null);
+  const searchDockThresholdRef = useRef<number | null>(null);
   const floatingActionPosRef = useRef(floatingActionPos);
   const suppressFloatingActionClickRef = useRef(false);
   const restoredReturnStateRef = useRef(false);
@@ -378,6 +380,37 @@ export default function ClientPortalRefined() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  useEffect(() => {
+    const updateSearchDock = () => {
+      if (window.innerWidth < 1280) {
+        setIsSearchDocked(false);
+        searchDockThresholdRef.current = null;
+        return;
+      }
+
+      if (isSearchDocked) {
+        if (window.scrollY < (searchDockThresholdRef.current ?? 0)) {
+          setIsSearchDocked(false);
+        }
+        return;
+      }
+
+      const searchPanel = document.getElementById('property-search-panel');
+      if (searchPanel && searchPanel.getBoundingClientRect().bottom < 24) {
+        searchDockThresholdRef.current = window.scrollY;
+        setIsSearchDocked(true);
+      }
+    };
+
+    window.addEventListener('scroll', updateSearchDock, { passive: true });
+    window.addEventListener('resize', updateSearchDock);
+    updateSearchDock();
+    return () => {
+      window.removeEventListener('scroll', updateSearchDock);
+      window.removeEventListener('resize', updateSearchDock);
+    };
+  }, [isSearchDocked]);
 
   const primary = tenant?.primary_color || '#0f172a';
   const secondary = tenant?.secondary_color || '#c39a66';
@@ -1156,8 +1189,16 @@ export default function ClientPortalRefined() {
         </div>
       </header>
 
-      <section className="relative z-10 order-3 bg-[#f4efe8] px-4 py-4 sm:py-5 lg:px-8" aria-label="Busca de imóveis">
-        <div className="mx-auto max-w-7xl rounded-2xl border border-slate-200/80 bg-white px-4 shadow-[0_12px_28px_rgba(15,23,42,0.08)] sm:px-5">
+      <section
+        id="property-search-panel"
+        className={isSearchDocked
+          ? 'fixed left-4 top-24 z-50 w-[19rem] bg-transparent'
+          : 'relative z-10 order-3 bg-[#f4efe8] px-4 py-4 sm:py-5 lg:px-8'}
+        aria-label="Busca de imóveis"
+      >
+        <div className={isSearchDocked
+          ? 'rounded-2xl border border-slate-200/80 bg-white px-4 shadow-[0_18px_40px_rgba(15,23,42,0.18)]'
+          : 'mx-auto max-w-7xl rounded-2xl border border-slate-200/80 bg-white px-4 shadow-[0_12px_28px_rgba(15,23,42,0.08)] sm:px-5'}>
           <div className="flex gap-2 overflow-x-auto py-3">
             <button
               type="button"
@@ -1191,7 +1232,7 @@ export default function ClientPortalRefined() {
 
           {searchMode === 'quick' ? (
             <form
-              className="grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.1fr_1.1fr_1.1fr_auto] lg:items-end"
+              className={isSearchDocked ? 'grid gap-3 py-3' : 'grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.1fr_1.1fr_1.1fr_auto] lg:items-end'}
               onSubmit={(event) => {
                 event.preventDefault();
                 showCatalogResults();
@@ -1246,7 +1287,7 @@ export default function ClientPortalRefined() {
             </form>
           ) : (
             <form
-              className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
+              className={isSearchDocked ? 'grid gap-3 py-3' : 'grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end'}
               onSubmit={(event) => {
                 event.preventDefault();
                 showCatalogResults();
@@ -1362,7 +1403,7 @@ export default function ClientPortalRefined() {
 
       </div>
 
-      <section id="catalogo" className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
+      <section id="catalogo" className={`mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8 ${isSearchDocked ? 'xl:pl-[21rem]' : ''}`}>
         <div className="mb-3 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Catálogo</p>
