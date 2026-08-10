@@ -27,7 +27,7 @@ export const PORTAL_TEMPLATES: PortalTemplate[] = [
     name: 'Clássico Premium',
     inspiration: 'Portal atual Socimob',
     premiumUse: 'Imobiliárias generalistas com acervo variado',
-    heroMode: 'classic',
+    heroMode: 'compact',
     catalogMode: 'cards',
     shell: '#f4efe8',
     header: darkHeader,

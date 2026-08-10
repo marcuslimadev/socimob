@@ -383,10 +383,11 @@ export default function ClientPortalRefined() {
   const secondary = tenant?.secondary_color || '#c39a66';
   const portalTemplate = getPortalTemplate(tenant?.portal_template || tenant?.theme);
   const templateHeroBackground = portalTemplate.hero.replace('var(--portal-primary-99)', `${primary}99`);
+  const isCondensedHero = portalTemplate.heroMode === 'compact';
   const isLightHeader = portalTemplate.header.includes('bg-white');
   const isDarkShell = portalTemplate.shell === '#080808';
   const heroGridClass = portalTemplate.heroMode === 'compact' || portalTemplate.heroMode === 'search'
-    ? 'relative mx-auto max-w-7xl px-4 py-8 lg:px-8 lg:py-14'
+    ? 'relative mx-auto max-w-7xl px-4 py-5 sm:py-7 lg:px-8 lg:py-9'
     : portalTemplate.heroMode === 'editorial'
       ? 'relative mx-auto grid max-w-7xl items-end gap-6 px-4 py-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-12 lg:px-8 lg:py-24'
       : 'relative mx-auto grid max-w-7xl items-stretch gap-6 px-4 py-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-10 lg:px-8 lg:py-20';
@@ -1290,9 +1291,9 @@ export default function ClientPortalRefined() {
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: secondary }} />
               {portalTemplate.accentLabel}
             </div>
-            <h1 className={`mt-5 text-[2.15rem] leading-[1] sm:text-5xl md:text-6xl ${heroTextClass} ${portalTemplate.heroMode === 'compact' ? 'md:text-5xl' : ''}`}>Imóveis extraordinários para estilos de vida únicos</h1>
-            <p className={`mt-4 max-w-2xl text-sm leading-6 md:text-base ${heroMutedClass}`}>{tenant?.slogan || 'Curadoria de residências e investimentos em localizações de alto potencial.'}</p>
-            <div className="mt-4 flex flex-wrap gap-2.5">
+            <h1 className={`mt-3 leading-[1.05] ${isCondensedHero ? 'text-3xl sm:text-4xl md:text-[2.7rem]' : 'text-[2.15rem] sm:text-5xl md:text-6xl'} ${heroTextClass}`}>Imóveis extraordinários para estilos de vida únicos</h1>
+            <p className={`max-w-2xl text-sm leading-6 md:text-base ${isCondensedHero ? 'mt-2' : 'mt-4'} ${heroMutedClass}`}>{tenant?.slogan || 'Curadoria de residências e investimentos em localizações de alto potencial.'}</p>
+            <div className={`mt-4 flex flex-wrap gap-2.5 ${isCondensedHero ? 'hidden' : ''}`}>
               {[
                 'Compra, venda e locação',
                 'Atendimento consultivo',
@@ -1306,7 +1307,7 @@ export default function ClientPortalRefined() {
                 </span>
               ))}
             </div>
-            <div className="mt-6 grid gap-2.5 sm:flex sm:flex-wrap">
+            <div className={`${isCondensedHero ? 'mt-4' : 'mt-6'} grid gap-2.5 sm:flex sm:flex-wrap`}>
               <button
                 type="button"
                 onClick={() => document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' })}
@@ -1325,7 +1326,7 @@ export default function ClientPortalRefined() {
                 Quero vender
               </button>
             </div>
-            <div className="mt-7 grid gap-2.5 sm:grid-cols-3">
+            <div className={`mt-7 grid gap-2.5 sm:grid-cols-3 ${isCondensedHero ? 'hidden' : ''}`}>
               {[
                 { value: properties.length > 0 ? `${properties.length}+` : 'Catálogo', label: 'imóveis com fotos e detalhes' },
                 { value: cityCount > 0 ? String(cityCount) : '14', label: 'cidades com operação ativa' },
