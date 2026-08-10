@@ -1156,8 +1156,8 @@ export default function ClientPortalRefined() {
         </div>
       </header>
 
-      <section className="relative z-10 order-3 border-y border-slate-200 bg-white shadow-[0_8px_22px_rgba(15,23,42,0.08)]" aria-label="Busca de imóveis">
-        <div className="mx-auto max-w-7xl px-4 lg:px-8">
+      <section className="relative z-10 order-3 bg-[#f4efe8] px-4 py-4 sm:py-5 lg:px-8" aria-label="Busca de imóveis">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-slate-200/80 bg-white px-4 shadow-[0_12px_28px_rgba(15,23,42,0.08)] sm:px-5">
           <div className="flex overflow-x-auto border-b border-slate-200">
             <button
               type="button"
@@ -1166,7 +1166,7 @@ export default function ClientPortalRefined() {
                 setPropertyCode('');
               }}
               className={`inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-xs font-semibold uppercase tracking-[0.08em] transition-colors sm:px-6 ${searchMode === 'quick' ? 'text-white' : 'border-transparent text-slate-600 hover:text-slate-900'}`}
-              style={searchMode === 'quick' ? { backgroundColor: primary, borderBottomColor: secondary } : undefined}
+              style={searchMode === 'quick' ? { backgroundColor: '#1f2937', borderBottomColor: secondary } : undefined}
             >
               <Search className="h-4 w-4" />
               Busca rápida
@@ -1182,7 +1182,7 @@ export default function ClientPortalRefined() {
                 setMaxPrice('');
               }}
               className={`inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-xs font-semibold uppercase tracking-[0.08em] transition-colors sm:px-6 ${searchMode === 'code' ? 'text-white' : 'border-transparent text-slate-600 hover:text-slate-900'}`}
-              style={searchMode === 'code' ? { backgroundColor: primary, borderBottomColor: secondary } : undefined}
+              style={searchMode === 'code' ? { backgroundColor: '#1f2937', borderBottomColor: secondary } : undefined}
             >
               <Hash className="h-4 w-4" />
               Busca por código
