@@ -983,9 +983,10 @@ export default function ClientPortalRefined() {
   useEffect(() => {
     if (!isSearchDocked || !hasMascot || typeof window === 'undefined' || window.innerWidth < 1280) return;
 
+    const metrics = getFloatingActionMetrics(window.innerWidth, hasMascot, floatingActionScale);
     setFloatingActionPos((current) => clampFloatingActionPosition(
-      window.innerWidth - getFloatingActionMetrics(window.innerWidth, hasMascot, floatingActionScale).width - 12,
-      current.y,
+      window.innerWidth - metrics.width - 12,
+      Math.min(current.y, window.innerHeight - metrics.height - 208),
       window.innerWidth,
       window.innerHeight,
       hasMascot,
@@ -1017,7 +1018,10 @@ export default function ClientPortalRefined() {
         floatingActionScale,
       );
       if (isSearchDocked && window.innerWidth >= 1280) {
-        nextPos = { ...nextPos, x: Math.max(336, nextPos.x) };
+        nextPos = {
+          ...nextPos,
+          y: Math.min(nextPos.y, window.innerHeight - floatingActionMetrics.height - 208),
+        };
       }
 
       if (!dragged && Math.hypot(event.clientX - startX, event.clientY - startY) > 8) {
@@ -1053,9 +1057,12 @@ export default function ClientPortalRefined() {
           hasMascot,
           floatingActionScale,
         );
-        setFloatingActionPos(finalPos);
+        const protectedFinalPos = isSearchDocked && window.innerWidth >= 1280
+          ? { ...finalPos, y: Math.min(finalPos.y, window.innerHeight - floatingActionMetrics.height - 208) }
+          : finalPos;
+        setFloatingActionPos(protectedFinalPos);
         try {
-          localStorage.setItem('portal_mascot_pos', JSON.stringify(finalPos));
+          localStorage.setItem('portal_mascot_pos', JSON.stringify(protectedFinalPos));
         } catch {}
       }
     };
@@ -1210,12 +1217,12 @@ export default function ClientPortalRefined() {
       <section
         id="property-search-panel"
         className={isSearchDocked
-          ? 'fixed left-4 top-24 z-50 w-[19rem] bg-transparent'
+          ? 'fixed inset-x-4 bottom-4 z-50 bg-transparent'
           : 'relative z-10 order-3 bg-[#f4efe8] px-4 py-4 sm:py-5 lg:px-8'}
         aria-label="Busca de imóveis"
       >
         <div className={isSearchDocked
-          ? 'rounded-2xl border border-slate-200/80 bg-white px-4 shadow-[0_18px_40px_rgba(15,23,42,0.18)]'
+          ? 'mx-auto max-w-7xl rounded-2xl border border-slate-200/80 bg-white px-4 shadow-[0_18px_40px_rgba(15,23,42,0.18)] sm:px-5'
           : 'mx-auto max-w-7xl rounded-2xl border border-slate-200/80 bg-white px-4 shadow-[0_12px_28px_rgba(15,23,42,0.08)] sm:px-5'}>
           <div className="flex gap-2 overflow-x-auto py-3">
             <button
@@ -1250,7 +1257,7 @@ export default function ClientPortalRefined() {
 
           {searchMode === 'quick' ? (
             <form
-              className={isSearchDocked ? 'grid gap-3 py-3' : 'grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.1fr_1.1fr_1.1fr_auto] lg:items-end'}
+              className="grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.1fr_1.1fr_1.1fr_auto] lg:items-end"
               onSubmit={(event) => {
                 event.preventDefault();
                 showCatalogResults();
@@ -1305,7 +1312,7 @@ export default function ClientPortalRefined() {
             </form>
           ) : (
             <form
-              className={isSearchDocked ? 'grid gap-3 py-3' : 'grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end'}
+              className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
               onSubmit={(event) => {
                 event.preventDefault();
                 showCatalogResults();
@@ -1421,9 +1428,7 @@ export default function ClientPortalRefined() {
 
       </div>
 
-      <section id="catalogo" className={isSearchDocked
-        ? 'max-w-none px-4 py-6 lg:px-8 lg:py-8 xl:pl-[21rem]'
-        : 'mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8'}>
+      <section id="catalogo" className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
         <div className="mb-3 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Catálogo</p>
