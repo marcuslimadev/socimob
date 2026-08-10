@@ -980,6 +980,19 @@ export default function ClientPortalRefined() {
     return () => window.removeEventListener('resize', onResize);
   }, [floatingActionScale, hasMascot]);
 
+  useEffect(() => {
+    if (!isSearchDocked || !hasMascot || typeof window === 'undefined' || window.innerWidth < 1280) return;
+
+    setFloatingActionPos((current) => clampFloatingActionPosition(
+      window.innerWidth - getFloatingActionMetrics(window.innerWidth, hasMascot, floatingActionScale).width - 12,
+      current.y,
+      window.innerWidth,
+      window.innerHeight,
+      hasMascot,
+      floatingActionScale,
+    ));
+  }, [floatingActionScale, hasMascot, isSearchDocked]);
+
   const handleFloatingActionScale = (direction: 'down' | 'up') => {
     setFloatingActionScale((current) => clampMascotScale(
       current + (direction === 'down' ? -MASCOT_SCALE_STEP : MASCOT_SCALE_STEP),
@@ -995,7 +1008,7 @@ export default function ClientPortalRefined() {
     suppressFloatingActionClickRef.current = false;
 
     const onMove = (event: PointerEvent) => {
-      const nextPos = clampFloatingActionPosition(
+      let nextPos = clampFloatingActionPosition(
         event.clientX - offsetX,
         event.clientY - offsetY,
         window.innerWidth,
@@ -1003,6 +1016,9 @@ export default function ClientPortalRefined() {
         hasMascot,
         floatingActionScale,
       );
+      if (isSearchDocked && window.innerWidth >= 1280) {
+        nextPos = { ...nextPos, x: Math.max(336, nextPos.x) };
+      }
 
       if (!dragged && Math.hypot(event.clientX - startX, event.clientY - startY) > 8) {
         dragged = true;
@@ -1024,7 +1040,9 @@ export default function ClientPortalRefined() {
       if (dragged) {
         suppressFloatingActionClickRef.current = true;
         const sideInset = 12;
-        const snappedX = floatingActionPosRef.current.x + (floatingActionMetrics.width / 2) >= (window.innerWidth / 2)
+        const snappedX = isSearchDocked
+          ? window.innerWidth - floatingActionMetrics.width - sideInset
+          : floatingActionPosRef.current.x + (floatingActionMetrics.width / 2) >= (window.innerWidth / 2)
           ? window.innerWidth - floatingActionMetrics.width - sideInset
           : sideInset;
         const finalPos = clampFloatingActionPosition(
@@ -1403,7 +1421,9 @@ export default function ClientPortalRefined() {
 
       </div>
 
-      <section id="catalogo" className={`mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8 ${isSearchDocked ? 'xl:pl-[21rem]' : ''}`}>
+      <section id="catalogo" className={isSearchDocked
+        ? 'max-w-none px-4 py-6 lg:px-8 lg:py-8 xl:pl-[21rem]'
+        : 'mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8'}>
         <div className="mb-3 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Catálogo</p>
