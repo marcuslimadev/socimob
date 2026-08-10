@@ -1158,15 +1158,15 @@ export default function ClientPortalRefined() {
 
       <section className="relative z-10 order-3 bg-[#f4efe8] px-4 py-4 sm:py-5 lg:px-8" aria-label="Busca de imóveis">
         <div className="mx-auto max-w-7xl rounded-2xl border border-slate-200/80 bg-white px-4 shadow-[0_12px_28px_rgba(15,23,42,0.08)] sm:px-5">
-          <div className="flex overflow-x-auto border-b border-slate-200">
+          <div className="flex gap-2 overflow-x-auto py-3">
             <button
               type="button"
               onClick={() => {
                 setSearchMode('quick');
                 setPropertyCode('');
               }}
-              className={`inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-xs font-semibold uppercase tracking-[0.08em] transition-colors sm:px-6 ${searchMode === 'quick' ? 'text-white' : 'border-transparent text-slate-600 hover:text-slate-900'}`}
-              style={searchMode === 'quick' ? { backgroundColor: '#1f2937', borderBottomColor: secondary } : undefined}
+              className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors sm:px-5 ${searchMode === 'quick' ? 'border-slate-800 text-white shadow-sm' : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:text-slate-900'}`}
+              style={searchMode === 'quick' ? { backgroundColor: '#1f2937' } : undefined}
             >
               <Search className="h-4 w-4" />
               Busca rápida
@@ -1181,8 +1181,8 @@ export default function ClientPortalRefined() {
                 setSelectedNeighborhood('');
                 setMaxPrice('');
               }}
-              className={`inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-xs font-semibold uppercase tracking-[0.08em] transition-colors sm:px-6 ${searchMode === 'code' ? 'text-white' : 'border-transparent text-slate-600 hover:text-slate-900'}`}
-              style={searchMode === 'code' ? { backgroundColor: '#1f2937', borderBottomColor: secondary } : undefined}
+              className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition-colors sm:px-5 ${searchMode === 'code' ? 'border-slate-800 text-white shadow-sm' : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:text-slate-900'}`}
+              style={searchMode === 'code' ? { backgroundColor: '#1f2937' } : undefined}
             >
               <Hash className="h-4 w-4" />
               Busca por código
