@@ -14,7 +14,8 @@ import {
   Video,
   Trash2,
   FileText,
-  Download
+  Download,
+  LockKeyhole
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLocation, useRoute } from 'wouter';
@@ -337,6 +338,8 @@ export default function ImovelFormWizard() {
   const [isLoadingProperty, setIsLoadingProperty] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [formData, setFormData] = useState(defaultFormData);
+  // Kept outside formData so it is never included in drafts, autosaves, or API payloads.
+  const [internalAddressReference, setInternalAddressReference] = useState('');
   const [portalOptions, setPortalOptions] = useState<PortalTenantOption[]>([]);
   const [isLoadingPortalOptions, setIsLoadingPortalOptions] = useState(false);
   const [captadores, setCaptadores] = useState<CaptadorOption[]>([]);
@@ -1795,6 +1798,31 @@ export default function ImovelFormWizard() {
                 onChange={(e) => setFormData({ ...formData, complemento: e.target.value })}
                 className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 placeholder="Apartamento, Bloco, etc."
+              />
+            </div>
+
+            <div className="rounded-xl border border-amber-400/30 bg-gradient-to-br from-amber-400/10 via-orange-500/5 to-transparent p-4 shadow-[0_8px_30px_rgba(251,191,36,0.08)]">
+              <div className="mb-3 flex items-start gap-3">
+                <div className="mt-0.5 rounded-lg bg-amber-400/15 p-2 text-amber-200">
+                  <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <label htmlFor="internal-address-reference" className="block text-sm font-semibold text-amber-50">
+                    Endereço interno do corretor
+                  </label>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-100/70">
+                    Referência temporária para atendimento. Não é enviada à API, portais ou integrações.
+                  </p>
+                </div>
+              </div>
+              <input
+                id="internal-address-reference"
+                type="text"
+                value={internalAddressReference}
+                onChange={(e) => setInternalAddressReference(e.target.value)}
+                className="w-full rounded-lg border border-amber-200/20 bg-slate-950/25 px-4 py-3 text-foreground placeholder:text-amber-100/35 focus:outline-none focus:ring-2 focus:ring-amber-400/70 transition"
+                placeholder="Ex.: Fundos da portaria, casa ao lado do mercado..."
+                autoComplete="off"
               />
             </div>
 
