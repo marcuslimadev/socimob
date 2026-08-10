@@ -1045,7 +1045,8 @@ export default function ClientPortalRefined() {
 
   return (
     <div className="portal-public min-h-screen" style={{ backgroundColor: portalTemplate.shell }}>
-      <header className={`sticky top-0 z-40 border-b ${portalTemplate.header}`}>
+      <div className="flex flex-col">
+      <header className={`sticky top-0 z-40 order-1 border-b ${portalTemplate.header}`}>
         <div className="mx-auto max-w-7xl px-4 py-3.5 lg:px-8">
           <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -1155,7 +1156,7 @@ export default function ClientPortalRefined() {
         </div>
       </header>
 
-      <section className="relative z-30 border-b border-slate-200 bg-white shadow-[0_10px_32px_rgba(15,23,42,0.12)]" aria-label="Busca de imóveis">
+      <section className="relative z-10 order-3 border-y border-slate-200 bg-white shadow-[0_8px_22px_rgba(15,23,42,0.08)]" aria-label="Busca de imóveis">
         <div className="mx-auto max-w-7xl px-4 lg:px-8">
           <div className="flex overflow-x-auto border-b border-slate-200">
             <button
@@ -1273,7 +1274,7 @@ export default function ClientPortalRefined() {
         </div>
       </section>
 
-      <section ref={heroRef} className="relative overflow-hidden" style={{ background: templateHeroBackground }}>
+      <section ref={heroRef} className="relative order-2 overflow-hidden" style={{ background: templateHeroBackground }}>
         {/* Parallax background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <img
@@ -1358,6 +1359,8 @@ export default function ClientPortalRefined() {
           </div>
         </div>
       </section>
+
+      </div>
 
       <section id="catalogo" className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
         <div className="mb-3 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
@@ -1760,7 +1763,7 @@ export default function ClientPortalRefined() {
             <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">A Empresa</p>
             <h3 className="mt-2 text-2xl text-slate-900 sm:text-3xl">{tenant?.name || 'Nossa imobiliária'}</h3>
             {tenant?.creci && <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: secondary }}>CRECI {tenant.creci}</p>}
-            <p className="mx-auto mt-5 max-w-4xl whitespace-pre-line text-sm leading-7 text-slate-600">
+            <p className="mx-auto mt-5 max-w-4xl whitespace-pre-line text-justify text-sm leading-7 text-slate-600">
               {tenantAboutText}
             </p>
             <div className="mt-6 flex flex-col items-start gap-3 text-sm text-slate-600 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-4">
