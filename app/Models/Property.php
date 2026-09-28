@@ -81,6 +81,8 @@ class Property extends Model
         'proprietario_telefone',
         'proprietario_email',
         'proprietario_observacoes',
+        // Endereço real do imóvel para uso interno dos corretores (não exibir ao portal/anúncio)
+        'endereco_interno_corretor',
         'trash_source',
         'trash_reason',
         'trashed_by_user_id',

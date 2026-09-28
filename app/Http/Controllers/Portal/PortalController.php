@@ -185,7 +185,16 @@ class PortalController extends Controller
             $data['tenant_id'],
             $data['api_data'],
             $data['local_chaves'],
-            $data['status_chaves']
+            $data['status_chaves'],
+            $data['endereco_interno_corretor'],
+            $data['inserido_por_user_id'],
+            $data['inserido_por_nome'],
+            $data['captador_user_id'],
+            $data['captador_nome'],
+            $data['proprietario_nome'],
+            $data['proprietario_telefone'],
+            $data['proprietario_email'],
+            $data['proprietario_observacoes']
         );
 
         return $data;

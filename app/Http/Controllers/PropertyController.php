@@ -1261,6 +1261,7 @@ class PropertyController extends Controller
             'proprietario_telefone' => 'nullable|string|max:30',
             'proprietario_email' => 'nullable|email|max:150',
             'proprietario_observacoes' => 'nullable|string',
+            'endereco_interno_corretor' => 'nullable|string',
         ]);
 
         $this->appendPropertyBusinessRulesValidation($validator, $request);
@@ -1564,6 +1565,7 @@ class PropertyController extends Controller
             'proprietario_telefone' => 'nullable|string|max:30',
             'proprietario_email' => 'nullable|email|max:150',
             'proprietario_observacoes' => 'nullable|string',
+            'endereco_interno_corretor' => 'nullable|string',
         ]);
 
         $this->appendPropertyBusinessRulesValidation($validator, $request, true);

@@ -27,3 +27,4 @@ yarn-error.log
 
 nul
 deploy.ps1
+.env.deploy.local

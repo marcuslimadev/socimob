@@ -245,6 +245,7 @@ const defaultFormData = {
   proprietario_telefone: '',
   proprietario_email: '',
   proprietario_observacoes: '',
+  endereco_interno_corretor: '',
   caracteristicas: [] as string[],
   classificacoes: [] as string[],
   vantagens: [] as string[],
@@ -338,8 +339,6 @@ export default function ImovelFormWizard() {
   const [isLoadingProperty, setIsLoadingProperty] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [formData, setFormData] = useState(defaultFormData);
-  // Kept outside formData so it is never included in drafts, autosaves, or API payloads.
-  const [internalAddressReference, setInternalAddressReference] = useState('');
   const [portalOptions, setPortalOptions] = useState<PortalTenantOption[]>([]);
   const [isLoadingPortalOptions, setIsLoadingPortalOptions] = useState(false);
   const [captadores, setCaptadores] = useState<CaptadorOption[]>([]);
@@ -520,6 +519,7 @@ export default function ImovelFormWizard() {
           proprietario_telefone: item.proprietario_telefone || '',
           proprietario_email: item.proprietario_email || '',
           proprietario_observacoes: item.proprietario_observacoes || '',
+          endereco_interno_corretor: item.endereco_interno_corretor || '',
           caracteristicas: Array.from(new Set([
             ...parseStoredSelections(item.caracteristicas),
             ...(item.em_condominio ? ['condominio'] : []),
@@ -668,6 +668,7 @@ export default function ImovelFormWizard() {
             proprietario_telefone: formData.proprietario_telefone,
             proprietario_email: formData.proprietario_email,
             proprietario_observacoes: formData.proprietario_observacoes,
+            endereco_interno_corretor: formData.endereco_interno_corretor,
             caracteristicas: stringifySelections(formData.caracteristicas),
             classificacoes: stringifySelections(formData.classificacoes),
             vantagens: stringifySelections(formData.vantagens),
@@ -756,6 +757,7 @@ export default function ImovelFormWizard() {
     if (formData.proprietario_telefone) fd.append('proprietario_telefone', formData.proprietario_telefone);
     if (formData.proprietario_email) fd.append('proprietario_email', formData.proprietario_email);
     if (formData.proprietario_observacoes) fd.append('proprietario_observacoes', formData.proprietario_observacoes);
+    if (formData.endereco_interno_corretor) fd.append('endereco_interno_corretor', formData.endereco_interno_corretor);
     if (formData.visibilidade_endereco) fd.append('visibilidade_endereco', formData.visibilidade_endereco);
     formData.portal_tenant_ids.forEach((tenantId) => {
       fd.append('portal_tenant_ids[]', String(tenantId));
@@ -1120,6 +1122,7 @@ export default function ImovelFormWizard() {
         if (formData.proprietario_telefone) fd.append('proprietario_telefone', formData.proprietario_telefone);
         if (formData.proprietario_email) fd.append('proprietario_email', formData.proprietario_email);
         if (formData.proprietario_observacoes) fd.append('proprietario_observacoes', formData.proprietario_observacoes);
+        if (formData.endereco_interno_corretor) fd.append('endereco_interno_corretor', formData.endereco_interno_corretor);
         if (formData.visibilidade_endereco) fd.append('visibilidade_endereco', formData.visibilidade_endereco);
         formData.portal_tenant_ids.forEach((tenantId) => {
           fd.append('portal_tenant_ids[]', String(tenantId));
@@ -1387,6 +1390,7 @@ export default function ImovelFormWizard() {
       if (formData.proprietario_telefone) formDataToSend.append('proprietario_telefone', formData.proprietario_telefone);
       if (formData.proprietario_email) formDataToSend.append('proprietario_email', formData.proprietario_email);
       if (formData.proprietario_observacoes) formDataToSend.append('proprietario_observacoes', formData.proprietario_observacoes);
+      if (formData.endereco_interno_corretor) formDataToSend.append('endereco_interno_corretor', formData.endereco_interno_corretor);
       if (formData.visibilidade_endereco) formDataToSend.append('visibilidade_endereco', formData.visibilidade_endereco);
       formData.portal_tenant_ids.forEach((tenantId) => formDataToSend.append('portal_tenant_ids[]', String(tenantId)));
       formDataToSend.append('active', formData.active ? '1' : '0');
@@ -1811,15 +1815,15 @@ export default function ImovelFormWizard() {
                     Endereço interno do corretor
                   </label>
                   <p className="mt-1 text-xs leading-relaxed text-amber-100/70">
-                    Referência temporária para atendimento. Não é enviada à API, portais ou integrações.
+                    Fica salvo apenas para uso interno dos corretores. Não é exibido no anúncio nem enviado a portais ou integrações.
                   </p>
                 </div>
               </div>
               <input
                 id="internal-address-reference"
                 type="text"
-                value={internalAddressReference}
-                onChange={(e) => setInternalAddressReference(e.target.value)}
+                value={formData.endereco_interno_corretor}
+                onChange={(e) => setFormData({ ...formData, endereco_interno_corretor: e.target.value })}
                 className="w-full rounded-lg border border-amber-200/20 bg-slate-950/25 px-4 py-3 text-foreground placeholder:text-amber-100/35 focus:outline-none focus:ring-2 focus:ring-amber-400/70 transition"
                 placeholder="Ex.: Fundos da portaria, casa ao lado do mercado..."
                 autoComplete="off"
