@@ -46,6 +46,8 @@ $router->group(['prefix' => 'api/admin', 'middleware' => ['resolve-tenant', 'sim
     // Atendimento Automático Settings
     $router->get('/settings/atendimento-automatico', 'App\Http\Controllers\Admin\TenantSettingsController@getAtendimentoAutomatico');
     $router->post('/settings/atendimento-automatico', 'App\Http\Controllers\Admin\TenantSettingsController@setAtendimentoAutomatico');
+    $router->get('/settings/recontato-leads', 'App\Http\Controllers\Admin\TenantSettingsController@getRecontatoLeads');
+    $router->post('/settings/recontato-leads', 'App\Http\Controllers\Admin\TenantSettingsController@setRecontatoLeads');
 
     // Financeiro - Comissões
     $router->get('/financeiro/notas-servico', 'App\Http\Controllers\Admin\\FinanceiroController@index');

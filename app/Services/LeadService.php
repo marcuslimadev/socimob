@@ -112,6 +112,8 @@ class LeadService
         $existingLead = $this->findExisting($tenantId, $email, $telefone, $whatsapp);
 
         if ($existingLead) {
+            $previousContactAt = $existingLead->ultima_interacao ?? $existingLead->created_at;
+
             $payload = array_filter([
                 'nome' => $data['nome'] ?? null,
                 'email' => $email,
@@ -163,6 +165,7 @@ class LeadService
             }
 
             $existingLead->save();
+            $existingLead->previousContactAt = $previousContactAt;
 
             return $existingLead;
         }

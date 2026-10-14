@@ -743,6 +743,8 @@ class PortalController extends Controller
                 'observacoes' => $chatObs,
             ]);
 
+            app(\App\Services\LeadDistributorAlertService::class)->alertContactOf($lead, 'chat do portal');
+
             // Get tenant WhatsApp number
             $tenant = \App\Models\Tenant::find($tenantId);
             $config = $tenant ? $tenant->config : null;
@@ -848,6 +850,8 @@ class PortalController extends Controller
                 'classificacao' => 'quente',
                 'observacoes' => $obsText,
             ]);
+
+            app(\App\Services\LeadDistributorAlertService::class)->alertContactOf($lead, 'portal (solicitação de venda)');
 
             // Create evaluation request
             if (Schema::hasTable('property_evaluations')) {
@@ -1117,6 +1121,8 @@ class PortalController extends Controller
                 'classificacao' => 'quente',
                 'observacoes' => $obsLead,
             ]);
+
+            app(\App\Services\LeadDistributorAlertService::class)->alertContactOf($lead, 'portal (pedido de imóvel)');
 
             $portalRequestNotes = $this->buildPortalPropertyRequestNotes($request, $property, $valorPretendido);
 

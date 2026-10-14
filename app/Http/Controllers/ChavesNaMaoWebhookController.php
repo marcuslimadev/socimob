@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Lead;
 use App\Models\Tenant;
+use App\Jobs\AlertDistributorOfLeadJob;
 use App\Jobs\ProcessChavesNaMaoLeadJob;
 use App\Services\LeadConversationService;
 use App\Services\LeadCustomerService;
@@ -102,12 +103,27 @@ class ChavesNaMaoWebhookController extends Controller
                 'payload_keys' => array_keys($leadData)
             ]);
 
-            // Processar e salvar lead
-            // O LeadObserver irá automaticamente:
-            // 1. Notificar Alexsandra e Roberto por WhatsApp (mensagem recebida + link wa.me do cliente)
-            // 2. Criar usuário cliente se tiver email
+            // Processar e salvar lead (sem eventos: o observer roda depois, na fila)
             $lead = $this->processLead($leadData, $tenant);
             ProcessChavesNaMaoLeadJob::dispatch($lead->id);
+
+            // Avisa a Alexsandra logo após a resposta do webhook, sem esperar o worker da fila.
+            //  - lead novo: handoff (mensagem recebida + link wa.me do cliente) para ela e o Roberto
+            //  - lead existente que nunca passou pelo handoff: reaberto e tratado como novo
+            //  - lead existente já tratado: aviso de "contato de cliente já cadastrado" (conforme o
+            //    modo configurado em lead_recontato_modo)
+            $alertMode = $lead->wasRecentlyCreated
+                ? AlertDistributorOfLeadJob::MODE_NEW
+                : (empty($lead->atendimento_notificado_em)
+                    ? AlertDistributorOfLeadJob::MODE_REOPEN
+                    : AlertDistributorOfLeadJob::MODE_RECONTACT);
+
+            AlertDistributorOfLeadJob::dispatchAfterResponse(
+                $lead->id,
+                $alertMode,
+                $lead->previousContactAt?->toIso8601String(),
+                'Chaves na Mão'
+            );
 
             Log::info('✅ Lead processado com sucesso', [
                 'internal_id' => $lead->id,

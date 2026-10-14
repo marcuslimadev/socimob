@@ -1024,6 +1024,66 @@ class TenantSettingsController extends Controller
     }
 
     /**
+     * Aviso à distribuidora quando um cliente já cadastrado entra em contato de novo
+     * GET /api/admin/settings/recontato-leads
+     */
+    public function getRecontatoLeads(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        return response()->json([
+            'modo' => (string) \App\Models\AppSetting::getValue(
+                'lead_recontato_modo',
+                \App\Services\LeadDistributorAlertService::RECONTACT_MODE_FILTERED,
+                $user->tenant_id
+            ),
+            'dias' => (int) \App\Models\AppSetting::getValue(
+                'lead_recontato_dias',
+                \App\Services\LeadDistributorAlertService::DEFAULT_RECONTACT_DAYS,
+                $user->tenant_id
+            ),
+        ]);
+    }
+
+    /**
+     * POST /api/admin/settings/recontato-leads
+     * modo: todos (sempre avisa) | filtrado (só sem corretor ou parado há "dias") | desligado
+     */
+    public function setRecontatoLeads(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user || !$user->tenant_id) {
+            return response()->json(['error' => 'User not authenticated or has no tenant'], 401);
+        }
+
+        if (!in_array($user->role, ['admin', 'super_admin'], true)) {
+            return response()->json(['error' => 'Acesso negado'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'modo' => 'required|in:todos,filtrado,desligado',
+            'dias' => 'nullable|integer|min:1|max:365',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Validation failed', 'messages' => $validator->errors()], 422);
+        }
+
+        \App\Models\AppSetting::setValue('lead_recontato_modo', $request->input('modo'), $user->tenant_id);
+
+        if ($request->filled('dias')) {
+            \App\Models\AppSetting::setValue('lead_recontato_dias', (int) $request->input('dias'), $user->tenant_id);
+        }
+
+        return $this->getRecontatoLeads($request);
+    }
+
+    /**
      * Obter status do atendimento automático
      * GET /api/admin/settings/auto-atendimento
      */

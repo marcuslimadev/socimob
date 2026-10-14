@@ -5,11 +5,10 @@ namespace App\Observers;
 use App\Models\Lead;
 use App\Models\Pessoa;
 use App\Services\ChavesNaMaoService;
-use App\Services\ConversationAssignmentNotificationService;
 use App\Services\LeadCustomerService;
 use App\Services\LeadAutomationService;
 use App\Services\LeadEmailService;
-use App\Services\LeadHandoffNotificationService;
+use App\Services\LeadDistributorAlertService;
 use Illuminate\Support\Facades\Log;
 
 class LeadObserver
@@ -18,23 +17,20 @@ class LeadObserver
     private LeadCustomerService $leadCustomerService;
     private LeadAutomationService $leadAutomationService;
     private LeadEmailService $leadEmailService;
-    private ConversationAssignmentNotificationService $assignmentNotificationService;
-    private LeadHandoffNotificationService $leadHandoffNotificationService;
+    private LeadDistributorAlertService $leadDistributorAlertService;
 
     public function __construct(
         ChavesNaMaoService $chavesNaMaoService,
         LeadCustomerService $leadCustomerService,
         LeadAutomationService $leadAutomationService,
         LeadEmailService $leadEmailService,
-        ConversationAssignmentNotificationService $assignmentNotificationService,
-        LeadHandoffNotificationService $leadHandoffNotificationService
+        LeadDistributorAlertService $leadDistributorAlertService
     ) {
         $this->chavesNaMaoService = $chavesNaMaoService;
         $this->leadCustomerService = $leadCustomerService;
         $this->leadAutomationService = $leadAutomationService;
         $this->leadEmailService = $leadEmailService;
-        $this->assignmentNotificationService = $assignmentNotificationService;
-        $this->leadHandoffNotificationService = $leadHandoffNotificationService;
+        $this->leadDistributorAlertService = $leadDistributorAlertService;
     }
 
     /**
@@ -63,9 +59,9 @@ class LeadObserver
         // 0. Criar ou atualizar registro em Pessoas PRIMEIRO
         $this->criarOuAtualizarPessoa($lead);
 
-        // 0.1. Todo lead criado deve avisar a Alexsandra/distribuidora pelo WhatsApp operacional.
-        // Leads do Chaves na Mão recebem, em vez disso, o handoff dedicado (mensagem original + link wa.me do cliente).
-        $this->notificarLeadCriado($lead);
+        // 0.1. Todo lead criado avisa a Alexsandra/distribuidora imediatamente para ela distribuir.
+        // Leads do Chaves na Mão e do mascote usam o handoff dedicado (mensagem original + link wa.me).
+        $this->alertarDistribuidora($lead);
 
         // 1. Iniciar atendimento IA automaticamente (desativado globalmente - ver isAtendimentoAutomaticoAtivo)
         if ($this->deveIniciarAtendimento($lead)) {
@@ -112,31 +108,21 @@ class LeadObserver
         }
     }
 
-    private function notificarLeadCriado(Lead $lead): void
+    /**
+     * Avisa a distribuidora de forma idempotente: se a tentativa falhar, o lead continua
+     * pendente e é reenviado pelo comando agendado leads:alert-distributor.
+     */
+    private function alertarDistribuidora(Lead $lead): void
     {
         try {
-            if ($this->isFromChavesNaMao($lead) || $this->isFromPortalMascot($lead)) {
-                $this->leadHandoffNotificationService->notify($lead);
-                return;
-            }
-
-            $this->assignmentNotificationService->notifyLeadCreated($lead);
+            $this->leadDistributorAlertService->alert($lead);
         } catch (\Throwable $e) {
-            Log::warning('[LeadObserver] Falha ao notificar lead criado para distribuidor', [
+            Log::warning('[LeadObserver] Falha ao notificar lead criado para distribuidora', [
                 'lead_id' => $lead->id,
                 'tenant_id' => $lead->tenant_id,
                 'error' => $e->getMessage(),
             ]);
         }
-    }
-
-    /**
-     * Lead capturado pelo mascote flutuante do portal público (ClientPortalRefined),
-     * identificado pelo texto fixo enviado pelo frontend em PortalController::createChatLead().
-     */
-    private function isFromPortalMascot(Lead $lead): bool
-    {
-        return stripos($lead->observacoes ?? '', 'mascote do portal') !== false;
     }
 
     /**
@@ -152,17 +138,11 @@ class LeadObserver
         // 0. Criar ou atualizar registro em Pessoas PRIMEIRO
         $this->criarOuAtualizarPessoa($lead);
 
-        // 0.1. Lead do Chaves na Mão ou do mascote do portal que ainda não recebeu o handoff
-        // (ex.: primeira notificação falhou, ou o lead já existia sob outra origem)
-        if (($this->isFromChavesNaMao($lead) || $this->isFromPortalMascot($lead)) && empty($lead->atendimento_notificado_em)) {
-            try {
-                $this->leadHandoffNotificationService->notify($lead);
-            } catch (\Throwable $e) {
-                Log::warning('[LeadObserver] Falha ao notificar handoff em atualização de lead', [
-                    'lead_id' => $lead->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+        // 0.1. Lead cuja distribuidora ainda não foi avisada (primeira tentativa falhou, ou o
+        // lead foi criado sem eventos, ex.: webhook do Chaves na Mão). O serviço ignora leads
+        // já alertados, antigos ou que esgotaram as tentativas.
+        if (empty($lead->distribuidor_notificado_em)) {
+            $this->alertarDistribuidora($lead);
         }
 
         // 1. Verificar se precisa iniciar atendimento (mesmo que seja update)

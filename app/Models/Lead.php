@@ -87,6 +87,10 @@ class Lead extends Model
         'sms_enviado_em',
         'atendimento_notificado_em',
         'atendimento_notificado_para',
+        'distribuidor_notificado_em',
+        'distribuidor_notificacao_tentativas',
+        'distribuidor_recontato_em',
+        'corretor_recontato_em',
     ];
 
     protected $casts = [
@@ -99,7 +103,16 @@ class Lead extends Model
         'sms_enviado' => 'boolean',
         'sms_enviado_em' => 'datetime',
         'atendimento_notificado_em' => 'datetime',
+        'distribuidor_notificado_em' => 'datetime',
+        'distribuidor_recontato_em' => 'datetime',
+        'corretor_recontato_em' => 'datetime',
     ];
+
+    /**
+     * Data do último contato ANTES do contato atual. Preenchida por LeadService::saveUnique()
+     * quando o lead já existia (propriedade comum, não é coluna e não é persistida).
+     */
+    public ?\Carbon\Carbon $previousContactAt = null;
 
     public function corretor()
     {

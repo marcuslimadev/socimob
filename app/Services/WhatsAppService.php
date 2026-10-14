@@ -304,6 +304,16 @@ class WhatsAppService
                 $lead = $this->createLead($telefone, $conversaData, $conversa->id);
                 $conversa->update(['lead_id' => $lead->id]);
                 $conversa->setRelation('lead', $lead);
+
+                // Cliente já cadastrado voltou a conversar (nova conversa): avisa a distribuidora.
+                // Lead novo é avisado pelo LeadObserver.
+                if (!$lead->wasRecentlyCreated) {
+                    app(\App\Services\LeadDistributorAlertService::class)->alertRecontact(
+                        $lead,
+                        'WhatsApp',
+                        $lead->ultima_interacao ?? $lead->created_at
+                    );
+                }
                 Log::info('✅ Lead criado e vinculado à conversa', ['lead_id' => $lead->id, 'conversa_id' => $conversa->id, 'user_id' => $lead->user_id ?? null]);
             }
 

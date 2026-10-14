@@ -35,8 +35,8 @@ class LeadHandoffNotificationService
      * o wa.me direto do cliente), então só é usado para o envio dela; Roberto
      * continua em texto livre até termos um template equivalente aprovado para ele.
      */
-    private const ALEXSANDRA_TEMPLATE_NAME = 'alerta_operacional_socimob';
-    private const ALEXSANDRA_TEMPLATE_LANGUAGE = 'pt_BR';
+    public const ALEXSANDRA_TEMPLATE_NAME = 'alerta_operacional_socimob';
+    public const ALEXSANDRA_TEMPLATE_LANGUAGE = 'pt_BR';
 
     public function __construct(
         private ConversationAssignmentNotificationService $assignmentNotificationService,
@@ -45,20 +45,44 @@ class LeadHandoffNotificationService
     }
 
     /**
+     * Leads que recebem o handoff dedicado (Chaves na Mão e mascote do portal) em vez do
+     * alerta genérico de "novo lead".
+     */
+    public function isHandoffLead(Lead $lead): bool
+    {
+        $observacoes = (string) $lead->observacoes;
+
+        return stripos($observacoes, 'Chaves na') !== false
+            || stripos($observacoes, 'mascote do portal') !== false;
+    }
+
+    /**
      * Envia o handoff (mensagem do cliente + link wa.me) para Alexsandra e Roberto.
-     * Marca no lead quem foi notificado e quando. Retorna os nomes notificados com sucesso.
+     * Marca no lead quem foi notificado e quando. Quem já constava em
+     * atendimento_notificado_para não recebe de novo (permite reenviar só a quem falhou).
+     * Retorna todos os nomes já notificados com sucesso (inclusive em tentativas anteriores).
      */
     public function notify(Lead $lead): array
     {
+        $alreadyNotified = array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) $lead->atendimento_notificado_para)
+        )));
         $notifiedTo = [];
 
         foreach (self::RECIPIENTS as $recipient) {
+            if (in_array($recipient['name'], $alreadyNotified, true)) {
+                continue;
+            }
+
             $result = $this->sendHandoffMessage($lead, $recipient);
 
             if ($result['success'] ?? false) {
                 $notifiedTo[] = $recipient['name'];
             }
         }
+
+        $allNotified = array_values(array_unique(array_merge($alreadyNotified, $notifiedTo)));
 
         if (!empty($notifiedTo)) {
             // Não regride o status de leads que já avançaram no funil (ex.: qualificado, proposta)
@@ -67,16 +91,16 @@ class LeadHandoffNotificationService
             $lead->updateQuietly([
                 'status' => $status,
                 'atendimento_notificado_em' => now(),
-                'atendimento_notificado_para' => implode(', ', $notifiedTo),
+                'atendimento_notificado_para' => implode(', ', $allNotified),
             ]);
 
             Log::info('[LeadHandoffNotificationService] Lead do Chaves na Mão notificado para atendimento humano', [
                 'lead_id' => $lead->id,
-                'notificado_para' => $notifiedTo,
+                'notificado_para' => $allNotified,
             ]);
         }
 
-        return $notifiedTo;
+        return $allNotified;
     }
 
     /**

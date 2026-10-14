@@ -56,6 +56,12 @@ Schedule::command('locacao:enviar-notificacoes')
     ->dailyAt('08:00')
     ->withoutOverlapping();
 
+// Garante que a Alexsandra seja avisada de todo lead novo: reenvia os alertas que falharam
+Schedule::command('leads:alert-distributor')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // Processar fila de jobs (garante resposta da IA ao WhatsApp mesmo sem worker persistente)
 // Em produção, prefira um worker supervisor. Esta linha é um fallback para shared hosting.
 Schedule::command('queue:work --stop-when-empty --timeout=90 --tries=2')

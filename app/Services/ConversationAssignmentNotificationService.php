@@ -71,11 +71,19 @@ class ConversationAssignmentNotificationService
         );
     }
 
-    public function notifyLeadCreated(Lead $lead): ?Notification
+    /**
+     * Alerta a distribuidora (Alexsandra no tenant 1) de que há um lead novo para distribuir.
+     * O aviso in-app é idempotente; o WhatsApp é enviado a cada chamada, então o chamador
+     * (LeadDistributorAlertService) é quem garante que só repete após uma falha.
+     *
+     * @return bool true quando o WhatsApp foi aceito pela API (ou, com $sendWhatsApp = false,
+     *              quando o aviso in-app foi garantido)
+     */
+    public function alertDistributorOfNewLead(Lead $lead, bool $sendWhatsApp = true): bool
     {
         $tenantId = (int) $lead->tenant_id;
         if ($tenantId <= 0) {
-            return null;
+            return false;
         }
 
         $distributor = $this->resolveDistributionUser($tenantId);
@@ -85,16 +93,166 @@ class ConversationAssignmentNotificationService
                 'lead_id' => $lead->id,
             ]);
 
-            return null;
+            return false;
         }
 
-        return $this->createLeadNotification(
-            $distributor,
-            $lead,
-            'lead_created',
-            'Novo lead criado',
-            $this->buildLeadCreatedMessage($lead)
+        $title = 'Novo lead criado';
+        $message = $this->buildLeadCreatedMessage($lead);
+
+        $this->ensureLeadNotification($distributor, $lead, 'lead_created', $title, $message);
+
+        if (!$sendWhatsApp) {
+            return true;
+        }
+
+        return $this->sendLeadCreatedWhatsAppOperationalAlert($distributor, $lead, $title, $message);
+    }
+
+    private function describeLastContact(?Carbon $previousContactAt): string
+    {
+        return $previousContactAt
+            ? 'Último contato: ' . $previousContactAt->format('d/m/Y') . ' (há ' . (int) abs($previousContactAt->diffInDays(now())) . ' dias).'
+            : 'Sem contato anterior registrado.';
+    }
+
+    /**
+     * Avisa o corretor que já atende o cliente de que ele entrou em contato de novo.
+     * O aviso no painel é o canal garantido; o WhatsApp é texto livre (o template aprovado é
+     * endereçado à distribuidora, não serve ao corretor) e só sai se ele tiver número cadastrado.
+     *
+     * @return bool true quando o aviso no painel foi criado
+     */
+    public function alertBrokerOfRecontact(Lead $lead, User $broker, string $source, ?Carbon $previousContactAt): bool
+    {
+        if (!$broker->is_active || (int) $broker->tenant_id !== (int) $lead->tenant_id) {
+            return false;
+        }
+
+        $name = $this->leadName($lead);
+        $phone = $lead->telefone ?: $lead->whatsapp;
+        $title = 'Seu cliente entrou em contato novamente';
+        $last = $this->describeLastContact($previousContactAt);
+        $message = trim($name . ($phone ? " ({$phone})" : '') . " entrou em contato novamente via {$source}. {$last}");
+
+        $this->ensureLeadNotification($broker, $lead, 'lead_recontact_broker', $title, $message, false);
+
+        $broker->loadMissing('pessoa');
+        $brokerPhone = null;
+        foreach ([$broker->pessoa?->whatsapp, $broker->pessoa?->celular, $broker->pessoa?->telefone] as $candidate) {
+            if (trim((string) $candidate) !== '') {
+                $brokerPhone = trim((string) $candidate);
+                break;
+            }
+        }
+
+        if (!$brokerPhone) {
+            Log::info('[ConversationAssignmentNotification] Corretor sem WhatsApp cadastrado, aviso de recontato só no painel', [
+                'tenant_id' => $lead->tenant_id,
+                'lead_id' => $lead->id,
+                'corretor_id' => $broker->id,
+            ]);
+
+            return true;
+        }
+
+        $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?leadId={$lead->id}";
+        $result = $this->sendWhatsAppMessage(
+            (int) $lead->tenant_id,
+            $brokerPhone,
+            "{$title}\n"
+                . "Cliente: {$name}" . ($phone ? " ({$phone})" : '') . "\n"
+                . "Origem do contato: {$source}\n"
+                . "{$last}\n"
+                . "Abrir chat: {$actionUrl}"
         );
+
+        if (!($result['success'] ?? false)) {
+            Log::warning('[ConversationAssignmentNotification] Falha ao enviar WhatsApp de recontato ao corretor', [
+                'tenant_id' => $lead->tenant_id,
+                'lead_id' => $lead->id,
+                'corretor_id' => $broker->id,
+                'error' => $result['error'] ?? null,
+            ]);
+        }
+
+        return true;
+    }
+
+    /**
+     * Avisa a distribuidora de que um cliente já cadastrado entrou em contato de novo, para ela
+     * decidir se redistribui. Retorna true quando o WhatsApp foi aceito pela API.
+     */
+    public function alertDistributorOfRecontact(
+        Lead $lead,
+        string $source,
+        ?Carbon $previousContactAt,
+        ?string $currentBrokerName
+    ): bool {
+        $tenantId = (int) $lead->tenant_id;
+        if ($tenantId <= 0) {
+            return false;
+        }
+
+        $distributor = $this->resolveDistributionUser($tenantId);
+        if (!$distributor) {
+            Log::warning('[ConversationAssignmentNotification] Nenhum distribuidor ativo encontrado para recontato', [
+                'tenant_id' => $tenantId,
+                'lead_id' => $lead->id,
+            ]);
+
+            return false;
+        }
+
+        $title = 'Contato de cliente já cadastrado';
+        $name = $this->leadName($lead);
+        $phone = $lead->telefone ?: $lead->whatsapp;
+        $last = $this->describeLastContact($previousContactAt);
+        $broker = $currentBrokerName ? "Corretor atual: {$currentBrokerName}." : 'Sem corretor definido.';
+        $message = trim($name . ($phone ? " ({$phone})" : '') . " entrou em contato novamente via {$source}. {$last} {$broker}");
+
+        // Sem deduplicar: cada recontato é um aviso novo (o intervalo mínimo já é controlado por quem chama).
+        $this->ensureLeadNotification($distributor, $lead, 'lead_recontact', $title, $message, false);
+
+        $phoneTo = $this->resolveOperationalWhatsAppNumber($distributor);
+        if (!$phoneTo) {
+            Log::warning('[ConversationAssignmentNotification] WhatsApp operacional nao configurado para recontato', [
+                'tenant_id' => $tenantId,
+                'lead_id' => $lead->id,
+            ]);
+
+            return false;
+        }
+
+        $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?leadId={$lead->id}";
+        $body = "{$title}\n"
+            . "Cliente: {$name}" . ($phone ? " ({$phone})" : '') . "\n"
+            . "Origem do contato: {$source}\n"
+            . "{$last} {$broker}\n"
+            . "Abrir chat: {$actionUrl}";
+
+        $result = $this->sendOperationalWhatsAppMessage(
+            $tenantId,
+            $phoneTo,
+            $body,
+            [$title, $name . ($phone ? " ({$phone})" : ''), $this->compactTemplateText("via {$source}. {$last} {$broker}"), $actionUrl],
+            [
+                'name' => LeadHandoffNotificationService::ALEXSANDRA_TEMPLATE_NAME,
+                'language' => LeadHandoffNotificationService::ALEXSANDRA_TEMPLATE_LANGUAGE,
+            ]
+        );
+
+        if (!($result['success'] ?? false)) {
+            Log::warning('[ConversationAssignmentNotification] Falha ao enviar WhatsApp de recontato', [
+                'tenant_id' => $tenantId,
+                'lead_id' => $lead->id,
+                'error' => $result['error'] ?? null,
+                'http_code' => $result['http_code'] ?? null,
+            ]);
+
+            return false;
+        }
+
+        return true;
     }
 
     public function notifyAssigned(Conversa $conversa, User $assignee, ?Lead $lead = null, ?User $assignedBy = null): ?Notification
@@ -113,6 +271,11 @@ class ConversationAssignmentNotificationService
             $this->buildAssignedMessage($lead, $conversa, $assignedBy),
             ['assigned_by_user_id' => $assignedBy?->id]
         );
+    }
+
+    public function findDistributionUser(int $tenantId): ?User
+    {
+        return $this->resolveDistributionUser($tenantId);
     }
 
     private function resolveDistributionUser(int $tenantId): ?User
@@ -196,16 +359,17 @@ class ConversationAssignmentNotificationService
         return $notification;
     }
 
-    private function createLeadNotification(
+    private function ensureLeadNotification(
         User $user,
         Lead $lead,
         string $event,
         string $title,
-        string $message
+        string $message,
+        bool $dedupe = true
     ): Notification {
         $actionUrl = "/chat?leadId={$lead->id}";
 
-        $existing = Notification::query()
+        $existing = !$dedupe ? null : Notification::query()
             ->where('tenant_id', $user->tenant_id)
             ->where('user_id', $user->id)
             ->where('type', 'message')
@@ -223,7 +387,7 @@ class ConversationAssignmentNotificationService
             return $existing;
         }
 
-        $notification = Notification::create([
+        return Notification::create([
             'tenant_id' => $user->tenant_id,
             'user_id' => $user->id,
             'type' => 'message',
@@ -242,10 +406,6 @@ class ConversationAssignmentNotificationService
             'is_sent' => true,
             'sent_at' => Carbon::now(),
         ]);
-
-        $this->sendLeadCreatedWhatsAppOperationalAlert($user, $lead, $title, $message);
-
-        return $notification;
     }
 
     private function buildDistributionMessage(?Lead $lead, Conversa $conversa): string
@@ -319,7 +479,7 @@ class ConversationAssignmentNotificationService
         }
     }
 
-    private function sendLeadCreatedWhatsAppOperationalAlert(User $user, Lead $lead, string $title, string $message): void
+    private function sendLeadCreatedWhatsAppOperationalAlert(User $user, Lead $lead, string $title, string $message): bool
     {
         $phone = $this->resolveOperationalWhatsAppNumber($user);
         if (!$phone) {
@@ -329,7 +489,7 @@ class ConversationAssignmentNotificationService
                 'lead_id' => $lead->id,
             ]);
 
-            return;
+            return false;
         }
 
         $body = $this->buildLeadCreatedOperationalWhatsAppMessage($title, $message, $lead);
@@ -348,7 +508,11 @@ class ConversationAssignmentNotificationService
                 'error' => $result['error'] ?? null,
                 'http_code' => $result['http_code'] ?? null,
             ]);
+
+            return false;
         }
+
+        return true;
     }
 
     private function resolveOperationalWhatsAppNumber(User $user): ?string
@@ -473,10 +637,15 @@ class ConversationAssignmentNotificationService
         return mb_substr($text !== '' ? $text : 'Abra o painel para conferir o contexto completo.', 0, 180);
     }
 
-    private function sendOperationalWhatsAppMessage(int $tenantId, string $phone, string $body, array $templateVariables): array
-    {
+    private function sendOperationalWhatsAppMessage(
+        int $tenantId,
+        string $phone,
+        string $body,
+        array $templateVariables,
+        ?array $fallbackTemplate = null
+    ): array {
         $driver = strtolower((string) config('whatsapp.driver', 'evolution'));
-        $template = $this->resolveOperationalTemplate($tenantId);
+        $template = $this->resolveOperationalTemplate($tenantId) ?? $fallbackTemplate;
 
         if ($driver === 'meta_cloud' && $template) {
             $result = $this->sendWhatsAppTemplate($tenantId, $phone, $template['name'], $template['language'], $templateVariables);
