@@ -3,6 +3,20 @@
 
 use Symfony\Component\Console\Input\ArgvInput;
 
+// Hospedagem compartilhada: o `php` padrao do PATH (cron e SSH) e o 8.0, mas o app exige >= 8.2
+// e morre na checagem de plataforma do Composer, o que parou o agendador (schedule:run) sem aviso.
+// Em PHP antigo, reexecuta o mesmo comando no PHP 8.3 do servidor, se existir.
+if (PHP_VERSION_ID < 80200) {
+    $alternativePhp = '/opt/alt/php83/usr/bin/php';
+
+    if (is_executable($alternativePhp) && function_exists('passthru')) {
+        $arguments = array_map('escapeshellarg', array_slice($_SERVER['argv'] ?? [], 1));
+        passthru(escapeshellarg($alternativePhp).' '.escapeshellarg(__FILE__).' '.implode(' ', $arguments), $exitCode);
+
+        exit($exitCode);
+    }
+}
+
 define('LARAVEL_START', microtime(true));
 
 // Register the Composer autoloader...
