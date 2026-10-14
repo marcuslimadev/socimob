@@ -497,7 +497,13 @@ class ConversationAssignmentNotificationService
             (int) $user->tenant_id,
             $phone,
             $body,
-            $this->buildLeadCreatedTemplateVariables($message, $lead)
+            $this->buildLeadCreatedTemplateVariables($message, $lead),
+            // Sem template operacional configurado, usa o aprovado da Alexsandra: texto livre so
+            // chega dentro da janela de 24h da Meta e o alerta de lead novo nao pode depender disso.
+            [
+                'name' => LeadHandoffNotificationService::ALEXSANDRA_TEMPLATE_NAME,
+                'language' => LeadHandoffNotificationService::ALEXSANDRA_TEMPLATE_LANGUAGE,
+            ]
         );
 
         if (!($result['success'] ?? false)) {
