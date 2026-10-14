@@ -5,13 +5,26 @@ use Symfony\Component\Console\Input\ArgvInput;
 
 // Hospedagem compartilhada: o `php` padrao do PATH (cron e SSH) e o 8.0, mas o app exige >= 8.2
 // e morre na checagem de plataforma do Composer, o que parou o agendador (schedule:run) sem aviso.
-// Em PHP antigo, reexecuta o mesmo comando no PHP 8.3 do servidor, se existir. O PHP 8.0 da
-// hospedagem desabilita exec/passthru/system/popen, entao usa pcntl_exec (troca o processo, mantendo
-// codigo de saida e E/S) ou, na falta dele, proc_open com stdio herdado.
+// Em PHP antigo, reexecuta o mesmo comando no PHP mais novo instalado no servidor (>= 8.2), ou no
+// binario de ARTISAN_PHP_BIN. O PHP 8.0 da hospedagem desabilita exec/passthru/system/popen, entao
+// usa pcntl_exec (troca o processo, mantendo codigo de saida e E/S) ou, sem ele, proc_open.
 if (PHP_VERSION_ID < 80200) {
-    $alternativePhp = '/opt/alt/php83/usr/bin/php';
+    $alternativePhp = getenv('ARTISAN_PHP_BIN') ?: null;
 
-    if (is_executable($alternativePhp)) {
+    if (! $alternativePhp) {
+        $candidates = [];
+
+        foreach (glob('/opt/alt/php[0-9]*/usr/bin/php') ?: [] as $binary) {
+            if (preg_match('#/php(\d)(\d+)/#', $binary, $match) && (int) ($match[1].$match[2]) >= 82 && is_executable($binary)) {
+                $candidates[(int) ($match[1].$match[2])] = $binary;
+            }
+        }
+
+        krsort($candidates);
+        $alternativePhp = $candidates ? reset($candidates) : null;
+    }
+
+    if ($alternativePhp && is_executable($alternativePhp)) {
         $arguments = array_merge([__FILE__], array_slice($_SERVER['argv'] ?? [], 1));
 
         if (function_exists('pcntl_exec')) {
