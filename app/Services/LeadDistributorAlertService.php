@@ -16,13 +16,20 @@ use Illuminate\Support\Facades\Log;
  * job, comando de reenvio) passa por aqui.
  *
  * O lead só é marcado como notificado (distribuidor_notificado_em) quando a Alexsandra
- * realmente recebeu o alerta; enquanto isso não acontece, o comando leads:alert-distributor
- * continua tentando (até MAX_ATTEMPTS, dentro de MAX_AGE_HOURS desde a criação).
+ * realmente recebeu o alerta. Os pendentes são reprocessados:
+ *  - quando a distribuidora faz login (reprocessPendingForLogin) — o gatilho principal;
+ *  - pelo comando leads:alert-distributor, se houver cron (até MAX_ATTEMPTS, dentro de
+ *    MAX_AGE_HOURS desde a criação).
  */
 class LeadDistributorAlertService
 {
     public const MAX_ATTEMPTS = 10;
     public const MAX_AGE_HOURS = 24;
+
+    /** Reprocessamento disparado pelo login da distribuidora: janela maior e sem limite de tentativas. */
+    public const LOGIN_REPROCESS_DAYS = 7;
+    public const LOGIN_REPROCESS_LIMIT = 25;
+    public const LOGIN_REPROCESS_THROTTLE_SECONDS = 60;
 
     private const DISTRIBUTOR_NAME = 'Alexsandra';
 
@@ -43,8 +50,65 @@ class LeadDistributorAlertService
     }
 
     /**
+     * Reprocessa os alertas pendentes quando a própria distribuidora faz login: reenvia os leads
+     * que ainda não a alcançaram (falha de envio, sem cron, etc.). Ignora o limite de tentativas
+     * e de idade do reenvio automático, pois o login é um novo gatilho. Só age para a usuária
+     * que é a distribuidora do tenant e no máximo uma vez por minuto.
+     *
+     * @return int quantidade de leads alertados com sucesso
+     */
+    public function reprocessPendingForLogin(User $user): int
+    {
+        $tenantId = (int) $user->tenant_id;
+        if ($tenantId <= 0) {
+            return 0;
+        }
+
+        $distributor = $this->assignmentNotificationService->findDistributionUser($tenantId);
+        if (!$distributor || (int) $distributor->id !== (int) $user->id) {
+            return 0;
+        }
+
+        try {
+            if (!Cache::add("lead-alert-reprocess:{$tenantId}", 1, self::LOGIN_REPROCESS_THROTTLE_SECONDS)) {
+                return 0;
+            }
+        } catch (\Throwable $e) {
+            // Cache sem suporte: segue sem limitar a frequência (o lock por lead evita duplicidade).
+        }
+
+        $pending = Lead::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->whereNull('distribuidor_notificado_em')
+            ->where('created_at', '>=', now()->subDays(self::LOGIN_REPROCESS_DAYS))
+            ->orderBy('id')
+            ->limit(self::LOGIN_REPROCESS_LIMIT)
+            ->get();
+
+        $delivered = 0;
+        foreach ($pending as $lead) {
+            if ($this->alert($lead, true)) {
+                $delivered++;
+            }
+        }
+
+        if ($pending->isNotEmpty()) {
+            Log::info('[LeadDistributorAlert] Reprocessamento no login da distribuidora', [
+                'tenant_id' => $tenantId,
+                'user_id' => $user->id,
+                'pendentes' => $pending->count(),
+                'alertados' => $delivered,
+            ]);
+        }
+
+        return $delivered;
+    }
+
+    /**
      * Alerta a distribuidora sobre o lead. Idempotente: retorna true sem reenviar se ela
-     * já foi avisada; retorna false se não conseguiu (será retentado pelo comando agendado).
+     * já foi avisada; retorna false se não conseguiu (será retentado no próximo login da
+     * distribuidora ou pelo comando agendado). Com $ignoreAge, ignora também o limite de
+     * tentativas e de idade.
      */
     public function alert(Lead $lead, bool $ignoreAge = false): bool
     {
@@ -336,7 +400,7 @@ class LeadDistributorAlertService
 
     private function isEligible(Lead $lead, bool $ignoreAge): bool
     {
-        if ((int) $lead->distribuidor_notificacao_tentativas >= self::MAX_ATTEMPTS) {
+        if (!$ignoreAge && (int) $lead->distribuidor_notificacao_tentativas >= self::MAX_ATTEMPTS) {
             return false;
         }
 

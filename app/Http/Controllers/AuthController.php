@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Jobs\ReprocessPendingLeadAlertsJob;
 use App\Models\User;
 use App\Models\Tenant;
 use App\Services\DomainService;
@@ -103,6 +104,19 @@ class AuthController extends Controller
         }
         
         $token = SimpleAuthToken::issue($user->id);
+
+        // Login da distribuidora (ex.: Alexsandra) reprocessa os alertas de lead pendentes.
+        // Roda após a resposta e só age se este usuário for a distribuidora do tenant.
+        if ($user->tenant_id && in_array($user->role, ['admin', 'super_admin'], true)) {
+            try {
+                ReprocessPendingLeadAlertsJob::dispatchAfterResponse($user->id);
+            } catch (\Throwable $e) {
+                Log::warning('Falha ao agendar reprocessamento de alertas de leads no login', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         $user->loadMissing('pessoa:id,nome');
 
