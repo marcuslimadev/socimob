@@ -28,3 +28,13 @@ yarn-error.log
 nul
 deploy.ps1
 .env.deploy.local
+
+# Artefatos locais / temporarios
+/.manus-logs/
+/tmpclaude-*
+tmpclaude-*-cwd
+*.log
+*.backup
+*.tar.gz
+/composer.phar
+/temp_file

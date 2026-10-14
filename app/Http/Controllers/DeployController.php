@@ -27,7 +27,7 @@ class DeployController extends Controller
             $secret = $request->input('secret');
         }
 
-        return hash_equals($expectedSecret, $secret);
+        return is_string($secret) && hash_equals($expectedSecret, $secret);
     }
 
     private function configuredSecret(): ?string

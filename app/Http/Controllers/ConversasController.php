@@ -29,6 +29,19 @@ class ConversasController extends Controller
     {
         return in_array($role, ['corretor', 'agent'], true);
     }
+
+    /**
+     * Mensagem de erro segura: detalhes da exceção só aparecem com APP_DEBUG.
+     */
+    private function safeError(\Throwable $e): string
+    {
+        return config('app.debug') ? $e->getMessage() : 'Erro interno ao processar a requisição';
+    }
+
+    private function tenantNotFoundResponse()
+    {
+        return response()->json(['success' => false, 'error' => 'Tenant não identificado'], 403);
+    }
     
     /**
      * Listar conversas
@@ -38,6 +51,10 @@ class ConversasController extends Controller
     {
         try {
             $tenantId = $this->resolveTenantId($request);
+
+            if (!$tenantId) {
+                return $this->tenantNotFoundResponse();
+            }
 
             $conversas = Conversa::where('tenant_id', $tenantId)
                 ->with(['lead', 'corretor', 'mensagens' => function($query) {
@@ -82,9 +99,10 @@ class ConversasController extends Controller
                 'data' => $conversas
             ]);
         } catch (\Exception $e) {
+            Log::error('Erro ao listar conversas: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $this->safeError($e)
             ], 500);
         }
     }
@@ -361,7 +379,7 @@ class ConversasController extends Controller
             
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => $this->safeError($e),
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ], 500);
         }
@@ -441,6 +459,7 @@ class ConversasController extends Controller
         if ($result['success']) {
             // Registrar mensagem
             $mensagem = Mensagem::create([
+                'tenant_id' => $conversa->tenant_id,
                 'conversa_id' => $conversa->id,
                 'user_id' => $user?->id,
                 'message_sid' => $result['message_sid'],
@@ -662,7 +681,7 @@ class ConversasController extends Controller
             
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => $this->safeError($e),
                 'file' => config('app.debug') ? $e->getFile() : null,
                 'line' => config('app.debug') ? $e->getLine() : null,
             ], 500);
@@ -695,10 +714,11 @@ class ConversasController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Erro ao excluir conversas: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $this->safeError($e)
             ], 500);
         }
     }
@@ -815,8 +835,12 @@ class ConversasController extends Controller
 
         $tenantId = $this->resolveTenantId($request);
 
+        if (!$tenantId) {
+            return $this->tenantNotFoundResponse();
+        }
+
         $conversaIds = Conversa::whereIn('lead_id', $data['lead_ids'])
-            ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
+            ->where('tenant_id', $tenantId)
             ->pluck('id')
             ->all();
 
@@ -840,10 +864,11 @@ class ConversasController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Erro ao excluir conversas: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $this->safeError($e)
             ], 500);
         }
     }
@@ -852,19 +877,20 @@ class ConversasController extends Controller
     {
         $tenantId = $this->resolveTenantId($request);
 
-        $query = Conversa::query()
-            ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
-            ->select('conversas.*')
-            ->where('conversas.id', $id);
-
-        if ($tenantId) {
-            $query->where(function ($q) use ($tenantId) {
-                $q->where('conversas.tenant_id', $tenantId)
-                    ->orWhere('leads.tenant_id', $tenantId);
-            });
+        // Sem tenant não há escopo: nunca devolver conversa de outro tenant.
+        if (!$tenantId) {
+            abort(403, 'Tenant não identificado');
         }
 
-        return $query->firstOrFail();
+        return Conversa::query()
+            ->leftJoin('leads', 'conversas.lead_id', '=', 'leads.id')
+            ->select('conversas.*')
+            ->where('conversas.id', $id)
+            ->where(function ($q) use ($tenantId) {
+                $q->where('conversas.tenant_id', $tenantId)
+                    ->orWhere('leads.tenant_id', $tenantId);
+            })
+            ->firstOrFail();
     }
 
     private function resolveTenantId(Request $request): ?int
@@ -881,7 +907,9 @@ class ConversasController extends Controller
             return (int) $request->attributes->get('tenant_id');
         }
 
-        if (app()->bound('tenant')) {
+        // Fallback do tenant resolvido pelo domínio: só em requisição HTTP (em fila/CLI
+        // o binding pode ser resíduo de outra execução e vazar dados entre tenants).
+        if (!app()->runningInConsole() && app()->bound('tenant')) {
             $tenant = app('tenant');
             if ($tenant && !empty($tenant->id)) {
                 return (int) $tenant->id;
@@ -945,6 +973,32 @@ class ConversasController extends Controller
         ];
     }
 
+    private const MEDIA_PROXY_MAX_BYTES = 25 * 1024 * 1024;
+
+    private function isAllowedTwilioMediaUrl(string $url): bool
+    {
+        $parts = parse_url($url);
+        if ($parts === false
+            || ($parts['scheme'] ?? '') !== 'https'
+            || isset($parts['user']) || isset($parts['pass']) || isset($parts['port'])
+        ) {
+            return false;
+        }
+
+        $host = strtolower($parts['host'] ?? '');
+        $path = $parts['path'] ?? '';
+
+        if ($host === 'media.twiliocdn.com') {
+            return $path !== '' && !str_contains($path, '..');
+        }
+
+        return $host === 'api.twilio.com'
+            && (bool) preg_match(
+                '#^/2010-04-01/Accounts/AC[a-f0-9]{32}/Messages/MM[a-f0-9]{32}/Media/ME[a-f0-9]{32}(\.[a-z0-9]+)?$#i',
+                $path
+            );
+    }
+
     /**
      * Proxy para mídias do Twilio (evita erro de autenticação no frontend)
      */
@@ -956,10 +1010,10 @@ class ConversasController extends Controller
             return response()->json(['error' => 'URL da mídia não fornecida'], 400);
         }
 
-        // Validar que é uma URL do Twilio (proteção contra SSRF)
-        $parsedUrl = parse_url($mediaUrl);
-        $allowedHosts = ['api.twilio.com', 'media.twiliocdn.com'];
-        if (empty($parsedUrl['host']) || !in_array($parsedUrl['host'], $allowedHosts, true)) {
+        // Validar que é uma URL de mídia do Twilio (proteção contra SSRF). A rota é pública
+        // e o download usa as credenciais do tenant, então só aceitamos o formato exato
+        // de mídia de mensagem — nunca outros endpoints da API (ex.: listagem de Messages).
+        if (!is_string($mediaUrl) || !$this->isAllowedTwilioMediaUrl($mediaUrl)) {
             return response()->json(['error' => 'URL inválida'], 403);
         }
 
@@ -989,6 +1043,10 @@ class ConversasController extends Controller
             $result = $this->twilio->downloadMedia($mediaUrl, $accountSid, $authToken);
 
             if ($result['success']) {
+                if (strlen($result['data']) > self::MEDIA_PROXY_MAX_BYTES) {
+                    return response()->json(['error' => 'Mídia excede o tamanho máximo permitido'], 413);
+                }
+
                 $contentType = $result['contentType'] ?? 'application/octet-stream';
 
                 // Limpar parâmetros extras do content-type (ex: "image/jpeg; charset=UTF-8")
@@ -1004,7 +1062,7 @@ class ConversasController extends Controller
             $payload = [
                 'error' => $result['error'] ?? 'Falha ao baixar midia',
             ];
-            if (!empty($result['response'])) {
+            if (config('app.debug') && !empty($result['response'])) {
                 $payload['twilio_response'] = substr((string) $result['response'], 0, 500);
             }
             return response()->json($payload, $statusCode);

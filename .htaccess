@@ -33,6 +33,15 @@ php_value post_max_size 110M
     RewriteCond %{DOCUMENT_ROOT}/public/%1/%2 -d
     RewriteRule ^(uploads|storage)/(.*)$ public/$1/$2 [L]
 
+    # Bloquear acesso direto a arquivos sensiveis e scripts da raiz do repositorio.
+    # O documento raiz e o clone git: sem isto, a regra "serve existing files"
+    # abaixo entregaria (ou executaria) .env, .git, scripts .php soltos, logs, etc.
+    RewriteRule ^\.(?!well-known/) - [F,NC,L]
+    RewriteRule ^[^/]+\.(php|sql|log|ps1|sh|phar|lock|md)$ - [F,NC,L]
+    RewriteRule ^(artisan|composer\.json|package(-lock)?\.json|pnpm-.+\.yaml|phpunit\.xml|vite\.config\.ts|tailwind\.config\.js|playwright\.config\.ts)$ - [F,NC,L]
+    RewriteRule ^(app|bootstrap|config|database|routes|tests|vendor|node_modules|services|scripts|e2e|hf_local_service|chrome-extension)(/|$) - [F,NC,L]
+    RewriteRule ^storage/(logs|framework)(/|$) - [F,NC,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -48,7 +57,7 @@ php_value post_max_size 110M
     RewriteRule ^ - [L]
 
     # Backend routes go to Laravel
-    RewriteCond %{REQUEST_URI} ^/(api|api-public|webhook|webhooks|github|debug|test|db-test|migrate-now-please|sync|integracoes|w|hl|portal/imovel) [NC]
+    RewriteCond %{REQUEST_URI} ^/(api|api-public|webhook|webhooks|github|debug|test|sync|integracoes|w|hl|portal/imovel) [NC]
     RewriteRule ^(.*)$ public/index.php [L]
 
     # SPA fallback for React routes
