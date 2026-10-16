@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 class AlertDistributorOfPendingLeads extends Command
 {
     protected $signature = 'leads:alert-distributor {--limit=50 : Máximo de leads por execução}';
-    protected $description = 'Reenvia à distribuidora (Alexsandra) o alerta de leads novos que ainda não foram entregues';
+    protected $description = 'Reenvia à distribuidora (Alexsandra) o alerta de leads novos que ainda não foram entregues (uso manual; sem cron)';
 
     public function handle(LeadDistributorAlertService $service): int
     {

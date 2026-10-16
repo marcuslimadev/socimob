@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\User;
 use App\Services\ConversationAssignmentNotificationService;
+use App\Services\LeadDistributorAlertService;
 use App\Services\LeadHandoffNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -323,6 +324,32 @@ class LeadDistributionController extends Controller
             'erros' => $errors,
             'plano' => $summary,
         ]);
+    }
+
+    /**
+     * POST /api/admin/distribuicao/reprocessar — reenvia os avisos de lead que ainda não chegaram à
+     * distribuidora. Acionado pelo botão da Central (e, automaticamente, no login dela).
+     */
+    public function reprocessar(Request $request): JsonResponse
+    {
+        [$user, $tenantId, $denied] = $this->authorizeAdmin($request);
+        if ($denied) {
+            return $denied;
+        }
+
+        $result = app(LeadDistributorAlertService::class)->reprocessPendingForTenant($tenantId, 5);
+
+        if ($result['ignorado']) {
+            $message = 'Já estou reprocessando. Aguarde alguns segundos.';
+        } elseif ($result['pendentes'] === 0) {
+            $message = 'Nenhum aviso pendente: todos os leads já foram avisados.';
+        } elseif ($result['falhas'] === 0) {
+            $message = "{$result['alertados']} aviso(s) reenviado(s) com sucesso.";
+        } else {
+            $message = "{$result['alertados']} aviso(s) reenviado(s); {$result['falhas']} não puderam ser entregues (veja o número/e-mail da distribuidora).";
+        }
+
+        return response()->json(['success' => true, 'mensagem' => $message] + $result);
     }
 
     // ------------------------------------------------------------------ núcleo

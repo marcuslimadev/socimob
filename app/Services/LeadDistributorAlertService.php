@@ -16,10 +16,11 @@ use Illuminate\Support\Facades\Log;
  * job, comando de reenvio) passa por aqui.
  *
  * O lead só é marcado como notificado (distribuidor_notificado_em) quando a Alexsandra
- * realmente recebeu o alerta. Os pendentes são reprocessados:
- *  - quando a distribuidora faz login (reprocessPendingForLogin) — o gatilho principal;
- *  - pelo comando leads:alert-distributor, se houver cron (até MAX_ATTEMPTS, dentro de
- *    MAX_AGE_HOURS desde a criação).
+ * realmente recebeu o alerta. Não há cron: os pendentes são reprocessados sob demanda,
+ *  - quando a distribuidora faz login (reprocessPendingForLogin);
+ *  - quando um administrador aciona "Reprocessar avisos" na Central de Distribuição
+ *    (reprocessPendingForTenant);
+ *  - manualmente pelo comando leads:alert-distributor.
  */
 class LeadDistributorAlertService
 {
@@ -50,10 +51,8 @@ class LeadDistributorAlertService
     }
 
     /**
-     * Reprocessa os alertas pendentes quando a própria distribuidora faz login: reenvia os leads
-     * que ainda não a alcançaram (falha de envio, sem cron, etc.). Ignora o limite de tentativas
-     * e de idade do reenvio automático, pois o login é um novo gatilho. Só age para a usuária
-     * que é a distribuidora do tenant e no máximo uma vez por minuto.
+     * Login da distribuidora (ex.: Alexsandra): reprocessa os alertas pendentes do tenant. Só age para a
+     * usuária que é a distribuidora e, no máximo, uma vez por minuto.
      *
      * @return int quantidade de leads alertados com sucesso
      */
@@ -69,12 +68,35 @@ class LeadDistributorAlertService
             return 0;
         }
 
-        try {
-            if (!Cache::add("lead-alert-reprocess:{$tenantId}", 1, self::LOGIN_REPROCESS_THROTTLE_SECONDS)) {
-                return 0;
+        return $this->reprocessPendingForTenant($tenantId, self::LOGIN_REPROCESS_THROTTLE_SECONDS)['alertados'];
+    }
+
+    /**
+     * Reenvia à distribuidora os alertas de lead que ainda não a alcançaram (falha de envio, número
+     * não configurado, etc.). É o gatilho manual: ignora o limite de tentativas e de idade do reenvio
+     * automático e olha os últimos LOGIN_REPROCESS_DAYS dias, até LOGIN_REPROCESS_LIMIT leads.
+     *
+     * @param int $throttleSeconds intervalo mínimo entre execuções no tenant (0 = sem limite)
+     * @return array{pendentes: int, alertados: int, falhas: int, ignorado: bool}
+     */
+    public function reprocessPendingForTenant(int $tenantId, int $throttleSeconds = 0): array
+    {
+        $result = ['pendentes' => 0, 'alertados' => 0, 'falhas' => 0, 'ignorado' => false];
+
+        if ($tenantId <= 0) {
+            return $result;
+        }
+
+        if ($throttleSeconds > 0) {
+            try {
+                if (!Cache::add("lead-alert-reprocess:{$tenantId}", 1, $throttleSeconds)) {
+                    $result['ignorado'] = true;
+
+                    return $result;
+                }
+            } catch (\Throwable $e) {
+                // Cache sem suporte: segue sem limitar a frequência (o lock por lead evita duplicidade).
             }
-        } catch (\Throwable $e) {
-            // Cache sem suporte: segue sem limitar a frequência (o lock por lead evita duplicidade).
         }
 
         $pending = Lead::withoutGlobalScopes()
@@ -85,23 +107,21 @@ class LeadDistributorAlertService
             ->limit(self::LOGIN_REPROCESS_LIMIT)
             ->get();
 
-        $delivered = 0;
+        $result['pendentes'] = $pending->count();
+
         foreach ($pending as $lead) {
             if ($this->alert($lead, true)) {
-                $delivered++;
+                $result['alertados']++;
+            } else {
+                $result['falhas']++;
             }
         }
 
-        if ($pending->isNotEmpty()) {
-            Log::info('[LeadDistributorAlert] Reprocessamento no login da distribuidora', [
-                'tenant_id' => $tenantId,
-                'user_id' => $user->id,
-                'pendentes' => $pending->count(),
-                'alertados' => $delivered,
-            ]);
+        if ($result['pendentes'] > 0) {
+            Log::info('[LeadDistributorAlert] Reprocessamento de alertas pendentes', ['tenant_id' => $tenantId] + $result);
         }
 
-        return $delivered;
+        return $result;
     }
 
     /**

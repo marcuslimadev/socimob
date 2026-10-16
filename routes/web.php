@@ -636,6 +636,7 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
         $router->get('/distribuicao/lead/{id}', 'App\Http\Controllers\Admin\LeadDistributionController@show');
         $router->post('/distribuicao/atribuir', 'App\Http\Controllers\Admin\LeadDistributionController@atribuir');
         $router->post('/distribuicao/distribuir-automatico', 'App\Http\Controllers\Admin\LeadDistributionController@distribuirAutomatico');
+        $router->post('/distribuicao/reprocessar', 'App\Http\Controllers\Admin\LeadDistributionController@reprocessar');
 
         $router->get('/conversas', 'App\Http\Controllers\Admin\ConversasController@index');
         $router->get('/conversas/fila/estatisticas', 'App\Http\Controllers\Admin\ConversasController@estatisticasFila');

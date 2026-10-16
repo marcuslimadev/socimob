@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
 import {
   ArrowRightLeft,
+  BellRing,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -751,6 +752,16 @@ export default function DistribuicaoLeads() {
       }),
   });
 
+  const reprocess = useMutation({
+    mutationFn: async () => (await api.post('/admin/distribuicao/reprocessar')).data as { mensagem: string; alertados: number; falhas: number; pendentes: number },
+    onSuccess: (data) => {
+      if (data.falhas > 0) toast.warning(data.mensagem);
+      else toast.success(data.mensagem);
+      refreshAll();
+    },
+    onError: (error) => toast.error(apiError(error, 'Não foi possível reprocessar os avisos')),
+  });
+
   const assignLead = (lead: LeadItem, corretorId: number | null) => {
     const corretor = corretores.find((c) => c.id === corretorId);
     assign.mutate({ ids: [lead.id], corretorId, corretorNome: corretor?.nome ?? null });
@@ -796,6 +807,9 @@ export default function DistribuicaoLeads() {
               <p className="mt-1 text-sm text-muted-foreground sm:text-base">Distribua, redistribua e acompanhe a carga da equipe. Atualiza sozinha a cada 30 segundos.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={() => reprocess.mutate()} className="gap-2" disabled={reprocess.isPending} title="Reenvia por WhatsApp/e-mail os avisos de lead que ainda não chegaram à distribuidora. Também roda sozinho quando ela faz login.">
+                {reprocess.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <BellRing className="h-4 w-4" />} Reprocessar avisos
+              </Button>
               <Button variant="outline" onClick={refreshAll} className="gap-2" disabled={lista.isFetching}>
                 <RefreshCw className={cn('h-4 w-4', lista.isFetching && 'animate-spin')} /> Atualizar
               </Button>
