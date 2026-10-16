@@ -37,6 +37,7 @@ export const SIDEBAR_VISIBILITY_SECTIONS: SidebarVisibilitySectionOption[] = [
     id: 'crm',
     label: 'Chat & Clientes',
     items: [
+      { key: 'distribuicao', label: 'Central de Distribuição', href: '/distribuicao', roles: ['admin', 'super_admin'] },
       { key: 'crm', label: 'Chat', href: '/crm' },
       { key: 'pessoas', label: 'Pessoas', href: '/pessoas' },
       { key: 'links-importantes', label: 'Links importantes', href: '/links-importantes' },

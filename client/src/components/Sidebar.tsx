@@ -33,6 +33,7 @@ import {
   Bell,
   Megaphone,
   Palette,
+  Inbox,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { normalizeHiddenSidebarKeys } from '@/lib/sidebarVisibility';
@@ -129,6 +130,7 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [pendingDistributionCount, setPendingDistributionCount] = useState(0);
   const [hiddenSidebarKeys, setHiddenSidebarKeys] = useState<string[]>([]);
   const { theme, setTheme } = useTheme();
   const isDarkTheme = theme === 'dark' || theme === 'navy';
@@ -199,6 +201,35 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
 
     loadTenantAndUser();
   }, []);
+
+  // Contador da Central de Distribuição: leads aguardando distribuição (somente administradores)
+  const isDistributionAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  useEffect(() => {
+    if (!isDistributionAdmin) {
+      setPendingDistributionCount(0);
+      return;
+    }
+
+    let cancelled = false;
+    const loadPending = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      try {
+        const response = await api.get('/admin/distribuicao/resumo', { params: { periodo: 30 } });
+        if (!cancelled && response.data?.success) {
+          setPendingDistributionCount(Number(response.data.data?.pendentes) || 0);
+        }
+      } catch {
+        // Contador é auxiliar: falhas não devem interferir na navegação.
+      }
+    };
+
+    void loadPending();
+    const timer = setInterval(loadPending, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [isDistributionAdmin]);
 
   useEffect(() => {
     const loadHiddenSidebarItems = async () => {
@@ -399,6 +430,17 @@ const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
       label: 'Chat & Clientes',
       href: '/crm',
       items: [
+        ...(isDistributionAdmin
+          ? [
+              {
+                key: 'distribuicao',
+                icon: <Inbox size={16} />,
+                label: 'Central de Distribuição',
+                href: '/distribuicao',
+                badge: pendingDistributionCount || undefined,
+              },
+            ]
+          : []),
         {
           key: 'crm',
           icon: <Users size={16} />,

@@ -15,6 +15,7 @@ import { Download, RefreshCw, Share2, X } from "lucide-react";
 // Lazy load das páginas para code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Leads = lazy(() => import("./pages/Leads"));
+const DistribuicaoLeads = lazy(() => import("./pages/DistribuicaoLeads"));
 const Properties = lazy(() => import("./pages/Properties"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Login = lazy(() => import("./pages/Login"));
@@ -110,6 +111,7 @@ function Router() {
       <Route path={"/"} component={ClientPortalRefined} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/crm" component={Chat} />
+      <Route path="/distribuicao" component={DistribuicaoLeadsGate} />
       <Route path="/leads" component={Leads} />
       <Route path="/leads/:id" component={LeadProfile} />
       <Route path="/properties" component={Properties} />
@@ -208,6 +210,10 @@ function AdminOnlyPage({ component: Component }: { component: React.ComponentTyp
 
   if (canAccess !== true) return null;
   return <Component />;
+}
+
+function DistribuicaoLeadsGate() {
+  return <AdminOnlyPage component={DistribuicaoLeads} />;
 }
 
 function AdminFinanceiroGate() {
