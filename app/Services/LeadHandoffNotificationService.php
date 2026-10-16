@@ -30,12 +30,12 @@ class LeadHandoffNotificationService
     ];
 
     /**
-     * Template aprovado pela Meta (entrega garantida mesmo com a janela de 24h fechada).
-     * O texto já vem fixo endereçado à Alexsandra e aponta para o painel interno (não para
-     * o wa.me direto do cliente), então só é usado para o envio dela; Roberto
-     * continua em texto livre até termos um template equivalente aprovado para ele.
+     * Template padrão (aprovado na Meta) para alertas operacionais: entrega mesmo com a janela de 24h
+     * fechada. O texto é neutro (serve à Alexsandra e ao Roberto); o nome efetivo pode ser trocado em
+     * tenant_configs.metadata.operational_whatsapp_template_name, sem deploy. Variáveis do corpo:
+     * {{1}} tipo de alerta, {{2}} cliente, {{3}} resumo, {{4}} link (painel ou wa.me do cliente).
      */
-    public const ALEXSANDRA_TEMPLATE_NAME = 'alerta_operacional_socimob';
+    public const ALEXSANDRA_TEMPLATE_NAME = 'alerta_novo_lead_socimob';
     public const ALEXSANDRA_TEMPLATE_LANGUAGE = 'pt_BR';
 
     public function __construct(
@@ -191,18 +191,17 @@ class LeadHandoffNotificationService
 
     public function sendHandoffMessage(Lead $lead, array $recipient): array
     {
-        if ($recipient['name'] === 'Alexsandra') {
-            $templateResult = $this->sendAlexsandraTemplateAlert($lead, $recipient['phone']);
-            if ($templateResult['success'] ?? false) {
-                return $templateResult;
-            }
-
-            Log::warning('[LeadHandoffNotificationService] Falha ao enviar via template aprovado, tentando texto livre', [
-                'lead_id' => $lead->id,
-                'recipient' => $recipient['name'],
-                'error' => $templateResult['error'] ?? 'Erro desconhecido',
-            ]);
+        // Template primeiro (chega mesmo fora da janela de 24h); texto livre só como reserva.
+        $templateResult = $this->sendTemplateAlert($lead, $recipient);
+        if ($templateResult['success'] ?? false) {
+            return $templateResult;
         }
+
+        Log::warning('[LeadHandoffNotificationService] Falha ao enviar via template, tentando texto livre', [
+            'lead_id' => $lead->id,
+            'recipient' => $recipient['name'],
+            'error' => $templateResult['error'] ?? 'Erro desconhecido',
+        ]);
 
         $body = $this->buildMessage($lead, $recipient);
 
@@ -229,10 +228,12 @@ class LeadHandoffNotificationService
 
     /**
      * Envia o alerta via template aprovado (funciona mesmo com a janela de 24h fechada).
-     * Variáveis do template: {{1}} tipo de alerta, {{2}} cliente, {{3}} resumo, {{4}} link do painel.
+     * Variáveis do template: {{1}} tipo de alerta, {{2}} cliente, {{3}} resumo, {{4}} link:
+     * painel para a Alexsandra (distribui) e link curto wa.me do cliente para os demais (atendem).
      */
-    private function sendAlexsandraTemplateAlert(Lead $lead, string $phone): array
+    private function sendTemplateAlert(Lead $lead, array $recipient): array
     {
+        $phone = $recipient['phone'];
         $telefone = $lead->telefone ? " ({$lead->telefone})" : '';
         $cliente = $this->compactText($lead->nome . $telefone, 120);
 
@@ -241,12 +242,23 @@ class LeadHandoffNotificationService
 
         $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?leadId={$lead->id}";
 
+        if ($recipient['name'] !== 'Alexsandra') {
+            $clientPhone = $this->leadService->normalizePhone($lead->telefone);
+            $clientPhoneDigits = $clientPhone ? ltrim($clientPhone, '+') : null;
+
+            if ($clientPhoneDigits) {
+                $actionUrl = $this->buildShortWaLink($lead, $clientPhoneDigits, $recipient['greeting'], $recipient['name']);
+            }
+        }
+
         try {
+            $template = $this->assignmentNotificationService->operationalTemplateOrDefault((int) $lead->tenant_id);
+
             return $this->assignmentNotificationService->sendWhatsAppTemplate(
                 (int) $lead->tenant_id,
                 $phone,
-                self::ALEXSANDRA_TEMPLATE_NAME,
-                self::ALEXSANDRA_TEMPLATE_LANGUAGE,
+                $template['name'],
+                $template['language'],
                 [$this->alertTypeLabel($lead), $cliente, $resumo, $actionUrl]
             );
         } catch (\Throwable $e) {

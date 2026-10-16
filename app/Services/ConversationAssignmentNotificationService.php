@@ -9,7 +9,9 @@ use App\Models\TenantConfig;
 use App\Models\User;
 use App\Models\WhatsApp\WhatsAppTemplate;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class ConversationAssignmentNotificationService
 {
@@ -101,11 +103,66 @@ class ConversationAssignmentNotificationService
 
         $this->ensureLeadNotification($distributor, $lead, 'lead_created', $title, $message);
 
+        // E-mail como canal redundante: o WhatsApp da Meta só entrega fora da janela de 24h com template
+        // aprovado, e o alerta de lead novo não pode depender só disso.
+        $this->emailDistributor($distributor, $lead, 'lead_created', $title, $message, 86400);
+
         if (!$sendWhatsApp) {
             return true;
         }
 
         return $this->sendLeadCreatedWhatsAppOperationalAlert($distributor, $lead, $title, $message);
+    }
+
+    /**
+     * Template operacional do tenant (configurável em tenant_configs.metadata.operational_whatsapp_template_name)
+     * ou, na falta dele, o padrão do sistema. Trocar o template na Meta não exige deploy.
+     *
+     * @return array{name: string, language: string}
+     */
+    public function operationalTemplateOrDefault(int $tenantId): array
+    {
+        return $this->resolveOperationalTemplate($tenantId) ?? [
+            'name' => LeadHandoffNotificationService::ALEXSANDRA_TEMPLATE_NAME,
+            'language' => LeadHandoffNotificationService::ALEXSANDRA_TEMPLATE_LANGUAGE,
+        ];
+    }
+
+    /**
+     * Envia o alerta por e-mail à distribuidora, no máximo uma vez por lead/evento dentro do TTL
+     * (o reenvio do WhatsApp não deve repetir o e-mail). Falhas só são registradas em log.
+     */
+    private function emailDistributor(User $user, Lead $lead, string $event, string $title, string $message, int $ttlSeconds): void
+    {
+        $email = trim((string) $user->email);
+        if ($email === '') {
+            return;
+        }
+
+        try {
+            if (!Cache::add("distributor-email:{$event}:{$lead->id}", 1, $ttlSeconds)) {
+                return;
+            }
+        } catch (\Throwable $e) {
+            // Cache sem suporte: segue e aceita o risco de repetir o e-mail.
+        }
+
+        $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?leadId={$lead->id}";
+        $html = '<p><strong>' . e($title) . '</strong></p>'
+            . '<p>' . e($message) . '</p>'
+            . '<p><a href="' . e($actionUrl) . '">Abrir no painel para distribuir</a></p>';
+
+        try {
+            Mail::send([], [], function ($mail) use ($email, $user, $title, $html) {
+                $mail->to($email, $user->name)->subject($title)->html($html);
+            });
+        } catch (\Throwable $e) {
+            Log::warning('[ConversationAssignmentNotification] Falha ao enviar e-mail de alerta à distribuidora', [
+                'lead_id' => $lead->id,
+                'event' => $event,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function describeLastContact(?Carbon $previousContactAt): string
@@ -212,6 +269,7 @@ class ConversationAssignmentNotificationService
 
         // Sem deduplicar: cada recontato é um aviso novo (o intervalo mínimo já é controlado por quem chama).
         $this->ensureLeadNotification($distributor, $lead, 'lead_recontact', $title, $message, false);
+        $this->emailDistributor($distributor, $lead, 'lead_recontact', $title, $message, 1800);
 
         $phoneTo = $this->resolveOperationalWhatsAppNumber($distributor);
         if (!$phoneTo) {
