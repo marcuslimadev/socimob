@@ -115,6 +115,17 @@ class ConversationAssignmentNotificationService
     }
 
     /**
+     * Destino do aviso: a Central de Distribuição para quem distribui (admin) e o perfil do lead
+     * para os demais (corretores).
+     */
+    public function leadActionPath(Lead $lead, User $user): string
+    {
+        return in_array($user->role, ['admin', 'super_admin'], true)
+            ? "/distribuicao?leadId={$lead->id}"
+            : "/leads/{$lead->id}";
+    }
+
+    /**
      * Template operacional do tenant (configurável em tenant_configs.metadata.operational_whatsapp_template_name)
      * ou, na falta dele, o padrão do sistema. Trocar o template na Meta não exige deploy.
      *
@@ -147,7 +158,7 @@ class ConversationAssignmentNotificationService
             // Cache sem suporte: segue e aceita o risco de repetir o e-mail.
         }
 
-        $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?leadId={$lead->id}";
+        $actionUrl = rtrim((string) config('app.url'), '/') . $this->leadActionPath($lead, $user);
         $html = '<p><strong>' . e($title) . '</strong></p>'
             . '<p>' . e($message) . '</p>'
             . '<p><a href="' . e($actionUrl) . '">Abrir no painel para distribuir</a></p>';
@@ -162,6 +173,77 @@ class ConversationAssignmentNotificationService
                 'event' => $event,
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    /** WhatsApp pessoal do usuário (cadastro de pessoa), sem cair nos números operacionais da empresa. */
+    private function userWhatsAppNumber(User $user): ?string
+    {
+        $user->loadMissing('pessoa');
+
+        foreach ([$user->pessoa?->whatsapp, $user->pessoa?->celular, $user->pessoa?->telefone] as $candidate) {
+            if (trim((string) $candidate) !== '') {
+                return trim((string) $candidate);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Avisa o corretor de que recebeu leads na Central de Distribuição: um aviso no painel por lead
+     * e um único e-mail e WhatsApp por lote (lista resumida), para não inundar quem recebe vários.
+     *
+     * @param \Illuminate\Support\Collection<int, Lead> $leads
+     */
+    public function alertBrokerOfAssignments(User $broker, \Illuminate\Support\Collection $leads, ?User $by, ?string $note = null): void
+    {
+        $leads = $leads->filter(fn (Lead $lead) => (int) $lead->tenant_id === (int) $broker->tenant_id)->values();
+        if ($leads->isEmpty() || !$broker->is_active) {
+            return;
+        }
+
+        $byText = $by ? " por {$by->name}" : '';
+        $noteText = $note ? " Observação: {$note}" : '';
+
+        foreach ($leads as $lead) {
+            $phone = $lead->telefone ?: $lead->whatsapp;
+            $message = trim($this->leadName($lead) . ($phone ? " ({$phone})" : '') . " foi distribuído para você{$byText}.{$noteText}");
+            $this->ensureLeadNotification($broker, $lead, 'lead_assigned', 'Novo lead para você', $message, false);
+        }
+
+        $count = $leads->count();
+        $names = $leads->take(8)->map(fn (Lead $lead) => $this->leadName($lead))->implode(', ');
+        $more = $count > 8 ? ' e mais ' . ($count - 8) : '';
+        $title = $count === 1 ? 'Novo lead para você' : "{$count} novos leads para você";
+        $summary = "{$title}{$byText}: {$names}{$more}.{$noteText}";
+        $path = $count === 1 ? "/leads/{$leads->first()->id}" : '/leads';
+        $url = rtrim((string) config('app.url'), '/') . $path;
+
+        if (trim((string) $broker->email) !== '') {
+            try {
+                Mail::send([], [], function ($mail) use ($broker, $title, $summary, $url) {
+                    $mail->to($broker->email, $broker->name)->subject($title)->html(
+                        '<p><strong>' . e($title) . '</strong></p><p>' . e($summary) . '</p><p><a href="' . e($url) . '">Abrir no painel</a></p>'
+                    );
+                });
+            } catch (\Throwable $e) {
+                Log::warning('[ConversationAssignmentNotification] Falha ao enviar e-mail de distribuição ao corretor', [
+                    'corretor_id' => $broker->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $phone = $this->userWhatsAppNumber($broker);
+        if ($phone) {
+            $result = $this->sendWhatsAppMessage((int) $broker->tenant_id, $phone, "{$summary}\nAbrir: {$url}");
+            if (!($result['success'] ?? false)) {
+                Log::info('[ConversationAssignmentNotification] WhatsApp de distribuição ao corretor não enviado', [
+                    'corretor_id' => $broker->id,
+                    'error' => $result['error'] ?? null,
+                ]);
+            }
         }
     }
 
@@ -193,14 +275,7 @@ class ConversationAssignmentNotificationService
 
         $this->ensureLeadNotification($broker, $lead, 'lead_recontact_broker', $title, $message, false);
 
-        $broker->loadMissing('pessoa');
-        $brokerPhone = null;
-        foreach ([$broker->pessoa?->whatsapp, $broker->pessoa?->celular, $broker->pessoa?->telefone] as $candidate) {
-            if (trim((string) $candidate) !== '') {
-                $brokerPhone = trim((string) $candidate);
-                break;
-            }
-        }
+        $brokerPhone = $this->userWhatsAppNumber($broker);
 
         if (!$brokerPhone) {
             Log::info('[ConversationAssignmentNotification] Corretor sem WhatsApp cadastrado, aviso de recontato só no painel', [
@@ -212,7 +287,7 @@ class ConversationAssignmentNotificationService
             return true;
         }
 
-        $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?leadId={$lead->id}";
+        $actionUrl = rtrim((string) config('app.url'), '/') . $this->leadActionPath($lead, $distributor);
         $result = $this->sendWhatsAppMessage(
             (int) $lead->tenant_id,
             $brokerPhone,
@@ -281,7 +356,7 @@ class ConversationAssignmentNotificationService
             return false;
         }
 
-        $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?leadId={$lead->id}";
+        $actionUrl = rtrim((string) config('app.url'), '/') . $this->leadActionPath($lead, $broker);
         $body = "{$title}\n"
             . "Cliente: {$name}" . ($phone ? " ({$phone})" : '') . "\n"
             . "Origem do contato: {$source}\n"
@@ -425,7 +500,7 @@ class ConversationAssignmentNotificationService
         string $message,
         bool $dedupe = true
     ): Notification {
-        $actionUrl = "/chat?leadId={$lead->id}";
+        $actionUrl = $this->leadActionPath($lead, $user);
 
         $existing = !$dedupe ? null : Notification::query()
             ->where('tenant_id', $user->tenant_id)
@@ -673,7 +748,7 @@ class ConversationAssignmentNotificationService
         $origin = $this->leadOrigin($lead);
         $interest = $this->leadInterestSummary($lead);
         $criteria = $this->leadCriteriaSummary($lead);
-        $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?leadId={$lead->id}";
+        $actionUrl = rtrim((string) config('app.url'), '/') . "/distribuicao?leadId={$lead->id}";
 
         return "Novo lead criado\n"
             . "Cliente: {$name}" . ($phone ? " ({$phone})" : '') . "\n"
@@ -689,7 +764,7 @@ class ConversationAssignmentNotificationService
         $phone = $lead->telefone ?: $lead->whatsapp;
         $customer = $this->leadName($lead) . ($phone ? " ({$phone})" : '');
         $summary = $this->compactTemplateText($message . ' ' . $this->leadInterestSummary($lead) . ' ' . $this->leadCriteriaSummary($lead));
-        $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?leadId={$lead->id}";
+        $actionUrl = rtrim((string) config('app.url'), '/') . "/distribuicao?leadId={$lead->id}";
 
         return ['Novo lead criado', $customer, $summary, $actionUrl];
     }

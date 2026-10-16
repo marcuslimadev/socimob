@@ -240,7 +240,7 @@ class LeadHandoffNotificationService
         $contexto = trim($this->extractPropertyInterest($lead) . ' ' . $this->extractOriginalMessage($lead));
         $resumo = $contexto !== '' ? $this->compactText($contexto, 250) : 'Sem detalhes adicionais.';
 
-        $actionUrl = rtrim((string) config('app.url'), '/') . "/chat?leadId={$lead->id}";
+        $actionUrl = rtrim((string) config('app.url'), '/') . "/distribuicao?leadId={$lead->id}";
 
         if ($recipient['name'] !== 'Alexsandra') {
             $clientPhone = $this->leadService->normalizePhone($lead->telefone);

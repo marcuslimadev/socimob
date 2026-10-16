@@ -630,6 +630,13 @@ $router->group(['prefix' => 'api', 'middleware' => ['resolve-tenant', 'simple-au
 
     // Conversas e Chat
     $router->group(['prefix' => 'admin'], function () use ($router) {
+        // Central de Distribuição de leads (somente administradores)
+        $router->get('/distribuicao', 'App\Http\Controllers\Admin\LeadDistributionController@index');
+        $router->get('/distribuicao/resumo', 'App\Http\Controllers\Admin\LeadDistributionController@resumo');
+        $router->get('/distribuicao/lead/{id}', 'App\Http\Controllers\Admin\LeadDistributionController@show');
+        $router->post('/distribuicao/atribuir', 'App\Http\Controllers\Admin\LeadDistributionController@atribuir');
+        $router->post('/distribuicao/distribuir-automatico', 'App\Http\Controllers\Admin\LeadDistributionController@distribuirAutomatico');
+
         $router->get('/conversas', 'App\Http\Controllers\Admin\ConversasController@index');
         $router->get('/conversas/fila/estatisticas', 'App\Http\Controllers\Admin\ConversasController@estatisticasFila');
         $router->get('/conversas/disparar-atendimentos/dias', 'App\Http\Controllers\Admin\ConversasController@diasElegiveisDisparo');
