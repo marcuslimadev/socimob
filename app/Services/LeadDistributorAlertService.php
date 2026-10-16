@@ -225,6 +225,7 @@ class LeadDistributorAlertService
             }
 
             $now = now();
+            $this->ensureQueueConversation($fresh);
             $lastContactAt = $this->latestContactAt($fresh, $previousContactAt);
             $broker = $this->resolveCurrentBroker($fresh);
 
@@ -382,8 +383,35 @@ class LeadDistributorAlertService
         return $this->alert($lead, true);
     }
 
+    /**
+     * Garante que o lead exista na fila de distribuição do Chat. A tela de distribuição lista
+     * conversas (não leads) e, com o atendimento automático desligado, um lead novo não gera
+     * conversa: ele existia no banco e recebia o aviso, mas nunca aparecia para a Alexsandra
+     * e o Roberto distribuírem. A conversa nasce sem corretor (fila) e com a mensagem original.
+     */
+    public function ensureQueueConversation(Lead $lead): bool
+    {
+        try {
+            $canal = $this->handoffNotificationService->isHandoffLead($lead) && stripos((string) $lead->observacoes, 'Chaves na') !== false
+                ? 'chaves_na_mao'
+                : 'whatsapp';
+
+            return app(LeadConversationService::class)->ensureConversaForLead($lead, ['canal' => $canal]) !== null;
+        } catch (\Throwable $e) {
+            Log::warning('[LeadDistributorAlert] Falha ao garantir conversa do lead na fila', [
+                'lead_id' => $lead->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
     private function deliver(Lead $lead): bool
     {
+        // Antes de avisar: o link do aviso (/chat?leadId=...) só funciona se a conversa já existir.
+        $this->ensureQueueConversation($lead);
+
         if (!$this->handoffNotificationService->isHandoffLead($lead)) {
             return $this->assignmentNotificationService->alertDistributorOfNewLead($lead);
         }
