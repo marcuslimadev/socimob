@@ -287,7 +287,7 @@ class ConversationAssignmentNotificationService
             return true;
         }
 
-        $actionUrl = rtrim((string) config('app.url'), '/') . $this->leadActionPath($lead, $distributor);
+        $actionUrl = rtrim((string) config('app.url'), '/') . $this->leadActionPath($lead, $broker);
         $result = $this->sendWhatsAppMessage(
             (int) $lead->tenant_id,
             $brokerPhone,
@@ -356,7 +356,7 @@ class ConversationAssignmentNotificationService
             return false;
         }
 
-        $actionUrl = rtrim((string) config('app.url'), '/') . $this->leadActionPath($lead, $broker);
+        $actionUrl = rtrim((string) config('app.url'), '/') . $this->leadActionPath($lead, $distributor);
         $body = "{$title}\n"
             . "Cliente: {$name}" . ($phone ? " ({$phone})" : '') . "\n"
             . "Origem do contato: {$source}\n"

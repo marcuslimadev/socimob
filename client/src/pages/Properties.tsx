@@ -6,6 +6,7 @@ import {
 import { useLocation } from 'wouter';
 import Sidebar from '@/components/Sidebar';
 import { api } from '@/lib/api';
+import { thumbnailUrl } from '@/lib/thumbnail';
 import { toast } from 'sonner';
 
 interface ImovelRow {
@@ -153,10 +154,13 @@ function PropertyThumbnail({
   iconClassName: string;
 }) {
   const [exhausted, setExhausted] = useState(images.length === 0);
-  const src = images[0] || '';
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const original = images[0] || '';
+  const src = thumbFailed ? original : thumbnailUrl(original);
 
   useEffect(() => {
     setExhausted(images.length === 0);
+    setThumbFailed(false);
   }, [images.join('|')]);
 
   const showFallback = exhausted || images.length === 0;
@@ -174,7 +178,9 @@ function PropertyThumbnail({
       src={src}
       alt={title}
       className={className}
-      onError={() => setExhausted(true)}
+      loading="lazy"
+      decoding="async"
+      onError={() => (src !== original ? setThumbFailed(true) : setExhausted(true))}
     />
   );
 }

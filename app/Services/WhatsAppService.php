@@ -90,6 +90,39 @@ class WhatsAppService
         };
     }
 
+    /**
+     * Garante que a conversa tenha lead (cria ou reaproveita pelo telefone). Idempotente.
+     * Lead novo é avisado à distribuidora pelo LeadObserver; cliente já cadastrado que volta a
+     * conversar dispara o aviso de recontato.
+     */
+    public function ensureLeadForConversation(Conversa $conversa, string $telefone, array $dados = []): ?Lead
+    {
+        if ($conversa->lead_id) {
+            return $conversa->lead;
+        }
+
+        $dados += [
+            'profile_name' => $conversa->whatsapp_name,
+            'tenant_id' => $conversa->tenant_id,
+            'canal' => $conversa->canal ?: 'whatsapp',
+        ];
+
+        $lead = $this->createLead($telefone, $dados, $conversa->id);
+        $conversa->update(['lead_id' => $lead->id]);
+        $conversa->setRelation('lead', $lead);
+
+        if (!$lead->wasRecentlyCreated) {
+            app(\App\Services\LeadDistributorAlertService::class)->alertRecontact(
+                $lead,
+                'WhatsApp',
+                $lead->ultima_interacao ?? $lead->created_at
+            );
+        }
+        Log::info('✅ Lead criado e vinculado à conversa', ['lead_id' => $lead->id, 'conversa_id' => $conversa->id, 'user_id' => $lead->user_id ?? null]);
+
+        return $lead;
+    }
+
     private function notifyConversationAwaitingDistribution($conversa, ?Lead $lead = null): void
     {
         try {
@@ -221,6 +254,10 @@ class WhatsAppService
             ]);
 
             if (!$this->isAiReplyEnabled()) {
+                // Mesmo sem IA, todo contato precisa virar lead: é o lead que aciona o aviso à
+                // distribuidora e aparece na Central de Distribuição.
+                $this->ensureLeadForConversation($conversa, $telefone, $conversaData);
+
                 Log::info('🔒 Atendimento manual ativo - Teresa IA não responderá', [
                     'conversa_id' => $conversa->id,
                     'tenant_id' => $tenantId,
@@ -300,22 +337,7 @@ class WhatsAppService
             }
             
             // 4. Garantir que lead existe (criar se não existir)
-            if (!$conversa->lead_id) {
-                $lead = $this->createLead($telefone, $conversaData, $conversa->id);
-                $conversa->update(['lead_id' => $lead->id]);
-                $conversa->setRelation('lead', $lead);
-
-                // Cliente já cadastrado voltou a conversar (nova conversa): avisa a distribuidora.
-                // Lead novo é avisado pelo LeadObserver.
-                if (!$lead->wasRecentlyCreated) {
-                    app(\App\Services\LeadDistributorAlertService::class)->alertRecontact(
-                        $lead,
-                        'WhatsApp',
-                        $lead->ultima_interacao ?? $lead->created_at
-                    );
-                }
-                Log::info('✅ Lead criado e vinculado à conversa', ['lead_id' => $lead->id, 'conversa_id' => $conversa->id, 'user_id' => $lead->user_id ?? null]);
-            }
+            $this->ensureLeadForConversation($conversa, $telefone, $conversaData);
 
             $leadModel = $conversa->lead;
             if (!$leadModel) {

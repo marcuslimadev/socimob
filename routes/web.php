@@ -309,6 +309,9 @@ $router->group(['prefix' => 'api/properties'], function () use ($router) {
     $router->get('/{codigo}', 'App\Http\Controllers\PublicPropertyController@show');
 });
 
+// Miniaturas das fotos de imóveis (pública, mesma exposição dos arquivos em /uploads)
+$router->get('/api/img-thumb', 'App\Http\Controllers\ImageThumbnailController@show');
+
 // Formatação de texto com IA
 $router->post('/api/format-text', 'App\Http\Controllers\TextFormatterController@formatText');
 
