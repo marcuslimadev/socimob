@@ -289,6 +289,8 @@ export default function Properties() {
         const priority: Record<string, number> = { ACTIVE: 4, PUBLISHING: 3, ERROR: 2, PAUSED: 1 };
         let best: AdsStatus = null;
         statuses.forEach((s) => {
+          // Ignora status desconhecidos (ex.: DRAFT, INACTIVE) para nao quebrar o badge
+          if (!s.publish_status || !(s.publish_status in priority)) return;
           const status = s.publish_status as AdsStatus;
           if (status && (best === null || (priority[status] ?? 0) > (priority[best] ?? 0))) {
             best = status;
@@ -380,6 +382,7 @@ export default function Properties() {
       ERROR:      { label: 'Erro',        cls: 'bg-red-100 text-red-800' },
     };
     const cfg = map[status];
+    if (!cfg) return null;
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.cls}`}>
         <Zap size={9} />
