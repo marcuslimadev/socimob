@@ -8,6 +8,14 @@ use Illuminate\Support\Str;
 class DomainService
 {
     /**
+     * Dominios (sem www) que pertencem ao mesmo tenant de outro dominio.
+     * Tem precedencia sobre qualquer registro de tenant com o dominio alias.
+     */
+    public const DOMAIN_ALIASES = [
+        'exclusivalarimoveis.com.br' => 'exclusivalarimoveis.com',
+    ];
+
+    /**
      * Validar domínio
      */
     public function validateDomain(string $domain): bool
@@ -47,6 +55,9 @@ class DomainService
     public function findByDomain(string $domain): ?Tenant
     {
         $normalizedDomain = $this->normalizeDomain($domain);
+
+        // Dominios que sao a mesma imobiliaria sob outro endereco (ex.: .com.br -> .com)
+        $normalizedDomain = self::DOMAIN_ALIASES[$normalizedDomain] ?? $normalizedDomain;
 
         return Tenant::where('domain', $normalizedDomain)
             ->orWhere('domain', 'www.' . $normalizedDomain)

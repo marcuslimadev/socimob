@@ -167,6 +167,7 @@ class ResolveTenant
         $tenantDomain = $request->header('X-Tenant-Domain');
         if (!empty($tenantDomain)) {
             $normalizedDomain = $this->normalizeHost($tenantDomain);
+            $normalizedDomain = \App\Services\DomainService::DOMAIN_ALIASES[$normalizedDomain] ?? $normalizedDomain;
             return Tenant::where('domain', $normalizedDomain)
                 ->orWhere('domain', 'www.' . $normalizedDomain)
                 ->first();
