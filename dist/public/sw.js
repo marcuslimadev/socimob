@@ -1,4 +1,4 @@
-const CACHE_VERSION = "socimob-pwa-v2";
+const CACHE_VERSION = "socimob-pwa-v3";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 const APP_SHELL = ["/offline.html", "/manifest.webmanifest"];
@@ -46,9 +46,9 @@ self.addEventListener("fetch", (event) => {
 
   if (isHtmlNavigation(request)) {
     event.respondWith(
-      fetch(request)
-        .then((response) => response)
-        .catch(() => caches.match("/offline.html")),
+      self.navigator.onLine === false
+        ? caches.match("/offline.html")
+        : fetch(request).catch(() => caches.match("/offline.html")),
     );
     return;
   }

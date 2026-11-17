@@ -14,6 +14,10 @@ php_value post_max_size 110M
 
     RewriteEngine On
 
+    # Endereço canônico da Exclusiva: preservar caminho e query string.
+    RewriteCond %{HTTP_HOST} ^www\.exclusivalarimoveis\.com$ [NC]
+    RewriteRule ^ https://exclusivalarimoveis.com%{REQUEST_URI} [R=301,L]
+
     # SEO por domínio: a home e o sitemap da Exclusiva são renderizados pelo
     # Laravel para entregar metadados corretos também a crawlers sem JavaScript.
     RewriteCond %{HTTP_HOST} ^(www\.)?exclusiva(r)?larimoveis\.com(\.br)?$ [NC]
